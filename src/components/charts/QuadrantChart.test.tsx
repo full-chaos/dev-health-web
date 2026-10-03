@@ -238,7 +238,7 @@ describe("QuadrantChart", () => {
             silent?: boolean;
             label?: { show?: boolean; textBorderColor?: string; position?: string };
             labelLayout?: unknown;
-            itemStyle?: { opacity?: number };
+            itemStyle?: { opacity?: number; color?: string };
             data?: Array<{ value?: number[] }>;
         };
         const series = option.series as Series[];
@@ -248,7 +248,8 @@ describe("QuadrantChart", () => {
         const dotZ = series.filter((s) => s !== labels).map((s) => s.z ?? 0);
         expect(labels?.z).toBeGreaterThan(Math.max(...dotZ));
         expect(labels?.silent).toBe(true);
-        expect(labels?.itemStyle?.opacity).toBe(0);
+        // Invisible dots by a transparent color: an item opacity of 0 would hide the labels too.
+        expect(labels?.itemStyle).toEqual({ color: "transparent" });
         expect(labels?.label).toMatchObject({
             show: true,
             position: "top",

@@ -412,7 +412,9 @@ export const buildQuadrantOption = ({
                           data: backgroundData,
                           symbol: "circle",
                           symbolSize: normalizedScopeType === "person" ? 8 : 10,
-                          itemStyle: { opacity: 0 },
+                          // A transparent dot, not opacity 0: ECharts applies the item opacity to
+                          // its label too, which would hide every label.
+                          itemStyle: { color: "transparent" },
                           silent: true,
                           tooltip: { show: false },
                           label: {
