@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Button, buttonClassName } from "@/components/shared/Button";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { Notice } from "@/components/ui/Notice";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { createSavedReport } from "@/lib/reports/fetchers";
 import type { CreateSavedReportInput } from "@/lib/reports/types";
-import { STATUS_PILL } from "@/lib/statusPill";
 
 const SCHEDULE_CRON_MAP: Record<string, string | undefined> = {
     none: undefined,
@@ -79,10 +80,10 @@ export default function NewReportPage() {
                 back={{ href: "/reports", area: "Reports" }}
             />
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6 md:p-8">
+            <div className="min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card p-5.25">
                 <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl">
                     <div className="space-y-4">
-                        <h2 className="font-(--font-display) text-xl">Basic Details</h2>
+                        <h2 className="text-h3 font-semibold">Basic Details</h2>
 
                         <div className="space-y-2">
                             <label htmlFor="name" className="block text-sm font-medium">
@@ -115,7 +116,7 @@ export default function NewReportPage() {
                     </div>
 
                     <div className="space-y-4">
-                        <h2 className="font-(--font-display) text-xl">Configuration</h2>
+                        <h2 className="text-h3 font-semibold">Configuration</h2>
 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
@@ -188,28 +189,15 @@ export default function NewReportPage() {
                         </div>
                     </div>
 
-                    {error && (
-                        <div
-                            className={`rounded-xl border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
-                        >
-                            {error}
-                        </div>
-                    )}
+                    {error && <Notice variant="danger">{error}</Notice>}
 
-                    <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--card-stroke)">
-                        <Link
-                            href="/reports"
-                            className="rounded-full border border-(--card-stroke) px-6 py-2 text-sm font-medium hover:bg-(--card-70) transition-colors"
-                        >
+                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-(--card-stroke)">
+                        <Link href="/reports" className={buttonClassName("secondary", "md")}>
                             {CTA_LABELS.cancel}
                         </Link>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="rounded-full bg-(--accent) px-6 py-2 text-sm font-medium text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
-                        >
+                        <Button type="submit" variant="primary" disabled={isSubmitting}>
                             {isSubmitting ? "Creating..." : CTA_LABELS.createReport}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>

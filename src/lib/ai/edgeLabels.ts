@@ -29,7 +29,7 @@ const EDGE_WORDS: Record<string, string> = {
 };
 
 const NODE_WORDS: Record<string, string> = {
-    pr: "Pull request",
+    pr: "PR",
     issue: "Issue",
     commit: "Commit",
     file: "File",

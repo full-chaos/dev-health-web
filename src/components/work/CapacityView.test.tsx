@@ -65,7 +65,9 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
 
         const tile = (id: string) => within(screen.getByTestId(id));
         expect(tile("tile-remaining").getByText("Remaining work")).toBeInTheDocument();
-        expect(tile("tile-remaining").getByText("42 items")).toBeInTheDocument();
+        // The number and its unit apart: the unit is drawn small beside the number.
+        expect(tile("tile-remaining").getByTestId("metric-value")).toHaveTextContent("42 items");
+        expect(tile("tile-remaining").getByTestId("metric-unit")).toHaveTextContent("items");
         expect(tile("tile-p50").getByText("P50 · optimistic")).toBeInTheDocument();
         expect(tile("tile-p50").getByText("9 days")).toBeInTheDocument();
         expect(tile("tile-p85").getByText("P85 · target")).toBeInTheDocument();

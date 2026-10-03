@@ -184,8 +184,22 @@ describe("AIEvidenceExplorer", () => {
         expect(screen.getByText("Has AI workflow")).toBeInTheDocument();
         expect(screen.queryByText(/has_ai_workflow/i)).not.toBeInTheDocument();
         const ends = screen.getByTestId("ai-edge-ends");
-        expect(ends).toHaveTextContent("Pull request #42 → AI workflow run");
+        expect(ends).toHaveTextContent("PR #42 → AI workflow run");
         expect(ends).not.toHaveTextContent("pr:");
+        // CHAOS-8216: a titled side panel beside the table, the count line, a "confidence" word,
+        // and the selected row marked.
+        const panel = screen.getByTestId("ai-work-graph-evidence");
+        expect(
+            within(panel).getByRole("heading", { level: 3, name: "Work Graph evidence · PR #42" }),
+        ).toBeInTheDocument();
+        expect(panel).toHaveTextContent("2 nodes · 1 edges");
+        expect(panel).toHaveTextContent("confidence 0.90");
+        expect(panel).not.toHaveTextContent("conf 0.90");
+        expect(screen.queryByTestId("ai-evidence-partial")).not.toBeInTheDocument();
+        expect(within(row).getByText("Add feature flag").closest("tr")).toHaveAttribute(
+            "aria-selected",
+            "true",
+        );
         expect(ends).not.toHaveTextContent("11111111-1111-1111-1111-111111111111");
         expect(screen.getByText(/label:ai-assisted/i)).toBeInTheDocument();
     });

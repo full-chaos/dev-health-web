@@ -63,7 +63,7 @@ describe("Report Center in the shared app shell", () => {
         );
     });
 
-    it("keeps the subtitle and has 'New Report' in the header actions", async () => {
+    it("keeps the subtitle and has 'New report' in the header actions", async () => {
         await renderPage();
 
         const header = within(screen.getByTestId("page-header"));

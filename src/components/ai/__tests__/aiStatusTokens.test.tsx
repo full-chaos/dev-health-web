@@ -89,7 +89,7 @@ describe("AI evidence status tokens (CHAOS-7883)", () => {
         });
         render(<AIEvidenceExplorer filter={filter} />);
         await userEvent.click(screen.getByText("t"));
-        expect(screen.getByText("partial").className).toContain(STATUS_PILL.caution);
+        expect(screen.getByText("Partial").className).toContain(STATUS_PILL.caution);
     });
 
     it("opportunity list: the evidence error line uses the negative status token", async () => {
