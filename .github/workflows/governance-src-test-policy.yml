@@ -28,7 +28,7 @@ jobs:
                   fetch-depth: 0
 
             - name: Fetch PR base ref
-              run: git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+              run: git fetch --no-tags origin "${{ github.event.pull_request.base.sha }}"
 
             - name: Setup Node
               uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -37,5 +37,5 @@ jobs:
 
             - name: Enforce src test governance
               env:
-                  GOVERNANCE_DIFF_BASE: FETCH_HEAD
+                  GOVERNANCE_DIFF_BASE: ${{ github.event.pull_request.base.sha }}
               run: node .github/scripts/enforce-src-test-governance.mjs
