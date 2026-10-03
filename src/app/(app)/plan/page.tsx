@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleCheck, TriangleAlert } from "lucide-react";
+import { ArrowRight, CircleCheck, TriangleAlert } from "lucide-react";
 
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -10,7 +10,17 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
-import type { ThroughputRiskOverlay } from "@/lib/graphql/types";
+import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
+import {
+    PageFactsEvidenceAction,
+    type PageFact,
+} from "@/components/evidence/PageFactsEvidenceAction";
+import { Inset } from "@/components/capacity/Inset";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { buttonClassName } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -28,7 +38,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 
 function formatWeeks(value: number | null | undefined) {
     return typeof value === "number"
-        ? `${formatNumber(value, { maximumFractionDigits: 0 })} weeks`
+        ? `${formatNumber(value, { maximumFractionDigits: 0 })} ${Math.round(value) === 1 ? "week" : "weeks"}`
         : "—";
 }
 
@@ -41,35 +51,89 @@ function riskValue(risk: ThroughputRiskOverlay) {
     return "—";
 }
 
-function RiskRow({ risk }: { risk: ThroughputRiskOverlay }) {
+function thresholdText(risk: ThroughputRiskOverlay) {
+    // A threshold of 0 or less is "not set" (as before: no number is shown for it).
+    if (!(risk.threshold > 0)) return null;
+    const n = formatNumber(risk.threshold, { maximumFractionDigits: 2 });
+    if (risk.kind === "review") return `${n} hours`;
+    if (risk.kind === "wip") return `${n}×`;
+    if (risk.kind === "incident_load") return `${n} per week`;
+    return n;
+}
+
+function RiskFact({ risk }: { risk: ThroughputRiskOverlay }) {
     const Icon = risk.active ? TriangleAlert : CircleCheck;
     return (
-        <div
-            data-testid="risk-row"
-            className="flex flex-wrap items-center justify-between gap-3 border-t border-(--border) py-4 first:border-t-0 first:pt-0"
-        >
-            <div className="min-w-0">
-                <h3 className="text-sm font-semibold">{risk.label}</h3>
-                <p className="mt-1 text-xs text-(--text-muted)">
-                    Threshold{" "}
-                    {risk.threshold > 0 ? riskValue({ ...risk, value: risk.threshold }) : "—"}
-                </p>
-            </div>
-            <div className="flex items-center gap-3">
-                <p className="text-2xl font-semibold">{riskValue(risk)}</p>
-                <span
-                    data-testid="risk-status"
-                    data-active={risk.active ? "true" : "false"}
-                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
-                        risk.active ? STATUS_PILL.caution : STATUS_PILL.positive
-                    }`}
-                >
-                    <Icon aria-hidden="true" className="h-3 w-3" />
-                    {risk.active ? "Elevated" : "Normal"}
+        <EvidenceFact
+            // The prototype's name for the incident check; the served label stays for the others.
+            label={risk.kind === "incident_load" ? "Incident burden" : risk.label}
+            value={
+                <span data-testid="risk-row" className="inline-flex items-center gap-2">
+                    <span>{riskValue(risk)}</span>
+                    <span
+                        data-testid="risk-status"
+                        data-active={risk.active ? "true" : "false"}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                            risk.active ? STATUS_PILL.caution : STATUS_PILL.positive
+                        }`}
+                    >
+                        <Icon aria-hidden="true" className="h-3 w-3" />
+                        {risk.active ? "Elevated" : "Normal"}
+                    </span>
                 </span>
-            </div>
-        </div>
+            }
+        />
     );
+}
+
+/** The inset of the Risk checks card: the thresholds when calm, the primary risk when not. */
+function RiskInset({ forecast }: { forecast: ThroughputForecast }) {
+    const risks = [forecast.wipCongestion, forecast.reviewBottleneck, forecast.incidentLoad];
+    if (risks.some((risk) => risk.active)) {
+        return (
+            <Inset title={forecast.primaryRisk.label} data-testid="risk-inset">
+                This is the most elevated current overlay for the forecast, selected from WIP
+                congestion, review bottleneck, and incident load.
+            </Inset>
+        );
+    }
+    const [wip, review, incident] = risks.map((risk) => thresholdText(risk) ?? "not reported");
+    return (
+        <Inset title="No elevated risk" data-testid="risk-inset">
+            Checks: WIP threshold {wip}, review threshold {review}, incident threshold {incident}.
+        </Inset>
+    );
+}
+
+/** The page's served values for the evidence drawer, as the page shows them. No new number. */
+function overviewFacts(forecast: ThroughputForecast): PageFact[] {
+    const risk = (r: ThroughputRiskOverlay) =>
+        `${riskValue(r)} · ${r.active ? "Elevated" : "Normal"}`;
+    const weeks = (v: number | null | undefined) =>
+        typeof v === "number" ? formatWeeks(v) : undefined;
+    return [
+        { label: "Open items", value: formatNumber(forecast.backlogSize) },
+        { label: "P50 forecast", value: weeks(forecast.p50Weeks) },
+        { label: "P75 forecast", value: weeks(forecast.p75Weeks) },
+        { label: "P90 forecast", value: weeks(forecast.p90Weeks) },
+        ...forecast.rollingWindows.map((window) => ({
+            label: `Rolling throughput · ${window.windowWeeks}w`,
+            value: `${formatNumber(window.meanWeeklyThroughput, { maximumFractionDigits: 1 })} items/week`,
+        })),
+        { label: "WIP congestion", value: risk(forecast.wipCongestion) },
+        { label: "Review bottleneck", value: risk(forecast.reviewBottleneck) },
+        { label: "Incident burden", value: risk(forecast.incidentLoad) },
+        {
+            label: "History",
+            // The served flag as a word; "Not reported" only when the field is absent.
+            value:
+                typeof forecast.insufficientHistory === "boolean"
+                    ? forecast.insufficientHistory
+                        ? "Insufficient"
+                        : "Sufficient"
+                    : undefined,
+        },
+    ];
 }
 
 function EmptyForecastState({ scopeLabel }: { scopeLabel: string | null }) {
@@ -148,6 +212,14 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Overview"
+                actions={
+                    forecast ? (
+                        <PageFactsEvidenceAction
+                            title="Plan overview"
+                            facts={overviewFacts(forecast)}
+                        />
+                    ) : undefined
+                }
                 subtitle="Forecast — not a commitment. Uses rolling 4/8/12-week throughput and risk overlays. Backlog and scope are derived from the filter bar."
             />
 
@@ -160,154 +232,125 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                         rollingWindows={forecast.rollingWindows}
                     />
 
-                    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6">
-                            <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">
-                                Open items
-                            </p>
-                            <p className="mt-3 text-3xl font-semibold">
-                                {formatNumber(forecast.backlogSize)}
-                            </p>
-                            <p className="mt-2 text-xs text-(--text-muted)">
-                                Backlog and scope count are derived from current filters — adjust
-                                filters above to refocus.
-                            </p>
-                        </div>
+                    <MetricStrip data-testid="plan-tiles">
+                        <MetricCard
+                            label="Open items"
+                            value={forecast.backlogSize}
+                            hideTrend
+                            deltaSlot={<span>Derived from current filters</span>}
+                        />
                         {[
-                            ["P50", forecast.p50Weeks],
-                            ["P75", forecast.p75Weeks],
-                            ["P90", forecast.p90Weeks],
+                            ["P50 forecast", forecast.p50Weeks],
+                            ["P75 forecast", forecast.p75Weeks],
+                            ["P90 forecast", forecast.p90Weeks],
                         ].map(([label, weeks]) => (
-                            <div
+                            <MetricCard
                                 key={label as string}
-                                data-testid="percentile-tile"
-                                className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">
-                                        {label}
-                                    </p>
-                                    {forecast.insufficientHistory ? (
-                                        <span
-                                            data-testid="limited-history-pill"
-                                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs uppercase tracking-[0.16em] ${STATUS_PILL.caution}`}
-                                        >
-                                            <TriangleAlert aria-hidden="true" className="h-3 w-3" />
-                                            Limited history
+                                testId="percentile-tile"
+                                label={label as string}
+                                value={typeof weeks === "number" ? Math.round(weeks) : undefined}
+                                unit={Math.round(Number(weeks)) === 1 ? "week" : "weeks"}
+                                hideTrend
+                                deltaSlot={
+                                    <>
+                                        {forecast.insufficientHistory ? (
+                                            <span
+                                                data-testid="limited-history-pill"
+                                                className={`mr-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_PILL.caution}`}
+                                            >
+                                                <TriangleAlert
+                                                    aria-hidden="true"
+                                                    className="h-3 w-3"
+                                                />
+                                                Limited history
+                                            </span>
+                                        ) : null}
+                                        <span>
+                                            {typeof weeks === "number"
+                                                ? "throughput-based"
+                                                : "Not enough throughput"}
                                         </span>
-                                    ) : null}
-                                </div>
-                                <p className="mt-3 text-3xl font-semibold">
-                                    {formatWeeks(weeks as number | null)}
-                                </p>
-                                <p className="mt-2 text-xs text-(--text-muted)">
-                                    {typeof weeks === "number"
-                                        ? "Weeks to complete backlog"
-                                        : "Not enough throughput"}
-                                </p>
-                            </div>
-                        ))}
-                    </section>
-
-                    <section
-                        data-testid="plan-completion-outlook"
-                        className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
-                    >
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div className="min-w-0">
-                                <h2 className="text-xl font-semibold">Completion outlook</h2>
-                                <p className="mt-3 text-xs uppercase tracking-[0.18em] text-(--text-muted)">
-                                    Current snapshot
-                                </p>
-                                <p
-                                    data-testid="outlook-headline"
-                                    className="mt-1 text-2xl font-semibold"
-                                >
-                                    {outlookHeadline(forecast)}
-                                </p>
-                                <p className="mt-2 text-sm text-(--text-muted)">
-                                    {outlookSentence(forecast)}
-                                </p>
-                                <p className="mt-1 text-sm text-(--text-muted)">
-                                    P50, P75 and P90 as shown in the tiles.
-                                </p>
-                            </div>
-                            <Link
-                                href={completionHref}
-                                className="rounded-full border border-(--border) px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:bg-(--surface-raised)"
-                            >
-                                {CTA_LABELS.completionForecast}
-                            </Link>
-                        </div>
-                        <div className="mt-6">
-                            <h3 className="text-sm font-semibold">Rolling throughput</h3>
-                            <p className="mt-1 text-sm text-(--text-muted)">
-                                Mean weekly completed items by historical window.
-                            </p>
-                            <VerticalBarChart
-                                categories={forecast.rollingWindows.map(
-                                    (window) => `${window.windowWeeks}w`,
-                                )}
-                                series={[
-                                    {
-                                        name: "Items/week",
-                                        data: forecast.rollingWindows.map(
-                                            (window) => window.meanWeeklyThroughput,
-                                        ),
-                                    },
-                                ]}
-                                valueFormat="number"
-                                height={300}
+                                    </>
+                                }
                             />
-                        </div>
-                    </section>
+                        ))}
+                    </MetricStrip>
 
-                    <section
-                        data-testid="plan-risk-checks"
-                        className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
-                    >
-                        <h2 className="mb-4 text-xl font-semibold">Risk checks</h2>
-                        <RiskRow risk={forecast.wipCongestion} />
-                        <RiskRow risk={forecast.reviewBottleneck} />
-                        <RiskRow risk={forecast.incidentLoad} />
-                    </section>
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                        <Section
+                            data-testid="plan-completion-outlook"
+                            title="Completion outlook"
+                            description="Mean weekly completed items by historical window."
+                        >
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="text-label-caps uppercase text-(--ink-muted)">
+                                        Current snapshot
+                                    </p>
+                                    <p
+                                        data-testid="outlook-headline"
+                                        className="mt-1 text-h3 font-semibold"
+                                    >
+                                        {outlookHeadline(forecast)}
+                                    </p>
+                                    <p className="mt-2 text-sm text-(--ink-muted)">
+                                        {outlookSentence(forecast)}
+                                    </p>
+                                    <p className="mt-1 text-sm text-(--ink-muted)">
+                                        P50, P75 and P90 as shown in the tiles.
+                                    </p>
+                                </div>
+                                <Link href={completionHref} className={buttonClassName("primary")}>
+                                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                                    {CTA_LABELS.completionForecast}
+                                </Link>
+                            </div>
+                            <div className="mt-6">
+                                <h3 className="text-sm font-semibold">Rolling throughput</h3>
+                                <VerticalBarChart
+                                    categories={forecast.rollingWindows.map(
+                                        (window) => `${window.windowWeeks}w`,
+                                    )}
+                                    series={[
+                                        {
+                                            name: "Items/week",
+                                            data: forecast.rollingWindows.map(
+                                                (window) => window.meanWeeklyThroughput,
+                                            ),
+                                        },
+                                    ]}
+                                    valueFormat="number"
+                                    height={300}
+                                />
+                            </div>
+                        </Section>
 
-                    <section
+                        <Section data-testid="plan-risk-checks" title="Risk checks">
+                            <EvidenceFactList aria-label="Risk checks" testId="risk-facts">
+                                <RiskFact risk={forecast.wipCongestion} />
+                                <RiskFact risk={forecast.reviewBottleneck} />
+                                <RiskFact risk={forecast.incidentLoad} />
+                            </EvidenceFactList>
+                            <RiskInset forecast={forecast} />
+                        </Section>
+                    </div>
+
+                    <Section
                         data-testid="plan-destinations"
-                        className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
+                        title="Planning destinations"
+                        description="Forecast assumptions and backlog condition stay separate."
                     >
-                        <h2 className="text-xl font-semibold">Planning destinations</h2>
-                        <p className="mt-1 text-sm text-(--text-muted)">
-                            Forecast assumptions and backlog condition stay separate.
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-3">
-                            <Link
-                                href={completionHref}
-                                className="rounded-full border border-(--border) px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:bg-(--surface-raised)"
-                            >
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <Link href={completionHref} className={buttonClassName("secondary")}>
+                                <ArrowRight aria-hidden="true" className="h-4 w-4" />
                                 {CTA_LABELS.forecastCompletion}
                             </Link>
-                            <Link
-                                href={backlogHref}
-                                className="rounded-full border border-(--border) px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:bg-(--surface-raised)"
-                            >
+                            <Link href={backlogHref} className={buttonClassName("secondary")}>
+                                <ArrowRight aria-hidden="true" className="h-4 w-4" />
                                 {CTA_LABELS.inspectBacklogRisk}
                             </Link>
                         </div>
-                    </section>
-
-                    <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6">
-                        <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">
-                            Primary risk callout
-                        </p>
-                        <h2 className="mt-3 text-2xl font-semibold">
-                            {forecast.primaryRisk.label}
-                        </h2>
-                        <p className="mt-2 text-sm text-(--text-muted)">
-                            This is the most elevated current overlay for the forecast, selected
-                            from WIP congestion, review bottleneck, and incident load.
-                        </p>
-                    </section>
+                    </Section>
                 </>
             ) : (
                 <EmptyForecastState scopeLabel={scopeLabel} />
