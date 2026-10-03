@@ -66,13 +66,21 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         }),
     );
 
-    const contributorChartLabels = resolveEntityLabels(
+    // Contributors kept their short id token when the name is not resolved ("#8dc7d5fc",
+    // as the old rows' entity label showed it), so unresolved rows stay apart; never a raw id.
+    const contributorResolved = resolveEntityLabels(
         contributors.map((c) => c.id),
         (_id, i) => ({
             name: contributors[i]?.display_name ?? undefined,
             unresolvedFallback: "Unresolved",
         }),
     );
+    const contributorChartLabels = {
+        labels: contributorResolved.results.map((r) =>
+            r.resolved || !r.short ? r.label : `${r.short} · Unresolved`,
+        ),
+        titles: contributorResolved.titles,
+    };
 
     // Change failure rate: the subject of both association cards' evidence action. The shared
     // drawer lists the drivers and contributors with their evidence links and links to Explore.
