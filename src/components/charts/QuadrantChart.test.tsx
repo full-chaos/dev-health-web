@@ -1,7 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@/test/utils";
 
-import { QuadrantChart, buildQuadrantOption, quadrantGrid } from "./QuadrantChart";
+import {
+    POINT_LABEL_SERIES_ID,
+    QuadrantChart,
+    buildQuadrantOption,
+    quadrantGrid,
+} from "./QuadrantChart";
 import type { QuadrantResponse } from "@/lib/types";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
 
@@ -201,6 +206,80 @@ describe("QuadrantChart", () => {
         });
     });
 
+    it("draws team / repo point labels in a silent label series above every dot (no dot covers a label)", () => {
+        const crowded: QuadrantResponse = {
+            ...sampleData,
+            points: [
+                {
+                    ...sampleData.points[0],
+                    entity_id: "r1",
+                    entity_label: "acme/api",
+                    x: 82,
+                    y: 97,
+                },
+                {
+                    ...sampleData.points[0],
+                    entity_id: "r2",
+                    entity_label: "acme/web",
+                    x: 83,
+                    y: 95,
+                },
+            ],
+        };
+        const option = buildQuadrantOption({
+            data: crowded,
+            chartTheme,
+            colors: chartColors,
+            scopeType: "repo",
+        });
+        type Series = {
+            id?: string;
+            z?: number;
+            silent?: boolean;
+            label?: { show?: boolean; textBorderColor?: string; position?: string };
+            labelLayout?: unknown;
+            itemStyle?: { opacity?: number };
+            data?: Array<{ value?: number[] }>;
+        };
+        const series = option.series as Series[];
+        const labels = series.find((s) => s.id === POINT_LABEL_SERIES_ID);
+        expect(labels).toBeDefined();
+        // Above every dot series, invisible dots, no mouse events.
+        const dotZ = series.filter((s) => s !== labels).map((s) => s.z ?? 0);
+        expect(labels?.z).toBeGreaterThan(Math.max(...dotZ));
+        expect(labels?.silent).toBe(true);
+        expect(labels?.itemStyle?.opacity).toBe(0);
+        expect(labels?.label).toMatchObject({
+            show: true,
+            position: "top",
+            textBorderColor: chartTheme.background,
+        });
+        expect(labels?.labelLayout).toEqual({ hideOverlap: true, moveOverlap: "shiftY" });
+        // The same served points as the dots.
+        expect(labels?.data?.map((d) => d.value)).toEqual([
+            [82, 97],
+            [83, 95],
+        ]);
+        // The dot series draws no labels of its own.
+        expect(series[0].label?.show).not.toBe(true);
+        // A person chart draws no point labels.
+        const person = buildQuadrantOption({
+            data: crowded,
+            chartTheme,
+            colors: chartColors,
+            scopeType: "person",
+        });
+        expect((person.series as Series[]).some((s) => s.id === POINT_LABEL_SERIES_ID)).toBe(false);
+        // An org chart draws no point labels either (only team / repo charts do).
+        const org = buildQuadrantOption({
+            data: crowded,
+            chartTheme,
+            colors: chartColors,
+            scopeType: "org",
+        });
+        expect((org.series as Series[]).some((s) => s.id === POINT_LABEL_SERIES_ID)).toBe(false);
+    });
+
     it("handles empty data and null click payload gracefully", () => {
         render(
             <QuadrantChart
@@ -282,6 +361,8 @@ describe("QuadrantChart", () => {
             scopeType: "repo",
         });
 
-        expect((option.series as Array<{ label?: { show?: boolean } }>)[0]?.label?.show).toBe(true);
+        // Drawn by the label series above the dots (CHAOS-8342 review: no dot covers a label).
+        const series = option.series as Array<{ id?: string; label?: { show?: boolean } }>;
+        expect(series.find((s) => s.id === POINT_LABEL_SERIES_ID)?.label?.show).toBe(true);
     });
 });

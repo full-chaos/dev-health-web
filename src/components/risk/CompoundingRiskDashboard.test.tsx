@@ -11,7 +11,7 @@
  * - The dashboard surfaces the weights/thresholds audit trail.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { render, screen, within } from "@/test/utils";
 
@@ -73,6 +73,13 @@ function renderDashboard(overrides: Partial<CompoundingRiskDashboardProps> = {})
     return render(<CompoundingRiskDashboard {...props} />);
 }
 
+// The breakout control navigates with the app router.
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+    usePathname: () => "/risk/compounding",
+    useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("CompoundingRiskDashboard", () => {
     it("renders the headline score and severity from the row", () => {
         renderDashboard();
@@ -81,6 +88,11 @@ describe("CompoundingRiskDashboard", () => {
         const chips = screen.getAllByTestId("severity-chip");
         // First chip is the headline; subsequent chips are in the table.
         expect(chips[0].getAttribute("data-severity")).toBe("high");
+        // Concept `govern-compounding-risk`: sentence case ("High"), not caps.
+        for (const chip of chips) {
+            expect(chip.className).not.toMatch(/uppercase|tracking-/u);
+        }
+        expect(chips[0].textContent).toBe("High");
     });
 
     it("renders all four component bars with the normalized value", () => {

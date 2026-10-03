@@ -76,6 +76,24 @@ describe("HeatmapPanel — hotspot evidence contract (CHAOS-2035)", () => {
         expect(pill.className).not.toMatch(/uppercase|tracking-/u);
     });
 
+    it("heads the evidence box in sentence case, not caps", () => {
+        render(
+            <HeatmapPanel
+                title="Review wait density"
+                description="Where review wait accumulates."
+                request={request}
+                initialData={baseResponse([
+                    { x: "Mon", y: "auth", value: 5 },
+                    { x: "Tue", y: "billing", value: 9 },
+                ])}
+                evidenceTitle="PR evidence"
+            />,
+        );
+        const head = screen.getByTestId("heatmap-evidence-title");
+        expect(head.textContent).toBe("PR evidence");
+        expect(head.className).not.toMatch(/uppercase|tracking-/u);
+    });
+
     it("renders a default summary and human-readable typed artifacts — never raw paths/UUIDs/JSON", () => {
         const data: HeatmapResponse = {
             ...baseResponse([
