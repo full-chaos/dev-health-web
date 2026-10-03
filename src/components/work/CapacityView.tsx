@@ -8,10 +8,11 @@ import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
 import { ForecastNotices } from "@/components/capacity/ForecastNotices";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
-import { Inset } from "@/components/capacity/Inset";
+import { Inset } from "@/components/ui/Inset";
 import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
+import { teamIdsForScope } from "@/lib/filters/capacityScope";
 import { useCapacityForecast } from "@/lib/graphql/hooks";
 import { useOrgId } from "@/lib/graphql/provider";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -39,6 +40,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
     });
 
     const forecast = queryData;
+    const teamCount = teamIdsForScope(filters)?.length ?? 0;
 
     const chartData = useMemo(() => {
         if (!forecast) return null;
@@ -150,7 +152,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                     )}
                 </Section>
 
-                {forecast ? <ForecastInputsCard forecast={forecast} /> : null}
+                {forecast ? <ForecastInputsCard forecast={forecast} teamCount={teamCount} /> : null}
             </div>
 
             {forecast && (
