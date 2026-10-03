@@ -8,9 +8,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { STATUS_PILL } from "@/lib/statusPill";
-import { edgeEndName, edgeTypeWords, nodeTypeWords } from "@/lib/ai/edgeLabels";
+import { edgeEndName, edgeEndWords, edgeTypeWords, type EdgeEndName } from "@/lib/ai/edgeLabels";
 import { prWorkflowRootId } from "@/lib/ai/workflowRootId";
-import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import {
     useAIAttributedPrs,
     useAIWorkflowDrilldownForPr,
@@ -134,14 +133,13 @@ function PrTable({
     );
 }
 
-/** One end of an edge in words: node type, then a number or a safe label for the id. */
-/** One end of an edge: the words of its type, then the served name of its node or "Not reported". */
-function EdgeEnd({ type, name }: { type: string; name: string | null }) {
-    return (
-        <>
-            {nodeTypeWords(type)} {name ?? NOT_REPORTED}
-        </>
-    );
+/**
+ * One end of an edge: the words of its type, then the served name of its node. A type with no name
+ * by design reads as its type words alone; a name that is expected and not served reads "Not
+ * reported". The served `nameExpected` flag of the node decides which.
+ */
+function EdgeEnd({ type, name }: { type: string; name: EdgeEndName }) {
+    return <>{edgeEndWords(type, name)}</>;
 }
 
 const PANEL_SHELL = "min-w-0 lg:pt-1";
