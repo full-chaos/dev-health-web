@@ -308,8 +308,6 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 }
             />
 
-            <PrivacyHeader />
-
             <ScopeBar view="cognitive-load" origin={activeOrigin} />
 
             <ViewSet
@@ -319,6 +317,8 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 overviewId="overview"
                 ariaLabel="Cognitive Load views"
             />
+
+            <PrivacyHeader />
 
             {activeTab === "heatmap" && canShowSelectedScope ? (
                 <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={reviewHeatmap} />

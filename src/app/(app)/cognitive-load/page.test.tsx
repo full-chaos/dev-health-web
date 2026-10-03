@@ -77,9 +77,15 @@ describe("Cognitive Load page header", () => {
         expect(rows).toContain("Context spread (avg per day)");
     });
 
-    it("keeps the guardrail: the privacy header is on every tab", async () => {
+    it("keeps the guardrail on every tab, as the first block after the scope bar and the tab row", async () => {
         await renderPage("context-switching");
 
-        expect(screen.getByTestId("cognitive-load-privacy-header")).toBeInTheDocument();
+        const privacy = screen.getByTestId("cognitive-load-privacy-header");
+        const follows = (a: HTMLElement, b: HTMLElement) =>
+            Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(follows(screen.getByTestId("scope-bar"), privacy)).toBe(true);
+        expect(follows(screen.getByTestId("view-set"), privacy)).toBe(true);
+        // Nothing but the privacy block sits between the tab row and the tab content.
+        expect(screen.getByTestId("view-set").nextElementSibling).toBe(privacy);
     });
 });
