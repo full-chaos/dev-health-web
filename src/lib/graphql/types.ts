@@ -343,7 +343,7 @@ export interface BusFactorQueryResponse {
 // ==== Capacity Planning Types ====
 
 export interface CapacityForecastInput {
-    /** Deprecated in the schema; send teamIds. */
+    /** One team id. The schema keeps it with no deprecation mark; the capacity page sends teamIds. */
     teamId?: string;
     teamIds?: string[];
     workScopeId?: string;
