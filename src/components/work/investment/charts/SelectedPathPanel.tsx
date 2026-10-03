@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { buttonClassName } from "@/components/shared/Button";
 
 import type { AllocationEntityKind, SelectedPathNumbers } from "@/lib/allocationSelection";
+import { Inset } from "@/components/ui/Inset";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 
@@ -115,9 +116,9 @@ export function SelectedPathPanel({
                 </>
             )}
             {/* Prototype `allocation()` aside: the washed inset, then ONE primary action. */}
-            <div
+            <Inset
                 data-testid="selected-path-inset"
-                className="mt-3.5 rounded-sm bg-background p-3.75 text-xs leading-relaxed text-(--ink-muted)"
+                className="text-xs leading-relaxed text-(--ink-muted)"
             >
                 <h4 className="text-sm font-semibold text-foreground">
                     Attribution, not dependency
@@ -126,7 +127,7 @@ export function SelectedPathPanel({
                     This path shows where effort appears to land. It does not assert downstream
                     impact or a technical dependency.
                 </p>
-            </div>
+            </Inset>
             <Link
                 href={evidenceHref}
                 data-testid="selected-path-evidence"
