@@ -3,6 +3,7 @@ import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFa
 import { Section } from "@/components/ui/Section";
 import { STATUS_PILL } from "@/lib/statusPill";
 import type { ConfidenceLevel, HomeResponse } from "@/lib/types";
+import { Inset } from "@/components/ui/Inset";
 
 /** Approved prototype inset sentence (`app.js:100`). */
 export const EVIDENCE_CONTEXT_NOTE =
@@ -70,10 +71,7 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
                 />
                 <EvidenceFact label="Identity confidence" />
             </EvidenceFactList>
-            <div
-                data-testid="evidence-context-note"
-                className="mt-3.5 rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)"
-            >
+            <Inset data-testid="evidence-context-note" className="text-xs text-(--ink-muted)">
                 <p>{EVIDENCE_CONTEXT_NOTE}</p>
                 {caveats.length > 0 ? (
                     <ul className="mt-2 space-y-1" data-testid="data-confidence-caveats">
@@ -85,7 +83,7 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
                         ))}
                     </ul>
                 ) : null}
-            </div>
+            </Inset>
         </Section>
     );
 }
