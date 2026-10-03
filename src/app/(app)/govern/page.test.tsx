@@ -226,6 +226,41 @@ describe("Govern overview page — approved layout", () => {
         expect(clusterIds("Risk")[0]).toBe("risk-compounding");
     });
 
+    it("lists the 'View evidence' facts in the order the page draws the cards, for every state mix", async () => {
+        const mixes: Array<Record<string, AreaSignalState>> = [
+            { security: "critical" },
+            // All equal: the area's own order decides.
+            {},
+            // A Risk card is the most severe after the hero.
+            { security: "critical", "risk-compounding": "critical", quality: "low" },
+            // Cards without a served value sink to the end of their group.
+            { risk: "high", testops: "unavailable", "feature-flags": "unavailable" },
+            // A Risk card is the hero; Quality still comes first in the grid.
+            { "incident-correlation": "critical", testops: "medium" },
+            // Nothing served: no hero, every card in the grid.
+            Object.fromEntries(
+                (getAreaById("govern")?.hubItems ?? []).map((item) => [item.id, "unavailable"]),
+            ),
+        ];
+        for (const states of mixes) {
+            const signals = governSignals(states);
+            getGovernSignalsMock.mockResolvedValue(signals);
+            await renderPage();
+            const idByLabel = new Map(
+                signals.map((signal) => [`${signal.label} — ${signal.metricLabel}`, signal.id]),
+            );
+            const factIds = within(screen.getByTestId("page-evidence"))
+                .getAllByTestId("page-fact")
+                .map((li) => idByLabel.get((li.textContent ?? "").split("=")[0]));
+            const drawnIds = screen
+                .getAllByTestId("area-signal-card")
+                .map((card) => card.getAttribute("data-signal-id"));
+            expect(factIds, JSON.stringify(states)).toEqual(drawnIds);
+            expect(factIds).toHaveLength(signals.length);
+            cleanup();
+        }
+    });
+
     it("gives the header a 'View evidence' with the served signals in body order (hero, Quality, Risk)", async () => {
         getGovernSignalsMock.mockResolvedValue(
             governSignals({
