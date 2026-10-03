@@ -154,15 +154,23 @@ function generateNonce(): string {
 /**
  * Whether script-src may carry 'unsafe-eval'.
  *
- * Production never does. The development server and browser test mode do:
- * React's development build calls eval() to rebuild server call stacks, and
- * with Next.js 16.3 it makes that call on every page, so a development page
- * without 'unsafe-eval' reports one blocked eval per server stack frame
- * (CHAOS-8445). React never calls eval() in its production build.
+ * An allow-list, so every other case fails closed: an unset NODE_ENV,
+ * "production" and any other value get no eval.
+ *
+ * - NODE_ENV "development": the development server. React's development build
+ *   calls eval() to rebuild server call stacks, and with Next.js 16.3 it makes
+ *   that call on every page, so a development page without 'unsafe-eval'
+ *   reports one blocked eval per server stack frame (CHAOS-8445).
+ * - NODE_ENV "test" with browser test mode: the e2e suites start `next dev`
+ *   with NODE_ENV=test (ci/run_tests.sh), which also serves React's
+ *   development build.
+ *
+ * React never calls eval() in its production build.
  */
 function allowsScriptEval(): boolean {
-    if (process.env.NODE_ENV === "production") return false;
-    return process.env.NODE_ENV === "development" || process.env.DEV_HEALTH_TEST_MODE === "true";
+    const mode = process.env.NODE_ENV;
+    if (mode === "development") return true;
+    return mode === "test" && process.env.DEV_HEALTH_TEST_MODE === "true";
 }
 
 /**
