@@ -1,4 +1,9 @@
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProvidersPage } from "@/components/admin/integrations/ProvidersPage";
+import {
+    AddProviderButton,
+    ProvidersWizardProvider,
+} from "@/components/admin/integrations/ProvidersWizardContext";
 import type { ProviderRow } from "@/components/admin/integrations/ProviderTable";
 import {
     getCanonicalIncidentIngestionEntitlement,
@@ -151,17 +156,27 @@ export default async function IntegrationsPage() {
     }
 
     return (
-        <ProvidersPage
-            canCreatePagerDuty={canCreatePagerDuty}
-            providers={providers}
-            credentials={credentials}
-            notice={
-                credentialsResult.error ? (
-                    <Notice variant="danger" live={false} action={<RetryButton />}>
-                        Providers could not be loaded. Retry, or check again in a moment.
-                    </Notice>
-                ) : null
-            }
-        />
+        <ProvidersWizardProvider>
+            <div className="space-y-6">
+                <AdminHeader
+                    title="Connections"
+                    description="Manage connections to external tools and services."
+                >
+                    <AddProviderButton />
+                </AdminHeader>
+                <ProvidersPage
+                    canCreatePagerDuty={canCreatePagerDuty}
+                    providers={providers}
+                    credentials={credentials}
+                    notice={
+                        credentialsResult.error ? (
+                            <Notice variant="danger" live={false} action={<RetryButton />}>
+                                Providers could not be loaded. Retry, or check again in a moment.
+                            </Notice>
+                        ) : null
+                    }
+                />
+            </div>
+        </ProvidersWizardProvider>
     );
 }
