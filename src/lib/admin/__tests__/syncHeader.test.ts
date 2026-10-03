@@ -16,10 +16,10 @@ describe("syncHeaderFacts (CHAOS-8242)", () => {
             "Provider: github · 2 sync targets · Schedule: 0 * * * * (UTC)",
         );
     });
-    it("says Not scheduled, never an invented interval, when there is no schedule", () => {
+    it("leaves the schedule out, with no invented interval and no filler, when there is none", () => {
         const text = syncHeaderFacts({ ...base, schedule_cron: null, timezone: null });
-        expect(text).toBe("Provider: github · 2 sync targets · Not scheduled");
-        expect(text).not.toMatch(/every/i);
+        expect(text).toBe("Provider: github · 2 sync targets");
+        expect(text).not.toMatch(/every|not scheduled|schedule/i);
     });
     it("uses the singular for one target", () => {
         expect(syncHeaderFacts({ ...base, sync_targets: ["git"] })).toContain("1 sync target ·");

@@ -12,17 +12,29 @@ vi.mock("@/lib/admin/server", () => ({
     getActiveBackfillJob: vi.fn(),
 }));
 vi.mock("@/components/admin/AdminHeader", () => ({
-    AdminHeader: ({ title, description }: { title: string; description?: string }) => (
+    AdminHeader: ({
+        title,
+        description,
+        children,
+    }: {
+        title: string;
+        description?: string;
+        children?: React.ReactNode;
+    }) => (
         <header>
             <h1>{title}</h1>
             <p data-testid="header-description">{description}</p>
+            {children}
         </header>
     ),
 }));
 vi.mock("@/components/admin/sync/SyncProgressBar", () => ({ SyncProgressBar: () => null }));
 vi.mock("@/components/admin/sync/BackfillOperations", () => ({ BackfillOperations: () => null }));
 vi.mock("@/components/admin/sync/TestConnectionButton", () => ({
-    TestConnectionButton: () => null,
+    TestConnectionButton: () => <span data-testid="test-connection-stub" />,
+}));
+vi.mock("@/components/admin/sync/SyncConfigHeaderActions", () => ({
+    SyncConfigHeaderActions: () => <span data-testid="header-actions-stub" />,
 }));
 vi.mock("@/components/admin/sync/SyncJobHistory", () => ({
     SyncJobHistory: () => <div data-testid="job-history-body" />,
@@ -49,22 +61,26 @@ describe("Sync detail page (CHAOS-8242)", () => {
             "/org/admin/sync",
         );
         expect(screen.getByTestId("header-description")).toHaveTextContent(
-            /^Provider: .+ · \d+ sync targets? · (Schedule: .+|Not scheduled)$/,
+            /^Provider: .+ · \d+ sync targets?( · Schedule: .+)?$/,
         );
     });
 
-    it("draws Sync details and Job History as shared section cards with their titles", async () => {
+    it("draws Job History as a shared section card, and keeps Sync details collapsed as before", async () => {
         await renderPage();
-        const details = screen.getByTestId("sync-details");
-        expect(
-            within(details).getByRole("heading", { level: 2, name: "Sync details" }),
-        ).toBeVisible();
         const history = screen.getByTestId("sync-job-history");
         expect(
             within(history).getByRole("heading", { level: 2, name: "Job History" }),
         ).toBeVisible();
         expect(within(history).getByTestId("job-history-body")).toBeInTheDocument();
-        // Sync details is no longer a collapsed <details>.
-        expect(document.querySelector("details")).toBeNull();
+        const details = screen.getByTestId("sync-details");
+        expect(details.tagName).toBe("DETAILS");
+        expect(details).not.toHaveAttribute("open");
+    });
+
+    it("has the header actions: status, Edit, Pause or Resume, Delete and Sync Now (CHAOS-8242)", async () => {
+        await renderPage();
+        const actions = screen.getByTestId("sync-header-actions");
+        expect(within(actions).getByTestId("header-actions-stub")).toBeInTheDocument();
+        expect(within(actions).getByTestId("test-connection-stub")).toBeInTheDocument();
     });
 });
