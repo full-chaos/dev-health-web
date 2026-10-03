@@ -92,6 +92,17 @@ type QuadrantPanelProps = {
      * The panel only places it; without it the head is unchanged.
      */
     action?: ReactNode;
+    /**
+     * A chip beside the card title (for example "Primary for this lens", sentence case). Without it the
+     * title is unchanged.
+     */
+    headChip?: ReactNode;
+    /**
+     * Put "View guide" and the related links (Open evidence) in the card head, at the right, as the
+     * approved concept does for Landscape (MAPPING-CHAOS-7627 L13). Default false: they stay under the
+     * title and under the chart, as on every other page.
+     */
+    actionsInHead?: boolean;
 };
 
 type ZoneLegendItem = {
@@ -112,6 +123,8 @@ export function QuadrantPanel({
     chartHeight = 340,
     showViewGuide = true,
     action,
+    headChip,
+    actionsInHead = false,
 }: QuadrantPanelProps) {
     const scopeType = filters.scope.level === "developer" ? "person" : filters.scope.level;
     const isPersonScope = scopeType === "person";
@@ -297,7 +310,14 @@ export function QuadrantPanel({
     // quadrant is an explicit state of a named card.
     const headText = (
         <div className="min-w-0">
-            <h2 className="text-h3 font-semibold">{title}</h2>
+            {headChip ? (
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-h3 font-semibold">{title}</h2>
+                    {headChip}
+                </div>
+            ) : (
+                <h2 className="text-h3 font-semibold">{title}</h2>
+            )}
             <p className="mt-1 text-xs text-(--ink-muted)">{description}</p>
         </div>
     );
@@ -344,6 +364,38 @@ export function QuadrantPanel({
         (link) => !link.label.toLowerCase().includes("heatmap"),
     );
 
+    // In the head (Landscape, L13) the two actions are bordered buttons, as the concept draws them;
+    // everywhere else they stay ghost buttons under the head.
+    const actionVariant = actionsInHead ? "secondary" : "ghost";
+    const guideButton = showViewGuide ? (
+        <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => setIsGuideOpen(true)}
+            className={buttonClassName(actionVariant, "sm")}
+        >
+            <Info aria-hidden="true" className="h-3.5 w-3.5" />
+            {CTA_LABELS.viewGuide}
+        </button>
+    ) : null;
+    const relatedLinksNode =
+        supplementalLinks.length > 0 ? (
+            <div data-testid="quadrant-related-links" className="flex flex-wrap gap-3">
+                {supplementalLinks.map((link) => (
+                    // A ghost small button with the arrow first (prototype `btn()`),
+                    // not the legacy upper-case pill.
+                    <Link
+                        key={`${link.href}-${link.label}`}
+                        href={link.href}
+                        className={buttonClassName(actionVariant, "sm")}
+                    >
+                        <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                        {link.label}
+                    </Link>
+                ))}
+            </div>
+        ) : null;
+
     const showZoneLegend = showZoneOverlay && zoneLegendItems.length > 0;
     const handleZoneToggle = (next: boolean) => {
         setShowZoneOverlay(next);
@@ -389,10 +441,30 @@ export function QuadrantPanel({
             data-empty="false"
             className="min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card p-5.25"
         >
-            {/* Prototype `.sectionhead`: title and description left, ONE action right. */}
+            {/* Prototype `.sectionhead`: title and description left, ONE action right. With
+                `actionsInHead` the guide and the related links sit in the head (L13). */}
             <div className="flex flex-wrap items-start justify-between gap-4">
                 {headText}
-                {actionNode}
+                {actionsInHead ? (
+                    <div
+                        data-testid="quadrant-head-actions"
+                        className="flex flex-wrap items-center gap-2"
+                    >
+                        {actionNode}
+                        {isPersonScope ? null : (
+                            <span
+                                data-testid="quadrant-head-hint"
+                                className="text-xs text-(--ink-muted)"
+                            >
+                                Select a dot to investigate
+                            </span>
+                        )}
+                        {guideButton}
+                        {relatedLinksNode}
+                    </div>
+                ) : (
+                    actionNode
+                )}
             </div>
             {showViewGuide && isGuideOpen && typeof document !== "undefined"
                 ? createPortal(
@@ -458,17 +530,7 @@ export function QuadrantPanel({
                 data-testid="quadrant-controls"
                 className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)"
             >
-                {showViewGuide ? (
-                    <button
-                        ref={triggerRef}
-                        type="button"
-                        onClick={() => setIsGuideOpen(true)}
-                        className={buttonClassName("ghost", "sm")}
-                    >
-                        <Info aria-hidden="true" className="h-3.5 w-3.5" />
-                        {CTA_LABELS.viewGuide}
-                    </button>
-                ) : null}
+                {actionsInHead ? null : guideButton}
                 {hasInterpretationOverlay ? (
                     <div className="space-y-1">
                         <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
@@ -612,22 +674,7 @@ export function QuadrantPanel({
                         )}
                     </div>
 
-                    {supplementalLinks.length > 0 && (
-                        <div data-testid="quadrant-related-links" className="flex flex-wrap gap-3">
-                            {supplementalLinks.map((link) => (
-                                // A ghost small button with the arrow first (prototype `btn()`),
-                                // not the legacy upper-case pill.
-                                <Link
-                                    key={`${link.href}-${link.label}`}
-                                    href={link.href}
-                                    className={buttonClassName("ghost", "sm")}
-                                >
-                                    <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
-                                    {link.label}
-                                </Link>
-                            ))}
-                        </div>
-                    )}
+                    {actionsInHead ? null : relatedLinksNode}
                 </div>
             </div>
         </div>

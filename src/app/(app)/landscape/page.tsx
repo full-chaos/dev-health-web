@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
+import { LandscapeBucketControl } from "@/components/landscape/LandscapeBucketControl";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { getTabSet, tabHref, type TabIdOf } from "@/lib/navigation/tabs";
 import {
@@ -145,6 +144,9 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     const cycleIndex = QUADRANT_CARDS.findIndex((c) => c.type === "cycle_throughput");
     const churnIndex = QUADRANT_CARDS.findIndex((c) => c.type === "churn_throughput");
 
+    const weekHref = withFilterParam("/landscape?bucket=week", filters, activeRole);
+    const monthHref = withFilterParam("/landscape?bucket=month", filters, activeRole);
+
     const tabs: ViewSetItem[] = landscapeTabs.tabs.map((tab) => ({
         id: tab.id,
         label: tab.label,
@@ -179,43 +181,27 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
 
             {activeTab === "overview" && (
                 <>
-                    <section
-                        role="group"
-                        aria-label="Bucket"
-                        className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
-                    >
+                    <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                         <span>Bucket</span>
-                        <Link
-                            href={withFilterParam("/landscape?bucket=week", filters, activeRole)}
-                            aria-current={bucket === "week" ? "true" : undefined}
-                            className={`rounded-full border px-3 py-1 ${
-                                bucket === "week"
-                                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                    : "border-(--card-stroke)"
-                            }`}
-                        >
-                            {CTA_LABELS.week}
-                        </Link>
-                        <Link
-                            href={withFilterParam("/landscape?bucket=month", filters, activeRole)}
-                            aria-current={bucket === "month" ? "true" : undefined}
-                            className={`rounded-full border px-3 py-1 ${
-                                bucket === "month"
-                                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                    : "border-(--card-stroke)"
-                            }`}
-                        >
-                            {CTA_LABELS.month}
-                        </Link>
-                    </section>
+                        <LandscapeBucketControl
+                            value={bucket}
+                            hrefs={{ week: weekHref, month: monthHref }}
+                            labels={{ week: CTA_LABELS.week, month: CTA_LABELS.month }}
+                        />
+                    </div>
 
                     <section className="flex flex-col gap-8">
                         <div data-testid="landscape-primary-panel">
-                            {/* NEW from the approved concept: a caption replaces the tinted frame. */}
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
-                                Primary for this lens
-                            </p>
                             <QuadrantPanel
+                                headChip={
+                                    <span
+                                        data-testid="landscape-primary-chip"
+                                        className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs font-normal text-(--ink-muted)"
+                                    >
+                                        Primary for this lens
+                                    </span>
+                                }
+                                actionsInHead
                                 key={primaryCard.type}
                                 title={primaryCard.title}
                                 description={primaryCard.description}
@@ -242,6 +228,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                 );
                                 return (
                                     <QuadrantPanel
+                                        actionsInHead
                                         key={card.type}
                                         title={card.title}
                                         description={card.description}
