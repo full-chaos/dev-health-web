@@ -99,4 +99,58 @@ describe("OrgAuditLogPage", () => {
 
         expect(screen.queryByTestId("audit-log-detail-drawer")).not.toBeInTheDocument();
     });
+
+    it("has the h1 Organization, a section card 'Audit events' and the shared pager", async () => {
+        mockListAuditLogs.mockResolvedValue(respondWith([makeEntry()]));
+        render(<OrgAuditLogPage />);
+        await waitFor(() => expect(screen.getByText("org.create")).toBeInTheDocument());
+
+        expect(screen.getByRole("heading", { level: 1, name: "Organization" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 2, name: "Audit events" })).toBeInTheDocument();
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 1–1");
+    });
+
+    it("says one plain sentence with a Retry that re-runs the fetch, and never prints the backend text", async () => {
+        mockListAuditLogs.mockResolvedValueOnce({
+            data: undefined,
+            error: "GET /api/v1/admin/audit 502 upstream",
+        });
+        const user = userEvent.setup();
+        const { container } = render(<OrgAuditLogPage />);
+
+        expect(
+            await screen.findByText(/Audit logs could not be loaded\. Retry/u),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("502");
+        expect(container.textContent).not.toContain("Error loading audit logs");
+
+        mockListAuditLogs.mockResolvedValueOnce(respondWith([makeEntry()]));
+        await user.click(screen.getByRole("button", { name: "Retry" }));
+
+        await waitFor(() => expect(screen.getByText("org.create")).toBeInTheDocument());
+        expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+    });
+
+    it("prints no full resource or actor id in a row (AD-3); the drawer keeps them", async () => {
+        const RES = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+        const ACT = "550e8400-e29b-41d4-a716-446655440000";
+        mockListAuditLogs.mockResolvedValue(
+            respondWith([makeEntry({ resource_id: RES, user_id: ACT })]),
+        );
+        const user = userEvent.setup();
+        render(<OrgAuditLogPage />);
+        const row = (await screen.findByText("org.create")).closest("tr")!;
+
+        expect(row.textContent).not.toContain(RES);
+        expect(row.textContent).not.toContain(ACT);
+        expect(within(row).getByRole("button", { name: /copy resource id/i })).toHaveAttribute(
+            "title",
+            `Copy resource ID: ${RES}`,
+        );
+
+        await user.click(within(row).getByRole("button", { name: /open details/i }));
+        const drawer = await screen.findByTestId("audit-log-detail-drawer");
+        expect(drawer).toHaveTextContent(RES);
+        expect(drawer).toHaveTextContent(ACT);
+    });
 });

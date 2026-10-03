@@ -87,6 +87,9 @@ describe("Operating Review in the shared app shell", () => {
 
         const header = within(screen.getByTestId("page-header"));
         expect(header.getByTestId("operating-review-preview-pill")).toHaveTextContent("Preview");
+        expect(header.getByTestId("page-header-title-adornment")).toContainElement(
+            header.getByTestId("operating-review-preview-pill"),
+        );
         expect(header.queryByRole("link", { name: "Back to Plan" })).toBeNull();
         const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
         expect(within(trail).getByText("Plan")).toHaveAttribute("aria-current", "page");

@@ -24,9 +24,34 @@ describe("AuditIdentityLabel", () => {
         expect(primary).not.toHaveTextContent(UUID);
     });
 
-    it("shows the full id as secondary, copyable text", () => {
-        render(<AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />);
+    it("prints no full id in the cell (AD-3): short id + Unresolved + an icon Copy that carries the full id", () => {
+        const { container } = render(
+            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />,
+        );
+        expect(container.textContent).not.toContain(UUID);
+        const copy = screen.getByRole("button", { name: /copy actor id/i });
+        expect(copy).toHaveAttribute("title", `Copy actor ID: ${UUID}`);
+        expect(copy.textContent).toBe("");
+        expect(copy.querySelector("svg")).not.toBeNull();
+    });
+
+    it("keeps the full id as a second line when asked (the detail drawer)", () => {
+        render(
+            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" showFullId />,
+        );
         expect(screen.getByText(UUID)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /copy actor id/i })).toBeInTheDocument();
+    });
+
+    it("keeps the Copy icon on the same row as the label in the stacked cell (design: inline)", () => {
+        const { container } = render(
+            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />,
+        );
+
+        const row = container.firstElementChild as HTMLElement;
+        expect(row.className).not.toContain("flex-col");
+        expect(row.className).toContain("items-center");
+        expect(row).toContainElement(screen.getByText("Unresolved"));
+        expect(row).toContainElement(screen.getByRole("button", { name: /copy actor id/i }));
     });
 });
