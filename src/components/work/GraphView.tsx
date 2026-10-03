@@ -941,7 +941,7 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                                     className="border-t border-(--card-stroke)/60"
                                 >
                                     <td className="px-5 py-3 align-middle font-medium">
-                                        {NODE_TYPE_LABELS[row.nodeType]}
+                                        {NODE_TYPE_LABELS[row.nodeType] ?? "Unlabelled type"}
                                     </td>
                                     <td className="px-5 py-3 text-right tabular-nums">
                                         {formatNumber(row.inflow)}

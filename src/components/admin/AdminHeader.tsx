@@ -3,7 +3,7 @@
 import React from "react";
 
 import { PageHeader } from "@/components/shell/PageHeader";
-import { STATUS_PILL } from "@/lib/statusPill";
+import { StatusPill } from "@/components/admin/StatusPill";
 
 import { AdminTabs, useAdminNav } from "./AdminTabs";
 
@@ -35,11 +35,9 @@ export function AdminHeader({ title, description, titleBadge, children }: AdminH
                     isPlatformAdmin || titleBadge ? (
                         <div className="flex flex-wrap items-center gap-2">
                             {isPlatformAdmin ? (
-                                <span
-                                    className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.info}`}
-                                >
+                                <StatusPill tone="outline" className="w-fit">
                                     Platform admin
-                                </span>
+                                </StatusPill>
                             ) : null}
                             {titleBadge}
                         </div>
