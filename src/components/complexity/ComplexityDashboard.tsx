@@ -40,6 +40,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { Button } from "@/components/shared/Button";
 import { DataState } from "@/components/ui/DataState";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { Section } from "@/components/ui/Section";
 import { Notice } from "@/components/ui/Notice";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
@@ -483,13 +484,20 @@ function OverviewView({
 }
 
 function HotspotHeatmapSection({ heatmap }: { heatmap: HotspotHeatmapProps }) {
-    const emptyState =
-        heatmap.state === "failed" ? "Could not be read" : "Hotspot heatmap unavailable.";
+    const emptyState = "Hotspot heatmap unavailable.";
+    const unit = heatmap.data?.legend?.unit;
     return (
         <Section
             title="Hotspot concentration"
             description="Where churn and ownership load accumulate over time."
             data-testid="hotspot-heatmap-section"
+            action={
+                unit ? (
+                    <StatusPill tone="info" testId="heatmap-unit">
+                        {unit}
+                    </StatusPill>
+                ) : undefined
+            }
         >
             <HeatmapPanel
                 title="Hotspot concentration"
@@ -498,6 +506,7 @@ function HotspotHeatmapSection({ heatmap }: { heatmap: HotspotHeatmapProps }) {
                 initialData={heatmap.data}
                 emptyState={emptyState}
                 embedded
+                failed={heatmap.state === "failed"}
                 evidenceTitle="Hotspot evidence"
                 defaultSummary={heatmap.summary}
                 flatStateLabel="No hotspot variance in this window — churn is evenly spread, so no single area stands out yet."

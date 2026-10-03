@@ -46,11 +46,13 @@ vi.mock("@/components/charts/HeatmapPanel", () => ({
         emptyState?: string;
         initialData?: { cells?: unknown[] } | null;
         embedded?: boolean;
+        failed?: boolean;
     }) => (
         <div
             data-testid="heatmap-panel"
             data-title={props.title}
             data-embedded={String(Boolean(props.embedded))}
+            data-failed={String(Boolean(props.failed))}
             data-cells={props.initialData?.cells?.length ?? "none"}
         >
             {props.initialData ? "grid" : props.emptyState}
@@ -700,6 +702,25 @@ describe("Hotspots tab: Hotspot concentration heatmap", () => {
         expect(table.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
+    it("puts the unit pill in the Section card head, not inside the panel", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        const card = screen.getByTestId("hotspot-heatmap-section");
+        const pill = within(card).getByTestId("heatmap-unit");
+        expect(pill).toHaveTextContent("risk");
+        expect(
+            within(screen.getByTestId("heatmap-panel")).queryByTestId("heatmap-unit"),
+        ).toBeNull();
+        // the head row holds the title block and the pill; the body (panel) is a later sibling
+        const head = pill.closest("section")?.firstElementChild as HTMLElement;
+        expect(head.contains(pill)).toBe(true);
+        expect(head.contains(screen.getByTestId("heatmap-panel"))).toBe(false);
+    });
+
     it("keeps the Code page empty words when nothing was served", () => {
         render(
             <ComplexityDashboard
@@ -719,7 +740,7 @@ describe("Hotspots tab: Hotspot concentration heatmap", () => {
                 hotspotHeatmap={{ request, state: "failed", data: null }}
             />,
         );
-        expect(screen.getByTestId("heatmap-panel")).toHaveTextContent("Could not be read");
+        expect(screen.getByTestId("heatmap-panel")).toHaveAttribute("data-failed", "true");
     });
 
     it("still shows it when there are no hotspot files", () => {

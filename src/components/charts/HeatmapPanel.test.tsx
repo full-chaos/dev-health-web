@@ -166,3 +166,49 @@ describe("describeArtifact — unresolved-id crash guard (heatmap cell click)", 
         expect(out.label).toBe("Login flow");
     });
 });
+
+describe("HeatmapPanel — failed and embedded", () => {
+    it("shows the shared error card, not the dashed empty box, when the read failed", () => {
+        render(
+            <HeatmapPanel
+                title="T"
+                description="D"
+                request={request}
+                initialData={null}
+                emptyState="empty words"
+                failed
+            />,
+        );
+        expect(screen.getByRole("heading", { name: "Could not be read" })).toBeInTheDocument();
+        expect(screen.queryByText("empty words")).toBeNull();
+    });
+
+    it("keeps the empty words for an empty read", () => {
+        render(
+            <HeatmapPanel
+                title="T"
+                description="D"
+                request={request}
+                initialData={null}
+                emptyState="empty words"
+            />,
+        );
+        expect(screen.getByText("empty words")).toBeInTheDocument();
+        expect(screen.queryByText("Could not be read")).toBeNull();
+    });
+
+    it("embedded draws no own heading and no unit pill (the Section card owns them)", () => {
+        render(
+            <HeatmapPanel
+                title="Own title"
+                description="D"
+                request={request}
+                initialData={baseResponse([{ x: "Mon", y: "auth", value: 5 }])}
+                embedded
+            />,
+        );
+        expect(screen.queryByRole("heading", { name: "Own title" })).toBeNull();
+        expect(screen.queryByTestId("heatmap-unit")).toBeNull();
+        expect(screen.getByTestId("heatmap-chart")).toBeInTheDocument();
+    });
+});

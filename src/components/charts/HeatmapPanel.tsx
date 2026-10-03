@@ -42,6 +42,8 @@ type HeatmapPanelProps = {
     flatStateLabel?: string;
     /** Sits inside a Section card that already carries the title and description: no own card, no heading. */
     embedded?: boolean;
+    /** The read failed: show the shared error card instead of the empty box. */
+    failed?: boolean;
 };
 
 const asText = (value: unknown): string | null =>
@@ -176,6 +178,7 @@ export function HeatmapPanel({
     defaultSummary,
     flatStateLabel = "No variance in this window — every cell shares the same value.",
     embedded = false,
+    failed = false,
 }: HeatmapPanelProps) {
     const evidenceDrawer = useEvidenceDrawer();
     // The artifacts shown under the chart before any selection (served with the grid).
@@ -214,6 +217,10 @@ export function HeatmapPanel({
         [evidence],
     );
 
+    if (failed && !data) {
+        return <ErrorCard title="Could not be read" compact headingLevel={3} />;
+    }
+
     if (!data || !data.axes?.x?.length || !data.axes?.y?.length) {
         return (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
@@ -235,7 +242,7 @@ export function HeatmapPanel({
                     </div>
                 )}
                 {/* Prototype `pill(unit, 'info')` (app.js:79): the served unit as an info pill. */}
-                {data.legend.unit ? (
+                {data.legend.unit && !embedded ? (
                     <StatusPill tone="info" testId="heatmap-unit">
                         {data.legend.unit}
                     </StatusPill>
