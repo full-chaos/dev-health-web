@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 
-import type { User } from "@/lib/admin/types";
+import type { SyncConfig, User } from "@/lib/admin/types";
 import {
     getPendingTeamChanges,
     listCredentials,
@@ -98,9 +98,7 @@ describe("AdminDashboardPage", () => {
 
     it("shows the four signals as one joined strip with their links, and the Attention pill only above zero", async () => {
         vi.mocked(listSyncConfigs).mockResolvedValue({
-            data: [{ is_active: true, last_sync_success: false }] as unknown as Awaited<
-                ReturnType<typeof listSyncConfigs>
-            >["data"],
+            data: [{ is_active: true, last_sync_success: false }] as unknown as SyncConfig[],
         });
         render(await AdminDashboardPage());
 
