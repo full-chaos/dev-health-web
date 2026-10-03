@@ -6,17 +6,24 @@ import { IdentityTable } from "@/components/admin/identities/IdentityTable";
 import { buttonClassName } from "@/components/shared/Button";
 import { Notice } from "@/components/ui/Notice";
 import { RetryButton } from "@/components/ui/RetryButton";
-import { listIdentities } from "@/lib/admin/server";
+import { listIdentities, listTeams } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { logger } from "@/lib/logger";
 
 export default async function IdentitiesPage() {
-    const result = await listIdentities();
+    const [result, teamsResult] = await Promise.all([listIdentities(), listTeams()]);
 
     if (result.error) {
         // The backend text goes to the server log, never to the page (one plain sentence + Retry).
         logger.error({ err: result.error }, "Failed to load identities");
     }
+
+    // Team names for the Team column (served team_id/name). A failed team list is not an error of
+    // this page: the labels degrade to short id + Unresolved.
+    if (teamsResult.error) {
+        logger.error({ err: teamsResult.error }, "Failed to load teams for the Identities page");
+    }
+    const teamNames = Object.fromEntries((teamsResult.data ?? []).map((t) => [t.team_id, t.name]));
 
     return (
         <div className="space-y-6">
@@ -36,6 +43,7 @@ export default async function IdentitiesPage() {
                 </Notice>
             ) : (
                 <IdentityTable
+                    teamNames={teamNames}
                     identities={(result.data ?? []).map((i) => ({
                         canonical_id: i.canonical_id,
                         display_name: i.display_name,
