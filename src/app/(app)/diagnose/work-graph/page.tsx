@@ -167,6 +167,7 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                 <GraphView
                     filters={filters}
                     activeRole={activeRole}
+                    activeOrigin={activeOrigin}
                     activeTab={activeTab as WorkGraphTab}
                     reviewEdges={reviewEdgesData?.edges ?? null}
                     reviewEdgesLoading={false}

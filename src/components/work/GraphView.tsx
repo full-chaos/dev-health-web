@@ -58,6 +58,8 @@ export type WorkGraphTab =
 type GraphViewProps = {
     filters: MetricFilter;
     activeRole?: string;
+    /** The investigation origin the page was opened from; kept on the Open evidence link. */
+    activeOrigin?: string;
     /** Active in-page tab. Defaults to "overview". */
     activeTab?: WorkGraphTab;
     /**
@@ -236,6 +238,7 @@ export function getGraphSearchState(searchParams: URLSearchParams) {
 export function GraphView({
     filters,
     activeRole,
+    activeOrigin,
     activeTab = "overview",
     reviewEdges = null,
     reviewEdgesLoading = false,
@@ -874,11 +877,16 @@ export function GraphView({
                         {CTA_LABELS.browseArtifacts}
                     </Link>
                     <Link
-                        href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
+                        href={buildExploreUrl({
+                            metric: "throughput",
+                            filters,
+                            role: activeRole,
+                            origin: activeOrigin,
+                        })}
                         className={`mt-2 ${buttonClassName("ghost", "sm")}`}
                     >
-                        {CTA_LABELS.openEvidence}
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.openEvidence}
                     </Link>
                 </aside>
             </div>
@@ -913,7 +921,6 @@ export function graphEvidenceFacts(input: {
     const windowLabel =
         start && end ? `${start} to ${end}` : days ? `${formatNumber(days)} days` : undefined;
     return [
-        { label: "Edges", value: formatNumber(input.tabEdgeCount) },
         ...(input.hiddenCount > 0 || input.backendMore > 0
             ? [
                   {
@@ -938,6 +945,7 @@ export function graphEvidenceFacts(input: {
                       : []),
               ]
             : []),
+        { label: "Edges", value: formatNumber(input.tabEdgeCount) },
         { label: "Window", value: windowLabel },
         ...(input.connection ? [{ label: "Connection type", value: input.connection }] : []),
     ];
@@ -1118,7 +1126,11 @@ function ArtifactEvidenceButton({ row }: { row: WorkGraphArtifactRow }) {
 const ARTIFACT_PAGE_SIZE = 10;
 
 function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
-    const [offset, setOffset] = useState(0);
+    // A new set of served rows (scope, window or theme changed) starts again at the first page.
+    const rowsKey = rows.map((row) => `${row.nodeType}:${row.nodeId}`).join("|");
+    const [pager, setPager] = useState({ key: rowsKey, offset: 0 });
+    const offset = pager.key === rowsKey ? pager.offset : 0;
+    const setOffset = (next: number) => setPager({ key: rowsKey, offset: next });
     // The served rows are the whole list: page over them, never past the end.
     const start = Math.min(offset, Math.max(0, rows.length - 1));
     const pageRows = rows.slice(start, start + ARTIFACT_PAGE_SIZE);

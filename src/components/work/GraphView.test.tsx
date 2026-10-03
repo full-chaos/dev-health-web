@@ -859,16 +859,17 @@ describe("GraphView", () => {
                 row.querySelector("dd")?.textContent,
             ]);
         expect(facts).toEqual([
-            ["Edges", "800"],
+            // Body order: the notice (above both cards) first, then the card head's edge count.
             ["Edges drawn", "750"],
             ["Summarized outside the canvas", "50"],
             ["More in the backend (narrower filters)", "400"],
+            ["Edges", "800"],
             ["Window", "30 days"],
             ["Connection type", expect.any(String)],
         ]);
     });
 
-    it("Overview keeps the scope-preserving Open evidence link in the body, arrow after the text", () => {
+    it("Overview keeps the scope-preserving Open evidence link in the body: a ghost button, icon before the label, origin kept", () => {
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
             loading: false,
@@ -876,14 +877,48 @@ describe("GraphView", () => {
             totalCount: 0,
             refetch: vi.fn(),
         });
-        render(<GraphView filters={filters} />);
+        render(<GraphView filters={filters} activeOrigin="incident" />);
         const link = within(screen.getByTestId("graph-context")).getByRole("link", {
             name: "Open evidence",
         });
-        expect(link.getAttribute("href")).toContain("/explore");
-        // A text link: the arrow follows the words (an icon leads only on a button).
-        expect(link.lastElementChild?.tagName.toLowerCase()).toBe("svg");
-        expect(link.firstChild?.nodeType).toBe(Node.TEXT_NODE);
+        const href = link.getAttribute("href") ?? "";
+        expect(href).toContain("/explore");
+        expect(href).toContain("origin=incident");
+        // The prototype's btn(): the icon leads the label.
+        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(link.lastChild?.nodeType).toBe(Node.TEXT_NODE);
+    });
+
+    it("the artifact pager starts again at the first page when the served rows change", async () => {
+        const mk = (prefix: string) => ({
+            rows: Array.from({ length: 23 }, (_, i) => ({
+                nodeType: "PR",
+                nodeId: `${prefix}-${i}`,
+                displayName: `${prefix}-${i}: change`,
+                degree: 100 - i,
+            })),
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue(mk("A"));
+        const view = render(<GraphView filters={filters} activeTab="artifacts" />);
+        await userEvent.click(screen.getByRole("button", { name: CTA_LABELS.nextPage }));
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 11–20");
+
+        mockUseWorkGraphArtifacts.mockReturnValue(mk("B"));
+        view.rerender(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 1–10");
+        expect(screen.getByText("B-0: change")).toBeInTheDocument();
     });
 
     it("pages the served artifact rows (10 per page), with no total", async () => {
