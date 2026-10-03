@@ -6,12 +6,10 @@ import { ArrowRight, FileText } from "lucide-react";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { Inset } from "@/components/capacity/Inset";
 import { Button, buttonClassName } from "@/components/shared/Button";
-import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
-import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
 import type { OpportunityCard as OpportunityCardData } from "@/lib/types";
 
 type OpportunityCardProps = {
@@ -20,41 +18,17 @@ type OpportunityCardProps = {
     activeRole?: string;
 };
 
-/** The metric an evidence link explains (`/api/v1/explain?metric=<id>`), or undefined. */
-export const metricFromEvidenceLink = (link: string | undefined): string | undefined => {
-    if (!link) return undefined;
-    try {
-        const url = new URL(link, "http://local");
-        return url.pathname.endsWith("/explain")
-            ? (url.searchParams.get("metric") ?? undefined)
-            : undefined;
-    } catch {
-        return undefined;
-    }
-};
-
-/** The selected opportunity: rationale, next steps and the evidence drawer. */
+/**
+ * The selected opportunity: rationale, next steps and the evidence drawer. The title is drawn as
+ * served: the API names it by the metric's polarity ("Reduce" where lower is better, "Recover"
+ * where higher is better), so the web adds no direction warning.
+ */
 export function OpportunityCard({ card, filters, activeRole }: OpportunityCardProps) {
     const evidence = useEvidenceDrawer();
     const [first, ...more] = card.evidence_links;
-    const metric = metricFromEvidenceLink(first);
-    // The backend words every title "Reduce <metric>", also where a rise is good (open point).
-    const backwards = metric !== undefined && getMetricPolarity(metric) === "higherIsBetter";
 
     return (
         <Section title={card.title} data-testid="opportunity-detail">
-            {backwards ? (
-                <Notice
-                    variant="warn"
-                    live={false}
-                    className="mb-4"
-                    data-testid="opportunity-direction-note"
-                >
-                    The source suggests reducing {getMetricLabel(metric)}. For this metric a rise is
-                    usually good; read the evidence before acting.
-                </Notice>
-            ) : null}
-
             <div data-testid="opportunity-captured-change">
                 <p className="text-label-caps uppercase text-(--ink-muted)">Captured change</p>
                 <p className="mt-2 text-sm text-(--ink-muted)">{card.rationale}</p>
