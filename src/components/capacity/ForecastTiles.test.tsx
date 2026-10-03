@@ -33,9 +33,9 @@ describe("ForecastTiles — a percentile date that is not served", () => {
     it("shows each served date with its served days", () => {
         render(<ForecastTiles forecast={forecast()} />);
 
-        expect(value("tile-p50")).toHaveTextContent(/^Jun (9|10)$/u);
-        expect(value("tile-p85")).toHaveTextContent(/^Jun (19|20)$/u);
-        expect(value("tile-p95")).toHaveTextContent(/^(Jun 30|Jul 1)$/u);
+        expect(value("tile-p50")).toHaveTextContent(/^Jun 10$/u);
+        expect(value("tile-p85")).toHaveTextContent(/^Jun 20$/u);
+        expect(value("tile-p95")).toHaveTextContent(/^Jul 1$/u);
         expect(within(screen.getByTestId("tile-p50")).getByText("9 days")).toBeInTheDocument();
         expect(screen.getByTestId("forecast-tiles")).not.toHaveTextContent("Not reported");
     });
@@ -129,7 +129,7 @@ describe("ForecastTiles — the low-variance tile shows served values only", () 
 
             const range = screen.getByTestId("tile-range");
             expect(within(range).getByText("Forecast range")).toBeInTheDocument();
-            expect(value("tile-range")).toHaveTextContent(/^Jun 1[45]$/u);
+            expect(value("tile-range")).toHaveTextContent(/^Jun 15$/u);
             expect(within(range).getByText(caption)).toBeInTheDocument();
             // No number that the API did not serve.
             expect(screen.getByTestId("forecast-tiles")).not.toHaveTextContent(/week/iu);
