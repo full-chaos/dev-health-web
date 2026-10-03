@@ -377,6 +377,24 @@ describe("fetchJobFailures", () => {
         });
     });
 
+    it("does not send an empty team scope, and sends a caller's limit", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsJobFailures: served });
+
+        await fetchJobFailures({
+            sinceDate: "2026-08-01",
+            untilDate: "2026-08-31",
+            repoIds: ["r1"],
+            teamIds: [],
+            limit: 5,
+        });
+
+        const [, variables] = vi.mocked(graphqlFetch).mock.calls[0];
+        expect(variables).toEqual({
+            orgId: "org-1",
+            input: { sinceDate: "2026-08-01", untilDate: "2026-08-31", repoIds: ["r1"], limit: 5 },
+        });
+    });
+
     it("returns the served answer", async () => {
         vi.mocked(graphqlFetch).mockResolvedValue({ testopsJobFailures: served });
         expect(
