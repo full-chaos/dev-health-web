@@ -142,7 +142,7 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
             })
             // A budget action that throws leaves the tiles out; it is never an unhandled rejection.
             .catch((error: unknown) => {
-                spendLogger.warn(
+                spendLogger.error(
                     { message: error instanceof Error ? error.message : "Unknown error" },
                     "Budget request for the spend tiles failed",
                 );
