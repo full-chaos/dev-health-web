@@ -1,3 +1,4 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -162,7 +163,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
     const session = await requireSession();
     const orgId = session.user.org_id;
     // No org on the session: ask for nothing (never an empty or made-up org).
-    if (!orgId) return <ServiceUnavailable landmark={false} />;
+    if (!orgId) return <NoOrgNotice />;
     const demoMode = isExplicitDemoMode();
     const prResult = await getPrDetailViaGraphQL({ orgId, id: prId })
         .then((pr) => ({ pr, error: null }))

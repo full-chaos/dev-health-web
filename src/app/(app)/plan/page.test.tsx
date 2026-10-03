@@ -434,5 +434,6 @@ describe("Plan overview — org scope (CHAOS-8272)", () => {
         mockForecast.mockClear();
         await renderPage();
         expect(mockForecast).not.toHaveBeenCalled();
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
     });
 });
