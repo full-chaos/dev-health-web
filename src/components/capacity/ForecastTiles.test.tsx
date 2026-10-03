@@ -33,9 +33,9 @@ describe("ForecastTiles — a percentile date that is not served", () => {
     it("shows each served date with its served days", () => {
         render(<ForecastTiles forecast={forecast()} />);
 
-        expect(value("tile-p50")).toHaveTextContent(/^Jun (9|10)$/u);
-        expect(value("tile-p85")).toHaveTextContent(/^Jun (19|20)$/u);
-        expect(value("tile-p95")).toHaveTextContent(/^(Jun 30|Jul 1)$/u);
+        expect(value("tile-p50")).toHaveTextContent(/^Jun 10$/u);
+        expect(value("tile-p85")).toHaveTextContent(/^Jun 20$/u);
+        expect(value("tile-p95")).toHaveTextContent(/^Jul 1$/u);
         expect(within(screen.getByTestId("tile-p50")).getByText("9 days")).toBeInTheDocument();
         expect(screen.getByTestId("forecast-tiles")).not.toHaveTextContent("Not reported");
     });
@@ -98,6 +98,50 @@ describe("ForecastTiles — a percentile date that is not served", () => {
 
         const range = screen.getByTestId("tile-range");
         expect(range).not.toHaveTextContent("—");
-        expect(within(range).getByText("low variance")).toBeInTheDocument();
+        expect(value("tile-range")).toHaveTextContent(/^Not reported$/u);
+        expect(within(range).getByText("low variance · 14 days")).toBeInTheDocument();
+    });
+});
+
+// CHAOS-8481: the low-variance tile shows the served date and the served days. The web makes no
+// week count: no rounding, and no floor that turns 0 to 3 days into "≈1 week".
+describe("ForecastTiles — the low-variance tile shows served values only", () => {
+    const sameDay = (days: number, date = "2026-06-15") =>
+        forecast({
+            p50Days: days,
+            p85Days: days,
+            p95Days: days,
+            p50Date: date,
+            p85Date: date,
+            p95Date: date,
+        });
+
+    it.each([
+        [0, "low variance · 0 days"],
+        [1, "low variance · 1 day"],
+        [3, "low variance · 3 days"],
+        [14, "low variance · 14 days"],
+        [17, "low variance · 17 days"],
+    ] as const)(
+        "%i days: the date as the value, the served days in the caption",
+        (days, caption) => {
+            render(<ForecastTiles forecast={sameDay(days)} />);
+
+            const range = screen.getByTestId("tile-range");
+            expect(within(range).getByText("Forecast range")).toBeInTheDocument();
+            expect(value("tile-range")).toHaveTextContent(/^Jun 15$/u);
+            expect(within(range).getByText(caption)).toBeInTheDocument();
+            // No number that the API did not serve.
+            expect(screen.getByTestId("forecast-tiles")).not.toHaveTextContent(/week/iu);
+            expect(screen.getByTestId("forecast-tiles")).not.toHaveTextContent("≈");
+        },
+    );
+
+    it("stays one tile beside Remaining work", () => {
+        render(<ForecastTiles forecast={sameDay(14)} />);
+
+        expect(screen.getByTestId("forecast-tiles")).toHaveAttribute("data-columns", "2");
+        expect(screen.queryByTestId("tile-p50")).toBeNull();
+        expect(screen.queryByTestId("tile-p95")).toBeNull();
     });
 });
