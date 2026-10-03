@@ -1,4 +1,5 @@
 import { bucketEquals, bucketKey } from "@/lib/ai/buckets";
+import { formatReviewTrendDay } from "./AIReviewAmplificationTrend";
 import type {
     AiImpactBucketRow,
     AiImpactBucketTotals,
@@ -78,10 +79,21 @@ export function assistedWorkShareRows(rows: AiImpactBucketTotals[]) {
         }));
 }
 
+/**
+ * One point per agent_created row, labelled with the row's calendar date (CHAOS-7983, A2). Rows are
+ * per repository, team and bucket, so a date can repeat: points are never summed per day (a
+ * repository with two owning teams would count a PR twice, and the web cannot tell). A row without a
+ * `day` keeps its 1-based row index as the label rather than getting a made-up date.
+ */
 export function agentCreatedTrend(rows: AiImpactBucketRow[]) {
     return rows
         .filter((row) => bucketEquals(row.bucket, "AGENT_CREATED"))
-        .map((row, index) => ({ day: String(index + 1), value: row.prsTotal }));
+        .map((row, index) =>
+            row.day
+                ? // `day` is the chart's sort key (ISO, so the line runs in date order); `label` is what the axis shows.
+                  { day: row.day, label: formatReviewTrendDay(row.day), value: row.prsTotal }
+                : { day: String(index + 1), value: row.prsTotal },
+        );
 }
 
 export function leverageSeries(components?: AiLeverageComponents | null) {

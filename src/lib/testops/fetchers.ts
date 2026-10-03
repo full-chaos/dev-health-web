@@ -4,7 +4,8 @@ import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import {
     AnalyticsRequestInput,
     AnalyticsResult,
-    AnalyticsResultSchema,
+    CoverageAnalyticsResult,
+    CoverageAnalyticsResultSchema,
 } from "@/lib/graphql/schemas/analytics";
 import { logger } from "@/lib/logger";
 import {
@@ -24,7 +25,7 @@ import {
 
 const EMPTY_ANALYTICS: AnalyticsResult = { timeseries: [], breakdowns: [] };
 
-export type CoverageMetricsResult = AnalyticsResult & { fetchFailed?: boolean };
+export type CoverageMetricsResult = CoverageAnalyticsResult & { fetchFailed?: boolean };
 
 // Duration measures whose backend buckets are stored in seconds. Sample data is
 // already in minutes, so this normalisation is applied only in real (non-test) mode.
@@ -133,7 +134,8 @@ export async function fetchCoverageMetrics(
             orgId,
             batch,
         });
-        const parsed = AnalyticsResultSchema.safeParse(res.analytics);
+        // A breakdown item value can be null (not reported); it must not fail the whole answer.
+        const parsed = CoverageAnalyticsResultSchema.safeParse(res.analytics);
         if (!parsed.success) {
             logger.error(
                 { err: parsed.error },

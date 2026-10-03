@@ -6,7 +6,7 @@ import { CompletionRange } from "@/components/capacity/CompletionRange";
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
 import { ForecastNotices } from "@/components/capacity/ForecastNotices";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
-import { Inset } from "@/components/capacity/Inset";
+import { Inset } from "@/components/ui/Inset";
 import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";

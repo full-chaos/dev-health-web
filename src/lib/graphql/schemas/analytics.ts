@@ -93,6 +93,25 @@ export const AnalyticsResultSchema = z.object({
     sankey: SankeyResultSchema.nullable().optional(),
 });
 
+/**
+ * A breakdown whose item value can be null. The contract's `BreakdownItem.value` is a nullable
+ * Float: a breakdown over a Nullable source column (branch coverage by repository, CHAOS-8112)
+ * serves an item with a null value for a key that has no figure. Null means "not reported",
+ * never 0.
+ */
+export const NullableBreakdownItemSchema = BreakdownItemSchema.extend({
+    value: z.number().nullable(),
+});
+
+export const NullableBreakdownResultSchema = BreakdownResultSchema.extend({
+    items: z.array(NullableBreakdownItemSchema),
+});
+
+/** The analytics answer of the TestOps Coverage tab: breakdown item values can be null. */
+export const CoverageAnalyticsResultSchema = AnalyticsResultSchema.extend({
+    breakdowns: z.array(NullableBreakdownResultSchema),
+});
+
 // =============================================================================
 // Input types
 // =============================================================================
@@ -205,6 +224,8 @@ export type TimeseriesBucket = z.infer<typeof TimeseriesBucketSchema>;
 export type TimeseriesResult = z.infer<typeof TimeseriesResultSchema>;
 export type BreakdownItem = z.infer<typeof BreakdownItemSchema>;
 export type BreakdownResult = z.infer<typeof BreakdownResultSchema>;
+export type NullableBreakdownResult = z.infer<typeof NullableBreakdownResultSchema>;
+export type CoverageAnalyticsResult = z.infer<typeof CoverageAnalyticsResultSchema>;
 export type SankeyNode = z.infer<typeof SankeyNodeSchema>;
 export type SankeyEdge = z.infer<typeof SankeyEdgeSchema>;
 export type SankeyCoverage = z.infer<typeof SankeyCoverageSchema>;
