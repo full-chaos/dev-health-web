@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@/test/utils";
 
-import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
-import { aggregateReviewEdges, identityLocalPart, ReviewNetworkView } from "./ReviewNetwork";
+import {
+    withoutEmailAddresses,
+    type ReviewEdgeRow,
+    type ServedReviewEdgeRow,
+} from "@/lib/graphql/reviewEdgeIdentities";
+import { aggregateReviewEdges, ReviewNetworkView } from "./ReviewNetwork";
 
 const { refreshMock } = vi.hoisted(() => ({ refreshMock: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -12,42 +16,62 @@ vi.mock("@/components/charts/SparklineChart", () => ({
     SparklineChart: () => <div data-testid="sparkline" />,
 }));
 
-const row = (
+const served = (
     reviewer: string,
     author: string,
     reviewsCount: number,
     day = "2026-09-01",
-): ReviewEdgeRow => ({
+): ServedReviewEdgeRow => ({
     reviewer,
     author,
     reviewsCount,
     day,
     repoId: "repo-1",
 });
-const pairs = [
-    row("ana.fake@example.test", "bo.fake@example.test", 6),
-    row("ana.fake@example.test", "bo.fake@example.test", 4, "2026-09-02"),
-    row("cy.fake@example.test", "bo.fake@example.test", 5),
-    row("ana.fake@example.test", "di.fake@example.test", 2),
-];
+/** Rows as the page gets them: the served rows through the server step that takes addresses out. */
+const rowsOf = (...rows: ServedReviewEdgeRow[]): ReviewEdgeRow[] => withoutEmailAddresses(rows);
+const row = (reviewer: string, author: string, reviewsCount: number, day = "2026-09-01") =>
+    rowsOf(served(reviewer, author, reviewsCount, day))[0];
+// People with a stored identity that is not an address (logins): the identity is the name.
+const pairs = rowsOf(
+    served("ana-fake", "bo-fake", 6),
+    served("ana-fake", "bo-fake", 4, "2026-09-02"),
+    served("cy-fake", "bo-fake", 5),
+    served("ana-fake", "di-fake", 2),
+);
+// The same pairs where every stored identity is an e-mail address: no name is served.
+const addressPairs = rowsOf(
+    served("ana.fake@example.test", "bo.fake@example.test", 6),
+    served("ana.fake@example.test", "bo.fake@example.test", 4, "2026-09-02"),
+    served("cy.fake@example.test", "bo.fake@example.test", 5),
+    served("ana.fake@example.test", "di.fake@example.test", 2),
+);
 
 describe("aggregation helpers", () => {
     beforeEach(() => refreshMock.mockClear());
 
     it("sums per pair and sorts most reviews first", () => {
         expect(
-            aggregateReviewEdges(pairs).map((p) => [p.reviewer, p.author, p.totalReviews]),
+            aggregateReviewEdges(pairs).map((p) => [p.reviewerName, p.authorName, p.totalReviews]),
         ).toEqual([
-            ["ana.fake@example.test", "bo.fake@example.test", 10],
-            ["cy.fake@example.test", "bo.fake@example.test", 5],
-            ["ana.fake@example.test", "di.fake@example.test", 2],
+            ["ana-fake", "bo-fake", 10],
+            ["cy-fake", "bo-fake", 5],
+            ["ana-fake", "di-fake", 2],
         ]);
     });
 
-    it("the local part is what precedes @; an identity without @ is whole", () => {
-        expect(identityLocalPart("ana.fake@example.test")).toBe("ana.fake");
-        expect(identityLocalPart("Ana Fake")).toBe("Ana Fake");
-        expect(identityLocalPart("@odd")).toBe("@odd");
+    it("keeps people with no served name apart: one pair per pair of keys", () => {
+        expect(
+            aggregateReviewEdges(addressPairs).map((p) => [
+                p.reviewerName,
+                p.authorName,
+                p.totalReviews,
+            ]),
+        ).toEqual([
+            [null, null, 10],
+            [null, null, 5],
+            [null, null, 2],
+        ]);
     });
 });
 
@@ -62,36 +86,79 @@ describe("ReviewNetworkView restyle", () => {
         expect(counts).toEqual(["10", "5", "2"]);
     });
 
-    it("a person shows as the local part: no @domain text on screen, the full identity in the tooltip and for a screen reader", () => {
-        render(<ReviewNetworkView edges={pairs} loading={false} error={null} />);
-        const first = screen.getAllByTestId("review-network-row")[0];
-        expect(within(first).getByTitle("ana.fake@example.test")).toHaveTextContent("ana.fake");
-        // visible text carries no domain; the sr-only copy holds the full identity
-        const visible = Array.from(first.querySelectorAll("td")).map((td) =>
-            Array.from(td.childNodes)
-                .filter((n) => !(n instanceof HTMLElement && n.classList.contains("sr-only")))
-                .map((n) => n.textContent)
-                .join(""),
-        );
-        expect(visible.join(" ")).not.toContain("@");
-        const sr = first.querySelectorAll(".sr-only");
-        expect(Array.from(sr).map((e) => e.textContent)).toEqual([
-            " (ana.fake@example.test)",
-            " (bo.fake@example.test)",
-        ]);
+    // CHAOS-7973 (ruling 51): a served name, else the stored identity, never an e-mail address.
+    it("a person with no served name reads Not reported: no address, no part of it, no tooltip, no hidden text", () => {
+        render(<ReviewNetworkView edges={addressPairs} loading={false} error={null} />);
+        const panel = screen.getByTestId("review-network-panel");
+
+        const cells = screen
+            .getAllByTestId("review-network-row")
+            .map((r) => within(r).getAllByRole("cell").slice(0, 2));
+        for (const [reviewer, author] of cells) {
+            expect(reviewer).toHaveTextContent(/^Not reported$/u);
+            expect(author).toHaveTextContent(/^Not reported$/u);
+        }
+        // The whole card, attributes included: the old cell kept the address in `title` and in
+        // text for a screen reader, and showed the part before "@".
+        expect(panel.innerHTML).not.toContain("@");
+        for (const part of ["ana.fake", "bo.fake", "cy.fake", "di.fake", "example.test"]) {
+            expect(panel.innerHTML).not.toContain(part);
+        }
+        expect(panel.querySelectorAll("td [title]")).toHaveLength(0);
+        expect(panel.querySelectorAll(".sr-only")).toHaveLength(0);
     });
 
-    it("an identity without @ is shown once, with no duplicate for a screen reader", () => {
+    it("two people with no served name stay two rows, and the tiles count them", () => {
+        render(<ReviewNetworkView edges={addressPairs} loading={false} error={null} />);
+
+        expect(screen.getAllByTestId("review-network-row")).toHaveLength(3);
+        const tiles = Array.from(screen.getByTestId("review-network-tiles").children).map(
+            (tile) => tile.querySelector("p")?.textContent,
+        );
+        // Reviewers ana and cy, authors bo and di, 17 reviews: the same counts as with names.
+        expect(tiles).toEqual(["2", "2", "17"]);
+    });
+
+    it("never shows an address, even when a row is handed over with one", () => {
+        // Not a row the server step makes: the view is the second guard.
+        const leaked: ReviewEdgeRow = {
+            reviewer: "ana.fake@example.test",
+            author: "bo-fake",
+            reviewerName: "ana.fake@example.test",
+            authorName: "Bo Fake <bo.fake@example.test>",
+            reviewsCount: 3,
+            day: "2026-09-01",
+            repoId: "repo-1",
+        };
+        render(<ReviewNetworkView edges={[leaked]} loading={false} error={null} />);
+        const panel = screen.getByTestId("review-network-panel");
+
+        expect(panel.innerHTML).not.toContain("@");
+        expect(panel.innerHTML).not.toContain("ana.fake");
+        expect(panel.innerHTML).not.toContain("Bo Fake");
+        const [reviewer, author] = within(screen.getByTestId("review-network-row")).getAllByRole(
+            "cell",
+        );
+        expect(reviewer).toHaveTextContent(/^Not reported$/u);
+        expect(author).toHaveTextContent(/^Not reported$/u);
+    });
+
+    it("a stored identity that is not an address is shown as the name, once", () => {
         render(
             <ReviewNetworkView
-                edges={[row("Ana Fake", "Bo Fake", 3)]}
+                edges={[row("Ana Fake", "bo-fake", 3)]}
                 loading={false}
                 error={null}
             />,
         );
         const only = screen.getByTestId("review-network-row");
-        expect(only.textContent?.match(/Ana Fake/g)).toHaveLength(1);
+        const [reviewer, author] = within(only).getAllByRole("cell");
+        expect(reviewer).toHaveTextContent(/^Ana Fake$/u);
+        expect(author).toHaveTextContent(/^bo-fake$/u);
+        // The key of a person is never on screen.
+        expect(only.innerHTML).not.toContain("stored:");
         expect(only.querySelectorAll(".sr-only")).toHaveLength(0);
+        expect(only.querySelectorAll("[title]")).toHaveLength(0);
     });
 
     it("card text: the prototype sentence (not a ranking of people); the table-name sentence is gone", () => {
@@ -125,7 +192,7 @@ describe("ReviewNetworkView restyle", () => {
     it("share bar: first series token, the top pair full, others their share, 2px floor, decoration only", () => {
         render(
             <ReviewNetworkView
-                edges={[row("a@x.test", "b@x.test", 1000), row("c@x.test", "d@x.test", 1)]}
+                edges={rowsOf(served("a-fake", "b-fake", 1000), served("c-fake", "d-fake", 1))}
                 loading={false}
                 error={null}
             />,

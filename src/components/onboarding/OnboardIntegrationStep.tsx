@@ -36,10 +36,10 @@ const SECONDARY_PROVIDERS: { key: string; label: string }[] = [
 ];
 
 const PRIMARY_BUTTON_CLASSES =
-    "inline-flex w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2";
+    "inline-flex w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-(--accent-2) focus:ring-offset-2";
 
 const SECONDARY_LINK_CLASSES =
-    "inline-flex w-full items-center justify-between rounded-md border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
+    "inline-flex w-full items-center justify-between rounded-md border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-(--accent-2)";
 
 /**
  * CHAOS-2675 integration step body. Leads with the frictionless GitHub App

@@ -29,7 +29,7 @@ export function ScheduleSection({
                         name="is_active"
                         checked={isActive}
                         onChange={(e) => onIsActiveChange(e.target.checked)}
-                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent-2)"
                     />
                     <label htmlFor="is_active" className="text-sm font-medium">
                         Enable this sync configuration
