@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@/test/utils";
+import { cleanup, render, screen, within } from "@/test/utils";
 
 const { mockSummary, mockComparison } = vi.hoisted(() => ({
     mockSummary: vi.fn(),
@@ -120,12 +120,36 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
         render(<AIImpactDashboard filter={filter} />);
         const root = screen.getByTestId("ai-impact-dashboard");
         expect(root).toHaveTextContent("AI-assisted work share");
-        expect(root).toHaveTextContent("40.0%");
+        expect(root).toHaveTextContent("40 %");
         expect(root).toHaveTextContent("8 of 20 PRs lean AI-assisted.");
         expect(root).toHaveTextContent("Agent-created work share");
         expect(root).toHaveTextContent("15.0% of PRs appear agent-created.");
         expect(root).toHaveTextContent("Unknown attribution");
         expect(root).toHaveTextContent("Kept visible so data coverage gaps stay inspectable.");
+        // CHAOS-8094: the three tiles are the shared MetricCard in one MetricStrip.
+        const strip = screen.getByTestId("ai-impact-stat-tiles");
+        expect(strip).toHaveAttribute("data-columns", "3");
+        expect(within(strip).getAllByTestId("metric-value")).toHaveLength(3);
+    });
+
+    it("shows Not reported, never 0, when the summary does not serve the counts", () => {
+        setup({
+            ...summary,
+            aiAssistedPrRatio: null,
+            aiAssistedPrs: null,
+            totalPrs: null,
+            agentCreatedPrs: null,
+            unknownPrs: null,
+        });
+        render(<AIImpactDashboard filter={filter} />);
+        const strip = screen.getByTestId("ai-impact-stat-tiles");
+        const values = within(strip).getAllByTestId("metric-value");
+        expect(values.map((v) => v.textContent)).toEqual([
+            "Not reported",
+            "Not reported",
+            "Not reported",
+        ]);
+        expect(strip).not.toHaveTextContent("0 of 0");
     });
 
     it("has the panels in this order, each as an h2 (the automations card is a notice)", () => {

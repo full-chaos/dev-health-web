@@ -6,7 +6,7 @@ import { ReportStatus } from "@/lib/reports/types";
 import type { ReportRun, SavedReport } from "@/lib/reports/types";
 
 // CHAOS-7885: the run history status badge. Pins the markup and the states, so the
-// page can use the shared `components/reports/StatusBadge` with no visible change.
+// page can use the shared `components/reports/StatusBadge`. CHAOS-8095 restyled it: icon + word, no caps.
 
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: "report-1" }),
@@ -47,7 +47,15 @@ const STATES: Array<[string, string | null]> = [
     ["cancelled", null],
 ];
 
-const LAYOUT = ["rounded-full", "px-2", "py-0.5", "text-label-caps", "uppercase", "tracking-wider"];
+const LAYOUT = [
+    "inline-flex",
+    "items-center",
+    "rounded-full",
+    "px-2",
+    "py-0.5",
+    "text-xs",
+    "font-semibold",
+];
 
 function run(index: number, status: string): ReportRun {
     return {
@@ -86,7 +94,11 @@ describe("report detail run history: the status badge (CHAOS-7885 pin)", () => {
             const badges = cell.querySelectorAll("span");
             expect(badges, `status "${status}"`).toHaveLength(1);
             expect(badges[0]).toHaveTextContent(new RegExp(`^${label}$`));
-            expect(badges[0].classList.contains("border"), "no visible border").toBe(false);
+            // Only "Never run" has a border (dashed, no status); the status pills have a wash only.
+            expect(badges[0].classList.contains("border"), `border of "${label}"`).toBe(
+                status === "",
+            );
+            expect(badges[0].querySelector("svg"), `icon of "${label}"`).not.toBeNull();
             for (const name of LAYOUT) expect(badges[0]).toHaveClass(name);
         });
     });

@@ -14,9 +14,7 @@ test.describe("Operating Review", () => {
         await page.goto("/operating-review");
 
         // Standard page chrome shared with /investment, /quality.
-        await expect(
-            page.getByRole("heading", { name: "Engineering Operating Review" }),
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Operating Review" })).toBeVisible();
 
         // CHAOS-1755: no team in the URL means we request the cross-team
         // aggregate from the backend. The "All Teams" badge is the explicit
@@ -69,18 +67,14 @@ test.describe("Operating Review", () => {
         // All Teams badge is NOT shown — the user is explicitly in control.
         await page.goto("/operating-review?team=team-platform&week=2026-05-18");
 
-        await expect(
-            page.getByRole("heading", { name: "Engineering Operating Review" }),
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Operating Review" })).toBeVisible();
         await expect(page.getByText(/Showing the cross-team aggregate/)).toHaveCount(0);
     });
 
     test("multi-team filter renders one bounded selected-team aggregate", async ({ page }) => {
         await page.goto(`/operating-review?f=${multiTeamFilter}&week=2026-05-18`);
 
-        await expect(
-            page.getByRole("heading", { name: "Engineering Operating Review" }),
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Operating Review" })).toBeVisible();
         await expect(page.getByText(/Showing operating review data for/)).toContainText(
             "2 selected teams",
         );

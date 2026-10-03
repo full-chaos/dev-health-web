@@ -41,6 +41,32 @@ export async function fetchSavedReports(
     }
 }
 
+/**
+ * Same query as `fetchSavedReports`, but a failed request is reported (`error: true`) instead of
+ * looking like an empty list: an error is not "no saved reports" (CHAOS-2061).
+ */
+export async function fetchSavedReportsChecked(
+    orgId: string,
+    limit?: number,
+    offset?: number,
+    isTestMode: boolean = false,
+): Promise<{ items: SavedReport[]; total: number; error: boolean }> {
+    if (isTestMode) {
+        return { items: sampleReports, total: sampleReports.length, error: false };
+    }
+
+    try {
+        const res = await graphqlFetch<{ savedReports: { items: SavedReport[]; total: number } }>(
+            SAVED_REPORTS_QUERY,
+            { orgId, limit, offset },
+        );
+        return { ...res.savedReports, error: false };
+    } catch (error) {
+        logger.error({ err: error }, "Failed to fetch saved reports");
+        return { items: [], total: 0, error: true };
+    }
+}
+
 export async function fetchSavedReport(
     orgId: string,
     reportId: string,
