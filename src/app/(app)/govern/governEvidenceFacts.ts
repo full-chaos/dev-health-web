@@ -10,11 +10,16 @@ import type { AreaSignal } from "@/lib/areaSignals/types";
  * signals in another order than the page.
  *
  * A row is "<sub-area> — <metric>" with the served value exactly as the card shows it; a sub-area
- * with no served value reads "Not reported" (value left out). No number is made here.
+ * with no served value reads "Not reported" (value left out); one whose read FAILED reads "Could not be
+ * read", as its card does (CHAOS-8269). No number is made here.
  */
 export function governEvidenceFacts(signals: readonly AreaSignal[]): PageFact[] {
     return areaOverviewBodyOrder("govern", signals).map((signal) => ({
         label: `${signal.label} — ${signal.metricLabel}`,
-        value: isAvailable(signal) && signal.value ? signal.value : undefined,
+        value: signal.failed
+            ? "Could not be read"
+            : isAvailable(signal) && signal.value
+              ? signal.value
+              : undefined,
     }));
 }

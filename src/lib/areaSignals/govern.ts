@@ -48,6 +48,7 @@ import {
     PIPELINE_SHORTFALL_THRESHOLDS,
     deriveState,
 } from "./deriveState";
+import { markFailedSignals } from "./failedRead";
 import type { AreaSignal, AreaSignalState } from "./types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -145,6 +146,17 @@ function worstResolution(
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
+/** The reads each Govern card depends on, so a failed read marks only its own cards (CHAOS-8269). */
+const SIGNAL_SOURCES: Record<string, readonly string[]> = {
+    testops: ["testops", "coverage"],
+    quality: ["home"],
+    "incident-correlation": ["home"],
+    security: ["security"],
+    risk: ["risk"],
+    "risk-compounding": ["compounding"],
+    "feature-flags": ["feature-flags"],
+};
+
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
 /**
@@ -209,23 +221,52 @@ export async function getGovernSignals(
     // "unavailable"), never sent with an empty or made-up org.
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
 
+    // No org on the session (CHAOS-8272): nothing can be read and nothing FAILED. Every card is
+    // unavailable ("No data for this window"), never "Could not be read", and no read is made, not even
+    // the ones that resolve the org themselves (CHAOS-8269).
+    if (!orgId) {
+        const noOrg: AreaSignal[] = [];
+        for (const id of [
+            "testops",
+            "quality",
+            "security",
+            "risk",
+            "risk-compounding",
+            "incident-correlation",
+            "feature-flags",
+        ]) {
+            const d = descriptor(id);
+            if (d) noOrg.push(buildSignal(d, UNAVAILABLE));
+        }
+        return noOrg;
+    }
+
     // ── Fetch every source in parallel (no serial N+1) ──────────────────────────
     // When the calling page has already fetched testOpsData with a batch that
     // covers PIPELINE_SUCCESS_RATE, TEST_FLAKE_RATE, and COVERAGE_LINE_PCT (all
     // three measures this resolver needs), reuse it to avoid a duplicate POST.
+    const failedSources = new Set<string>();
     const [homeData, testOps, coverage, risk, security, compounding, featureFlags] =
         await Promise.all([
-            safe(() => getHomeDataViaGraphQL(filters), "home"),
+            safe(() => getHomeDataViaGraphQL(filters), "home", failedSources),
             prefetched?.testOpsData
                 ? Promise.resolve(prefetched.testOpsData)
                 : orgId
-                  ? safe(() => fetchTestOpsData(analyticsBatch, isTestMode), "testops")
+                  ? safe(
+                        () => fetchTestOpsData(analyticsBatch, isTestMode),
+                        "testops",
+                        failedSources,
+                    )
                   : Promise.resolve(undefined),
             orgId
-                ? safe(() => fetchCoverageMetrics(analyticsBatch, isTestMode), "coverage")
+                ? safe(
+                      () => fetchCoverageMetrics(analyticsBatch, isTestMode),
+                      "coverage",
+                      failedSources,
+                  )
                 : Promise.resolve(undefined),
             orgId
-                ? safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk")
+                ? safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk", failedSources)
                 : Promise.resolve(undefined),
             safe(
                 () =>
@@ -239,6 +280,7 @@ export async function getGovernSignals(
                                 { orgId },
                             ).then((r) => r.securityOverview),
                 "security",
+                failedSources,
             ),
             safe(
                 () =>
@@ -252,8 +294,13 @@ export async function getGovernSignals(
                                 { orgId },
                             ).then((r) => r.compoundingRisk),
                 "compounding",
+                failedSources,
             ),
-            safe(() => fetchFeatureFlagsData(dateRange, isTestMode), "feature-flags"),
+            safe(
+                () => fetchFeatureFlagsData(dateRange, isTestMode),
+                "feature-flags",
+                failedSources,
+            ),
         ]);
 
     const signals: AreaSignal[] = [];
@@ -413,7 +460,7 @@ export async function getGovernSignals(
             : UNAVAILABLE,
     );
 
-    return signals;
+    return markFailedSignals(signals, SIGNAL_SOURCES, failedSources);
 }
 
 /** Pick the worst compounding-risk row by severity rank then score. */
@@ -445,11 +492,17 @@ async function resolveOrgId(): Promise<string | null> {
  * Run a source fetch, swallowing failures to `undefined` so one dead source
  * degrades to a single honest-empty card instead of failing the whole area.
  */
-async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefined> {
+async function safe<T>(
+    fn: () => Promise<T>,
+    source: string,
+    failedSources: Set<string>,
+): Promise<T | undefined> {
     try {
         return await fn();
     } catch (error) {
+        // The backend text goes to the log only; the card says "could not be read" (CHAOS-8269).
         logger.error({ err: error, source }, "Govern signal source failed");
+        failedSources.add(source);
         return undefined;
     }
 }

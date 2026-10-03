@@ -1,26 +1,15 @@
-import {
-    PageFactsEvidenceAction,
-    type PageFact,
-} from "@/components/evidence/PageFactsEvidenceAction";
+import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
 import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { Notice } from "@/components/ui/Notice";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getAreaSignals } from "@/lib/areaSignals";
-import type { AreaSignal } from "@/lib/areaSignals/types";
 import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
-/** The page's served signals for the evidence drawer: label, value and metric as the cards show them. */
-function improveFacts(signals: AreaSignal[]): PageFact[] {
-    return signals.map((signal) => ({
-        label: signal.label,
-        value:
-            signal.state === "unavailable" ? undefined : `${signal.value} · ${signal.metricLabel}`,
-    }));
-}
+import { improveFacts } from "./improveEvidenceFacts";
 
 type ImprovePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
