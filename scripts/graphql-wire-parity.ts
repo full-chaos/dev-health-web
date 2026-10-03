@@ -204,6 +204,13 @@ export interface RegistryEntry {
     document: string;
     const_name: string;
     digest: string;
+    /**
+     * Present, and exactly `true`, only on a text the operation accepted BEFORE its current one (CHAOS-8000 dual
+     * accept). registrydump lists it AFTER the current entry of the same operation. query-api accepts it, so a
+     * wire text that equals a legacy text of ITS operation is a match too (the row says "legacy"); it never
+     * replaces the current entry and never counts as another operation.
+     */
+    legacy?: boolean;
 }
 
 /** sha256(trimmed text), hex — the exact algorithm the ops repo's digest.Document (internal/queryapi/digest) implements. */
@@ -289,9 +296,13 @@ function runRegistrydump(opsRoot: string): RegistryEntry[] {
 
 interface ParityRow {
     operation: string;
+    /** The digest of the operation's CURRENT registered text. */
     goDigest: string;
     wireDigest: string;
+    /** query-api serves the wire text: it equals the current text or a legacy text of the operation. */
     match: boolean;
+    /** Which registered text the wire text equals. */
+    matched: "current" | "legacy" | "none";
 }
 
 /**
@@ -305,7 +316,29 @@ export function compareRegistry(
     manifest: Record<string, string>,
 ): { rows: ParityRow[]; errors: string[] } {
     const errors: string[] = [];
-    const goByOperation = new Map(goEntries.map((entry) => [entry.operation, entry]));
+    // A legacy entry is a second text of an operation, not a second operation, and it must not replace the
+    // current entry (a Map built from every entry is last-wins, and registrydump lists the legacy one last).
+    // The marker is exactly `true` or absent: anything else is a malformed registrydump output, said loudly.
+    const currentEntries: RegistryEntry[] = [];
+    // The legacy digests of each operation. query-api accepts them too, so a tree that still sends one
+    // (web main, after ops registers a new text and before the web change that sends it) is served.
+    const legacyDigests = new Map<string, Set<string>>();
+    for (const entry of goEntries) {
+        if (Object.hasOwn(entry, "legacy")) {
+            if (entry.legacy !== true) {
+                errors.push(
+                    `registrydump's entry for operation "${entry.operation}" has legacy=${JSON.stringify(entry.legacy)}: a legacy text is marked with exactly true, and a current one has no legacy key -- the ops checkout at --ops-root and this gate disagree about the format.`,
+                );
+            } else if (typeof entry.digest === "string" && entry.digest.length > 0) {
+                const digests = legacyDigests.get(entry.operation) ?? new Set<string>();
+                digests.add(entry.digest);
+                legacyDigests.set(entry.operation, digests);
+            }
+            continue;
+        }
+        currentEntries.push(entry);
+    }
+    const goByOperation = new Map(currentEntries.map((entry) => [entry.operation, entry]));
 
     // Own-property membership: `op in manifest` also matches inherited
     // Object.prototype names (toString, constructor, ...), which would hide an
@@ -342,10 +375,44 @@ export function compareRegistry(
         }
         const goDigest = goEntry.digest;
         const wireDigest = sha256Trim(wireForm(sourceText));
-        rows.push({ operation, goDigest, wireDigest, match: goDigest === wireDigest });
+        // The legacy texts of THIS operation only: the same digest under another operation is no match.
+        const matched =
+            goDigest === wireDigest
+                ? "current"
+                : legacyDigests.get(operation)?.has(wireDigest)
+                  ? "legacy"
+                  : "none";
+        rows.push({ operation, goDigest, wireDigest, match: matched !== "none", matched });
     }
     rows.sort((a, b) => a.operation.localeCompare(b.operation));
     return { rows, errors };
+}
+
+/**
+ * What `check` says after the table. A legacy match is served by query-api, but it is LOUD: one warning
+ * line per document, and the counts of the three cases. The gate does not force the web off a legacy
+ * text; these warning lines are the list of web halves that are still owed.
+ */
+export function checkSummary(rows: ParityRow[]): {
+    current: number;
+    legacy: number;
+    mismatch: number;
+    warnings: string[];
+    counts: string;
+} {
+    const legacyRows = rows.filter((row) => row.matched === "legacy");
+    const current = rows.filter((row) => row.matched === "current").length;
+    const mismatch = rows.filter((row) => row.matched === "none").length;
+    return {
+        current,
+        legacy: legacyRows.length,
+        mismatch,
+        warnings: legacyRows.map(
+            (row) =>
+                `WARNING: ${row.operation}: matches a LEGACY ops text; the web half is still owed`,
+        ),
+        counts: `current ${current}, legacy ${legacyRows.length}, mismatch ${mismatch}`,
+    };
 }
 
 function parseArgs(argv: string[]) {
@@ -407,6 +474,7 @@ function main() {
 
     // check mode
     const mismatches = rows.filter((r) => !r.match);
+    const summary = checkSummary(rows);
     if (json) {
         process.stdout.write(JSON.stringify({ rows, errors }, null, 2) + "\n");
     } else {
@@ -416,22 +484,24 @@ function main() {
         );
         for (const r of rows) {
             process.stdout.write(
-                `${r.operation.padEnd(width)}  ${r.goDigest.slice(0, 12)}    ${r.wireDigest.slice(0, 12)}     ${r.match ? "MATCH" : "MISMATCH"}\n`,
+                `${r.operation.padEnd(width)}  ${r.goDigest.slice(0, 12)}    ${r.wireDigest.slice(0, 12)}     ${r.matched === "current" ? "MATCH" : r.matched === "legacy" ? "MATCH (legacy text)" : "MISMATCH"}\n`,
             );
         }
         for (const err of errors) process.stderr.write(`ERROR: ${err}\n`);
     }
+    // Loud in every output mode: a legacy match passes, and names a web half that is still owed.
+    for (const warning of summary.warnings) process.stderr.write(`${warning}\n`);
 
     if (mismatches.length > 0 || errors.length > 0) {
         process.stderr.write(
-            `\ngraphql-wire-parity: FAILED — ${mismatches.length} document(s) digest-mismatch what this repo's pinned @urql/core actually sends, ${errors.length} manifest error(s).\n` +
+            `\ngraphql-wire-parity: FAILED (${summary.counts}) — ${mismatches.length} document(s) digest-mismatch what this repo's pinned @urql/core actually sends, ${errors.length} manifest error(s).\n` +
                 "A digest mismatch here means query-api's operationForDocument will 404 a real client request and it will silently fall back to Python (CHAOS-4696).\n",
         );
         process.exitCode = 1;
         return;
     }
     process.stdout.write(
-        `\ngraphql-wire-parity: PASSED — ${rows.length}/${rows.length} registered documents match this repo's pinned urql wire form.\n`,
+        `\ngraphql-wire-parity: PASSED (${summary.counts}) — ${rows.length}/${rows.length} registered documents match this repo's pinned urql wire form.\n`,
     );
 }
 

@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { buttonClassName } from "@/components/shared/Button";
+import { Inset } from "@/components/ui/Inset";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricParts } from "@/lib/formatters";
@@ -83,9 +84,9 @@ export function BlockedWorkEvidence({
                 </p>
             </div>
 
-            <div
+            <Inset
                 data-testid="blocked-work-inset"
-                className="mt-3.5 rounded-sm bg-background p-3.75 text-xs leading-relaxed text-(--ink-muted)"
+                className="text-xs leading-relaxed text-(--ink-muted)"
             >
                 <h4 className="text-sm font-semibold text-foreground">
                     Zero is not a substitute for evidence
@@ -94,7 +95,7 @@ export function BlockedWorkEvidence({
                     A 0-hour headline does not show that no work is blocked: it shows that no
                     blocked time was recorded in this window. Read it with the work items behind it.
                 </p>
-            </div>
+            </Inset>
 
             <div className="mt-4 overflow-auto">
                 <table data-testid="blocked-work-table" className="w-full text-left text-xs">

@@ -5,11 +5,17 @@ import { CoverageBaselineCard } from "./CoverageBaselineCard";
 
 afterEach(cleanup);
 
-const repo = (lineCoverage: number) => ({
+const repo = (
+    lineCoverage: number | null,
+    branchCoverage: number | null = null,
+    branchOutsideList = false,
+) => ({
     id: "repo-1",
     name: "dev-health-web",
     title: "full-chaos/dev-health-web",
     lineCoverage,
+    branchCoverage,
+    branchOutsideList,
 });
 
 const rowsOf = (block: HTMLElement) => within(block).getAllByTestId("meter-row");
@@ -26,7 +32,57 @@ describe("CoverageBaselineCard on the shared meter rows", () => {
         expect(fillOf(line)).toBe("60%");
     });
 
-    it("reads Branch coverage, which is not served, as 'Not reported' with an empty track", () => {
+    it("draws the served Branch coverage of the repository as a meter row against 100", () => {
+        render(<CoverageBaselineCard repositories={[repo(60, 54)]} baselinePct={80} />);
+        const [, branch] = rowsOf(screen.getByTestId("testops-coverage-meters"));
+        expect(branch).toHaveTextContent("Branch coverage54%");
+        expect(branch).toHaveAttribute("data-reported", "true");
+        expect(fillOf(branch)).toBe("54%");
+    });
+
+    it("draws a served Branch coverage of 0 as '0%', not as 'Not reported'", () => {
+        render(<CoverageBaselineCard repositories={[repo(60, 0)]} baselinePct={80} />);
+        const [, branch] = rowsOf(screen.getByTestId("testops-coverage-meters"));
+        expect(branch).toHaveTextContent("Branch coverage0%");
+        expect(branch).toHaveAttribute("data-reported", "true");
+    });
+
+    it("reads a Line coverage that is not served as 'Not reported'", () => {
+        render(<CoverageBaselineCard repositories={[repo(null, 54)]} baselinePct={80} />);
+        const [line] = rowsOf(screen.getByTestId("testops-coverage-meters"));
+        expect(line).toHaveTextContent("Line coverageNot reported");
+        expect(line).toHaveAttribute("data-reported", "false");
+    });
+
+    it("says that only the per-repository baseline is not reported", () => {
+        render(<CoverageBaselineCard repositories={[repo(60, 54)]} baselinePct={80} />);
+        const card = screen.getByTestId("testops-coverage-baseline");
+        expect(card).toHaveTextContent("A per-repository baseline is not reported yet.");
+        expect(card).not.toHaveTextContent(/Branch coverage and/);
+    });
+
+    it("does not say 'Not reported' for a repository outside a cut branch answer: no branch row, and a note says why", () => {
+        render(<CoverageBaselineCard repositories={[repo(60, null, true)]} baselinePct={80} />);
+        const rows = rowsOf(screen.getByTestId("testops-coverage-meters"));
+        expect(rows.map((row) => row.textContent)).toEqual(["Line coverage60%"]);
+        const block = screen.getByTestId("testops-coverage-baseline-repo");
+        expect(block).not.toHaveTextContent("Not reported");
+        expect(within(block).getByTestId("testops-coverage-branch-outside-list")).toHaveTextContent(
+            "Branch coverage: this repository is outside the 100 repositories the branch answer lists.",
+        );
+    });
+
+    it("shows no such note when the branch value is served or truly not reported", () => {
+        render(
+            <CoverageBaselineCard
+                repositories={[repo(60, 54), { ...repo(60, null), id: "repo-2" }]}
+                baselinePct={80}
+            />,
+        );
+        expect(screen.queryByTestId("testops-coverage-branch-outside-list")).toBeNull();
+    });
+
+    it("reads a Branch coverage that is not served as 'Not reported' with an empty track", () => {
         render(<CoverageBaselineCard repositories={[repo(60)]} baselinePct={80} />);
         const [, branch] = rowsOf(screen.getByTestId("testops-coverage-meters"));
         expect(branch).toHaveTextContent("Branch coverageNot reported");
