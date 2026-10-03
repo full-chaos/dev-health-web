@@ -117,7 +117,7 @@ export function MeterRows({
                             {signed ? (
                                 <span
                                     data-testid="meter-zero-line"
-                                    className="absolute inset-y-[-3px] left-1/2 w-px bg-(--ink-muted)"
+                                    className="absolute -inset-y-0.75 left-1/2 w-px bg-(--ink-muted)"
                                 />
                             ) : null}
                             {pct > 0 ? (
