@@ -1,4 +1,6 @@
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { Section } from "@/components/ui/Section";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -148,7 +150,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
             ></PageHeader>
 
             <ScopeBar view="testops" />
-            <section className="grid gap-4 lg:grid-cols-3">
+            <MetricStrip data-testid="delivery-risk-tiles">
                 <MetricCard
                     label="Release Confidence"
                     value={
@@ -181,17 +183,15 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     spark={riskData.stability_spark}
                     caption="Stability score across all pipelines"
                 />
-            </section>
+            </MetricStrip>
 
-            <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                    <h2 className="font-(--font-display) text-xl mb-4">Risk Trend</h2>
+            <div className="grid gap-4.5 lg:grid-cols-2">
+                <Section title="Risk Trend" data-testid="delivery-risk-trend">
                     <div className="h-64">
                         <TimeseriesChart data={timeseriesData} valueFormat="percent" />
                     </div>
-                </div>
-                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                    <h2 className="font-(--font-display) text-xl mb-4">Quality Drag Breakdown</h2>
+                </Section>
+                <Section title="Quality Drag Breakdown" data-testid="delivery-risk-drag">
                     <div className="h-64">
                         <HorizontalBarChart
                             categories={dragCategories}
@@ -199,13 +199,13 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                             valueFormat="hours"
                         />
                     </div>
-                </div>
-            </section>
+                </Section>
+            </div>
 
-            <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">
-                    Pipeline success × test pass rate (by repo)
-                </h2>
+            <Section
+                title="Pipeline success × test pass rate (by repo)"
+                data-testid="delivery-risk-scatter"
+            >
                 {quadrantPoints.length > 0 ? (
                     <div className="h-96" data-testid="risk-throughput-chart">
                         <QuadrantChart data={quadrantData} scopeType="repo" />
@@ -218,7 +218,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                         data-testid="risk-throughput-empty"
                     />
                 )}
-            </section>
+            </Section>
         </div>
     );
 }

@@ -128,7 +128,7 @@ describe("CodePage", () => {
         expect(
             header.getByText("Hotspots and ownership concentration in the selected window."),
         ).toBeInTheDocument();
-        expect(header.getByText("Open a card to investigate.")).toBeInTheDocument();
+        expect(header.queryByText("Open a card to investigate.")).toBeNull();
         expect(screen.getAllByTestId("scope-bar")).toHaveLength(1);
         // The shell owns these: the page has no main, no navigation and no way back of its own.
         expect(screen.queryByRole("main")).toBeNull();
@@ -258,7 +258,48 @@ describe("CodePage", () => {
                 ["Bus factor", "1"],
                 ["Churn", "Not reported"],
                 ["File-change samples", "1,947"],
+                ["Maintainer", "Not reported"],
             ]);
+        });
+
+        it("keeps maintainer names as served ownership facts in the row drawer, and the served evidence link in its footer; no Hotspots card on the page", async () => {
+            setup({
+                ...base,
+                value: 1,
+                evidenceSampleCount: 3773,
+                repos: [
+                    {
+                        repoId: "r1",
+                        repoName: "org/ops",
+                        value: 1,
+                        evidenceSampleCount: 1947,
+                        topMaintainers: [{ author: "ada", sharePercent: 99.9 }],
+                    },
+                ],
+            });
+            getExplainDataMock.mockResolvedValue({
+                unit: "loc",
+                contributors: [
+                    {
+                        id: "r1",
+                        label: "org/ops",
+                        value: 5,
+                        evidence_link: "/api/v1/explain?metric=churn",
+                    },
+                ],
+            });
+            await renderPage();
+
+            expect(screen.queryByTestId("code-hotspots-card")).toBeNull();
+            await userEvent.click(screen.getByTestId("repo-evidence-button"));
+            const facts = within(await screen.findByTestId("repo-evidence-facts"));
+            expect(facts.getByText("ada · 99.9%")).toBeInTheDocument();
+            expect(await screen.findByTestId("repo-evidence-link")).toHaveAttribute(
+                "href",
+                expect.stringContaining("explore"),
+            );
+            // The page itself shows no names.
+            expect(screen.getByTestId("ownership-patterns-card").textContent).not.toContain("ada");
         });
 
         it("draws the three tiles as one strip", async () => {
