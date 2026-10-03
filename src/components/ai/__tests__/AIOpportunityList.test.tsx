@@ -61,7 +61,11 @@ describe("AIOpportunityList", () => {
         await userEvent.click(screen.getByRole("button", { name: /Work Graph: PR 1001/i }));
 
         expect(mockUseAIWorkflowDrilldown).toHaveBeenCalledWith("pr", "repo-1#1001", { limit: 25 });
+        // The edge type is in words, as in the PR explorer (A7), not the served token.
         expect(screen.getByTestId("ai-opportunity-workgraph-evidence")).toHaveTextContent(
+            "Has review outcome",
+        );
+        expect(screen.getByTestId("ai-opportunity-workgraph-evidence")).not.toHaveTextContent(
             "HAS_REVIEW_OUTCOME",
         );
         expect(screen.getByTestId("ai-opportunity-workgraph-evidence")).toHaveTextContent(

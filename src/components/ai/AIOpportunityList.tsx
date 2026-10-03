@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
 import { EntityLabel } from "@/components/labels/EntityLabel";
+import { edgeTypeWords } from "@/lib/ai/edgeLabels";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import type { AiOpportunity, AiWorkGraphDrilldownRef } from "@/lib/graphql/__generated__/types";
 import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
@@ -64,8 +65,10 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
             <ul className="mt-2 space-y-2">
                 {data.edges.slice(0, 3).map((edge) => (
                     <li key={edge.edgeId} className="text-xs text-(--ink-muted)">
-                        <span className="font-semibold text-foreground">{edge.edgeType}</span> ·{" "}
-                        {edge.evidence}
+                        <span className="font-semibold text-foreground">
+                            {edgeTypeWords(edge.edgeType)}
+                        </span>{" "}
+                        · {edge.evidence}
                     </li>
                 ))}
             </ul>
