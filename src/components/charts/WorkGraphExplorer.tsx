@@ -710,7 +710,7 @@ export function WorkGraphExplorer({
                         onClick={() => changeZoom(1)}
                         disabled={zoomStep === ZOOM_LEVELS.length - 1}
                     >
-                        Zoom in
+                        {CTA_LABELS.zoomIn}
                     </Button>
                     <Button
                         variant="ghost"
@@ -718,11 +718,11 @@ export function WorkGraphExplorer({
                         onClick={() => changeZoom(-1)}
                         disabled={zoomStep === 0}
                     >
-                        Zoom out
+                        {CTA_LABELS.zoomOut}
                     </Button>
                     {zoomStep > 0 ? (
                         <Button variant="ghost" size="sm" onClick={() => changeZoom(0)}>
-                            Reset zoom
+                            {CTA_LABELS.resetZoom}
                         </Button>
                     ) : null}
                 </div>
