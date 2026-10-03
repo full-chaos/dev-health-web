@@ -164,9 +164,12 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                         // it; the value is the served signed percent change. Each driver's own
                         // evidence link is in the drawer the head action opens.
                         <MeterRows
+                            signed
                             aria-label="Change failure associations"
                             testId="association-meter-rows"
-                            rows={associationMeterRows(drivers, driverChartLabels)}
+                            rows={associationMeterRows(drivers, driverChartLabels, {
+                                signed: true,
+                            })}
                         />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">

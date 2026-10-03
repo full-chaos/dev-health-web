@@ -1,3 +1,4 @@
+import { AuthErrors } from "@/lib/constants/errors";
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import {
@@ -56,11 +57,16 @@ export function normalizeAnalyticsDurations(result: AnalyticsResult): AnalyticsR
     };
 }
 
-/** Resolve orgId from the auth session, falling back to "default-org". */
+// CHAOS-8272: no session/no org_id must REJECT, never synthesize a tenant
+// identity (same idiom as src/lib/feature-flags/fetchers.ts).
 async function resolveOrgId(orgId?: string): Promise<string> {
     if (orgId) return orgId;
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    const sessionOrgId = session?.user?.org_id as string | undefined;
+    if (!sessionOrgId) {
+        throw new Error(AuthErrors.OrgIdRequiredFromSession);
+    }
+    return sessionOrgId;
 }
 
 export async function fetchTestOpsData(
@@ -68,7 +74,6 @@ export async function fetchTestOpsData(
     isTestMode: boolean = false,
     orgIdOverride?: string,
 ): Promise<TestOpsData> {
-    const orgId = await resolveOrgId(orgIdOverride);
     if (isTestMode) {
         return {
             pipelines: SAMPLE_PIPELINES_DATA,
@@ -76,6 +81,7 @@ export async function fetchTestOpsData(
             coverage: SAMPLE_COVERAGE_DATA,
         };
     }
+    const orgId = await resolveOrgId(orgIdOverride);
 
     try {
         const [pipelinesRes, testsRes, coverageRes] = await Promise.all([

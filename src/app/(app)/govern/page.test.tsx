@@ -9,6 +9,10 @@ import GovernPage from "./page";
 
 const getGovernSignalsMock = vi.hoisted(() => vi.fn());
 
+const envRef = vi.hoisted(() => ({ testMode: "true" }));
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("next/link", () => ({
     default: ({
         href,
@@ -58,7 +62,7 @@ vi.mock("@/lib/testops/fetchers", () => ({
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/config")>()),
-    getServerEnv: () => ({ DEV_HEALTH_TEST_MODE: "true" }),
+    getServerEnv: () => ({ DEV_HEALTH_TEST_MODE: envRef.testMode }),
 }));
 
 /**
@@ -226,6 +230,41 @@ describe("Govern overview page — approved layout", () => {
         expect(clusterIds("Risk")[0]).toBe("risk-compounding");
     });
 
+    it("lists the 'View evidence' facts in the order the page draws the cards, for every state mix", async () => {
+        const mixes: Array<Record<string, AreaSignalState>> = [
+            { security: "critical" },
+            // All equal: the area's own order decides.
+            {},
+            // A Risk card is the most severe after the hero.
+            { security: "critical", "risk-compounding": "critical", quality: "low" },
+            // Cards without a served value sink to the end of their group.
+            { risk: "high", testops: "unavailable", "feature-flags": "unavailable" },
+            // A Risk card is the hero; Quality still comes first in the grid.
+            { "incident-correlation": "critical", testops: "medium" },
+            // Nothing served: no hero, every card in the grid.
+            Object.fromEntries(
+                (getAreaById("govern")?.hubItems ?? []).map((item) => [item.id, "unavailable"]),
+            ),
+        ];
+        for (const states of mixes) {
+            const signals = governSignals(states);
+            getGovernSignalsMock.mockResolvedValue(signals);
+            await renderPage();
+            const idByLabel = new Map(
+                signals.map((signal) => [`${signal.label} — ${signal.metricLabel}`, signal.id]),
+            );
+            const factIds = within(screen.getByTestId("page-evidence"))
+                .getAllByTestId("page-fact")
+                .map((li) => idByLabel.get((li.textContent ?? "").split("=")[0]));
+            const drawnIds = screen
+                .getAllByTestId("area-signal-card")
+                .map((card) => card.getAttribute("data-signal-id"));
+            expect(factIds, JSON.stringify(states)).toEqual(drawnIds);
+            expect(factIds).toHaveLength(signals.length);
+            cleanup();
+        }
+    });
+
     it("gives the header a 'View evidence' with the served signals in body order (hero, Quality, Risk)", async () => {
         getGovernSignalsMock.mockResolvedValue(
             governSignals({
@@ -252,5 +291,18 @@ describe("Govern overview page — approved layout", () => {
             "Incident Correlation — Change failure rate=7",
             "Feature Flags — Active flags=Not reported",
         ]);
+    });
+});
+
+describe("GovernPage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        envRef.testMode = "false";
+        requireSessionMock.mockResolvedValue({ user: {} });
+        const { fetchTestOpsData: spy } = await import("@/lib/testops/fetchers");
+        vi.mocked(spy).mockClear();
+        render(await GovernPage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(vi.mocked(spy)).not.toHaveBeenCalled();
+        envRef.testMode = "true";
     });
 });

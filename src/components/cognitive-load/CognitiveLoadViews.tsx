@@ -13,7 +13,6 @@
 import { Notice } from "@/components/ui/Notice";
 import { DataState } from "@/components/ui/DataState";
 import { ChartFrame } from "@/components/charts/ChartFrame";
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { orderTimeseriesPoints } from "@/components/charts/timeseriesData";
 import Link from "next/link";
@@ -23,6 +22,7 @@ import { Inset } from "@/components/capacity/Inset";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { buttonClassName } from "@/components/shared/Button";
+import { MeterRows } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl } from "@/lib/filters/url";
@@ -437,7 +437,11 @@ export function LoadDriversView({
             )}
             data-testid="cognitive-load-load-drivers"
         >
-            <HorizontalBarChart categories={categories} values={values} height={220} />
+            <MeterRows
+                rows={categories.map((label, i) => ({ label, value: values[i] ?? null }))}
+                aria-label="Average daily contribution of each load driver"
+                testId="load-driver-meter-rows"
+            />
         </ChartFrame>
     );
 }

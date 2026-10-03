@@ -24,10 +24,12 @@ export function areaOverviewBodyOrder(
 export function signalFact(signal: AreaSignal): PageFact {
     return {
         label: `${signal.label} · ${signal.metricLabel}`,
-        value:
-            signal.state === "unavailable"
-                ? undefined
-                : [signal.value, AREA_STATE_LABEL[signal.state]].filter(Boolean).join(" · "),
+        // A failed read says so; an empty read has no value ("Not reported") (CHAOS-8168).
+        value: signal.failed
+            ? "Could not be read"
+            : signal.state === "unavailable"
+              ? undefined
+              : [signal.value, AREA_STATE_LABEL[signal.state]].filter(Boolean).join(" · "),
     };
 }
 

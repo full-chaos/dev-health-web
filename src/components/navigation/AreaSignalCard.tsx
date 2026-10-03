@@ -64,14 +64,27 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                 <h3 className="font-(--font-display) text-base leading-tight text-foreground">
                     {signal.label}
                 </h3>
-                <DataState
-                    variant="detector-unavailable"
-                    title={AREA_UNAVAILABLE_EMPTY_STATE.title}
-                    description={AREA_UNAVAILABLE_EMPTY_STATE.description}
-                    className="mt-3"
-                    compact
-                    data-testid="area-signal-unavailable"
-                />
+                {signal.failed ? (
+                    // The read failed (a timeout or an error): not an empty window. One plain sentence;
+                    // the backend text is in the log only (CHAOS-8168).
+                    <DataState
+                        variant="error"
+                        title="Could not be read"
+                        message="The data for this view could not be read. Try again in a moment."
+                        className="mt-3"
+                        compact
+                        data-testid="area-signal-failed"
+                    />
+                ) : (
+                    <DataState
+                        variant="detector-unavailable"
+                        title={AREA_UNAVAILABLE_EMPTY_STATE.title}
+                        description={AREA_UNAVAILABLE_EMPTY_STATE.description}
+                        className="mt-3"
+                        compact
+                        data-testid="area-signal-unavailable"
+                    />
+                )}
             </>
         );
 
@@ -81,6 +94,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                     data-testid="area-signal-card"
                     data-signal-id={signal.id}
                     data-state="unavailable"
+                    data-failed={signal.failed ? "true" : undefined}
                     data-tier="muted"
                     data-preview="true"
                     aria-disabled="true"
@@ -97,6 +111,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                 data-testid="area-signal-card"
                 data-signal-id={signal.id}
                 data-state="unavailable"
+                data-failed={signal.failed ? "true" : undefined}
                 data-tier="muted"
                 className={unavailableClassName}
             >

@@ -1,3 +1,4 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
@@ -32,7 +33,9 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
     if (!health.ok) return <ServiceUnavailable landmark={false} />;
 
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = session.user.org_id;
+    // No org on the session: ask for nothing (never an empty or made-up org).
+    if (!orgId) return <NoOrgNotice />;
     let forecast: ThroughputForecast | null = null;
     let forecastFetchFailed = false;
     try {
