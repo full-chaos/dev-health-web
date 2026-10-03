@@ -288,7 +288,7 @@ describe("overview: classification table", () => {
         expect(rows[0]).toHaveTextContent("30");
         expect(rows[1]).toHaveTextContent("Quality");
         expect(rows[1]).toHaveTextContent("25%");
-        expect(screen.getByTestId("classification-table")).toHaveTextContent("delivery units");
+        expect(screen.getByTestId("classification-table")).toHaveTextContent("Delivery units");
         expect(screen.getByTestId("classification-table")).not.toHaveTextContent("Risk");
     });
 
@@ -301,6 +301,22 @@ describe("overview: classification table", () => {
         overview({ investmentMix: mix as never, setFocusTheme, focusTheme: "quality" });
         fireEvent.click(screen.getByRole("button", { name: "Quality" }));
         expect(setFocusTheme).toHaveBeenLastCalledWith(null);
+    });
+
+    it("heads the value column 'Delivery units' and ends each row with an Evidence action (CHAOS-8564)", () => {
+        overview({ investmentMix: mix as never });
+        const table = screen.getByTestId("classification-table");
+        expect(within(table).getByRole("columnheader", { name: "Delivery units" })).toBeTruthy();
+        expect(within(table).getAllByTestId("classification-evidence")).toHaveLength(2);
+    });
+
+    it("a row's Evidence action opens the shared drawer with that theme's served effort and share", async () => {
+        overview({ investmentMix: mix as never });
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
+        const facts = await screen.findByTestId("classification-evidence-facts");
+        expect(facts).toHaveTextContent("Quality");
+        expect(facts).toHaveTextContent("10 delivery units");
+        expect(facts).toHaveTextContent("25%");
     });
 
     it("renders no table when the mix is empty or absent", () => {
