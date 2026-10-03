@@ -112,6 +112,8 @@ describe("CompletionRange — the curve is the served points", () => {
         const forecast = base({
             completionDistribution: {
                 runs: 999,
+                unfinishedRuns: 0,
+                horizonDays: 365,
                 days: [
                     { value: 18, count: 50, cumulativeShare: 0.1 },
                     { value: 19, count: 120, cumulativeShare: 0.2 },

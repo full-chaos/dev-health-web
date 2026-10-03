@@ -155,6 +155,8 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
     // The curve comes from the API's completionDistribution and nothing else.
     const distribution = {
         runs: 100,
+        unfinishedRuns: 0,
+        horizonDays: 365,
         days: [
             { value: 9, count: 40, cumulativeShare: 0.4 },
             { value: 10, count: 60, cumulativeShare: 1 },

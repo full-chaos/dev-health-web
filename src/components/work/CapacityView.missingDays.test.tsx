@@ -59,6 +59,8 @@ const forecast = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
     highVariance: false,
     completionDistribution: {
         runs: 100,
+        unfinishedRuns: 0,
+        horizonDays: 365,
         days: [
             { value: 9, count: 55, cumulativeShare: 0.55 },
             { value: 19, count: 35, cumulativeShare: 0.9 },
