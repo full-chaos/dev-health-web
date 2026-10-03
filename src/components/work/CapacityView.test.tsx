@@ -27,9 +27,6 @@ vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-1" }));
 vi.mock("@/components/charts/ConfidenceBandChart", () => ({
     ConfidenceBandChart: () => <div data-testid="band-chart" />,
 }));
-vi.mock("@/components/charts/ThroughputHistogram", () => ({
-    ThroughputHistogram: () => <div data-testid="histogram" />,
-}));
 
 import { CapacityView } from "./CapacityView";
 
@@ -88,15 +85,14 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
     });
 
-    it("lays the projection beside the Forecast inputs card, and keeps the distribution below", () => {
+    it("lays the projection beside the Forecast inputs card, with the Interpretation below", () => {
         render(<CapacityView filters={filters} />);
 
         for (const name of ["Completion projection", "Forecast inputs", "Interpretation"]) {
             expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
         }
-        expect(
-            screen.getByRole("heading", { name: "Throughput Distribution" }),
-        ).toBeInTheDocument();
+        // No other section: the three above are all the page draws under the tiles.
+        expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
     });
 
     it("sends only the first team id and the filter's range as history days", () => {
@@ -125,7 +121,6 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(inputs.getByText("1.1 items/day")).toBeInTheDocument();
         expect(inputs.getByText("90 days")).toBeInTheDocument();
         expect(inputs.getByText("42")).toBeInTheDocument();
-        expect(screen.getByText("Based on 90 days of historical data")).toBeInTheDocument();
     });
 
     it("shows the two warnings in one warning notice when history is short or variance is high", () => {
@@ -146,14 +141,12 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
     });
 
-    it("keeps the projection chart caption and the two section titles", () => {
+    it("keeps the projection chart, its caption and the section title", () => {
         render(<CapacityView filters={filters} />);
 
         expect(screen.getByTestId("band-chart")).toBeInTheDocument();
-        expect(screen.getByTestId("histogram")).toBeInTheDocument();
         expect(screen.getByText("Completion projection")).toBeInTheDocument();
         expect(screen.getByText("Monte Carlo forecast for work completion")).toBeInTheDocument();
-        expect(screen.getByText("Throughput Distribution")).toBeInTheDocument();
         expect(
             screen.getByText(
                 /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. No distribution is drawn\./,
@@ -235,5 +228,21 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(range.getByText(/low variance · Jun 1[45]/)).toBeInTheDocument();
         expect(screen.queryByTestId("tile-p50")).toBeNull();
         expect(screen.queryByTestId("tile-p95")).toBeNull();
+    });
+
+    // CHAOS-7990: the API serves the mean and the standard deviation of the throughput, not the
+    // daily counts. A distribution drawn from those two numbers is a curve the web makes.
+    it("draws no throughput distribution; the served mean, deviation and history stay as facts", () => {
+        render(<CapacityView filters={filters} />);
+
+        expect(screen.queryByText("Throughput Distribution")).toBeNull();
+        expect(screen.queryByTestId("histogram")).toBeNull();
+        expect(screen.queryByTestId("chart-throughput-histogram")).toBeNull();
+        expect(screen.queryByText(/days of historical data/)).toBeNull();
+
+        const inputs = within(screen.getByTestId("forecast-inputs"));
+        expect(inputs.getByText("3.3 items/day")).toBeInTheDocument();
+        expect(inputs.getByText("1.1 items/day")).toBeInTheDocument();
+        expect(inputs.getByText("90 days")).toBeInTheDocument();
     });
 });
