@@ -364,12 +364,15 @@ export function QuadrantPanel({
         (link) => !link.label.toLowerCase().includes("heatmap"),
     );
 
+    // In the head (Landscape, L13) the two actions are bordered buttons, as the concept draws them;
+    // everywhere else they stay ghost buttons under the head.
+    const actionVariant = actionsInHead ? "secondary" : "ghost";
     const guideButton = showViewGuide ? (
         <button
             ref={triggerRef}
             type="button"
             onClick={() => setIsGuideOpen(true)}
-            className={buttonClassName("ghost", "sm")}
+            className={buttonClassName(actionVariant, "sm")}
         >
             <Info aria-hidden="true" className="h-3.5 w-3.5" />
             {CTA_LABELS.viewGuide}
@@ -384,7 +387,7 @@ export function QuadrantPanel({
                     <Link
                         key={`${link.href}-${link.label}`}
                         href={link.href}
-                        className={buttonClassName("ghost", "sm")}
+                        className={buttonClassName(actionVariant, "sm")}
                     >
                         <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                         {link.label}
@@ -448,6 +451,14 @@ export function QuadrantPanel({
                         className="flex flex-wrap items-center gap-2"
                     >
                         {actionNode}
+                        {isPersonScope ? null : (
+                            <span
+                                data-testid="quadrant-head-hint"
+                                className="text-xs text-(--ink-muted)"
+                            >
+                                Select a dot to investigate
+                            </span>
+                        )}
                         {guideButton}
                         {relatedLinksNode}
                     </div>

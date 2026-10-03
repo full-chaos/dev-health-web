@@ -182,6 +182,7 @@ describe("QuadrantPanel", () => {
                 />,
             );
             expect(screen.queryByTestId("quadrant-head-actions")).toBeNull();
+            expect(screen.queryByTestId("quadrant-head-hint")).toBeNull();
             expect(
                 within(screen.getByTestId("quadrant-controls")).getByRole("button", {
                     name: "View guide",
@@ -218,6 +219,23 @@ describe("QuadrantPanel", () => {
                 "href",
                 "/explore",
             );
+            // Bordered buttons, icon first, as the concept draws them (default pages keep ghost).
+            for (const el of [
+                within(actions).getByRole("button", { name: "View guide" }),
+                within(actions).getByRole("link", { name: "Open evidence" }),
+            ]) {
+                expect(el.className).toContain("border-(--card-stroke)");
+                expect(el.className).not.toContain("border-transparent");
+                expect(el.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+            }
+            // The caption sits in the head, left of the buttons, sentence case.
+            const hint = within(actions).getByText("Select a dot to investigate");
+            expect(hint.className).not.toMatch(/uppercase|tracking-/);
+            expect(
+                hint.compareDocumentPosition(
+                    within(actions).getByRole("button", { name: "View guide" }),
+                ) & Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
             // Each exists once: nothing is repeated under the chart.
             expect(screen.getAllByRole("button", { name: "View guide" })).toHaveLength(1);
             expect(screen.getAllByRole("link", { name: "Open evidence" })).toHaveLength(1);
