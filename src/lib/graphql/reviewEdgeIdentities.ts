@@ -62,12 +62,18 @@ export function hasEmailAddress(text: string): boolean {
  *   in the order of first appearance in THIS answer (never made from the address); one address
  *   has one key, as reviewer and as author.
  * - Only the fields named here go to the page: any other field of the answer stays on the server.
+ * - A row with no key (the schema says it is never null) fails the read: it throws.
  *
  * The two kinds of key have different prefixes, so a served key can never equal a replaced key.
  */
 export function withoutEmailAddresses(edges: ServedReviewEdgeRow[]): ReviewEdgeRow[] {
     const replacedKeys = new Map<string, string>();
     const keyOf = (served: string): string => {
+        // The schema says the key is never null. A row with no key is a broken answer: the read
+        // fails. The row is not dropped and the people with no key are not made one person.
+        if (typeof served !== "string" || served === "") {
+            throw new Error("reviewEdges: a row has no person key");
+        }
         if (!hasEmailAddress(served)) return `key:${served}`;
         let key = replacedKeys.get(served);
         if (key === undefined) {

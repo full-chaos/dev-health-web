@@ -180,6 +180,23 @@ describe("getReviewEdgesViaGraphQL — no e-mail address leaves the server", () 
         expect(result.edges[0].reviewerName).toBe("Ana Fake");
     });
 
+    // `reviewerKey` and `authorKey` are non-null in the schema. An answer with a row that has no
+    // key is a broken answer: the read fails. The row is not dropped (the totals would be wrong
+    // with no notice) and the people with no key are not made one person.
+    it.each([
+        ["absent", undefined],
+        ["null", null],
+        ["empty", ""],
+        ["not a text", 7],
+    ])("fails the read when a row has no person key (%s)", async (_name, badKey) => {
+        for (const field of ["reviewerKey", "authorKey"] as const) {
+            const row = { ...served(ANA, BO), [field]: badKey };
+            await expect(read([served(BO, ANA), row]), field).rejects.toThrow(
+                "reviewEdges: a row has no person key",
+            );
+        }
+    });
+
     it('gives the stored placeholder "unknown" no name: it is not a person\'s name', async () => {
         const { edges } = await read([served(["k-unknown", "unknown"], ANA)]);
         expect(edges[0].reviewerName).toBeNull();
