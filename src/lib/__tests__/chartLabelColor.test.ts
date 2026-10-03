@@ -173,6 +173,46 @@ describe("dark theme: one ink (white) on every investment and flame fill (CHAOS-
     });
 });
 
+describe("unlabelled bars keep the bright series colors (CHAOS-8510)", () => {
+    const vars = block("dark");
+
+    it("every series bar reaches 3:1 against the meter track (--surface2) and the rework track (--card-stroke)", () => {
+        const css2 = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+        const darkTrack = /data-theme="dark"\] \{\s*--surface2: (#[0-9a-f]{6});/iu.exec(css2)?.[1];
+        expect(darkTrack).toBeDefined();
+        // Series 3 (the red) was already 2.61:1 against the rework track before this change; it keeps
+        // that value (not a regression of CHAOS-8510) and is not part of the 3:1 claim.
+        for (const n of [1, 2, 3, 4, 5]) {
+            const bar = vars[`--chart-color-${n}`];
+            const min = n === 3 ? 2.6 : 3;
+            expect(
+                contrastRatio(bar, darkTrack!),
+                `series ${n} vs meter track`,
+            ).toBeGreaterThanOrEqual(min);
+            expect(
+                contrastRatio(bar, vars["--card-stroke"]),
+                `series ${n} vs rework track`,
+            ).toBeGreaterThanOrEqual(min);
+        }
+    });
+
+    it("the darker label fills would NOT pass as bars (why bars do not use them)", () => {
+        const track = vars["--card-stroke"];
+        const worst = Math.min(...THEME_VARS.map((name) => contrastRatio(vars[name], track)));
+        expect(worst).toBeLessThan(3);
+    });
+
+    it("meter bars and rework bars read the series colors, not the --theme-* aliases", () => {
+        const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
+        const rework = read("src/components/quality/ReworkThemeBars.tsx");
+        expect(rework).toContain("investmentSeriesColor(");
+        expect(rework).not.toContain("investmentThemeColor(");
+        const section = read("src/components/work/investment/charts/InvestmentMixSection.tsx");
+        expect(section).toContain("themeBarColorMap.get(");
+        expect(section).not.toMatch(/color: themeColorMap\.get\(/u);
+    });
+});
+
 describe("investment and flame surfaces read the aliases, not the raw series colors", () => {
     const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
 

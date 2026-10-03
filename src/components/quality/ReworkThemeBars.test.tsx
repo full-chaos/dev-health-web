@@ -1,15 +1,21 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { fallbackTokens } from "@/components/charts/chartTheme";
 import type { ReworkThemeAllocation } from "@/lib/types";
 
 import { ReworkThemeBars } from "./ReworkThemeBars";
 
 // The token hook reads the document stylesheet and matchMedia: use the fallback roles.
+// The raw series colors (--chart-color-1..5, dark). Unlabelled bars keep them (CHAOS-8510).
+const SERIES = vi.hoisted(() => ["#0b8fb0", "#c98500", "#da2100", "#02a2bc", "#e8650a"]);
+
 vi.mock("@/components/charts/chartTheme", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/components/charts/chartTheme")>();
-    return { ...actual, useChartTokens: () => actual.fallbackTokens };
+    return {
+        ...actual,
+        useChartTokens: () => actual.fallbackTokens,
+        useChartColors: () => SERIES,
+    };
 });
 
 const row = (over: Partial<ReworkThemeAllocation>): ReworkThemeAllocation => ({
@@ -69,9 +75,9 @@ describe("ReworkThemeBars", () => {
 
         const [risk, quality, other] = screen.getAllByRole("listitem");
         const probe = document.createElement("div");
-        probe.style.backgroundColor = fallbackTokens.themeRisk;
+        probe.style.backgroundColor = SERIES[1];
         expect(barColor(risk)).toBe(probe.style.backgroundColor);
-        probe.style.backgroundColor = fallbackTokens.themeQuality;
+        probe.style.backgroundColor = SERIES[3];
         expect(barColor(quality)).toBe(probe.style.backgroundColor);
         // An unknown theme gets the neutral muted token, never the action color.
         expect(barColor(other)).toBe("var(--text-muted)");

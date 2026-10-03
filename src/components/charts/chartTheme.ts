@@ -78,6 +78,28 @@ export const investmentThemeColor = (
     }
 };
 
+/**
+ * The series color (`--chart-color-N`, N from 1) of each investment theme. A fill WITHOUT a label (a
+ * meter bar, a rework bar) keeps the bright series color: the darker `--theme-*` fills are for tiles and
+ * segments that carry a white label (CHAOS-8510), and a bar needs 3:1 against its track.
+ */
+const THEME_SERIES_INDEX: Record<string, number> = {
+    feature_delivery: 5,
+    quality: 4,
+    risk: 2,
+    maintenance: 3,
+    operational: 1,
+};
+
+export const investmentSeriesColor = (
+    themeKey: string,
+    chartColors: readonly string[],
+    fallback: string,
+): string => {
+    const n = THEME_SERIES_INDEX[themeKey];
+    return n === undefined ? fallback : (chartColors[n - 1] ?? fallback);
+};
+
 const TOKEN_VARS = {
     positive: "--positive",
     caution: "--caution",
