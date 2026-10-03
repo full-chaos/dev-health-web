@@ -27,9 +27,6 @@ vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-1" }));
 vi.mock("@/components/charts/ConfidenceBandChart", () => ({
     ConfidenceBandChart: () => <div data-testid="band-chart" />,
 }));
-vi.mock("@/components/charts/CompletionSpreadChart", () => ({
-    CompletionSpreadChart: () => <div data-testid="spread-chart" />,
-}));
 
 import { CapacityView } from "./CapacityView";
 
@@ -88,18 +85,14 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
     });
 
-    it("lays the projection beside the Forecast inputs card, then the simulated outcomes, with the Interpretation below", () => {
+    it("lays the projection beside the Forecast inputs card, with the Interpretation below", () => {
         render(<CapacityView filters={filters} />);
 
-        // No other section: these four, in this order, are all the page draws under the tiles.
-        expect(
-            screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
-        ).toEqual([
-            "Completion projection",
-            "Forecast inputs",
-            "Simulated outcomes",
-            "Interpretation",
-        ]);
+        for (const name of ["Completion projection", "Forecast inputs", "Interpretation"]) {
+            expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
+        }
+        // No other section: the three above are all the page draws under the tiles.
+        expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
     });
 
     it("sends every selected team id and the filter's range as history days", () => {
@@ -165,46 +158,9 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.getByText("Monte Carlo forecast for work completion")).toBeInTheDocument();
         expect(
             screen.getByText(
-                /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. The spread of the simulated outcomes is shown below\./,
+                /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. No distribution is drawn\./,
             ),
         ).toBeInTheDocument();
-        expect(screen.queryByText(/No distribution is drawn/)).toBeNull();
-    });
-
-    // CHAOS-7977: the spread comes from the API's completionDistribution and nothing else.
-    it("draws the simulated spread in its own card when the forecast has a distribution", () => {
-        hook.state = {
-            ...hook.state,
-            data: forecast({
-                completionDistribution: {
-                    days: [
-                        { value: 9, count: 40 },
-                        { value: 10, count: 60 },
-                    ],
-                    items: null,
-                },
-            }),
-        };
-        render(<CapacityView filters={filters} />);
-
-        const card = within(screen.getByTestId("completion-spread-card"));
-        expect(card.getByText("Simulated outcomes")).toBeInTheDocument();
-        expect(card.getByTestId("completion-spread")).toBeInTheDocument();
-        expect(card.getByTestId("spread-chart")).toBeInTheDocument();
-    });
-
-    it("says so, and draws no chart, when the forecast has no stored distribution", () => {
-        render(<CapacityView filters={filters} />);
-
-        const card = within(screen.getByTestId("completion-spread-card"));
-        expect(card.getByTestId("completion-spread")).toHaveTextContent(/^Not reported/);
-        expect(card.queryByTestId("spread-chart")).toBeNull();
-    });
-
-    it("has no spread card while there is no forecast", () => {
-        hook.state = { ...hook.state, data: null };
-        render(<CapacityView filters={filters} />);
-        expect(screen.queryByTestId("completion-spread-card")).toBeNull();
     });
 
     it("shows the Interpretation section with the three percentile texts", () => {
