@@ -314,15 +314,17 @@ describe("/metrics in the approved prototype layout (CHAOS-8066)", () => {
         ).toBeInTheDocument();
     });
 
-    it("association meter rows: the fill is |delta| as production draws it; the value is the served signed change with its unit", async () => {
+    it("association meter rows (K-5): signed from a zero line, a decrease to the left, an increase to the right; the value is the served signed change", async () => {
         await renderTab("flow");
         const rows = within(screen.getByTestId("association-meter-rows")).getAllByTestId(
             "meter-row",
         );
         expect(rows.map((row) => row.textContent)).toEqual(["repo-alpha-20%", "repo-beta+10%"]);
-        const fills = rows.map((row) => within(row).getByTestId("meter-fill").style.width);
-        // |−20| is the largest, so it fills the track; |+10| fills half.
-        expect(fills).toEqual(["100%", "50%"]);
+        const fills = rows.map((row) => within(row).getByTestId("meter-fill"));
+        // |-20| is the largest, so it fills half the track (to the zero line); |+10| fills a quarter.
+        expect(fills.map((f) => f.style.width)).toEqual(["50%", "25%"]);
+        expect(fills.map((f) => f.getAttribute("data-direction"))).toEqual(["left", "right"]);
+        within(screen.getByTestId("association-meter-rows")).getAllByTestId("meter-zero-line");
     });
 
     it("contributor meter rows: the served values with the served unit; the unit note is gone", async () => {

@@ -21,14 +21,20 @@ const labelAt = (labels: Labels | undefined, index: number, fallback: string) =>
 });
 
 /**
- * "Likely associations" as meter rows (prototype `bars()`): the fill is |delta| as production
- * draws it; the value is the served signed percent change.
+ * "Likely associations" as meter rows (prototype `bars()`). The text is the served signed percent
+ * change. With `signed` (the K-5 views: Flow, Quality, Evidence, Incident Correlation) the row
+ * carries the SIGNED change, for `MeterRows signed` to draw from a zero line (right = increase,
+ * left = decrease); without it the row carries |change| for an unsigned bar (Bottlenecks).
  */
-export function associationMeterRows(drivers: Contributor[], labels?: Labels): MeterRow[] {
+export function associationMeterRows(
+    drivers: Contributor[],
+    labels?: Labels,
+    options: { signed?: boolean } = {},
+): MeterRow[] {
     return drivers.map((driver, index) => ({
         key: driver.id,
         ...labelAt(labels, index, driver.label),
-        value: Math.abs(driver.delta_pct),
+        value: options.signed ? driver.delta_pct : Math.abs(driver.delta_pct),
         display: signedPercent(driver.delta_pct),
     }));
 }

@@ -380,9 +380,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                         >
                             {drivers.length ? (
                                 <MeterRows
+                                    signed
                                     aria-label="Likely associations"
                                     testId="association-meter-rows"
-                                    rows={associationMeterRows(drivers)}
+                                    rows={associationMeterRows(drivers, undefined, {
+                                        signed: true,
+                                    })}
                                 />
                             ) : (
                                 <p className="text-sm text-(--ink-muted)">
