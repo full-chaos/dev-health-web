@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { EntityLabel } from "@/components/labels/EntityLabel";
 import { ProviderBadge } from "./ProviderBadge";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { Section } from "@/components/ui/Section";
@@ -17,6 +18,8 @@ export type Identity = {
 
 type IdentityTableProps = {
     identities: Identity[];
+    /** Served team names by team id (from the team list). A team without a name reads short id + Unresolved. */
+    teamNames?: Record<string, string>;
     onDeleteAction?: (id: string) => void;
 };
 
@@ -24,7 +27,11 @@ function includesSearch(value: string | null | undefined, query: string): boolea
     return value?.toLowerCase().includes(query) ?? false;
 }
 
-function identityMatchesSearch(identity: Identity, query: string): boolean {
+function identityMatchesSearch(
+    identity: Identity,
+    query: string,
+    teamNames: Record<string, string>,
+): boolean {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
         return true;
@@ -34,7 +41,11 @@ function identityMatchesSearch(identity: Identity, query: string): boolean {
         includesSearch(identity.canonical_id, normalizedQuery) ||
         includesSearch(identity.display_name, normalizedQuery) ||
         includesSearch(identity.email, normalizedQuery) ||
-        identity.team_ids.some((teamId) => includesSearch(teamId, normalizedQuery)) ||
+        identity.team_ids.some(
+            (teamId) =>
+                includesSearch(teamId, normalizedQuery) ||
+                includesSearch(teamNames[teamId], normalizedQuery),
+        ) ||
         Object.entries(identity.provider_identities).some(
             ([provider, usernames]) =>
                 includesSearch(provider, normalizedQuery) ||
@@ -43,11 +54,14 @@ function identityMatchesSearch(identity: Identity, query: string): boolean {
     );
 }
 
-export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps) {
+export function IdentityTable({ identities, teamNames = {}, onDeleteAction }: IdentityTableProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const filteredIdentities = useMemo(
-        () => identities.filter((identity) => identityMatchesSearch(identity, searchQuery)),
-        [identities, searchQuery],
+        () =>
+            identities.filter((identity) =>
+                identityMatchesSearch(identity, searchQuery, teamNames),
+            ),
+        [identities, searchQuery, teamNames],
     );
     const columns: DataTableColumn<Identity>[] = [
         {
@@ -93,7 +107,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
                                 href={`/org/admin/teams/${teamId}/edit`}
                                 className="text-(--accent-2) hover:underline"
                             >
-                                {teamId}
+                                <EntityLabel id={teamId} nameMap={teamNames} />
                             </Link>
                         ))}
                     </div>
