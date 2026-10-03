@@ -213,6 +213,7 @@ export const CTA_LABELS = {
     startSync: "Start sync",
     lightTheme: "Light",
     darkTheme: "Dark",
+    systemTheme: "System",
     enabled: "Enabled",
     disabled: "Disabled",
     /** Edit a sync configuration from its detail page (CHAOS-2791). */

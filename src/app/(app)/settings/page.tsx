@@ -7,7 +7,7 @@ export default function UserPreferencesPage() {
     return (
         <div className="flex w-full max-w-3xl flex-col gap-8">
             <PageHeader
-                title="Preferences"
+                title="Settings"
                 subtitle="Personal display settings stored in your browser."
             />
 
