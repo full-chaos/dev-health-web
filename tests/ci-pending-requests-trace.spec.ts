@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { expect, test } from "@playwright/test";
 import {
-    formatPendingReport,
+    describeTimedOutTry,
     readZipEntries,
     scanTraceNetwork,
 } from "../ci/playwright-pending-requests";
@@ -42,6 +42,7 @@ test("a trace of the installed Playwright names the request with no response", a
     const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const tracePath = testInfo.outputPath("pending-request-trace.zip");
     const context = await browser.newContext();
+    const startTime = new Date();
 
     try {
         await context.tracing.start({ snapshots: false, screenshots: false });
@@ -70,5 +71,15 @@ test("a trace of the installed Playwright names the request with no response", a
     expect(scan.records).toBeGreaterThanOrEqual(3);
     expect(scan.pending.map((request) => request.url)).toEqual([`${origin}/stuck.png`]);
     expect(scan.pending[0].ageMs).toBeGreaterThanOrEqual(250);
-    expect(formatPendingReport(scan).join("\n")).toContain(`GET image ${origin}/stuck.png`);
+
+    // The reporter's own entry point, with the archive as the trace attachment
+    // of a try: the lines it would print for a timed-out try.
+    const report = describeTimedOutTry({
+        attachments: [{ name: "trace", contentType: "application/zip", path: tracePath }],
+        startTime,
+        duration: Date.now() - startTime.getTime(),
+    }).join("\n");
+    expect(report).toContain("PENDING at timeout: 1 of ");
+    expect(report).toContain(`GET image ${origin}/stuck.png`);
+    expect(report).not.toContain("NOT MEASURED");
 });
