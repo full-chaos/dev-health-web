@@ -1,10 +1,28 @@
+import type { ReactNode } from "react";
+import { CircleCheck, CircleHelp, Clock, Loader, TriangleAlert } from "lucide-react";
+
 import { STATUS_PILL } from "@/lib/statusPill";
 import { ReportStatus } from "@/lib/reports/types";
+
+// Pill with an icon and a word (design R15): the word carries the meaning, the icon is decoration.
+const PILL = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold";
+
+function Pill({ tone, icon, children }: { tone: string; icon: ReactNode; children: string }) {
+    return (
+        <span className={`${PILL} ${tone}`}>
+            {icon}
+            {children}
+        </span>
+    );
+}
 
 export function StatusBadge({ status }: { status?: ReportStatus | string }) {
     if (!status)
         return (
-            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-label-caps uppercase tracking-wider text-(--ink-muted)">
+            <span
+                className={`${PILL} border border-dashed border-(--card-stroke) text-(--ink-muted)`}
+            >
+                <CircleHelp aria-hidden="true" className="h-3 w-3" />
                 Never run
             </span>
         );
@@ -12,35 +30,39 @@ export function StatusBadge({ status }: { status?: ReportStatus | string }) {
     switch (status) {
         case ReportStatus.SUCCESS:
             return (
-                <span
-                    className={`rounded-full px-2 py-0.5 text-label-caps uppercase tracking-wider ${STATUS_PILL.positive}`}
+                <Pill
+                    tone={STATUS_PILL.positive}
+                    icon={<CircleCheck aria-hidden="true" className="h-3 w-3" />}
                 >
                     Success
-                </span>
+                </Pill>
             );
         case ReportStatus.FAILED:
             return (
-                <span
-                    className={`rounded-full px-2 py-0.5 text-label-caps uppercase tracking-wider ${STATUS_PILL.negative}`}
+                <Pill
+                    tone={STATUS_PILL.negative}
+                    icon={<TriangleAlert aria-hidden="true" className="h-3 w-3" />}
                 >
                     Failed
-                </span>
+                </Pill>
             );
         case ReportStatus.RUNNING:
             return (
-                <span
-                    className={`rounded-full px-2 py-0.5 text-label-caps uppercase tracking-wider ${STATUS_PILL.info}`}
+                <Pill
+                    tone={STATUS_PILL.info}
+                    icon={<Loader aria-hidden="true" className="h-3 w-3" />}
                 >
                     Running
-                </span>
+                </Pill>
             );
         case ReportStatus.PENDING:
             return (
-                <span
-                    className={`rounded-full px-2 py-0.5 text-label-caps uppercase tracking-wider ${STATUS_PILL.caution}`}
+                <Pill
+                    tone={STATUS_PILL.caution}
+                    icon={<Clock aria-hidden="true" className="h-3 w-3" />}
                 >
                     Pending
-                </span>
+                </Pill>
             );
         default:
             return null;
