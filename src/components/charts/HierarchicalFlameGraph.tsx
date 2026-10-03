@@ -250,9 +250,7 @@ export function HierarchicalFlameGraph({
                         marginBottom: FLAME_GAP,
                         backgroundColor: fill,
                         color: ink.color,
-                        textShadow: ink.haloColor
-                            ? `0 0 2px ${ink.haloColor}, 0 0 2px ${ink.haloColor}`
-                            : "none",
+                        textShadow: "none",
                         boxShadow: isSearchMatch ? `0 0 0 2px ${tokens.accentHighlight}` : "none",
                     }}
                     title={node.name}

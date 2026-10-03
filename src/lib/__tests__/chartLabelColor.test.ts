@@ -39,14 +39,15 @@ const THEME_VARS = [
 ];
 
 describe("tileLabel (theme color x opacity x light/dark)", () => {
-    let haloCases = 0;
+    // CHAOS-8510: one rule for label ink on every fill: the better of white and near-black, which
+    // reaches 4.5:1 everywhere, so there is never a halo or a shadow.
     let total = 0;
     for (const mode of ["light", "dark"] as const) {
         const vars = block(mode);
         const card = vars["--card"];
         for (const name of THEME_VARS) {
             for (const opacity of [undefined, ...DEPTH_OPACITY, 0.4]) {
-                it(`${mode} ${name} opacity ${opacity ?? "none"}: never hidden, ink = higher contrast`, () => {
+                it(`${mode} ${name} opacity ${opacity ?? "none"}: ink = higher contrast, at least 4.5`, () => {
                     const fill = vars[name];
                     expect(fill).toMatch(/^#[0-9a-f]{6}$/iu);
                     const label = tileLabel(fill, opacity, card);
@@ -54,17 +55,11 @@ describe("tileLabel (theme color x opacity x light/dark)", () => {
                     const white = contrastRatio(LABEL_INK_LIGHT, shown);
                     const dark = contrastRatio(LABEL_INK_DARK, shown);
                     total += 1;
-                    // a label is always produced, with an ink from the fixed pair
                     expect([LABEL_INK_LIGHT, LABEL_INK_DARK]).toContain(label.color);
                     expect(contrastRatio(label.color, shown)).toBe(Math.max(white, dark));
-                    if (Math.max(white, dark) >= MIN_LABEL_CONTRAST) {
-                        expect(label.haloColor).toBeUndefined();
-                    } else {
-                        haloCases += 1;
-                        const opposite =
-                            label.color === LABEL_INK_LIGHT ? LABEL_INK_DARK : LABEL_INK_LIGHT;
-                        expect(label.haloColor).toBe(opposite);
-                    }
+                    expect(Math.max(white, dark)).toBeGreaterThanOrEqual(MIN_LABEL_CONTRAST);
+                    expect(label).not.toHaveProperty("haloColor");
+                    expect(tileLabelStyle(fill, opacity, card).textBorderWidth).toBe(0);
                 });
             }
         }
@@ -72,8 +67,42 @@ describe("tileLabel (theme color x opacity x light/dark)", () => {
 
     it("covers the whole matrix", () => {
         expect(total).toBe(2 * THEME_VARS.length * (DEPTH_OPACITY.length + 2));
-        // informational: how many matrix cells use the halo fallback
-        expect(haloCases).toBeGreaterThanOrEqual(0);
+    });
+
+    it("the ink pair reaches 4.5:1 on EVERY fill (no dead zone), not only on the theme fills", () => {
+        let worst = Infinity;
+        for (let v = 0; v <= 255; v += 1) {
+            for (const [r, g, b] of [
+                [v, v, v],
+                [v, 0, 0],
+                [0, v, 0],
+                [0, 0, v],
+                [v, v, 0],
+                [v, 0, v],
+                [0, v, v],
+                [255, v, 0],
+                [255, 0, v],
+                [v, 255, 0],
+                [0, 255, v],
+                [v, 0, 255],
+                [0, v, 255],
+            ]) {
+                const fill = `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+                const ink = tileLabel(fill, undefined, "#000000").color;
+                worst = Math.min(worst, contrastRatio(ink, fill));
+            }
+        }
+        expect(worst).toBeGreaterThanOrEqual(MIN_LABEL_CONTRAST);
+    });
+
+    it("the previous dark ink #15171a had a dead zone (why the ink is near-black)", () => {
+        // A mid-tone (luminance about 0.2) where white and #15171a both fall under 4.5.
+        const fill = "#7b7b7b";
+        expect(contrastRatio("#ffffff", fill)).toBeLessThan(4.5);
+        expect(contrastRatio("#15171a", fill)).toBeLessThan(4.5);
+        expect(
+            contrastRatio(tileLabel(fill, undefined, "#000000").color, fill),
+        ).toBeGreaterThanOrEqual(4.5);
     });
 
     it("scarlet on the card: white wins on a fully opaque dark Maintenance fill", () => {
@@ -86,11 +115,10 @@ describe("tileLabel (theme color x opacity x light/dark)", () => {
         expect(tileLabel("#000000", 0.1, "#ffffff").color).toBe(LABEL_INK_DARK);
     });
 
-    it("a mid fill nobody reaches 4.5 on keeps its label and gets a halo", () => {
+    it("a mid fill gets an ink and no text border", () => {
         const style = tileLabelStyle("#7a7a7a", 1, "#7a7a7a");
-        expect(style.textBorderWidth).toBe(2);
-        expect(style.textBorderColor).toBeDefined();
-        expect(style.color).not.toBe(style.textBorderColor);
+        expect(style.textBorderWidth).toBe(0);
+        expect(style).not.toHaveProperty("textBorderColor");
     });
 });
 

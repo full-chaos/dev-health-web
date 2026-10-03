@@ -8,10 +8,13 @@ const HEX = /^#?([0-9a-f]{6})$/iu;
  * label ink is chosen per fill by contrast and does not follow the theme.
  */
 export const LABEL_INK_LIGHT = "#ffffff";
-export const LABEL_INK_DARK = "#15171a";
+// Near-black, not #15171a: with white it leaves NO dead zone. The best of the pair reaches 4.5:1 on
+// every fill (worst case 4.53:1 at a fill luminance of 0.18), so a label never needs a halo or a
+// shadow (CHAOS-8510). With #15171a the worst case was 4.24:1 and mid-tone reds got a shadow.
+export const LABEL_INK_DARK = "#050505";
 const LABEL_INK = [LABEL_INK_LIGHT, LABEL_INK_DARK] as const;
 
-/** Contrast a label should reach (WCAG AA, normal text). Below it, the halo fallback applies. */
+/** Contrast a label should reach (WCAG AA, normal text). The ink pair reaches it on every fill. */
 export const MIN_LABEL_CONTRAST = 4.5;
 
 /** Depth opacity steps for charts that carry no evidence-quality opacity. */
@@ -36,11 +39,6 @@ export const blendOver = (fill: string, opacity: number, backdrop: string): stri
 export type TileLabel = {
     /** The higher-contrast of the fixed ink pair against the blended fill. */
     color: string;
-    /**
-     * Set only when even the better ink is under 4.5: the opposite ink, for a text halo
-     * on that label. A label is never hidden for contrast.
-     */
-    haloColor?: string;
 };
 
 export const tileLabel = (
@@ -50,19 +48,15 @@ export const tileLabel = (
 ): TileLabel => {
     const shown = blendOver(fill, opacity ?? 1, backdrop);
     if (!HEX.test(shown.trim())) return { color: LABEL_INK_DARK };
-    const color = pickTextColor(shown, LABEL_INK);
-    if (contrastRatio(color, shown) >= MIN_LABEL_CONTRAST) return { color };
-    return { color, haloColor: color === LABEL_INK_LIGHT ? LABEL_INK_DARK : LABEL_INK_LIGHT };
+    return { color: pickTextColor(shown, LABEL_INK) };
 };
 
-/** ECharts label fragment for `tileLabel`. */
+/** ECharts label fragment for `tileLabel`: the ink only, never a text border or shadow. */
 export const tileLabelStyle = (
     fill: string,
     opacity: number | undefined,
     backdrop: string,
-): { color: string; textBorderColor?: string; textBorderWidth: number } => {
-    const { color, haloColor } = tileLabel(fill, opacity, backdrop);
-    return haloColor
-        ? { color, textBorderColor: haloColor, textBorderWidth: 2 }
-        : { color, textBorderWidth: 0 };
-};
+): { color: string; textBorderWidth: 0 } => ({
+    color: tileLabel(fill, opacity, backdrop).color,
+    textBorderWidth: 0,
+});

@@ -15,6 +15,17 @@ import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
 echarts.use([SunburstChart]);
 
+// Ring 1 (themes) runs from 18% to 44% of half the shorter side of the chart (levels below); its label
+// is drawn along the arc at the middle of the ring. A label wider than its own arc is cut with an
+// ellipsis to the arc, and hidden when under MIN_LABEL_PX (the legend and the tooltip name every
+// theme), so no label crosses into the next segment or the hole (CHAOS-8510).
+const RING1_MID = (0.18 + 0.44) / 2;
+const MIN_LABEL_PX = 28;
+const LABEL_ARC_MARGIN_PX = 10;
+
+export const ringOneLabelWidth = (halfSidePx: number, fraction: number): number =>
+    Math.max(0, Math.floor(2 * Math.PI * RING1_MID * halfSidePx * fraction - LABEL_ARC_MARGIN_PX));
+
 const adjustHex = (hex: string, amount: number) => {
     const normalized = hex.replace("#", "");
     if (normalized.length !== 6) return hex;
@@ -57,6 +68,9 @@ export function InvestmentMixSunburst({
     const chartColors = useChartColors();
     const tokens = useChartTokens();
     const mergedStyle: CSSProperties = { height, width, ...style };
+    // Half the shorter side of the chart box. The width is a percentage by default and wider than the
+    // height here, so the numeric height decides; 360 is the default height.
+    const halfSidePx = (typeof height === "number" ? height : 360) / 2;
 
     const sortedThemes = useMemo(
         () =>
@@ -149,7 +163,21 @@ export function InvestmentMixSunburst({
             return {
                 name: themeLabel,
                 value: theme.value,
-                label: labelFor(baseColor, themeOpacity),
+                label: {
+                    ...labelFor(baseColor, themeOpacity),
+                    rotate: "tangential" as const,
+                    overflow: "truncate" as const,
+                    width: ringOneLabelWidth(
+                        halfSidePx,
+                        totalValue > 0 ? theme.value / totalValue : 0,
+                    ),
+                    ...(ringOneLabelWidth(
+                        halfSidePx,
+                        totalValue > 0 ? theme.value / totalValue : 0,
+                    ) < MIN_LABEL_PX
+                        ? { show: false }
+                        : {}),
+                },
                 itemStyle: {
                     color: baseColor,
                     opacity: typeof themeOpacity === "number" ? themeOpacity : undefined,
@@ -167,6 +195,8 @@ export function InvestmentMixSunburst({
         sortedThemes,
         subcategoryDistribution,
         themeColorMap,
+        halfSidePx,
+        totalValue,
     ]);
 
     const handleClick = useCallback(

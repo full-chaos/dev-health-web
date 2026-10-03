@@ -182,10 +182,11 @@ describe("HierarchicalFlameGraph", () => {
         expect(bg("Waiting")).toBe(waiting);
     });
 
-    it("never hides a label for contrast: ink is white or near-black, with a halo only when needed", () => {
+    it("never hides a label for contrast: ink is white or near-black, never a shadow", () => {
         render(<HierarchicalFlameGraph root={tree} unit="hours" colorBy="branch" />);
         for (const name of ["Active Work", "Waiting", "Other", "Coding"]) {
-            expect(["rgb(255, 255, 255)", "rgb(21, 23, 26)"]).toContain(row(name).style.color);
+            expect(["rgb(255, 255, 255)", "rgb(5, 5, 5)"]).toContain(row(name).style.color);
+            expect(row(name).style.textShadow).toBe("none");
             expect(row(name).textContent).toContain(name);
         }
     });
