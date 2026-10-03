@@ -347,7 +347,7 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
         expect(screen.getByRole("button", { name: /Feature Delivery/ })).toBeInTheDocument();
     });
 
-    it("surfaces unit metadata inline when a row is expanded (no toggle gate)", () => {
+    it("surfaces unit metadata in the drawer a row Evidence action opens (no toggle gate)", () => {
         useInvestmentDataMock.mockReturnValue(
             makeData({
                 workUnits: [
@@ -364,8 +364,8 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
 
         render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
 
-        // Expand the theme group, then the work-unit row.
-        fireEvent.click(screen.getByRole("button", { name: /Feature Delivery/ }));
+        // Open the group's Evidence (the shared drawer), then the work-unit row in it.
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         fireEvent.click(screen.getByRole("button", { name: /Work unit a/ }));
 
         expect(screen.getByText("Classification rationale")).toBeInTheDocument();
