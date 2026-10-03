@@ -112,4 +112,29 @@ describe("AdminHeader", () => {
 
         expect(screen.queryByRole("tablist")).toBeNull();
     });
+
+    it("draws a title badge beside the name, after the Platform admin pill, and nothing when there is none", () => {
+        const { unmount } = render(
+            <AdminNavProvider isPlatformAdmin>
+                <AdminHeader title="Sync" titleBadge={<span>Healthy</span>} />
+            </AdminNavProvider>,
+        );
+        const slot = screen.getByTestId("page-header-title-adornment");
+        expect(slot).toContainElement(screen.getByText("Healthy"));
+        expect(slot).toContainElement(screen.getByText("Platform admin"));
+        expect(
+            screen
+                .getByText("Platform admin")
+                .compareDocumentPosition(screen.getByText("Healthy")) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        unmount();
+
+        render(
+            <AdminNavProvider isPlatformAdmin={false}>
+                <AdminHeader title="Sync" />
+            </AdminNavProvider>,
+        );
+        expect(screen.queryByTestId("page-header-title-adornment")).toBeNull();
+    });
 });
