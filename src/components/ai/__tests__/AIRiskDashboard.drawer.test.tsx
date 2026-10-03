@@ -19,7 +19,9 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async (importOriginal) => {
     };
 });
 vi.mock("../AIEvidenceExplorer", () => ({
-    AIEvidenceExplorer: () => <div data-testid="explorer-stub" />,
+    AIEvidenceExplorer: ({ layout }: { layout?: string }) => (
+        <div data-testid="explorer-stub" data-layout={layout} />
+    ),
 }));
 
 import { AIRiskDashboard } from "../AIRiskDashboard";
@@ -55,6 +57,11 @@ describe("AIRiskDashboard drawer (CHAOS-7775)", () => {
         const dialog = screen.getByRole("dialog", { name: "Evidence by pull request" });
         expect(dialog).toHaveAttribute("data-size", "wide");
         expect(within(dialog).getByText("Rework rate")).toBeInTheDocument();
+        // The evidence stacks under the PR table inside the drawer (A8, CHAOS-8297).
+        expect(within(dialog).getByTestId("explorer-stub")).toHaveAttribute(
+            "data-layout",
+            "stacked",
+        );
     });
 
     it("closes on Escape and returns focus to the opener", () => {

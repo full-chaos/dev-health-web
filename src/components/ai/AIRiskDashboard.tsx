@@ -238,7 +238,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                     Pick an AI-attributed PR to see its Work Graph evidence. Filtered to the current
                     dashboard range, repo, and work type.
                 </p>
-                <AIEvidenceExplorer filter={filter} />
+                <AIEvidenceExplorer filter={filter} layout="stacked" />
             </Drawer>
         </div>
     );
