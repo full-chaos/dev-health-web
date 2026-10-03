@@ -196,7 +196,7 @@ export function ImportTeamsDialog() {
                                         onChange={(e) =>
                                             setOnConflict(e.target.value as "skip" | "merge")
                                         }
-                                        className="cursor-pointer rounded border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-foreground focus:border-(--accent) focus:outline-none"
+                                        className="cursor-pointer rounded border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-foreground focus:border-(--accent-2) focus:outline-none"
                                     >
                                         <option value="skip">Skip existing</option>
                                         <option value="merge">Merge with existing</option>
@@ -222,7 +222,7 @@ export function ImportTeamsDialog() {
                                                             discoveredTeams.length > 0
                                                         }
                                                         onChange={toggleAll}
-                                                        className="cursor-pointer rounded border-(--card-stroke) bg-(--card) text-(--accent) focus:ring-(--accent)"
+                                                        className="cursor-pointer rounded border-(--card-stroke) bg-(--card) text-(--accent) focus:ring-(--accent-2)"
                                                     />
                                                 </th>
                                                 <th className="p-3 font-medium">Team</th>
@@ -249,7 +249,7 @@ export function ImportTeamsDialog() {
                                                                 toggleTeam(team.provider_team_id)
                                                             }
                                                             onClick={(e) => e.stopPropagation()}
-                                                            className="cursor-pointer rounded border-(--card-stroke) bg-(--card) text-(--accent) focus:ring-(--accent)"
+                                                            className="cursor-pointer rounded border-(--card-stroke) bg-(--card) text-(--accent) focus:ring-(--accent-2)"
                                                         />
                                                     </td>
                                                     <td className="p-3">

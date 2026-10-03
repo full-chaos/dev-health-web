@@ -87,7 +87,7 @@ export function UpgradeGate({
                     {upgradeUnavailable ? null : (
                         <Link
                             href="/org/admin/settings"
-                            className="inline-flex items-center justify-center rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-(--accent-foreground) transition-colors hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2"
+                            className="inline-flex items-center justify-center rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-(--accent-foreground) transition-colors hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent-2) focus:ring-offset-2"
                         >
                             {upgradeToPlan(requiredTierLabel)}
                         </Link>

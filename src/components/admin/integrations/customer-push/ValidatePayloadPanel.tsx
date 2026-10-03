@@ -144,7 +144,7 @@ export function ValidatePayloadPanel({
                 }}
                 rows={12}
                 placeholder='{"schemaVersion": "external-ingest.v1", "records": [...]}'
-                className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) p-3 font-mono text-xs text-(--ink-base) focus:border-(--accent) focus:outline-none"
+                className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) p-3 font-mono text-xs text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
             />
 
             {parseError && <p className="text-sm text-(--negative)">{parseError}</p>}

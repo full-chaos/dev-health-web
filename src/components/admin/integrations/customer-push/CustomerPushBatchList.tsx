@@ -119,7 +119,7 @@ export function CustomerPushBatchList({
                                 <td className="px-4 py-3">
                                     <Link
                                         href={`/org/admin/integrations/${provider}/customer-push/${sourceId}/batches/${batch.ingestion_id}`}
-                                        className="inline-flex rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
+                                        className="inline-flex rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-2)"
                                     >
                                         <TruncatedId
                                             value={batch.ingestion_id}

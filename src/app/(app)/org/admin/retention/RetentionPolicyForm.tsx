@@ -111,7 +111,7 @@ export function RetentionPolicyForm({
                             value={resourceType}
                             onChange={(event) => setResourceType(event.target.value)}
                             disabled={isSaving}
-                            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                         >
                             <option value="">Select...</option>
                             {resourceTypes.map((rt) => (
@@ -138,7 +138,7 @@ export function RetentionPolicyForm({
                         onChange={(event) =>
                             setRetentionDays(parseInt(event.target.value, 10) || 90)
                         }
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                     />
                 </div>
                 <div>
@@ -155,7 +155,7 @@ export function RetentionPolicyForm({
                         value={description ?? ""}
                         disabled={isSaving}
                         onChange={(event) => setDescription(event.target.value)}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                     />
                 </div>
             </div>
