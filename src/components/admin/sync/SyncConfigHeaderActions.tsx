@@ -10,22 +10,19 @@ import { toggleSyncActive } from "@/lib/admin/server";
 import type { SyncConfig } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-import { persistedStatus } from "./syncConfigTableModel";
 import { SyncConfigDeleteControls } from "./SyncConfigDeleteControls";
-import { SyncStatusBadge } from "./SyncStatusBadge";
 import { useSyncTrigger } from "./useSyncTrigger";
 
 /**
- * The header of a sync configuration (design, MAPPING A12): its status, then Edit, Pause or Resume,
- * Delete and Sync Now. Each action is the call the list row already makes (`toggleSyncActive`,
+ * The actions of a sync configuration header (design, MAPPING A12): Edit, Pause or Resume, Delete and
+ * Sync Now (the status badge sits beside the name). Each action is the call the list row already makes (`toggleSyncActive`,
  * `deleteSyncConfig` with its confirm, `triggerSync`); nothing new is computed.
  */
 export function SyncConfigHeaderActions({ config }: { readonly config: SyncConfig }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [isDeleteBusy, setIsDeleteBusy] = useState(false);
-    const { liveStatus, isSyncing, trigger } = useSyncTrigger(config.id, config.last_sync_at);
-    const status = liveStatus ?? persistedStatus(config);
+    const { isSyncing, trigger } = useSyncTrigger(config.id, config.last_sync_at);
     const busy = isPending || isSyncing || isDeleteBusy;
 
     function handleToggleActive() {
@@ -47,7 +44,6 @@ export function SyncConfigHeaderActions({ config }: { readonly config: SyncConfi
 
     return (
         <>
-            <SyncStatusBadge status={status} />
             <Link
                 href={`/org/admin/sync/${encodeURIComponent(config.id)}/edit`}
                 className={buttonClassName("secondary")}

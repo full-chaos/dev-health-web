@@ -4,6 +4,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
 import { BackfillOperations } from "@/components/admin/sync/BackfillOperations";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
+import { SyncHeaderBadge } from "@/components/admin/sync/SyncHeaderBadge";
 import { SyncConfigHeaderActions } from "@/components/admin/sync/SyncConfigHeaderActions";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
 import { TestConnectionButton } from "@/components/admin/sync/TestConnectionButton";
@@ -113,7 +114,11 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     return (
         <div className="space-y-8" data-testid="sync-detail">
             <BackLink href="/org/admin/sync" label="Back to connections" />
-            <AdminHeader title={config.name} description={syncHeaderFacts(config)}>
+            <AdminHeader
+                title={config.name}
+                description={syncHeaderFacts(config)}
+                titleBadge={coverage ? <SyncHeaderBadge coverage={coverage} /> : undefined}
+            >
                 <div
                     className="flex flex-wrap items-center gap-2"
                     data-testid="sync-header-actions"
