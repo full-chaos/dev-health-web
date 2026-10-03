@@ -1,5 +1,9 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProvidersPage } from "@/components/admin/integrations/ProvidersPage";
+import {
+    AddProviderButton,
+    ProvidersWizardProvider,
+} from "@/components/admin/integrations/ProvidersWizardContext";
 import type { ProviderRow } from "@/components/admin/integrations/ProviderTable";
 import {
     getCanonicalIncidentIngestionEntitlement,
@@ -14,6 +18,8 @@ import { getAuthMethodLabel } from "@/components/admin/integrations/authMethod";
 import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
 import type { Provider } from "@/lib/admin/types";
 import { Notice } from "@/components/ui/Notice";
+import { RetryButton } from "@/components/ui/RetryButton";
+import { logger } from "@/lib/logger";
 
 const GitHubIcon = () => (
     <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current text-(--foreground)">
@@ -144,24 +150,33 @@ export default async function IntegrationsPage() {
             };
         });
 
+    // The backend text goes to the server log, never to the page (A11: one plain sentence + Retry).
+    if (credentialsResult.error) {
+        logger.error({ err: credentialsResult.error }, "Failed to load credentials");
+    }
+
     return (
-        <div className="space-y-6">
-            <AdminHeader
-                title="Providers"
-                description="Manage connections to external tools and services."
-            />
-
-            {credentialsResult.error && (
-                <Notice variant="danger" live={false}>
-                    Failed to load credentials: {credentialsResult.error}
-                </Notice>
-            )}
-
-            <ProvidersPage
-                canCreatePagerDuty={canCreatePagerDuty}
-                providers={providers}
-                credentials={credentials}
-            />
-        </div>
+        <ProvidersWizardProvider>
+            <div className="space-y-6">
+                <AdminHeader
+                    title="Connections"
+                    description="Manage connections to external tools and services."
+                >
+                    <AddProviderButton />
+                </AdminHeader>
+                <ProvidersPage
+                    canCreatePagerDuty={canCreatePagerDuty}
+                    providers={providers}
+                    credentials={credentials}
+                    notice={
+                        credentialsResult.error ? (
+                            <Notice variant="danger" live={false} action={<RetryButton />}>
+                                Providers could not be loaded. Retry, or check again in a moment.
+                            </Notice>
+                        ) : null
+                    }
+                />
+            </div>
+        </ProvidersWizardProvider>
     );
 }
