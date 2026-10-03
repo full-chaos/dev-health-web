@@ -94,14 +94,24 @@ describe("ReviewNetworkView restyle", () => {
         expect(only.querySelectorAll(".sr-only")).toHaveLength(0);
     });
 
-    it("card text: the first sentence stays word for word, the table-name sentence is gone", () => {
+    it("card text: the prototype sentence (not a ranking of people); the table-name sentence is gone", () => {
         render(<ReviewNetworkView edges={pairs} loading={false} error={null} />);
         const panel = screen.getByTestId("review-network-panel");
         expect(panel).toHaveTextContent(
-            "Reviewer→author collaboration pairs from code review activity, ranked by review count.",
+            "Reviewer-to-author collaboration—not a performance ranking.",
         );
+        expect(panel).not.toHaveTextContent("ranked by review count");
         expect(panel).not.toHaveTextContent("review_edges_daily");
         expect(panel).not.toHaveTextContent("Data sourced from");
+    });
+
+    it("tiles are one strip with a short note each, no delta and no trend", () => {
+        render(<ReviewNetworkView edges={pairs} loading={false} error={null} />);
+        const strip = screen.getByTestId("review-network-tiles");
+        expect(strip).toHaveAttribute("data-columns", "3");
+        expect(strip).toHaveTextContent("distinct reviewers in the pairs below");
+        expect(strip).toHaveTextContent("distinct authors in the pairs below");
+        expect(strip).toHaveTextContent("sum of the reviews counted in the pairs");
     });
 
     it("tiles carry the three numbers only: no delta, no trend", () => {

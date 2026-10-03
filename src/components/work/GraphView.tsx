@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import {
     WorkGraphExplorer,
@@ -10,7 +11,11 @@ import {
     WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
 import { Notice } from "@/components/ui/Notice";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
+import { buttonClassName } from "@/components/shared/Button";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { ReviewNetworkView } from "./ReviewNetwork";
 import { DataState } from "@/components/ui/DataState";
@@ -836,8 +841,9 @@ export function GraphView({
                         filters,
                         activeRole,
                     )}
-                    className="mt-4 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
+                    className={`mt-4 ${buttonClassName("ghost", "sm")}`}
                 >
+                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
                     {CTA_LABELS.browseArtifacts}
                 </Link>
             </aside>
@@ -972,6 +978,42 @@ type ArtifactsViewProps = {
     error: { message: string } | null;
 };
 
+/** The row's "Evidence" action: the served fields of the artifact in the shared drawer. */
+function ArtifactEvidenceButton({ row }: { row: WorkGraphArtifactRow }) {
+    const evidence = useEvidenceDrawer();
+    const entity = row.displayName?.trim() || undefined;
+    return (
+        <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowRight />}
+            data-testid="artifact-evidence-button"
+            aria-label={`Evidence for ${entity ?? NODE_TYPE_LABELS[row.nodeType]}`}
+            onClick={() =>
+                evidence.open({
+                    title: entity ?? `${NODE_TYPE_LABELS[row.nodeType]} (unresolved)`,
+                    content: (
+                        <EvidenceFactList aria-label="Artifact" testId="artifact-evidence-facts">
+                            <EvidenceFact label="Type" value={NODE_TYPE_LABELS[row.nodeType]} />
+                            {/* An unresolved row has no served name: it says so and never shows the id. */}
+                            <EvidenceFact label="Entity" value={entity} stacked />
+                            <EvidenceFact label="Connections" value={formatNumber(row.degree)} />
+                            {/* The evidence reference exactly as served. */}
+                            <EvidenceFact
+                                label="Evidence reference"
+                                value={row.evidence ? row.evidence : undefined}
+                                stacked
+                            />
+                        </EvidenceFactList>
+                    ),
+                })
+            }
+        >
+            {CTA_LABELS.evidence}
+        </Button>
+    );
+}
+
 function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
     return (
         <Section
@@ -1048,14 +1090,8 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                                     <td className="px-5 py-3 text-right tabular-nums">
                                         {formatNumber(row.degree)}
                                     </td>
-                                    <td className="max-w-[22rem] px-5 py-3 text-(--ink-muted)">
-                                        {row.evidence ? (
-                                            <q className="line-clamp-2 text-xs">{row.evidence}</q>
-                                        ) : (
-                                            <span className="text-xs italic">
-                                                No linked evidence
-                                            </span>
-                                        )}
+                                    <td className="px-5 py-3">
+                                        <ArtifactEvidenceButton row={row} />
                                     </td>
                                 </tr>
                             ))}
