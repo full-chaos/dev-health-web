@@ -44,7 +44,11 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code."
                 actions={
                     // The subject is the page: every served signal, in body order.
-                    <AreaOverviewEvidenceAction title="Diagnose" signals={diagnoseSignals} />
+                    <AreaOverviewEvidenceAction
+                        title="Diagnose"
+                        areaId="diagnose"
+                        signals={diagnoseSignals}
+                    />
                 }
             />
 

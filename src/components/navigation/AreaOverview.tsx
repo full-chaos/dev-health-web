@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { MetricFilter } from "@/lib/filters/types";
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { AreaSignal } from "@/lib/areaSignals/types";
-import { groupByCluster, isAvailable, sortBySeverity } from "@/lib/areaSignals/sort";
+import { areaClusterOrder, areaOverviewLayout } from "@/lib/areaSignals/overviewLayout";
 
 import { AreaSignalCard } from "./AreaSignalCard";
 import { PrimarySignalHero } from "./PrimarySignalHero";
@@ -57,23 +57,17 @@ export function AreaOverview({
     const area = getAreaById(areaId);
     if (!area) return null;
 
-    // Real-data signals sort by severity; empty / unconnected sub-areas sink to
-    // the muted tier at the bottom. Partitioning here (not just sorting) keeps the
-    // hero selection honest — an unavailable metric is never "the top signal".
-    const available = sortBySeverity(signals.filter(isAvailable));
-    const unavailable = signals.filter((signal) => !isAvailable(signal));
-
-    // The single top signal becomes the hero and is dropped from the grid so no
-    // card appears in both hero and grid (CHAOS-2082 acceptance).
-    const [hero, ...restAvailable] = available;
-
-    const gridSignals = restAvailable;
-    // Groups keep the area's own order (the order of its hub items), not the order of severity.
-    const clusterOrder = [
-        ...new Set(area.hubItems.flatMap((item) => (item.cluster ? [item.cluster] : []))),
-    ];
-    const clusters = groupByCluster([...gridSignals, ...unavailable], clusterOrder);
-    const isClustered = clusters.some((group) => group.cluster != null);
+    // The one layout rule (lib/areaSignals/overviewLayout.ts): severity order, the hero dropped
+    // from the grid (CHAOS-2082), unavailable sub-areas last, groups in the area's own order. The
+    // "View evidence" facts of an overview page read the same layout, so they follow this order.
+    const {
+        hero,
+        restAvailable: gridSignals,
+        unavailable,
+        clusters,
+        isClustered,
+        grid,
+    } = areaOverviewLayout(signals, areaClusterOrder(area));
 
     const renderGrid = (list: AreaSignal[]) => (
         <div
@@ -147,7 +141,7 @@ export function AreaOverview({
                         ))}
                     </div>
                 ) : (
-                    renderGrid([...gridSignals, ...unavailable])
+                    renderGrid(grid)
                 )
             ) : null}
 
