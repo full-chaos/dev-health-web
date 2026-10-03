@@ -213,7 +213,7 @@ describe("Cognitive Load keeps its privacy framing in the shell", () => {
     });
 
     it("has the page title as the one h1 and the privacy statement as a second-level heading", () => {
-        expect(pageSource).toContain('<PageHeader title="Cognitive Load" />');
+        expect(pageSource).toContain('<PageHeader title="Cognitive Load"');
         expect(pageSource).toContain("<PrivacyHeader />");
         expect(pageSource).not.toMatch(/<h1[\s>]/);
         expect(source).not.toMatch(/<h1[\s>]/);
