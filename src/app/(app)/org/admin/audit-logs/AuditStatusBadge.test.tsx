@@ -24,4 +24,11 @@ describe("AuditStatusBadge", () => {
         render(<AuditStatusBadge status="SUCCESS" />);
         expect(screen.getByText("SUCCESS")).toHaveClass("text-(--positive)");
     });
+
+    it("draws an icon before the word and has no border", () => {
+        render(<AuditStatusBadge status="success" />);
+        const pill = screen.getByText("Success");
+        expect(pill.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(pill.className).not.toMatch(/(^|\s)border/u);
+    });
 });

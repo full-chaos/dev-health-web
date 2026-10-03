@@ -86,6 +86,7 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                             emptyLabel="System"
                             copyLabel="actor ID"
                             layout="inline"
+                            showFullId
                         />
                     </DetailRow>
                     <DetailRow label="Resource">
@@ -98,6 +99,7 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                                 emptyLabel="—"
                                 copyLabel="resource ID"
                                 layout="inline"
+                                showFullId
                             />
                         </div>
                     </DetailRow>
