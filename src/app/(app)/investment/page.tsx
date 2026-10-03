@@ -95,6 +95,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                                 metric: "throughput",
                                 filters,
                                 role: activeRole,
+                                origin: activeOrigin,
                             }}
                         />
                     }

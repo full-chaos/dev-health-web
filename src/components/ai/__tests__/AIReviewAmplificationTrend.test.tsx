@@ -1,6 +1,33 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { formatReviewTrendDay, reviewAmplificationTrendRows } from "../AIReviewAmplificationTrend";
+import { fallbackTheme } from "@/components/charts/chartTheme";
+import { render, screen, within } from "@/test/utils";
+
+import {
+    AIReviewAmplificationTrend,
+    formatReviewTrendDay,
+    reviewAmplificationTrendRows,
+} from "../AIReviewAmplificationTrend";
+
+vi.mock("@/components/charts/chartTheme", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/components/charts/chartTheme")>()),
+    useChartTheme: () => fallbackTheme,
+}));
+vi.mock("@/components/charts/Chart", () => ({ Chart: () => <div data-testid="chart" /> }));
+
+describe("AIReviewAmplificationTrend card (CHAOS-8094)", () => {
+    it("is a shared Section with an h3 title and the description", () => {
+        render(<AIReviewAmplificationTrend daily={[]} />);
+        const card = screen.getByTestId("ai-review-amplification-trend");
+        expect(
+            within(card).getByRole("heading", { level: 3, name: "Review amplification trend" }),
+        ).toBeInTheDocument();
+        expect(card).toHaveTextContent(
+            "Daily review amplification split by AI attribution bucket.",
+        );
+        expect(card).toHaveTextContent("No daily review amplification points appear");
+    });
+});
 
 describe("AIReviewAmplificationTrend helpers", () => {
     it("formats ISO days as MMM D labels", () => {

@@ -164,7 +164,10 @@ describe("InvestmentView — Confidence tab", () => {
         );
 
         expect(screen.getByText("PR Rework Ratio")).toBeInTheDocument();
-        expect(screen.getByText(/96%/)).toBeInTheDocument();
+        // The tile shows the number and its unit as two elements.
+        const rework = screen.getByTestId("confidence-tile-rework");
+        expect(within(rework).getByTestId("metric-value")).toHaveTextContent(/^96 %$/);
+        expect(within(rework).getByTestId("metric-unit")).toHaveTextContent(/^%$/);
         expect(screen.getByText(/\+4%/)).toBeInTheDocument();
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
         expect(screen.queryByText(/Rework signal not available yet/i)).not.toBeInTheDocument();
@@ -193,7 +196,7 @@ describe("InvestmentView — Confidence tab", () => {
         const tile = screen.getByTestId("confidence-tile-rework");
         expect(within(tile).getByText("PR Rework Ratio")).toBeInTheDocument();
         expect(within(tile).getByText(/Rework signal not available yet/i)).toBeInTheDocument();
-        expect(within(tile).getByText("--")).toBeInTheDocument();
+        expect(within(tile).getByText("Not reported")).toBeInTheDocument();
         expect(tile.textContent).not.toMatch(/\d/);
         expect(within(tile).queryByRole("link")).toBeNull();
         expect(tile.tagName).not.toBe("A");

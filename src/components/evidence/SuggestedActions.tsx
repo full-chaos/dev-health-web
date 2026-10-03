@@ -10,24 +10,32 @@ type SuggestedActionsProps = {
     actions: Action[];
 };
 
+/**
+ * The next steps that the API served for the subject (for example the experiments of a served
+ * constraint or opportunity). One plain section of rows, shown only when actions are served.
+ */
 export function SuggestedActions({ actions }: SuggestedActionsProps) {
     if (!actions || actions.length === 0) return null;
 
     return (
-        <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
-            <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
+        <section
+            data-testid="evidence-next-steps"
+            aria-labelledby="evidence-next-steps-title"
+            className="rounded-(--radius-md) border border-(--card-stroke) p-4"
+        >
+            <h4 id="evidence-next-steps-title" className="text-sm font-semibold text-foreground">
                 Recommended next steps
-            </p>
-            <div className="flex flex-wrap gap-2">
+            </h4>
+            <ul className="mt-2 text-xs">
                 {actions.map((action) => (
-                    <div
+                    <li
                         key={action.id}
-                        className="rounded-full border border-(--accent-2)/20 bg-(--accent-2)/5 px-3 py-1.5 text-xs font-medium text-(--info)"
+                        className="border-b border-(--card-stroke) py-2.5 text-(--ink-muted) last:border-b-0"
                     >
                         {action.label}
-                    </div>
+                    </li>
                 ))}
-            </div>
+            </ul>
         </section>
     );
 }

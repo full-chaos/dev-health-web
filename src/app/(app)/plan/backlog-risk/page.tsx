@@ -6,7 +6,9 @@ import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers"
 import type { ThroughputForecast } from "@/lib/graphql/types";
 import { logger } from "@/lib/logger";
 
-import { ForecastContent, ForecastErrorState, NoForecastState } from "./_components";
+import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
+
+import { ForecastContent, ForecastErrorState, NoForecastState, backlogFacts } from "./_components";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
@@ -53,6 +55,14 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Backlog Risk"
+                actions={
+                    forecast ? (
+                        <PageFactsEvidenceAction
+                            title="Backlog risk"
+                            facts={backlogFacts(forecast)}
+                        />
+                    ) : undefined
+                }
                 subtitle="WIP congestion, stale items, and unestimated debt — signals that reduce delivery predictability before they appear in cycle time."
             />
 

@@ -1,5 +1,7 @@
-import type { EvidenceContentSubject } from "@/components/evidence/EvidenceDrawerProvider";
-import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import {
+    PageFactsEvidenceAction,
+    type PageFact,
+} from "@/components/evidence/PageFactsEvidenceAction";
 import { AREA_STATE_LABEL } from "@/components/home/severityTokens";
 import { groupByCluster, isAvailable, sortBySeverity } from "@/lib/areaSignals/sort";
 import type { AreaSignal } from "@/lib/areaSignals/types";
@@ -22,53 +24,31 @@ export function areaOverviewBodyOrder(signals: readonly AreaSignal[]): AreaSigna
 }
 
 /**
- * The served signals of an area overview as fact rows, in body order. Each row shows the value and
- * the state exactly as the card shows them; a signal with no data shows "Not reported".
+ * The served signals of an area overview as page facts, in body order: the value and the state
+ * exactly as the card shows them. A signal with no data has no value, so its row reads
+ * "Not reported".
  */
-export function AreaOverviewSignalFacts({
-    title,
-    signals,
-    description,
-}: {
-    title: string;
-    signals: readonly AreaSignal[];
-    description?: string;
-}) {
-    return (
-        <div data-testid="area-overview-signal-facts">
-            {description ? <p className="text-xs text-(--ink-muted)">{description}</p> : null}
-            <EvidenceFactList aria-label={`${title} signals`} testId="area-overview-signal-list">
-                {areaOverviewBodyOrder(signals).map((signal) => (
-                    <EvidenceFact
-                        key={signal.id}
-                        label={`${signal.label} · ${signal.metricLabel}`}
-                        value={
-                            signal.state === "unavailable"
-                                ? undefined
-                                : [signal.value, AREA_STATE_LABEL[signal.state]]
-                                      .filter(Boolean)
-                                      .join(" · ")
-                        }
-                    />
-                ))}
-            </EvidenceFactList>
-        </div>
-    );
+export function areaOverviewFacts(signals: readonly AreaSignal[]): PageFact[] {
+    return areaOverviewBodyOrder(signals).map((signal) => ({
+        label: `${signal.label} · ${signal.metricLabel}`,
+        value:
+            signal.state === "unavailable"
+                ? undefined
+                : [signal.value, AREA_STATE_LABEL[signal.state]].filter(Boolean).join(" · "),
+    }));
 }
 
 /**
- * What "View evidence" explains on an area overview page: the PAGE. The drawer lists every served
- * signal of the page in body order. The web maps no area to an explain metric.
+ * "View evidence" on an area overview page: the PAGE is the subject. A thin wrapper over the shared
+ * `PageFactsEvidenceAction` that lists every served signal of the page in body order. The web maps
+ * no area to an explain metric.
  */
-export function areaOverviewEvidenceSubject(
-    title: string,
-    signals: readonly AreaSignal[],
-    description?: string,
-): EvidenceContentSubject {
-    return {
-        title,
-        content: (
-            <AreaOverviewSignalFacts title={title} signals={signals} description={description} />
-        ),
-    };
+export function AreaOverviewEvidenceAction({
+    title,
+    signals,
+}: {
+    title: string;
+    signals: readonly AreaSignal[];
+}) {
+    return <PageFactsEvidenceAction title={title} facts={areaOverviewFacts(signals)} />;
 }

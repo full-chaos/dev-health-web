@@ -163,17 +163,18 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         const strip = screen.getByTestId("explore-metric-tile");
         expect(strip).toHaveAttribute("data-columns", "1");
         expect(strip).toHaveTextContent("Cycle Time");
-        expect(strip).toHaveTextContent("4.2d");
+        // The shared tile: the number and the served unit apart.
+        expect(within(strip).getByTestId("metric-value")).toHaveTextContent(/^4\.2 days$/);
         expect(strip).toHaveTextContent("12%");
         expect(strip).toHaveTextContent("vs previous window");
         expect(screen.queryByText("Snapshot")).toBeNull();
     });
 
-    it("with no data: the tile shows '--' and no change, the cards say data will appear", async () => {
+    it("with no data: the tile shows 'Not reported' and no change, the cards say data will appear", async () => {
         explain.value = null;
         await renderExplore();
         const strip = screen.getByTestId("explore-metric-tile");
-        expect(within(strip).getByText("--")).toBeInTheDocument();
+        expect(within(strip).getByTestId("metric-value")).toHaveTextContent(/^Not reported$/);
         expect(strip).toHaveTextContent("No prior period");
         expect(
             screen.getByText("Association detail will appear once data is ingested."),

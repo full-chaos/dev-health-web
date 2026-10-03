@@ -159,6 +159,9 @@
     --radius-md: 10px;
     --radius-lg: 16px;
     --radius-pill: 999px;
+    /* Shell frame sizes, from the rendered prototype (--sidebarW 226px; top bar 66px) */
+    --shell-sidebar-w: 226px;
+    --shell-topbar-h: 66px;
     --elevation-card: 0 18px 48px -34px rgb(15 23 42 / 0.25);
     --elevation-drawer: 0 28px 80px -36px rgb(15 23 42 / 0.35);
     --card-stroke-active: color-mix(in srgb, var(--accent) 42%, var(--card-stroke));

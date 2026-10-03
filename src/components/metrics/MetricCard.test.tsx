@@ -11,7 +11,7 @@ describe("MetricCard delta slot (metric coherence: never a bare '--')", () => {
     it("renders the default 'No prior period' labeled state when delta is missing", () => {
         render(<MetricCard label="Success Rate" href="#" value={80} unit="%" />);
         expect(screen.getByText(/No prior period/)).toBeInTheDocument();
-        // The delta slot must never show a bare '--' (value is present, so no '--' anywhere).
+        // The meta line must never show a bare '--' (and no '--' anywhere else on the tile).
         expect(screen.queryByText("--")).not.toBeInTheDocument();
     });
 
@@ -49,17 +49,18 @@ describe("MetricCard delta slot (metric coherence: never a bare '--')", () => {
 });
 
 describe("MetricCard link affordance (no placeholder href='#')", () => {
-    it("renders as a non-link with no 'Open evidence' cue when href is omitted", () => {
+    it("renders as a non-link with no 'Open evidence' text when href is omitted", () => {
         render(<MetricCard label="Line Coverage" value={85} unit="%" />);
         // No anchor → the card no longer looks clickable when it goes nowhere.
         expect(screen.queryByRole("link")).not.toBeInTheDocument();
         expect(screen.queryByText("Open evidence")).not.toBeInTheDocument();
     });
 
-    it("renders a real link with the 'Open evidence' cue when href is provided", () => {
+    it("renders a real link named for its evidence when href is provided, with no 'Open evidence' text on the face", () => {
         render(<MetricCard label="Line Coverage" href="/explore" value={85} unit="%" />);
-        expect(screen.getByRole("link")).toHaveAttribute("href", "/explore");
-        expect(screen.getByText("Open evidence")).toBeInTheDocument();
+        const link = screen.getByRole("link", { name: "Line Coverage: Open evidence" });
+        expect(link).toHaveAttribute("href", "/explore");
+        expect(screen.queryByText("Open evidence")).not.toBeInTheDocument();
     });
 });
 
@@ -67,7 +68,7 @@ describe("MetricCard inverse-good delta coloring (lower-is-better metrics)", () 
     it("colors a positive delta as caution without inverting the displayed number", () => {
         render(<MetricCard label="Failure Rate" value={36} unit="%" delta={5} inverseGood />);
         // Truthful number: an increase reads as +5%, never a negated -5%.
-        const deltaEl = screen.getByText(/\+5%/);
+        const deltaEl = screen.getByText("+5%");
         expect(screen.queryByText(/-5%/)).not.toBeInTheDocument();
         // ...but the tone is a regression (caution/negative), not positive/green.
         expect(deltaEl.className).toContain("--accent-negative");
