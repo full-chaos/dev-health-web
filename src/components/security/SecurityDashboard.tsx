@@ -67,6 +67,9 @@ function SeverityPill({ label, tone }: { label: string; tone: "negative" | "caut
     );
 }
 
+// A KPI the API did not serve (no `kpis` in the answer) is passed as undefined, so the shared
+// tile reads "Not reported"; a served 0 stays "0" (missing is not zero, ruling 84).
+
 /** A KPI slot while the overview loads: the shared loading block, never a value. */
 function LoadingTile({ label }: { label: string }) {
     return <DataState variant="loading" title={`${label} loading`} className="bg-card p-4" />;
@@ -106,7 +109,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                     ) : (
                         <MetricCard
                             label={SECURITY_KPI_LABELS.open}
-                            value={kpis?.openTotal ?? 0}
+                            value={kpis?.openTotal}
                             deltaSlot={
                                 kpis?.openDelta30d !== undefined && kpis?.openDelta30d !== null ? (
                                     <CountDelta delta={kpis.openDelta30d} />
@@ -127,7 +130,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                     ) : (
                         <MetricCard
                             label={SECURITY_KPI_LABELS.critical}
-                            value={kpis?.critical ?? 0}
+                            value={kpis?.critical}
                             deltaSlot={
                                 kpis && kpis.critical > 0 ? (
                                     <SeverityPill label="Critical" tone="negative" />
@@ -148,7 +151,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                     ) : (
                         <MetricCard
                             label={SECURITY_KPI_LABELS.high}
-                            value={kpis?.high ?? 0}
+                            value={kpis?.high}
                             deltaSlot={
                                 kpis && kpis.high > 0 ? (
                                     <SeverityPill label="High" tone="caution" />
