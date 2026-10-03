@@ -14,7 +14,7 @@ import type { AggregatedFlameNode } from "@/lib/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import { blendOver, depthOpacity, tileLabel } from "@/lib/chartLabelColor";
-import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
+import { useChartTheme, useChartTokens } from "./chartTheme";
 
 const formatValue = (value: number, unit: string) => {
     if (unit === "hours") {
@@ -130,7 +130,6 @@ export function HierarchicalFlameGraph({
     toolbar,
 }: HierarchicalFlameGraphProps) {
     const chartTheme = useChartTheme();
-    const chartColors = useChartColors();
     const tokens = useChartTokens();
     const [zoomStack, setZoomStack] = useState<StackFrame[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -176,9 +175,9 @@ export function HierarchicalFlameGraph({
     const branchColor = useCallback(
         (branchIndex: number) =>
             colorBy === "branch" && branchIndex >= 0 && branchIndex < MAX_CATEGORICAL_BRANCHES
-                ? (chartColors[branchIndex] ?? tokens.themeOperational)
+                ? (tokens.flameBranch[branchIndex] ?? tokens.themeOperational)
                 : tokens.themeOperational,
-        [colorBy, chartColors, tokens.themeOperational],
+        [colorBy, tokens.flameBranch, tokens.themeOperational],
     );
 
     const handleZoomIn = useCallback((node: AggregatedFlameNode) => {

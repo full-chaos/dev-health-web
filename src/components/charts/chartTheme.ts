@@ -38,11 +38,13 @@ export const fallbackTokens = {
     negative: "#ff8266",
     info: "#4fd3df",
     accentHighlight: "#ffab66",
-    themeFeature: "#e8650a",
-    themeQuality: "#02a2bc",
-    themeRisk: "#c98500",
-    themeMaintenance: "#da2100",
-    themeOperational: "#0b8fb0",
+    themeFeature: "#a64807",
+    themeQuality: "#016e7f",
+    themeRisk: "#885a00",
+    themeMaintenance: "#cc1f00",
+    themeOperational: "#086d86",
+    /** Flame branch fills by branch order (`--flame-branch-1..5`). */
+    flameBranch: ["#086d86", "#885a00", "#cc1f00", "#016e7f", "#a64807"] as readonly string[],
     zones: ["#11333c", "#13322a", "#33290f", "#3b1b15"] as readonly string[],
     /** One-hue sequential ramp, `--seq-0..5`, lightest-in-value first. */
     seq: ["#162d36", "#17566a", "#0b7691", "#0b97b6", "#22b9cd", "#8fe6ea"] as readonly string[],
@@ -82,11 +84,11 @@ const TOKEN_VARS = {
     negative: "--negative",
     info: "--info",
     accentHighlight: "--accent-highlight",
-    themeFeature: "--chart-color-5",
-    themeQuality: "--chart-color-4",
-    themeRisk: "--chart-color-2",
-    themeMaintenance: "--chart-color-3",
-    themeOperational: "--chart-color-1",
+    themeFeature: "--theme-feature",
+    themeQuality: "--theme-quality",
+    themeRisk: "--theme-risk",
+    themeMaintenance: "--theme-maintenance",
+    themeOperational: "--theme-operational",
 } as const;
 
 const readTheme = (): ChartTheme => {
@@ -120,6 +122,9 @@ const readChartTokens = (): ChartTokens => {
     for (const key of Object.keys(TOKEN_VARS) as (keyof typeof TOKEN_VARS)[]) {
         tokens[key] = read(TOKEN_VARS[key], fallbackTokens[key]);
     }
+    tokens.flameBranch = fallbackTokens.flameBranch.map((fallback, index) =>
+        read(`--flame-branch-${index + 1}`, fallback),
+    );
     tokens.zones = fallbackTokens.zones.map((fallback, index) =>
         read(`--quadrant-zone-${index + 1}`, fallback),
     );

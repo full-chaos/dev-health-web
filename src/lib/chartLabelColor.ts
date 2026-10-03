@@ -37,7 +37,7 @@ export const blendOver = (fill: string, opacity: number, backdrop: string): stri
 };
 
 export type TileLabel = {
-    /** The higher-contrast of the fixed ink pair against the blended fill. */
+    /** White when it reaches 4.5:1 on the blended fill, else the higher-contrast of the pair. */
     color: string;
 };
 
@@ -48,6 +48,11 @@ export const tileLabel = (
 ): TileLabel => {
     const shown = blendOver(fill, opacity ?? 1, backdrop);
     if (!HEX.test(shown.trim())) return { color: LABEL_INK_DARK };
+    // The prototype's rule: white wherever it reaches the AA ratio, so a chart reads as ONE ink; the
+    // near-black only where white cannot (bright fills). Never a halo: the pair covers every fill.
+    if (contrastRatio(LABEL_INK_LIGHT, shown) >= MIN_LABEL_CONTRAST) {
+        return { color: LABEL_INK_LIGHT };
+    }
     return { color: pickTextColor(shown, LABEL_INK) };
 };
 

@@ -13,7 +13,11 @@ const chartTheme = {
     accent2: "#666666",
     accent3: "#777777",
 };
-const tokens = { themeOperational: "#0b8fb0", accentHighlight: "#ffab66" };
+const tokens = {
+    themeOperational: "#0b8fb0",
+    accentHighlight: "#ffab66",
+    flameBranch: ["#0b8fb0", "#c98500", "#da2100", "#02a2bc", "#e8650a"],
+};
 const palette = ["#0b8fb0", "#c98500", "#da2100", "#02a2bc", "#e8650a", "#4fd3df"];
 
 vi.mock("./chartTheme", () => ({

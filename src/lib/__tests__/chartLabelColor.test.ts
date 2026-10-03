@@ -47,7 +47,7 @@ describe("tileLabel (theme color x opacity x light/dark)", () => {
         const card = vars["--card"];
         for (const name of THEME_VARS) {
             for (const opacity of [undefined, ...DEPTH_OPACITY, 0.4]) {
-                it(`${mode} ${name} opacity ${opacity ?? "none"}: ink = higher contrast, at least 4.5`, () => {
+                it(`${mode} ${name} opacity ${opacity ?? "none"}: white if it reaches 4.5, else near-black; at least 4.5`, () => {
                     const fill = vars[name];
                     expect(fill).toMatch(/^#[0-9a-f]{6}$/iu);
                     const label = tileLabel(fill, opacity, card);
@@ -56,7 +56,12 @@ describe("tileLabel (theme color x opacity x light/dark)", () => {
                     const dark = contrastRatio(LABEL_INK_DARK, shown);
                     total += 1;
                     expect([LABEL_INK_LIGHT, LABEL_INK_DARK]).toContain(label.color);
-                    expect(contrastRatio(label.color, shown)).toBe(Math.max(white, dark));
+                    // white wherever it reaches 4.5:1, else the better of the pair
+                    expect(label.color).toBe(
+                        white >= MIN_LABEL_CONTRAST || white >= dark
+                            ? LABEL_INK_LIGHT
+                            : LABEL_INK_DARK,
+                    );
                     expect(Math.max(white, dark)).toBeGreaterThanOrEqual(MIN_LABEL_CONTRAST);
                     expect(label).not.toHaveProperty("haloColor");
                     expect(tileLabelStyle(fill, opacity, card).textBorderWidth).toBe(0);
@@ -119,6 +124,74 @@ describe("tileLabel (theme color x opacity x light/dark)", () => {
         const style = tileLabelStyle("#7a7a7a", 1, "#7a7a7a");
         expect(style.textBorderWidth).toBe(0);
         expect(style).not.toHaveProperty("textBorderColor");
+    });
+});
+
+describe("dark theme: one ink (white) on every investment and flame fill (CHAOS-8510)", () => {
+    const vars = block("dark");
+    const card = vars["--card"];
+    const ALIASES = [
+        ...THEME_VARS,
+        "--flame-branch-1",
+        "--flame-branch-2",
+        "--flame-branch-3",
+        "--flame-branch-4",
+        "--flame-branch-5",
+    ];
+    // Tint rules the charts use: depth lightening (adjustHex +8/+14/+20) and opacity 1 / .82 / .66.
+    const tints = (fill: string): string[] => {
+        const v = Number.parseInt(fill.slice(1), 16);
+        const lift = (amount: number) =>
+            `#${[v >> 16, (v >> 8) & 255, v & 255]
+                .map((c) =>
+                    Math.min(255, c + amount)
+                        .toString(16)
+                        .padStart(2, "0"),
+                )
+                .join("")}`;
+        return [fill, lift(8), lift(14), lift(20)];
+    };
+
+    for (const name of ALIASES) {
+        it(`${name}: white ink reaches 4.5:1 on the fill and on every depth / opacity tint, and is the picked ink`, () => {
+            const fill = vars[name];
+            expect(fill).toMatch(/^#[0-9a-f]{6}$/iu);
+            for (const tint of tints(fill)) {
+                for (const opacity of [1, 0.82, 0.66]) {
+                    const shown = blendOver(tint, opacity, card);
+                    expect(contrastRatio(LABEL_INK_LIGHT, shown)).toBeGreaterThanOrEqual(4.5);
+                    expect(tileLabel(tint, opacity, card).color).toBe(LABEL_INK_LIGHT);
+                }
+            }
+        });
+    }
+
+    it("the raw series colors are not the investment or flame fills", () => {
+        expect(vars["--theme-feature"]).not.toBe(vars["--chart-color-5"]);
+        expect(vars["--chart-color-5"]).toBe("#e8650a");
+        expect(vars["--chart-color-3"]).toBe("#da2100");
+    });
+});
+
+describe("investment and flame surfaces read the aliases, not the raw series colors", () => {
+    const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
+
+    it("chartTheme maps the five investment themes to --theme-* and has --flame-branch-* tokens", () => {
+        const src = read("src/components/charts/chartTheme.ts");
+        for (const name of ["feature", "quality", "risk", "maintenance", "operational"]) {
+            expect(src).toContain(`"--theme-${name}"`);
+        }
+        expect(src).toContain("--flame-branch-");
+        expect(src).not.toMatch(
+            /theme(Feature|Quality|Risk|Maintenance|Operational): "--chart-color-/u,
+        );
+    });
+
+    it("the flame branches take tokens.flameBranch, not the raw chart color list", () => {
+        const src = read("src/components/charts/HierarchicalFlameGraph.tsx");
+        expect(src).toContain("tokens.flameBranch[branchIndex]");
+        expect(src).not.toContain("chartColors[branchIndex]");
+        expect(src).not.toContain("useChartColors");
     });
 });
 
