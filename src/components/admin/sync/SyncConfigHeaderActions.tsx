@@ -65,6 +65,7 @@ export function SyncConfigHeaderActions({ config }: { readonly config: SyncConfi
                 successMessage="Config deleted"
                 targetName={config.name}
                 afterDeleteHref="/org/admin/sync"
+                size="md"
             />
             <Button variant="primary" onClick={trigger} disabled={busy}>
                 {isSyncing ? CTA_LABELS.syncing : CTA_LABELS.syncNow}

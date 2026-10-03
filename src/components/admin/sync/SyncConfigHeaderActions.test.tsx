@@ -55,6 +55,11 @@ describe("Sync configuration header actions (CHAOS-8242)", () => {
         expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /^Delete/ })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Sync Now" })).toBeInTheDocument();
+        // The actions share one size: Delete is not the small list-row button.
+        const sizeOf = (name: RegExp | string) =>
+            screen.getByRole("button", { name }).className.includes("min-h-8.75");
+        expect(sizeOf("Pause")).toBe(true);
+        expect(sizeOf(/^Delete/)).toBe(true);
     });
 
     it("says Resume for a paused config and calls the same toggle as the list row", async () => {

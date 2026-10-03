@@ -17,6 +17,8 @@ type SyncConfigDeleteControlsProps = {
     readonly targetName: string;
     /** Where to go after a delete (the detail page of the deleted config); otherwise the page refreshes. */
     readonly afterDeleteHref?: string;
+    /** Button size; the list rows use the small one, the page header the regular one. */
+    readonly size?: "sm" | "md";
 };
 
 export function SyncConfigDeleteControls({
@@ -27,6 +29,7 @@ export function SyncConfigDeleteControls({
     successMessage,
     targetName,
     afterDeleteHref,
+    size = "sm",
 }: SyncConfigDeleteControlsProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -67,7 +70,7 @@ export function SyncConfigDeleteControls({
     return (
         <>
             <Button
-                size="sm"
+                size={size}
                 onClick={() => setConfirmOpen(true)}
                 disabled={disabled || isPending}
                 aria-label={`Delete ${targetName}`}
