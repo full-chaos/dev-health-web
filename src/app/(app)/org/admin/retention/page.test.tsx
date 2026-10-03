@@ -1,5 +1,6 @@
 /** RetentionPolicyPage integration tests (CHAOS-2842). */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buttonClassName } from "@/components/shared/Button";
 import { render, screen, cleanup, userEvent, waitFor, within } from "@/test/utils";
 import type { RetentionPolicy } from "@/lib/admin/types";
 
@@ -328,7 +329,7 @@ describe("RetentionPolicyPage design A6/A7 (CHAOS-8239)", () => {
         expect(screen.queryByTestId("admin-pager")).toBeNull();
     });
 
-    it("draws the status as a pill with an icon, and Delete as the danger outline that wins over the secondary look", async () => {
+    it("draws the status as a pill with an icon, and Delete as the shared danger variant", async () => {
         mockListRetentionPolicies.mockResolvedValue(respondWith([makePolicy()]));
         render(<RetentionPolicyPage />);
 
@@ -336,7 +337,39 @@ describe("RetentionPolicyPage design A6/A7 (CHAOS-8239)", () => {
         expect(pill.firstElementChild?.tagName.toLowerCase()).toBe("svg");
         expect(pill.className).not.toMatch(/(^|\s)border/u);
         const del = screen.getByRole("button", { name: "Delete" });
-        expect(del).toHaveClass("text-(--negative)!");
-        expect(del).toHaveClass("hover:bg-(--negative-wash)!");
+        // The shared danger variant (CHAOS-8254), no `!` override.
+        for (const token of buttonClassName("danger", "sm").split(" ")) {
+            expect(del).toHaveClass(token);
+        }
+        expect(del.className).not.toContain("!");
+    });
+
+    it("formats the deleted count with a thousands separator, dates as 'Sep 29, 2026' and empty values as an em dash", async () => {
+        mockListRetentionPolicies.mockResolvedValue(
+            respondWith([
+                makePolicy({
+                    last_run_at: "2025-09-29T03:00:00Z",
+                    last_run_deleted_count: 1204,
+                    next_run_at: null,
+                }),
+            ]),
+        );
+        render(<RetentionPolicyPage />);
+
+        const row = (await screen.findByText("audit_logs")).closest("tr")!;
+        expect(row).toHaveTextContent("1,204");
+        expect(row).toHaveTextContent("Sep 29, 2025");
+        expect(row.textContent).not.toContain("--");
+        expect(row).toHaveTextContent("—");
+    });
+
+    it("reads an em dash, not '--', for a policy that never deleted anything", async () => {
+        mockListRetentionPolicies.mockResolvedValue(
+            respondWith([makePolicy({ last_run_deleted_count: null })]),
+        );
+        render(<RetentionPolicyPage />);
+
+        const row = (await screen.findByText("audit_logs")).closest("tr")!;
+        expect(row.textContent).not.toContain("--");
     });
 });

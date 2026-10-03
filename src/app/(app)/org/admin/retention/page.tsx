@@ -9,6 +9,7 @@ import { AdminPager } from "@/components/admin/AdminPager";
 import { Button } from "@/components/shared/Button";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
+import { formatDateUTC } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 import {
     listRetentionPolicies,
@@ -32,10 +33,8 @@ import { RetentionRunConfirm } from "./RetentionRunConfirm";
 type FormState =
     { mode: "closed" } | { mode: "create" } | { mode: "edit"; policy: RetentionPolicy };
 
-function formatDate(d: string | null): string {
-    if (!d) return "--";
-    return new Date(d).toLocaleDateString();
-}
+// Shared UTC date ("Sep 29, 2026"); a missing date reads "—".
+const formatDate = formatDateUTC;
 
 export default function RetentionPolicyPage() {
     const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
