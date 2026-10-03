@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectShellLogoAnswered } from "./helpers/shell-logo";
+import { watchShellLogo } from "./helpers/shell-logo";
 
 // CHAOS-8538: the logo canary (tests/shell-logo-canary.setup.ts) is only worth
 // its place if it fails on the state it exists to catch. Each test here plants
@@ -18,9 +18,10 @@ test.describe("app-shell logo canary", () => {
         await page.route(isImageOptimizerRequest, (route) => {
             stuck.push(route.request().url());
         });
+        const logo = watchShellLogo(page);
         await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
 
-        const failure = await expectShellLogoAnswered(page, 1_500).then(
+        const failure = await logo.expectAnswered(1_500).then(
             () => null,
             (error: Error) => error,
         );
@@ -28,11 +29,13 @@ test.describe("app-shell logo canary", () => {
         expect(failure, "the canary passed while the logo request had no response").not.toBeNull();
         const message = failure?.message ?? "";
         expect(message).toContain("had no response after 1.5 s: GET http");
-        expect(message).toContain("/_next/image?");
         expect(message).toContain("CHAOS-8538");
+        // The message must name the request that is open, not another URL of
+        // the image's `srcset`.
+        expect(stuck.length, "no request was planted").toBeGreaterThan(0);
         expect(
-            stuck.some((url) => message.includes(url)),
-            `the message does not name a planted request. Planted: ${stuck.join(", ")}`,
+            stuck.some((url) => message.includes(`: GET ${url}\n`)),
+            `the message does not name a planted request. Planted: ${stuck.join(", ")}\nMessage: ${message}`,
         ).toBe(true);
 
         await page.unrouteAll({ behavior: "ignoreErrors" });
@@ -42,9 +45,10 @@ test.describe("app-shell logo canary", () => {
         await page.route(isImageOptimizerRequest, (route) =>
             route.fulfill({ status: 500, contentType: "text/plain", body: "planted failure" }),
         );
+        const logo = watchShellLogo(page);
         await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
 
-        const failure = await expectShellLogoAnswered(page, 5_000).then(
+        const failure = await logo.expectAnswered(5_000).then(
             () => null,
             (error: Error) => error,
         );

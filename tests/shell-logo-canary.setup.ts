@@ -1,5 +1,5 @@
 import { test as setup } from "@playwright/test";
-import { expectShellLogoAnswered, SHELL_LOGO_TIMEOUT_MS } from "./helpers/shell-logo";
+import { SHELL_LOGO_TIMEOUT_MS, watchShellLogo } from "./helpers/shell-logo";
 
 // CHAOS-8538: runs as a dependency of the `authenticated` project, so it runs
 // in each shard, after `auth-setup` and before the first signed-in test. When
@@ -8,8 +8,9 @@ import { expectShellLogoAnswered, SHELL_LOGO_TIMEOUT_MS } from "./helpers/shell-
 // Without it, each test of that project that waits for `load` ran into its
 // 30 s timeout, three tries each.
 setup("the web server answers the app-shell logo", async ({ page }) => {
+    const logo = watchShellLogo(page);
     // "domcontentloaded" on purpose: the default `load` wait is the wait that
     // a logo request with no response never completes.
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    await expectShellLogoAnswered(page, SHELL_LOGO_TIMEOUT_MS);
+    await logo.expectAnswered(SHELL_LOGO_TIMEOUT_MS);
 });

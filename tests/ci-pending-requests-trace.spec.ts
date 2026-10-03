@@ -45,7 +45,9 @@ test("a trace of the installed Playwright names the request with no response", a
     const startTime = new Date();
 
     try {
-        await context.tracing.start({ snapshots: false, screenshots: false });
+        // `snapshots: true` is what turns the network record on, as in the
+        // runner's own "retain-on-failure" trace.
+        await context.tracing.start({ snapshots: true, screenshots: false });
         const page = await context.newPage();
         const stuckRequest = page.waitForRequest(`${origin}/stuck.png`);
         const answeredResponse = page.waitForResponse(`${origin}/answered.txt`);
