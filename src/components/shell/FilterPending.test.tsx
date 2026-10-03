@@ -74,6 +74,8 @@ describe("window change busy state (CHAOS-8184)", () => {
         expect(main).toHaveAttribute("aria-busy", "true");
         expect(main).toHaveAttribute("data-filter-pending", "true");
         expect(screen.getByTestId("filter-pending-bar")).toBeInTheDocument();
+        // Lower emphasis for what follows the scope bar while busy (the bar and the header stay full).
+        expect(main.className).toContain("aria-busy:[&_[data-testid=scope-bar]~*]:opacity-60");
         expect(screen.getByRole("status")).toHaveTextContent("Loading the new window");
         // The page content is still there: nothing is replaced by a made value.
         expect(screen.getByRole("heading", { name: "Page" })).toBeInTheDocument();
