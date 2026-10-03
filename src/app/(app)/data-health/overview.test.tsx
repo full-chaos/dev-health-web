@@ -64,7 +64,7 @@ describe("Data Confidence overview (CHAOS-8100)", () => {
         render(await DataHealthOverviewPage());
 
         expect(card("Connectors")).toHaveTextContent("3 connectors");
-        expect(card("Connectors")).toHaveTextContent("2 with a failure");
+        expect(card("Connectors")).toHaveTextContent("2 with a failed last sync");
         expect(card("Identity Coverage")).toHaveTextContent("9 unmapped");
         expect(
             within(card("Identity Coverage")).getByText("Review", { exact: true }),
@@ -78,7 +78,7 @@ describe("Data Confidence overview (CHAOS-8100)", () => {
         serve({ connectors: [{ provider: "github" }], unmappedCount: 0, deployments: 100 });
         const { container } = render(await DataHealthOverviewPage());
 
-        expect(container.textContent).not.toContain("with a failure");
+        expect(container.textContent).not.toContain("with a failed last sync");
         expect(screen.queryByText("Review", { exact: true })).toBeNull();
         expect(container.textContent).not.toMatch(/current|Good/u);
     });

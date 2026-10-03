@@ -114,7 +114,9 @@ export default async function DataHealthOverviewPage() {
                             ? `${connectorRows.length} ${connectorRows.length === 1 ? "connector" : "connectors"}`
                             : null
                     }
-                    pill={connectorRows && failing > 0 ? `${failing} with a failure` : null}
+                    pill={
+                        connectorRows && failing > 0 ? `${failing} with a failed last sync` : null
+                    }
                     description="Check synchronization freshness, errors, and status of all configured providers."
                 />
                 <OverviewCard
