@@ -114,7 +114,7 @@ describe("AIAutomationsDashboard", () => {
         fireEvent.click(screen.getByRole("button", { name: "Work Graph: PR 12" }));
         const box = screen.getByTestId("ai-opportunity-workgraph-evidence");
         expect(box).toHaveTextContent("2 nodes · 1 edges");
-        expect(box).toHaveTextContent("references");
+        expect(box).toHaveTextContent("References");
         expect(box).toHaveTextContent("Links the issue.");
     });
 });
