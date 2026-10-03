@@ -4,7 +4,8 @@ import { BillingSettings } from "@/components/admin/settings/BillingSettings";
 import { SecuritySettings } from "@/components/admin/settings/SecuritySettings";
 import { DangerZone } from "@/components/admin/settings/DangerZone";
 import { getCurrentOrg } from "@/lib/admin/server";
-import { Notice } from "@/components/ui/Notice";
+import { DataState } from "@/components/ui/DataState";
+import { RetryButton } from "@/components/ui/RetryButton";
 
 export default async function OrganizationSettingsPage() {
     const result = await getCurrentOrg();
@@ -18,9 +19,13 @@ export default async function OrganizationSettingsPage() {
             />
 
             {result.error && (
-                <Notice variant="danger" live={false} className="mb-6 max-w-4xl">
-                    Failed to load organization: {result.error}
-                </Notice>
+                <DataState
+                    variant="error"
+                    title="Organization settings could not be loaded"
+                    message="The request failed. Retry, or check again in a moment."
+                    action={<RetryButton />}
+                    className="mb-6 max-w-4xl"
+                />
             )}
 
             <div className="max-w-4xl">

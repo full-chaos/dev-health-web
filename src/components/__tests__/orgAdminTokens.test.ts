@@ -26,9 +26,9 @@ describe("org admin class mappings", () => {
         ]) {
             expect(src(f), f).not.toMatch(RAW);
         }
-        expect(src("components/admin/settings/DangerZone.tsx")).toContain(
-            "text-(--accent-foreground)",
-        );
+        // CHAOS-8241: the Delete Organization button is an outline button (design), so the status token
+        // is on its border and text, not a filled background.
+        expect(src("components/admin/settings/DangerZone.tsx")).toContain("border-(--negative)");
     });
     it("the settings danger section has no dark: palette variants", () => {
         expect(src("components/settings/SettingsSection.tsx")).not.toMatch(/dark:/u);
