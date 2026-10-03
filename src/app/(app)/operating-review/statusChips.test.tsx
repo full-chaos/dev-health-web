@@ -123,6 +123,16 @@ describe("Operating Review status chips use theme tokens", () => {
         },
     );
 
+    it("passes each metric's number and unit apart, so the unit is drawn small", async () => {
+        await renderPage();
+
+        const values = screen.getAllByTestId("metric-value");
+        expect(values.length).toBeGreaterThan(0);
+        // `metric()` serves value 5 with unit "": a bare number, no unit span.
+        expect(values[0]).toHaveTextContent(/^5$/);
+        expect(within(values[0]).queryByTestId("metric-unit")).toBeNull();
+    });
+
     it("keeps an unknown status neutral", async () => {
         await renderPage();
 

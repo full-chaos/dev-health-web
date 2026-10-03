@@ -119,7 +119,8 @@ export function ImproveAutomationsDashboard({
                         className={buttonClassName("secondary", "sm")}
                         data-testid="improve-automations-ai-link"
                     >
-                        View AI automations →
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        View AI automations
                     </Link>
                 }
             >

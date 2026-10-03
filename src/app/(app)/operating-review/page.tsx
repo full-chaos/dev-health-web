@@ -358,7 +358,8 @@ function MetricTile({ metric, narrow }: { metric: OperatingReviewMetric; narrow:
     return (
         <MetricCard
             label={metric.label}
-            valueText={fmtMetric(metric.value, metric.unit)}
+            value={metric.value}
+            unit={metric.unit}
             hideTrend
             deltaSlot={
                 <>

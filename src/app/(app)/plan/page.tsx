@@ -235,7 +235,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                     <MetricStrip data-testid="plan-tiles">
                         <MetricCard
                             label="Open items"
-                            valueText={formatNumber(forecast.backlogSize)}
+                            value={forecast.backlogSize}
                             hideTrend
                             deltaSlot={<span>Derived from current filters</span>}
                         />
@@ -248,7 +248,8 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 key={label as string}
                                 testId="percentile-tile"
                                 label={label as string}
-                                valueText={formatWeeks(weeks as number | null)}
+                                value={typeof weeks === "number" ? Math.round(weeks) : undefined}
+                                unit={Math.round(Number(weeks)) === 1 ? "week" : "weeks"}
                                 hideTrend
                                 deltaSlot={
                                     <>
