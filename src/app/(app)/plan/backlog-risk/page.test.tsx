@@ -1,4 +1,5 @@
 import { render, screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "next-auth";
@@ -36,6 +37,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import {
+    backlogFacts,
     BacklogConditionCard,
     BacklogTiles,
     EstimateCoverageCard,
@@ -104,7 +106,7 @@ function makeSession(orgId = "org-1"): Session {
 
 async function renderPage(params: Record<string, string> = {}) {
     const ui = await BacklogRiskPage({ searchParams: Promise.resolve(params) });
-    render(ui as React.ReactElement);
+    renderWithEvidenceDrawer(ui as React.ReactElement);
 }
 
 beforeEach(() => {
@@ -413,6 +415,27 @@ describe("ForecastErrorState", () => {
 // ── ForecastContent ───────────────────────────────────────────────────────────
 
 describe("ForecastContent", () => {
+    it("draws four joined tiles, then the two cards as Sections with the prototype descriptions", () => {
+        render(<ForecastContent forecast={makeForecast()} />);
+
+        expect(screen.getByTestId("backlog-tiles")).toHaveAttribute("data-columns", "4");
+        const condition = within(screen.getByTestId("backlog-condition"));
+        expect(
+            condition.getByRole("heading", { level: 2, name: "Backlog condition" }),
+        ).toBeInTheDocument();
+        expect(
+            condition.getByText(
+                "Normal congestion and aging work can coexist; do not flatten the panels into one status.",
+            ),
+        ).toBeInTheDocument();
+        const coverage = within(screen.getByTestId("unestimated-debt-card"));
+        expect(
+            coverage.getByRole("heading", { level: 2, name: "Estimate coverage" }),
+        ).toBeInTheDocument();
+        expect(coverage.getByText("Missing estimates remain explicit.")).toBeInTheDocument();
+        expect(coverage.getAllByTestId("evidence-fact")).toHaveLength(4);
+    });
+
     it("renders the congestion tile with the ratio from the fixture", () => {
         render(
             <ForecastContent
@@ -547,5 +570,52 @@ describe("BacklogRiskPage GraphQL states", () => {
         expect(screen.getByTestId("backlog-risk-fetch-error")).toBeInTheDocument();
         expect(screen.getByText("Backlog risk could not load")).toBeInTheDocument();
         expect(screen.queryByText("Not enough throughput history")).not.toBeInTheDocument();
+    });
+});
+
+describe("backlogFacts (View evidence)", () => {
+    const rows = (forecast: ThroughputForecast) =>
+        backlogFacts(forecast).map((fact) => [fact.label, fact.value]);
+
+    it("lists the served values as the tiles and cards show them", () => {
+        expect(rows(makeForecast())).toEqual([
+            ["WIP congestion", "1.25× · Elevated"],
+            ["Open items · WIP panel", "100"],
+            ["P90 work age", "4 days"],
+            ["Median work age", "1 day"],
+            ["Coverage", "72%"],
+            ["Estimated", "72"],
+            ["Unestimated", "28"],
+            ["Open backlog · estimates panel", "100"],
+        ]);
+    });
+
+    it("leaves a value out (the drawer reads 'Not reported') when it is not served, never 0", () => {
+        const all = rows(makeForecast({ staleWip: null, estimateCoverage: null }));
+        for (const label of [
+            "P90 work age",
+            "Median work age",
+            "Coverage",
+            "Estimated",
+            "Unestimated",
+            "Open backlog · estimates panel",
+        ]) {
+            expect(all).toContainEqual([label, undefined]);
+        }
+    });
+});
+
+describe("Backlog Risk page header", () => {
+    it("has a View evidence action with the page's values when a forecast loads", async () => {
+        await renderPage();
+
+        expect(await screen.findByRole("button", { name: "View evidence" })).toBeInTheDocument();
+    });
+
+    it("has none when the forecast failed to load", async () => {
+        getThroughputForecastViaGraphQLMock.mockRejectedValue(new Error("boom"));
+        await renderPage();
+
+        expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
     });
 });

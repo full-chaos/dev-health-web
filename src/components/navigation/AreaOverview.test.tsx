@@ -248,6 +248,43 @@ describe("AreaOverview — hero action text comes from the destination (prototyp
         expect(within(hero).queryByTestId("area-signal-hero-link")).toBeNull();
     });
 
+    it("draws the 'Review opportunities' button on the Improve hero, a synthesized signal that links to /opportunities", () => {
+        render(
+            <AreaOverview
+                areaId="improve"
+                signals={[
+                    signal("improve-top-signal", "critical", { href: "/opportunities" }),
+                    signal("opportunities", "neutral", { href: "/opportunities" }),
+                    signal("experiments", "neutral", { href: "/improve/experiments" }),
+                ]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByRole("link", { name: "Review opportunities" })).toHaveAttribute(
+            "href",
+            expect.stringContaining("/opportunities"),
+        );
+        expect(within(hero).queryByTestId("area-signal-hero-link")).toBeNull();
+        // The three destination cards stay: the hero is not one of them.
+        expect(screen.getAllByTestId("area-overview-grid")[0].children.length).toBe(2);
+    });
+
+    it("leaves the Govern hero a whole-hero link with no button (the href match does not add CTAs elsewhere)", () => {
+        render(
+            <AreaOverview
+                areaId="govern"
+                signals={[signal("coverage", "critical", { href: "/testops/coverage" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByTestId("area-signal-hero-link")).toBeInTheDocument();
+        expect(
+            within(hero).queryByRole("link", { name: /Review opportunities|Inspect code/ }),
+        ).toBeNull();
+    });
+
     it("keeps the whole-hero link, no button, for a destination without prototype copy", () => {
         render(
             <AreaOverview
