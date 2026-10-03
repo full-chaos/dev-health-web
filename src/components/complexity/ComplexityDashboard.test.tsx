@@ -700,14 +700,16 @@ describe("Hotspots tab: Hotspot concentration heatmap", () => {
         expect(table.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it("says Not reported when nothing was served", () => {
+    it("keeps the Code page empty words when nothing was served", () => {
         render(
             <ComplexityDashboard
                 {...props}
                 hotspotHeatmap={{ request, state: "unavailable", data: null }}
             />,
         );
-        expect(screen.getByTestId("heatmap-panel")).toHaveTextContent("Not reported.");
+        expect(screen.getByTestId("heatmap-panel")).toHaveTextContent(
+            "Hotspot heatmap unavailable.",
+        );
     });
 
     it("says Could not be read when the read failed", () => {
@@ -717,7 +719,7 @@ describe("Hotspots tab: Hotspot concentration heatmap", () => {
                 hotspotHeatmap={{ request, state: "failed", data: null }}
             />,
         );
-        expect(screen.getByTestId("heatmap-panel")).toHaveTextContent("Could not be read.");
+        expect(screen.getByTestId("heatmap-panel")).toHaveTextContent("Could not be read");
     });
 
     it("still shows it when there are no hotspot files", () => {

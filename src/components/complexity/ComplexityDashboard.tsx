@@ -483,7 +483,8 @@ function OverviewView({
 }
 
 function HotspotHeatmapSection({ heatmap }: { heatmap: HotspotHeatmapProps }) {
-    const emptyState = heatmap.state === "failed" ? "Could not be read." : "Not reported.";
+    const emptyState =
+        heatmap.state === "failed" ? "Could not be read" : "Hotspot heatmap unavailable.";
     return (
         <Section
             title="Hotspot concentration"
