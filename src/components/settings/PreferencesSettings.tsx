@@ -1,69 +1,60 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { SettingsSection } from "./SettingsSection";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { isServer, getLocalStorage, getWindow } from "@/lib/env";
+import { isServer } from "@/lib/env";
+import {
+    applyPreference,
+    followSystemTheme,
+    getPreferenceServerSnapshot,
+    getPreferenceSnapshot,
+    getThemeSnapshot,
+    subscribeTheme,
+    type ThemePreference,
+} from "@/lib/themePreference";
 import { isTelemetryOptedOut, setTelemetryOptOut } from "@/lib/telemetry/config";
 
-type Theme = "light" | "dark";
 type Listener = () => void;
 
-const listeners = new Set<Listener>();
+const telemetryListeners = new Set<Listener>();
 
-const subscribe = (listener: Listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
+const subscribeTelemetry = (listener: Listener) => {
+    telemetryListeners.add(listener);
+    return () => telemetryListeners.delete(listener);
 };
 
-const notify = () => {
-    listeners.forEach((listener) => {
+const notifyTelemetry = () => {
+    telemetryListeners.forEach((listener) => {
         listener();
     });
 };
 
-const getStoredTheme = (): Theme | null => {
-    const stored = getLocalStorage()?.getItem("theme");
-    return stored === "light" || stored === "dark" ? stored : null;
-};
-
-const getSystemTheme = (): Theme => {
-    const win = getWindow();
-    if (!win) return "light";
-    return win.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-};
-
-const applyTheme = (theme: Theme) => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-    localStorage.setItem("theme", theme);
-    notify();
-};
-
-const getThemeSnapshot = (): Theme => {
-    if (isServer) return "light";
-    const stored = getStoredTheme();
-    if (stored) return stored;
-    const fromDataset = document.documentElement.dataset.theme;
-    if (fromDataset === "light" || fromDataset === "dark") return fromDataset;
-    return getSystemTheme();
-};
-
-const getThemeServerSnapshot = (): Theme => "light";
 const getTelemetrySnapshot = (): boolean => (isServer ? false : isTelemetryOptedOut());
 const getTelemetryServerSnapshot = (): boolean => false;
 
 export function PreferencesSettings() {
-    const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
+    // The choice that is stored; with nothing stored the page shows the theme it draws (the default).
+    const stored = useSyncExternalStore(
+        subscribeTheme,
+        getPreferenceSnapshot,
+        getPreferenceServerSnapshot,
+    );
+    const drawn = useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => "dark" as const);
+    const choice: ThemePreference = stored ?? drawn;
+
+    // "System" is followed live while this page is open (the top-bar toggle does it on every page).
+    useEffect(() => followSystemTheme(), [stored]);
+
     const telemetryOptedOut = useSyncExternalStore(
-        subscribe,
+        subscribeTelemetry,
         getTelemetrySnapshot,
         getTelemetryServerSnapshot,
     );
 
     const applyTelemetryOptOut = (optedOut: boolean) => {
         setTelemetryOptOut(optedOut);
-        notify();
+        notifyTelemetry();
     };
 
     return (
@@ -77,9 +68,10 @@ export function PreferencesSettings() {
                     <div className="flex gap-3">
                         <button
                             type="button"
-                            onClick={() => applyTheme("light")}
+                            aria-pressed={choice === "light"}
+                            onClick={() => applyPreference("light")}
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                theme === "light"
+                                choice === "light"
                                     ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
@@ -89,9 +81,10 @@ export function PreferencesSettings() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => applyTheme("dark")}
+                            aria-pressed={choice === "dark"}
+                            onClick={() => applyPreference("dark")}
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                theme === "dark"
+                                choice === "dark"
                                     ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
@@ -99,7 +92,23 @@ export function PreferencesSettings() {
                             <span className="block text-lg mb-1">🌙</span>
                             {CTA_LABELS.darkTheme}
                         </button>
+                        <button
+                            type="button"
+                            aria-pressed={choice === "system"}
+                            onClick={() => applyPreference("system")}
+                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                                choice === "system"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
+                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                            }`}
+                        >
+                            <span className="block text-lg mb-1">🖥️</span>
+                            {CTA_LABELS.systemTheme}
+                        </button>
                     </div>
+                    <p className="mt-2 text-sm text-(--ink-muted)">
+                        The theme switch in the top bar changes the same setting.
+                    </p>
                 </div>
 
                 <div>
