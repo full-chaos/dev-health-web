@@ -1,16 +1,26 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { metadata } from "@/app/(marketing)/layout";
+import { expectStaticLogo } from "@/test/staticLogo";
 
 import { MarketingShell } from "./MarketingShell";
 
-vi.mock("next/image", () => ({
-    // eslint-disable-next-line @next/next/no-img-element
-    default: ({ alt }: { alt: string }) => <img alt={alt} />,
-}));
+// `next/image` is not mocked: the logo test below reads what it renders.
 
 describe("MarketingShell brand", () => {
+    it("draws the SVG logo as a static file, in its 41 x 40 box (CHAOS-8545)", () => {
+        render(
+            <MarketingShell>
+                <p>content</p>
+            </MarketingShell>,
+        );
+
+        const logo = screen.getByRole("img", { name: "Full Chaos Dev Health logo" });
+        expectStaticLogo(logo, { file: "fc-logo.svg", width: 41, height: 40 });
+        expect(logo).toHaveClass("h-10", "w-auto");
+    });
+
     it("shows the OSS mark and no Beta mark in the header", () => {
         render(
             <MarketingShell>
