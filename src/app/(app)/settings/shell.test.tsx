@@ -72,4 +72,9 @@ describe("Preferences in the shared app shell (CHAOS-7966)", () => {
         // Settings has no tab row.
         expect(screen.queryByRole("tablist")).toBeNull();
     });
+
+    it("lets the settings card use the full column width (CHAOS-8257)", () => {
+        renderPage();
+        expect(screen.getByTestId("settings-page").className).not.toMatch(/max-w-/);
+    });
 });
