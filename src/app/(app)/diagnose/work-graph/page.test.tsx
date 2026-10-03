@@ -34,8 +34,23 @@ async function renderPage(tab?: string) {
     reviewEdges.mockResolvedValue({
         totalCount: 3,
         edges: [
-            { reviewer: "a@x", author: "c@x", reviewsCount: 5, day: "2026-05-01" },
-            { reviewer: "b@x", author: "c@x", reviewsCount: 2, day: "2026-05-01" },
+            // Rows as the fetcher gives them: a key per person and a name (null = not served).
+            {
+                reviewer: "unnamed:1",
+                author: "unnamed:2",
+                reviewerName: null,
+                authorName: null,
+                reviewsCount: 5,
+                day: "2026-05-01",
+            },
+            {
+                reviewer: "stored:b-fake",
+                author: "unnamed:2",
+                reviewerName: "b-fake",
+                authorName: null,
+                reviewsCount: 2,
+                day: "2026-05-01",
+            },
         ],
     });
     const ui = await WorkGraphPage({ searchParams: Promise.resolve(tab ? { tab } : {}) });

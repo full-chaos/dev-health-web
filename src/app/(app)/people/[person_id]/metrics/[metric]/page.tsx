@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
+import { buttonClassName } from "@/components/shared/Button";
 import { PersonRangeBar } from "@/components/people/PersonRangeBar";
 import { checkApiHealth } from "@/lib/api/system";
 import { getHeatmap } from "@/lib/api/visuals";
@@ -364,8 +366,12 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                         {href && (
                                             <Link
                                                 href={href}
-                                                className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                                                className={buttonClassName("ghost", "sm", "mt-2")}
                                             >
+                                                <ArrowRight
+                                                    aria-hidden="true"
+                                                    className="h-3.5 w-3.5"
+                                                />
                                                 {CTA_LABELS.openEvidence}
                                             </Link>
                                         )}
