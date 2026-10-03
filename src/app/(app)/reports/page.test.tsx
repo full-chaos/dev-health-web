@@ -3,10 +3,15 @@ import { render, screen, within } from "@testing-library/react";
 
 import type { SavedReport } from "@/lib/reports/types";
 
+import { requireSession } from "@/lib/auth";
+
 import ReportsPage from "./page";
 
 const fetchChecked = vi.fn();
 
+vi.mock("@/lib/auth", () => ({
+    requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-session-1" } }),
+}));
 vi.mock("next/navigation", () => ({
     usePathname: () => "/reports",
     useRouter: () => ({ refresh: vi.fn() }),
@@ -38,6 +43,16 @@ async function renderPage() {
 }
 
 beforeEach(() => fetchChecked.mockReset());
+
+describe("Report Center page — the org", () => {
+    it("asks for the saved reports of the signed-in session's org, never a literal org id", async () => {
+        fetchChecked.mockResolvedValue({ error: false, total: 0, items: [] });
+        await renderPage();
+
+        expect(fetchChecked).toHaveBeenCalledWith("org-session-1", undefined, undefined, false);
+        expect(fetchChecked.mock.calls[0][0]).not.toBe("default-org");
+    });
+});
 
 describe("Report Center page", () => {
     it("lists saved reports as a table with schedule, last run and status", async () => {
@@ -120,5 +135,15 @@ describe("Report links stay inside /reports/", () => {
                 href,
             );
         }
+    });
+});
+
+describe("Report Center page without a session org (CHAOS-8213)", () => {
+    it("makes no request and says so in one sentence", async () => {
+        vi.mocked(requireSession).mockResolvedValueOnce({ user: {} } as never);
+        await renderPage();
+
+        expect(fetchChecked).not.toHaveBeenCalled();
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
     });
 });

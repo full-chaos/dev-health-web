@@ -8,6 +8,7 @@ import type { ReportRun, SavedReport } from "@/lib/reports/types";
 // CHAOS-7885: the run history status badge. Pins the markup and the states, so the
 // page can use the shared `components/reports/StatusBadge`. CHAOS-8095 restyled it: icon + word, no caps.
 
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-session-1" }));
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: "report-1" }),
     useRouter: () => ({ push: vi.fn() }),
