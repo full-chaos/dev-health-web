@@ -91,6 +91,49 @@ describe("ByoLlmSpendSummary", () => {
             expect(strip).not.toHaveTextContent("$0.00");
         });
 
+        it("reads Not set for the Monthly limit when the organization has set none (budget_not_configured)", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={
+                        (async () =>
+                            budget({
+                                used_micro_usd: 0,
+                                limit_micro_usd: null,
+                                remaining_micro_usd: null,
+                                reason: "budget_not_configured",
+                            })) as never
+                    }
+                />,
+            );
+            const strip = await screen.findByTestId("byo-llm-spend-tiles");
+            await waitFor(() => expect(strip).toHaveTextContent("Not set"));
+            expect(strip).toHaveTextContent("$0.00");
+            // Remaining has nothing to remain from: it is not served, so it is not reported.
+            expect(strip.textContent?.match(/Not reported/g)).toHaveLength(1);
+            expect(strip.textContent?.match(/Not set/g)).toHaveLength(1);
+        });
+
+        it("a budget action that throws leaves the tiles out, with no unhandled rejection", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            const unhandled = vi.fn();
+            process.on("unhandledRejection", unhandled);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => {
+                        throw new Error("network down");
+                    }}
+                />,
+            );
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+            expect(unhandled).not.toHaveBeenCalled();
+            process.off("unhandledRejection", unhandled);
+        });
+
         it("has no tiles without a budget action, or when the budget cannot be read", async () => {
             mockLoad.mockResolvedValue(emptySpend);
             const first = render(<ByoLlmSpendSummary loadSpendAction={mockLoad} />);

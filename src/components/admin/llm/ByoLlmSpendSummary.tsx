@@ -66,11 +66,20 @@ function FailureBadges({ failuresByClass }: { failuresByClass: Record<string, nu
 }
 
 /** One spend tile: the served amount in dollars, or "Not reported" when the budget does not serve it. */
-function SpendTile({ label, micro }: { label: string; micro: number | null | undefined }) {
+function SpendTile({
+    label,
+    micro,
+    unsetText,
+}: {
+    label: string;
+    micro: number | null | undefined;
+    /** Shown when the amount is null because the organization has not set one (a served state). */
+    unsetText?: string;
+}) {
     return (
         <MetricCard
             label={label}
-            valueText={micro == null ? undefined : formatMicroUsd(micro)}
+            valueText={micro == null ? unsetText : formatMicroUsd(micro)}
             deltaSlot={<></>}
             hideTrend
         />
@@ -124,9 +133,14 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
     useEffect(() => {
         if (!loadBudgetAction) return;
         let active = true;
-        loadBudgetAction().then((result) => {
-            if (active) setBudget(result.data ?? null);
-        });
+        loadBudgetAction()
+            .then((result) => {
+                if (active) setBudget(result.data ?? null);
+            })
+            // A budget action that throws leaves the tiles out; it is never an unhandled rejection.
+            .catch(() => {
+                if (active) setBudget(null);
+            });
         return () => {
             active = false;
         };
@@ -135,7 +149,12 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
     const tiles = budget ? (
         <MetricStrip columns={3} data-testid="byo-llm-spend-tiles" className="mb-4">
             <SpendTile label="Used or reserved" micro={budget.used_micro_usd} />
-            <SpendTile label="Monthly limit" micro={budget.limit_micro_usd} />
+            <SpendTile
+                label="Monthly limit"
+                micro={budget.limit_micro_usd}
+                // No limit configured is a served state ("budget_not_configured"), not a missing value.
+                unsetText={budget.reason === "budget_not_configured" ? "Not set" : undefined}
+            />
             <SpendTile label="Remaining" micro={budget.remaining_micro_usd} />
         </MetricStrip>
     ) : null;
