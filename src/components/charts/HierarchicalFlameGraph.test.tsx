@@ -95,6 +95,9 @@ describe("HierarchicalFlameGraph", () => {
         expect(row("Middling").textContent).toBe("Middling");
         expect(within(row("Middling")).queryByTestId("flame-share")).toBeNull();
         expect(row("Narrow").textContent).toBe("");
+        // Only labelled blocks carry the 10px inset, so a thin block never spills past its share.
+        expect(row("Wide").style.paddingInline).toBe("10px");
+        expect(row("Narrow").style.paddingInline).toBe("0px");
         // The rule itself: name + 8px + share inside 10px insets of the block less its 2px gap.
         expect(flameLabel("Wide", "78%", 390)).toBe("name-share");
         expect(flameLabel("Middling", "16%", 80)).toBe("name");

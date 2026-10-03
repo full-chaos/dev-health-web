@@ -222,6 +222,7 @@ export function HierarchicalFlameGraph({
             searchQuery.trim() && node.name.toLowerCase().includes(searchQuery.toLowerCase());
         const share = formatShare(node.value, totalValue);
         const blockPx = currentRoot.value > 0 ? (node.value / currentRoot.value) * layoutWidth : 0;
+        const label = flameLabel(node.name, share, blockPx);
 
         return (
             <div
@@ -237,12 +238,14 @@ export function HierarchicalFlameGraph({
                     onMouseLeave={() => setHoveredNode(null)}
                     onMouseMove={handleMouseMove}
                     disabled={!hasChildren}
-                    className={`flex items-center overflow-hidden whitespace-nowrap rounded-xs px-2.5 text-left text-xs transition-all duration-150 ${
+                    className={`flex items-center overflow-hidden whitespace-nowrap rounded-xs text-left text-xs transition-all duration-150 ${
                         hasChildren ? "cursor-pointer hover:brightness-110" : "cursor-default"
                     }`}
                     style={{
                         // The block is 2px narrower than its share: the gap to the next block.
                         width: `calc(100% - ${FLAME_GAP}px)`,
+                        // Only a labelled block has the label inset: a thin block stays inside its share.
+                        paddingInline: label === "none" ? 0 : LABEL_PAD,
                         height: FLAME_ROW_HEIGHT,
                         marginBottom: FLAME_GAP,
                         backgroundColor: fill,
@@ -254,11 +257,7 @@ export function HierarchicalFlameGraph({
                     }}
                     title={node.name}
                 >
-                    <BlockText
-                        kind={flameLabel(node.name, share, blockPx)}
-                        name={node.name}
-                        share={share}
-                    />
+                    <BlockText kind={label} name={node.name} share={share} />
                 </button>
                 {hasChildren && (
                     <div className="flex">
@@ -352,10 +351,11 @@ export function HierarchicalFlameGraph({
                 <div
                     data-testid="flame-root-row"
                     title={currentRoot.name}
-                    className="flex items-center overflow-hidden whitespace-nowrap rounded-xs px-2.5 text-xs text-foreground"
+                    className="flex items-center overflow-hidden whitespace-nowrap rounded-xs text-xs text-foreground"
                     style={{
                         height: FLAME_ROW_HEIGHT,
                         marginBottom: FLAME_GAP,
+                        paddingInline: LABEL_PAD,
                         backgroundColor: "var(--surface2, var(--card-stroke))",
                     }}
                 >
