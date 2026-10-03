@@ -47,6 +47,9 @@ vi.mock("@/components/risk/CompoundingRiskDashboard", () => ({
     CompoundingRiskDashboard: () => <div data-testid="compounding-risk-dashboard" />,
 }));
 vi.mock("@/lib/areaSignals", () => ({ getGovernSignals: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/components/evidence/PageFactsEvidenceAction", () => ({
+    PageFactsEvidenceAction: () => <div data-testid="page-evidence" />,
+}));
 vi.mock("@/lib/testops/fetchers", () => ({
     fetchTestOpsData: vi.fn().mockResolvedValue({}),
 }));
