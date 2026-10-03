@@ -3,7 +3,7 @@
 import { useState, type ChangeEvent, type ReactNode, type SyntheticEvent } from "react";
 
 export const inputClass =
-    "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)";
+    "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)";
 
 export function useBaseFormState<T>(initialState: T) {
     const [formData, setFormData] = useState<T>(initialState);

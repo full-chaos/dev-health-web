@@ -16,7 +16,7 @@ import {
     PageFactsEvidenceAction,
     type PageFact,
 } from "@/components/evidence/PageFactsEvidenceAction";
-import { Inset } from "@/components/capacity/Inset";
+import { Inset } from "@/components/ui/Inset";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";

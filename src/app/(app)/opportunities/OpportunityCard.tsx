@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import { Inset } from "@/components/capacity/Inset";
+import { Inset } from "@/components/ui/Inset";
 import { Button, buttonClassName } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";

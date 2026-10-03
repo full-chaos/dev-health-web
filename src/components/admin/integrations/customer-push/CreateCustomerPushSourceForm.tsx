@@ -123,7 +123,7 @@ export function CreateCustomerPushSourceForm({
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder={`${providerName} — ${instancePlaceholder}`}
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
 
@@ -140,7 +140,7 @@ export function CreateCustomerPushSourceForm({
                     value={instance}
                     onChange={(e) => setInstance(e.target.value)}
                     placeholder={instancePlaceholder}
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
                 />
                 {instanceError && (
                     <p className="mt-1.5 text-sm text-(--negative)">{instanceError}</p>

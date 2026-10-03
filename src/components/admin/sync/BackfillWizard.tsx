@@ -602,7 +602,7 @@ export function BackfillWizard({
                                         aria-describedby={
                                             isRangeInvalid ? RANGE_ERROR_ID : undefined
                                         }
-                                        className="mt-1.5 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="mt-1.5 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                                     />
                                 </label>
                                 <label
@@ -622,7 +622,7 @@ export function BackfillWizard({
                                         aria-describedby={
                                             isRangeInvalid ? RANGE_ERROR_ID : undefined
                                         }
-                                        className="mt-1.5 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="mt-1.5 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                                     />
                                 </label>
                             </div>

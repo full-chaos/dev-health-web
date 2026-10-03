@@ -38,7 +38,7 @@ export function ShellMobileBar({ open, onToggle, controlRef }: ShellMobileBarPro
                     aria-controls="primary-navigation-panel"
                     aria-label={open ? "Hide navigation" : "Show navigation"}
                     onClick={onToggle}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-80) text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-80) text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                 >
                     <Menu aria-hidden="true" className="h-4 w-4" />
                 </button>

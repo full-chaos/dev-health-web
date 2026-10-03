@@ -103,7 +103,7 @@ function AdminAuditLogFilters({
                     value={action}
                     onChange={(e) => setAction(e.target.value)}
                     placeholder="e.g. org.create"
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
             <div>
@@ -119,7 +119,7 @@ function AdminAuditLogFilters({
                     value={resourceType}
                     onChange={(e) => setResourceType(e.target.value)}
                     placeholder="e.g. organization"
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
             <div>
@@ -133,7 +133,7 @@ function AdminAuditLogFilters({
                     id="audit-status-filter"
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                 >
                     <option value="">Any status</option>
                     <option value="success">Success</option>
@@ -152,7 +152,7 @@ function AdminAuditLogFilters({
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
             <div>
@@ -167,7 +167,7 @@ function AdminAuditLogFilters({
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
             <div className="flex items-end gap-2">
