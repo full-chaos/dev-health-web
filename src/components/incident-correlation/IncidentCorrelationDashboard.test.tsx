@@ -867,26 +867,33 @@ describe("IncidentCorrelationDashboard", () => {
         expect(screen.queryByTestId("horizontal-bar-chart")).not.toBeInTheDocument();
     });
 
-    it("renders HorizontalBarChart for drivers when explain data is present", () => {
+    it("draws the drivers as signed meter rows (K-5): an increase right, a decrease left of the zero line", () => {
         const drivers = [
             {
                 id: "d1",
                 label: "Long PR",
                 value: 5,
-                delta_pct: 0.3,
+                delta_pct: 30,
                 evidence_link: "/e/1",
             },
             {
                 id: "d2",
                 label: "No tests",
                 value: 3,
-                delta_pct: 0.2,
+                delta_pct: -20,
                 evidence_link: "/e/2",
             },
         ];
         renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
-        expect(screen.getByTestId("horizontal-bar-chart")).toBeInTheDocument();
-        expect(screen.getByTestId("horizontal-bar-chart")).toHaveTextContent("Long PR,No tests");
+        const rows = within(screen.getByTestId("change-failure-associations")).getAllByTestId(
+            "meter-row",
+        );
+        expect(rows.map((row) => row.textContent)).toEqual(["Long PR+30%", "No tests-20%"]);
+        const fills = rows.map((row) => within(row).getByTestId("meter-fill"));
+        expect(fills.map((fill) => fill.getAttribute("data-direction"))).toEqual(["right", "left"]);
+        // 30 is the largest: half the track; 20 is two thirds of that.
+        expect(fills.map((fill) => fill.style.width)).toEqual(["50%", "33.3%"]);
+        expect(screen.queryByTestId("horizontal-bar-chart")).toBeNull();
     });
 
     it("renders the server-resolved display name for a contributor (no raw UUID)", () => {

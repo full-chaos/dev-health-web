@@ -30,6 +30,12 @@ type MeterRowsProps = {
     max?: number;
     /** Unit after each value, unless the shown value already ends with it. */
     unit?: string;
+    /**
+     * Signed rows (changes: "+84.6%", "-20%"): the track has a zero line in the middle, a positive
+     * value fills to the right, a negative one to the left, one hue. The fill is |value| / max x
+     * half the track. Default: unsigned (the fill starts at the left, 0 or below is an empty track).
+     */
+    signed?: boolean;
     "aria-label"?: string;
     testId?: string;
 };
@@ -49,8 +55,18 @@ function shown(row: MeterRow, unit: string | undefined): string {
  * A value of 0 or below draws an empty track; a value the API did not serve shows "Not reported".
  * Presentational: it draws the served values and computes only the fill width.
  */
-export function MeterRows({ rows, max, unit, "aria-label": ariaLabel, testId }: MeterRowsProps) {
-    const largest = Math.max(0, ...rows.map((row) => row.value ?? 0));
+export function MeterRows({
+    rows,
+    max,
+    unit,
+    signed = false,
+    "aria-label": ariaLabel,
+    testId,
+}: MeterRowsProps) {
+    const largest = Math.max(
+        0,
+        ...rows.map((row) => (signed ? Math.abs(row.value ?? 0) : (row.value ?? 0))),
+    );
     const full = max && max > 0 ? max : largest || 1;
 
     return (
@@ -61,10 +77,11 @@ export function MeterRows({ rows, max, unit, "aria-label": ariaLabel, testId }: 
         >
             {rows.map((row) => {
                 const reported = row.value !== null;
-                const pct =
-                    row.value !== null && row.value > 0
-                        ? Math.min(100, (row.value / full) * 100)
-                        : 0;
+                // Unsigned: the share of the full track. Signed: the share of HALF the track (the
+                // zero line is in the middle), on the side of the sign.
+                const magnitude = row.value === null ? 0 : signed ? Math.abs(row.value) : row.value;
+                const pct = magnitude > 0 ? Math.min(100, (magnitude / full) * 100) : 0;
+                const negative = signed && row.value !== null && row.value < 0;
                 return (
                     <li
                         key={row.key ?? row.label}
@@ -97,12 +114,27 @@ export function MeterRows({ rows, max, unit, "aria-label": ariaLabel, testId }: 
                             data-testid="meter-track"
                             className="relative h-2 rounded-r-sm bg-(--surface2)"
                         >
+                            {signed ? (
+                                <span
+                                    data-testid="meter-zero-line"
+                                    className="absolute inset-y-[-3px] left-1/2 w-px bg-(--ink-muted)"
+                                />
+                            ) : null}
                             {pct > 0 ? (
                                 <span
                                     data-testid="meter-fill"
-                                    className="absolute inset-y-0 left-0 min-w-0.5 rounded-r-sm"
+                                    data-direction={
+                                        signed ? (negative ? "left" : "right") : undefined
+                                    }
+                                    className={`absolute inset-y-0 min-w-0.5 ${
+                                        signed
+                                            ? negative
+                                                ? "right-1/2 rounded-l-sm"
+                                                : "left-1/2 rounded-r-sm"
+                                            : "left-0 rounded-r-sm"
+                                    }`}
                                     style={{
-                                        width: `${Math.round(pct * 10) / 10}%`,
+                                        width: `${Math.round((signed ? pct / 2 : pct) * 10) / 10}%`,
                                         background: row.color ?? DEFAULT_FILL,
                                     }}
                                 />
