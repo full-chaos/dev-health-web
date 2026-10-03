@@ -6,6 +6,8 @@ import { BackfillOperations } from "@/components/admin/sync/BackfillOperations";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
 import { TestConnectionButton } from "@/components/admin/sync/TestConnectionButton";
+import { BackLink } from "@/components/shared/BackLink";
+import { Section } from "@/components/ui/Section";
 import { getServerEnv } from "@/lib/config";
 import {
     getSyncConfig,
@@ -21,6 +23,7 @@ import {
     SAMPLE_BACKFILL_JOBS,
     resolveSampleBackfillScenario,
 } from "@/data/syncCoverageSample";
+import { syncHeaderFacts } from "@/lib/admin/syncHeader";
 import type { BackfillJob, SyncConfig, SyncCoverageSummary, SyncJob } from "@/lib/admin/types";
 
 interface PageProps {
@@ -107,8 +110,9 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     };
 
     return (
-        <div className="space-y-8">
-            <AdminHeader title={config.name} description={`Provider: ${config.provider}`}>
+        <div className="space-y-8" data-testid="sync-detail">
+            <BackLink href="/org/admin/sync" label="Back to connections" />
+            <AdminHeader title={config.name} description={syncHeaderFacts(config)}>
                 <TestConnectionButton
                     provider={config.provider}
                     credentialId={config.credential_id}
@@ -126,12 +130,8 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
                 testMode={isTestMode}
             />
 
-            <details className="group space-y-4 rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
-                <summary className="cursor-pointer text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
-                    Sync details
-                </summary>
-
-                <div className="mt-4 grid gap-6 md:grid-cols-3">
+            <Section title="Sync details" data-testid="sync-details">
+                <div className="grid gap-6 md:grid-cols-3">
                     <div>
                         <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
                             Current Status
@@ -184,12 +184,11 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
                         {config.last_sync_error}
                     </div>
                 )}
-            </details>
+            </Section>
 
-            <div className="space-y-4">
-                <h2 className="text-lg font-medium text-foreground">Job History</h2>
+            <Section title="Job History" data-testid="sync-job-history">
                 <SyncJobHistory jobs={jobs} configId={config.id} testMode={isTestMode} />
-            </div>
+            </Section>
         </div>
     );
 }
