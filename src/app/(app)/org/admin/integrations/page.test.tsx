@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn() }),
@@ -45,5 +45,16 @@ describe("IntegrationsPage (CHAOS-8099)", () => {
 
         expect(screen.queryByText(/could not be loaded/)).toBeNull();
         expect(screen.getByRole("heading", { level: 1, name: "Connections" })).toBeInTheDocument();
+    });
+
+    it("has Add Provider in the page header, with the icon before the label", async () => {
+        listCredentials.mockResolvedValue({ data: [] });
+
+        render(await IntegrationsPage());
+
+        const add = within(screen.getByTestId("page-header")).getByRole("button", {
+            name: "Add Provider",
+        });
+        expect(add.firstElementChild?.querySelector("svg") ?? null).not.toBeNull();
     });
 });

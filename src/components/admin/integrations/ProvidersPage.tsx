@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
 
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { ProviderTable, type ProviderRow } from "./ProviderTable";
 import { AddProviderWizard } from "./wizard/AddProviderWizard";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { useProvidersWizard } from "./ProvidersWizardContext";
 import type { IntegrationCredential } from "@/lib/admin/types";
 
 type ProvidersPageProps = {
@@ -21,8 +18,8 @@ type ProvidersPageProps = {
 };
 
 /**
- * Providers index (CHAOS-2837): a provider management table plus the guided
- * Add Provider workflow entry point, replacing the oversized integration
+ * Providers index body (CHAOS-2837): a provider management table; the guided
+ * Add Provider workflow (opened from the header action, `AddProviderButton`), replacing the oversized integration
  * card grid. The provider isn't locked here — the wizard's first step lets
  * the user choose which provider to connect.
  */
@@ -33,7 +30,7 @@ export function ProvidersPage({
     credentials,
 }: ProvidersPageProps) {
     const router = useRouter();
-    const [isWizardOpen, setIsWizardOpen] = useState(false);
+    const { isOpen: isWizardOpen, setOpen: setIsWizardOpen } = useProvidersWizard();
 
     if (isWizardOpen) {
         return (
@@ -48,18 +45,6 @@ export function ProvidersPage({
 
     return (
         <div className="space-y-6">
-            <AdminHeader
-                title="Connections"
-                description="Manage connections to external tools and services."
-            >
-                <Button
-                    variant="primary"
-                    onClick={() => setIsWizardOpen(true)}
-                    icon={<Plus className="h-4 w-4" />}
-                >
-                    {CTA_LABELS.addProvider}
-                </Button>
-            </AdminHeader>
             {notice}
             <Section title="Providers">
                 <ProviderTable
