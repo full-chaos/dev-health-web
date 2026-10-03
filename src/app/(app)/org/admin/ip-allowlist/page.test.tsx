@@ -1,5 +1,6 @@
 /** IPAllowlistPage integration tests (CHAOS-2842). */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buttonClassName } from "@/components/shared/Button";
 import { render, screen, cleanup, userEvent, waitFor, within } from "@/test/utils";
 import type { IPAllowlist } from "@/lib/admin/types";
 
@@ -292,7 +293,7 @@ describe("IPAllowlistPage design A6/A7 (CHAOS-8239)", () => {
         expect(screen.queryByTestId("admin-pager")).toBeNull();
     });
 
-    it("draws the status as a pill with an icon, and Delete as the danger outline that wins over the secondary look", async () => {
+    it("draws the status as a pill with an icon, and Delete as the shared danger variant", async () => {
         mockListIPAllowlistEntries.mockResolvedValue(respondWith([makeEntry()]));
         render(<IPAllowlistPage />);
 
@@ -300,7 +301,23 @@ describe("IPAllowlistPage design A6/A7 (CHAOS-8239)", () => {
         expect(pill.firstElementChild?.tagName.toLowerCase()).toBe("svg");
         expect(pill.className).not.toMatch(/(^|\s)border/u);
         const del = screen.getByRole("button", { name: "Delete" });
-        expect(del).toHaveClass("text-(--negative)!");
-        expect(del).toHaveClass("hover:bg-(--negative-wash)!");
+        // The shared danger variant (CHAOS-8254), no `!` override.
+        for (const token of buttonClassName("danger", "sm").split(" ")) {
+            expect(del).toHaveClass(token);
+        }
+        expect(del.className).not.toContain("!");
+    });
+
+    it("shows dates as 'Sep 29, 2026' (shared UTC date) and a missing date as an em dash", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(
+            respondWith([makeEntry({ created_at: "2025-09-29T12:00:00Z", description: null })]),
+        );
+        render(<IPAllowlistPage />);
+
+        const row = (await screen.findByText("192.168.1.0/24")).closest("tr")!;
+        expect(row).toHaveTextContent("Sep 29, 2025");
+        expect(row.textContent).not.toContain("--");
+        expect(row).toHaveTextContent("—");
+        expect(row.textContent).not.toMatch(/\d+\/\d+\/\d+/u);
     });
 });

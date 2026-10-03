@@ -8,11 +8,19 @@ vi.mock("next/navigation", () => ({
 }));
 
 const listIdentities = vi.fn();
-vi.mock("@/lib/admin/server", () => ({ listIdentities: () => listIdentities() }));
+const listTeams = vi.fn();
+vi.mock("@/lib/admin/server", () => ({
+    listIdentities: () => listIdentities(),
+    listTeams: () => listTeams(),
+}));
 
 import IdentitiesPage from "./page";
 
-beforeEach(() => listIdentities.mockReset());
+beforeEach(() => {
+    listIdentities.mockReset();
+    listTeams.mockReset();
+    listTeams.mockResolvedValue({ data: [] });
+});
 
 describe("Identities page (CHAOS-8237)", () => {
     it("has the h1 Organization and Add Identity as the shared primary button with the icon first", async () => {
@@ -38,5 +46,34 @@ describe("Identities page (CHAOS-8237)", () => {
         expect(screen.getByRole("link", { name: "Add Identity" })).toBeInTheDocument();
         expect(container.textContent).not.toContain("502");
         expect(screen.queryByRole("table")).toBeNull();
+    });
+
+    const ident = {
+        canonical_id: "fixture-identity-1",
+        display_name: "Fixture Identity 1",
+        email: null,
+        team_ids: ["7c9e6679-7425-40de-944b-e07fc1f90ae7"],
+        provider_identities: {},
+    };
+
+    it("names the team from the team list", async () => {
+        listIdentities.mockResolvedValue({ data: [ident] });
+        listTeams.mockResolvedValue({
+            data: [{ team_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7", name: "Fixture Team 1" }],
+        });
+        render(await IdentitiesPage());
+
+        expect(screen.getByRole("link", { name: "Fixture Team 1" })).toBeInTheDocument();
+    });
+
+    it("degrades to short id + Unresolved, with no extra error, when the team list failed", async () => {
+        listIdentities.mockResolvedValue({ data: [ident] });
+        listTeams.mockResolvedValue({ error: "GET /api/v1/admin/teams 502" });
+        const { container } = render(await IdentitiesPage());
+
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+        expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+        expect(container.textContent).not.toContain("502");
+        expect(screen.getByRole("table")).toBeInTheDocument();
     });
 });
