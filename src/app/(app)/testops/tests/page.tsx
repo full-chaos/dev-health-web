@@ -6,6 +6,7 @@ import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
@@ -13,6 +14,8 @@ import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { mergeSeriesByMeasure } from "@/lib/testops/aggregateSeries";
+import { isMissingKey, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
+import { formatMetricValue } from "@/lib/formatters";
 import {
     TimeseriesBucket,
     TimeseriesResult,
@@ -35,6 +38,11 @@ function trendPoints(timeseries: TimeseriesResult[], measureId: string) {
         ? series.buckets.map((b: TimeseriesBucket) => ({ day: b.date, value: b.value }))
         : [];
 }
+
+/** Up to this many groups, the flake breakdown is shown as value rows, not as a heatmap. */
+const FEW_FLAKY_GROUPS = 3;
+/** Height of the one-row flake heatmap (px). */
+const FLAKY_HEATMAP_HEIGHT = 160;
 
 /** Tiles whose change value must not be read as "no failures": the two failure-type rates. */
 const HISTORY_SENSITIVE = ["TEST_FAILURE_RATE", "TEST_FLAKE_RATE"];
@@ -271,10 +279,22 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                         title="No flaky test patterns"
                         description="No flake data surfaced for this window or scope."
                     />
+                ) : heatmapData.cells.length <= FEW_FLAKY_GROUPS ? (
+                    // One to three groups would draw one huge block per group: the served values
+                    // read better as fact rows (same values, same format as the tiles).
+                    <EvidenceFactList aria-label="Flake rate by group" testId="testops-flaky-rows">
+                        {heatmapData.cells.map((cell) => (
+                            <EvidenceFact
+                                key={cell.x}
+                                label={isMissingKey(cell.x) ? UNATTRIBUTED_LABEL : cell.x}
+                                value={formatMetricValue(cell.value, "%")}
+                            />
+                        ))}
+                    </EvidenceFactList>
                 ) : (
-                    // No fixed-height wrapper: the heatmap sets its own height and has a legend
-                    // under it; a 16rem box let it run out of the card.
-                    <HeatmapChart data={heatmapData} />
+                    // One heatmap row ("Flake Rate"): a fixed, short height keeps cells compact; the
+                    // heatmap draws its legend under it.
+                    <HeatmapChart data={heatmapData} height={FLAKY_HEATMAP_HEIGHT} />
                 )}
             </Section>
         </div>

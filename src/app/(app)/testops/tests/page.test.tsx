@@ -263,20 +263,71 @@ describe("TestOps Tests page — approved layout", () => {
         expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(
             "Flaky Test Patterns",
         );
-        expect(within(card).getByTestId("heatmap-chart")).toBeInTheDocument();
-        expect(heatmapSpy.mock.calls.at(-1)?.[0]).toEqual({
-            data: {
-                axes: { x: ["team-a"], y: ["Flake Rate"] },
-                cells: [{ x: "team-a", y: "Flake Rate", value: 2 }],
-                legend: { unit: "%", scale: "linear" },
-            },
-        });
         const [batch] = mockFetchTestOpsData.mock.calls.at(-1) as [
             { breakdowns: Array<{ measure: string; topN: number }> },
         ];
         expect(batch.breakdowns).toEqual([
             expect.objectContaining({ measure: "TEST_FLAKE_RATE", topN: 10 }),
         ]);
+    });
+
+    const flakeItems = (items: Array<[string, number]>) => ({
+        ...served,
+        tests: {
+            ...served.tests,
+            breakdowns: [
+                {
+                    dimension: "TEAM",
+                    measure: "TEST_FLAKE_RATE",
+                    items: items.map(([key, value]) => ({ key, value })),
+                },
+            ],
+        },
+    });
+
+    it("shows one to three flake groups as value rows, not as one huge heatmap block", async () => {
+        mockFetchTestOpsData.mockResolvedValue(
+            flakeItems([
+                ["team-a", 0.08],
+                ["None", 2],
+            ]),
+        );
+        await renderPage();
+        const card = screen.getByTestId("testops-flaky-patterns");
+        expect(within(card).queryByTestId("heatmap-chart")).toBeNull();
+        const rows = within(within(card).getByTestId("testops-flaky-rows")).getAllByTestId(
+            "evidence-fact",
+        );
+        // A served small value is not shown as 0; a missing key reads "Unattributed".
+        expect(rows.map((row) => row.textContent)).toEqual(["team-a0.1%", "Unattributed2%"]);
+    });
+
+    it("draws the heatmap, at a fixed short height, from four groups on", async () => {
+        mockFetchTestOpsData.mockResolvedValue(
+            flakeItems([
+                ["a", 1],
+                ["b", 2],
+                ["c", 3],
+                ["d", 4],
+            ]),
+        );
+        await renderPage();
+        const card = screen.getByTestId("testops-flaky-patterns");
+        expect(within(card).getByTestId("heatmap-chart")).toBeInTheDocument();
+        expect(within(card).queryByTestId("testops-flaky-rows")).toBeNull();
+        expect(heatmapSpy.mock.calls.at(-1)?.[0]).toEqual({
+            data: {
+                axes: { x: ["a", "b", "c", "d"], y: ["Flake Rate"] },
+                cells: [
+                    { x: "a", y: "Flake Rate", value: 1 },
+                    { x: "b", y: "Flake Rate", value: 2 },
+                    { x: "c", y: "Flake Rate", value: 3 },
+                    { x: "d", y: "Flake Rate", value: 4 },
+                ],
+                legend: { unit: "%", scale: "linear" },
+            },
+            height: 160,
+        });
     });
 
     it("shows empty states, not empty charts, when nothing is served", async () => {
