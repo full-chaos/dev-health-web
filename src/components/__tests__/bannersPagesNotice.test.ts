@@ -35,8 +35,6 @@ const BANNERS: Array<{ file: string; text: string; title?: string }> = [
         file: "app/(app)/org/admin/integrations/page.tsx",
         text: "Providers could not be loaded.",
     },
-    { file: "app/(app)/org/admin/ip-allowlist/page.tsx", text: "{error}" },
-    { file: "app/(app)/org/admin/retention/page.tsx", text: "{error}" },
     // One plain sentence + Retry; the backend text goes to the server log (CHAOS-8236).
     { file: "app/(app)/org/admin/teams/page.tsx", text: "Teams could not be loaded." },
     // One plain sentence + Retry; the backend text goes to the server log (CHAOS-8235).
@@ -70,10 +68,7 @@ const BANNERS: Array<{ file: string; text: string; title?: string }> = [
     },
     { file: "app/(app)/superadmin/users/page.tsx", text: "Error loading users: {error}" },
 ];
-const CLIENT_PAGES = new Set([
-    "app/(app)/org/admin/ip-allowlist/page.tsx",
-    "app/(app)/org/admin/retention/page.tsx",
-]);
+const CLIENT_PAGES = new Set<string>();
 const src = (p: string) =>
     readFileSync(join(process.cwd(), "src", p), "utf8")
         .replace(/<Notice\s+variant/gu, "<Notice variant")
@@ -98,5 +93,29 @@ describe("page error banners use Notice danger", () => {
             if (CLIENT_PAGES.has(file)) continue;
             expect(src(file), file).toMatch(/<Notice variant="danger" live=\{false\}/u);
         }
+    });
+});
+
+// The client admin list pages (CHAOS-8239) show their error through the shared AdminErrorNotice
+// (danger Notice for a load failure and an action failure, warn for a plan gate), not their own box.
+describe("client admin list pages use AdminErrorNotice", () => {
+    for (const file of [
+        "app/(app)/org/admin/ip-allowlist/page.tsx",
+        "app/(app)/org/admin/retention/page.tsx",
+    ]) {
+        it(file, () => {
+            const s = src(file);
+            expect(s).toMatch(
+                /import \{ AdminErrorNotice(?:, isValidationStatus)? \} from "@\/components\/admin\/AdminErrorNotice";/u,
+            );
+            expect(s).toContain("<AdminErrorNotice");
+            expect(s).not.toMatch(/(?:bg|border)-red-\d+/u);
+        });
+    }
+    it("AdminErrorNotice itself is built on the shared Notice", () => {
+        const s = src("components/admin/AdminErrorNotice.tsx");
+        expect(s).toContain('import { Notice } from "@/components/ui/Notice";');
+        expect(s).toContain('<Notice variant="danger"');
+        expect(s).toContain('<Notice variant="warn"');
     });
 });
