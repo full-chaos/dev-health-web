@@ -64,7 +64,7 @@ export type ByoLlmSettingsProps = {
 };
 
 const inputClass =
-    "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none";
+    "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none";
 const labelClass = "mb-1 block text-xs font-medium uppercase tracking-wide text-(--ink-muted)";
 const captionClass = "mt-1 text-xs text-(--ink-muted)";
 

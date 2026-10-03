@@ -106,7 +106,7 @@ export function IpAllowlistForm({
                         value={description ?? ""}
                         disabled={isSaving}
                         onChange={(event) => setDescription(event.target.value)}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                     />
                 </div>
                 <div>
@@ -122,7 +122,7 @@ export function IpAllowlistForm({
                         value={expiresAt}
                         disabled={isSaving}
                         onChange={(event) => setExpiresAt(event.target.value)}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                     />
                 </div>
             </div>
