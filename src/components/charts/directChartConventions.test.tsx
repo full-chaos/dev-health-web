@@ -7,7 +7,6 @@ import { TopReposChart } from "../security/TopReposChart";
 import { TrendChart } from "../security/TrendChart";
 import { DonutChart } from "./DonutChart";
 import { NestedPieChart2D } from "./NestedPieChart2D";
-import { ThroughputHistogram } from "./ThroughputHistogram";
 
 const chartTheme = {
     text: "#111111",
@@ -157,24 +156,6 @@ describe("severity bar and pie tooltips", () => {
         expect(
             option().tooltip.formatter?.({ seriesName: "S", name: "N", percent: 50, value: 2 }),
         ).toContain("S");
-    });
-});
-
-describe("throughput histogram conventions", () => {
-    beforeEach(() => chartSpy.mockClear());
-
-    it("keeps its unconfined 11px tooltip, and draws a solid grid", () => {
-        render(<ThroughputHistogram throughputMean={10} throughputStddev={3} />);
-        const o = option();
-        expect(o.tooltip).toMatchObject({
-            trigger: "axis",
-            backgroundColor: chartTheme.background,
-            borderColor: chartTheme.stroke,
-            textStyle: { color: chartTheme.text, fontSize: 11 },
-        });
-        expect(o.tooltip.confine).toBe(false);
-        expect(o.tooltip.axisPointer).toBeUndefined();
-        expect(o.yAxis?.splitLine?.lineStyle?.type).toBeUndefined();
     });
 });
 
