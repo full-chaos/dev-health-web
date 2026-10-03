@@ -24,11 +24,10 @@ describe("e2e mock servers keep idle sockets open", () => {
         }
     });
 
-    it("the helper lifts keepAliveTimeout far above the idle time of a suite and headersTimeout above it", () => {
+    it("the helper turns the idle socket close off", () => {
         const server = hardenMockServer(http.createServer(), "t");
-        expect(MOCK_KEEP_ALIVE_MS).toBeGreaterThanOrEqual(60_000);
-        expect(server.keepAliveTimeout).toBe(MOCK_KEEP_ALIVE_MS);
-        expect(server.headersTimeout).toBeGreaterThan(server.keepAliveTimeout);
+        expect(MOCK_KEEP_ALIVE_MS).toBe(0);
+        expect(server.keepAliveTimeout).toBe(0);
     });
 
     it("a socket idle past the Node default (5 s + 1 s buffer) is still answered", async () => {
