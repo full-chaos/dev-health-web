@@ -1,27 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
+
+import { Section } from "@/components/ui/Section";
 import { ProviderTable, type ProviderRow } from "./ProviderTable";
 import { AddProviderWizard } from "./wizard/AddProviderWizard";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { useProvidersWizard } from "./ProvidersWizardContext";
 import type { IntegrationCredential } from "@/lib/admin/types";
 
 type ProvidersPageProps = {
+    /** A load-failure notice for the credentials list (the page makes it; no raw backend text). */
+    notice?: ReactNode;
     canCreatePagerDuty: boolean;
     providers: ProviderRow[];
     credentials: IntegrationCredential[];
 };
 
 /**
- * Providers index (CHAOS-2837): a provider management table plus the guided
- * Add Provider workflow entry point, replacing the oversized integration
+ * Providers index body (CHAOS-2837): a provider management table; the guided
+ * Add Provider workflow (opened from the header action, `AddProviderButton`), replacing the oversized integration
  * card grid. The provider isn't locked here — the wizard's first step lets
  * the user choose which provider to connect.
  */
-export function ProvidersPage({ canCreatePagerDuty, providers, credentials }: ProvidersPageProps) {
+export function ProvidersPage({
+    notice,
+    canCreatePagerDuty,
+    providers,
+    credentials,
+}: ProvidersPageProps) {
     const router = useRouter();
-    const [isWizardOpen, setIsWizardOpen] = useState(false);
+    const { isOpen: isWizardOpen, setOpen: setIsWizardOpen } = useProvidersWizard();
 
     if (isWizardOpen) {
         return (
@@ -35,28 +44,22 @@ export function ProvidersPage({ canCreatePagerDuty, providers, credentials }: Pr
     }
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-end">
-                <button
-                    type="button"
-                    onClick={() => setIsWizardOpen(true)}
-                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
-                >
-                    {CTA_LABELS.addProvider}
-                </button>
-            </div>
-            <ProviderTable
-                providers={
-                    canCreatePagerDuty
-                        ? providers
-                        : providers.filter(
-                              (provider) =>
-                                  provider.id !== "pagerduty" ||
-                                  provider.credentialCount > 0 ||
-                                  provider.syncConfigCount > 0,
-                          )
-                }
-            />
+        <div className="space-y-6">
+            {notice}
+            <Section title="Providers">
+                <ProviderTable
+                    providers={
+                        canCreatePagerDuty
+                            ? providers
+                            : providers.filter(
+                                  (provider) =>
+                                      provider.id !== "pagerduty" ||
+                                      provider.credentialCount > 0 ||
+                                      provider.syncConfigCount > 0,
+                              )
+                    }
+                />
+            </Section>
         </div>
     );
 }

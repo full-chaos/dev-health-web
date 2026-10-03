@@ -6,7 +6,7 @@ export default function DataHealthIdentityPage() {
     return (
         <div className="space-y-8">
             <AdminHeader
-                title="Identity Health"
+                title="Data Confidence"
                 description="Review unmapped identities from connectors and manually confirm suggested aliases."
             />
 
