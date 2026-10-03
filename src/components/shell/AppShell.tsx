@@ -96,7 +96,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                                 tabIndex={-1}
                                 aria-busy={pending ? true : undefined}
                                 data-filter-pending={pending ? "true" : undefined}
-                                className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none aria-busy:cursor-progress aria-busy:[&_[data-testid=scope-bar]~*]:opacity-60 sm:px-6 md:px-8 md:pt-8"
+                                className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none aria-busy:cursor-progress aria-busy:[&_[data-testid=scope-bar]~*]:opacity-60 motion-safe:[&_[data-testid=scope-bar]~*]:transition-opacity sm:px-6 md:px-8 md:pt-8"
                             >
                                 {pending ? (
                                     <>
