@@ -105,7 +105,10 @@ const normalizeHomeEvidence = (
 ): EvidencePanelResult => {
     const thread = threadFromApiUrl(apiUrl);
     const coverage = result.freshness.coverage;
-    const coverageSummary = `Repository coverage ${formatPercent(coverage.repos_covered_pct)}, linked PR coverage ${formatPercent(coverage.prs_linked_to_issues_pct)}, cycle-state coverage ${formatPercent(coverage.issues_with_cycle_states_pct)}.`;
+    // No sentence when the coverage is not served: a missing coverage is never written as 0%.
+    const coverageSummary = coverage
+        ? `Repository coverage ${formatPercent(coverage.repos_covered_pct)}, linked PR coverage ${formatPercent(coverage.prs_linked_to_issues_pct)}, cycle-state coverage ${formatPercent(coverage.issues_with_cycle_states_pct)}.`
+        : "";
     const summaryText = result.summary.map((sentence) => sentence.text).join(" ");
     const evidence: EvidenceItem[] = [
         ...result.summary.map((sentence) => ({

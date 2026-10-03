@@ -164,6 +164,52 @@ describe("fetchCoverageMetrics schema hardening (CHAOS-2078)", () => {
         expect(result).toEqual({ ...emptyAnalytics, fetchFailed: true });
     });
 
+    it("accepts a null breakdown item value (the contract's value is nullable) and keeps it null", async () => {
+        // CHAOS-8112: a repository with no branch figure is served as an item with a null value.
+        // One such item must not fail the parse of the whole answer.
+        mockAuth({ user: { org_id: "org-1" } });
+        const withNull = {
+            timeseries: [],
+            breakdowns: [
+                {
+                    dimension: "REPO",
+                    measure: "COVERAGE_BRANCH_PCT",
+                    items: [
+                        { key: "repo-1", value: 54, label: "dev-health-web" },
+                        { key: "repo-2", value: null, label: "dev-health-ops" },
+                    ],
+                },
+            ],
+        };
+        vi.mocked(graphqlFetch).mockResolvedValue({ analytics: withNull });
+
+        const result = await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
+
+        expect(result.fetchFailed).toBeUndefined();
+        expect(result.breakdowns[0].items.map((item) => item.value)).toEqual([54, null]);
+    });
+
+    it("still fails closed when a breakdown item value is not a number or null", async () => {
+        mockAuth({ user: { org_id: "org-1" } });
+        vi.mocked(graphqlFetch).mockResolvedValue({
+            analytics: {
+                timeseries: [],
+                breakdowns: [
+                    {
+                        dimension: "REPO",
+                        measure: "COVERAGE_BRANCH_PCT",
+                        items: [{ key: "r", value: "54" }],
+                    },
+                ],
+            },
+        });
+
+        const result = await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
+
+        expect(result.fetchFailed).toBe(true);
+        expect(result.breakdowns).toEqual([]);
+    });
+
     it("returns parsed analytics for a well-formed response", async () => {
         mockAuth({ user: { org_id: "org-1" } });
         const good = {
