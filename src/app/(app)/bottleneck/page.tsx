@@ -154,12 +154,6 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                 description="Operating modes under review demand and turnaround."
                 data={reviewQuadrant}
                 filters={filters}
-                relatedLinks={[
-                    {
-                        label: "Explore work",
-                        href: withFilterParam("/work", filters, activeRole),
-                    },
-                ]}
                 emptyState="Review load data will appear once PR data is ingested."
             />
 

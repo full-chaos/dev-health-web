@@ -193,22 +193,24 @@ describe("/bottleneck in the approved prototype layout (CHAOS-8070)", () => {
         );
     });
 
-    it("the WIP note keeps its production text (D7)", async () => {
+    it("the WIP note is the short prototype sentence (CHAOS-8569)", async () => {
         await draw();
-        expect(screen.getByTestId("wip-saturation-notice")).toHaveTextContent(
-            "intentionally uncapped so that severity stays visible",
+        const notice = screen.getByTestId("wip-saturation-notice");
+        expect(notice).toHaveTextContent(
+            "WIP saturation is uncapped. 100% is the baseline; a reading above 100% is not clamped into a 0–100 health score.",
         );
+        expect(notice).not.toHaveTextContent("950%");
     });
 
-    it("ONE quadrant: Review Load × Review Latency, with its Explore work link; WIP × Throughput is not read", async () => {
+    it("ONE quadrant: Review Load × Review Latency, with no extra Explore work link; WIP × Throughput is not read", async () => {
         await draw();
         expect(quadrantSpy).toHaveBeenCalledTimes(1);
         const props = quadrantSpy.mock.calls[0][0] as {
             title: string;
-            relatedLinks: Array<{ label: string }>;
+            relatedLinks?: Array<{ label: string }>;
         };
         expect(props.title).toBe("Review Load × Review Latency");
-        expect(props.relatedLinks.map((link) => link.label)).toEqual(["Explore work"]);
+        expect(props.relatedLinks ?? []).toEqual([]);
         expect(quadrantRequests.map((request) => request.type)).toEqual(["review_load_latency"]);
     });
 
