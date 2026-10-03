@@ -188,14 +188,31 @@ async function resolveOrgId(): Promise<string> {
  * Run a source fetch, swallowing failures to `undefined` so one dead source
  * degrades to a single honest-empty card instead of failing the whole area.
  */
-async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefined> {
+async function safe<T>(
+    fn: () => Promise<T>,
+    source: string,
+    failedSources: Set<string>,
+): Promise<T | undefined> {
     try {
         return await fn();
     } catch (error) {
+        // The backend text goes to the log only; the card says "could not be read" (CHAOS-8168).
         logger.error({ err: error, source }, "Diagnose signal source failed");
+        failedSources.add(source);
         return undefined;
     }
 }
+
+/** The read each Diagnose card depends on, so a failed read marks only its own cards. */
+const SIGNAL_SOURCE: Record<string, string> = {
+    flow: "home",
+    code: "home",
+    bottleneck: "home",
+    landscape: "bus-factor",
+    complexity: "complexity",
+    "cognitive-load": "cognitive-load",
+    investment: "investment",
+};
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
@@ -254,8 +271,9 @@ export async function getDiagnoseSignals(
 
     // ── Fetch every source in parallel (no serial N+1) ───────────────────────
     // Metrics + Code + Bottlenecks all come from a single getHomeData call.
+    const failedSources = new Set<string>();
     const [homeData, complexityData, busFactor, cognitiveLoad, investmentMix] = await Promise.all([
-        safe(() => getHomeDataViaGraphQL(filters), "home"),
+        safe(() => getHomeDataViaGraphQL(filters), "home", failedSources),
         safe(
             () =>
                 isTestMode
@@ -278,6 +296,7 @@ export async function getDiagnoseSignals(
                           { orgId },
                       ).then((r) => r.complexityTimeseries),
             "complexity",
+            failedSources,
         ),
         safe(
             () =>
@@ -285,6 +304,7 @@ export async function getDiagnoseSignals(
                     ? Promise.resolve(SAMPLE_DIAGNOSE_BUS_FACTOR)
                     : getBusFactorData(filters),
             "bus-factor",
+            failedSources,
         ),
         safe(
             () =>
@@ -299,12 +319,14 @@ export async function getDiagnoseSignals(
                             teamId: cognitiveLoadTeamId,
                         }),
             "cognitive-load",
+            failedSources,
         ),
         // Same read as the Investment page, with the page filters (scope + window).
         safe(
             () =>
                 isTestMode ? Promise.resolve(SAMPLE_DIAGNOSE_INVESTMENT) : getInvestment(filters),
             "investment",
+            failedSources,
         ),
     ]);
 
@@ -440,5 +462,10 @@ export async function getDiagnoseSignals(
             : UNAVAILABLE,
     );
 
-    return signals;
+    // A card whose backing read FAILED says so; an empty read keeps the empty state (CHAOS-8168).
+    return signals.map((signal) =>
+        signal.state === "unavailable" && failedSources.has(SIGNAL_SOURCE[signal.id] ?? "")
+            ? { ...signal, failed: true }
+            : signal,
+    );
 }
