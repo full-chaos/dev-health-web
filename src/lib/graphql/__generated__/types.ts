@@ -1520,6 +1520,8 @@ export type Query = {
   complexityTimeseries: ComplexityTimeseriesResult;
   /** Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components. */
   compoundingRisk: CompoundingRiskResult;
+  /** Each repository's coverage baseline (CHAOS-8111): its own mean coverage over the 30 days before ``endDate`` (``endDate`` itself is not included). Not a set target. One row per repository with a stored coverage row in those 30 days, in ``repoId`` order. */
+  coverageBaselines: Array<RepoCoverageBaseline>;
   /** Operator data-health and trust surface */
   dataHealth: DataHealth;
   /** Experiments derived from opportunity suggested_experiments (CHAOS-2219). v1: computed at query-time — no persistence table. Each experiment is a typed promotion of a suggestion string with hypothesis / metric / owner / stop_condition. ``derived_from_opportunities`` is False when the opportunities service was unavailable; items will be empty in that case. */
@@ -1689,6 +1691,14 @@ export type QueryComplexityTimeseriesArgs = {
 export type QueryCompoundingRiskArgs = {
   filter?: InputMaybe<CompoundingRiskFilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryCoverageBaselinesArgs = {
+  endDate: Scalars['Date']['input'];
+  orgId: Scalars['String']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 
@@ -1886,6 +1896,21 @@ export type RepoBusFactor = {
   repoName: Scalars['String']['output'];
   topMaintainers: Array<MaintainerShare>;
   value: Scalars['Int']['output'];
+};
+
+export type RepoCoverageBaseline = {
+  __typename?: 'RepoCoverageBaseline';
+  /** Mean branch coverage, in percent; the same rules as ``lineBaselinePct``. */
+  branchBaselinePct?: Maybe<Scalars['Float']['output']>;
+  /** Days of the 30 that hold a branch coverage value. */
+  branchDays: Scalars['Int']['output'];
+  /** Mean line coverage, in percent (0 to 100), over the days of the 30 that hold a value. Null = fewer than 7 such days (``lineDays``): then there is no baseline. Never 0 for "none", never the current value. */
+  lineBaselinePct?: Maybe<Scalars['Float']['output']>;
+  /** Days of the 30 that hold a line coverage value. */
+  lineDays: Scalars['Int']['output'];
+  repoId: Scalars['String']['output'];
+  /** The repository's full name in the org's catalogue. Null = the catalogue holds no name; never the id. */
+  repoName?: Maybe<Scalars['String']['output']>;
 };
 
 export type ReportRunConnection = {

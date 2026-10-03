@@ -2,44 +2,59 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { formatPercent } from "@/lib/formatters";
+import {
+    baselineOf,
+    baselineText,
+    baselineTitle,
+    type BaselineCell,
+    type CoverageBaselinesState,
+} from "@/lib/testops/coverageBaselines";
 import { BRANCH_BREAKDOWN_TOP_N, type RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
 
 type CoverageBaselineCardProps = {
     repositories: RepositoryCoverageRow[];
-    /** The one product target baseline (percent). */
-    baselinePct: number;
+    /** The served baseline of each repository, or the fact that its read failed. */
+    baselines: CoverageBaselinesState;
     fetchFailed?: boolean;
 };
 
 /**
  * The approved "Coverage against baseline" card: per repository, its name, then one row per
- * coverage kind with the served value. Line and branch coverage are the served breakdown values
- * of the repository; a value that is not served reads "Not reported" (never a made-up value, never
- * 0). The baseline is the one product target, shown once in the card head.
+ * coverage kind with the served value and the served baseline of that kind. Line and branch
+ * coverage are the served breakdown values of the repository; a value that is not served reads
+ * "Not reported" (never a made-up value, never 0). The baseline is served per repository (its own
+ * 30-day average), joined by the repository id: a null value or a missing row reads "Not
+ * reported", a failed read "Could not be read". The fill is the served coverage; nothing is
+ * computed from the baseline.
  */
 
-/** One meter row of a served percent; null = not served ("Not reported", empty track). */
-const percentRow = (label: string, value: number | null) =>
-    value === null ? { label, value } : { label, value, display: formatPercent(value) };
+/**
+ * One meter row of a served percent with its baseline. A coverage value that is not served is
+ * null ("Not reported", empty track); a served baseline then stays beside the row name.
+ */
+const percentRow = (label: string, value: number | null, baseline: BaselineCell) => {
+    if (value === null) {
+        return baseline.kind === "value"
+            ? { key: label, label: `${label} (baseline ${baselineText(baseline)})`, value }
+            : { label, value };
+    }
+    return {
+        label,
+        value,
+        display: `${formatPercent(value)} · baseline ${baselineText(baseline)}`,
+        title: baselineTitle(baseline),
+    };
+};
 
 export function CoverageBaselineCard({
     repositories,
-    baselinePct,
+    baselines,
     fetchFailed = false,
 }: CoverageBaselineCardProps) {
-    const baselineLabel = `${formatPercent(baselinePct)} baseline`;
     return (
         <Section
             title="Coverage against baseline"
-            description="Coverage of each repository; the baseline is the one line-coverage target."
-            action={
-                <span
-                    data-testid="testops-coverage-baseline-pill"
-                    className="inline-flex items-center rounded-full bg-(--info)/12 px-2.25 py-0.5 text-label-caps text-(--info)"
-                >
-                    {baselineLabel}
-                </span>
-            }
+            description="Coverage of each repository beside its own baseline."
             data-testid="testops-coverage-baseline"
         >
             {fetchFailed ? (
@@ -69,12 +84,22 @@ export function CoverageBaselineCard({
                                 aria-label={`${repo.name} coverage`}
                                 testId="testops-coverage-meters"
                                 rows={[
-                                    percentRow("Line coverage", repo.lineCoverage),
+                                    percentRow(
+                                        "Line coverage",
+                                        repo.lineCoverage,
+                                        baselineOf(baselines, repo.id, "line"),
+                                    ),
                                     // A repository outside a cut branch answer has no branch row:
                                     // its figure can exist, so "Not reported" would be false.
                                     ...(repo.branchOutsideList
                                         ? []
-                                        : [percentRow("Branch coverage", repo.branchCoverage)]),
+                                        : [
+                                              percentRow(
+                                                  "Branch coverage",
+                                                  repo.branchCoverage,
+                                                  baselineOf(baselines, repo.id, "branch"),
+                                              ),
+                                          ]),
                                 ]}
                             />
                             {repo.branchOutsideList ? (
@@ -88,10 +113,13 @@ export function CoverageBaselineCard({
                             ) : null}
                         </div>
                     ))}
-                    <div className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)">
-                        The baseline is one product target ({formatPercent(baselinePct)} line
-                        coverage) for every repository. A per-repository baseline is not reported
-                        yet.
+                    <div
+                        data-testid="testops-coverage-baseline-note"
+                        className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)"
+                    >
+                        The baseline of a repository is its own average coverage over the 30 days
+                        that end on the last day of the window. A repository with fewer than 7 days
+                        of coverage in those 30 days has no baseline.
                     </div>
                 </div>
             )}
