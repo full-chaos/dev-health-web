@@ -141,6 +141,8 @@ describe("HomeMonitoring segments", () => {
         "clicking %s switches the shown group in place and does not navigate",
         async (label, view) => {
             const user = userEvent.setup();
+            // Next keeps its own marker in the history state; seed it, as in the browser.
+            window.history.replaceState({ __NA: true }, "");
             const replace = vi.spyOn(window.history, "replaceState");
             const push = vi.spyOn(window.history, "pushState");
             draw(makeHome(), "em", "em", view === "flow" ? "dora" : null);
@@ -155,7 +157,9 @@ describe("HomeMonitoring segments", () => {
             expect(new URL(window.location.href).searchParams.get("monitoring")).toBe(view);
             // Next's own history state would make Next skip its router sync (the scope bar then loses it).
             expect(replace).toHaveBeenCalledWith(null, "", expect.anything());
+            expect(window.history.state).toBeNull();
             replace.mockRestore();
+            window.history.replaceState(null, "");
             push.mockRestore();
         },
     );
