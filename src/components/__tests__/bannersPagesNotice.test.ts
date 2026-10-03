@@ -30,15 +30,12 @@ const BANNERS: Array<{ file: string; text: string; title?: string }> = [
         text: "Failed to load customer-push sources: {customerPushSourcesResult.error}",
     },
     {
+        // A11: one plain sentence + Retry; the backend text goes to the server log.
         file: "app/(app)/org/admin/integrations/page.tsx",
-        text: "Failed to load credentials: {credentialsResult.error}",
+        text: "Providers could not be loaded.",
     },
     { file: "app/(app)/org/admin/ip-allowlist/page.tsx", text: "{error}" },
     { file: "app/(app)/org/admin/retention/page.tsx", text: "{error}" },
-    {
-        file: "app/(app)/org/admin/settings/page.tsx",
-        text: "Failed to load organization: {result.error}",
-    },
     { file: "app/(app)/org/admin/teams/page.tsx", text: "Failed to load teams: {result.error}" },
     { file: "app/(app)/org/admin/users/page.tsx", text: "Failed to load users: {result.error}" },
     { file: "app/(app)/superadmin/audit/page.tsx", text: "Error loading audit logs: {error}" },
