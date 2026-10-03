@@ -2,7 +2,12 @@
 
 import { Button } from "@/components/shared/Button";
 import { Notice } from "@/components/ui/Notice";
-import { isValidationStatus } from "@/lib/actionFailure";
+import {
+    ACTION_FAILED_MESSAGE,
+    TOO_MANY_REQUESTS_MESSAGE,
+    isPlanGateMessage,
+    isValidationStatus,
+} from "@/lib/actionFailure";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 /**
@@ -27,8 +32,6 @@ export type AdminErrorNoticeProps = {
     onRetryAction: () => void;
 };
 
-const PLAN_GATE = /^This feature requires the /u;
-
 export { isValidationStatus };
 
 export function AdminErrorNotice({
@@ -39,7 +42,7 @@ export function AdminErrorNotice({
     subject,
     onRetryAction,
 }: AdminErrorNoticeProps) {
-    if (PLAN_GATE.test(error)) {
+    if (isPlanGateMessage(error)) {
         return (
             <Notice variant="warn" live={false}>
                 {error}
@@ -57,6 +60,13 @@ export function AdminErrorNotice({
             </Notice>
         );
     }
+    if (status === 429) {
+        return (
+            <Notice variant="danger" live={false}>
+                {TOO_MANY_REQUESTS_MESSAGE}
+            </Notice>
+        );
+    }
     if (served || isValidationStatus(status)) {
         return (
             <Notice variant="danger" live={false}>
@@ -66,7 +76,7 @@ export function AdminErrorNotice({
     }
     return (
         <Notice variant="danger" live={false}>
-            That change could not be completed. Try again in a moment.
+            {ACTION_FAILED_MESSAGE}
         </Notice>
     );
 }

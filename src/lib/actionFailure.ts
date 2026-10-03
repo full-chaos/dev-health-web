@@ -10,9 +10,17 @@ const PLAN_GATE = /^This feature requires the /u;
 /** A 4xx other than 401/403: a validation-style answer whose message the user must act on. */
 export function isValidationStatus(status: number | undefined): boolean {
     return (
-        status !== undefined && status >= 400 && status < 500 && status !== 401 && status !== 403
+        status !== undefined &&
+        status >= 400 &&
+        status < 500 &&
+        status !== 401 &&
+        status !== 403 &&
+        status !== 429
     );
 }
+
+/** 429 is a rate limit, not a validation answer: an authored sentence, never served text. */
+export const TOO_MANY_REQUESTS_MESSAGE = "Too many requests. Try again in some minutes.";
 
 /** True for a plan-gate sentence ("This feature requires the …"): product copy, safe to show. */
 export function isPlanGateMessage(message: string | undefined | null): message is string {
@@ -52,6 +60,13 @@ export function failureResult(
 ): FailureResult {
     const served = typeof detail.served === "string" ? detail.served : undefined;
     const status = detail.status;
+    if (status === 429) {
+        logger.error(
+            { err: detail.error ?? served, status, operation },
+            "Server call rate limited",
+        );
+        return { error: TOO_MANY_REQUESTS_MESSAGE, status };
+    }
     if (served && (detail.userFacing || PLAN_GATE.test(served))) {
         return { error: served, ...(status !== undefined ? { status } : {}) };
     }
@@ -86,8 +101,9 @@ export function failureFromError(operation: string, err: unknown): FailureResult
     const isApi = err instanceof Error && e.name === "AdminApiError";
     const isUserFacing = err instanceof UserFacingActionError;
     const status = (isApi || isUserFacing) && typeof e.status === "number" ? e.status : undefined;
+    // Only a served detail: with none, the HTTP status line ("422 Unprocessable Entity") is not shown.
     const served = isApi
-        ? (e.detail as string | undefined) || (err as Error).message
+        ? (e.detail as string | undefined)
         : isUserFacing
           ? err.message
           : undefined;

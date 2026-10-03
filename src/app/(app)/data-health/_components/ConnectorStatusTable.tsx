@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
 import type { SyncStatus } from "@/lib/sync-types";
@@ -68,9 +69,15 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
             // The stored worker error text is never shown (ruling 107): a plain sentence and the time.
             render: (row) => (
                 <span className="text-sm text-(--ink-muted) block">
-                    {row.lastFailure
-                        ? `Last sync failed ${new Date(row.lastFailure.occurredAt).toLocaleString()}`
-                        : "-"}
+                    {row.lastFailure ? (
+                        <ClientTimestamp
+                            value={row.lastFailure.occurredAt}
+                            prefix="Last sync failed "
+                            fallback=""
+                        />
+                    ) : (
+                        "-"
+                    )}
                 </span>
             ),
         },

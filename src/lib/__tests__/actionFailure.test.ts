@@ -5,6 +5,7 @@ vi.mock("@/lib/logger", () => ({ logger: { error: logged.error } }));
 
 import {
     ACTION_FAILED_MESSAGE,
+    TOO_MANY_REQUESTS_MESSAGE,
     UserFacingActionError,
     actionFailureMessage,
     failureFromError,
@@ -18,8 +19,8 @@ const HOSTILE =
 
 describe("isValidationStatus", () => {
     it("is true for a 4xx except 401/403 and nothing else", () => {
-        for (const s of [400, 404, 409, 422, 429]) expect(isValidationStatus(s)).toBe(true);
-        for (const s of [undefined, 200, 301, 401, 403, 500, 502]) {
+        for (const s of [400, 404, 409, 422]) expect(isValidationStatus(s)).toBe(true);
+        for (const s of [undefined, 200, 301, 401, 403, 429, 500, 502]) {
             expect(isValidationStatus(s)).toBe(false);
         }
     });
@@ -58,6 +59,22 @@ describe("failureResult", () => {
     });
 });
 
+describe("rate limit and missing detail (CHAOS-8436)", () => {
+    it("a 429 shows the authored sentence, never the served text", () => {
+        const out = failureResult("action", "save", { status: 429, served: HOSTILE });
+        expect(out).toEqual({ error: TOO_MANY_REQUESTS_MESSAGE, status: 429 });
+    });
+
+    it("with no served detail the user never sees the HTTP status line", () => {
+        const out = failureFromError(
+            "op",
+            new AdminApiError(422, "Unprocessable Entity", undefined, "PATCH"),
+        );
+        expect(out.error).toBe(ACTION_FAILED_MESSAGE);
+        expect(out.error).not.toContain("422");
+    });
+});
+
 describe("failureFromError", () => {
     it("treats a GET AdminApiError as a read and a PATCH one as an action", () => {
         expect(
@@ -68,6 +85,7 @@ describe("failureFromError", () => {
         ).toEqual({ error: "Name taken", status: 422 });
         expect(failureFromError("op", new AdminApiError(500, "Boom", HOSTILE, "PATCH")).error).toBe(
             ACTION_FAILED_MESSAGE,
+            TOO_MANY_REQUESTS_MESSAGE,
         );
     });
 

@@ -39,15 +39,15 @@ const ALLOW: Record<string, Allowed> = {
         reads: { record: 1 },
     },
     "components/admin/integrations/EditCredentialModal.tsx": {
-        reason: "the result of a connection test (success flag + message): data of a completed test",
+        reason: "the result of a connection test the user ran, shown on purpose for a PASSED and a FAILED test; ops redacts credentials in it (connection.go:216-227)",
         reads: { testResult: 1 },
     },
     "components/admin/integrations/wizard/VerifyConnectionStep.tsx": {
-        reason: "the result of a connection test (success flag + message): data of a completed test",
+        reason: "the result of a connection test the user ran, shown on purpose for a PASSED and a FAILED test; ops redacts credentials in it (connection.go:216-227)",
         reads: { testResult: 1 },
     },
     "components/admin/sync/CreateCredentialModal.tsx": {
-        reason: "the result of a connection test (success flag + message): data of a completed test",
+        reason: "the result of a connection test the user ran, shown on purpose for a PASSED and a FAILED test; ops redacts credentials in it (connection.go:216-227)",
         reads: { testResult: 1 },
     },
     "components/admin/sync/config-form/PagerDutyServiceMappings.tsx": {

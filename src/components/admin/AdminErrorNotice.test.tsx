@@ -53,11 +53,25 @@ describe("AdminErrorNotice", () => {
                 />,
             );
             expect(container.textContent).not.toContain("secret backend text");
-            expect(
-                screen.getByText("That change could not be completed. Try again in a moment."),
-            ).toBeInTheDocument();
+            expect(screen.getByText("The change was not saved. Try again.")).toBeInTheDocument();
             unmount();
         }
+    });
+
+    it("a 429 shows the authored rate-limit sentence, never the served text", () => {
+        const { container } = render(
+            <AdminErrorNotice
+                error="provider says slow down: 10.1.2.3"
+                kind="action"
+                status={429}
+                subject="Rules"
+                onRetryAction={vi.fn()}
+            />,
+        );
+        expect(container.textContent).not.toContain("10.1.2.3");
+        expect(
+            screen.getByText("Too many requests. Try again in some minutes."),
+        ).toBeInTheDocument();
     });
 
     it("an embedded action-level answer (served) is shown as served", () => {
