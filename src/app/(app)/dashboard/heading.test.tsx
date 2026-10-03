@@ -241,12 +241,20 @@ describe("Home page header", () => {
         },
     );
 
-    it("reads 'Not reported' for each freshness fact when the Home read failed", async () => {
+    it("reads 'Could not be read' on every row when the Home read failed: a failed read is not 'Not reported'", async () => {
         vi.mocked(getHomeDataViaGraphQL).mockRejectedValue(new Error("[GraphQL] boom"));
         await renderCockpit();
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
 
-        expect(drawerRows().map(([, value]) => value)).toEqual(Array(5).fill("Not reported"));
+        expect(drawerRows()).toEqual([
+            ["Coverage", "Could not be read"],
+            ["Last ingested", "Could not be read"],
+            ["Repositories covered", "Could not be read"],
+            ["PRs linked to issues", "Could not be read"],
+            ["Issues with cycle states", "Could not be read"],
+        ]);
+        const intro = within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage");
+        expect(intro).not.toHaveTextContent("Not reported");
         expect(screen.getByRole("dialog")).not.toHaveTextContent("boom");
     });
 

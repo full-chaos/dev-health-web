@@ -18,6 +18,7 @@ import { SetupBanner } from "@/components/onboarding/SetupBanner";
 import { auth } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { formatCoveragePct } from "@/lib/cockpit/coverage";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import type { HomeResponse } from "@/lib/types";
 
@@ -74,6 +75,9 @@ export default async function Home({ searchParams }: HomePageProps) {
     // it is not read. A fact that is not served has no value here and reads "Not reported".
     const lastIngested = home?.freshness?.last_ingested_at;
     const coverage = home?.freshness?.coverage;
+    // A failed Home read is not "Not reported": every fact of that answer then reads the failed-read
+    // text. With an answer, a fact that is not served stays undefined ("Not reported").
+    const homeFact = <T,>(value: T): T | string => (home === null ? READ_FAILED_MESSAGE : value);
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -99,36 +103,40 @@ export default async function Home({ searchParams }: HomePageProps) {
                                 >
                                     <EvidenceFact
                                         label="Coverage"
-                                        value={formatCoveragePct(
-                                            home?.data_confidence?.coverage_pct,
+                                        value={homeFact(
+                                            formatCoveragePct(home?.data_confidence?.coverage_pct),
                                         )}
                                     />
                                     <EvidenceFact
                                         label="Last ingested"
-                                        value={
+                                        value={homeFact(
                                             lastIngested ? (
                                                 // An unparseable value is shown as served.
                                                 <ClientTimestamp
                                                     value={lastIngested}
                                                     fallback={lastIngested}
                                                 />
-                                            ) : undefined
-                                        }
+                                            ) : undefined,
+                                        )}
                                     />
                                     <EvidenceFact
                                         label="Repositories covered"
-                                        value={formatCoveragePct(coverage?.repos_covered_pct)}
+                                        value={homeFact(
+                                            formatCoveragePct(coverage?.repos_covered_pct),
+                                        )}
                                     />
                                     <EvidenceFact
                                         label="PRs linked to issues"
-                                        value={formatCoveragePct(
-                                            coverage?.prs_linked_to_issues_pct,
+                                        value={homeFact(
+                                            formatCoveragePct(coverage?.prs_linked_to_issues_pct),
                                         )}
                                     />
                                     <EvidenceFact
                                         label="Issues with cycle states"
-                                        value={formatCoveragePct(
-                                            coverage?.issues_with_cycle_states_pct,
+                                        value={homeFact(
+                                            formatCoveragePct(
+                                                coverage?.issues_with_cycle_states_pct,
+                                            ),
                                         )}
                                     />
                                 </EvidenceFactList>
