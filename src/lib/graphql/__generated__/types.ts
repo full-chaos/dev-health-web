@@ -375,6 +375,8 @@ export type AiWorkflowGraphEdgeOut = {
 
 export type AiWorkflowGraphNodeOut = {
   __typename?: 'AIWorkflowGraphNodeOut';
+  /** The node's display name (CHAOS-8113). By ``nodeType``: ``pr`` = the pull request's title; ``deployment`` = "<environment> deploy"; ``incident`` = "<title> (<status>)"; ``issue`` = the issue's own id when it is a readable key. Null = no name is known: the catalogue does not name the node, the type has no name (a review outcome, an AI workflow run), or the name read failed. It is never an id that is, or holds, a UUID or an opaque hash. Every end of an edge in ``edges`` that has an id has a node in ``nodes`` with the same type and id, so a client names an edge end by that node. */
+  displayName?: Maybe<Scalars['String']['output']>;
   nodeId: Scalars['String']['output'];
   nodeType: Scalars['String']['output'];
 };

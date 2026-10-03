@@ -670,6 +670,7 @@ query AIWorkflowDrilldown($orgId: String!, $rootType: AIWorkflowRootTypeInput!, 
     nodes {
       nodeType
       nodeId
+      displayName
     }
     edges {
       edgeId

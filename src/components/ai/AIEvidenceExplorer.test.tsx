@@ -150,8 +150,13 @@ describe("AIEvidenceExplorer", () => {
                 partial: false,
                 dataAvailable: true,
                 nodes: [
-                    { nodeType: "pr", nodeId: "11111111-1111-1111-1111-111111111111:42" },
-                    { nodeType: "ai_workflow_run", nodeId: "run-1" },
+                    {
+                        nodeType: "pr",
+                        nodeId: "11111111-1111-1111-1111-111111111111:42",
+                        displayName: "Add feature flag",
+                    },
+                    // A node type with no name: the API serves null.
+                    { nodeType: "ai_workflow_run", nodeId: "run-1", displayName: null },
                 ],
                 edges: [
                     {
@@ -180,12 +185,15 @@ describe("AIEvidenceExplorer", () => {
         expect(lastCall?.[0]).toBe("11111111-1111-1111-1111-111111111111:42");
 
         expect(screen.getByTestId("ai-drilldown-evidence")).toBeInTheDocument();
-        // CHAOS-8093: words for the edge type; the ends read as type + number, never `type:id`.
+        // CHAOS-8093: words for the edge type. CHAOS-8113: each end reads as its type and the served
+        // name of its node; an end with no served name reads "Not reported". Never the id.
         expect(screen.getByText("Has AI workflow")).toBeInTheDocument();
         expect(screen.queryByText(/has_ai_workflow/i)).not.toBeInTheDocument();
         const ends = screen.getByTestId("ai-edge-ends");
-        expect(ends).toHaveTextContent("PR #42 → AI workflow run");
+        expect(ends.textContent).toBe("PR Add feature flag → AI workflow run Not reported");
         expect(ends).not.toHaveTextContent("pr:");
+        expect(ends).not.toHaveTextContent("run-1");
+        expect(ends).not.toHaveTextContent("11111111");
         // CHAOS-8216: a titled side panel beside the table, the count line, a "confidence" word,
         // and the selected row marked.
         const panel = screen.getByTestId("ai-work-graph-evidence");
