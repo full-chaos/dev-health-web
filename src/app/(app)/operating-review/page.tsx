@@ -20,6 +20,7 @@ import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
 import { MetricTile, TINT, WHOLE_ORGANIZATION } from "./MetricTile";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { Inset } from "@/components/ui/Inset";
 
 /** Discriminated fetch result: distinguishes a real error from a genuine empty payload. */
 type ReviewResult =
@@ -270,9 +271,11 @@ function OperatingReviewAgenda({
                         data-testid="operating-review-recommendations"
                     >
                         {review.recommendations.map((recommendation, index) => (
-                            <li
+                            <Inset
+                                as="li"
+                                flush
                                 key={recommendation}
-                                className="flex items-start gap-3 rounded-(--radius-sm) bg-background p-3.75 text-sm"
+                                className="flex items-start gap-3 text-sm"
                             >
                                 <span
                                     aria-hidden="true"
@@ -281,7 +284,7 @@ function OperatingReviewAgenda({
                                     {index + 1}
                                 </span>
                                 <span>{recommendation}</span>
-                            </li>
+                            </Inset>
                         ))}
                     </ol>
                 ) : (
@@ -346,7 +349,7 @@ function CalloutColumn({
     items: string[];
 }) {
     return (
-        <div className="rounded-(--radius-sm) bg-background p-3.75">
+        <Inset flush>
             <h3 className="text-sm font-semibold">{title}</h3>
             {items.length ? (
                 <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
@@ -357,7 +360,7 @@ function CalloutColumn({
             ) : (
                 <p className="mt-3 text-sm text-muted-foreground">No {tone} signals this week.</p>
             )}
-        </div>
+        </Inset>
     );
 }
 

@@ -2,6 +2,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { formatPercent } from "@/lib/formatters";
+import { Inset } from "@/components/ui/Inset";
 import { BRANCH_BREAKDOWN_TOP_N, type RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
 
 type CoverageBaselineCardProps = {
@@ -88,11 +89,11 @@ export function CoverageBaselineCard({
                             ) : null}
                         </div>
                     ))}
-                    <div className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)">
+                    <Inset flush className="text-xs text-(--ink-muted)">
                         The baseline is one product target ({formatPercent(baselinePct)} line
                         coverage) for every repository. A per-repository baseline is not reported
                         yet.
-                    </div>
+                    </Inset>
                 </div>
             )}
         </Section>
