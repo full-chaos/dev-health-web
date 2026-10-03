@@ -61,7 +61,7 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
             header: "Description",
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 text-(--ink-muted)",
-            render: (team) => team.description ?? "-",
+            render: (team) => team.description ?? "—",
         },
         {
             key: "repo_patterns",
