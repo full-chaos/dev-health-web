@@ -32,7 +32,7 @@ vi.mock("@/components/charts/Chart", () => ({
 
 import { CompletionRange } from "./CompletionRange";
 
-type Mark = { xAxis: number; label: { formatter: string } };
+type Mark = { xAxis: number; label: { formatter: string; align?: string } };
 type Series = {
     type: string;
     step?: string;
@@ -478,6 +478,20 @@ describe("CompletionRange — dates in another calendar year", () => {
             "P50 · Oct 4 · 1 day",
             "P85 · Jan 11, 2027 · 100 days",
             "P95 · Jan 31, 2027 · 120 days",
+        ]);
+    });
+
+    // A label with a year is longer. A marker near the right end of the axis has its label end
+    // at the line, so the label is not cut at the edge of the chart; the others stay centred.
+    it("the label of a marker near the right end of the axis ends at its line, so it is not cut off", () => {
+        vi.setSystemTime(new Date("2026-10-03T20:00:00Z"));
+        render(<CompletionRange forecast={longForecast()} />);
+        expect(
+            curve().markLine!.data.map((mark) => [mark.xAxis, mark.label.align ?? "center"]),
+        ).toEqual([
+            [1, "center"],
+            [100, "center"],
+            [120, "right"],
         ]);
     });
 
