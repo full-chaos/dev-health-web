@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeAll, beforeEach, afterEach } from "vitest";
 
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn().mockResolvedValue({
@@ -32,6 +32,14 @@ function fakeRedis() {
     };
 }
 describe("POST /api/feedback", () => {
+    // CHAOS-8012: the first import of the route pays the cold transform of its whole module graph
+    // (4198 ms in a full-suite run, about 1 s alone), and it used to be paid inside the first test
+    // against its 5000 ms timeout. Pay it once here, in a hook with its own budget. The per-test
+    // `vi.resetModules()` + import below stays: each test needs a fresh rate-limit state.
+    beforeAll(async () => {
+        await import("@/app/api/feedback/route");
+    }, 30_000);
+
     beforeEach(() => {
         vi.clearAllMocks();
         vi.resetModules();

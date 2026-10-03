@@ -32,6 +32,16 @@ describe("People page pass (CHAOS-7762)", () => {
         );
     });
 
+    it("CHAOS-8152: the association 'Open evidence' link is the shared ghost small button with the arrow", () => {
+        expect(METRIC).toContain('className={buttonClassName("ghost", "sm", "mt-2")}');
+        expect(METRIC).toMatch(
+            /<ArrowRight aria-hidden="true" className="h-3\.5 w-3\.5" \/> \{CTA_LABELS\.openEvidence\}/u,
+        );
+        expect(METRIC).not.toContain(
+            "inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)",
+        );
+    });
+
     it("P2: the 'View metric' list is gone", () => {
         expect(PERSON).not.toContain("View metric");
         expect(PERSON).not.toContain("Individual detail");

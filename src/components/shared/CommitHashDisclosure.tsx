@@ -15,7 +15,7 @@ export function CommitHashDisclosure({ hash }: CommitHashDisclosureProps) {
             <button
                 aria-controls={fullHashId}
                 aria-expanded={isExpanded}
-                className="cursor-pointer underline decoration-dotted underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                className="cursor-pointer underline decoration-dotted underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                 onClick={() => setIsExpanded((expanded) => !expanded)}
                 type="button"
             >

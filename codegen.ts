@@ -4,20 +4,22 @@ import type { CodegenConfig } from "@graphql-codegen/cli";
  * GraphQL Code Generator configuration.
  *
  * Generates TypeScript types from the local SDL schema file.
- * The schema file (src/lib/graphql/schema.graphql) must be kept
- * in sync with the backend Strawberry schema in dev-health-ops.
+ * The schema file (src/lib/graphql/schema.graphql) is a verbatim copy of the
+ * ops contract pin, contracts/graphql/v1/schema.graphql in dev-health-ops
+ * (the Go gqlgen schema is the source of truth). The live-e2e.yml workflow
+ * fails when the two files differ.
  *
  * Commands:
- *   npm run codegen          - generate types
- *   npm run codegen:check    - verify generated files are up-to-date (CI)
+ *   pnpm codegen          - generate types
+ *   pnpm codegen:check    - verify generated files are up-to-date (CI)
  *
- * Sync procedure (when backend schema changes):
- *   1. Start the dev-health-ops API.
- *   2. npx graphql-codegen introspect \
- *        --endpoint http://localhost:8000/graphql \
- *        --output src/lib/graphql/schema.graphql
- *   3. npm run codegen
- *   4. Commit schema.graphql + __generated__/ together.
+ * Sync procedure (when the ops contract changes), from a dev-health-ops
+ * checkout beside this one:
+ *   1. cp ../dev-health-ops/contracts/graphql/v1/schema.graphql \
+ *        src/lib/graphql/schema.graphql
+ *   2. pnpm codegen
+ *   3. Commit schema.graphql + __generated__/ together.
+ * No running API is needed, and the copy is never edited by hand.
  */
 const config: CodegenConfig = {
     schema: "src/lib/graphql/schema.graphql",
