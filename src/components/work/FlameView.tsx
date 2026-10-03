@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getAggregatedFlame } from "@/lib/api/visuals";
 import type { AggregatedFlameMode, MetricFilter, AggregatedFlameResponse } from "@/lib/types";
 import { HierarchicalFlameGraph } from "@/components/charts/HierarchicalFlameGraph";
-import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
+import { SegmentedControl } from "@/components/shared/SegmentedControl";
 import { Section } from "@/components/ui/Section";
 
 const MODES: AggregatedFlameMode[] = ["cycle_breakdown", "throughput", "code_hotspots"];
@@ -80,13 +80,15 @@ export function FlameView({ filters }: FlameViewProps) {
 
     const hasData = flameData && flameData.root.value > 0;
 
-    // The mode switch is the shared segment control, drawn left of the chart's search.
+    // The mode switch is the shared segmented control (prototype `.segments`, sentence case),
+    // drawn left of the chart's search.
     const modeSwitch = (
-        <ChartTypeToggle
+        <SegmentedControl
             options={MODES.map((m) => ({ id: m, label: modeLabels[m] }))}
             value={mode}
-            onChangeAction={handleModeChange}
+            onChange={handleModeChange}
             ariaLabel="Breakdown"
+            testId="flame-mode-switch"
         />
     );
 
