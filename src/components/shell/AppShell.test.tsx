@@ -202,6 +202,65 @@ describe("AppShell — the data fact is under the account name, not in the top b
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("combobox", { name: /organization/i })).toBeInTheDocument();
     });
+
+    it("shows 'No data yet' only when the active organization has no data", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue(organizationsResponse({ has_data: false })),
+        );
+        renderFrame(<ShellPage />);
+
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent("No data yet"),
+        );
+    });
+
+    it.each([
+        ["the request is refused", () => vi.fn().mockResolvedValue({ ok: false })],
+        ["the request throws", () => vi.fn().mockRejectedValue(new Error("network"))],
+        [
+            "the active organization is not in the list",
+            () =>
+                vi.fn().mockResolvedValue({
+                    ok: true,
+                    json: async () => ({
+                        active_org_id: "org-9",
+                        organizations: [
+                            {
+                                id: "org-2",
+                                slug: "other",
+                                name: "Other",
+                                role: "member",
+                                has_data: true,
+                                last_metrics_at: "2026-09-30T10:00:00Z",
+                            },
+                        ],
+                    }),
+                }),
+        ],
+    ])("shows 'Data status unavailable' (not 'No data yet') when %s", async (_label, makeFetch) => {
+        vi.stubGlobal("fetch", makeFetch());
+        renderFrame(<ShellPage />);
+
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent(
+                "Data status unavailable",
+            ),
+        );
+        expect(screen.getByTestId("account-detail")).not.toHaveTextContent("No data yet");
+        expect(screen.getByTestId("account-detail")).not.toHaveTextContent("Data through");
+    });
+
+    it("shows no data line while the request is open", () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise(() => {})),
+        );
+        renderFrame(<ShellPage />);
+
+        expect(screen.getByTestId("shell-top-bar")).not.toHaveTextContent("Data through");
+        expect(screen.queryByText(/Data through|No data yet|Data status unavailable/)).toBeNull();
+    });
 });
 
 describe("AppShell — every authed route renders in the shell", () => {
