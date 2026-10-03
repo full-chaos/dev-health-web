@@ -197,11 +197,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                 title="Complexity Trends"
                 subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}
                 actions={<PageFactsEvidenceAction title="Complexity" facts={pageFacts} />}
-            >
-                <p className="text-sm text-(--ink-muted)">
-                    Every score traces to cyclomatic complexity and churn evidence.
-                </p>
-            </PageHeader>
+            />
 
             <ScopeBar view="complexity" origin={activeOrigin} />
 
