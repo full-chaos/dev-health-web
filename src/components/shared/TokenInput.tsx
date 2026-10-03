@@ -89,7 +89,7 @@ export function TokenInput({
 
     return (
         <div className={className}>
-            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-(--card-stroke) bg-(--card-70) p-2 focus-within:border-(--accent) focus-within:ring-1 focus-within:ring-(--accent)">
+            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-(--card-stroke) bg-(--card-70) p-2 focus-within:border-(--accent-2) focus-within:ring-1 focus-within:ring-(--accent-2)">
                 {value.map((token) => (
                     <span
                         key={token}

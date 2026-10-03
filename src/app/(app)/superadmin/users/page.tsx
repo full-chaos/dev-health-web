@@ -41,7 +41,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                             type="search"
                             defaultValue={query}
                             placeholder="Search users..."
-                            className="w-64 rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            className="w-64 rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                         />
                         <button
                             type="submit"

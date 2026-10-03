@@ -39,7 +39,7 @@ function OnboardingStateError({ retryHref }: { retryHref: string }) {
                     </p>
                     <a
                         href={retryHref}
-                        className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2"
+                        className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 font-medium text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-(--accent-2) focus:ring-offset-2"
                     >
                         {CTA_LABELS.retry}
                     </a>
