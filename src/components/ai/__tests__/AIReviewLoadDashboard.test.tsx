@@ -30,7 +30,11 @@ vi.mock("../AIReviewAmplificationTrend", () => ({
 }));
 
 vi.mock("../AIEvidenceExplorer", () => ({
-    AIEvidenceExplorer: () => <div data-testid="explorer-stub">explorer</div>,
+    AIEvidenceExplorer: ({ layout }: { layout?: string }) => (
+        <div data-testid="explorer-stub" data-layout={layout}>
+            explorer
+        </div>
+    ),
 }));
 
 const filter: AIFilter = { startDate: "2026-04-01", endDate: "2026-05-01" };
@@ -186,6 +190,11 @@ describe("AIReviewLoadDashboard", () => {
             const dialog = screen.getByRole("dialog", { name: "Evidence by pull request" });
             expect(within(dialog).getByText("Pickup latency")).toBeInTheDocument();
             expect(within(dialog).getByTestId("explorer-stub")).toBeInTheDocument();
+            // The evidence stacks under the PR table inside the drawer (A8, CHAOS-8297).
+            expect(within(dialog).getByTestId("explorer-stub")).toHaveAttribute(
+                "data-layout",
+                "stacked",
+            );
             expect(
                 within(dialog).getByText(/Pick an AI-attributed PR to see its Work Graph evidence/),
             ).toBeInTheDocument();
