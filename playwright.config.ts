@@ -35,15 +35,17 @@ const mockServerUrl = `http://127.0.0.1:${mockServerPort}`;
 //    as `[WebServer]` lines.
 const serverStdout = isCI ? "pipe" : "ignore";
 // 2. Pending requests on a timeout: see the reporter entry below.
-// 3. `maxFailures`. A test counts once, after its last retry. Ten failed tests
-//    in one shard is a shared cause, not ten defects: on 2026-10-03, 90% of
-//    the spec files had nine tests or fewer, so one broken page does not
-//    reach the limit and all of its failures are reported. What the limit
-//    cuts: after the tenth failed test the remaining tests of that job do not
-//    run. With 30 s timeouts and two retries that is about 16 minutes, not
-//    the job limit.
+// 3. `maxFailures`. A test counts once, after its last retry. The job time
+//    limit sets the number (15 minutes, `e2e-default` in tests.yml): a test
+//    that fails by time-out costs 93.6 s (three tries, measured), so six such
+//    tests stop the job after about 11 minutes, with "Testing stopped early"
+//    and the end summary in the log. Ten need 17 minutes: the job limit
+//    cancels the job first and the summary is lost. What the limit cuts:
+//    after the sixth failed test the remaining tests of that job do not run.
+//    On 2026-10-03, 23 of the 77 spec files had six tests or more, so one
+//    fully broken file of those stops its shard early.
 // 4. Logo canary: see the `shell-logo-canary` project below.
-const ciMaxFailures = 10;
+const ciMaxFailures = 6;
 
 // The guided first-run onboarding journey (auth-onboard.spec.ts) runs with
 // NEXT_PUBLIC_GUIDED_ONBOARDING enabled and therefore lives in its own config
