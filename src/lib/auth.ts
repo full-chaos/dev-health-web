@@ -280,6 +280,15 @@ const nextAuth = NextAuth({
                     if (res.ok) {
                         const data = await res.json();
                         token.access_token = data.access_token;
+                        if (!data.access_token) {
+                            // A 2xx answer with no access token: the session loses its
+                            // access token and no error is set.
+                            logSessionBranch({
+                                operation: "refresh",
+                                branch: "refresh_no_access_token",
+                                status: res.status,
+                            });
+                        }
                         // NOTE: Single-use token rotation — if multiple concurrent JWT callbacks
                         // race (e.g., parallel SSR requests), a later callback may attempt to use
                         // an already-rotated refresh_token and receive a 401. The ?? fallback below

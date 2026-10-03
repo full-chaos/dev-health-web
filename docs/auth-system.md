@@ -501,16 +501,19 @@ Refresh tokens are single-use with family-based reuse detection.
 
 The web JWT callback refreshes the access token and validates the session against the backend. Every branch that takes a token away from a session, or keeps a session on a fallback, writes one `warn` line (`module: "auth-session"`, `src/lib/authSessionLog.ts`). Read these lines to find which branch ended a session.
 
-| `branch`               | `operation` | Backend answer                                 | Effect on the session                                 |
-| ---------------------- | ----------- | ---------------------------------------------- | ----------------------------------------------------- |
-| `refresh_failed`       | `refresh`   | 401                                            | Both tokens are removed; the user must sign in again  |
-| `refresh_unavailable`  | `refresh`   | any other answer that is not 200               | Access token removed; refresh token kept; retry later |
-| `refresh_call_failed`  | `refresh`   | none (the call threw)                          | Access token removed; refresh token kept; retry later |
-| `user_invalid`         | `validate`  | 200 with `valid: false`, or 4xx other than 429 | Both tokens are removed                               |
-| `validate_transient`   | `validate`  | 429 or 5xx                                     | Session kept; validation retried after backoff        |
-| `validate_call_failed` | `validate`  | none (the call threw)                          | Session kept; validation retried after backoff        |
+| `branch`                  | `operation` | Backend answer                                 | Effect on the session                                 |
+| ------------------------- | ----------- | ---------------------------------------------- | ----------------------------------------------------- |
+| `refresh_failed`          | `refresh`   | 401                                            | Both tokens are removed; the user must sign in again  |
+| `refresh_unavailable`     | `refresh`   | any other answer that is not 200               | Access token removed; refresh token kept; retry later |
+| `refresh_call_failed`     | `refresh`   | none (the call threw)                          | Access token removed; refresh token kept; retry later |
+| `refresh_no_access_token` | `refresh`   | 2xx with no access token in the body           | Access token removed; no error is set                 |
+| `user_invalid`            | `validate`  | 200 with `valid: false`, or 4xx other than 429 | Both tokens are removed                               |
+| `validate_transient`      | `validate`  | 429 or 5xx                                     | Session kept; validation retried after backoff        |
+| `validate_call_failed`    | `validate`  | none (the call threw)                          | Session kept; validation retried after backoff        |
 
-Each line carries only `operation`, `branch`, `status` (HTTP status of the backend answer), `errorName` (the constructor name of a thrown error, never its message) and `failures` (consecutive failures for that token). A token, a cookie, an e-mail address or text served by the backend is never logged; `src/lib/__tests__/auth-session-branch-logs.test.ts` pins both the branch names and that rule.
+The refresh has no memo: the proxy, the page render and each route handler that see the same expired cookie each call the backend and each write a line, so one page load can produce several lines.
+
+Each line carries only `operation`, `branch`, `status` (HTTP status of the backend answer), `errorName` (the `name` of a thrown error, for example `TypeError`; never its message) and `failures` (consecutive failures for that token). A token, a cookie, an e-mail address or text served by the backend is never logged, and a log line that fails never changes what happens to the session; `src/lib/__tests__/auth-session-branch-logs.test.ts` pins both the branch names and that rule.
 
 #### Logout
 

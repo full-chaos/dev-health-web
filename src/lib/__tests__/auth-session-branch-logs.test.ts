@@ -47,6 +47,7 @@ vi.mock("@/lib/logger", () => {
 });
 
 import "@/lib/auth";
+import { logSessionBranch } from "@/lib/authSessionLog";
 import { resetValidationMemoForTests } from "@/lib/authValidationMemo";
 
 const ACCESS_TOKEN = "access-token-must-not-be-logged";
@@ -117,7 +118,7 @@ async function run(token: Token): Promise<Token> {
 }
 
 beforeEach(() => {
-    warn.mockClear();
+    warn.mockReset();
     resetValidationMemoForTests();
 });
 
@@ -175,6 +176,18 @@ describe("refresh branches name themselves in the log", () => {
                 errorName: "TypeError",
                 failures: 1,
             },
+        ]);
+    });
+
+    it("refresh_no_access_token: a 2xx answer with no access token is named", async () => {
+        backendAnswers(200, { refresh_token: "next-refresh" });
+
+        const token = await run(refreshDueToken());
+
+        expect(token.access_token).toBeUndefined();
+        expect(token.error).toBeUndefined();
+        expect(branchLines()).toEqual([
+            { operation: "refresh", branch: "refresh_no_access_token", status: 200 },
         ]);
     });
 
@@ -261,6 +274,11 @@ describe("a branch line never carries a secret", () => {
         ["refresh 401", refreshDueToken, () => backendAnswers(401)],
         ["refresh 429", refreshDueToken, () => backendAnswers(429)],
         ["refresh throws", refreshDueToken, backendThrows],
+        [
+            "refresh 200 without an access token",
+            refreshDueToken,
+            () => backendAnswers(200, { refresh_token: REFRESH_TOKEN, detail: SERVED_TEXT }),
+        ],
         ["validate valid false", validationDueToken, () => backendAnswers(200, { valid: false })],
         ["validate 404", validationDueToken, () => backendAnswers(404)],
         ["validate 503", validationDueToken, () => backendAnswers(503)],
@@ -282,5 +300,86 @@ describe("a branch line never carries a secret", () => {
                 expect(ALLOWED_FIELDS).toContain(key);
             }
         }
+    });
+});
+
+describe("only the five named fields are written", () => {
+    it("drops a field that is not one of the five", () => {
+        logSessionBranch({
+            operation: "refresh",
+            branch: "refresh_failed",
+            status: 401,
+            token: REFRESH_TOKEN,
+        } as never);
+
+        expect(warn.mock.calls.map(([fields]) => fields)).toStrictEqual([
+            { operation: "refresh", branch: "refresh_failed", status: 401 },
+        ]);
+    });
+
+    it("writes no key for a field that is absent", () => {
+        logSessionBranch({ operation: "validate", branch: "user_invalid", status: 200 });
+
+        expect(Object.keys(warn.mock.calls[0][0] as object).sort()).toEqual([
+            "branch",
+            "operation",
+            "status",
+        ]);
+    });
+});
+
+describe("a logger that throws never changes what happens to the session", () => {
+    /** The token after the JWT callback, with a working logger and then with one that throws. */
+    async function bothWays(makeToken: () => Token, arrange: () => void): Promise<[Token, Token]> {
+        arrange();
+        const quiet = await run(makeToken());
+
+        resetValidationMemoForTests();
+        warn.mockImplementation(() => {
+            throw new Error("logger is down");
+        });
+        arrange();
+        const loud = await run(makeToken());
+
+        return [quiet, loud];
+    }
+
+    /** The parts of a token that decide what the session holds. */
+    function held(token: Token): Record<string, unknown> {
+        return {
+            access_token: token.access_token,
+            refresh_token: token.refresh_token,
+            error: token.error,
+            refresh_failures: token.refresh_failures,
+            validation_failures: token.validation_failures,
+        };
+    }
+
+    const cases: Array<[string, () => Token, () => void, string | undefined]> = [
+        ["refresh 401", refreshDueToken, () => backendAnswers(401), "refresh_failed"],
+        ["refresh 429", refreshDueToken, () => backendAnswers(429), "refresh_unavailable"],
+        ["refresh throws", refreshDueToken, backendThrows, "refresh_unavailable"],
+        [
+            "refresh 200 without an access token",
+            refreshDueToken,
+            () => backendAnswers(200, { refresh_token: "next-refresh" }),
+            undefined,
+        ],
+        [
+            "validate valid false",
+            validationDueToken,
+            () => backendAnswers(200, { valid: false }),
+            "user_invalid",
+        ],
+        ["validate 404", validationDueToken, () => backendAnswers(404), "user_invalid"],
+        ["validate 503", validationDueToken, () => backendAnswers(503), undefined],
+        ["validate throws", validationDueToken, backendThrows, undefined],
+    ];
+
+    it.each(cases)("%s", async (_name, makeToken, arrange, expectedError) => {
+        const [quiet, loud] = await bothWays(makeToken, arrange);
+
+        expect(quiet.error).toBe(expectedError);
+        expect(held(loud)).toEqual(held(quiet));
     });
 });
