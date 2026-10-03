@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/shared/Button";
 import { SettingsSection } from "./SettingsSection";
 import { getSecuritySettings, updateSecuritySetting } from "@/lib/admin/server";
 import type { Setting } from "@/lib/admin/types";
@@ -73,7 +74,7 @@ export function SecuritySettings() {
             title="Security"
             description="Configure security settings for your organization."
         >
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="max-w-3xl space-y-4">
                 <div>
                     <label
                         htmlFor="sessionTimeout"
@@ -87,7 +88,7 @@ export function SecuritySettings() {
                         value={sessionTimeout}
                         onChange={(e) => setSessionTimeout(e.target.value)}
                         disabled={isPending || !loaded}
-                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2) disabled:opacity-50"
                     >
                         {SESSION_TIMEOUT_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -97,13 +98,9 @@ export function SecuritySettings() {
                     </select>
                 </div>
                 <div className="flex justify-end">
-                    <button
-                        type="submit"
-                        disabled={isPending || !loaded}
-                        className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50"
-                    >
+                    <Button type="submit" variant="primary" disabled={isPending || !loaded}>
                         {isPending ? "Saving..." : "Save Security Settings"}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </SettingsSection>

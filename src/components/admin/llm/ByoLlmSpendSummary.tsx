@@ -1,12 +1,22 @@
 "use client";
 
+import { isPlanGateMessage } from "@/lib/actionFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AIPanelCard } from "@/components/ai/AIPanelCard";
 import { AIEmptyState } from "@/components/ai/AIEmptyState";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
+import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
+import { logger } from "@/lib/logger";
 import { CTA_LABELS } from "@/lib/design/cta";
-import type { LLMSettingsActionResult, LLMSpendSummaryResponse } from "@/lib/admin/types";
+import type {
+    LLMBudgetResponse,
+    LLMSettingsActionResult,
+    LLMSpendSummaryResponse,
+} from "@/lib/admin/types";
 
 type LockState = {
     reason: "not_licensed" | "not_enabled";
@@ -15,7 +25,15 @@ type LockState = {
 
 export type ByoLlmSpendSummaryProps = {
     loadSpendAction: () => Promise<LLMSettingsActionResult<LLMSpendSummaryResponse>>;
+    /**
+     * The same budget request the settings card makes. When given, the card opens with the three
+     * spend tiles (design): used or reserved, monthly limit, remaining. A tile whose value is not
+     * served reads "Not reported". When it fails, the tiles are left out.
+     */
+    loadBudgetAction?: () => Promise<LLMSettingsActionResult<LLMBudgetResponse>>;
 };
+
+const spendLogger = logger.child({ component: "ByoLlmSpendSummary" });
 
 const PANEL_TITLE = "AI / LLM Spend Summary (BYO-LLM)";
 const PANEL_DESCRIPTION =
@@ -52,6 +70,33 @@ function FailureBadges({ failuresByClass }: { failuresByClass: Record<string, nu
     );
 }
 
+/** One spend tile: the served amount in dollars, or "Not reported" when the budget does not serve it. */
+function SpendTile({
+    label,
+    micro,
+    unsetText,
+}: {
+    label: string;
+    micro: number | null | undefined;
+    /** Shown when the amount is null because the organization has not set one (a served state). */
+    unsetText?: string;
+}) {
+    return (
+        <MetricCard
+            label={label}
+            valueText={micro == null ? unsetText : formatMicroUsd(micro)}
+            // "Not set" is drawn in the same muted ink as "Not reported": it is a state, not an amount.
+            className={
+                micro == null && unsetText
+                    ? "[&_[data-testid=metric-value]]:text-(--ink-muted)"
+                    : undefined
+            }
+            deltaSlot={<></>}
+            hideTrend
+        />
+    );
+}
+
 /**
  * Org-scoped "AI / LLM Spend Summary (BYO-LLM)" admin panel (CHAOS-2564).
  * Consumes `GET /admin/llm-settings/spend` via the injected server action,
@@ -61,11 +106,12 @@ function FailureBadges({ failuresByClass }: { failuresByClass: Record<string, nu
  * tracking began) are never folded into the per-run table — they surface as
  * a distinct legacy state (`legacy` rows), per plan §6.3 / §7 C4.
  */
-export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps) {
+export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlmSpendSummaryProps) {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [summary, setSummary] = useState<LLMSpendSummaryResponse | null>(null);
+    const [budget, setBudget] = useState<LLMBudgetResponse | null>(null);
 
     const fetchSpend = useCallback(async () => {
         setLoading(true);
@@ -75,15 +121,19 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
         if (result.status === 402) {
             setLocked({
                 reason: "not_licensed",
-                message: result.error ?? "BYO-LLM spend summary requires Team tier or higher.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM spend summary requires Team tier or higher.",
             });
         } else if (result.status === 403) {
             setLocked({
                 reason: "not_enabled",
-                message: result.error ?? "BYO-LLM is not enabled for this organization.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM is not enabled for this organization.",
             });
         } else if (result.error) {
-            setLoadError(result.error);
+            setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
             setSummary(result.data);
         }
@@ -94,6 +144,43 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSpend coordinates async loading state after mount.
         fetchSpend();
     }, [fetchSpend]);
+
+    useEffect(() => {
+        if (!loadBudgetAction) return;
+        let active = true;
+        loadBudgetAction()
+            .then((result) => {
+                if (!result.data && result.error) {
+                    // A served failure (an error answer with no data): logged, tiles left out.
+                    spendLogger.error(
+                        { status: result.status },
+                        "Budget request for the spend tiles was refused or failed",
+                    );
+                }
+                if (active) setBudget(result.data ?? null);
+            })
+            // A budget action that throws leaves the tiles out; it is never an unhandled rejection.
+            .catch((error: unknown) => {
+                spendLogger.error({ err: error }, "Budget request for the spend tiles failed");
+                if (active) setBudget(null);
+            });
+        return () => {
+            active = false;
+        };
+    }, [loadBudgetAction]);
+
+    const tiles = budget ? (
+        <MetricStrip columns={3} data-testid="byo-llm-spend-tiles" className="mb-4">
+            <SpendTile label="Used or reserved" micro={budget.used_micro_usd} />
+            <SpendTile
+                label="Monthly limit"
+                micro={budget.limit_micro_usd}
+                // No limit configured is a served state ("budget_not_configured"), not a missing value.
+                unsetText={budget.reason === "budget_not_configured" ? "Not set" : undefined}
+            />
+            <SpendTile label="Remaining" micro={budget.remaining_micro_usd} />
+        </MetricStrip>
+    ) : null;
 
     let body: ReactNode;
 
@@ -153,16 +240,20 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
     } else {
         body = (
             <div className="space-y-3">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr className="border-b border-(--card-stroke) text-xs uppercase tracking-wide text-(--ink-muted)">
-                                <th className="py-2 pr-4 font-medium">Run</th>
-                                <th className="py-2 pr-4 font-medium">Model</th>
-                                <th className="py-2 pr-4 text-right font-medium">Calls</th>
-                                <th className="py-2 pr-4 text-right font-medium">Input tokens</th>
-                                <th className="py-2 pr-4 text-right font-medium">Output tokens</th>
-                                <th className="py-2 font-medium">Failures by class</th>
+                <div className="overflow-x-auto rounded-(--radius-sm) border border-(--card-stroke)">
+                    <table className="w-full text-left text-sm" data-testid="byo-llm-spend-table">
+                        <thead className="bg-background text-label-caps uppercase text-(--ink-muted)">
+                            <tr>
+                                <th className="px-3 py-2.75 font-medium">Run</th>
+                                <th className="px-3 py-2.75 font-medium">Model</th>
+                                <th className="px-3 py-2.75 text-right font-medium">Calls</th>
+                                <th className="px-3 py-2.75 text-right font-medium">
+                                    Input tokens
+                                </th>
+                                <th className="px-3 py-2.75 text-right font-medium">
+                                    Output tokens
+                                </th>
+                                <th className="px-3 py-2.75 font-medium">Failures by class</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -171,20 +262,20 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
                                     key={run.run_id}
                                     className="border-b border-(--card-stroke)/60 last:border-0"
                                 >
-                                    <td className="py-2 pr-4 font-mono text-xs" title={run.run_id}>
+                                    <td className="px-3 py-3 font-mono text-xs" title={run.run_id}>
                                         {run.run_id.slice(0, 8)}
                                     </td>
-                                    <td className="py-2 pr-4">{run.model ?? "—"}</td>
-                                    <td className="py-2 pr-4 text-right">
+                                    <td className="px-3 py-3">{run.model ?? "—"}</td>
+                                    <td className="px-3 py-3 text-right">
                                         {formatNumber(run.calls)}
                                     </td>
-                                    <td className="py-2 pr-4 text-right">
+                                    <td className="px-3 py-3 text-right">
                                         {formatNumber(run.input_tokens)}
                                     </td>
-                                    <td className="py-2 pr-4 text-right">
+                                    <td className="px-3 py-3 text-right">
                                         {formatNumber(run.output_tokens)}
                                     </td>
-                                    <td className="py-2">
+                                    <td className="px-3 py-3">
                                         <FailureBadges failuresByClass={run.failures_by_class} />
                                     </td>
                                 </tr>
@@ -208,6 +299,7 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
 
     return (
         <AIPanelCard title={PANEL_TITLE} description={PANEL_DESCRIPTION}>
+            {tiles}
             {body}
         </AIPanelCard>
     );

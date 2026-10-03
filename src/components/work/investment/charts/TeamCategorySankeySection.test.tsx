@@ -21,13 +21,16 @@ const linkedFlow: SankeyResponse = {
 };
 const emptyFlow: SankeyResponse = { mode: "investment", nodes: [], links: [] };
 
-const renderSection = (flow: SankeyResponse | null) =>
+const renderSection = (
+    flow: SankeyResponse | null,
+    over: { selectedCategory?: string | null } = {},
+) =>
     render(
         <TeamCategorySankeySection
             filters={{ scope: { level: "org", ids: [] } } as never}
             focusedTeam={null}
             setFocusedTeam={() => {}}
-            selectedCategory={null}
+            selectedCategory={over.selectedCategory ?? null}
             setSelectedCategory={() => {}}
             setFocusSubcategory={() => {}}
             showSubcategories={false}
@@ -41,41 +44,43 @@ const renderSection = (flow: SankeyResponse | null) =>
         />,
     );
 
-const header = () => screen.getByText(/Team coverage:/).closest("div")!;
-
-describe("TeamCategorySankeySection — coverage header and empty state", () => {
-    it("shows produced coverage as percentages", () => {
+describe("TeamCategorySankeySection — no summary block above the chart (prototype allocation())", () => {
+    it("draws no coverage line, no top-theme chips and no left-rule paragraph: coverage is in the tiles", () => {
         renderSection({ ...linkedFlow, coverage: { team: 0.85, repo: 0.72 } });
-        expect(header()).toHaveTextContent("Team coverage: 85%");
-        expect(header()).toHaveTextContent("Repo coverage: 72%");
+        const section = screen.getByTestId("team-category-sankey");
+        expect(section).not.toHaveTextContent(/Team coverage|Repo coverage/);
+        expect(section).not.toHaveTextContent(/Top themes?:|Top subcategories:/);
+        expect(section).not.toHaveTextContent("This view shows where effort appears to land");
+        expect(section).not.toHaveTextContent("Team to Theme to Repo");
+        expect(section.querySelector(".border-l-2")).toBeNull();
+        // The chart and the aside follow at once.
+        expect(screen.getByTestId("mock-sankey-chart")).toBeInTheDocument();
+        expect(screen.getByTestId("selected-path-panel")).toBeInTheDocument();
     });
 
-    it("shows a produced 0 as 0%", () => {
-        renderSection({ ...linkedFlow, coverage: { team: 0, repo: 0 } });
-        expect(header()).toHaveTextContent("Team coverage: 0%");
-        expect(header()).toHaveTextContent("Repo coverage: 0%");
+    it("a theme drill chip names the theme by its label, never the raw key", () => {
+        renderSection(
+            {
+                ...linkedFlow,
+                nodes: [
+                    { name: "Alpha", group: "team" },
+                    { name: "feature_delivery", group: "category" },
+                    { name: "repo-a", group: "repo" },
+                ],
+                links: [
+                    { source: "Alpha", target: "feature_delivery", value: 10 },
+                    { source: "feature_delivery", target: "repo-a", value: 10 },
+                ],
+            },
+            { selectedCategory: "feature_delivery" },
+        );
+        const chips = screen.getByTestId("allocation-drill-chips");
+        expect(chips).toHaveTextContent("Drilldown: Theme = Feature Delivery");
+        expect(chips).not.toHaveTextContent("feature_delivery");
     });
+});
 
-    it("shows unavailable, not 0%, when coverage is null", () => {
-        renderSection({ ...linkedFlow, coverage: null as unknown as SankeyResponse["coverage"] });
-        expect(header()).toHaveTextContent("Team coverage: unavailable");
-        expect(header()).toHaveTextContent("Repo coverage: unavailable");
-        expect(header()).not.toHaveTextContent("0%");
-    });
-
-    it("shows unavailable, not 0%, when coverage is absent", () => {
-        renderSection(linkedFlow);
-        expect(header()).toHaveTextContent("Team coverage: unavailable");
-        expect(header()).not.toHaveTextContent("0%");
-    });
-
-    it("shows unavailable for a non-finite leaf and a number for the other", () => {
-        renderSection({ ...linkedFlow, coverage: { team: Number.NaN, repo: 0.5 } });
-        expect(header()).toHaveTextContent("Team coverage: unavailable");
-        expect(header()).toHaveTextContent("Repo coverage: 50%");
-        expect(header()).not.toHaveTextContent("NaN");
-    });
-
+describe("TeamCategorySankeySection — empty state", () => {
     it("keeps 'No allocation path' for an empty flow whose coverage was produced", () => {
         renderSection({ ...emptyFlow, coverage: { team: 0, repo: 0 } });
         expect(screen.getByText(/No allocation path available/)).toBeInTheDocument();

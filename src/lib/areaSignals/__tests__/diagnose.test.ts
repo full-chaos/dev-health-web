@@ -24,6 +24,7 @@ import { graphqlFetch } from "@/lib/graphql/server";
 import { getBusFactorData } from "@/lib/api/code";
 import { getInvestment } from "@/lib/api/investment";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getDiagnoseSignals } from "../diagnose";
@@ -458,6 +459,30 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             expect(signals.landscape.state).toBe("medium");
         });
 
+        it("marks a card whose read FAILED as failed, and only the cards of that read (CHAOS-8168)", async () => {
+            mockGetCognitiveLoad.mockRejectedValue(new Error("cognitive-load down"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({ state: "unavailable", failed: true });
+            // The other reads answered: none of their cards is failed.
+            for (const id of ["flow", "landscape"]) expect(signals[id].failed).toBeUndefined();
+        });
+
+        it("does NOT mark a card failed when its read answered with nothing (empty is not failed)", async () => {
+            mockGetBusFactorData.mockResolvedValue(null as never);
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.landscape).toMatchObject({ state: "unavailable" });
+            expect(signals.landscape.failed).toBeUndefined();
+        });
+
+        it("a failed home read marks the three cards that share it, and no other (CHAOS-8168)", async () => {
+            mockGetHomeData.mockRejectedValue(new Error("home timed out"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            for (const id of ["flow", "code", "bottleneck"]) {
+                expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+            }
+            expect(signals.landscape.failed).toBeUndefined();
+        });
+
         it("Cognitive Load is unavailable for unsupported scopes (developer) and skips the fetch", async () => {
             const developerFilter = {
                 ...defaultMetricFilter,
@@ -673,5 +698,27 @@ describe("Investment card (CHAOS-7612 5.2b)", () => {
         const card = await investment(true);
         expect(mockGetInvestment).not.toHaveBeenCalled();
         expect(card).toMatchObject({ state: "neutral", value: "Feature Delivery 42%" });
+    });
+});
+
+describe("getDiagnoseSignals — org scope comes from the session (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        const normalOrder = (await getDiagnoseSignals(defaultMetricFilter)).map((s) => s.id);
+        vi.clearAllMocks();
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        const signals = await getDiagnoseSignals(defaultMetricFilter);
+        expect(signals.map((s) => s.id)).toEqual(normalOrder);
+        expect(mockGraphql).not.toHaveBeenCalled();
+        expect(mockGetHomeData).not.toHaveBeenCalled();
+        expect(mockGetBusFactorData).not.toHaveBeenCalled();
+        expect(mockGetCognitiveLoad).not.toHaveBeenCalled();
+        expect(mockGetInvestment).not.toHaveBeenCalled();
+        expect(signals.length).toBeGreaterThan(0);
+        for (const s of signals) expect(s.state).toBe("unavailable");
+    });
+
+    it("sends the session org when present", async () => {
+        await getDiagnoseSignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });

@@ -46,6 +46,12 @@ export type AreaSignal = {
      * headline `value` (AI Impact: the rework drag of AI-assisted work). Shown only where set.
      */
     driver?: string;
+    /**
+     * True when the card's backing read FAILED (a timeout or an error), as opposed to a read that
+     * answered with nothing. A failed read is not an empty window: the card says it could not be
+     * read. Only set together with `state: "unavailable"`.
+     */
+    failed?: boolean;
     /** Severity ladder, widened with "neutral" / "unavailable" (honest states). */
     state: AreaSignalState;
     /** Optional trend glyph direction for the metric. */

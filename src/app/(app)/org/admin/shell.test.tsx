@@ -134,7 +134,7 @@ describe("org admin pages in the shared app shell (CHAOS-7591)", () => {
         await renderAdminPage("/org/admin", "Admin Dashboard");
 
         expect(
-            within(screen.getByTestId("page-header")).getByText("Platform Admin"),
+            within(screen.getByTestId("page-header")).getByText("Platform admin"),
         ).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Platform Admin" })).toHaveAttribute(
             "href",

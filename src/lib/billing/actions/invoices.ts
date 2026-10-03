@@ -1,5 +1,6 @@
 "use server";
 
+import { failureResult } from "@/lib/actionFailure";
 import type { ActionResult } from "@/lib/result";
 import { getAuthHeaders, getBackendUrl, resolveOrgId, sanitizeId } from "./_shared";
 
@@ -83,13 +84,16 @@ export async function getInvoices(
 
         if (!res.ok) {
             const detail = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: detail.detail || `Failed to load invoices (${res.status})` };
+            return failureResult("read", "getInvoices", {
+                status: res.status,
+                served: detail.detail,
+            });
         }
 
         const data = (await res.json()) as InvoiceListResponse;
         return { data };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("read", "getInvoices", { error: err });
     }
 }
 
@@ -124,13 +128,16 @@ export async function getInvoice(
 
         if (!res.ok) {
             const detail = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: detail.detail || `Failed to load invoice (${res.status})` };
+            return failureResult("read", "getInvoice", {
+                status: res.status,
+                served: detail.detail,
+            });
         }
 
         const data = (await res.json()) as InvoiceRecord;
         return { data };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("read", "getInvoice", { error: err });
     }
 }
 
@@ -164,12 +171,15 @@ export async function voidInvoice(
 
         if (!res.ok) {
             const detail = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: detail.detail || `Failed to void invoice (${res.status})` };
+            return failureResult("action", "voidInvoice", {
+                status: res.status,
+                served: detail.detail,
+            });
         }
 
         const data = (await res.json()) as InvoiceRecord;
         return { data };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("action", "voidInvoice", { error: err });
     }
 }

@@ -8,6 +8,7 @@
  * variant rather than fabricated content; a failed load is an error, not an empty state.
  */
 
+import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { RetryButton } from "@/components/ui/RetryButton";
@@ -55,6 +56,25 @@ export default async function ExperimentsPage({ searchParams }: ExperimentsPageP
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Experiments"
+                actions={
+                    hasData ? (
+                        <PageFactsEvidenceAction
+                            title="Experiments"
+                            facts={[
+                                {
+                                    label: "Suggested experiments",
+                                    value: String(experiments.length),
+                                },
+                                ...experiments.map((experiment, index) => ({
+                                    label: `Suggestion ${index + 1}`,
+                                    value: experiment.metric
+                                        ? `${experiment.hypothesis} (${experiment.metric})`
+                                        : experiment.hypothesis,
+                                })),
+                            ]}
+                        />
+                    ) : undefined
+                }
                 subtitle="Process experiments derived from improvement opportunities — each with a hypothesis and a metric."
             />
 

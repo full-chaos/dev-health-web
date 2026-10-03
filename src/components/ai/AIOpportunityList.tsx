@@ -1,11 +1,24 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
 import { EntityLabel } from "@/components/labels/EntityLabel";
+import { edgeTypeWords } from "@/lib/ai/edgeLabels";
+import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import type { AiOpportunity, AiWorkGraphDrilldownRef } from "@/lib/graphql/__generated__/types";
 import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
+
+/**
+ * A served text read as a name (design A5, AD-3): a full UUID inside it is shown as the
+ * short token (`#920f9442`), and the full original text is the tooltip. Text with no id is untouched
+ * and has no tooltip. No name is made up here.
+ */
+function readable(text: string): { text: string; title?: string } {
+    const scrubbed = scrubIdentifiers(text);
+    return scrubbed.changed ? { text: scrubbed.text, title: text } : { text };
+}
 
 function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef | null }) {
     const { data, fetching, error } = useAIWorkflowDrilldown(
@@ -19,7 +32,7 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
     if (fetching) {
         return (
             <p className="mt-3 rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-xs text-(--ink-muted)">
-                Loading Work Graph evidence for {selected.label}…
+                Loading Work Graph evidence for {readable(selected.label).text}…
             </p>
         );
     }
@@ -29,7 +42,7 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
             <p
                 className={`mt-3 rounded-(--radius-sm) border px-3 py-2 text-xs ${STATUS_PILL.negative}`}
             >
-                Evidence unavailable: {error.message}
+                Evidence unavailable. {READ_FAILED_MESSAGE}
             </p>
         );
     }
@@ -37,7 +50,7 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
     if (!data || !data.dataAvailable) {
         return (
             <p className="mt-3 rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-xs text-(--ink-muted)">
-                No Work Graph edges recorded for {selected.label} yet.
+                No Work Graph edges recorded for {readable(selected.label).text} yet.
             </p>
         );
     }
@@ -53,8 +66,10 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
             <ul className="mt-2 space-y-2">
                 {data.edges.slice(0, 3).map((edge) => (
                     <li key={edge.edgeId} className="text-xs text-(--ink-muted)">
-                        <span className="font-semibold text-foreground">{edge.edgeType}</span> ·{" "}
-                        {edge.evidence}
+                        <span className="font-semibold text-foreground">
+                            {edgeTypeWords(edge.edgeType)}
+                        </span>{" "}
+                        · {edge.evidence}
                     </li>
                 ))}
             </ul>
@@ -109,8 +124,15 @@ export function AIOpportunityList({
                     <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                             <div>
-                                <p className="font-medium">{item.title}</p>
-                                <p className="mt-1 text-sm text-(--ink-muted)">{item.rationale}</p>
+                                <p className="font-medium" title={readable(item.title).title}>
+                                    {readable(item.title).text}
+                                </p>
+                                <p
+                                    className="mt-1 text-sm text-(--ink-muted)"
+                                    title={readable(item.rationale).title}
+                                >
+                                    {readable(item.rationale).text}
+                                </p>
                             </div>
                             <span className="shrink-0 whitespace-nowrap rounded-full border border-(--card-stroke) bg-background px-2 py-1 text-xs font-medium tabular-nums text-foreground">
                                 Fit {Math.round(item.score * 100)}%
@@ -141,10 +163,11 @@ export function AIOpportunityList({
                                         <button
                                             key={`${ref.rootType}:${ref.rootId}`}
                                             type="button"
+                                            title={readable(ref.label).title}
                                             onClick={() => setSelectedRef(selected ? null : ref)}
                                             className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${selected ? "border-(--accent) bg-(--accent)/10 text-foreground" : "border-(--card-stroke) bg-background/60 text-(--ink-muted) hover:text-foreground"}`}
                                         >
-                                            Work Graph: {ref.label}
+                                            Work Graph: {readable(ref.label).text}
                                         </button>
                                     );
                                 })}

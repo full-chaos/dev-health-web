@@ -30,7 +30,7 @@ CI enforces:
 | Tier 2   | Integration tests                                | Multi-module behavior, data/provider integration boundaries | Focused integration coverage or explicit gap note                                                                                                       |
 | Tier 3a  | E2E (`tests/*.spec.ts`)                          | User-facing workflows against MSW mock server               | Passing Playwright run and trace/screenshot for risky UI changes                                                                                        |
 | Tier 3b  | Live E2E (`tests/live/*.spec.ts`)                | Full-stack validation against real backend                  | Self-bootstrapping tests (no SQL seeding), `PLAYWRIGHT_LIVE_BACKEND_URL`                                                                                |
-| Contract | Schema drift (`live-e2e.yml`)                    | GraphQL schema sync between repos                           | CI diff of `schema.graphql` against backend export                                                                                                      |
+| Contract | Schema drift (`live-e2e.yml`)                    | GraphQL schema sync between repos                           | CI diff of `schema.graphql` against the ops contract pin                                                                                                |
 
 ## `src/**` Change Policy
 

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+const HOSTILE =
+    "[GraphQL] capacityForecast is served by query-api and has no Python implementation. The Go dispatcher did not intercept this request (cmd/query-api/query_route.go)";
 
 import { render, screen, within } from "@/test/utils";
 import type { CapacityForecast } from "@/lib/graphql/types";
@@ -27,9 +29,6 @@ vi.mock("@/components/charts/ConfidenceBandChart", () => ({
 }));
 vi.mock("@/components/charts/CompletionSpreadChart", () => ({
     CompletionSpreadChart: () => <div data-testid="spread-chart" />,
-}));
-vi.mock("@/components/charts/ThroughputHistogram", () => ({
-    ThroughputHistogram: () => <div data-testid="histogram" />,
 }));
 
 import { CapacityView } from "./CapacityView";
@@ -68,7 +67,9 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
 
         const tile = (id: string) => within(screen.getByTestId(id));
         expect(tile("tile-remaining").getByText("Remaining work")).toBeInTheDocument();
-        expect(tile("tile-remaining").getByText("42 items")).toBeInTheDocument();
+        // The number and its unit apart: the unit is drawn small beside the number.
+        expect(tile("tile-remaining").getByTestId("metric-value")).toHaveTextContent("42 items");
+        expect(tile("tile-remaining").getByTestId("metric-unit")).toHaveTextContent("items");
         expect(tile("tile-p50").getByText("P50 · optimistic")).toBeInTheDocument();
         expect(tile("tile-p50").getByText("9 days")).toBeInTheDocument();
         expect(tile("tile-p85").getByText("P85 · target")).toBeInTheDocument();
@@ -78,6 +79,27 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(tile("tile-p95").getByText("30 days")).toBeInTheDocument();
         // The old "50% chance" rows are gone.
         expect(screen.queryByText("50% chance")).toBeNull();
+    });
+
+    it("draws the tiles as one joined strip with a column per tile", () => {
+        render(<CapacityView filters={filters} />);
+
+        expect(screen.getByTestId("forecast-tiles")).toHaveAttribute("data-columns", "4");
+        expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
+    });
+
+    it("lays the projection beside the Forecast inputs card, then the simulated outcomes, with the Interpretation below", () => {
+        render(<CapacityView filters={filters} />);
+
+        // No other section: these four, in this order, are all the page draws under the tiles.
+        expect(
+            screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+        ).toEqual([
+            "Completion projection",
+            "Forecast inputs",
+            "Simulated outcomes",
+            "Interpretation",
+        ]);
     });
 
     it("sends every selected team id and the filter's range as history days", () => {
@@ -115,7 +137,6 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(inputs.getByText("1.1 items/day")).toBeInTheDocument();
         expect(inputs.getByText("90 days")).toBeInTheDocument();
         expect(inputs.getByText("42")).toBeInTheDocument();
-        expect(screen.getByText("Based on 90 days of historical data")).toBeInTheDocument();
     });
 
     it("shows the two warnings in one warning notice when history is short or variance is high", () => {
@@ -136,14 +157,12 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
     });
 
-    it("keeps the projection chart caption and the two section titles", () => {
+    it("keeps the projection chart, its caption and the section title", () => {
         render(<CapacityView filters={filters} />);
 
         expect(screen.getByTestId("band-chart")).toBeInTheDocument();
-        expect(screen.getByTestId("histogram")).toBeInTheDocument();
         expect(screen.getByText("Completion projection")).toBeInTheDocument();
         expect(screen.getByText("Monte Carlo forecast for work completion")).toBeInTheDocument();
-        expect(screen.getByText("Throughput Distribution")).toBeInTheDocument();
         expect(
             screen.getByText(
                 /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. The spread of the simulated outcomes is shown below\./,
@@ -178,9 +197,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         render(<CapacityView filters={filters} />);
 
         const card = within(screen.getByTestId("completion-spread-card"));
-        expect(
-            card.getByText("No simulation spread was stored for this forecast."),
-        ).toBeInTheDocument();
+        expect(card.getByTestId("completion-spread")).toHaveTextContent(/^Not reported/);
         expect(card.queryByTestId("spread-chart")).toBeNull();
     });
 
@@ -190,10 +207,14 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.queryByTestId("completion-spread-card")).toBeNull();
     });
 
-    it("keeps the How to Interpret texts", () => {
+    it("shows the Interpretation section with the three percentile texts", () => {
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByText("How to Interpret")).toBeInTheDocument();
+        const interp = within(screen.getByTestId("forecast-interpretation"));
+        expect(interp.getByRole("heading", { name: "Interpretation" })).toBeInTheDocument();
+        expect(screen.queryByText("How to Interpret")).toBeNull();
+        // Three inset cards, one per percentile.
+        expect(interp.getAllByRole("heading", { level: 4 })).toHaveLength(3);
         expect(
             screen.getByText("Optimistic estimate. Half of simulations complete by this date."),
         ).toBeInTheDocument();
@@ -220,11 +241,16 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.queryByTestId("forecast-tiles")).toBeNull();
     });
 
-    it("shows the error title and message, and the empty text", () => {
-        hook.state = { ...hook.state, data: null, error: new Error("boom") };
+    it("shows the error title and the plain sentence, and the empty text", () => {
+        hook.state = { ...hook.state, data: null, error: new Error(HOSTILE) };
         const first = render(<CapacityView filters={filters} />);
-        expect(screen.getByText("Forecast Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("boom")).toBeInTheDocument();
+        expect(screen.getByText("Forecast unavailable")).toBeInTheDocument();
+        expect(screen.queryByText(HOSTILE)).toBeNull();
+        // The notice and the projection card both say it: a failed read is never drawn as an empty one.
+        expect(screen.getAllByText("Could not be read")).toHaveLength(2);
+        expect(screen.getByTestId("forecast-chart-failed")).toBeInTheDocument();
+        expect(screen.queryByText("No data for this window")).toBeNull();
+        expect(screen.queryByText("No Forecast Available")).toBeNull();
         first.unmount();
 
         hook.state = { ...hook.state, data: null, error: null };
@@ -235,7 +261,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
                 "Insufficient throughput history to generate a forecast. Need at least 14 days of data.",
             ),
         ).toBeInTheDocument();
-        expect(screen.getByText("No forecast data available")).toBeInTheDocument();
+        expect(screen.getByText("No data for this window")).toBeInTheDocument();
     });
 
     it("shows the low-variance range as one tile, not three percentiles", () => {
@@ -255,5 +281,20 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(range.getByText(/low variance · Jun 1[45]/)).toBeInTheDocument();
         expect(screen.queryByTestId("tile-p50")).toBeNull();
         expect(screen.queryByTestId("tile-p95")).toBeNull();
+    });
+
+    // CHAOS-7990: the API serves the mean and the standard deviation of the throughput, not the
+    // daily counts. A distribution drawn from those two numbers is a curve the web makes.
+    it("draws no throughput distribution; the served mean, deviation and history stay as facts", () => {
+        render(<CapacityView filters={filters} />);
+
+        expect(screen.queryByText("Throughput Distribution")).toBeNull();
+        expect(screen.queryByTestId("chart-throughput-histogram")).toBeNull();
+        expect(screen.queryByText(/days of historical data/)).toBeNull();
+
+        const inputs = within(screen.getByTestId("forecast-inputs"));
+        expect(inputs.getByText("3.3 items/day")).toBeInTheDocument();
+        expect(inputs.getByText("1.1 items/day")).toBeInTheDocument();
+        expect(inputs.getByText("90 days")).toBeInTheDocument();
     });
 });

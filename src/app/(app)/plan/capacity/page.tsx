@@ -1,4 +1,5 @@
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
+import { ForecastEvidenceAction } from "@/components/capacity/ForecastEvidenceAction";
 import { RefreshForecastButton } from "@/components/capacity/RefreshForecastButton";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CapacityView } from "@/components/work/CapacityView";
@@ -72,10 +73,13 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
                     // The Refresh action belongs to the forecast: it is hidden when the
                     // upgrade gate is closed (same test the gate makes).
                     features["capacity_forecast"] === true ? (
-                        <RefreshForecastButton filters={filters} orgId={hydrationOrgId} />
+                        <>
+                            <ForecastEvidenceAction filters={filters} orgId={hydrationOrgId} />
+                            <RefreshForecastButton filters={filters} orgId={hydrationOrgId} />
+                        </>
                     ) : undefined
                 }
-                subtitle="Monte Carlo is the method behind this completion projection, throughput distribution, and confidence bands. Adjust the date range to control how much history informs the forecast."
+                subtitle="Monte Carlo is the method behind this completion projection and its confidence bands. Adjust the date range to control how much history informs the forecast."
             />
 
             <ScopeBar view="capacity-planning" origin={activeOrigin} />

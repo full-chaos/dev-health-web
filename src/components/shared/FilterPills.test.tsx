@@ -52,9 +52,9 @@ describe("FilterPills", () => {
         );
 
         const active = screen.getByRole("radio", { name: "Month" }).closest("label");
-        expect(active).toHaveClass("border-(--accent)");
-        expect(active).toHaveClass("bg-(--accent)/15");
-        expect(active).toHaveClass("text-(--accent-text)");
+        // Prototype theme.css:117: the selected value wears --accentWash with --accentInk.
+        expect(active).toHaveClass("bg-(--accent-wash)");
+        expect(active).toHaveClass("text-(--accent-ink)");
         expect(active?.className).not.toContain("--accent-2");
     });
 

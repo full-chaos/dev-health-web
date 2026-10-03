@@ -33,14 +33,7 @@ export function ErrorView({
                     {label}
                 </p>
                 <h1 className="font-(--font-display) text-3xl mb-4">{heading}</h1>
-                <p className="text-sm text-(--ink-muted) leading-relaxed mb-8">
-                    {description}
-                    {error.digest && (
-                        <span className="block mt-2 font-mono text-xs text-(--ink-subtle)">
-                            Error ID: {error.digest}
-                        </span>
-                    )}
-                </p>
+                <p className="text-sm text-(--ink-muted) leading-relaxed mb-8">{description}</p>
                 <button
                     onClick={reset}
                     className="rounded-full border border-(--card-stroke) px-6 py-2.5 text-xs uppercase tracking-[0.2em] hover:border-(--accent) transition"

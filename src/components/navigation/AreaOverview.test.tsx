@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@/test/utils";
 
 import { AreaOverview } from "./AreaOverview";
+import { getAreaById } from "@/lib/navigation/areas";
 import type { AreaSignal, AreaSignalState } from "@/lib/areaSignals/types";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
@@ -163,5 +164,196 @@ describe("AreaOverview note slot", () => {
             />,
         );
         expect(screen.getByTestId("area-overview-note")).toHaveTextContent("a note");
+    });
+});
+
+describe("AreaOverview — hero action, group heads, no eyebrow", () => {
+    it("makes the whole hero one link into the sub-area (no invented action text)", () => {
+        renderOverview([signal("crit", "critical"), signal("high", "high")]);
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByRole("link", { name: "crit" })).toHaveAttribute(
+            "href",
+            expect.stringContaining("/crit"),
+        );
+        expect(within(hero).getByText("Primary signal")).toBeInTheDocument();
+    });
+
+    it("draws no eyebrow unless a title is passed", () => {
+        const { rerender } = renderOverview([signal("crit", "critical")]);
+        expect(screen.queryByText(/area$/i)).toBeNull();
+        expect(screen.queryByText("Related workflows")).toBeNull();
+        expect(screen.getByTestId("area-overview").firstElementChild).toBe(
+            screen.getByTestId("area-overview-hero"),
+        );
+        rerender(
+            <AreaOverview
+                areaId="govern"
+                signals={[signal("crit", "critical")]}
+                filters={defaultMetricFilter}
+                title="Eyebrow"
+            />,
+        );
+        expect(screen.getByText("Eyebrow")).toBeInTheDocument();
+    });
+
+    it("splits the grid under group heads when signals carry clusters", () => {
+        renderOverview([
+            signal("hero", "critical", { cluster: "Quality" }),
+            signal("q2", "high", { cluster: "Quality" }),
+            signal("r1", "medium", { cluster: "Risk" }),
+        ]);
+        const groups = screen.getAllByTestId("area-overview-cluster");
+        expect(groups.map((g) => g.getAttribute("data-cluster"))).toEqual(["Quality", "Risk"]);
+        expect(within(groups[0]).getByText("Quality")).toBeInTheDocument();
+        expect(
+            within(groups[0])
+                .getAllByTestId("area-signal-card")
+                .map((c) => c.getAttribute("data-signal-id")),
+        ).toEqual(["q2"]);
+        expect(
+            within(groups[1])
+                .getAllByTestId("area-signal-card")
+                .map((c) => c.getAttribute("data-signal-id")),
+        ).toEqual(["r1"]);
+    });
+
+    it("keeps one flat grid and no group heads without clusters", () => {
+        renderOverview([signal("a", "critical"), signal("b", "high"), signal("c", "low")]);
+        expect(screen.queryByTestId("area-overview-cluster")).toBeNull();
+        expect(screen.getAllByTestId("area-overview-grid")).toHaveLength(1);
+    });
+});
+
+describe("AreaOverview — hero action text comes from the destination (prototype copy)", () => {
+    it("pins the two prototype labels on the registry (app.js 97 and 108)", () => {
+        const label = (area: "diagnose" | "improve", id: string) =>
+            getAreaById(area)?.hubItems.find((i) => i.id === id)?.heroCta;
+        expect(label("diagnose", "code")).toBe("Inspect code");
+        expect(label("improve", "opportunities")).toBe("Review opportunities");
+    });
+
+    it("draws the Code hero with the visible button and no overlay link", () => {
+        render(
+            <AreaOverview
+                areaId="diagnose"
+                signals={[signal("code", "critical", { href: "/code" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByRole("link", { name: "Inspect code" })).toHaveAttribute(
+            "href",
+            expect.stringContaining("/code"),
+        );
+        expect(within(hero).queryByTestId("area-signal-hero-link")).toBeNull();
+    });
+
+    it("draws the 'Review opportunities' button on the Improve hero, a synthesized signal that links to /opportunities", () => {
+        render(
+            <AreaOverview
+                areaId="improve"
+                signals={[
+                    signal("improve-top-signal", "critical", { href: "/opportunities" }),
+                    signal("opportunities", "neutral", { href: "/opportunities" }),
+                    signal("experiments", "neutral", { href: "/improve/experiments" }),
+                ]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByRole("link", { name: "Review opportunities" })).toHaveAttribute(
+            "href",
+            expect.stringContaining("/opportunities"),
+        );
+        expect(within(hero).queryByTestId("area-signal-hero-link")).toBeNull();
+        // The three destination cards stay: the hero is not one of them.
+        expect(screen.getAllByTestId("area-overview-grid")[0].children.length).toBe(2);
+    });
+
+    it("leaves the Govern hero a whole-hero link with no button (the href match does not add CTAs elsewhere)", () => {
+        render(
+            <AreaOverview
+                areaId="govern"
+                signals={[signal("coverage", "critical", { href: "/testops/coverage" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByTestId("area-signal-hero-link")).toBeInTheDocument();
+        expect(
+            within(hero).queryByRole("link", { name: /Review opportunities|Inspect code/ }),
+        ).toBeNull();
+    });
+
+    it("gives a destination without prototype copy its own 'Inspect <item>' button (ruling 93), no overlay link", () => {
+        render(
+            <AreaOverview
+                areaId="diagnose"
+                signals={[signal("flow", "critical", { href: "/flow" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByRole("link", { name: "Inspect flow" })).toHaveAttribute(
+            "href",
+            expect.stringContaining("/flow"),
+        );
+        expect(within(hero).queryByTestId("area-signal-hero-link")).toBeNull();
+    });
+
+    it("draws the arrow BEFORE the button text (prototype btn())", () => {
+        render(
+            <AreaOverview
+                areaId="govern"
+                signals={[signal("security", "critical", { href: "/security", cluster: "Risk" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const button = screen.getByTestId("area-signal-hero-cta");
+        expect(button).toHaveTextContent("Inspect security");
+        expect(button.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(button.lastChild?.textContent).toBe("Inspect security");
+    });
+});
+
+describe("AreaOverview — groups keep the area's own order (Govern: Quality, then Risk)", () => {
+    it("draws QUALITY above RISK even when a Risk card is more severe than every Quality card", () => {
+        renderOverview([
+            signal("security", "critical", { cluster: "Risk" }),
+            signal("risk-compounding", "critical", { cluster: "Risk" }),
+            signal("risk", "low", { cluster: "Risk" }),
+            signal("testops", "low", { cluster: "Quality" }),
+            signal("quality", "medium", { cluster: "Quality" }),
+        ]);
+        // The hero choice does not change: the first most severe signal.
+        expect(
+            within(screen.getByTestId("area-overview-hero"))
+                .getByTestId("area-signal-card")
+                .getAttribute("data-signal-id"),
+        ).toBe("security");
+        const groups = screen.getAllByTestId("area-overview-cluster");
+        expect(groups.map((g) => g.getAttribute("data-cluster"))).toEqual(["Quality", "Risk"]);
+        // Cards inside a group still sort by severity.
+        const ids = (g: HTMLElement) =>
+            within(g)
+                .getAllByTestId("area-signal-card")
+                .map((c) => c.getAttribute("data-signal-id"));
+        expect(ids(groups[0])).toEqual(["quality", "testops"]);
+        expect(ids(groups[1])).toEqual(["risk-compounding", "risk"]);
+    });
+});
+
+describe("AreaOverview — a no-data Risk card stays a normal card in its group (D16)", () => {
+    it("keeps the unavailable Feature Flags card inside the Risk group with card chrome", () => {
+        renderOverview([
+            signal("hero", "critical", { cluster: "Quality" }),
+            signal("risk", "high", { cluster: "Risk" }),
+            signal("flags", "unavailable", { cluster: "Risk", demoted: true }),
+        ]);
+        const groups = screen.getAllByTestId("area-overview-cluster");
+        expect(groups.map((g) => g.getAttribute("data-cluster"))).toEqual(["Risk"]);
+        const cards = within(groups[0]).getAllByTestId("area-signal-card");
+        expect(cards.map((c) => c.getAttribute("data-signal-id"))).toEqual(["risk", "flags"]);
+        expect(cards[1]).toHaveClass("border", "bg-(--card)");
     });
 });

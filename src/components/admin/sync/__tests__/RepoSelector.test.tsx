@@ -114,7 +114,7 @@ describe("RepoSelector", () => {
             renderSelector();
             await waitFor(() => {
                 expect(
-                    screen.getByText(/Failed to load repositories: Unauthorized/i),
+                    screen.getByText(/Failed to load repositories\. Could not be read/i),
                 ).toBeInTheDocument();
             });
         });

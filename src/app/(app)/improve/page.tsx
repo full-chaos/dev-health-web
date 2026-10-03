@@ -1,3 +1,4 @@
+import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
 import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { Notice } from "@/components/ui/Notice";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -7,6 +8,8 @@ import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+
+import { improveFacts } from "./improveEvidenceFacts";
 
 type ImprovePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -39,6 +42,9 @@ export default async function ImprovePage({ searchParams }: ImprovePageProps) {
             <PageHeader
                 title="Improve"
                 subtitle="Opportunities, experiments, and automations — each producing actions, not dashboards."
+                actions={
+                    <PageFactsEvidenceAction title="Improve" facts={improveFacts(improveSignals)} />
+                }
             />
 
             <ScopeBar pageFilters={false} />
@@ -48,8 +54,6 @@ export default async function ImprovePage({ searchParams }: ImprovePageProps) {
                 signals={improveSignals}
                 filters={filters}
                 role={activeRole}
-                title="Related workflows"
-                description="Improvement workflows, ordered by severity."
                 note={
                     <Notice variant="info" live={false} data-testid="improve-destinations-note">
                         Improvement Automations and AI Automations are separate destinations.

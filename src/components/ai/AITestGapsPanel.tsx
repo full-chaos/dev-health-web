@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { Notice } from "@/components/ui/Notice";
 import type { AIFilter } from "@/lib/filters/ai";
@@ -31,7 +32,7 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
     const aiBucket = findBucketRow<AiRiskBreakdownRow>(riskData?.byBucket);
 
     if (risk.error) {
-        return <ErrorCard title="Failed to load AI test gaps" message={risk.error.message} />;
+        return <ErrorCard title="Failed to load AI test gaps" message={READ_FAILED_MESSAGE} />;
     }
 
     if (!risk.fetching && riskData && !riskData.dataAvailable) {

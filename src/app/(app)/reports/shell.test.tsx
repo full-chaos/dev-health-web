@@ -16,6 +16,9 @@ import ReportsPage from "./page";
 const FILTERS = { ...defaultMetricFilter, scope: { level: "team" as const, ids: ["platform"] } };
 const F = encodeFilterParam(FILTERS);
 
+vi.mock("@/lib/auth", () => ({
+    requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-session-1" } }),
+}));
 vi.mock("next/navigation", () => ({
     usePathname: () => "/reports",
     useSearchParams: () => new URLSearchParams(`f=${F}&role=em`),
@@ -30,7 +33,7 @@ vi.mock("next-auth/react", () => ({
     signOut: vi.fn(),
 }));
 vi.mock("@/lib/reports/fetchers", () => ({
-    fetchSavedReports: vi.fn().mockResolvedValue({ items: [] }),
+    fetchSavedReportsChecked: vi.fn().mockResolvedValue({ items: [], total: 0, error: false }),
 }));
 vi.mock("@/lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/config")>()),
@@ -63,7 +66,7 @@ describe("Report Center in the shared app shell", () => {
         );
     });
 
-    it("keeps the subtitle and has 'New Report' in the header actions", async () => {
+    it("keeps the subtitle and has 'New report' in the header actions", async () => {
         await renderPage();
 
         const header = within(screen.getByTestId("page-header"));

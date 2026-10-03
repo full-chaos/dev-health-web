@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UserTable } from "@/components/superadmin/UserTable";
@@ -20,7 +21,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
             <div>
                 <AdminHeader title="Users" description="Manage all users across the platform." />
                 <Notice variant="danger" live={false}>
-                    Error loading users: {error}
+                    Error loading users. {READ_FAILED_MESSAGE}
                 </Notice>
             </div>
         );
@@ -40,7 +41,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                             type="search"
                             defaultValue={query}
                             placeholder="Search users..."
-                            className="w-64 rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            className="w-64 rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                         />
                         <button
                             type="submit"

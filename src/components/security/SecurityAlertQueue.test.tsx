@@ -53,7 +53,8 @@ describe("SecurityAlertQueue", () => {
         render(<SecurityAlertQueue filter={filter} />);
 
         expect(screen.getByText(/Failed to load security alerts/i)).toBeInTheDocument();
-        expect(screen.getByText(/server on fire/i)).toBeInTheDocument();
+        expect(screen.queryByText(/server on fire/i)).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
         expect(screen.getByTestId("data-state-error")).toHaveAttribute("data-variant", "error");
     });
 

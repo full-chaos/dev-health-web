@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import React, { useState, useEffect, useCallback } from "react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AuditLogTable } from "@/components/shared/AuditLogTable";
@@ -63,7 +64,7 @@ export default function AuditLogPage() {
 
             {error && (
                 <Notice variant="danger" live={false} className="mb-6">
-                    Error loading audit logs: {error}
+                    Error loading audit logs. {READ_FAILED_MESSAGE}
                 </Notice>
             )}
 

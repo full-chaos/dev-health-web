@@ -13,9 +13,11 @@ type UserMenuProps = {
      * the account block of the shared app shell (full width, menu opens upward).
      */
     placement?: "bar" | "sidebar";
+    /** Sidebar only: the line under the account name (the active organization's data state). */
+    detail?: string | null;
 };
 
-export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
+export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
     const inSidebar = placement === "sidebar";
     // Both placements can be mounted at once (the shell shows one per breakpoint),
     // so each needs its own menu id.
@@ -60,27 +62,44 @@ export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
                 aria-controls={menuId}
                 aria-expanded={isOpen}
                 aria-label={CTA_LABELS.accountOptions}
-                className={`flex items-center gap-2 border border-(--card-stroke) bg-(--card) px-3 py-1.5 text-sm transition hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 ${
-                    inSidebar ? "w-full min-w-0 rounded-(--radius-sm)" : "rounded-(--radius-pill)"
+                className={`flex items-center gap-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50 ${
+                    inSidebar
+                        ? "w-full min-w-0 rounded-(--radius-sm) px-2 py-1 text-left hover:bg-(--surface2)"
+                        : "rounded-(--radius-pill) border border-(--card-stroke) bg-(--card) px-3 py-1.5 hover:bg-(--card-80)"
                 }`}
             >
                 <div
-                    className={`flex h-6 w-6 items-center justify-center rounded-(--radius-pill) bg-(--accent) text-xs font-bold text-white ${
-                        inSidebar ? "shrink-0" : ""
+                    className={`flex items-center justify-center rounded-(--radius-pill) text-xs ${
+                        inSidebar
+                            ? "size-7 shrink-0 bg-(image:--ember) font-bold text-(--on-ember)"
+                            : "h-6 w-6 bg-(--accent) font-bold text-white"
                     }`}
                 >
                     {session.user?.email?.[0]?.toUpperCase() || "U"}
                 </div>
-                <span className="font-medium text-foreground">Account</span>
-                <span
-                    className={
-                        inSidebar
-                            ? "min-w-0 truncate text-(--ink-muted)"
-                            : "hidden text-(--ink-muted) sm:block"
-                    }
-                >
-                    {session.user?.email?.split("@")[0]}
-                </span>
+                {inSidebar ? (
+                    <span className="flex min-w-0 flex-col">
+                        <span className="sr-only">Account</span>
+                        <strong className="truncate text-[0.6875rem] font-bold text-foreground">
+                            {session.user?.email?.split("@")[0]}
+                        </strong>
+                        {detail ? (
+                            <small
+                                data-testid="account-detail"
+                                className="truncate text-[0.625rem] text-(--text-muted)"
+                            >
+                                {detail}
+                            </small>
+                        ) : null}
+                    </span>
+                ) : (
+                    <>
+                        <span className="font-medium text-foreground">Account</span>
+                        <span className="hidden text-(--ink-muted) sm:block">
+                            {session.user?.email?.split("@")[0]}
+                        </span>
+                    </>
+                )}
             </button>
 
             {isOpen && (
@@ -101,7 +120,7 @@ export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
                         {session.user?.is_superuser && (
                             <Link
                                 href="/superadmin"
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-(--info) hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-(--info) hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                                 onClick={() => setIsOpen(false)}
                             >
                                 <ShieldCheck
@@ -113,7 +132,7 @@ export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
                         )}
                         <Link
                             href="/settings"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                             onClick={() => setIsOpen(false)}
                         >
                             <Settings2
@@ -124,7 +143,7 @@ export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
                         </Link>
                         <Link
                             href="/org/admin"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                             onClick={() => setIsOpen(false)}
                         >
                             <Building2
@@ -138,7 +157,7 @@ export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
                         <button
                             type="button"
                             onClick={() => signOut()}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         >
                             <LogOut
                                 aria-hidden="true"

@@ -28,7 +28,7 @@ export function ContextPacketFeedback() {
                         type="button"
                         aria-pressed={feedback === label}
                         onClick={() => setFeedback(label)}
-                        className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                        className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                     >
                         {label}
                     </button>

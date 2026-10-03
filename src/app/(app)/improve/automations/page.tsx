@@ -1,4 +1,5 @@
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { AutomationsEvidenceAction } from "@/components/improve/AutomationsEvidenceAction";
 import { ImproveAutomationsDashboard } from "@/components/improve/ImproveAutomationsDashboard";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -31,6 +32,7 @@ export default async function ImproveAutomationsPage({
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Automations"
+                actions={<AutomationsEvidenceAction />}
                 subtitle="Non-AI flow opportunities — review latency, cycle time, rework, WIP congestion, throughput, churn, and change failure rate — each firing only when metrics exceed documented thresholds. For AI-workflow automation candidates, see the AI surface."
             />
             <ScopeBar view="opportunities" />

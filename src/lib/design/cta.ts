@@ -17,12 +17,60 @@ export const CTA_LABELS = {
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */
     exploreLoadDrivers: "Explore load drivers",
-    /** Light / dark theme switch (pressed = light). */
-    themeSwitchLight: "Light theme",
+    /** Theme switch while the theme is dark: the click switches to light. */
+    themeSwitchToLight: "Switch to light theme",
+    /** Theme switch while the theme is light: the click switches to dark. */
+    themeSwitchToDark: "Switch to dark theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
     skipToMainContent: "Skip to main content",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
+    /** Page header action: open the shared evidence drawer for the page as a whole. */
+    viewEvidence: "View evidence",
+    /** Home Monitoring: link to the full diagnostic page of the chosen metric group. */
+    jumpToDiagnosticViews: "Jump to full diagnostic views",
+    /** Primary-signal hero action for the Code destination (approved copy, app.js line 97). */
+    inspectCode: "Inspect code",
+    /** Primary-signal hero action for the Opportunities destination (approved copy, app.js line 108). */
+    reviewOpportunities: "Review opportunities",
+    /** Primary-signal hero action for the Flow destination (ruling 93: "Inspect <item>"). */
+    inspectFlow: "Inspect flow",
+    /** Primary-signal hero action for the Investment destination (ruling 93: "Inspect <item>"). */
+    inspectInvestment: "Inspect investment",
+    /** Primary-signal hero action for the Landscape destination (ruling 93: "Inspect <item>"). */
+    inspectLandscape: "Inspect landscape",
+    /** Primary-signal hero action for the Complexity destination (ruling 93: "Inspect <item>"). */
+    inspectComplexity: "Inspect complexity",
+    /** Primary-signal hero action for the Cognitive Load destination (ruling 93: "Inspect <item>"). */
+    inspectCognitiveLoad: "Inspect cognitive load",
+    /** Primary-signal hero action for the Bottlenecks destination (ruling 93: "Inspect <item>"). */
+    inspectBottlenecks: "Inspect bottlenecks",
+    /** Primary-signal hero action for the Operating Review destination (ruling 93: "Inspect <item>"). */
+    inspectOperatingReview: "Inspect operating review",
+    /** Primary-signal hero action for the Experiments destination (ruling 93: "Inspect <item>"). */
+    inspectExperiments: "Inspect experiments",
+    /** Primary-signal hero action for the Automations (Improve and AI) destination (ruling 93: "Inspect <item>"). */
+    inspectAutomations: "Inspect automations",
+    /** Primary-signal hero action for the TestOps destination (ruling 93: "Inspect <item>"). */
+    inspectTestOps: "Inspect TestOps",
+    /** Primary-signal hero action for the Quality destination (ruling 93: "Inspect <item>"). */
+    inspectQuality: "Inspect quality",
+    /** Primary-signal hero action for the Security destination (ruling 93: "Inspect <item>"). */
+    inspectSecurity: "Inspect security",
+    /** Primary-signal hero action for the Delivery Risk destination (ruling 93: "Inspect <item>"). */
+    inspectDeliveryRisk: "Inspect delivery risk",
+    /** Primary-signal hero action for the Compounding Risk destination (ruling 93: "Inspect <item>"). */
+    inspectCompoundingRisk: "Inspect compounding risk",
+    /** Primary-signal hero action for the Incident Correlation destination (ruling 93: "Inspect <item>"). */
+    inspectIncidentCorrelation: "Inspect incident correlation",
+    /** Primary-signal hero action for the Feature Flags destination (ruling 93: "Inspect <item>"). */
+    inspectFeatureFlags: "Inspect feature flags",
+    /** Primary-signal hero action for the AI Impact destination (ruling 93: "Inspect <item>"). */
+    inspectAiImpact: "Inspect AI impact",
+    /** Primary-signal hero action for the Review Load destination (ruling 93: "Inspect <item>"). */
+    inspectReviewLoad: "Inspect review load",
+    /** Primary-signal hero action for the Governance Risk destination (ruling 93: "Inspect <item>"). */
+    inspectGovernanceRisk: "Inspect governance risk",
     generateContext: "Generate context",
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",
@@ -35,6 +83,12 @@ export const CTA_LABELS = {
     inspectThroughputBreakdown: "Inspect throughput breakdown",
     /** Landscape investigation: the code-hotspots flame (was a second "Inspect associations"). */
     inspectCodeHotspots: "Inspect code hotspots",
+    /** Code page: from the repository hotspots to the file-level hotspots (approved copy, app.js:103). */
+    fileLevelHotspots: "File-level hotspots",
+    /** Code page evidence row (approved copy, app.js:103). */
+    ownershipRisk: "Ownership risk",
+    /** Code page evidence row (approved copy, app.js:103). */
+    thirtyDayFileChurn: "30-day file churn",
     /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
     browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
@@ -54,7 +108,7 @@ export const CTA_LABELS = {
     continue: "Continue",
     back: "Back",
     saving: "Saving...",
-    runNow: "Run Now",
+    runNow: "Run now",
     addOneFirst: "Add one first",
     createOneNow: "Create One Now",
     importSelected: "Import Selected",
@@ -79,15 +133,43 @@ export const CTA_LABELS = {
     openWorkGraph: "Open Work Graph",
     /** Open the Investment view (allocation tab from the Diagnose overview). */
     openInvestment: "Open Investment",
+    /** Diagnose overview "Follow a question into evidence": the Work Graph (approved copy, app.js line 97). */
+    exploreWorkGraph: "Explore the work graph",
+    /** Diagnose overview "Follow a question into evidence": the Review Latency evidence page (approved copy, app.js line 97). */
+    inspectReviewLatency: "Inspect review latency",
+    /** Diagnose overview "Follow a question into evidence": the Investment Allocation tab (approved copy, app.js line 97). */
+    traceEffortAllocation: "Trace effort allocation",
     openMetrics: "Open metrics",
+    /** Row action of the Home investigation threads (approved copy, app.js line 100). */
+    inspect: "Inspect",
     openWorkView: "Open Work view",
+    /** Row action of a worklist: open the destination named by the row (approved copy, app.js line 113). */
+    open: "Open",
     evidence: "Evidence",
+    /** Section action on a Flow tab: the evidence page of the tab's metric (approved copy, app.js line 98). */
+    metricEvidence: "Metric evidence",
+    /** Investment Confidence, "Low-confidence areas" action: the Evidence tab (approved copy, app.js line 74). */
+    evidenceDrilldown: "Evidence drilldown",
+    /** Metric evidence page, Context card: back to the Flow tab of the metric (approved copy, app.js line 99). */
+    returnToInvestigation: "Return to investigation",
+    /** Investment Allocation, selected-path aside: the Evidence tab (approved copy, app.js line 71). */
+    inspectAllocationEvidence: "Inspect allocation evidence",
+    /** Investment "Read this with context": open the collapsed AI explanation. */
+    showAiExplanation: "Show AI explanation",
+    /** Investment "Read this with context": collapse the AI explanation again. */
+    hideAiExplanation: "Hide AI explanation",
+    /** Investment AI explanation: ask for a new explanation of the same window. */
+    regenerate: "Regenerate",
+    /** Investment AI explanation: shown on the Regenerate button while the request runs. */
+    generating: "Generating...",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",
     aiAutomations: "Automations",
     /** Navigate to the AI Automations workflow from a cross-panel CTA. */
     seeAIAutomations: "See AI Automations",
+    /** Improve / Automations foot notice: go to the AI Automations destination. */
+    viewAIAutomations: "View AI automations",
     /** Open the shared evidence drawer for an opportunity or experiment metric. */
     viewMetricEvidence: "View metric evidence",
     /** Review the evidence behind a suggested experiment (opens the shared drawer). */
@@ -95,6 +177,8 @@ export const CTA_LABELS = {
     /** From an opportunity to the experiments derived from it. */
     exploreExperiments: "Explore experiments",
     checkDataConnections: "Check data connections",
+    /** Empty state of a page with no connected source: open the data connections page (approved copy, Govern D6). */
+    howToConnect: "How to connect",
     /** Open the Plan / Completion Forecast destination (Plan overview). */
     completionForecast: "Completion Forecast",
     /** Recompute the Completion Forecast (page header action). */
@@ -107,8 +191,8 @@ export const CTA_LABELS = {
     landscape: "Landscape",
     week: "Week",
     month: "Month",
-    newReport: "New Report",
-    createReport: "Create Report",
+    newReport: "New report",
+    createReport: "Create report",
     /** Paginate to the previous page of a list. */
     previousPage: "Previous",
     /** Paginate to the next page of a list. */
@@ -137,6 +221,7 @@ export const CTA_LABELS = {
     startSync: "Start sync",
     lightTheme: "Light",
     darkTheme: "Dark",
+    systemTheme: "System",
     enabled: "Enabled",
     disabled: "Disabled",
     /** Edit a sync configuration from its detail page (CHAOS-2791). */
@@ -270,6 +355,7 @@ export const CTA_LABELS = {
     /** Marketing link to the customer doc explaining Ask Dev / Context Fabric (CHAOS-3215). */
     viewAskDevDocs: "Learn more",
     confirmMapping: "Confirm Mapping",
+    mapIdentity: "Map identity",
     deleteUser: "Delete User",
     editUser: "Edit User",
     editProfile: "Edit Profile",
@@ -320,6 +406,10 @@ export const CTA_LABELS = {
     startWithAiImpact: "Start with AI Impact",
     weeklyReview: "Weekly review",
     viewAll: "View all",
+    /** Home ranked signals table: show the rows after the first five, in place. */
+    showAllSignals: "Show all signals",
+    /** Home ranked signals table: back to the first five rows. */
+    showFewerSignals: "Show fewer signals",
     provenance: "Provenance",
     apply: "Apply",
     saveOverride: "Save Override",

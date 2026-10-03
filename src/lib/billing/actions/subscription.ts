@@ -1,5 +1,6 @@
 "use server";
 
+import { failureResult } from "@/lib/actionFailure";
 import type { ActionResult } from "@/lib/result";
 import {
     apiRequest,
@@ -94,7 +95,10 @@ export async function startTrialCheckout(): Promise<ActionResult<{ url: string }
 
         if (!res.ok) {
             const detail = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: detail.detail || `Failed to create checkout session (${res.status})` };
+            return failureResult("action", "startTrialCheckout", {
+                status: res.status,
+                served: detail.detail,
+            });
         }
 
         const data = (await res.json()) as CheckoutSessionResponse;
@@ -104,7 +108,7 @@ export async function startTrialCheckout(): Promise<ActionResult<{ url: string }
 
         return { data: { url: data.url } };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("action", "startTrialCheckout", { error: err });
     }
 }
 

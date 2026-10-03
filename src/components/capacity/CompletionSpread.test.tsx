@@ -128,22 +128,26 @@ describe("CompletionSpread — the days histogram", () => {
 });
 
 describe("CompletionSpread — states, never zero-filled", () => {
-    it("a null distribution is a quiet notice and no chart", () => {
+    it("a null distribution reads 'Not reported' and draws no chart", () => {
         render(<CompletionSpread forecast={base({ completionDistribution: null })} />);
 
         expect(chartSpy).not.toHaveBeenCalled();
         expect(screen.queryByTestId("chart")).toBeNull();
-        expect(
-            screen.getByText("No simulation spread was stored for this forecast."),
-        ).toBeInTheDocument();
+        // Not served: the state word of the rule, then why. Never an empty chart, never a zero.
+        const state = screen.getByTestId("completion-spread");
+        expect(state).toHaveAttribute("data-reported", "false");
+        expect(state).toHaveTextContent(/^Not reported/);
+        expect(state).toHaveTextContent("No simulation spread is stored for this forecast.");
     });
 
     it("a missing field is the same as null (an older response)", () => {
         render(<CompletionSpread forecast={base({ completionDistribution: undefined })} />);
         expect(screen.queryByTestId("chart")).toBeNull();
-        expect(
-            screen.getByText("No simulation spread was stored for this forecast."),
-        ).toBeInTheDocument();
+        // Not served: the state word of the rule, then why. Never an empty chart, never a zero.
+        const state = screen.getByTestId("completion-spread");
+        expect(state).toHaveAttribute("data-reported", "false");
+        expect(state).toHaveTextContent(/^Not reported/);
+        expect(state).toHaveTextContent("No simulation spread is stored for this forecast.");
     });
 
     it("an object with both lists null or empty is also no distribution", () => {
@@ -153,9 +157,11 @@ describe("CompletionSpread — states, never zero-filled", () => {
             />,
         );
         expect(screen.queryByTestId("chart")).toBeNull();
-        expect(
-            screen.getByText("No simulation spread was stored for this forecast."),
-        ).toBeInTheDocument();
+        // Not served: the state word of the rule, then why. Never an empty chart, never a zero.
+        const state = screen.getByTestId("completion-spread");
+        expect(state).toHaveAttribute("data-reported", "false");
+        expect(state).toHaveTextContent(/^Not reported/);
+        expect(state).toHaveTextContent("No simulation spread is stored for this forecast.");
     });
 
     it("an items-only distribution draws only the items chart, with the items percentiles", () => {

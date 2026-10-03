@@ -136,3 +136,90 @@ describe("AreaSignalCard pinned behaviour (before the CHAOS-7598 restyle)", () =
         }
     });
 });
+
+describe("AreaSignalCard approved look (CHAOS-8062)", () => {
+    const sig = (extra: Partial<AreaSignal> = {}): AreaSignal => ({
+        id: "cov",
+        label: "TestOps",
+        href: "/testops",
+        metricLabel: "Line coverage",
+        value: "60%",
+        state: "high",
+        ...extra,
+    });
+    const renderCard = (signal: AreaSignal) =>
+        render(<AreaSignalCard signal={signal} filters={defaultMetricFilter} />);
+
+    it("draws the severity word as a small tinted pill: no outline, no forced caps", () => {
+        renderCard(sig());
+        const pill = screen.getByTestId("area-signal-badge");
+        expect(pill).toHaveTextContent("High");
+        expect(pill).toHaveClass("rounded-full!", "bg-(--accent-3)/12");
+        expect(pill.className).not.toMatch(/\bborder\b|uppercase|tracking-/);
+    });
+
+    it("puts the metric name below the value as link text with an arrow", () => {
+        renderCard(sig());
+        const value = screen.getByTestId("area-signal-value");
+        const metric = screen.getByTestId("area-signal-metric");
+        expect(metric).toHaveTextContent("Line coverage →");
+        expect(metric.className).not.toMatch(/uppercase|tracking-/);
+        expect(metric).toHaveClass("text-(--accent-2)");
+        expect(
+            value.compareDocumentPosition(metric) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(value.parentElement).not.toContainElement(metric);
+    });
+
+    it("draws an unavailable signal as a normal card with the no-data state inside", () => {
+        renderCard(sig({ state: "unavailable", value: "", label: "Feature Flags" }));
+        const card = screen.getByTestId("area-signal-card");
+        expect(card).toHaveClass("border", "bg-(--card)", "rounded-(--radius-md)");
+        expect(screen.getByRole("heading", { name: "Feature Flags" })).toBeInTheDocument();
+        expect(screen.getByTestId("area-signal-unavailable")).toBeInTheDocument();
+    });
+
+    describe("three different states (CHAOS-8168)", () => {
+        const empty: AreaSignal = { ...base, state: "unavailable", value: "" };
+
+        it('an empty window says "No data for this window", with no error', () => {
+            draw(empty);
+            expect(screen.getByTestId("area-signal-unavailable")).toHaveTextContent(
+                "No data for this window",
+            );
+            expect(screen.queryByTestId("area-signal-failed")).not.toBeInTheDocument();
+        });
+
+        it("a failed read says it could not be read, in one plain sentence, and is not the empty state", () => {
+            draw({ ...empty, failed: true });
+            const failed = screen.getByTestId("area-signal-failed");
+            expect(failed).toHaveTextContent("Could not be read");
+            expect(failed).toHaveTextContent("The data for this view could not be read.");
+            expect(screen.queryByText("No data for this window")).not.toBeInTheDocument();
+            expect(screen.getByTestId("area-signal-card")).toHaveAttribute("data-failed", "true");
+            expect(screen.getByTestId("area-signal-card")).toHaveAttribute(
+                "data-state",
+                "unavailable",
+            );
+        });
+
+        it("the failed state is compact and its title sits one level below the card title (CHAOS-8269)", () => {
+            draw({ ...empty, failed: true });
+            const failed = screen.getByTestId("area-signal-failed");
+            // The card title is the h3; the error title under it is an h4, never an h2.
+            expect(screen.getByRole("heading", { level: 3, name: base.label })).toBeInTheDocument();
+            expect(failed.querySelector("h2")).toBeNull();
+            expect(failed.querySelector("h4")).toHaveTextContent("Could not be read");
+            // Compact box, like the empty state next to it.
+            expect(failed.firstElementChild).toHaveClass("p-5");
+            expect(failed.firstElementChild).not.toHaveClass("p-8");
+        });
+
+        it("a served value is drawn as the value, with neither state", () => {
+            draw(base);
+            expect(screen.queryByTestId("area-signal-failed")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("area-signal-unavailable")).not.toBeInTheDocument();
+            expect(screen.getByTestId("area-signal-value")).toHaveTextContent("9");
+        });
+    });
+});

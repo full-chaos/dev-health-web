@@ -25,4 +25,32 @@ test.describe("Diagnose Overview hub cards (CHAOS-2223)", () => {
         await expect(card("cognitive-load")).toHaveAttribute("data-state", "low");
         await expect(card("cognitive-load").getByTestId("area-signal-value")).toHaveText("6");
     });
+
+    // Approved prototype layout (CHAOS-8065): the header action, no legacy line above the hero,
+    // and the three question buttons in one section card.
+    test("header has View evidence, and the question section has the three prototype buttons", async ({
+        page,
+    }) => {
+        await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
+        await expect(page.getByTestId("area-overview")).toBeVisible();
+
+        await expect(page.getByText("Diagnostic sub-areas, ordered by severity.")).toHaveCount(0);
+        await expect(page.getByTestId("page-header")).not.toContainText("durable area");
+
+        const questions = page.getByTestId("diagnose-questions");
+        await expect(
+            questions.getByRole("heading", { name: "Follow a question into evidence" }),
+        ).toBeVisible();
+        await expect(questions.getByRole("link")).toHaveText([
+            "Explore the work graph",
+            "Inspect review latency",
+            "Trace effort allocation",
+        ]);
+
+        await page
+            .getByTestId("page-header-actions")
+            .getByRole("button", { name: "View evidence" })
+            .click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+    });
 });

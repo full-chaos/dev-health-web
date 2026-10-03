@@ -11,7 +11,7 @@
  * - The dashboard surfaces the weights/thresholds audit trail.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { render, screen, within } from "@/test/utils";
 
@@ -73,6 +73,13 @@ function renderDashboard(overrides: Partial<CompoundingRiskDashboardProps> = {})
     return render(<CompoundingRiskDashboard {...props} />);
 }
 
+// The breakout control navigates with the app router.
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+    usePathname: () => "/risk/compounding",
+    useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("CompoundingRiskDashboard", () => {
     it("renders the headline score and severity from the row", () => {
         renderDashboard();
@@ -81,6 +88,11 @@ describe("CompoundingRiskDashboard", () => {
         const chips = screen.getAllByTestId("severity-chip");
         // First chip is the headline; subsequent chips are in the table.
         expect(chips[0].getAttribute("data-severity")).toBe("high");
+        // Concept `govern-compounding-risk`: sentence case ("High"), not caps.
+        for (const chip of chips) {
+            expect(chip.className).not.toMatch(/uppercase|tracking-/u);
+        }
+        expect(chips[0].textContent).toBe("High");
     });
 
     it("renders all four component bars with the normalized value", () => {
@@ -128,6 +140,9 @@ describe("CompoundingRiskDashboard", () => {
         const filters = decodeFilter(new URL(href, "http://localhost").searchParams.get("f"));
         expect(filters.scope).toEqual({ level: "repo", ids: ["repo-a"] });
         expect(filters.what.repos).toEqual(["repo-a"]);
+        // Concept `govern-compounding-risk`: a sentence-case text link, the arrow after the text.
+        expect(drilldownLinks[0].textContent).toBe("Open Work Graph ↗");
+        expect(drilldownLinks[0].className).not.toMatch(/uppercase|tracking-|font-semibold/u);
     });
 
     it("renders a disabled indicator (not an active link) for team-scope rows, since Work Graph has no team\u2192repo resolution", () => {
@@ -308,5 +323,40 @@ describe("CompoundingRiskDashboard drawing", () => {
         expect(small.className).toContain("bg-(--chart-color-1)");
         expect(small).toHaveAttribute("aria-hidden", "true");
         expect((fillOf("component-review-latency") as HTMLElement).style.width).toBe("100%");
+    });
+});
+
+describe("CompoundingRiskDashboard on the shared Section", () => {
+    it("draws the hero sentence on the type scale, not a display size", () => {
+        renderDashboard();
+        const title = screen.getByTestId("compounding-hero-title");
+        expect(title.tagName).toBe("H2");
+        expect(title.className).toContain("text-h1");
+        expect(title.className).not.toMatch(/text-5xl|text-3xl/);
+    });
+
+    it("draws Component breakdown as a section card with the thresholds in its head", () => {
+        renderDashboard();
+        const card = screen.getByTestId("component-breakdown");
+        expect(card.tagName).toBe("SECTION");
+        expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(
+            "Component breakdown",
+        );
+        const thresholds = within(card).getByTestId("component-breakdown-thresholds");
+        expect(thresholds).toHaveTextContent(/thresholds: elevated ≥ \d\.\d\d · high ≥ \d\.\d\d/);
+        // The thresholds line sits in the card head, before the bars.
+        expect(
+            thresholds.compareDocumentPosition(within(card).getAllByText(/Churn/)[0]) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it("draws the scope table as a section card with the sort line and the By repo / By team segment in its head", () => {
+        renderDashboard();
+        const card = screen.getByTestId("compounding-scope-table");
+        expect(card.tagName).toBe("SECTION");
+        expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent("By repo");
+        expect(card).toHaveTextContent(/sorted by score · \d+ repo/);
+        expect(within(card).getByRole("table")).toBeInTheDocument();
     });
 });

@@ -192,7 +192,7 @@ export function EntitlementsDetail({
                                     id="feature-select"
                                     value={selectedFeatureId}
                                     onChange={(e) => setSelectedFeatureId(e.target.value)}
-                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                                     required
                                 >
                                     <option value="">Select a feature...</option>
@@ -214,7 +214,7 @@ export function EntitlementsDetail({
                                     id="state-select"
                                     value={overrideEnabled ? "true" : "false"}
                                     onChange={(e) => setOverrideEnabled(e.target.value === "true")}
-                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                                 >
                                     <option value="true">Enabled</option>
                                     <option value="false">Disabled</option>
@@ -233,7 +233,7 @@ export function EntitlementsDetail({
                                     value={overrideReason}
                                     onChange={(e) => setOverrideReason(e.target.value)}
                                     placeholder="Why is this override being applied?"
-                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none"
                                 />
                             </div>
                         </div>

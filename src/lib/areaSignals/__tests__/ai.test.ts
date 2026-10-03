@@ -13,6 +13,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { graphqlFetch } from "@/lib/graphql/server";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getAISignals } from "../ai";
@@ -528,5 +529,63 @@ describe("getAISignals — source → AreaSignal mapping", () => {
             value: "2 opportunities",
         });
         expect(mockGraphql).not.toHaveBeenCalled();
+    });
+});
+
+describe("getAISignals — a failed read is not an empty read (CHAOS-8269)", () => {
+    const failing = (marker: string) => (query: unknown) =>
+        String(query).includes(marker)
+            ? (Promise.reject(new Error("source down")) as never)
+            : (routeQuery(query) as never);
+
+    it.each([
+        ["AIImpactSummary", "ai-impact"],
+        ["AIReviewLoad", "ai-review-load"],
+        ["AIGovernanceSummary", "ai-governance-risk"],
+        ["AIOpportunities", "ai-automations"],
+    ])("a failed %s read marks %s as failed, and only that card", async (marker, id) => {
+        mockGraphql.mockImplementation(failing(marker));
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+        for (const other of Object.keys(signals).filter((k) => k !== id)) {
+            expect(signals[other].failed).toBeUndefined();
+        }
+    });
+
+    it("an answer with no data is unavailable but not failed", async () => {
+        mockGraphql.mockImplementation((query) =>
+            String(query).includes("AIImpactSummary")
+                ? (Promise.resolve(makeImpact({ dataAvailable: false })) as never)
+                : (routeQuery(query) as never),
+        );
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-impact"]).toMatchObject({ state: "unavailable" });
+        expect(signals["ai-impact"].failed).toBeUndefined();
+    });
+});
+
+describe("getAISignals — no org on the session is unavailable, never a failed read (CHAOS-8269)", () => {
+    it("every card is unavailable and none is failed", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        const signals = await getAISignals(defaultMetricFilter);
+        expect(signals).toHaveLength(4);
+        for (const signal of signals) {
+            expect(signal).toMatchObject({ state: "unavailable", value: "" });
+            expect(signal.failed).toBeUndefined();
+        }
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
+});
+
+describe("getAISignals — org scope comes from the session (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        await getAISignals(defaultMetricFilter);
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
+
+    it("sends the session org when present", async () => {
+        await getAISignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });

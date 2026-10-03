@@ -1,16 +1,12 @@
-import Link from "next/link";
-
+import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { OpportunityMasterDetail } from "./OpportunityMasterDetail";
 import { DataState } from "@/components/ui/DataState";
-import { Notice } from "@/components/ui/Notice";
 import { RetryButton } from "@/components/ui/RetryButton";
 import { checkApiHealth } from "@/lib/api/system";
 import { getOpportunities } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { withFilterParam } from "@/lib/filters/url";
-import { CTA_LABELS } from "@/lib/design/cta";
 import { getServerEnv } from "@/lib/config";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -46,6 +42,20 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Opportunities"
+                actions={
+                    data ? (
+                        <PageFactsEvidenceAction
+                            title="Opportunities"
+                            facts={[
+                                { label: "Open opportunities", value: String(data.items.length) },
+                                ...data.items.map((item) => ({
+                                    label: item.title,
+                                    value: item.rationale,
+                                })),
+                            ]}
+                        />
+                    ) : undefined
+                }
                 subtitle="Evidence-linked improvement opportunities with clear artifacts and recommended next steps."
             />
 
@@ -75,25 +85,6 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                     data-testid="opportunities-error"
                 />
             )}
-
-            <Notice
-                variant="info"
-                live={false}
-                title="Automation opportunities for AI-assisted work"
-                titleAs="h2"
-                data-testid="improve-ai-automations-crosslink"
-                action={
-                    <Link
-                        href={withFilterParam("/ai/automations", filters, activeRole)}
-                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2) underline-offset-4 hover:underline"
-                    >
-                        {CTA_LABELS.seeAIAutomations} →
-                    </Link>
-                }
-            >
-                Responsible automation candidates detected on AI-attributed work live in the AI
-                area, scoped to your current filters.
-            </Notice>
         </div>
     );
 }

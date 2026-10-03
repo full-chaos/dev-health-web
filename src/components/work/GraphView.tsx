@@ -1,15 +1,26 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import {
     WorkGraphExplorer,
     WorkGraphLayerToggles,
     WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
+import { usePublishGraphFacts } from "./WorkGraphPageFacts";
+import { AdminPager } from "@/components/admin/AdminPager";
 import { Notice } from "@/components/ui/Notice";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import type { PageFact } from "@/components/evidence/PageFactsEvidenceAction";
+import { Button } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
+import { buttonClassName } from "@/components/shared/Button";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { ReviewNetworkView } from "./ReviewNetwork";
 import { DataState } from "@/components/ui/DataState";
 import { EntityLabel } from "@/components/labels/EntityLabel";
@@ -25,7 +36,7 @@ import type {
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { withFilterParam } from "@/lib/filters/url";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { useOrgId } from "@/lib/graphql/provider";
 import { formatNumber } from "@/lib/formatters";
 import { nodeTypeDotClass } from "@/lib/workGraphNodeColors";
@@ -48,6 +59,8 @@ export type WorkGraphTab =
 type GraphViewProps = {
     filters: MetricFilter;
     activeRole?: string;
+    /** The investigation origin the page was opened from; kept on the Open evidence link. */
+    activeOrigin?: string;
     /** Active in-page tab. Defaults to "overview". */
     activeTab?: WorkGraphTab;
     /**
@@ -181,7 +194,7 @@ function parseGraphNode(value: string | null): SelectedNode | null {
     };
 }
 
-function getGraphSearchState(searchParams: URLSearchParams) {
+export function getGraphSearchState(searchParams: URLSearchParams) {
     const subcategoryParam = searchParams.get("graph_subcategory");
     const themeParam = searchParams.get("graph_theme");
     const connectionParam = searchParams.get("graph_connection");
@@ -226,6 +239,7 @@ function getGraphSearchState(searchParams: URLSearchParams) {
 export function GraphView({
     filters,
     activeRole,
+    activeOrigin,
     activeTab = "overview",
     reviewEdges = null,
     reviewEdgesLoading = false,
@@ -445,6 +459,19 @@ export function GraphView({
 
     const displayEdges = useMemo(() => tabEdges.slice(0, GRAPH_RENDER_EDGE_LIMIT), [tabEdges]);
     const hiddenEdgeCount = Math.max(0, tabEdges.length - displayEdges.length);
+    // The page-head "View evidence" lists what the graph tabs show, in body order (CHAOS-8340).
+    usePublishGraphFacts(
+        graphTabActive && !loading && !error
+            ? graphEvidenceFacts({
+                  tabEdgeCount: tabEdges.length,
+                  shownCount: displayEdges.length,
+                  hiddenCount: hiddenEdgeCount,
+                  backendMore: Math.max(0, totalCount - edges.length),
+                  window: filters.time,
+                  connection: activeTab === "overview" ? activeConnectionSlice.label : null,
+              })
+            : null,
+    );
     const visibleSubcategories = useMemo(
         () =>
             INVESTMENT_SUBCATEGORIES.filter(
@@ -614,229 +641,256 @@ export function GraphView({
           ? `${formatNumber(displayEdges.length)} of ${formatNumber(tabEdges.length)}`
           : formatNumber(displayEdges.length);
 
+    // The sampling disclosure sits above both cards (prototype app.js:84), not inside the explorer.
+    const samplingNotice =
+        hiddenEdgeCount > 0 || totalCount > edges.length ? (
+            <Notice variant="info" live={false}>
+                Showing {formatNumber(displayEdges.length)} edges for browser responsiveness
+                {hiddenEdgeCount > 0
+                    ? `; ${formatNumber(hiddenEdgeCount)} more in this view are summarized outside the canvas`
+                    : ""}
+                {totalCount > edges.length
+                    ? `; ${formatNumber(totalCount - edges.length)} additional backend edges are available through narrower filters`
+                    : ""}
+                .
+            </Notice>
+        ) : null;
+
     return (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
-            <div className="order-1 min-w-0 space-y-4">
-                <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
-                    <div className="mb-4 flex items-center justify-between gap-4">
-                        <div>
-                            <h3 className="text-lg font-medium">{tabHeading[graphTab]}</h3>
-                            <p className="text-sm text-(--ink-muted)">{tabDescription[graphTab]}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="text-xs text-(--ink-muted)">
-                                {loading ? "Loading..." : `${formatNumber(tabEdges.length)} edges`}
+        <div className="space-y-4">
+            {samplingNotice}
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
+                <div className="order-1 min-w-0 space-y-4">
+                    <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
+                        <div className="mb-4 flex items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-lg font-medium">{tabHeading[graphTab]}</h3>
+                                <p className="text-sm text-(--ink-muted)">
+                                    {tabDescription[graphTab]}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="text-xs text-(--ink-muted)">
+                                    {loading
+                                        ? "Loading..."
+                                        : `${formatNumber(tabEdges.length)} edges`}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* On the dependencies tab (no selectors) show the active-scope chip. */}
-                    {themeScopeChip}
+                        {/* On the dependencies tab (no selectors) show the active-scope chip. */}
+                        {themeScopeChip}
 
-                    {showConnectionSelector && (
-                        <div className="mb-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3 text-xs">
-                            <div className="grid gap-3 lg:grid-cols-[minmax(13rem,1.1fr)_minmax(11rem,0.9fr)_minmax(14rem,1.2fr)]">
-                                <label className="grid min-w-0 gap-1">
-                                    <span className="uppercase tracking-[0.18em] text-(--ink-muted)">
-                                        Connection type
+                        {showConnectionSelector && (
+                            <div className="mb-4 rounded-sm bg-background p-3 text-xs">
+                                <div
+                                    role="group"
+                                    aria-label="Graph filters"
+                                    data-testid="graph-segments"
+                                    className="inline-flex max-w-full flex-wrap items-center overflow-hidden rounded-sm border border-(--card-stroke) bg-card"
+                                >
+                                    <label className="flex min-w-0 items-center gap-1.5 border-r border-(--card-stroke) px-3 py-1.5">
+                                        <span className="text-(--ink-muted)">Connection type</span>
+                                        <select
+                                            aria-label="Connection type"
+                                            value={connectionSliceId}
+                                            onChange={(event) => {
+                                                setConnectionSliceId(event.target.value);
+                                                setSelectedNode(null);
+                                            }}
+                                            className="min-w-0 bg-transparent font-semibold text-foreground focus-visible:outline-none"
+                                        >
+                                            {CONNECTION_SLICES.map((slice) => (
+                                                <option key={slice.id} value={slice.id}>
+                                                    {slice.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="flex min-w-0 items-center gap-1.5 border-r border-(--card-stroke) px-3 py-1.5">
+                                        <span className="text-(--ink-muted)">Theme</span>
+                                        <select
+                                            aria-label="Theme"
+                                            value={theme}
+                                            onChange={(event) =>
+                                                handleThemeChange(event.target.value)
+                                            }
+                                            className="min-w-0 bg-transparent font-semibold text-foreground focus-visible:outline-none"
+                                        >
+                                            <option value="all">All themes</option>
+                                            {INVESTMENT_THEMES.map((item) => (
+                                                <option key={item} value={item}>
+                                                    {labelInvestmentKey(item)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="flex min-w-0 items-center gap-1.5 px-3 py-1.5">
+                                        <span className="text-(--ink-muted)">Subcategory</span>
+                                        <select
+                                            aria-label="Subcategory"
+                                            value={subcategory}
+                                            onChange={(event) =>
+                                                handleSubcategoryChange(event.target.value)
+                                            }
+                                            className="min-w-0 bg-transparent font-semibold text-foreground focus-visible:outline-none"
+                                        >
+                                            <option value="all">All subcategories</option>
+                                            {visibleSubcategories.map((item) => (
+                                                <option key={item} value={item}>
+                                                    {labelInvestmentKey(item)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                </div>
+                                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-(--card-stroke) pt-3 text-xs text-(--ink-muted)">
+                                    <span title={activeConnectionSlice.description}>
+                                        {activeConnectionSlice.description}
                                     </span>
-                                    <select
-                                        value={connectionSliceId}
-                                        onChange={(event) => {
-                                            setConnectionSliceId(event.target.value);
-                                            setSelectedNode(null);
-                                        }}
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
-                                    >
-                                        {CONNECTION_SLICES.map((slice) => (
-                                            <option key={slice.id} value={slice.id}>
-                                                {slice.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label className="grid min-w-0 gap-1">
-                                    <span className="uppercase tracking-[0.18em] text-(--ink-muted)">
-                                        Theme
-                                    </span>
-                                    <select
-                                        value={theme}
-                                        onChange={(event) => handleThemeChange(event.target.value)}
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
-                                    >
-                                        <option value="all">All themes</option>
-                                        {INVESTMENT_THEMES.map((item) => (
-                                            <option key={item} value={item}>
-                                                {labelInvestmentKey(item)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label className="grid min-w-0 gap-1">
-                                    <span className="uppercase tracking-[0.18em] text-(--ink-muted)">
-                                        Subcategory
-                                    </span>
-                                    <select
-                                        value={subcategory}
-                                        onChange={(event) =>
-                                            handleSubcategoryChange(event.target.value)
-                                        }
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
-                                    >
-                                        <option value="all">All subcategories</option>
-                                        {visibleSubcategories.map((item) => (
-                                            <option key={item} value={item}>
-                                                {labelInvestmentKey(item)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                    {(theme !== "all" || subcategory !== "all") && (
+                                        <span>
+                                            {`Selected: ${theme === "all" ? "all themes" : labelInvestmentKey(theme)} / ${subcategory === "all" ? "all subcategories" : labelInvestmentKey(subcategory)}`}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-(--card-stroke) pt-3 text-xs text-(--ink-muted)">
-                                <span title={activeConnectionSlice.description}>
-                                    {activeConnectionSlice.description}
-                                </span>
-                                {(theme !== "all" || subcategory !== "all") && (
-                                    <span>
-                                        {`Selected: ${theme === "all" ? "all themes" : labelInvestmentKey(theme)} / ${subcategory === "all" ? "all subcategories" : labelInvestmentKey(subcategory)}`}
-                                    </span>
-                                )}
+                        )}
+
+                        {error && (
+                            <DataState
+                                variant="error"
+                                title="Failed to load work graph"
+                                description={READ_FAILED_MESSAGE}
+                            />
+                        )}
+
+                        {!loading && !error && themeDataPreparing ? (
+                            themeDataPreparingState
+                        ) : !loading && !error && tabEdges.length === 0 ? (
+                            <DataState
+                                variant="detector-enabled-no-findings"
+                                title="No relationships to show"
+                                description={emptyCopy}
+                            />
+                        ) : (
+                            <div
+                                data-testid="work-graph-panel"
+                                className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-background/30"
+                            >
+                                <WorkGraphExplorer
+                                    edges={displayEdges}
+                                    height={graphHeight}
+                                    className="p-2"
+                                    onNodeClickAction={handleNodeClick}
+                                    hiddenNodeTypes={hiddenNodeTypes}
+                                    onToggleNodeTypeAction={toggleNodeType}
+                                    selectedNodeId={
+                                        selectedNode
+                                            ? `${selectedNode.type}:${selectedNode.id}`
+                                            : undefined
+                                    }
+                                />
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {(hiddenEdgeCount > 0 || totalCount > edges.length) && (
-                        <Notice variant="warn" live={false} className="mb-4">
-                            Showing {formatNumber(displayEdges.length)} edges for browser
-                            responsiveness
-                            {hiddenEdgeCount > 0
-                                ? `; ${formatNumber(hiddenEdgeCount)} more in this view are summarized outside the canvas`
-                                : ""}
-                            {totalCount > edges.length
-                                ? `; ${formatNumber(totalCount - edges.length)} additional backend edges are available through narrower filters`
-                                : ""}
-                            .
-                        </Notice>
-                    )}
-
-                    {error && (
-                        <DataState
-                            variant="error"
-                            title="Failed to load work graph"
-                            description={error.message}
-                        />
-                    )}
-
-                    {!loading && !error && themeDataPreparing ? (
-                        themeDataPreparingState
-                    ) : !loading && !error && tabEdges.length === 0 ? (
-                        <DataState
-                            variant="detector-enabled-no-findings"
-                            title="No relationships to show"
-                            description={emptyCopy}
-                        />
-                    ) : (
+                        {/* Legend under the graph (collapsible). */}
                         <div
-                            data-testid="work-graph-panel"
-                            className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-background/30"
+                            className={`mt-4 rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
+                            data-testid="work-graph-legend-panel"
                         >
-                            <WorkGraphExplorer
-                                edges={displayEdges}
-                                height={graphHeight}
-                                className="p-2"
-                                onNodeClickAction={handleNodeClick}
-                                hiddenNodeTypes={hiddenNodeTypes}
-                                onToggleNodeTypeAction={toggleNodeType}
-                                selectedNodeId={
-                                    selectedNode
-                                        ? `${selectedNode.type}:${selectedNode.id}`
-                                        : undefined
+                            <WorkGraphLegend
+                                orientation="row"
+                                collapsed={isLegendCollapsed}
+                                onToggleAction={() =>
+                                    setIsLegendCollapsed((collapsed) => !collapsed)
                                 }
                             />
                         </div>
-                    )}
+                    </div>
 
-                    {/* Legend under the graph (collapsible). */}
-                    <div
-                        className={`mt-4 rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
-                        data-testid="work-graph-legend-panel"
-                    >
-                        <WorkGraphLegend
-                            orientation="row"
-                            collapsed={isLegendCollapsed}
-                            onToggleAction={() => setIsLegendCollapsed((collapsed) => !collapsed)}
+                    {selectedNode && nodeDetails && (
+                        <NodeDetailPanel
+                            node={selectedNode}
+                            incomingEdges={nodeDetails.incomingEdges}
+                            outgoingEdges={nodeDetails.outgoingEdges}
+                            onClose={() => setSelectedNode(null)}
+                        />
+                    )}
+                </div>
+
+                <aside
+                    className="order-2 rounded-2xl border border-(--card-stroke) bg-card p-4 xl:sticky xl:top-4"
+                    aria-label="Graph context"
+                    data-testid="graph-context"
+                >
+                    <h3 className="text-lg font-medium">Graph context</h3>
+                    <dl className="mt-3">
+                        {[
+                            ["Window", windowLabel, "context-window"],
+                            ...(showConnectionSelector
+                                ? [
+                                      [
+                                          "Connection type",
+                                          activeConnectionSlice.label,
+                                          "context-connection",
+                                      ],
+                                  ]
+                                : []),
+                            ["Edges shown", edgesShownLabel, "context-edges"],
+                        ].map(([label, value, testId]) => (
+                            <div
+                                key={testId}
+                                className="flex items-baseline justify-between gap-3 border-b border-(--card-stroke) py-2 text-sm"
+                            >
+                                <dt className="text-(--ink-muted)">{label}</dt>
+                                <dd
+                                    className="text-right font-medium tabular-nums"
+                                    data-testid={testId}
+                                >
+                                    {value}
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+                    <div className="mt-4">
+                        <h4 className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                            Layer visibility
+                        </h4>
+                        <WorkGraphLayerToggles
+                            hiddenNodeTypes={hiddenNodeTypes}
+                            onToggleAction={toggleNodeType}
                         />
                     </div>
-                </div>
-
-                {selectedNode && nodeDetails && (
-                    <NodeDetailPanel
-                        node={selectedNode}
-                        incomingEdges={nodeDetails.incomingEdges}
-                        outgoingEdges={nodeDetails.outgoingEdges}
-                        onClose={() => setSelectedNode(null)}
-                    />
-                )}
+                    <p className="mt-4 text-xs text-(--ink-muted)">
+                        Select a relationship to inspect its evidence. Use the artifact table when a
+                        table is clearer than a graph.
+                    </p>
+                    <Link
+                        href={withFilterParam(
+                            "/diagnose/work-graph?tab=artifacts",
+                            filters,
+                            activeRole,
+                        )}
+                        className={`mt-4 ${buttonClassName("primary", "sm")}`}
+                    >
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.browseArtifacts}
+                    </Link>
+                    <Link
+                        href={buildExploreUrl({
+                            metric: "throughput",
+                            filters,
+                            role: activeRole,
+                            origin: activeOrigin,
+                        })}
+                        className={`mt-2 ${buttonClassName("ghost", "sm")}`}
+                    >
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.openEvidence}
+                    </Link>
+                </aside>
             </div>
-
-            <aside
-                className="order-2 rounded-2xl border border-(--card-stroke) bg-card p-4 xl:sticky xl:top-4"
-                aria-label="Graph context"
-                data-testid="graph-context"
-            >
-                <h3 className="text-lg font-medium">Graph context</h3>
-                <dl className="mt-3">
-                    {[
-                        ["Window", windowLabel, "context-window"],
-                        ...(showConnectionSelector
-                            ? [
-                                  [
-                                      "Connection type",
-                                      activeConnectionSlice.label,
-                                      "context-connection",
-                                  ],
-                              ]
-                            : []),
-                        ["Edges shown", edgesShownLabel, "context-edges"],
-                    ].map(([label, value, testId]) => (
-                        <div
-                            key={testId}
-                            className="flex items-baseline justify-between gap-3 border-b border-(--card-stroke) py-2 text-sm"
-                        >
-                            <dt className="text-(--ink-muted)">{label}</dt>
-                            <dd
-                                className="text-right font-medium tabular-nums"
-                                data-testid={testId}
-                            >
-                                {value}
-                            </dd>
-                        </div>
-                    ))}
-                </dl>
-                <div className="mt-4">
-                    <h4 className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
-                        Layer visibility
-                    </h4>
-                    <WorkGraphLayerToggles
-                        hiddenNodeTypes={hiddenNodeTypes}
-                        onToggleAction={toggleNodeType}
-                    />
-                </div>
-                <p className="mt-4 text-xs text-(--ink-muted)">
-                    Select a relationship to inspect its evidence. Use the artifact table when a
-                    table is clearer than a graph.
-                </p>
-                <Link
-                    href={withFilterParam(
-                        "/diagnose/work-graph?tab=artifacts",
-                        filters,
-                        activeRole,
-                    )}
-                    className="mt-4 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
-                >
-                    {CTA_LABELS.browseArtifacts}
-                </Link>
-            </aside>
         </div>
     );
 }
@@ -851,39 +905,106 @@ type InflowOutflowViewProps = {
     error: { message: string } | null;
 };
 
+/**
+ * The page evidence of the graph tabs (Overview, Dependencies): the values the body shows, in its
+ * order: the edge count in the card head, the sampling counts of the notice, then the Graph
+ * context rows. Counts the page already computed; no new number.
+ */
+export function graphEvidenceFacts(input: {
+    tabEdgeCount: number;
+    shownCount: number;
+    hiddenCount: number;
+    backendMore: number;
+    window: MetricFilter["time"];
+    connection: string | null;
+}): PageFact[] {
+    const { start_date: start, end_date: end, range_days: days } = input.window;
+    const windowLabel =
+        start && end ? `${start} to ${end}` : days ? `${formatNumber(days)} days` : undefined;
+    return [
+        ...(input.hiddenCount > 0 || input.backendMore > 0
+            ? [
+                  {
+                      label: "Edges drawn",
+                      value: formatNumber(input.shownCount),
+                  },
+                  ...(input.hiddenCount > 0
+                      ? [
+                            {
+                                label: "Summarized outside the canvas",
+                                value: formatNumber(input.hiddenCount),
+                            },
+                        ]
+                      : []),
+                  ...(input.backendMore > 0
+                      ? [
+                            {
+                                label: "More in the backend (narrower filters)",
+                                value: formatNumber(input.backendMore),
+                            },
+                        ]
+                      : []),
+              ]
+            : []),
+        { label: "Edges", value: formatNumber(input.tabEdgeCount) },
+        { label: "Window", value: windowLabel },
+        ...(input.connection ? [{ label: "Connection type", value: input.connection }] : []),
+    ];
+}
+
+/** Direction of a row, from its served inflow and outflow only (no threshold, no invented tolerance). */
+export function balanceLabel(inflow: number, outflow: number): string {
+    if (inflow > outflow) return "More incoming";
+    if (outflow > inflow) return "More outgoing";
+    return "Balanced";
+}
+
+/**
+ * The Inflow / Outflow rows as the body draws them: from the server-side workGraphFlow aggregate
+ * (CHAOS-2442), all-zero rows dropped, ranked by total volume for a stable, readable order.
+ */
+export function orderFlowRows(serverRows: WorkGraphFlowRow[]): WorkGraphFlowRow[] {
+    return serverRows
+        .filter((row) => row.inflow > 0 || row.outflow > 0)
+        .sort((a, b) => b.inflow + b.outflow - (a.inflow + a.outflow));
+}
+
+/** The page evidence of the Inflow / Outflow tab: the body rows, as served. */
+export function flowEvidenceFacts(serverRows: WorkGraphFlowRow[]): PageFact[] {
+    return orderFlowRows(serverRows).map((row) => ({
+        // A type the page has no label for shows as "Unlabelled type", as the body leaves it blank.
+        label: NODE_TYPE_LABELS[row.nodeType] ?? "Unlabelled type",
+        value: `Inflow ${formatNumber(row.inflow)} · Outflow ${formatNumber(row.outflow)} · ${balanceLabel(row.inflow, row.outflow)}`,
+    }));
+}
+
+/** The page evidence of the Artifact browser: the body rows (type, entity, connections). No names of people. */
+export function artifactEvidenceFacts(rows: WorkGraphArtifactRow[]): PageFact[] {
+    return rows.map((row) => ({
+        label: `${NODE_TYPE_LABELS[row.nodeType] ?? "Unlabelled type"} · ${row.displayName?.trim() || "Unresolved"}`,
+        value: `${formatNumber(row.degree)} connections`,
+    }));
+}
+
 function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowViewProps) {
-    // Rows now come from the server-side workGraphFlow aggregate (CHAOS-2442),
-    // so they are no longer derived from a capped edge page. We only drop
-    // all-zero rows and rank by total volume for a stable, readable order.
-    const rows = useMemo(
-        () =>
-            serverRows
-                .filter((row) => row.inflow > 0 || row.outflow > 0)
-                .sort((a, b) => b.inflow + b.outflow - (a.inflow + a.outflow)),
-        [serverRows],
-    );
+    const rows = useMemo(() => orderFlowRows(serverRows), [serverRows]);
 
     const max = rows.reduce((m, r) => Math.max(m, r.inflow, r.outflow), 1);
 
     return (
-        <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+        <Section
             data-testid="inflow-outflow-panel"
+            as="h3"
+            title="Inflow / Outflow"
+            description="Outflow originates from an entity type; inflow points into it."
         >
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight">Inflow / Outflow</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    How relationships flow into and out of each entity type — outflow links
-                    originate from a type, inflow links point to it.
-                </p>
-            </div>
             {loading ? (
                 <p className="text-sm text-(--ink-muted)">Loading…</p>
             ) : error ? (
                 <DataState
                     variant="error"
                     title="Failed to load work graph"
-                    description={error.message}
+                    description={READ_FAILED_MESSAGE}
                 />
             ) : rows.length === 0 ? (
                 <DataState
@@ -892,9 +1013,9 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                     description="No work graph edges are available for this scope and window."
                 />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid="inflow-outflow-table">
-                        <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                        <thead className="text-label-caps uppercase text-(--ink-muted)">
                             <tr>
                                 <th className="px-5 py-3 text-left">Entity type</th>
                                 <th className="px-5 py-3 text-right">Inflow</th>
@@ -910,7 +1031,7 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                                     className="border-t border-(--card-stroke)/60"
                                 >
                                     <td className="px-5 py-3 align-middle font-medium">
-                                        {NODE_TYPE_LABELS[row.nodeType]}
+                                        {NODE_TYPE_LABELS[row.nodeType] ?? "Unlabelled type"}
                                     </td>
                                     <td className="px-5 py-3 text-right tabular-nums">
                                         {formatNumber(row.inflow)}
@@ -920,6 +1041,16 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                                     </td>
                                     <td className="px-5 py-3 align-middle">
                                         <div className="flex items-center gap-2">
+                                            <span
+                                                data-testid="balance-pill"
+                                                className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                    row.inflow > row.outflow
+                                                        ? STATUS_PILL.info
+                                                        : STATUS_PILL.muted
+                                                }`}
+                                            >
+                                                {balanceLabel(row.inflow, row.outflow)}
+                                            </span>
                                             <span
                                                 aria-hidden
                                                 className="h-2 rounded-r-(--radius-sm) bg-(--chart-color-1)"
@@ -942,7 +1073,7 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                     </table>
                 </div>
             )}
-        </section>
+        </Section>
     );
 }
 
@@ -956,26 +1087,68 @@ type ArtifactsViewProps = {
     error: { message: string } | null;
 };
 
-function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
+/** The row's "Evidence" action: the served fields of the artifact in the shared drawer. */
+function ArtifactEvidenceButton({ row }: { row: WorkGraphArtifactRow }) {
+    const evidence = useEvidenceDrawer();
+    const entity = row.displayName?.trim() || undefined;
     return (
-        <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
-            data-testid="artifacts-panel"
+        <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowRight />}
+            data-testid="artifact-evidence-button"
+            aria-label={`Evidence for ${entity ?? NODE_TYPE_LABELS[row.nodeType]}`}
+            onClick={() =>
+                evidence.open({
+                    title: entity ?? `${NODE_TYPE_LABELS[row.nodeType]} (unresolved)`,
+                    content: (
+                        <EvidenceFactList aria-label="Artifact" testId="artifact-evidence-facts">
+                            <EvidenceFact label="Type" value={NODE_TYPE_LABELS[row.nodeType]} />
+                            {/* An unresolved row has no served name: it says so and never shows the id. */}
+                            <EvidenceFact label="Entity" value={entity} stacked />
+                            <EvidenceFact label="Connections" value={formatNumber(row.degree)} />
+                            {/* The evidence reference exactly as served. */}
+                            <EvidenceFact
+                                label="Evidence reference"
+                                value={row.evidence ? row.evidence : undefined}
+                                stacked
+                            />
+                        </EvidenceFactList>
+                    ),
+                })
+            }
         >
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight">Artifacts</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Entities in the graph ranked by how many relationships they carry. Open a node
-                    on the Overview tab to inspect its full evidence trail.
-                </p>
-            </div>
+            {CTA_LABELS.evidence}
+        </Button>
+    );
+}
+
+/** Rows per page of the Artifact browser (the API serves the top 50; no total or offset exists). */
+const ARTIFACT_PAGE_SIZE = 10;
+
+function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
+    // A new set of served rows (scope, window or theme changed) starts again at the first page.
+    const rowsKey = rows.map((row) => `${row.nodeType}:${row.nodeId}`).join("|");
+    const [pager, setPager] = useState({ key: rowsKey, offset: 0 });
+    const offset = pager.key === rowsKey ? pager.offset : 0;
+    const setOffset = (next: number) => setPager({ key: rowsKey, offset: next });
+    // The served rows are the whole list: page over them, never past the end.
+    const start = Math.min(offset, Math.max(0, rows.length - 1));
+    const pageRows = rows.slice(start, start + ARTIFACT_PAGE_SIZE);
+    return (
+        <Section
+            data-testid="artifacts-panel"
+            as="h3"
+            title="Artifact browser"
+            description="Entities ranked by how many relationships they carry; provider artifact labels stay intact. Open a node on the Overview tab to inspect its full evidence trail."
+        >
             {loading ? (
                 <p className="text-sm text-(--ink-muted)">Loading…</p>
             ) : error ? (
                 <DataState
                     variant="error"
                     title="Failed to load work graph"
-                    description={error.message}
+                    description={READ_FAILED_MESSAGE}
                 />
             ) : rows.length === 0 ? (
                 <DataState
@@ -984,9 +1157,9 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                     description="No work graph entities are available for this scope and window."
                 />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid="artifacts-table">
-                        <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                        <thead className="text-label-caps uppercase text-(--ink-muted)">
                             <tr>
                                 <th className="px-5 py-3 text-left">Type</th>
                                 <th className="px-5 py-3 text-left">Entity</th>
@@ -995,7 +1168,7 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((row) => (
+                            {pageRows.map((row) => (
                                 <tr
                                     key={`${row.nodeType}:${row.nodeId}`}
                                     data-testid="artifact-row"
@@ -1004,7 +1177,7 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                                     <td className="px-5 py-3 align-middle text-(--ink-muted)">
                                         {NODE_TYPE_LABELS[row.nodeType]}
                                     </td>
-                                    <td className="px-5 py-3 align-middle text-[0.82em]">
+                                    <td className="px-5 py-3 align-middle">
                                         {/*
                                           A7/A8 render-safety (CHAOS-2442 review):
                                           the backend returns displayName=null for
@@ -1022,7 +1195,6 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                                             <EntityLabel
                                                 id={row.nodeId}
                                                 displayName={row.displayName.trim()}
-                                                className="font-mono"
                                                 data-testid="artifact-entity"
                                             />
                                         ) : (
@@ -1037,22 +1209,27 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                                     <td className="px-5 py-3 text-right tabular-nums">
                                         {formatNumber(row.degree)}
                                     </td>
-                                    <td className="max-w-[22rem] px-5 py-3 text-(--ink-muted)">
-                                        {row.evidence ? (
-                                            <q className="line-clamp-2 text-xs">{row.evidence}</q>
-                                        ) : (
-                                            <span className="text-xs italic">
-                                                No linked evidence
-                                            </span>
-                                        )}
+                                    <td className="px-5 py-3">
+                                        <ArtifactEvidenceButton row={row} />
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
+                    {rows.length > ARTIFACT_PAGE_SIZE ? (
+                        <AdminPager
+                            offset={start}
+                            count={pageRows.length}
+                            hasNext={start + ARTIFACT_PAGE_SIZE < rows.length}
+                            onPreviousAction={() =>
+                                setOffset(Math.max(0, start - ARTIFACT_PAGE_SIZE))
+                            }
+                            onNextAction={() => setOffset(start + ARTIFACT_PAGE_SIZE)}
+                        />
+                    ) : null}
                 </div>
             )}
-        </section>
+        </Section>
     );
 }
 

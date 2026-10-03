@@ -20,20 +20,24 @@ describe("Landscape page pass (CHAOS-7761)", () => {
         );
     });
 
-    it("the primary panel has a caption (NEW from the approved concept) and no tinted frame", () => {
+    it("the primary panel has a sentence-case chip beside its title (concept L13), no caps caption, no tinted frame", () => {
         expect(page).toContain("Primary for this lens");
+        expect(page).toContain("headChip=");
+        expect(page).not.toContain("mb-3 text-xs font-semibold uppercase");
         expect(page).not.toContain("border-(--accent-2)/30 bg-(--accent-2)/5");
         expect(page).toContain('data-testid="landscape-primary-panel"');
         expect(page).toContain("flex flex-col gap-8");
         expect(page).not.toContain("flex flex-col gap-10");
     });
 
-    it("the bucket chips are a labelled group and mark the selected link", () => {
-        expect(page).toContain('role="group" aria-label="Bucket"');
-        expect(
-            page.match(/aria-current=\{bucket === "(?:week|month)" \? "true" : undefined\}/gu)
-                ?.length,
-        ).toBe(2);
+    it("the cards carry View guide and Open evidence in their head (concept L13)", () => {
+        expect(page.match(/actionsInHead/gu)?.length).toBe(2);
+    });
+
+    it("the bucket setting is the shared segmented control, not caps links", () => {
+        expect(page).toContain("<LandscapeBucketControl");
+        expect(page).not.toContain("aria-current=");
+        expect(page).not.toMatch(/<Link/u);
     });
 
     it("the tab cards use token radii", () => {

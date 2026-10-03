@@ -1,4 +1,5 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { BackLink } from "@/components/shared/BackLink";
 import { SyncConfigForm } from "@/components/admin/sync/SyncConfigForm";
 import {
     getAutoImportCapabilities,
@@ -17,6 +18,7 @@ export default async function NewSyncConfigPage() {
 
     return (
         <div className="space-y-6">
+            <BackLink href="/org/admin/sync" label="Back to connections" />
             <AdminHeader
                 title="New Sync Configuration"
                 description="Configure a new data synchronization source."

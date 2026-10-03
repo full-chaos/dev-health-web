@@ -89,7 +89,8 @@ describe("ForgotPasswordForm", () => {
         await userEvent.click(screen.getByRole("button", { name: /send reset link/i }));
 
         await waitFor(() => {
-            expect(screen.getByText(/Server error/i)).toBeInTheDocument();
+            expect(screen.getByText(/Failed to send reset link/i)).toBeInTheDocument();
+            expect(screen.queryByText(/Server error/i)).toBeNull();
         });
     });
 
