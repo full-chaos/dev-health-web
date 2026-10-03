@@ -8,6 +8,34 @@ const SEEDED_TOKEN_ID = "cpt-1";
 const COMPLETED_BATCH_ID = "batch-completed-1";
 const PARTIAL_BATCH_ID = "batch-partial-1";
 
+// CHAOS-8147: the three dynamic customer-push routes are compiled by `next dev --webpack` on their FIRST
+// visit. On a CI runner that compile takes longer than the 5 s expect timeout, so the first attempt of the
+// tests that land on one of them for the first time failed and the retry (route now compiled) passed:
+// ":33 happy path" (redirect to the source overview), ":285 empty state" (same redirect, jira) and
+// ":311 seeded batches" (click through to the batch detail). A wait that equals a timeout is a fallback
+// path, not the happy path. The compile is not what these tests measure, so it happens once, here, before
+// any test, with the stored sign-in; the timings are printed so a slow compile is visible, not silent.
+// The expect timeouts are NOT raised.
+const AUTH_STATE = "test-results/.auth/state.json";
+test.beforeAll(async ({ browser, baseURL }) => {
+    // The hook has its own timeout (the 30 s test default would end it: the first CI run of this warm-up
+    // spent 17 s + 15 s on two routes, and the hook failed, skipping every test in the first pass). This
+    // sets the HOOK timeout only; the test and expect timeouts are unchanged.
+    test.setTimeout(300_000);
+    const context = await browser.newContext({ baseURL, storageState: AUTH_STATE });
+    const page = await context.newPage();
+    const base = `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}`;
+    for (const route of [base, `${base}/batches`, `${base}/batches/${COMPLETED_BATCH_ID}`]) {
+        const startedAt = Date.now();
+        const response = await page.goto(route, { waitUntil: "load", timeout: 120_000 });
+        console.log(
+            `customer-push warm-up ${route}: ${response?.status()} in ${Date.now() - startedAt} ms`,
+        );
+        expect(response?.ok(), `warm-up of ${route} must answer 2xx`).toBe(true);
+    }
+    await context.close();
+});
+
 test.describe("Provider detail — mode cards (D3/D4)", () => {
     test("provider detail page renders both Managed sync and Customer push cards", async ({
         page,
@@ -323,6 +351,16 @@ test.describe("Ingest status — batch list + drilldown", () => {
             .locator("tbody tr", { has: page.getByText("Completed", { exact: true }) })
             .getByRole("link")
             .click();
+        // The navigation signal (30 s nav timeout), not the 5 s expect default: the click is a client-side
+        // navigation that is finished when the URL changes.
+        // The wait has the 30 s navigation timeout, so a slow step would be invisible: its duration is printed
+        // (like the warm-up lines) and a step over the 5 s that used to fail is named in the log.
+        const navStartedAt = Date.now();
+        await page.waitForURL(new RegExp(`/batches/${COMPLETED_BATCH_ID}$`));
+        const navMs = Date.now() - navStartedAt;
+        console.log(`customer-push batch drilldown navigation: ${navMs} ms`);
+        if (navMs > 5_000)
+            console.warn(`customer-push batch drilldown navigation took ${navMs} ms (over 5 s)`);
         await expect(page).toHaveURL(new RegExp(`/batches/${COMPLETED_BATCH_ID}$`));
     });
 
