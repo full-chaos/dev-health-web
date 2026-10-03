@@ -22,8 +22,9 @@ function getStatusDisplay(user: User): {
     icon: StatusPillProps["icon"];
 } {
     if (!user.is_active) return { label: "Inactive", tone: "negative", icon: CircleSlash };
-    // A user who has not verified the account is "Invited" (design A2).
-    if (!user.is_verified) return { label: "Invited", tone: "caution", icon: Clock };
+    // `is_verified` is false from creation until the e-mail is verified (ops email_verification.py:111
+    // sets it true); there is no invitation record, so the served word "pending" stays (sentence case).
+    if (!user.is_verified) return { label: "Pending", tone: "caution", icon: Clock };
     return { label: "Active", tone: "positive", icon: CircleCheck };
 }
 

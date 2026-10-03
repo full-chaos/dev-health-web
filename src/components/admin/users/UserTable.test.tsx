@@ -92,7 +92,7 @@ describe("UserTable", () => {
         expect(screen.getByText("1 of 2 users")).toBeInTheDocument();
     });
 
-    it("says Active, Invited or Inactive with an icon; Invited is a user who has not verified", () => {
+    it("says Active, Pending or Inactive with an icon; Pending is a user whose e-mail is not verified", () => {
         render(
             <UserTable
                 users={[
@@ -103,10 +103,11 @@ describe("UserTable", () => {
         );
 
         const rows = screen.getAllByRole("row").slice(1);
-        const pills = rows.map((row) => within(row).getByText(/^(Active|Invited|Inactive)$/u));
-        expect(pills.map((p) => p.textContent)).toEqual(["Active", "Invited", "Inactive"]);
+        const pills = rows.map((row) => within(row).getByText(/^(Active|Pending|Inactive)$/u));
+        expect(pills.map((p) => p.textContent)).toEqual(["Active", "Pending", "Inactive"]);
         for (const pill of pills) expect(pill.querySelector("svg")).not.toBeNull();
         expect(screen.queryByText("pending")).toBeNull();
+        expect(screen.queryByText("Invited")).toBeNull();
     });
 
     it("shows the auth provider as a neutral outlined pill", () => {
