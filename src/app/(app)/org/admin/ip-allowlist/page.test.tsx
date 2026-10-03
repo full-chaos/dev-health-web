@@ -158,3 +158,105 @@ describe("IPAllowlistPage", () => {
         );
     });
 });
+
+describe("IPAllowlistPage design A6/A7 (CHAOS-8239)", () => {
+    beforeEach(() => {
+        mockListIPAllowlistEntries.mockReset();
+        mockDeleteIPAllowlistEntry.mockReset();
+        mockUpdateIPAllowlistEntry.mockReset();
+    });
+    afterEach(() => cleanup());
+
+    it("has the h1 Organization, the add action in the header as the primary button with the icon first, and a section card", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([makeEntry()]));
+        render(<IPAllowlistPage />);
+        await waitFor(() => expect(screen.getByText("192.168.1.0/24")).toBeInTheDocument());
+
+        expect(screen.getByRole("heading", { level: 1, name: "Organization" })).toBeInTheDocument();
+        const add = within(screen.getByTestId("page-header")).getByRole("button", {
+            name: "Add IP Rule",
+        });
+        expect(add.firstElementChild?.querySelector("svg") ?? null).not.toBeNull();
+        expect(add.className).toContain("bg-(--action)");
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 1–1");
+    });
+
+    it("says one plain sentence with a Retry that re-runs the load, and never prints the backend text", async () => {
+        mockListIPAllowlistEntries.mockResolvedValueOnce({
+            data: undefined,
+            error: "GET /api/v1/admin/x 502 upstream",
+        });
+        const user = userEvent.setup();
+        const { container } = render(<IPAllowlistPage />);
+
+        expect(
+            await screen.findByText(/IP allowlist entries could not be loaded\. Retry/u),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("502");
+
+        mockListIPAllowlistEntries.mockResolvedValueOnce(respondWith([makeEntry()]));
+        await user.click(screen.getByRole("button", { name: "Retry" }));
+
+        await waitFor(() => expect(screen.getByText("192.168.1.0/24")).toBeInTheDocument());
+        expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+    });
+
+    it("shows a plan-gate answer as a warning notice with the served sentence, not a danger error", async () => {
+        mockListIPAllowlistEntries.mockResolvedValueOnce({
+            data: undefined,
+            error: "This feature requires the enterprise plan (current plan: community).",
+        });
+        render(<IPAllowlistPage />);
+
+        const text = await screen.findByText(
+            "This feature requires the enterprise plan (current plan: community).",
+        );
+        expect(text.closest("[data-notice-variant]")).toHaveAttribute(
+            "data-notice-variant",
+            "warn",
+        );
+    });
+
+    it("keeps the served message of a failed action (feedback the admin must read)", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([makeEntry()]));
+        mockUpdateIPAllowlistEntry.mockResolvedValue({
+            data: undefined,
+            error: "Rule overlaps an existing rule",
+        });
+        const user = userEvent.setup();
+        render(<IPAllowlistPage />);
+        await waitFor(() => expect(screen.getByText("192.168.1.0/24")).toBeInTheDocument());
+
+        await user.click(screen.getByRole("button", { name: /^(Disable|Enable)/u }));
+        await user.click(
+            within(await screen.findByRole("dialog")).getByRole("button", {
+                name: /^(Disable|Enable)/u,
+            }),
+        );
+
+        expect(await screen.findByText("Rule overlaps an existing rule")).toBeInTheDocument();
+        expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+    });
+
+    it("shows the dashed empty state and no pager when there are no rows", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([]));
+        render(<IPAllowlistPage />);
+
+        expect(
+            await screen.findByTestId("data-state-detector-enabled-no-findings"),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("admin-pager")).toBeNull();
+    });
+
+    it("draws the status as a pill with an icon, and Delete as the danger outline that wins over the secondary look", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([makeEntry()]));
+        render(<IPAllowlistPage />);
+
+        const pill = await screen.findByText("Active");
+        expect(pill.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(pill.className).not.toMatch(/(^|\s)border/u);
+        const del = screen.getByRole("button", { name: "Delete" });
+        expect(del).toHaveClass("text-(--negative)!");
+        expect(del).toHaveClass("hover:bg-(--negative-wash)!");
+    });
+});

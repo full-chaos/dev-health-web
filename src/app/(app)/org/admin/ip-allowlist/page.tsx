@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Plus } from "lucide-react";
+
+import { AdminErrorNotice } from "@/components/admin/AdminErrorNotice";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AdminPager } from "@/components/admin/AdminPager";
+import { Button } from "@/components/shared/Button";
+import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
+import { logger } from "@/lib/logger";
 import {
     listIPAllowlistEntries,
     createIPAllowlistEntry,
@@ -14,7 +22,6 @@ import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { IpAllowlistForm } from "./IpAllowlistForm";
 import { IpAllowlistTable } from "./IpAllowlistTable";
-import { Notice } from "@/components/ui/Notice";
 
 type FormState = { mode: "closed" } | { mode: "create" } | { mode: "edit"; entry: IPAllowlist };
 
@@ -27,6 +34,7 @@ export default function IPAllowlistPage() {
     const [entries, setEntries] = useState<IPAllowlist[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [errorKind, setErrorKind] = useState<"load" | "action">("load");
     const [offset, setOffset] = useState(0);
     const limit = 50;
 
@@ -41,11 +49,16 @@ export default function IPAllowlistPage() {
         try {
             const { data, error: apiError } = await listIPAllowlistEntries(limit, offset);
             if (apiError) {
+                // The backend text goes to the log; the page says one plain sentence + Retry.
+                logger.error({ err: apiError }, "Failed to load ip allowlist entries");
+                setErrorKind("load");
                 setError(apiError);
             } else if (data) {
                 setEntries(data.items);
             }
-        } catch {
+        } catch (err) {
+            logger.error({ err }, "Failed to load ip allowlist entries");
+            setErrorKind("load");
             setError("An unexpected error occurred");
         } finally {
             setLoading(false);
@@ -71,6 +84,7 @@ export default function IPAllowlistPage() {
                 : await createIPAllowlistEntry(data as IPAllowlistCreate);
         setSaving(false);
         if (result.error) {
+            setErrorKind("action");
             setError(result.error);
         } else {
             setFormState({ mode: "closed" });
@@ -85,6 +99,7 @@ export default function IPAllowlistPage() {
         });
         setTogglingId(null);
         if (apiError) {
+            setErrorKind("action");
             setError(apiError);
         } else {
             fetchEntries();
@@ -94,6 +109,7 @@ export default function IPAllowlistPage() {
     const handleDelete = async (entry: IPAllowlist) => {
         const { error: apiError } = await deleteIPAllowlistEntry(entry.id);
         if (apiError) {
+            setErrorKind("action");
             setError(apiError);
         } else {
             fetchEntries();
@@ -102,78 +118,71 @@ export default function IPAllowlistPage() {
 
     return (
         <UpgradeGate feature="ip_allowlist" requiredTier="enterprise">
-            <div>
+            <div className="space-y-6">
                 <AdminHeader
-                    title="IP Allowlist"
+                    title="Organization"
                     description="Manage allowed IP addresses and CIDR ranges for your organization."
-                />
-
-                {error && (
-                    <Notice variant="danger" className="mb-6">
-                        {error}
-                    </Notice>
-                )}
-
-                <div className="mb-6">
-                    {formState.mode !== "closed" ? (
-                        <IpAllowlistForm
-                            mode={formState.mode}
-                            initialEntry={formState.mode === "edit" ? formState.entry : undefined}
-                            currentIp={currentIp}
-                            isSaving={saving}
-                            onSaveAction={handleSave}
-                            onCancelAction={() => setFormState({ mode: "closed" })}
-                        />
-                    ) : (
-                        <button
-                            type="button"
+                >
+                    {formState.mode === "closed" ? (
+                        <Button
+                            variant="primary"
                             onClick={() => setFormState({ mode: "create" })}
-                            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white"
+                            icon={<Plus className="h-4 w-4" />}
                         >
                             {CTA_LABELS.addIpAllowlistEntry}
-                        </button>
-                    )}
-                </div>
+                        </Button>
+                    ) : null}
+                </AdminHeader>
 
-                {loading ? (
-                    <div className="py-12 text-center text-(--ink-muted)">
-                        Loading IP allowlist...
-                    </div>
-                ) : (
-                    <>
-                        <IpAllowlistTable
-                            entries={entries}
-                            currentIp={currentIp}
-                            togglingId={togglingId}
-                            onEditAction={(entry) => setFormState({ mode: "edit", entry })}
-                            onToggleAction={handleToggle}
-                            onDeleteAction={handleDelete}
-                            formatDate={formatDate}
-                        />
-
-                        <div className="mt-4 flex items-center justify-between">
-                            <button
-                                type="button"
-                                onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-                                disabled={offset === 0}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
-                            >
-                                {CTA_LABELS.previousPage}
-                            </button>
-                            <span className="text-sm text-(--ink-muted)">
-                                Showing {offset + 1}-{offset + entries.length}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => setOffset((prev) => prev + limit)}
-                                disabled={entries.length < limit}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
-                            >
-                                {CTA_LABELS.nextPage}
-                            </button>
-                        </div>
-                    </>
+                {error && (
+                    <AdminErrorNotice
+                        error={error}
+                        kind={errorKind}
+                        subject="IP allowlist entries"
+                        onRetryAction={fetchEntries}
+                    />
                 )}
+
+                {formState.mode !== "closed" ? (
+                    <IpAllowlistForm
+                        mode={formState.mode}
+                        initialEntry={formState.mode === "edit" ? formState.entry : undefined}
+                        currentIp={currentIp}
+                        isSaving={saving}
+                        onSaveAction={handleSave}
+                        onCancelAction={() => setFormState({ mode: "closed" })}
+                    />
+                ) : null}
+
+                <Section title="IP Allowlist">
+                    {loading ? (
+                        <DataState variant="loading" title="Loading IP allowlist..." />
+                    ) : (
+                        <>
+                            <IpAllowlistTable
+                                entries={entries}
+                                currentIp={currentIp}
+                                togglingId={togglingId}
+                                onEditAction={(entry) => setFormState({ mode: "edit", entry })}
+                                onToggleAction={handleToggle}
+                                onDeleteAction={handleDelete}
+                                formatDate={formatDate}
+                            />
+
+                            {entries.length > 0 || offset > 0 ? (
+                                <AdminPager
+                                    offset={offset}
+                                    count={entries.length}
+                                    hasNext={entries.length >= limit}
+                                    onPreviousAction={() =>
+                                        setOffset((prev) => Math.max(0, prev - limit))
+                                    }
+                                    onNextAction={() => setOffset((prev) => prev + limit)}
+                                />
+                            ) : null}
+                        </>
+                    )}
+                </Section>
             </div>
         </UpgradeGate>
     );
