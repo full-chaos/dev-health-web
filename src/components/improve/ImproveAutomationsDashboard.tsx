@@ -120,7 +120,7 @@ export function ImproveAutomationsDashboard({
                         data-testid="improve-automations-ai-link"
                     >
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                        View AI automations
+                        {CTA_LABELS.viewAIAutomations}
                     </Link>
                 }
             >
