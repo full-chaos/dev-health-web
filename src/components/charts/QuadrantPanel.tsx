@@ -103,6 +103,13 @@ type QuadrantPanelProps = {
      * title and under the chart, as on every other page.
      */
     actionsInHead?: boolean;
+    /**
+     * Draw the "Show interpretive overlay" checkbox in the control row even when the chart has no
+     * overlay to show: it is then disabled and the hint says when zones appear (prototype screens
+     * 02-04 and 27, CHAOS-8562). Default false: the checkbox appears only when there is an overlay.
+     * Pair it with `showViewGuide={false}` where the checkbox replaces the guide link.
+     */
+    alwaysShowOverlayToggle?: boolean;
 };
 
 type ZoneLegendItem = {
@@ -125,6 +132,7 @@ export function QuadrantPanel({
     action,
     headChip,
     actionsInHead = false,
+    alwaysShowOverlayToggle = false,
 }: QuadrantPanelProps) {
     const scopeType = filters.scope.level === "developer" ? "person" : filters.scope.level;
     const isPersonScope = scopeType === "person";
@@ -531,19 +539,22 @@ export function QuadrantPanel({
                 className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)"
             >
                 {actionsInHead ? null : guideButton}
-                {hasInterpretationOverlay ? (
+                {hasInterpretationOverlay || alwaysShowOverlayToggle ? (
                     <div className="space-y-1">
                         <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
                             <input
                                 type="checkbox"
-                                checked={showZoneOverlay}
+                                checked={hasInterpretationOverlay && showZoneOverlay}
+                                disabled={!hasInterpretationOverlay}
                                 onChange={(event) => handleZoneToggle(event.target.checked)}
                                 className="h-3.5 w-3.5 accent-(--accent-2)"
                             />
                             <span>Show interpretive overlay</span>
                         </label>
                         <p className="text-xs text-(--ink-muted)">
-                            Highlights common system modes observed in similar systems.
+                            {hasInterpretationOverlay
+                                ? "Highlights common system modes observed in similar systems."
+                                : "Zones appear when two or more entities are in scope."}
                         </p>
                     </div>
                 ) : null}

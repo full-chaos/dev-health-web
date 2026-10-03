@@ -156,6 +156,8 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 data={quadrant}
                 filters={filters}
                 emptyState="Quadrant data unavailable for this scope."
+                showViewGuide={false}
+                alwaysShowOverlayToggle
                 action={
                     // The evidence page of the tab's metric (was the "Open evidence" link above
                     // the tiles). A dot opens the shared drawer by itself.

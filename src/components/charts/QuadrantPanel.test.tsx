@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, fireEvent, waitFor, within } from "@/test/utils";
@@ -105,6 +107,36 @@ describe("QuadrantPanel", () => {
         fireEvent.click(closeButton);
         await waitFor(() => {
             expect(document.activeElement).toBe(guideButton);
+        });
+    });
+
+    describe("overlay checkbox instead of the guide link (CHAOS-8562)", () => {
+        it("without an overlay the checkbox is drawn, disabled, with the hint, and there is no guide link", () => {
+            render(
+                <QuadrantPanel {...defaultProps} showViewGuide={false} alwaysShowOverlayToggle />,
+            );
+            const box = screen.getByRole("checkbox", { name: "Show interpretive overlay" });
+            expect(box).toBeDisabled();
+            expect(box).not.toBeChecked();
+            expect(
+                screen.getByText("Zones appear when two or more entities are in scope."),
+            ).toBeInTheDocument();
+            expect(screen.queryByRole("button", { name: /view guide/i })).toBeNull();
+        });
+
+        it("by default (no prop) a panel with no overlay draws no checkbox", () => {
+            render(<QuadrantPanel {...defaultProps} showViewGuide={false} />);
+            expect(screen.queryByRole("checkbox")).toBeNull();
+        });
+
+        it("the metrics and bottleneck pages ask for the checkbox and drop the guide link", () => {
+            for (const file of [
+                "src/app/(app)/metrics/page.tsx",
+                "src/app/(app)/bottleneck/page.tsx",
+            ]) {
+                const src = readFileSync(join(process.cwd(), file), "utf8");
+                expect(src, file).toMatch(/showViewGuide=\{false\}\s+alwaysShowOverlayToggle/u);
+            }
         });
     });
 

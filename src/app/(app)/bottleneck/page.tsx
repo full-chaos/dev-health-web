@@ -161,6 +161,8 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                     },
                 ]}
                 emptyState="Review load data will appear once PR data is ingested."
+                showViewGuide={false}
+                alwaysShowOverlayToggle
             />
 
             {/* Review wait density heatmap: a cell opens the shared drawer. */}
