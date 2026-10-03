@@ -7,7 +7,6 @@ import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
 import { ForecastNotices } from "@/components/capacity/ForecastNotices";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
-import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
 import { Inset } from "@/components/capacity/Inset";
 import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
@@ -130,32 +129,19 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
             </div>
 
             {forecast && (
-                <>
-                    <Section title="Interpretation" data-testid="forecast-interpretation">
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <Inset title="P50 (50%)" className="mt-0">
-                                Optimistic estimate. Half of simulations complete by this date.
-                            </Inset>
-                            <Inset title="P85 (85%)" className="mt-0">
-                                Recommended target. 85% confidence provides buffer for variability.
-                            </Inset>
-                            <Inset title="P95 (95%)" className="mt-0">
-                                Conservative estimate. Use for commitments with low risk tolerance.
-                            </Inset>
-                        </div>
-                    </Section>
-
-                    <Section title="Throughput Distribution">
-                        <ThroughputHistogram
-                            throughputMean={forecast.throughputMean}
-                            throughputStddev={forecast.throughputStddev}
-                            height={200}
-                        />
-                        <p className="mt-3 text-xs text-(--text-muted)">
-                            Based on {forecast.historyDays} days of historical data
-                        </p>
-                    </Section>
-                </>
+                <Section title="Interpretation" data-testid="forecast-interpretation">
+                    <div className="grid gap-3 md:grid-cols-3">
+                        <Inset title="P50 (50%)" className="mt-0">
+                            Optimistic estimate. Half of simulations complete by this date.
+                        </Inset>
+                        <Inset title="P85 (85%)" className="mt-0">
+                            Recommended target. 85% confidence provides buffer for variability.
+                        </Inset>
+                        <Inset title="P95 (95%)" className="mt-0">
+                            Conservative estimate. Use for commitments with low risk tolerance.
+                        </Inset>
+                    </div>
+                </Section>
             )}
         </div>
     );
