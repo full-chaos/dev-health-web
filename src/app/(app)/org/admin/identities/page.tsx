@@ -1,41 +1,50 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
+
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { IdentityTable } from "@/components/admin/identities/IdentityTable";
+import { buttonClassName } from "@/components/shared/Button";
+import { Notice } from "@/components/ui/Notice";
+import { RetryButton } from "@/components/ui/RetryButton";
 import { listIdentities } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { Notice } from "@/components/ui/Notice";
+import { logger } from "@/lib/logger";
 
 export default async function IdentitiesPage() {
     const result = await listIdentities();
 
+    if (result.error) {
+        // The backend text goes to the server log, never to the page (one plain sentence + Retry).
+        logger.error({ err: result.error }, "Failed to load identities");
+    }
+
     return (
-        <div>
+        <div className="space-y-6">
             <AdminHeader
-                title="Identities"
+                title="Organization"
                 description="Manage developer identities and map them to teams."
             >
-                <Link
-                    href="/org/admin/identities/new"
-                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
-                >
+                <Link href="/org/admin/identities/new" className={buttonClassName("primary", "md")}>
+                    <Plus aria-hidden="true" className="h-4 w-4" />
                     {CTA_LABELS.addIdentity}
                 </Link>
             </AdminHeader>
 
-            {result.error && (
-                <Notice variant="danger" live={false} className="mb-6">
-                    Failed to load identities: {result.error}
+            {result.error ? (
+                <Notice variant="danger" live={false} action={<RetryButton />}>
+                    Identities could not be loaded. Retry, or check again in a moment.
                 </Notice>
+            ) : (
+                <IdentityTable
+                    identities={(result.data ?? []).map((i) => ({
+                        canonical_id: i.canonical_id,
+                        display_name: i.display_name,
+                        email: i.email,
+                        team_ids: i.team_ids,
+                        provider_identities: i.provider_identities,
+                    }))}
+                />
             )}
-            <IdentityTable
-                identities={(result.data ?? []).map((i) => ({
-                    canonical_id: i.canonical_id,
-                    display_name: i.display_name,
-                    email: i.email,
-                    team_ids: i.team_ids,
-                    provider_identities: i.provider_identities,
-                }))}
-            />
         </div>
     );
 }

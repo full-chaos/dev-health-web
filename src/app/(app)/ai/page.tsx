@@ -1,4 +1,5 @@
 import { AreaHub } from "@/components/navigation/AreaHub";
+import { AreaHubEvidenceAction } from "@/components/navigation/areaHubEvidence";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -45,6 +46,7 @@ export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageP
             <PageHeader
                 title="AI"
                 subtitle="What AI appears to change across delivery, review, quality, and governance. Open an evidence-backed view for the selected window."
+                actions={<AreaHubEvidenceAction title="AI overview" signals={aiSignals} />}
             />
             <ScopeBar view="ai" />
             <AreaHub
