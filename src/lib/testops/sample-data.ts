@@ -217,6 +217,17 @@ export const SAMPLE_COVERAGE_DATA: AnalyticsResult = {
                 { key: "auth-service", value: 98.0 },
             ],
         },
+        {
+            dimension: "REPO",
+            measure: "COVERAGE_BRANCH_PCT",
+            items: [
+                { key: "auth-service", value: 91.4 },
+                { key: "backend-api", value: 84.6 },
+                { key: "frontend-web", value: 77.9 },
+                { key: "data-pipeline", value: 63.2 },
+                { key: "mobile-app", value: 58.7 },
+            ],
+        },
     ],
 };
 

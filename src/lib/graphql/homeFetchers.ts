@@ -71,12 +71,15 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
                     s.status as "ok" | "degraded" | "down",
                 ]),
             ),
-            coverage: {
-                repos_covered_pct: result.freshness.coverage?.reposCoveredPct ?? 0,
-                prs_linked_to_issues_pct: result.freshness.coverage?.prsLinkedToIssuesPct ?? 0,
-                issues_with_cycle_states_pct:
-                    result.freshness.coverage?.issuesWithCycleStatesPct ?? 0,
-            },
+            // A coverage that is not served stays null: it is "Not reported", never 0%.
+            coverage: result.freshness.coverage
+                ? {
+                      repos_covered_pct: result.freshness.coverage.reposCoveredPct,
+                      prs_linked_to_issues_pct: result.freshness.coverage.prsLinkedToIssuesPct,
+                      issues_with_cycle_states_pct:
+                          result.freshness.coverage.issuesWithCycleStatesPct,
+                  }
+                : null,
         },
         deltas: result.deltas.map((d) => ({
             metric: d.metric,

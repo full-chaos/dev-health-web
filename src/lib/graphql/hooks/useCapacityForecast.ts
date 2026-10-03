@@ -34,10 +34,10 @@ interface UseCapacityForecastResult {
  *
  * @example
  * ```tsx
- * function CapacityView({ orgId, teamId }) {
+ * function CapacityView({ orgId, teamIds }) {
  *   const { data, loading, error, refetch } = useCapacityForecast({
  *     orgId,
- *     input: { teamId, historyDays: 90 },
+ *     input: { teamIds, historyDays: 90 },
  *   });
  *
  *   if (loading) return <Spinner />;
