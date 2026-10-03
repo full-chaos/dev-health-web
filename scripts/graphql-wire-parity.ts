@@ -388,6 +388,33 @@ export function compareRegistry(
     return { rows, errors };
 }
 
+/**
+ * What `check` says after the table. A legacy match is served by query-api, but it is LOUD: one warning
+ * line per document, and the counts of the three cases. The gate does not force the web off a legacy
+ * text; these warning lines are the list of web halves that are still owed.
+ */
+export function checkSummary(rows: ParityRow[]): {
+    current: number;
+    legacy: number;
+    mismatch: number;
+    warnings: string[];
+    counts: string;
+} {
+    const legacyRows = rows.filter((row) => row.matched === "legacy");
+    const current = rows.filter((row) => row.matched === "current").length;
+    const mismatch = rows.filter((row) => row.matched === "none").length;
+    return {
+        current,
+        legacy: legacyRows.length,
+        mismatch,
+        warnings: legacyRows.map(
+            (row) =>
+                `WARNING: ${row.operation}: matches a LEGACY ops text; the web half is still owed`,
+        ),
+        counts: `current ${current}, legacy ${legacyRows.length}, mismatch ${mismatch}`,
+    };
+}
+
 function parseArgs(argv: string[]) {
     const [mode, ...rest] = argv;
     let opsRoot: string | undefined;
@@ -447,6 +474,7 @@ function main() {
 
     // check mode
     const mismatches = rows.filter((r) => !r.match);
+    const summary = checkSummary(rows);
     if (json) {
         process.stdout.write(JSON.stringify({ rows, errors }, null, 2) + "\n");
     } else {
@@ -461,17 +489,19 @@ function main() {
         }
         for (const err of errors) process.stderr.write(`ERROR: ${err}\n`);
     }
+    // Loud in every output mode: a legacy match passes, and names a web half that is still owed.
+    for (const warning of summary.warnings) process.stderr.write(`${warning}\n`);
 
     if (mismatches.length > 0 || errors.length > 0) {
         process.stderr.write(
-            `\ngraphql-wire-parity: FAILED — ${mismatches.length} document(s) digest-mismatch what this repo's pinned @urql/core actually sends, ${errors.length} manifest error(s).\n` +
+            `\ngraphql-wire-parity: FAILED (${summary.counts}) — ${mismatches.length} document(s) digest-mismatch what this repo's pinned @urql/core actually sends, ${errors.length} manifest error(s).\n` +
                 "A digest mismatch here means query-api's operationForDocument will 404 a real client request and it will silently fall back to Python (CHAOS-4696).\n",
         );
         process.exitCode = 1;
         return;
     }
     process.stdout.write(
-        `\ngraphql-wire-parity: PASSED — ${rows.length}/${rows.length} registered documents match this repo's pinned urql wire form.\n`,
+        `\ngraphql-wire-parity: PASSED (${summary.counts}) — ${rows.length}/${rows.length} registered documents match this repo's pinned urql wire form.\n`,
     );
 }
 
