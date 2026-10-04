@@ -209,6 +209,45 @@ describe("the same rows are not drawn twice", () => {
         expect(screen.getAllByTestId("evidence-repository-row")).toHaveLength(2);
     });
 
+    it("C1: driver rows stay with their served change; only the rows whose id is a repository are hidden", async () => {
+        await open({
+            drivers: [
+                {
+                    id: "d1",
+                    label: "Review queue",
+                    display_name: "Review queue",
+                    value: 7,
+                    delta_pct: 12,
+                    evidence_link: "",
+                },
+            ],
+            contributors,
+            repositories: [
+                { id: "r1", name: "acme/api", value: 1200, source_url: null },
+                { id: "r2", name: "acme/web", value: 34, source_url: null },
+            ],
+        });
+        const supporting = screen.getByTestId("evidence-supporting");
+        const rows = within(supporting).getAllByTestId("evidence-supporting-row");
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toHaveTextContent("Review queue");
+        expect(rows[0]).toHaveTextContent("+12%");
+        expect(within(supporting).queryByText("acme/api")).toBeNull();
+        expect(screen.getAllByText("acme/api")).toHaveLength(1);
+    });
+
+    it("C1: a contributor that is NOT in repositories is kept", async () => {
+        await open({
+            contributors,
+            repositories: [{ id: "r1", name: "acme/api", value: 1200, source_url: null }],
+        });
+        const rows = within(screen.getByTestId("evidence-supporting")).getAllByTestId(
+            "evidence-supporting-row",
+        );
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toHaveTextContent("acme/web");
+    });
+
     it("repositories served and empty: still no 'Supporting evidence' and no partial-data box", async () => {
         await open({ contributors: [], repositories: [] });
         expect(screen.queryByTestId("evidence-supporting")).toBeNull();

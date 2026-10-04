@@ -535,19 +535,7 @@ export function EvidencePanel({
                                 </p>
                             </div>
                         ) : null}
-                        {
-                            // A repository-stored metric serves its repositories (the same rows as
-                            // the contributors): they are drawn once, under "Supporting
-                            // repositories" below (CHAOS-8587), not again here.
-                            Array.isArray(data.repositories) ? null : data.evidence?.length ? (
-                                <EvidenceItems items={data.evidence} />
-                            ) : (
-                                <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
-                                    No contributing artifacts were returned for this metric and
-                                    filter window. This is a partial-data state, not a zero signal.
-                                </div>
-                            )
-                        }
+                        {drawnEvidence(data.evidence, data.repositories)}
                         <EvidenceRepositories repositories={data.repositories} unit={data.unit} />
                         <EvidenceSourceLink url={data.source_url} />
                         <SuggestedActions actions={data.actions || []} />
@@ -560,6 +548,34 @@ export function EvidencePanel({
                 )}
             </>
         </EvidenceDrawerShell>
+    );
+}
+
+/**
+ * The "Supporting evidence" block. A repository-stored metric serves `repositories` from the same
+ * rows as its contributors (ops #3775): a row whose id is one of them is drawn once, under
+ * "Supporting repositories", not again here (CHAOS-8587, rule C1). Every other row (the drivers,
+ * with their served change) stays. With `repositories` a list the "no contributing artifacts" note
+ * is the contributor list's own note, so it is not drawn; with it null or absent the block is
+ * exactly as before.
+ */
+function drawnEvidence(
+    evidence: EvidenceItem[] | undefined,
+    repositories?: ExplainRepository[] | null,
+) {
+    const rows = evidence ?? [];
+    if (Array.isArray(repositories)) {
+        const own = new Set(repositories.map((repo) => repo.id));
+        const rest = rows.filter((row) => !own.has(row.id));
+        return <EvidenceItems items={rest} />; // draws nothing for an empty list
+    }
+    return rows.length ? (
+        <EvidenceItems items={rows} />
+    ) : (
+        <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
+            No contributing artifacts were returned for this metric and filter window. This is a
+            partial-data state, not a zero signal.
+        </div>
     );
 }
 
