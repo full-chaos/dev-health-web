@@ -386,7 +386,7 @@ describe("ComplexityDashboard", () => {
         );
         expect(facts).toEqual({
             File: "src/app/a.py",
-            Repo: "repo-one",
+            Repository: "repo-one",
             "Risk score": "0.9",
             "Cyclomatic avg": "8.5",
             "Churn LOC 30d": "100",
@@ -489,6 +489,44 @@ describe("ComplexityDashboard", () => {
         );
         expect(screen.getByTestId("ownership-panel")).toBeInTheDocument();
         expect(screen.getAllByTestId("ownership-row")).toHaveLength(2);
+    });
+
+    it("names the ownership-risk repository column 'Repository' (prototype screen 20)", () => {
+        render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={[makeHotspot("a.py", 0.8, { blameConcentration: 0.9 })]}
+                activeTab="ownership-risk"
+            />,
+        );
+        const heads = within(screen.getByTestId("ownership-table"))
+            .getAllByRole("columnheader")
+            .map((head) => head.textContent);
+        expect(heads).toEqual([
+            "File",
+            "Repository",
+            "Owner concentration",
+            "Risk score",
+            expect.any(String),
+        ]);
+    });
+
+    it("names the repository column 'Repository' in the hotspot and churn tables too (CHAOS-8580)", () => {
+        const rows = [makeHotspot("a.py", 0.8, { blameConcentration: 0.9 })];
+        for (const [tab, table] of [
+            ["hotspots", "hotspot-table"],
+            ["churn", "churn-table"],
+        ] as const) {
+            const { unmount } = render(
+                <ComplexityDashboard {...baseProps} hotspotRows={rows} activeTab={tab} />,
+            );
+            const heads = within(screen.getByTestId(table))
+                .getAllByRole("columnheader")
+                .map((head) => head.textContent);
+            expect(heads[1], tab).toBe("Repository");
+            expect(heads, tab).not.toContain("Repo");
+            unmount();
+        }
     });
 
     it("shows a DataState on the ownership-risk tab when no blame data exists", () => {

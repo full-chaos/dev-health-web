@@ -12,6 +12,8 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { OpportunityCard as OpportunityCardData } from "@/lib/types";
 
+import { capturedChangeValue, capturedChangeWindow, hasCapturedChange } from "./capturedChange";
+
 type OpportunityCardProps = {
     card: OpportunityCardData;
     filters: MetricFilter;
@@ -19,18 +21,42 @@ type OpportunityCardProps = {
 };
 
 /**
- * The selected opportunity: rationale, next steps and the evidence drawer. The title is drawn as
- * served: the API names it by the metric's polarity ("Reduce" where lower is better, "Recover"
- * where higher is better), so the web adds no direction warning.
+ * The selected opportunity: the captured change, the rationale, next steps and the evidence
+ * drawer. The title is drawn as served: the API names it by the metric's polarity ("Reduce" where
+ * lower is better, "Recover" where higher is better), so the web adds no direction warning.
+ *
+ * Captured change (CHAOS-8109, the prototype's block): the served change percent as the big
+ * value, then one line with the served direction word and the served window, then the served
+ * rationale sentence. The value has neutral ink: "up" and "down" are the sign as a word, not good
+ * or bad.
  */
 export function OpportunityCard({ card, filters, activeRole }: OpportunityCardProps) {
     const evidence = useEvidenceDrawer();
     const [first, ...more] = card.evidence_links;
+    const changeWindow = capturedChangeWindow(card);
 
     return (
         <Section title={card.title} data-testid="opportunity-detail">
             <div data-testid="opportunity-captured-change">
-                <p className="text-label-caps uppercase text-(--ink-muted)">Captured change</p>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <p className="text-label-caps uppercase text-(--ink-muted)">Captured change</p>
+                    <p
+                        data-testid="opportunity-change-value"
+                        className={`text-[1.75rem] leading-[1.1] font-bold tracking-[-0.05rem] ${
+                            hasCapturedChange(card) ? "text-foreground" : "text-(--ink-muted)"
+                        }`}
+                    >
+                        {capturedChangeValue(card)}
+                    </p>
+                </div>
+                {changeWindow ? (
+                    <p
+                        data-testid="opportunity-change-window"
+                        className="mt-1 text-right text-xs text-(--ink-muted)"
+                    >
+                        {changeWindow}
+                    </p>
+                ) : null}
                 <p className="mt-2 text-sm text-(--ink-muted)">{card.rationale}</p>
             </div>
 

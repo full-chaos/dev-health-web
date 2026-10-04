@@ -379,7 +379,7 @@ function HotspotEvidence({ row }: { row: HotspotRow }) {
                     stacked
                     value={<span className="break-all font-mono font-medium">{row.filePath}</span>}
                 />
-                <EvidenceFact label="Repo" value={row.repoName || undefined} />
+                <EvidenceFact label="Repository" value={row.repoName || undefined} />
                 <EvidenceFact
                     label="Risk score"
                     value={formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
@@ -568,7 +568,7 @@ function HotspotsView({
                     testId="hotspot-table"
                     columns={[
                         { label: "File" },
-                        { label: "Repo" },
+                        { label: "Repository" },
                         { label: "Risk score", align: "right" },
                         { label: "Cyclomatic avg", align: "right" },
                         { label: "Churn LOC 30d", align: "right" },
@@ -653,7 +653,7 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                 testId="ownership-table"
                 columns={[
                     { label: "File" },
-                    { label: "Repo" },
+                    { label: "Repository" },
                     { label: "Owner concentration", align: "right" },
                     { label: "Risk score", align: "right" },
                     { label: CTA_LABELS.evidence },
@@ -740,7 +740,7 @@ function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                 testId="churn-table"
                 columns={[
                     { label: "File" },
-                    { label: "Repo" },
+                    { label: "Repository" },
                     { label: "Churn LOC 30d", align: "right" },
                     { label: "Commits 30d", align: "right" },
                     { label: "Risk score", align: "right" },
