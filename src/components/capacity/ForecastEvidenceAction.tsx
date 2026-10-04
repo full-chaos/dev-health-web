@@ -10,25 +10,34 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { CapacityForecast } from "@/lib/graphql/types";
 import { capacityForecastInput } from "@/components/work/capacityInput";
 
-import { formatForecastDate } from "./ForecastTiles";
+import { percentileText, servedHorizon } from "./ForecastTiles";
 
-const daysText = (days: number | undefined) =>
-    typeof days === "number" ? `${days} ${days === 1 ? "day" : "days"}` : undefined;
-
-/** The percentile as the tile shows it: the date, then the days. Undefined when not served. */
-const percentile = (date: string | undefined, days: number | undefined) =>
-    date ? [formatForecastDate(date), daysText(days)].filter(Boolean).join(" · ") : undefined;
+/**
+ * The percentile as the tile shows it: the date, then the days; at the horizon of the simulation
+ * "365 days or more" and no date. Undefined when not served.
+ */
+const percentile = (date: string | undefined, days: number | undefined, horizon: number | null) => {
+    const { value, caption } = percentileText(date, days, horizon);
+    return value ? [value, caption].filter(Boolean).join(" · ") : undefined;
+};
 
 /** The page's served values for the evidence drawer, as the tiles and the inputs card show them. */
 export function forecastFacts(forecast: CapacityForecast): PageFact[] {
+    const horizon = servedHorizon(forecast);
     return [
         {
             label: "Remaining work",
             value: `${forecast.backlogSize} ${forecast.backlogSize === 1 ? "item" : "items"}`,
         },
-        { label: "P50 · optimistic", value: percentile(forecast.p50Date, forecast.p50Days) },
-        { label: "P85 · target", value: percentile(forecast.p85Date, forecast.p85Days) },
-        { label: "P95 · conservative", value: percentile(forecast.p95Date, forecast.p95Days) },
+        {
+            label: "P50 · optimistic",
+            value: percentile(forecast.p50Date, forecast.p50Days, horizon),
+        },
+        { label: "P85 · target", value: percentile(forecast.p85Date, forecast.p85Days, horizon) },
+        {
+            label: "P95 · conservative",
+            value: percentile(forecast.p95Date, forecast.p95Days, horizon),
+        },
         { label: "Mean throughput", value: `${forecast.throughputMean.toFixed(1)} items/day` },
         { label: "Standard deviation", value: `${forecast.throughputStddev.toFixed(1)} items/day` },
         { label: "History", value: `${forecast.historyDays} days` },

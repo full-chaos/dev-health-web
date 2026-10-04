@@ -206,7 +206,12 @@ describe("/bottleneck in the approved prototype layout (CHAOS-8070)", () => {
         const props = quadrantSpy.mock.calls[0][0] as {
             title: string;
             relatedLinks: Array<{ label: string }>;
+            alwaysShowOverlayToggle?: boolean;
+            showViewGuide?: boolean;
         };
+        // CHAOS-8562: the overlay checkbox is always drawn and the guide is not switched off.
+        expect(props.alwaysShowOverlayToggle).toBe(true);
+        expect(props.showViewGuide).not.toBe(false);
         expect(props.title).toBe("Review Load × Review Latency");
         expect(props.relatedLinks.map((link) => link.label)).toEqual(["Explore work"]);
         expect(quadrantRequests.map((request) => request.type)).toEqual(["review_load_latency"]);

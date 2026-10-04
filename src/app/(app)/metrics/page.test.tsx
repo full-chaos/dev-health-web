@@ -237,7 +237,15 @@ describe("/metrics in the approved prototype layout (CHAOS-8066)", () => {
             expect(tiles.metrics, tab).toEqual(want.tiles);
             // The tiles get the served rows unchanged: the page makes no number.
             expect(tiles.deltas, tab).toBe(deltas);
-            const q = quadrantSpy.mock.calls[0][0] as { title: string; description: string };
+            const q = quadrantSpy.mock.calls[0][0] as {
+                title: string;
+                description: string;
+                alwaysShowOverlayToggle?: boolean;
+                showViewGuide?: boolean;
+            };
+            // CHAOS-8562: the overlay checkbox is always drawn and the guide is not switched off.
+            expect(q.alwaysShowOverlayToggle, tab).toBe(true);
+            expect(q.showViewGuide, tab).not.toBe(false);
             expect(q.title).toBe(want.title);
             expect(q.description).toBe(want.description);
             unmount();

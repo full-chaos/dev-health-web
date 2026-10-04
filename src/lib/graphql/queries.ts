@@ -636,7 +636,9 @@ query AIOpportunities($orgId: String!, $scope: AIScopeInput, $limit: Int! = 5) {
       opportunityId
       kind
       repoId
+      repoName
       teamId
+      teamName
       title
       rationale
       score
@@ -668,6 +670,10 @@ query ImproveOpportunities($scope: AIScopeInput, $limit: Int! = 10, $windowDays:
       severity
       evidenceRefs
       recommendedAction
+      value
+      threshold
+      unit
+      thresholdDirection
     }
   }
 }
@@ -684,6 +690,8 @@ query AIWorkflowDrilldown($orgId: String!, $rootType: AIWorkflowRootTypeInput!, 
     nodes {
       nodeType
       nodeId
+      displayName
+      nameExpected
     }
     edges {
       edgeId
@@ -1051,12 +1059,16 @@ query CognitiveLoad($input: CognitiveLoadInput!) {
 
 // Reviewer→author collaboration edges from review_edges_daily.
 // Used by the Work-Graph "Review Network" tab.
+// CHAOS-8485: it asks for the served display name and the served key of each person, and NOT for
+// `reviewer` / `author` (the stored identities, which can be e-mail addresses).
 export const REVIEW_EDGES_QUERY = `
 query ReviewEdges($input: ReviewEdgesInput!) {
   reviewEdges(input: $input) {
     edges {
-      reviewer
-      author
+      reviewerKey
+      authorKey
+      reviewerName
+      authorName
       reviewsCount
       day
       repoId

@@ -215,6 +215,17 @@ export type OpportunityCard = {
     rationale: string;
     evidence_links: string[];
     suggested_experiments: string[];
+    /**
+     * The move the card is about, in percent: signed and unrounded, the same number Home serves
+     * for the metric (CHAOS-8109). Null on a card that is about no metric ("Maintain steady
+     * flow"): no move is not a move of 0. Absent in an answer from before the field existed.
+     */
+    change_percent?: number | null;
+    /** The sign of `change_percent` as a word. It is NOT good or bad. Null with no change. */
+    direction?: "up" | "down" | null;
+    /** The compared windows, in days: the current window and the window before it. */
+    range_days?: number | null;
+    compare_days?: number | null;
 };
 
 export type OpportunitiesResponse = {

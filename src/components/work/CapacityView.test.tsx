@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const HOSTILE =
     "[GraphQL] capacityForecast is served by query-api and has no Python implementation. The Go dispatcher did not intercept this request (cmd/query-api/query_route.go)";
 
@@ -58,6 +58,13 @@ const filters: MetricFilter = {
 
 beforeEach(() => {
     hook.state = { data: forecast(), loading: false, error: null, refetch: vi.fn() };
+    // A forecast date shows its year when it is not in this year, so "today" is fixed: the day
+    // the fixture forecast was computed.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T12:00:00Z"));
+});
+afterEach(() => {
+    vi.useRealTimers();
 });
 
 describe("CapacityView — what the page shows (pins, updated for the page pass)", () => {

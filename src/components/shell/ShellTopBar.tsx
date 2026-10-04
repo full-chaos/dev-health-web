@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { navTrailForPathname } from "@/lib/navigation/areas";
+import { metricEvidenceLeaf } from "@/lib/navigation/evidenceTrail";
 
 import { CommandPalette } from "./CommandPalette";
 import { shellHref } from "./shellHref";
@@ -22,7 +23,12 @@ type ShellTopBarProps = {
  */
 function ShellTrail({ pathname }: { pathname: string }) {
     const params = useShellNavParams(pathname);
-    const trail = navTrailForPathname(pathname).map((crumb) =>
+    const searchParams = useSearchParams();
+    const leaf = metricEvidenceLeaf(pathname, {
+        metric: searchParams.get("metric"),
+        api: searchParams.get("api"),
+    });
+    const trail = navTrailForPathname(pathname, leaf ?? undefined).map((crumb) =>
         crumb.href
             ? { ...crumb, href: shellHref(crumb.href, params, { withOrigin: true }) }
             : crumb,
