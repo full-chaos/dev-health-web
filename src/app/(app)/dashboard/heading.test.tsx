@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
-import { checkApiHealth, getApiMeta } from "@/lib/api/system";
+import { checkApiHealth } from "@/lib/api/system";
+import { formatTimestamp } from "@/lib/formatters";
 import { getSetupStatus } from "@/lib/admin/server";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 
@@ -30,7 +31,7 @@ vi.mock("next-auth/react", () => ({
 }));
 
 vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
-vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn(), getApiMeta: vi.fn() }));
+vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn() }));
 vi.mock("@/lib/admin/server", () => ({ getSetupStatus: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn(async () => ({ user: { org_id: "org-1" } })),
@@ -58,7 +59,6 @@ async function renderCockpit() {
 beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
     vi.mocked(checkApiHealth).mockResolvedValue({ ok: true, data: null });
-    vi.mocked(getApiMeta).mockResolvedValue(null);
     vi.mocked(getSetupStatus).mockResolvedValue({ error: "not needed for this test" });
     vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(null as never);
 });
@@ -165,55 +165,108 @@ describe("Home page header", () => {
         expect(call?.searchParams.get("range_days")).toBe(days);
     });
 
-    it("lists the served meta coverage counts in the page evidence drawer, not in the header (CHAOS-8064)", async () => {
-        vi.mocked(getApiMeta).mockResolvedValue({
-            backend: "clickhouse",
-            version: "test",
-            last_ingest_at: "2026-07-12T00:07:00Z",
-            coverage: { repos: 1200, prs: 0, note: "n/a" as never },
-            limits: {},
-            supported_endpoints: [],
-        });
-        await renderCockpit();
+    // The freshness facts come from the Home answer (`home.freshness`), which is read for the
+    // signed-in organization. The public meta route serves no organization data and is not read.
+    const homeWithFreshness = (freshness: unknown) =>
+        ({
+            freshness,
+            deltas: [],
+            summary: [],
+            tiles: {},
+            constraint: { title: "", claim: "", evidence: [], experiments: [] },
+            events: [],
+        }) as never;
 
-        // The old header strip ("Synced …", coverage counts) is not on the page.
-        const header = screen.getByTestId("page-header");
-        expect(header).not.toHaveTextContent("Synced");
-        expect(header).not.toHaveTextContent("repos");
-
-        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
-        const rows = within(
-            within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
-        )
+    const drawerRows = () =>
+        within(within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"))
             .getAllByTestId("evidence-fact")
             .map((row) => [
                 row.querySelector("dt")?.textContent,
                 row.querySelector("dd")?.textContent,
             ]);
+
+    it("lists the served freshness facts in the page evidence drawer, not in the header: last ingest and the three coverage percents", async () => {
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(
+            homeWithFreshness({
+                last_ingested_at: "2026-07-12T00:07:00Z",
+                sources: {},
+                coverage: {
+                    repos_covered_pct: 100,
+                    prs_linked_to_issues_pct: 0,
+                    issues_with_cycle_states_pct: 41.6,
+                },
+            }),
+        );
+        await renderCockpit();
+
+        // The old header strip ("Synced …", coverage counts) is not on the page.
+        const header = screen.getByTestId("page-header");
+        expect(header).not.toHaveTextContent("Synced");
+        expect(header).not.toHaveTextContent("covered");
+
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
         // Every served number, zero included (zero is a served value, not a missing one).
-        expect(rows).toEqual([
+        expect(drawerRows()).toEqual([
             ["Coverage", "Not reported"],
-            ["Coverage: repos", "1,200"],
-            ["Coverage: prs", "0"],
+            ["Last ingested", formatTimestamp("2026-07-12T00:07:00Z")],
+            ["Repositories covered", "100%"],
+            ["PRs linked to issues", "0%"],
+            ["Issues with cycle states", "42%"],
         ]);
     });
 
-    it("adds no meta coverage row when the meta endpoint served none", async () => {
-        vi.mocked(getApiMeta).mockResolvedValue({
-            backend: "clickhouse",
-            version: "test",
-            last_ingest_at: null,
-            coverage: {},
-            limits: {},
-            supported_endpoints: [],
-        });
+    it.each([
+        [
+            "the Home answer serves no coverage and no ingest time",
+            { last_ingested_at: null, sources: {}, coverage: null },
+        ],
+        [
+            "the coverage object has no number in it",
+            { last_ingested_at: null, sources: {}, coverage: {} },
+        ],
+    ])(
+        "reads 'Not reported' for each freshness fact, never a zero, when %s",
+        async (_name, freshness) => {
+            vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(homeWithFreshness(freshness));
+            await renderCockpit();
+            await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+
+            expect(drawerRows()).toEqual([
+                ["Coverage", "Not reported"],
+                ["Last ingested", "Not reported"],
+                ["Repositories covered", "Not reported"],
+                ["PRs linked to issues", "Not reported"],
+                ["Issues with cycle states", "Not reported"],
+            ]);
+        },
+    );
+
+    it("reads 'Could not be read' on every row when the Home read failed: a failed read is not 'Not reported'", async () => {
+        vi.mocked(getHomeDataViaGraphQL).mockRejectedValue(new Error("[GraphQL] boom"));
         await renderCockpit();
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
-        expect(
-            within(
-                within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
-            ).getAllByTestId("evidence-fact"),
-        ).toHaveLength(1);
+
+        expect(drawerRows()).toEqual([
+            ["Coverage", "Could not be read"],
+            ["Last ingested", "Could not be read"],
+            ["Repositories covered", "Could not be read"],
+            ["PRs linked to issues", "Could not be read"],
+            ["Issues with cycle states", "Could not be read"],
+        ]);
+        const intro = within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage");
+        expect(intro).not.toHaveTextContent("Not reported");
+        expect(screen.getByRole("dialog")).not.toHaveTextContent("boom");
+    });
+
+    it("does not read the public meta route for the page", async () => {
+        const fetchSpy = vi.fn().mockResolvedValue({ ok: false });
+        vi.stubGlobal("fetch", fetchSpy);
+        await renderCockpit();
+
+        const paths = fetchSpy.mock.calls.map(([input]) => String(input));
+        expect(paths.filter((path) => path.includes("/api/v1/meta"))).toEqual([]);
+        // The helper is gone from the system API module.
+        expect(Object.keys(await vi.importActual("@/lib/api/system"))).not.toContain("getApiMeta");
     });
 
     it("shows the served source coverage in the page evidence drawer, or Not reported", async () => {
@@ -241,14 +294,19 @@ describe("Home page header", () => {
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
         const coverage = within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage");
         expect(within(coverage).getByText("Coverage")).toBeInTheDocument();
-        expect(within(coverage).getByTestId("evidence-fact")).toHaveTextContent("92%");
+        // The first row is the source coverage; the freshness facts follow it.
+        expect(within(coverage).getAllByTestId("evidence-fact")[0]).toHaveTextContent(
+            "Coverage92%",
+        );
         served.unmount();
 
         vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(home(null));
         await renderCockpit();
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
         expect(
-            within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
-        ).toHaveTextContent("Not reported");
+            within(
+                within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
+            ).getAllByTestId("evidence-fact")[0],
+        ).toHaveTextContent("CoverageNot reported");
     });
 });

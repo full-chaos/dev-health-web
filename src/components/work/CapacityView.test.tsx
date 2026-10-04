@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const HOSTILE =
     "[GraphQL] capacityForecast is served by query-api and has no Python implementation. The Go dispatcher did not intercept this request (cmd/query-api/query_route.go)";
 
@@ -24,8 +24,8 @@ vi.mock("@/lib/graphql/hooks", () => ({
     },
 }));
 vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-1" }));
-vi.mock("@/components/charts/ConfidenceBandChart", () => ({
-    ConfidenceBandChart: () => <div data-testid="band-chart" />,
+vi.mock("@/components/charts/CompletionRangeChart", () => ({
+    CompletionRangeChart: () => <div data-testid="range-chart" />,
 }));
 
 import { CapacityView } from "./CapacityView";
@@ -34,6 +34,8 @@ const forecast = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
     forecastId: "f1",
     computedAt: "2026-06-01T00:00:00Z",
     backlogSize: 42,
+    // The count the simulation ran on. It differs from the backlog on purpose.
+    targetItems: 40,
     p50Date: "2026-06-10",
     p85Date: "2026-06-20",
     p95Date: "2026-07-01",
@@ -56,6 +58,13 @@ const filters: MetricFilter = {
 
 beforeEach(() => {
     hook.state = { data: forecast(), loading: false, error: null, refetch: vi.fn() };
+    // A forecast date shows its year when it is not in this year, so "today" is fixed: the day
+    // the fixture forecast was computed.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T12:00:00Z"));
+});
+afterEach(() => {
+    vi.useRealTimers();
 });
 
 describe("CapacityView — what the page shows (pins, updated for the page pass)", () => {
@@ -85,14 +94,13 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
     });
 
-    it("lays the projection beside the Forecast inputs card, with the Interpretation below", () => {
+    it("lays the projection beside the Forecast inputs card, then the simulated outcomes, with the Interpretation below", () => {
         render(<CapacityView filters={filters} />);
 
-        for (const name of ["Completion projection", "Forecast inputs", "Interpretation"]) {
-            expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
-        }
-        // No other section: the three above are all the page draws under the tiles.
-        expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
+        // No other section: these three, in this order, are all the page draws under the tiles.
+        expect(
+            screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+        ).toEqual(["Completion range", "Forecast inputs", "Interpretation"]);
     });
 
     it("sends every selected team id and the filter's range as history days", () => {
@@ -150,17 +158,63 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
     });
 
-    it("keeps the projection chart, its caption and the section title", () => {
+    // CHAOS-8477: the prototype's "Completion range" card takes the place of the burn-down chart.
+    // The curve comes from the API's completionDistribution and nothing else.
+    const distribution = {
+        runs: 100,
+        unfinishedRuns: 0,
+        horizonDays: 365,
+        days: [
+            { value: 9, count: 40, cumulativeShare: 0.4 },
+            { value: 10, count: 60, cumulativeShare: 1 },
+        ],
+        items: null,
+    };
+
+    it("draws the Completion range card with the Monte Carlo words when the forecast has a distribution", () => {
+        hook.state = { ...hook.state, data: forecast({ completionDistribution: distribution }) };
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByTestId("band-chart")).toBeInTheDocument();
-        expect(screen.getByText("Completion projection")).toBeInTheDocument();
-        expect(screen.getByText("Monte Carlo forecast for work completion")).toBeInTheDocument();
+        const card = within(screen.getByTestId("completion-range-card"));
         expect(
-            screen.getByText(
-                /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. No distribution is drawn\./,
+            card.getByRole("heading", { level: 2, name: "Completion range" }),
+        ).toBeInTheDocument();
+        expect(
+            card.getByText(
+                "Monte Carlo forecast: the chance that the remaining work is done by each day.",
             ),
         ).toBeInTheDocument();
+        expect(card.getByTestId("range-chart")).toBeInTheDocument();
+        expect(card.getByTestId("completion-range-note")).toHaveTextContent(
+            "Monte Carlo forecast: each step is the share of the 100 simulation runs in which all 40 items were done by that day.",
+        );
+        expect(
+            card.getByText(
+                "Use the target and conservative dates as different planning choices, not as one promise.",
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it("draws no burn-down chart and no histogram card", () => {
+        hook.state = { ...hook.state, data: forecast({ completionDistribution: distribution }) };
+        render(<CapacityView filters={filters} />);
+
+        expect(screen.queryByText("Completion projection")).toBeNull();
+        expect(screen.queryByText(/backlog burned at the mean throughput/)).toBeNull();
+        expect(screen.queryByText("Simulated outcomes")).toBeNull();
+        expect(screen.queryByTestId("completion-spread-card")).toBeNull();
+        expect(screen.getAllByTestId("range-chart")).toHaveLength(1);
+    });
+
+    it("reads Not reported, and draws no chart, when the forecast has no stored distribution", () => {
+        render(<CapacityView filters={filters} />);
+
+        const card = within(screen.getByTestId("completion-range-card"));
+        expect(card.getByTestId("completion-range")).toHaveAttribute("data-reported", "false");
+        expect(card.getByTestId("completion-range")).toHaveTextContent(/^Not reported/);
+        expect(card.queryByTestId("range-chart")).toBeNull();
+        // The served tiles stay: the percentile dates do not need the distribution.
+        expect(within(screen.getByTestId("tile-p50")).getByText("9 days")).toBeInTheDocument();
     });
 
     it("shows the Interpretation section with the three percentile texts", () => {
@@ -233,8 +287,10 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
 
         const range = within(screen.getByTestId("tile-range"));
         expect(range.getByText("Forecast range")).toBeInTheDocument();
-        expect(range.getByText("≈2 weeks")).toBeInTheDocument();
-        expect(range.getByText(/low variance · Jun 1[45]/)).toBeInTheDocument();
+        // The served date and the served days; no week count made in the web (CHAOS-8481).
+        expect(range.getByTestId("metric-value")).toHaveTextContent(/^Jun 15$/u);
+        expect(range.getByText("low variance · 14 days")).toBeInTheDocument();
+        expect(range.queryByText(/week/iu)).toBeNull();
         expect(screen.queryByTestId("tile-p50")).toBeNull();
         expect(screen.queryByTestId("tile-p95")).toBeNull();
     });
