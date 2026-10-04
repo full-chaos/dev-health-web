@@ -653,7 +653,7 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                 testId="ownership-table"
                 columns={[
                     { label: "File" },
-                    { label: "Repo" },
+                    { label: "Repository" },
                     { label: "Owner concentration", align: "right" },
                     { label: "Risk score", align: "right" },
                     { label: CTA_LABELS.evidence },

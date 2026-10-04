@@ -491,6 +491,26 @@ describe("ComplexityDashboard", () => {
         expect(screen.getAllByTestId("ownership-row")).toHaveLength(2);
     });
 
+    it("names the ownership-risk repository column 'Repository' (prototype screen 20)", () => {
+        render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={[makeHotspot("a.py", 0.8, { blameConcentration: 0.9 })]}
+                activeTab="ownership-risk"
+            />,
+        );
+        const heads = within(screen.getByTestId("ownership-table"))
+            .getAllByRole("columnheader")
+            .map((head) => head.textContent);
+        expect(heads).toEqual([
+            "File",
+            "Repository",
+            "Owner concentration",
+            "Risk score",
+            expect.any(String),
+        ]);
+    });
+
     it("shows a DataState on the ownership-risk tab when no blame data exists", () => {
         const hotspots = [makeHotspot("a.py", 0.8, { blameConcentration: null })];
         render(
