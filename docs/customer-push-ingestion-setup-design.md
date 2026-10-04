@@ -224,12 +224,11 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - name: Generate payload
-              run: dev-hops push export github --repo "$GITHUB_REPOSITORY" --since "$SINCE" --until "$UNTIL" > payload.json
+            # payload.json: your own export in the external-ingest.v1 shape (no export command yet)
             - name: Validate payload
-              run: dev-hops push validate payload.json --schema external-ingest.v1
+              run: docker run --rm -i ghcr.io/full-chaos/dev-health-go-dho:latest push validate - < payload.json
             - name: Push payload
-              run: dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
+              run: docker run --rm -i -e FULLCHAOS_API_URL -e FULLCHAOS_ORG_ID -e FULLCHAOS_INGEST_TOKEN ghcr.io/full-chaos/dev-health-go-dho:latest push batch - --poll < payload.json
               env:
                   FULLCHAOS_API_URL: ${{ vars.FULLCHAOS_API_URL }}
                   FULLCHAOS_ORG_ID: ${{ vars.FULLCHAOS_ORG_ID }}
@@ -239,12 +238,15 @@ jobs:
 ### GitLab Runner example
 
 ```yaml
+# payload.json: your own export in the external-ingest.v1 shape (no export command yet)
+# The dho image has no shell, so a GitLab script job calls the API directly.
+# IDEMPOTENCY_KEY must equal the payload's idempotencyKey (the API refuses a mismatch).
 push_dev_health:
-    image: ghcr.io/full-chaos/dev-hops:latest
+    image:
+        name: curlimages/curl:latest
+        entrypoint: [""]
     script:
-        - dev-hops push export gitlab --project "$CI_PROJECT_PATH" --since "$SINCE" --until "$UNTIL" > payload.json
-        - dev-hops push validate payload.json --schema external-ingest.v1
-        - dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
+        - 'curl -sS --fail-with-body -X POST "$FULLCHAOS_API_URL/api/v1/external-ingest/batches" -H "Authorization: Bearer $FULLCHAOS_INGEST_TOKEN" -H "Content-Type: application/json" -H "Idempotency-Key: $IDEMPOTENCY_KEY" --data-binary @payload.json'
     rules:
         - if: $CI_PIPELINE_SOURCE == "schedule"
 ```

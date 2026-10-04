@@ -822,10 +822,9 @@ export function ComplexityDashboard({
                         No complexity history in this window.
                     </h2>
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-                        Complexity data appears once{" "}
-                        <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> has
-                        processed at least one complexity analysis run for this org. The page
-                        populates automatically on the next metrics run.
+                        Complexity data appears once the daily metrics job has processed at least
+                        one complexity analysis run for this org. The page populates automatically
+                        on the next metrics run.
                     </p>
                     <p className="mt-2 text-xs text-(--ink-muted)">
                         Org <span className="font-mono">{orgId}</span>

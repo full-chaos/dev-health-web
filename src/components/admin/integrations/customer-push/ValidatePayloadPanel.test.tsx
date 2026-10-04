@@ -26,6 +26,21 @@ describe("ValidatePayloadPanel", () => {
         expect(screen.queryByText(/push this payload/i)).not.toBeInTheDocument();
     });
 
+    // CHAOS-8585: the CI validator is the Go CLI `dho push validate`; the Python CLI is removed.
+    it("without the validate proxy, points to `dho push validate`, not the removed Python CLI", () => {
+        render(
+            <ValidatePayloadPanel
+                sourceId="cps-1"
+                sourceSystem="github"
+                sourceInstance="meridian/api"
+                validateProxyAvailable={false}
+            />,
+        );
+        const note = screen.getByRole("status");
+        expect(note).toHaveTextContent("dho push validate");
+        expect(note).not.toHaveTextContent("dev-hops");
+    });
+
     it("shows a parse error for invalid JSON without calling the server", async () => {
         const user = userEvent.setup();
         render(
