@@ -830,9 +830,12 @@ export type ConstraintEvidence = {
 
 export type Coverage = {
   __typename?: 'Coverage';
-  issuesWithCycleStatesPct: Scalars['Float']['output'];
-  prsLinkedToIssuesPct: Scalars['Float']['output'];
-  reposCoveredPct: Scalars['Float']['output'];
+  /** Null when the current window contains no work items for cycle-state coverage. */
+  issuesWithCycleStatesPct?: Maybe<Scalars['Float']['output']>;
+  /** Null when the current window contains no work items to link. */
+  prsLinkedToIssuesPct?: Maybe<Scalars['Float']['output']>;
+  /** Null when no repositories are available to measure. */
+  reposCoveredPct?: Maybe<Scalars['Float']['output']>;
 };
 
 export type CoverageStat = {

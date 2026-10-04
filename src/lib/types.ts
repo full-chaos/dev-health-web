@@ -1,7 +1,10 @@
 export type Coverage = {
-    repos_covered_pct: number;
-    prs_linked_to_issues_pct: number;
-    issues_with_cycle_states_pct: number;
+    /** Null when no repositories are available to measure. */
+    repos_covered_pct: number | null;
+    /** Null when the current window contains no work items to link. */
+    prs_linked_to_issues_pct: number | null;
+    /** Null when the current window contains no work items for cycle-state coverage. */
+    issues_with_cycle_states_pct: number | null;
 };
 
 export type Freshness = {

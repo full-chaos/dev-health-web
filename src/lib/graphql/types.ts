@@ -839,9 +839,9 @@ export interface HomeGraphQLFreshness {
     latestSuccessfulSyncAt: string | null;
     sources: HomeGraphQLFreshnessSource[];
     coverage: {
-        reposCoveredPct: number;
-        prsLinkedToIssuesPct: number;
-        issuesWithCycleStatesPct: number;
+        reposCoveredPct: number | null;
+        prsLinkedToIssuesPct: number | null;
+        issuesWithCycleStatesPct: number | null;
     } | null;
 }
 
