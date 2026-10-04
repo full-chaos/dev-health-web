@@ -132,3 +132,134 @@ describe("OpportunityCard (the selected opportunity)", () => {
         expect(detail).not.toHaveTextContent(/a rise is usually good/i);
     });
 });
+
+// CHAOS-8109: the API serves the move a card is about as values: `change_percent` (signed,
+// unrounded), `direction` ("up" | "down": the sign as a word, not good or bad), and the compared
+// windows `range_days` / `compare_days`. The card shows them as served; before, the number was
+// only inside the rationale sentence.
+describe("OpportunityCard — the served change", () => {
+    const withChange = (over: Partial<OpportunityCardData>): OpportunityCardData => ({
+        ...reduceReviewLatency,
+        rationale: "Review Latency climbed 1041% in the last 14 days.",
+        change_percent: 1041.4,
+        direction: "up",
+        range_days: 14,
+        compare_days: 14,
+        ...over,
+    });
+    const block = () => within(screen.getByTestId("opportunity-captured-change"));
+    const value = () => screen.getByTestId("opportunity-change-value");
+    const windowLine = () => screen.queryByTestId("opportunity-change-window");
+    const show = (over: Partial<OpportunityCardData> = {}) =>
+        render(<OpportunityCard card={withChange(over)} filters={filters} activeRole="eng" />);
+
+    it("shows the served change big, under the label 'Captured change' (caps by CSS)", () => {
+        show();
+        const label = block().getByText("Captured change");
+        expect(label.className).toContain("uppercase");
+        expect(value()).toHaveTextContent(/^\+1,041%$/u);
+        expect(value().className).toContain("text-[1.75rem]");
+    });
+
+    it("says the direction as the served word and the window with the served days", () => {
+        show();
+        expect(windowLine()).toHaveTextContent(/^Up, last 14 days against the 14 days before\.$/u);
+    });
+
+    it("prints a fall with its served sign and the served word", () => {
+        show({ change_percent: -33.26, direction: "down", range_days: 7, compare_days: 30 });
+        expect(value()).toHaveTextContent(/^-33%$/u);
+        expect(windowLine()).toHaveTextContent(/^Down, last 7 days against the 30 days before\.$/u);
+    });
+
+    it("says day, not days, for a window of one day", () => {
+        show({ range_days: 1, compare_days: 1 });
+        expect(windowLine()).toHaveTextContent(/^Up, last 1 day against the 1 day before\.$/u);
+    });
+
+    it("keeps the served rationale sentence under the value", () => {
+        show();
+        expect(
+            block().getByText("Review Latency climbed 1041% in the last 14 days."),
+        ).toBeInTheDocument();
+    });
+
+    it("prints the unrounded served number by the one change formatter: a small change is not 0%", () => {
+        show({ change_percent: 0.3 });
+        expect(value()).toHaveTextContent(/^\+0\.3%$/u);
+    });
+
+    it("prints a served 0 as 0%", () => {
+        show({ change_percent: 0 });
+        expect(value()).toHaveTextContent(/^0%$/u);
+    });
+
+    // The card has no served no-data flag. The web adds no rule of its own (a guess would be a
+    // web-made value): a served -100 is printed as it is served.
+    it("prints a served -100 as -100%: the web has no rule of its own for it", () => {
+        show({ change_percent: -100, direction: "down" });
+        expect(value()).toHaveTextContent(/^-100%$/u);
+        expect(screen.getByTestId("opportunity-captured-change")).not.toHaveTextContent(
+            /no data/iu,
+        );
+    });
+
+    it.each([
+        ["null", null],
+        ["absent", undefined],
+    ])("reads Not reported when the change is not served (%s), never 0%", (_name, change) => {
+        show({ change_percent: change, direction: null });
+        expect(value()).toHaveTextContent(/^Not reported$/u);
+        expect(screen.getByTestId("opportunity-captured-change")).not.toHaveTextContent("0%");
+        // the fallback card still says its served window, with no direction word
+        expect(windowLine()).toHaveTextContent(/^Last 14 days against the 14 days before\.$/u);
+    });
+
+    it("draws no window line when a window number is not served, and puts no number in its place", () => {
+        show({ range_days: undefined, compare_days: null, direction: null, change_percent: null });
+        expect(windowLine()).toBeNull();
+        // the block holds the label, the value and the served sentence, and nothing more
+        expect(screen.getByTestId("opportunity-captured-change").childElementCount).toBe(2);
+        expect(value()).toHaveTextContent(/^Not reported$/u);
+    });
+
+    it("reads Not reported for a change that is not a finite number, in muted ink", () => {
+        show({ change_percent: Number.NaN });
+        expect(value()).toHaveTextContent(/^Not reported$/u);
+        expect(value().className).toContain("text-(--ink-muted)");
+        expect(value().className).not.toContain("text-foreground");
+    });
+
+    it.each([
+        ["only the current window", { range_days: 14, compare_days: null }],
+        ["only the window before", { range_days: null, compare_days: 14 }],
+    ])("draws no window phrase when %s is served: the other one is not made", (_name, days) => {
+        show({ ...days, direction: null });
+        expect(windowLine()).toBeNull();
+    });
+
+    it("says only the direction word when no window is served", () => {
+        show({ range_days: undefined, compare_days: undefined });
+        expect(windowLine()).toHaveTextContent(/^Up\.$/u);
+    });
+
+    it("says no direction word for a direction that is not 'up' or 'down'", () => {
+        show({ direction: "sideways" as unknown as "up" });
+        expect(windowLine()).toHaveTextContent(/^Last 14 days against the 14 days before\.$/u);
+    });
+
+    // "up" and "down" are the sign as a word, not good or bad: a rise of a metric where a rise is
+    // bad and a fall of a metric where a fall is bad look the same.
+    it("gives the value no good or bad colour from the direction or the sign", () => {
+        const { unmount } = show({ change_percent: 50, direction: "up" });
+        const up = value().className;
+        unmount();
+        show({ change_percent: -50, direction: "down" });
+        const down = value().className;
+        expect(down).toBe(up);
+        for (const token of ["positive", "negative", "caution", "danger", "success", "warn"]) {
+            expect(up, token).not.toContain(token);
+        }
+        expect(up).toContain("text-foreground");
+    });
+});
