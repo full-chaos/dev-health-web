@@ -67,7 +67,7 @@ test.describe("Plan area forecast pages", () => {
         ).toBeVisible();
         // Method label — not a tab or heading.
         await expect(
-            page.getByText(/Monte Carlo is the method behind this completion projection/i),
+            page.getByText(/Monte Carlo is the method behind this completion range\./i),
         ).toBeVisible();
         // Structure A: no shared "Plan forecast views" navigation.
         await expect(page.getByRole("navigation", { name: "Plan forecast views" })).toHaveCount(0);
