@@ -13,7 +13,7 @@ describe("CAPACITY_COMPLETION_DISTRIBUTION_QUERY", () => {
     });
 
     it("passes the forecast input as one variable", () => {
-        expect(compact).toContain("($orgId: String!, $input: CapacityForecastInput!)");
+        expect(compact).toContain("($orgId: String!, $input: CapacityForecastInput)");
         expect(compact).not.toContain("$teamId");
     });
 });
