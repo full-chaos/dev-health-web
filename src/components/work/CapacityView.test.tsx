@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const HOSTILE =
     "[GraphQL] capacityForecast is served by query-api and has no Python implementation. The Go dispatcher did not intercept this request (cmd/query-api/query_route.go)";
 
@@ -58,6 +58,13 @@ const filters: MetricFilter = {
 
 beforeEach(() => {
     hook.state = { data: forecast(), loading: false, error: null, refetch: vi.fn() };
+    // A forecast date shows its year when it is not in this year, so "today" is fixed: the day
+    // the fixture forecast was computed.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T12:00:00Z"));
+});
+afterEach(() => {
+    vi.useRealTimers();
 });
 
 describe("CapacityView — what the page shows (pins, updated for the page pass)", () => {
@@ -280,8 +287,10 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
 
         const range = within(screen.getByTestId("tile-range"));
         expect(range.getByText("Forecast range")).toBeInTheDocument();
-        expect(range.getByText("≈2 weeks")).toBeInTheDocument();
-        expect(range.getByText(/low variance · Jun 1[45]/)).toBeInTheDocument();
+        // The served date and the served days; no week count made in the web (CHAOS-8481).
+        expect(range.getByTestId("metric-value")).toHaveTextContent(/^Jun 15$/u);
+        expect(range.getByText("low variance · 14 days")).toBeInTheDocument();
+        expect(range.queryByText(/week/iu)).toBeNull();
         expect(screen.queryByTestId("tile-p50")).toBeNull();
         expect(screen.queryByTestId("tile-p95")).toBeNull();
     });

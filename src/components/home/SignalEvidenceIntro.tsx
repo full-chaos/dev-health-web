@@ -1,5 +1,6 @@
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import type { CockpitSignal } from "@/lib/types";
+import { Inset } from "@/components/ui/Inset";
 
 type IntroSignal = Pick<
     CockpitSignal,
@@ -20,10 +21,7 @@ export function SignalEvidenceIntro({ signal }: { signal: IntroSignal }) {
     if (!scopeId && !signal.why_it_matters && !signal.recommended_action) return null;
 
     return (
-        <section
-            data-testid="signal-evidence-intro"
-            className="space-y-3 rounded-(--radius-sm) bg-background p-3.75"
-        >
+        <Inset as="section" flush data-testid="signal-evidence-intro" className="space-y-3">
             {scopeId ? (
                 <div>
                     <h4 className="text-xs font-semibold text-foreground">Scope</h4>
@@ -58,6 +56,6 @@ export function SignalEvidenceIntro({ signal }: { signal: IntroSignal }) {
                     </p>
                 </div>
             ) : null}
-        </section>
+        </Inset>
     );
 }
