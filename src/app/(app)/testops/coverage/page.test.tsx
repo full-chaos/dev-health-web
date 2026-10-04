@@ -2,19 +2,26 @@ import { render, screen, within } from "@/test/utils";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCheckApiHealth, mockFetchCoverageMetrics, mockFetchCoverageBaselines, timeseriesSpy } =
-    vi.hoisted(() => ({
-        mockCheckApiHealth: vi.fn(),
-        mockFetchCoverageMetrics: vi.fn(),
-        mockFetchCoverageBaselines: vi.fn(),
-        timeseriesSpy: vi.fn(),
-    }));
+const {
+    mockCheckApiHealth,
+    mockFetchCoverageMetrics,
+    mockFetchCoverageBaselines,
+    mockFetchCoverageScopeBaseline,
+    timeseriesSpy,
+} = vi.hoisted(() => ({
+    mockCheckApiHealth: vi.fn(),
+    mockFetchCoverageMetrics: vi.fn(),
+    mockFetchCoverageBaselines: vi.fn(),
+    mockFetchCoverageScopeBaseline: vi.fn(),
+    timeseriesSpy: vi.fn(),
+}));
 
 const requireSessionMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
 beforeEach(() => {
     requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } });
     mockFetchCoverageBaselines.mockResolvedValue([]);
+    mockFetchCoverageScopeBaseline.mockResolvedValue({ lineBaselinePct: null, lineDays: 0 });
 });
 vi.mock("@/lib/api/system", () => ({
     checkApiHealth: mockCheckApiHealth,
@@ -23,6 +30,7 @@ vi.mock("@/lib/api/system", () => ({
 vi.mock("@/lib/testops/fetchers", () => ({
     fetchCoverageMetrics: mockFetchCoverageMetrics,
     fetchCoverageBaselines: mockFetchCoverageBaselines,
+    fetchCoverageScopeBaseline: mockFetchCoverageScopeBaseline,
 }));
 
 vi.mock("@/lib/config", async (importOriginal) => ({
@@ -191,9 +199,11 @@ describe("CoveragePage org scope (CHAOS-8272)", () => {
         requireSessionMock.mockResolvedValue({ user: {} });
         mockFetchCoverageMetrics.mockClear();
         mockFetchCoverageBaselines.mockClear();
+        mockFetchCoverageScopeBaseline.mockClear();
         render(await CoveragePage({ searchParams: Promise.resolve({}) }));
         expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
         expect(mockFetchCoverageMetrics).not.toHaveBeenCalled();
         expect(mockFetchCoverageBaselines).not.toHaveBeenCalled();
+        expect(mockFetchCoverageScopeBaseline).not.toHaveBeenCalled();
     });
 });

@@ -7,6 +7,7 @@ import {
     baselineTitle,
     coverageBaselinesFailed,
     type RepoCoverageBaseline,
+    scopeBaselineCell,
 } from "../coverageBaselines";
 
 const row = (over: Partial<RepoCoverageBaseline> = {}): RepoCoverageBaseline => ({
@@ -86,5 +87,33 @@ describe("baselineText and baselineTitle", () => {
 
     it("writes a served 0 as '0%'", () => {
         expect(baselineText({ kind: "value", pct: 0, days: 9 })).toBe("0%");
+    });
+});
+
+// The baseline of the whole scope (`coverageScopeBaseline`): one served value, the 30-day mean of
+// the day values the Line Coverage Trend draws.
+describe("scopeBaselineCell", () => {
+    it("gives the served value with its days", () => {
+        expect(scopeBaselineCell({ lineBaselinePct: 82.6, lineDays: 30 })).toEqual({
+            kind: "value",
+            pct: 82.6,
+            days: 30,
+        });
+    });
+
+    it("a null baseline is no baseline: never 0", () => {
+        expect(scopeBaselineCell({ lineBaselinePct: null, lineDays: 4 })).toEqual({ kind: "none" });
+    });
+
+    it("a served 0 is a value", () => {
+        expect(scopeBaselineCell({ lineBaselinePct: 0, lineDays: 12 })).toEqual({
+            kind: "value",
+            pct: 0,
+            days: 12,
+        });
+    });
+
+    it("a failed read is 'failed', not 'no baseline'", () => {
+        expect(scopeBaselineCell({ fetchFailed: true })).toEqual({ kind: "failed" });
     });
 });
