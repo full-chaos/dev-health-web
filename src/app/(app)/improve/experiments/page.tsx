@@ -19,6 +19,7 @@ import { requireSession } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { getExperimentsViaGraphQL } from "@/lib/graphql/improveFetchers";
 import { getServerEnv } from "@/lib/config";
+import { getMetricLabel } from "@/lib/metrics/catalog";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
@@ -68,7 +69,7 @@ export default async function ExperimentsPage({ searchParams }: ExperimentsPageP
                                 ...experiments.map((experiment, index) => ({
                                     label: `Suggestion ${index + 1}`,
                                     value: experiment.metric
-                                        ? `${experiment.hypothesis} (${experiment.metric})`
+                                        ? `${experiment.hypothesis} (${getMetricLabel(experiment.metric)})`
                                         : experiment.hypothesis,
                                 })),
                             ]}
