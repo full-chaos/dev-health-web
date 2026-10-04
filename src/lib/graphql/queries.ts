@@ -670,6 +670,10 @@ query ImproveOpportunities($scope: AIScopeInput, $limit: Int! = 10, $windowDays:
       severity
       evidenceRefs
       recommendedAction
+      value
+      threshold
+      unit
+      thresholdDirection
     }
   }
 }
