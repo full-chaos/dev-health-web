@@ -8,11 +8,12 @@ describe("CAPACITY_COMPLETION_DISTRIBUTION_QUERY", () => {
 
     it("selects only the completion distribution bins", () => {
         expect(compact).toContain(
-            "capacityForecast(orgId: $orgId, input: {teamId: $teamId, historyDays: $historyDays, simulations: $simulations}) { completionDistribution { days { value count } items { value count } } }",
+            "capacityForecast(orgId: $orgId, input: $input) { completionDistribution { days { value count } items { value count } } }",
         );
     });
 
-    it("defaults history to 90 days and simulations to 10000", () => {
-        expect(compact).toContain("$historyDays: Int! = 90, $simulations: Int! = 10000");
+    it("passes the forecast input as one variable", () => {
+        expect(compact).toContain("($orgId: String!, $input: CapacityForecastInput)");
+        expect(compact).not.toContain("$teamId");
     });
 });

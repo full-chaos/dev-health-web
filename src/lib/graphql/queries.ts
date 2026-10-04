@@ -343,17 +343,11 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
 
 // Per-team completion-distribution read (CHAOS-8598); text must match the ops-registered document.
 export const CAPACITY_COMPLETION_DISTRIBUTION_QUERY = `
-query CapacityCompletionDistribution($orgId: String!, $teamId: String!, $historyDays: Int! = 90, $simulations: Int! = 10000) {
-  capacityForecast(orgId: $orgId, input: {teamId: $teamId, historyDays: $historyDays, simulations: $simulations}) {
+query CapacityCompletionDistribution($orgId: String!, $input: CapacityForecastInput) {
+  capacityForecast(orgId: $orgId, input: $input) {
     completionDistribution {
-      days {
-        value
-        count
-      }
-      items {
-        value
-        count
-      }
+      days { value count }
+      items { value count }
     }
   }
 }
