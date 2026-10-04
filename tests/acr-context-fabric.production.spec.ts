@@ -280,6 +280,10 @@ test.describe("Context Fabric production entitlement boundary", () => {
         const faults = recordBrowserFaults(page);
         await page.setViewportSize({ width: 375, height: 812 });
         await page.goto("/work");
+        // `/work` is a legacy route: the first document is the redirect's source, and the browser loads
+        // `/diagnose` right after. Wait for the redirect target before acting, so the control that is
+        // clicked, focused and checked is one element of one document (CHAOS-8523).
+        await page.waitForURL(/\/diagnose(?:[?#]|$)/u);
 
         const navigationControl = page.getByRole("button", { name: "Show navigation" });
         await navigationControl.click();
