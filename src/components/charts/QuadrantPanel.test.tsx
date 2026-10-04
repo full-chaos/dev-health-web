@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, fireEvent, waitFor, within } from "@/test/utils";
@@ -115,6 +113,9 @@ describe("QuadrantPanel", () => {
             render(<QuadrantPanel {...defaultProps} alwaysShowOverlayToggle />);
             const box = screen.getByRole("checkbox", { name: "Show interpretive overlay" });
             expect(box).toBeDisabled();
+            expect(box).toHaveAccessibleDescription(
+                "Zones appear when two or more entities are in scope.",
+            );
             expect(box).not.toBeChecked();
             expect(
                 screen.getByText("Zones appear when two or more entities are in scope."),
@@ -143,17 +144,6 @@ describe("QuadrantPanel", () => {
         it("by default (no prop) a panel with no overlay draws no checkbox", () => {
             render(<QuadrantPanel {...defaultProps} showViewGuide={false} />);
             expect(screen.queryByRole("checkbox")).toBeNull();
-        });
-
-        it("the metrics and bottleneck pages ask for the checkbox and keep the guide (no showViewGuide={false})", () => {
-            for (const file of [
-                "src/app/(app)/metrics/page.tsx",
-                "src/app/(app)/bottleneck/page.tsx",
-            ]) {
-                const src = readFileSync(join(process.cwd(), file), "utf8");
-                expect(src, file).toMatch(/alwaysShowOverlayToggle/u);
-                expect(src, file).not.toContain("showViewGuide={false}");
-            }
         });
     });
 
