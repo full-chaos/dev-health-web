@@ -351,7 +351,7 @@ describe("TestOps Coverage page — approved layout", () => {
         // The hint of the value: what the target is, and the served days behind it.
         expect(
             within(fact(container) as HTMLElement).getByTitle(
-                "Running 30-day average of this scope's line coverage; 30 of the 30 days hold a value",
+                "Running 30-day average of the organization's line coverage; 30 of the 30 days hold a value",
             ),
         ).toHaveTextContent("83%");
         expect(screen.queryByText("80%")).toBeNull();
@@ -375,7 +375,7 @@ describe("TestOps Coverage page — approved layout", () => {
         // The hint stays, with the served days (2 in this answer).
         expect(
             within(fact(container) as HTMLElement).getByTitle(
-                "Running 30-day average of this scope's line coverage; 2 of the 30 days hold a value",
+                "Running 30-day average of the organization's line coverage; 2 of the 30 days hold a value",
             ),
         ).toHaveTextContent("Not reported");
     });

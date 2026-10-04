@@ -96,13 +96,16 @@ export function scopeBaselineCell(state: ScopeCoverageBaselineState): BaselineCe
 
 /**
  * The hint of the scope baseline (the fact "Target baseline"): the target is the running 30-day
- * average of the scope's own line coverage, and `lineDays` is the served number of the 30 days that
- * hold a value. It is the same for a served value and for no baseline (the days then show why
- * there is none). A failed read has no hint: no days were served.
+ * average of line coverage, and `lineDays` is the served number of the 30 days that hold a value.
+ * It is the same for a served value and for no baseline (the days then show why there is none). A
+ * failed read has no hint: no days were served.
+ *
+ * The page sends no scope, so the served value is the organization's, and the hint says so. When
+ * the page sends its scope (CHAOS-8583), this text must name that scope.
  */
 export function scopeBaselineHint(state: ScopeCoverageBaselineState): string | undefined {
     if ("fetchFailed" in state) return undefined;
-    return `Running 30-day average of this scope's line coverage; ${state.lineDays} of the 30 days hold a value`;
+    return `Running 30-day average of the organization's line coverage; ${state.lineDays} of the 30 days hold a value`;
 }
 
 /** The baseline as text: the served percent, "Not reported" or "Could not be read". */
