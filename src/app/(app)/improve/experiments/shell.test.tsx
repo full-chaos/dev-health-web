@@ -226,7 +226,7 @@ describe("Experiments in the shared app shell", () => {
             ]);
         expect(rows).toEqual([
             ["Suggested experiments", "2"],
-            ["Suggestion 1", "Trial a 24h review SLA (review_latency)"],
+            ["Suggestion 1", `Trial a 24h review SLA (${getMetricLabel("review_latency")})`],
             ["Suggestion 2", "Cap WIP per squad"],
         ]);
     });
