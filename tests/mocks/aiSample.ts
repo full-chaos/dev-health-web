@@ -149,9 +149,10 @@ function impactBucket(bucket: string, overrides: Record<string, number | object>
     };
 }
 
-function dailyRow(bucket: string, overrides: Record<string, number> = {}) {
+function dailyRow(bucket: string, overrides: Record<string, number | string> = {}) {
     return {
         bucket,
+        day: "2026-08-01",
         prsTotal: 0,
         prsMerged: 0,
         cycleTimeAvgHours: 0,
@@ -302,7 +303,9 @@ export function aiImpactSummaryResponse(
             }),
             impactBucket("unknown", { prsTotal: 12, prsMerged: 10 }),
         ],
-        daily: Array.from({ length: 7 }, (_, i) => dailyRow("agent_created", { prsTotal: i + 1 })),
+        daily: Array.from({ length: 7 }, (_, i) =>
+            dailyRow("agent_created", { prsTotal: i + 1, day: `2026-08-0${i + 1}` }),
+        ),
     };
 }
 

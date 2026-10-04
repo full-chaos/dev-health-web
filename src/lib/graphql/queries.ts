@@ -258,13 +258,18 @@ query CapacityForecast($orgId: String!, $input: CapacityForecastInput) {
     insufficientHistory
     highVariance
     completionDistribution {
+      runs
+      unfinishedRuns
+      horizonDays
       days {
         value
         count
+        cumulativeShare
       }
       items {
         value
         count
+        cumulativeShare
       }
     }
   }
@@ -561,6 +566,7 @@ query AIImpactSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
       incidentRate
       testGapPrs
       testGapRate
+      day
     }
     repoBreakdown {
       scopeId
