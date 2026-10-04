@@ -118,6 +118,22 @@ describe("SankeyChart", () => {
         expect(label({ name: "repo:dev-health-ops" })).toBe("dev-health-ops 75.3");
     });
 
+    it("a node with a value below the shown precision reads <0.1, a true zero reads 0", () => {
+        const nodes: SankeyNode[] = [{ name: "A" }, { name: "B" }, { name: "C" }];
+        const links: SankeyLink[] = [
+            { source: "A", target: "B", value: 0.04 },
+            { source: "A", target: "C", value: 0 },
+        ];
+        render(<SankeyChart nodes={nodes} links={links} showNodeValues />);
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ label: { formatter: (p: unknown) => string } }> };
+        };
+        const label = props.option.series[0].label.formatter;
+        expect(label({ name: "B", value: 0.04 })).toBe("B <0.1");
+        expect(label({ name: "C", value: 0 })).toBe("C 0");
+        expect(label({ name: "A", value: 0.05 })).toBe("A 0.1");
+    });
+
     it("keeps the bare label when node values are off", () => {
         render(<SankeyChart nodes={sampleNodes} links={sampleLinks} />);
         const props = chartSpy.mock.calls[0][0] as {

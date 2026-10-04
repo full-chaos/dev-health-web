@@ -1,4 +1,5 @@
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { THEME_KEYS_BY_LABEL, THEME_LABELS } from "@/lib/investment/transforms";
 import { titleCase } from "@/lib/stringUtils";
 import { computeSankeyMetrics } from "@/lib/sankey";
 import type { SankeyLink, SankeyNode } from "@/lib/types";
@@ -24,11 +25,17 @@ export const entityKindForGroup = (group: string | undefined): AllocationEntityK
 };
 
 /**
- * The label drawn on an Allocation Sankey node: a theme (group "category") as the page names it
- * ("Feature Delivery"), never the raw key ("feature_delivery"). Other nodes are unchanged.
+ * The label drawn on an Allocation Sankey node. A theme (group "category") is drawn with its
+ * canonical name from THEME_LABELS ("Quality / Reliability"), the same source as the table and
+ * the drill chip, whether the node carries the key ("quality") or the name. Only a theme that
+ * is in neither (not one of the five) falls back to the title-cased text. Other nodes are
+ * unchanged.
  */
-export const allocationNodeLabel = (label: string, group: string | undefined): string =>
-    group === "category" ? titleCase(label) : label;
+export const allocationNodeLabel = (label: string, group: string | undefined): string => {
+    if (group !== "category") return label;
+    const key = THEME_LABELS[label] ? label : THEME_KEYS_BY_LABEL[label.toLowerCase()];
+    return (key ? THEME_LABELS[key] : undefined) ?? titleCase(label);
+};
 
 /**
  * Filter a flow to ONE entity: the node, every link that touches it, and the nodes at the

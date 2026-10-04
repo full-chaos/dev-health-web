@@ -139,6 +139,12 @@ const formatValue = (value: number | undefined, unit: string) => {
     return `${formatNumber(value, { maximumFractionDigits: 0 })} ${unit}`;
 };
 
+/** One decimal; a value above zero that would round to 0 reads "<0.1", a true zero reads "0". */
+export const formatNodeValue = (value: number): string => {
+    const shown = formatNumber(value, { maximumFractionDigits: 1 });
+    return value > 0 && Number(shown) === 0 ? "<0.1" : shown;
+};
+
 const formatShare = (value: number, total: number) => {
     if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
         return "--";
@@ -359,7 +365,7 @@ export function SankeyChart({
                                 typeof entry.value === "number"
                                     ? entry.value
                                     : (nodeValueByName.get(name) ?? 0);
-                            return `${drawn} ${formatNumber(value, { maximumFractionDigits: 1 })}`;
+                            return `${drawn} ${formatNodeValue(value)}`;
                         },
                     },
                     itemStyle: {

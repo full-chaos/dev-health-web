@@ -3,8 +3,13 @@ import { render, screen } from "@/test/utils";
 import { RepoTeamSankeySection } from "./RepoTeamSankeySection";
 import type { SankeyResponse } from "@/lib/types";
 
+const { sankeySpy } = vi.hoisted(() => ({ sankeySpy: vi.fn() }));
+
 vi.mock("@/components/charts/SankeyChart", () => ({
-    SankeyChart: () => <div data-testid="mock-sankey-chart" />,
+    SankeyChart: (props: unknown) => {
+        sankeySpy(props);
+        return <div data-testid="mock-sankey-chart" />;
+    },
 }));
 
 const NO_TEAMS = /We currently have no teams associated with work items/;
@@ -53,6 +58,18 @@ describe("RepoTeamSankeySection — unavailable vs measured absence", () => {
     it("renders the chart when the flow has teams", () => {
         renderSection(withTeams);
         expect(screen.getByTestId("mock-sankey-chart")).toBeInTheDocument();
+    });
+
+    it("asks the chart for node values and draws a theme with its canonical name (CHAOS-8565)", () => {
+        sankeySpy.mockClear();
+        renderSection(withTeams);
+        const props = sankeySpy.mock.calls.at(-1)?.[0] as {
+            showNodeValues?: boolean;
+            nodeLabelAction?: (label: string, group: string | undefined) => string;
+        };
+        expect(props.showNodeValues).toBe(true);
+        expect(props.nodeLabelAction?.("quality", "category")).toBe("Quality / Reliability");
+        expect(props.nodeLabelAction?.("acme/api", "repo")).toBe("acme/api");
     });
 
     it("renders unavailable when the read failed", () => {

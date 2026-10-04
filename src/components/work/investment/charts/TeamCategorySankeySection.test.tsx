@@ -59,6 +59,13 @@ describe("TeamCategorySankeySection — node labels (CHAOS-8565)", () => {
         };
         expect(props.showNodeValues).toBe(true);
         expect(props.nodeLabelAction?.("feature_delivery", "category")).toBe("Feature Delivery");
+        // The five canonical names, from the key or from a name already drawn.
+        expect(props.nodeLabelAction?.("quality", "category")).toBe("Quality / Reliability");
+        expect(props.nodeLabelAction?.("Quality / Reliability", "category")).toBe(
+            "Quality / Reliability",
+        );
+        expect(props.nodeLabelAction?.("operational", "category")).toBe("Operational / Support");
+        expect(props.nodeLabelAction?.("some_new_theme", "category")).toBe("Some New Theme");
         // Only themes are rewritten: a repo or team name is drawn as served.
         expect(props.nodeLabelAction?.("dev_health_ops", "repo")).toBe("dev_health_ops");
         expect(props.nodeLabelAction?.("feature_delivery", undefined)).toBe("feature_delivery");
