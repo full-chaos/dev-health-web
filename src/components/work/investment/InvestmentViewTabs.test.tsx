@@ -225,8 +225,9 @@ describe("InvestmentView — Confidence tab", () => {
 
         // Label shows "25%", not "2500%"
         expect(screen.getByText("25%")).toBeInTheDocument();
-        // Theme label is rendered
-        expect(screen.getByText("Maintenance / Tech Debt")).toBeInTheDocument();
+        // Theme label is rendered by the one theme label source, keyed by the served theme
+        // (CHAOS-8584: changed on purpose; it was the served long label).
+        expect(screen.getByText("Maintenance")).toBeInTheDocument();
         // Bar div has width: 25%, not width: 2500%
         const bar = container.querySelector('[style*="width: 25%"]');
         expect(bar).not.toBeNull();
