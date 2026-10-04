@@ -75,21 +75,15 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
 
-    // The scope of the baseline read: the selected repositories, or the repositories the selected
-    // teams own.
-    const scopeIds = filters?.scope?.ids?.length ? filters.scope.ids : null;
     const [health, baselines, coverageData] = await Promise.all([
         checkApiHealth(),
         // The baseline of each repository: its own average over the 30 days that end on the
         // window's last day (the API's end date is not included, so it is the day after).
-        fetchCoverageBaselines(
-            {
-                endDate: baselineEndDate(endDate),
-                repoIds: filters?.scope?.level === "repo" ? scopeIds : null,
-                teamIds: filters?.scope?.level === "team" ? scopeIds : null,
-            },
-            isTestMode,
-        ),
+        // No scope is sent: the coverage request below sends no filter, so the rows of this page
+        // are not narrowed by the scope bar. A baseline list narrowed to the scope would have no
+        // row for the other repositories, and they would read "Not reported" though a baseline
+        // exists. The two reads cover the same set.
+        fetchCoverageBaselines({ endDate: baselineEndDate(endDate) }, isTestMode),
         fetchCoverageMetrics(
             {
                 timeseries: [

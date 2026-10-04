@@ -343,7 +343,7 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(fact).not.toHaveTextContent("%");
     });
 
-    it("asks for the baselines of the 30 days that end on the last day of the window, with no scope for the whole organization", async () => {
+    it("asks for the baselines of the 30 days that end on the last day of the window", async () => {
         await renderPage(
             f({
                 time: { range_days: 14, start_date: "2026-09-01", end_date: "2026-09-30" },
@@ -357,11 +357,14 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(mockFetchCoverageBaselines).toHaveBeenCalledTimes(1);
         const [input, isTestMode] = mockFetchCoverageBaselines.mock.calls[0];
         // The API's end date is not included: the day after the window's last day.
-        expect(input).toEqual({ endDate: "2026-10-01", repoIds: null, teamIds: null });
+        expect(input).toEqual({ endDate: "2026-10-01" });
         expect(isTestMode).toBe(false);
     });
 
-    it("sends a repository scope as repoIds and a team scope as teamIds to the baseline read", async () => {
+    it("sends no scope to the baseline read when a repository or team scope is selected", async () => {
+        // The rows of this page are not narrowed by the scope (its coverage request sends no
+        // filter). A baseline list narrowed to the scope would have no row for the repositories
+        // outside it, and they would read "Not reported" though a baseline exists.
         const scoped = (level: string, ids: string[]) =>
             f({
                 time: { range_days: 14, start_date: "2026-09-01", end_date: "2026-09-14" },
@@ -372,18 +375,13 @@ describe("TestOps Coverage page — approved layout", () => {
                 how: {},
             });
         await renderPage(scoped("repo", ["r1", "r2"]));
-        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({
-            endDate: "2026-09-15",
-            repoIds: ["r1", "r2"],
-            teamIds: null,
-        });
+        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({ endDate: "2026-09-15" });
+        // The coverage rows are asked without a filter too: the two reads cover the same set.
+        expect(mockFetchCoverageMetrics.mock.calls.at(-1)?.[0]).not.toHaveProperty("filters");
         cleanup();
         await renderPage(scoped("team", ["t1"]));
-        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({
-            endDate: "2026-09-15",
-            repoIds: null,
-            teamIds: ["t1"],
-        });
+        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({ endDate: "2026-09-15" });
+        expect(mockFetchCoverageMetrics.mock.calls.at(-1)?.[0]).not.toHaveProperty("filters");
     });
 
     it("says 'Could not be read' for the baselines when their read failed, and keeps the coverage values", async () => {
