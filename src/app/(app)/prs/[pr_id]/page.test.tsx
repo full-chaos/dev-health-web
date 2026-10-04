@@ -52,7 +52,6 @@ const samplePr = {
     body: "body",
     state: "merged",
     authorName: "Ada",
-    authorEmail: "ada@example.com",
     createdAt: "2026-06-01T12:00:00Z",
     mergedAt: "2026-06-01T13:00:00Z",
     closedAt: null,
@@ -69,7 +68,7 @@ const samplePr = {
     reviews: [
         {
             reviewId: "r1",
-            reviewer: "reviewer@example.com",
+            reviewer: "reviewer-login",
             state: "APPROVED",
             submittedAt: "2026-06-01T12:35:00Z",
         },
@@ -79,7 +78,6 @@ const samplePr = {
             hash: "abcdef1234567890",
             message: "commit message",
             authorName: "Ada",
-            authorEmail: "ada@example.com",
             authorWhen: "2026-06-01T12:05:00Z",
             confidence: 0.99,
             provenance: "native",
@@ -128,13 +126,26 @@ describe("PrDetailPage", () => {
         getWorkUnitInvestmentDistributionMock.mockReturnValue(demoInvestment);
     });
 
+    it("CHAOS-8494: a PR with no author name reads Not reported and shows no address", async () => {
+        // The fetcher drops every address (prDetailNoEmail.test.ts); the page shows the served name or
+        // "Not reported", and has no address field to fall back on.
+        getPrDetailViaGraphQLMock.mockResolvedValue({
+            ...samplePr,
+            authorName: null,
+            reviews: [{ ...samplePr.reviews[0], reviewer: "Not reported" }],
+        });
+        await renderPage();
+        expect(screen.getByText(/Author not reported\s*· opened/u)).toBeInTheDocument();
+        expect(document.body.textContent ?? "").not.toContain("@");
+    });
+
     it("renders populated PR detail from live GraphQL data", async () => {
         await renderPage();
 
         expect(screen.getByRole("heading", { name: "PR detail" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Wire PR detail" })).toBeInTheDocument();
         expect(screen.getByText("full-chaos/dev-health-web · #42")).toBeInTheDocument();
-        expect(screen.getByText("reviewer@example.com")).toBeInTheDocument();
+        expect(screen.getByText("reviewer-login")).toBeInTheDocument();
         expect(
             screen.getByRole("button", {
                 name: "Full commit hash: abcdef1234567890. Activate to reveal.",

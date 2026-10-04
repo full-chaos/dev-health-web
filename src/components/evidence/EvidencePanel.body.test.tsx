@@ -204,6 +204,25 @@ describe("drawer values are served or read 'Not reported'", () => {
         );
     });
 
+    it("the Home payload with no served coverage: no coverage sentence is built, and never 0%", async () => {
+        drawFetched("/api/v1/home?thread=measure&range_days=90", {
+            ...HOME,
+            freshness: { ...HOME.freshness, coverage: null },
+        });
+        await loaded();
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).not.toHaveTextContent(/Repository coverage/);
+        expect(dialog).not.toHaveTextContent(/NaN|0%/);
+    });
+
+    it("the Home payload with served coverage keeps its coverage sentence on the measure thread", async () => {
+        drawFetched("/api/v1/home?thread=measure&range_days=90", HOME);
+        await loaded();
+        expect(screen.getByRole("dialog")).toHaveTextContent(
+            "Repository coverage 100%, linked PR coverage 80%, cycle-state coverage 60%.",
+        );
+    });
+
     it("the Home payload with no successful sync and no confidence: both rows read Not reported", async () => {
         drawFetched("/api/v1/home?range_days=90", {
             ...HOME,

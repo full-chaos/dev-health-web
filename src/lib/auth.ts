@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
+import { processMemo } from "@/lib/processMemo";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 
 const authLogger = logger.child({ module: "auth" });
@@ -58,10 +59,10 @@ interface ImpersonationStatusSnapshot {
     impersonated_email?: string;
     impersonated_org_id?: string;
 }
-const impersonationStatusMemo = new Map<
-    string,
-    { at: number; status: ImpersonationStatusSnapshot }
->();
+// One Map per process, not per bundle (CHAOS-8466).
+const impersonationStatusMemo = processMemo<{ at: number; status: ImpersonationStatusSnapshot }>(
+    "impersonationStatusMemo",
+);
 const IMPERSONATION_MEMO_TTL_MS = 3_000;
 
 const nextAuth = NextAuth({

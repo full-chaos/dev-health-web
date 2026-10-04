@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import {
+    investmentSeriesColor,
     investmentThemeColor,
     useChartColors,
     useChartTheme,
@@ -65,6 +66,23 @@ export function useInvestmentColorMaps({
         });
         return map;
     }, [investmentMix, chartColors, tokens]);
+
+    // Meter bars carry no label: they keep the bright series colors (3:1 against the track).
+    const themeBarColorMap = useMemo(() => {
+        const map = new Map<string, string>();
+        if (!investmentMix) return map;
+        getSortedThemes(investmentMix).forEach((theme, index) => {
+            map.set(
+                theme.key,
+                investmentSeriesColor(
+                    theme.key,
+                    chartColors,
+                    chartColors[index % chartColors.length],
+                ),
+            );
+        });
+        return map;
+    }, [investmentMix, chartColors]);
 
     const categoryColorMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -412,6 +430,7 @@ export function useInvestmentColorMaps({
 
     return {
         themeColorMap,
+        themeBarColorMap,
         categoryColorMap,
         prepareSankeyFlow,
         resolveSubcategoryIdFromLabel,

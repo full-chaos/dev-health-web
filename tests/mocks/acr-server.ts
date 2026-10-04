@@ -12,6 +12,7 @@ import {
     setAcrMockControls,
     waitForContextPacketRelease,
 } from "./acr-fixtures";
+import { hardenMockServer } from "./serverSockets";
 
 const app = express();
 const port = Number(process.env.ACR_MOCK_PORT ?? 8013);
@@ -108,6 +109,9 @@ app.get("/api/v1/agent-context/evidence/:evidenceRefId", (request, response) => 
     sendEvidence();
 });
 
-createServer(app).listen(port, "127.0.0.1", () => {
-    console.log(`Mock ACR server listening on http://127.0.0.1:${port}`);
-});
+hardenMockServer(
+    createServer(app).listen(port, "127.0.0.1", () => {
+        console.log(`Mock ACR server listening on http://127.0.0.1:${port}`);
+    }),
+    "acr-8013",
+);
