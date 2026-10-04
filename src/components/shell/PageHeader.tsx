@@ -29,6 +29,11 @@ type PageHeaderProps = {
      * is not rendered when its target equals the last breadcrumb link (A5).
      */
     back?: { href: string; area?: string };
+    /**
+     * The current-page crumb for a page the nav config does not name (a metric evidence page:
+     * "Blocked Work evidence"). It goes after the area in the eyebrow.
+     */
+    trailLeaf?: string;
     /** Meta row under the subtitle (freshness, badges). */
     children?: ReactNode;
 };
@@ -46,11 +51,12 @@ export function PageHeader({
     subtitle,
     actions,
     back,
+    trailLeaf,
     children,
 }: PageHeaderProps) {
     const pathname = usePathname() ?? "";
     const heading = title ?? navTitleForPathname(pathname);
-    const trail = navTrailForPathname(pathname)
+    const trail = navTrailForPathname(pathname, trailLeaf)
         .map((crumb) => crumb.label)
         .join(" / ");
     const eyebrow = trail.toLowerCase() === heading.toLowerCase() ? "" : trail;

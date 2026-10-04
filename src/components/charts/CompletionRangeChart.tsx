@@ -36,6 +36,8 @@ type CompletionRangeChartProps = {
 };
 
 const LABEL_ROW = 14;
+/** A marker past this share of the day axis has its label end at its line (not centred on it). */
+const RIGHT_LABEL_FROM = 0.85;
 
 /**
  * The "Completion range" curve of a capacity forecast (CHAOS-8477): the chance that the work is
@@ -145,6 +147,11 @@ export function CompletionRangeChart({
                                 show: true,
                                 formatter: marker.label,
                                 position: "end" as const,
+                                // Near the right end of the axis a centred label would be cut at
+                                // the edge of the chart: it ends at its line.
+                                ...(marker.day > (lastDay + pad) * RIGHT_LABEL_FROM
+                                    ? { align: "right" as const }
+                                    : {}),
                                 // one row per percentile, so the labels never collide
                                 offset: [0, -index * LABEL_ROW] as [number, number],
                                 color: chartTheme.text,

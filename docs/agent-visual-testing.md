@@ -10,14 +10,14 @@ This is the **canonical procedure** for the screenshot mandate in [`/AGENTS.md` 
 
 There is exactly **one** seeded test account for local visual testing. Do not create new accounts ad-hoc.
 
-| Field    | Value                                                                                                                                                        |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Email    | `admin@devhealth.example`                                                                                                                                    |
-| Password | `devhealth123`                                                                                                                                               |
-| Username | `admin`                                                                                                                                                      |
-| Role     | superuser, owner of `default-org`                                                                                                                            |
-| Org tier | enterprise                                                                                                                                                   |
-| Source   | Seeded by `dev-hops fixtures generate` (see [`fixtures/generators/teams.py` L128-L149](../../ops/src/dev_health_ops/fixtures/generators/teams.py#L128-L149)) |
+| Field    | Value                                                                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email    | `admin@devhealth.example`                                                                                                                       |
+| Password | `devhealth123`                                                                                                                                  |
+| Username | `admin`                                                                                                                                         |
+| Role     | superuser, owner of `default-org`                                                                                                               |
+| Org tier | enterprise                                                                                                                                      |
+| Source   | UNVERIFIED: the Python seeder (`dev-hops fixtures generate`) is removed; where the Go stack seeds this account is an open question (CHAOS-8468) |
 
 If you find yourself wanting a different account, stop and ask the user. Do not invent new credentials.
 
@@ -47,31 +47,24 @@ Wait until `api` reports `healthy` before continuing — the web dev server depe
 
 ```bash
 cd /Users/chris/projects/full-chaos/dev-health/ops
-.venv/bin/dev-hops admin users list 2>&1 | rg 'admin@devhealth.example'
+dho admin users list 2>&1 | rg 'admin@devhealth.example'
 ```
 
 **Expected:** one row showing `admin@devhealth.example`.
 
 **If no row returned → account is not seeded.** Go to step 3.
 
-**If `.venv/bin/dev-hops` is missing:**
-
-```bash
-cd /Users/chris/projects/full-chaos/dev-health/ops
-python -m venv .venv && .venv/bin/pip install -e .
-```
+**If `dho` is missing:** it is the Go binary built from `ops/cmd/dho` (`go build -o dho ./cmd/dho` in `ops/`), or the image `ghcr.io/full-chaos/dev-health-go-dho` (its entrypoint is `dho`; whether the package is public is unverified). `dho admin users list` reads `POSTGRES_URI` (or `MIGRATION_DATABASE_URI`), see `internal/adminops/users.go`.
 
 ---
 
 ## 3. Seed account + fixture data (only if step 2 returned empty)
 
-A single command seeds the admin account, the default org, the membership, and ~30 days of synthetic analytics data. Do **not** create the account manually — the fixtures path is idempotent and keeps the membership/org/license rows in sync.
+The command below loads ~30 days of synthetic analytics data into ClickHouse. UNVERIFIED: the Python verb also seeded the admin account, the default org and the membership; whether `dho fixtures generate` does is an open question (CHAOS-8468), and `dho` has no step documented here that does. Do **not** create the account manually; ask the user if step 2 stays empty after this command.
 
 ```bash
 cd /Users/chris/projects/full-chaos/dev-health/ops
-POSTGRES_URI="postgresql+asyncpg://devhealth:devhealth@localhost:5432/devhealth" \
-CLICKHOUSE_URI="clickhouse://localhost:8123/default" \
-.venv/bin/dev-hops fixtures generate --days 30 --seed 42
+dho fixtures generate --sink "clickhouse://localhost:8123/default" --days 30 --seed 42
 ```
 
 Flags worth knowing (rarely needed):
@@ -84,7 +77,7 @@ Flags worth knowing (rarely needed):
 **Re-verify after running:**
 
 ```bash
-.venv/bin/dev-hops admin users list 2>&1 | rg 'admin@devhealth.example'
+dho admin users list 2>&1 | rg 'admin@devhealth.example'
 ```
 
 Must return a row before continuing.
