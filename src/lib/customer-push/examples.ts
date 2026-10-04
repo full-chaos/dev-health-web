@@ -78,9 +78,11 @@ ${PAYLOAD_NOTE}
 # The dho image has no shell, so a GitLab script job calls the API directly.
 # IDEMPOTENCY_KEY must equal the payload's idempotencyKey (the API refuses a mismatch).
 push_dev_health:
-  image: curlimages/curl:latest
+  image:
+    name: curlimages/curl:latest
+    entrypoint: [""]
   script:
-    - 'curl -sS -X POST "$FULLCHAOS_API_URL/api/v1/external-ingest/batches" -H "Authorization: Bearer $FULLCHAOS_INGEST_TOKEN" -H "Content-Type: application/json" -H "Idempotency-Key: $IDEMPOTENCY_KEY" --data-binary @payload.json'
+    - 'curl -sS --fail-with-body -X POST "$FULLCHAOS_API_URL/api/v1/external-ingest/batches" -H "Authorization: Bearer $FULLCHAOS_INGEST_TOKEN" -H "Content-Type: application/json" -H "Idempotency-Key: $IDEMPOTENCY_KEY" --data-binary @payload.json'
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"`,
     };

@@ -73,6 +73,10 @@ describe("buildExampleSnippets", () => {
         expect(code).toContain('-H "Idempotency-Key: $IDEMPOTENCY_KEY"');
         expect(code).toContain("IDEMPOTENCY_KEY must equal the payload's idempotencyKey");
         expect(code).not.toContain("X-Org-Id");
+        // A 4xx or 5xx answer must fail the job (curl --fail-with-body), and the curl image has its
+        // own entrypoint, which GitLab needs overridden to run a script.
+        expect(code).toContain("curl -sS --fail-with-body -X POST");
+        expect(code).toContain('entrypoint: [""]');
         expect(code).toContain(PAYLOAD_NOTE);
     });
 
