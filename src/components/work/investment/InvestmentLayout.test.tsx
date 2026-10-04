@@ -424,8 +424,9 @@ describe("Investment Evidence (prototype view 9)", () => {
             "Average quality",
             "Units",
             "Weighted effort",
+            "Evidence",
         ]);
-        const template = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem]";
+        const template = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem_6rem]";
         expect(head.className).toContain(template);
         for (const row of screen.getAllByTestId("evidence-group-row")) {
             expect(row.className).toContain(template);
