@@ -150,8 +150,21 @@ describe("AIEvidenceExplorer", () => {
                 partial: false,
                 dataAvailable: true,
                 nodes: [
-                    { nodeType: "pr", nodeId: "11111111-1111-1111-1111-111111111111:42" },
-                    { nodeType: "ai_workflow_run", nodeId: "run-1" },
+                    {
+                        nodeType: "pr",
+                        nodeId: "11111111-1111-1111-1111-111111111111:42",
+                        displayName: "Add feature flag",
+                        nameExpected: true,
+                    },
+                    // A node type with no name by design: null name, and the flag says so.
+                    {
+                        nodeType: "ai_workflow_run",
+                        nodeId: "run-1",
+                        displayName: null,
+                        nameExpected: false,
+                    },
+                    // A type that carries a name, and none is served: a gap.
+                    { nodeType: "pr", nodeId: "gap-pr", displayName: null, nameExpected: true },
                 ],
                 edges: [
                     {
@@ -164,6 +177,19 @@ describe("AIEvidenceExplorer", () => {
                         confidence: 0.9,
                         source: "pr_label",
                         evidence: "label:ai-assisted",
+                        provider: "github",
+                        repoId: "11111111-1111-1111-1111-111111111111",
+                    },
+                    {
+                        edgeId: "edge-2",
+                        sourceType: "pr",
+                        sourceId: "gap-pr",
+                        targetType: "ai_workflow_run",
+                        targetId: "run-1",
+                        edgeType: "has_ai_workflow",
+                        confidence: 0.5,
+                        source: "pr_label",
+                        evidence: "label:second",
                         provider: "github",
                         repoId: "11111111-1111-1111-1111-111111111111",
                     },
@@ -180,19 +206,30 @@ describe("AIEvidenceExplorer", () => {
         expect(lastCall?.[0]).toBe("11111111-1111-1111-1111-111111111111:42");
 
         expect(screen.getByTestId("ai-drilldown-evidence")).toBeInTheDocument();
-        // CHAOS-8093: words for the edge type; the ends read as type + number, never `type:id`.
-        expect(screen.getByText("Has AI workflow")).toBeInTheDocument();
+        // CHAOS-8093: words for the edge type. CHAOS-8113: each end reads as its type and the served
+        // name of its node. A type with no name by design (the served flag) reads as its type words
+        // alone; a type that carries a name and has none served reads "Not reported". Never the id.
+        expect(screen.getAllByText("Has AI workflow")).toHaveLength(2);
         expect(screen.queryByText(/has_ai_workflow/i)).not.toBeInTheDocument();
-        const ends = screen.getByTestId("ai-edge-ends");
-        expect(ends).toHaveTextContent("PR #42 → AI workflow run");
-        expect(ends).not.toHaveTextContent("pr:");
+        const allEnds = screen.getAllByTestId("ai-edge-ends");
+        expect(allEnds.map((end) => end.textContent)).toEqual([
+            "PR Add feature flag → AI workflow run",
+            "PR Not reported → AI workflow run",
+        ]);
+        const ends = allEnds[0];
+        for (const end of allEnds) {
+            expect(end).not.toHaveTextContent("pr:");
+            expect(end).not.toHaveTextContent("run-1");
+            expect(end).not.toHaveTextContent("gap-pr");
+            expect(end).not.toHaveTextContent("11111111");
+        }
         // CHAOS-8216: a titled side panel beside the table, the count line, a "confidence" word,
         // and the selected row marked.
         const panel = screen.getByTestId("ai-work-graph-evidence");
         expect(
             within(panel).getByRole("heading", { level: 3, name: "Work Graph evidence · PR #42" }),
         ).toBeInTheDocument();
-        expect(panel).toHaveTextContent("2 nodes · 1 edges");
+        expect(panel).toHaveTextContent("3 nodes · 2 edges");
         expect(panel).toHaveTextContent("confidence 0.90");
         expect(panel).not.toHaveTextContent("conf 0.90");
         expect(screen.queryByTestId("ai-evidence-partial")).not.toBeInTheDocument();

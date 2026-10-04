@@ -1,7 +1,9 @@
 // Words for Work Graph edge types and node types on AI evidence rows (CHAOS-8093).
-// The API serves enum-like tokens (`has_ai_workflow`, `ai_workflow_run`) and no display
-// names for edge ends (backend ticket CHAOS-8113). This maps the token to words and falls
-// back to a readable form of the token. It never invents a name for an id.
+// The API serves enum-like tokens (`has_ai_workflow`, `ai_workflow_run`). This maps the token to
+// words and falls back to a readable form of the token. The name of an edge end is the served
+// `displayName` of its node (CHAOS-8113); nothing here invents a name for an id.
+
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 
 const EDGE_WORDS: Record<string, string> = {
     blocks: "Blocks",
@@ -52,9 +54,48 @@ export function nodeTypeWords(nodeType: string): string {
     return NODE_WORDS[nodeType.trim().toLowerCase()] ?? readable(nodeType);
 }
 
-/** A pull-request node id is `<repo id>:<number>`; the number is the only readable part. */
-export function pullRequestNumber(nodeType: string, nodeId: string): string | null {
-    if (nodeType.trim().toLowerCase() !== "pr") return null;
-    const match = /:(\d+)$/.exec(nodeId);
-    return match ? match[1] : null;
+/** The node fields an edge end is looked up by, its served name and the served name flag. */
+export type NamedNode = {
+    nodeType: string;
+    nodeId: string;
+    displayName?: string | null;
+    /**
+     * Served by the API: true = nodes of this type carry a name (a null name is a gap), false = the
+     * type has no name by design. Absent on an older answer.
+     */
+    nameExpected?: boolean | null;
+};
+
+/** What an edge end has in place of an id. */
+export type EdgeEndName =
+    /** The served name of its node. */
+    | { kind: "name"; name: string }
+    /** The node's type has no name by design (the served flag says so). */
+    | { kind: "no-name" }
+    /** A name is expected and none is served, or the answer has no such node or no flag. */
+    | { kind: "not-reported" };
+
+/**
+ * The name of an edge end (CHAOS-8113): the served `displayName` of the node with the same type
+ * and id. An edge has no name fields, so this is a lookup; nothing is read out of the id. With no
+ * served name, the served `nameExpected` flag of the node decides: false = the type has no name
+ * (the type words stand alone), anything else = "not reported". The web keeps no list of types,
+ * and it does not say "no name by design" without the served flag.
+ */
+export function edgeEndName(
+    nodes: readonly NamedNode[] | null | undefined,
+    type: string,
+    id: string,
+): EdgeEndName {
+    const node = nodes?.find((candidate) => candidate.nodeType === type && candidate.nodeId === id);
+    const name = node?.displayName?.trim();
+    if (name) return { kind: "name", name };
+    return node?.nameExpected === false ? { kind: "no-name" } : { kind: "not-reported" };
+}
+
+/** One edge end in words: the words of its type, then its served name or "Not reported". */
+export function edgeEndWords(type: string, end: EdgeEndName): string {
+    const words = nodeTypeWords(type);
+    if (end.kind === "name") return `${words} ${end.name}`;
+    return end.kind === "no-name" ? words : `${words} ${NOT_REPORTED}`;
 }
