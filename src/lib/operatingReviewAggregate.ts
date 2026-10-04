@@ -67,24 +67,45 @@ function aggregateMetric(
         return ceilingMetric;
     }
 
-    const aggregateValue = aggregateMetricValue(metrics, ceilingMetric, "value");
-    const aggregatePriorValue = aggregateMetricValue(metrics, ceilingMetric, "priorValue");
+    // A team with no stored value carries a 0 placeholder (CHAOS-8115): it is left out of the
+    // combined number, for the week and for the prior week apart. With no team left, the combined
+    // metric has no data for that week.
+    const withValue = metrics.filter(hasValue);
+    const withPrior = metrics.filter(hasPrior);
+    const aggregateValue = withValue.length
+        ? aggregateMetricValue(withValue, ceilingMetric, "value")
+        : 0;
+    const aggregatePriorValue = withPrior.length
+        ? aggregateMetricValue(withPrior, ceilingMetric, "priorValue")
+        : 0;
     const absolute = aggregateValue - aggregatePriorValue;
     const percent = aggregatePriorValue === 0 ? null : (absolute / aggregatePriorValue) * 100;
 
     return {
         ...ceilingMetric,
         value: aggregateValue,
+        hasData: withValue.length > 0,
         delta: {
             ...ceilingMetric.delta,
             value: aggregateValue,
             priorValue: aggregatePriorValue,
             absolute,
             percent,
-            status: aggregateStatus(metrics.map((metric) => metric.delta.status)),
+            // Only a team with both weeks has a status that compares two stored values.
+            status: aggregateStatus(
+                metrics
+                    .filter((metric) => hasValue(metric) && hasPrior(metric))
+                    .map((metric) => metric.delta.status),
+            ),
+            hasPriorData: withPrior.length > 0,
         },
     };
 }
+
+/** The week holds a stored value. An answer with no flag (an API before it) counts as data. */
+const hasValue = (metric: OperatingReviewMetric) => metric.hasData !== false;
+/** The prior week holds a stored value. */
+const hasPrior = (metric: OperatingReviewMetric) => metric.delta.hasPriorData !== false;
 
 function aggregateMetricValue(
     metrics: OperatingReviewMetric[],
@@ -102,7 +123,9 @@ function aggregateMetricValue(
         0,
     );
     const ceiling = key === "value" ? ceilingMetric.value : ceilingMetric.delta.priorValue;
-    return Math.min(sum, ceiling);
+    // A ceiling with no stored value is a 0 placeholder: it is no ceiling.
+    const ceilingHasData = key === "value" ? hasValue(ceilingMetric) : hasPrior(ceilingMetric);
+    return ceilingHasData ? Math.min(sum, ceiling) : sum;
 }
 
 function isAdditiveMetric(metric: OperatingReviewMetric): boolean {
