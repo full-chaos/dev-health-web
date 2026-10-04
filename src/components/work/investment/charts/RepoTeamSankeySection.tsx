@@ -8,6 +8,7 @@ import {
     filterSankeyToEntity,
     findClickedNode,
     type SelectedEntity,
+    allocationNodeLabel,
 } from "@/lib/allocationSelection";
 import { withFilterParam } from "@/lib/filters/url";
 import { DataNote } from "@/components/charts/DataNote";
@@ -168,6 +169,8 @@ export function RepoTeamSankeySection({
                             links={(chartFlow ?? repoTeamSankey)?.links ?? repoTeamLinks}
                             unit={effortUnit}
                             height={320}
+                            nodeLabelAction={allocationNodeLabel}
+                            showNodeValues
                             tooltipFormatterAction={repoTeamTooltipFormatter}
                             onItemClickAction={(item) => {
                                 if (item.type === "node") {

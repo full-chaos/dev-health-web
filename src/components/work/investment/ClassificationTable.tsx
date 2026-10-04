@@ -1,12 +1,16 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 
-import { buttonClassName } from "@/components/shared/Button";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { Button, buttonClassName } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
+import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
 import { titleCase } from "@/lib/investment";
 import { getSortedThemes } from "@/lib/investmentMix";
+import { MixSelectionFacts } from "./MixSelectionFacts";
+import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
 
 type InvestmentMix = ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix>;
 
@@ -17,6 +21,11 @@ type ClassificationTableProps = {
     focusTheme: string | null;
     /** Href of the Evidence tab (carries the page's filters). */
     evidenceHref: string;
+    /** The page's filters and role: the drawer's Work Graph link carries them. */
+    filters: MetricFilter;
+    role?: string;
+    /** The page's effort unit: the unit when the mix serves none (as the treemap drawer does). */
+    effortUnit: string;
 };
 
 /**
@@ -29,11 +38,53 @@ export function ClassificationTable({
     onThemeClickAction,
     focusTheme,
     evidenceHref,
+    filters,
+    role,
+    effortUnit,
 }: ClassificationTableProps) {
+    const evidence = useEvidenceDrawer();
     const themes = investmentMix ? getSortedThemes(investmentMix) : [];
     if (!investmentMix || themes.length === 0) return null;
     const total = themes.reduce((sum, theme) => sum + theme.value, 0);
-    const unit = investmentMix.unit?.replace(/_/g, " ");
+    const servedUnit = investmentMix.unit?.replace(/_/g, " ");
+    const unit = servedUnit ?? effortUnit;
+
+    // The row's Evidence action opens the ONE shared drawer with the served effort, share and
+    // evidence quality of the theme (the same facts a treemap cell shows).
+    const openThemeEvidence = (themeKey: string, value: number) => {
+        const themeLabel = titleCase(themeKey);
+        const quality = investmentMix.evidence_quality_distribution?.[themeKey];
+        const workGraphUrl = buildInvestmentWorkGraphUrl({
+            filters,
+            role,
+            themeKey,
+            subcategoryKey: null,
+        });
+        evidence.open({
+            title: themeLabel,
+            content: (
+                <MixSelectionFacts
+                    testId="classification-evidence-facts"
+                    themeLabel={themeLabel}
+                    value={value}
+                    total={total}
+                    unit={unit}
+                    quality={typeof quality === "number" ? quality : undefined}
+                />
+            ),
+            footer: (
+                <Link
+                    href={workGraphUrl}
+                    // The shared drawer lives in the layout: close it before the page changes.
+                    onClick={evidence.close}
+                    className={buttonClassName("secondary", "md", "w-full")}
+                >
+                    <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                    {CTA_LABELS.openWorkGraph}
+                </Link>
+            ),
+        });
+    };
 
     return (
         <Section
@@ -54,7 +105,12 @@ export function ClassificationTable({
                             <th className="px-4 py-2 text-left font-medium">Theme</th>
                             <th className="px-4 py-2 text-right font-medium">Share</th>
                             <th className="px-4 py-2 text-right font-medium">
-                                {unit ? `Effort (${unit})` : "Effort"}
+                                {servedUnit
+                                    ? servedUnit.charAt(0).toUpperCase() + servedUnit.slice(1)
+                                    : "Effort"}
+                            </th>
+                            <th className="px-4 py-2 text-right font-medium">
+                                <span className="sr-only">Evidence</span>
                             </th>
                         </tr>
                     </thead>
@@ -84,6 +140,20 @@ export function ClassificationTable({
                                     </td>
                                     <td className="px-4 py-2 text-right tabular-nums">
                                         {formatNumber(theme.value, { maximumFractionDigits: 1 })}
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            icon={<ArrowRight />}
+                                            aria-label={`${CTA_LABELS.evidence}: ${titleCase(theme.key)}`}
+                                            data-testid="classification-evidence"
+                                            onClick={() =>
+                                                openThemeEvidence(theme.key, theme.value)
+                                            }
+                                        >
+                                            {CTA_LABELS.evidence}
+                                        </Button>
                                     </td>
                                 </tr>
                             );

@@ -3,8 +3,13 @@ import { render, screen } from "@/test/utils";
 import { TeamCategorySankeySection } from "./TeamCategorySankeySection";
 import type { SankeyResponse } from "@/lib/types";
 
+const { sankeySpy } = vi.hoisted(() => ({ sankeySpy: vi.fn() }));
+
 vi.mock("@/components/charts/SankeyChart", () => ({
-    SankeyChart: () => <div data-testid="mock-sankey-chart" />,
+    SankeyChart: (props: unknown) => {
+        sankeySpy(props);
+        return <div data-testid="mock-sankey-chart" />;
+    },
 }));
 
 const linkedFlow: SankeyResponse = {
@@ -44,6 +49,26 @@ const renderSection = (
         />,
     );
 
+describe("TeamCategorySankeySection — node labels (CHAOS-8565)", () => {
+    it("asks the chart for node values and draws a theme key as its title-case name", () => {
+        sankeySpy.mockClear();
+        renderSection(linkedFlow);
+        const props = sankeySpy.mock.calls.at(-1)?.[0] as {
+            showNodeValues?: boolean;
+            nodeLabelAction?: (label: string, group: string | undefined) => string;
+        };
+        expect(props.showNodeValues).toBe(true);
+        expect(props.nodeLabelAction?.("feature_delivery", "category")).toBe("Feature Delivery");
+        // The same short names as the Investment tables and the treemap.
+        expect(props.nodeLabelAction?.("quality", "category")).toBe("Quality");
+        expect(props.nodeLabelAction?.("operational", "category")).toBe("Operational");
+        expect(props.nodeLabelAction?.("some_new_theme", "category")).toBe("Some New Theme");
+        // Only themes are rewritten: a repo or team name is drawn as served.
+        expect(props.nodeLabelAction?.("dev_health_ops", "repo")).toBe("dev_health_ops");
+        expect(props.nodeLabelAction?.("feature_delivery", undefined)).toBe("feature_delivery");
+    });
+});
+
 describe("TeamCategorySankeySection — no summary block above the chart (prototype allocation())", () => {
     it("draws no coverage line, no top-theme chips and no left-rule paragraph: coverage is in the tiles", () => {
         renderSection({ ...linkedFlow, coverage: { team: 0.85, repo: 0.72 } });
@@ -77,6 +102,30 @@ describe("TeamCategorySankeySection — no summary block above the chart (protot
         const chips = screen.getByTestId("allocation-drill-chips");
         expect(chips).toHaveTextContent("Drilldown: Theme = Feature Delivery");
         expect(chips).not.toHaveTextContent("feature_delivery");
+    });
+
+    // CHAOS-8584: the chip uses the one short label source of the page (the node, the tabs,
+    // the tables), not the long names of THEME_LABELS.
+    it("a theme drill chip uses the short label the node shows: 'Quality', not 'Quality / Reliability'", () => {
+        renderSection(
+            {
+                ...linkedFlow,
+                nodes: [
+                    { name: "Alpha", group: "team" },
+                    { name: "quality", group: "category" },
+                    { name: "repo-a", group: "repo" },
+                ],
+                links: [
+                    { source: "Alpha", target: "quality", value: 10 },
+                    { source: "quality", target: "repo-a", value: 10 },
+                ],
+            },
+            { selectedCategory: "quality" },
+        );
+        const chips = screen.getByTestId("allocation-drill-chips");
+        expect(chips).toHaveTextContent(/^Drilldown: Theme = Quality\s*x$/u);
+        expect(chips).not.toHaveTextContent("Reliability");
+        expect(screen.getByTestId("selected-path-title")).toHaveTextContent(/^Quality$/u);
     });
 });
 

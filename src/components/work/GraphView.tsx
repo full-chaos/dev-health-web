@@ -997,8 +997,6 @@ export function artifactEvidenceFacts(rows: WorkGraphArtifactRow[]): PageFact[] 
 function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowViewProps) {
     const rows = useMemo(() => orderFlowRows(serverRows), [serverRows]);
 
-    const max = rows.reduce((m, r) => Math.max(m, r.inflow, r.outflow), 1);
-
     return (
         <Section
             data-testid="inflow-outflow-panel"
@@ -1048,32 +1046,16 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                                         {formatNumber(row.outflow)}
                                     </td>
                                     <td className="px-5 py-3 align-middle">
-                                        <div className="flex items-center gap-2">
-                                            <span
-                                                data-testid="balance-pill"
-                                                className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                                                    row.inflow > row.outflow
-                                                        ? STATUS_PILL.info
-                                                        : STATUS_PILL.muted
-                                                }`}
-                                            >
-                                                {balanceLabel(row.inflow, row.outflow)}
-                                            </span>
-                                            <span
-                                                aria-hidden
-                                                className="h-2 rounded-r-(--radius-sm) bg-(--chart-color-1)"
-                                                style={{
-                                                    width: `${Math.round((row.inflow / max) * 50)}%`,
-                                                }}
-                                            />
-                                            <span
-                                                aria-hidden
-                                                className="h-2 rounded-r-(--radius-sm) bg-(--chart-color-2)"
-                                                style={{
-                                                    width: `${Math.round((row.outflow / max) * 50)}%`,
-                                                }}
-                                            />
-                                        </div>
+                                        <span
+                                            data-testid="balance-pill"
+                                            className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                row.inflow > row.outflow
+                                                    ? STATUS_PILL.info
+                                                    : STATUS_PILL.muted
+                                            }`}
+                                        >
+                                            {balanceLabel(row.inflow, row.outflow)}
+                                        </span>
                                     </td>
                                 </tr>
                             ))}
