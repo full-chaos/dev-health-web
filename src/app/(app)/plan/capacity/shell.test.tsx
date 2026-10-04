@@ -84,7 +84,7 @@ describe("Completion Forecast in the shared app shell", () => {
         );
         expect(
             within(screen.getByTestId("page-header")).getByText(
-                /Monte Carlo is the method behind this completion projection/,
+                /Monte Carlo is the method behind this completion range\./,
             ),
         ).toBeInTheDocument();
     });
