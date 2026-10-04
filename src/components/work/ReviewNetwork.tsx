@@ -67,6 +67,10 @@ function Person({ name }: { name: string | null }) {
     return <span className="font-medium">{name}</span>;
 }
 
+function reviewCountText(totalReviews: number) {
+    return `${formatNumber(totalReviews)} ${totalReviews === 1 ? "review" : "reviews"}`;
+}
+
 type ReviewNetworkViewProps = {
     edges: ReviewEdgeRow[] | null;
     /** Daily review records the filters match before the server cut; null when unknown. */
@@ -122,22 +126,25 @@ export function ReviewNetworkView({
         {
             key: "share",
             header: "Share",
-            // Width = the pair's reviews / the top pair's reviews (the Reviews column carries the
-            // number, so the bar is decoration).
+            // Width = the pair's reviews / the top pair's reviews: decoration. The cell reads the
+            // served review count as visually hidden text (CHAOS-8602); no share number is made here.
             render: (row) => (
-                <div
-                    aria-hidden
-                    className="h-2 w-40 max-w-full rounded-r-(--radius-sm) bg-(--card-stroke)"
-                >
+                <>
+                    <span className="sr-only">{reviewCountText(row.totalReviews)}</span>
                     <div
-                        data-share-fill
-                        className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
-                        style={{
-                            width: `${Math.round((row.totalReviews / maxReviews) * 100)}%`,
-                            minWidth: 2,
-                        }}
-                    />
-                </div>
+                        aria-hidden
+                        className="h-2 w-40 max-w-full rounded-r-(--radius-sm) bg-(--card-stroke)"
+                    >
+                        <div
+                            data-share-fill
+                            className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
+                            style={{
+                                width: `${Math.round((row.totalReviews / maxReviews) * 100)}%`,
+                                minWidth: 2,
+                            }}
+                        />
+                    </div>
+                </>
             ),
             className: "px-4 py-3 align-middle",
             headerClassName: "px-4 py-3 font-medium",
