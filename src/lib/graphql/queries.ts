@@ -670,6 +670,10 @@ query ImproveOpportunities($scope: AIScopeInput, $limit: Int! = 10, $windowDays:
       severity
       evidenceRefs
       recommendedAction
+      value
+      threshold
+      unit
+      thresholdDirection
     }
   }
 }
@@ -686,6 +690,8 @@ query AIWorkflowDrilldown($orgId: String!, $rootType: AIWorkflowRootTypeInput!, 
     nodes {
       nodeType
       nodeId
+      displayName
+      nameExpected
     }
     edges {
       edgeId

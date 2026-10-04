@@ -8,9 +8,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { STATUS_PILL } from "@/lib/statusPill";
-import { edgeTypeWords, nodeTypeWords, pullRequestNumber } from "@/lib/ai/edgeLabels";
+import { edgeEndName, edgeEndWords, edgeTypeWords, type EdgeEndName } from "@/lib/ai/edgeLabels";
 import { prWorkflowRootId } from "@/lib/ai/workflowRootId";
-import { EntityLabel } from "@/components/labels/EntityLabel";
 import {
     useAIAttributedPrs,
     useAIWorkflowDrilldownForPr,
@@ -134,15 +133,13 @@ function PrTable({
     );
 }
 
-/** One end of an edge in words: node type, then a number or a safe label for the id. */
-function EdgeEnd({ type, id }: { type: string; id: string }) {
-    const number = pullRequestNumber(type, id);
-    return (
-        <>
-            {nodeTypeWords(type)}{" "}
-            {number ? `#${number}` : <EntityLabel id={id} showUnresolvedBadge={false} />}
-        </>
-    );
+/**
+ * One end of an edge: the words of its type, then the served name of its node. A type with no name
+ * by design reads as its type words alone; a name that is expected and not served reads "Not
+ * reported". The served `nameExpected` flag of the node decides which.
+ */
+function EdgeEnd({ type, name }: { type: string; name: EdgeEndName }) {
+    return <>{edgeEndWords(type, name)}</>;
 }
 
 const PANEL_SHELL = "min-w-0 lg:pt-1";
@@ -226,9 +223,23 @@ export function EvidencePanel({
                                     {edgeTypeWords(edge.edgeType)}
                                 </span>
                                 <span data-testid="ai-edge-ends">
-                                    <EdgeEnd type={edge.sourceType} id={edge.sourceId} />
+                                    <EdgeEnd
+                                        type={edge.sourceType}
+                                        name={edgeEndName(
+                                            drilldown.nodes,
+                                            edge.sourceType,
+                                            edge.sourceId,
+                                        )}
+                                    />
                                     {" → "}
-                                    <EdgeEnd type={edge.targetType} id={edge.targetId} />
+                                    <EdgeEnd
+                                        type={edge.targetType}
+                                        name={edgeEndName(
+                                            drilldown.nodes,
+                                            edge.targetType,
+                                            edge.targetId,
+                                        )}
+                                    />
                                 </span>
                                 {edge.provider && (
                                     <span className="rounded-full bg-background px-2 py-0.5">

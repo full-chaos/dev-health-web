@@ -264,6 +264,17 @@ describe("ComplexityDashboard", () => {
         expect(screen.getByText(/no complexity history/i)).toBeInTheDocument();
     });
 
+    // CHAOS-8585: no operator verb runs the daily metrics any more (Go jobs); the text names none.
+    it("the empty state names no command (the Python `metrics daily` verb is gone)", () => {
+        render(<ComplexityDashboard {...baseProps} />);
+        const empty = screen.getByTestId("empty-state");
+        expect(empty).toHaveTextContent(
+            "Complexity data appears once the daily metrics job has processed at least one complexity analysis run for this org.",
+        );
+        expect(empty).not.toHaveTextContent("dev-hops");
+        expect(empty.querySelector("code")).toBeNull();
+    });
+
     it("includes orgId in the empty state message", () => {
         render(<ComplexityDashboard {...baseProps} orgId="org-sentinel" />);
         expect(screen.getByText(/org-sentinel/)).toBeInTheDocument();
