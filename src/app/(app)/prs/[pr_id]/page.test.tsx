@@ -177,6 +177,25 @@ describe("PrDetailPage", () => {
         expect(disclosure.closest("li")).toHaveClass("break-words");
     });
 
+    it("shows a commit message without its Co-authored-by and Signed-off-by lines (CHAOS-8504)", async () => {
+        getPrDetailViaGraphQLMock.mockResolvedValue({
+            ...samplePr,
+            commits: [
+                {
+                    ...samplePr.commits[0],
+                    message:
+                        "fix: bump lodash@4.17.21\n\nCo-authored-by: Ana Fake <ana.fake@example.test>\nSigned-off-by: Bo Fake <bo.fake@example.test>",
+                },
+            ],
+        });
+
+        await renderPage();
+
+        expect(screen.getByText(/fix: bump lodash@4\.17\.21/u)).toBeInTheDocument();
+        expect(document.body.textContent).not.toContain("example.test");
+        expect(document.body.textContent).not.toContain("Co-authored-by");
+    });
+
     it("renders honest empty state without requesting live related entities for a missing PR", async () => {
         getPrDetailViaGraphQLMock.mockResolvedValue(null);
 

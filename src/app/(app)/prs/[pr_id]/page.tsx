@@ -1,3 +1,4 @@
+import { commitMessageWithoutTrailers } from "@/lib/prs/commitMessage";
 import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
@@ -141,7 +142,9 @@ function PrDetailSummary({ pr }: { pr: PullRequestDetail }) {
                             {pr.commits.map((commit) => (
                                 <li key={commit.hash} className="min-w-0 break-words">
                                     <CommitHashDisclosure hash={commit.hash} /> ·{" "}
-                                    {commit.message ?? "No message"}
+                                    {commit.message === null || commit.message === undefined
+                                        ? "No message"
+                                        : commitMessageWithoutTrailers(commit.message)}
                                     {commit.provenance ? ` · ${commit.provenance}` : ""}
                                 </li>
                             ))}
