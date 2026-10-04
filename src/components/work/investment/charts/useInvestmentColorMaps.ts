@@ -19,6 +19,7 @@ import {
     UNASSIGNED_TEAM_LABEL,
 } from "@/lib/investment";
 import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
+import { allocationNodeLabel } from "@/lib/allocationSelection";
 import { computeSankeyMetrics, limitRepoNodes } from "@/lib/sankey";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyNode, SankeyResponse, WorkUnitInvestment } from "@/lib/types";
@@ -282,6 +283,14 @@ export function useInvestmentColorMaps({
             timeRange: MetricFilter["time"];
             showBaselineDelta?: boolean;
         }) => {
+            const keyToNode = new Map<string, SankeyNode>();
+            context.nodeMap.forEach((node) => {
+                keyToNode.set(
+                    node.id ?? (node.group ? `${node.group}:${node.name}` : node.name),
+                    node,
+                );
+                if (node.id) keyToNode.set(node.id, node);
+            });
             return (params: unknown, unit: string) => {
                 if (!params || typeof params !== "object" || !context.metrics) return "";
                 const entry = params as {
@@ -296,7 +305,18 @@ export function useInvestmentColorMaps({
                 };
                 const data = entry.data ?? {};
                 const isEdge = entry.dataType === "edge";
-                const nodeName = data.name ?? entry.name ?? "";
+                // ECharts hands the tooltip the chart's node KEY ("THEME:quality", "category:quality"),
+                // not the node's name. Resolve it to the node, then read and print by the name.
+                const resolveNodeName = (ref?: string): string => {
+                    if (!ref) return "";
+                    return keyToNode.get(ref)?.name ?? ref;
+                };
+                const nodeName = resolveNodeName(data.name ?? entry.name ?? "");
+                const sourceName = resolveNodeName(data.source);
+                const targetName = resolveNodeName(data.target);
+                // The one label source: a theme is drawn as the page names it ("Quality").
+                const shownName = (name: string) =>
+                    allocationNodeLabel(name, context.nodeMap.get(name)?.group);
                 const currentValue = typeof data.value === "number" ? data.value : 0;
                 const nodeValue = context.metrics.nodeValueByName.get(nodeName) ?? currentValue;
                 const resolvedValue = isEdge ? currentValue : nodeValue;
@@ -346,7 +366,7 @@ export function useInvestmentColorMaps({
                     let baselineValue = 0;
                     if (isEdge) {
                         const baseLink = context.baselineFlow.links.find(
-                            (l) => l.source === data.source && l.target === data.target,
+                            (l) => l.source === sourceName && l.target === targetName,
                         );
                         baselineValue = baseLink?.value ?? 0;
                     } else {
@@ -383,14 +403,13 @@ export function useInvestmentColorMaps({
                 if (isEdge) {
                     const lines = [
                         `<strong>Allocated:</strong> ${formatNumber(currentValue)} ${unit}`,
-                        `<strong>From:</strong> ${data.source ?? ""}${groupLabel(data.source) ? ` (${groupLabel(data.source)})` : ""}`,
-                        `<strong>To:</strong> ${data.target ?? ""}${groupLabel(data.target) ? ` (${groupLabel(data.target)})` : ""}`,
+                        `<strong>From:</strong> ${shownName(sourceName)}${groupLabel(sourceName) ? ` (${groupLabel(sourceName)})` : ""}`,
+                        `<strong>To:</strong> ${shownName(targetName)}${groupLabel(targetName) ? ` (${groupLabel(targetName)})` : ""}`,
                     ];
                     if (timeLabel) {
                         lines.push(`<strong>Window:</strong> ${timeLabel}`);
                     }
-                    const edgeUnassigned =
-                        unassignedLine(data.source ?? "") || unassignedLine(data.target ?? "");
+                    const edgeUnassigned = unassignedLine(sourceName) || unassignedLine(targetName);
                     if (edgeUnassigned) {
                         lines.push(
                             `<span style=\"color: ${chartTheme.muted}; font-size: 10px;\">${edgeUnassigned}</span>`,
@@ -416,7 +435,7 @@ export function useInvestmentColorMaps({
                     );
                 }
                 const meaning = `<div style=\"margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};\">Attribution under current filters (not dependency or causation).</div>`;
-                return `<div style=\"padding: 4px;\"><div style=\"font-weight: 600;\">${nodeName}${typeBadge(nodeName)}</div><div style=\"margin-top: 6px;\">${lines.join("<br/>")}</div>${deltaHtml}${meaning}</div>`;
+                return `<div style=\"padding: 4px;\"><div style=\"font-weight: 600;\">${shownName(nodeName)}${typeBadge(nodeName)}</div><div style=\"margin-top: 6px;\">${lines.join("<br/>")}</div>${deltaHtml}${meaning}</div>`;
             };
         },
         [

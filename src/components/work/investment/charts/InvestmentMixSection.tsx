@@ -13,7 +13,6 @@ import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst
 import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartTheme } from "@/components/charts/chartTheme";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { buttonClassName } from "@/components/shared/Button";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
@@ -31,6 +30,7 @@ import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
 import type { WorkUnitInvestment } from "@/lib/types";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
 import type { TreemapSelection } from "../types";
+import { MixSelectionFacts } from "../MixSelectionFacts";
 import { InvestmentColumnTreemap, type ColumnTreemapClick } from "./InvestmentColumnTreemap";
 
 type InvestmentMix = ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix>;
@@ -168,35 +168,15 @@ export function InvestmentMixSection({
             evidence.open({
                 title: subcategoryLabel ? `${themeLabel} · ${subcategoryLabel}` : themeLabel,
                 content: (
-                    <EvidenceFactList
-                        aria-label="Investment mix selection"
+                    <MixSelectionFacts
                         testId="mix-selection-facts"
-                    >
-                        <EvidenceFact label="Theme" value={themeLabel} />
-                        {nodeType === "subcategory" ? (
-                            <EvidenceFact label="Subcategory" value={subcategoryLabel} />
-                        ) : null}
-                        <EvidenceFact
-                            label="Effort"
-                            value={
-                                value === undefined
-                                    ? undefined
-                                    : `${formatNumber(value)} ${investmentMix?.unit?.replace(/_/g, " ") ?? effortUnit}`
-                            }
-                        />
-                        <EvidenceFact
-                            label="Share of the mix"
-                            value={
-                                value === undefined || mixTotalValue <= 0
-                                    ? undefined
-                                    : `${formatNumber((value / mixTotalValue) * 100, { maximumFractionDigits: 1 })}%`
-                            }
-                        />
-                        <EvidenceFact
-                            label="Average evidence quality"
-                            value={typeof quality === "number" ? formatQuality(quality) : undefined}
-                        />
-                    </EvidenceFactList>
+                        themeLabel={themeLabel}
+                        subcategoryLabel={nodeType === "subcategory" ? subcategoryLabel : undefined}
+                        value={value}
+                        total={mixTotalValue}
+                        unit={investmentMix?.unit?.replace(/_/g, " ") ?? effortUnit}
+                        quality={typeof quality === "number" ? quality : undefined}
+                    />
                 ),
                 footer: workGraphUrl ? (
                     <Link

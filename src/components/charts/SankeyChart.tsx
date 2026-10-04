@@ -85,6 +85,13 @@ type SankeyChartProps = {
     className?: string;
     style?: CSSProperties;
     tooltipFormatterAction?: (params: unknown, unit: string) => string;
+    /**
+     * Rewrites the DRAWN node label only (a theme key as the page names it). Clicks and tooltips
+     * keep the resolved name, so a handler that matches on names is not affected.
+     */
+    nodeLabelAction?: (label: string, group: string | undefined) => string;
+    /** Appends each node's value (the one its tooltip shows) to its label: "Quality 59.7". */
+    showNodeValues?: boolean;
     onItemClickAction?: (item: {
         type: "node" | "link";
         name?: string;
@@ -132,6 +139,12 @@ const formatValue = (value: number | undefined, unit: string) => {
     return `${formatNumber(value, { maximumFractionDigits: 0 })} ${unit}`;
 };
 
+/** One decimal; a value above zero that would round to 0 reads "<0.1", a true zero reads "0". */
+export const formatNodeValue = (value: number): string => {
+    const shown = formatNumber(value, { maximumFractionDigits: 1 });
+    return value > 0 && Number(shown) === 0 ? "<0.1" : shown;
+};
+
 const formatShare = (value: number, total: number) => {
     if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
         return "--";
@@ -148,6 +161,8 @@ export function SankeyChart({
     className,
     style,
     tooltipFormatterAction,
+    nodeLabelAction,
+    showNodeValues = false,
     onItemClickAction,
 }: SankeyChartProps) {
     const chartTheme = useChartTheme();
@@ -176,6 +191,12 @@ export function SankeyChart({
         },
         [labelByKey],
     );
+
+    const groupByKey = useMemo(() => {
+        const map = new Map<string, string | undefined>();
+        chartNodes.forEach((node) => map.set(node.name, node.group));
+        return map;
+    }, [chartNodes]);
 
     // Memoize flow computations
     const { outgoingTotals, nodeValueByName, totalFlow } = useMemo(
@@ -332,9 +353,19 @@ export function SankeyChart({
                             if (!params || typeof params !== "object") {
                                 return "";
                             }
-                            const entry = params as { name?: string };
+                            const entry = params as { name?: string; value?: number };
                             const name = entry.name || "";
-                            return displayNameForKey(name);
+                            const label = displayNameForKey(name);
+                            const drawn = nodeLabelAction
+                                ? nodeLabelAction(label, groupByKey.get(name))
+                                : label;
+                            if (!showNodeValues || !label) return drawn;
+                            // The same node value the tooltip shows.
+                            const value =
+                                typeof entry.value === "number"
+                                    ? entry.value
+                                    : (nodeValueByName.get(name) ?? 0);
+                            return `${drawn} ${formatNodeValue(value)}`;
                         },
                     },
                     itemStyle: {
@@ -358,6 +389,9 @@ export function SankeyChart({
         outgoingTotals,
         nodeValueByName,
         totalFlow,
+        groupByKey,
+        nodeLabelAction,
+        showNodeValues,
         tooltipFormatterAction,
         displayNameForKey,
     ]);
