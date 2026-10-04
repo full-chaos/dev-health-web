@@ -87,7 +87,4 @@ export const teamsApi = {
             token,
             orgId,
         ),
-
-    triggerDriftSync: (token?: string, orgId?: string) =>
-        request<{ status: string }>("/teams/trigger-drift-sync", { method: "POST" }, token, orgId),
 };
