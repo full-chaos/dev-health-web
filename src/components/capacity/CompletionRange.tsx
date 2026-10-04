@@ -12,8 +12,16 @@ import { dayCount, formatDayOffset, formatServedDay } from "@/lib/capacityDates"
 import { formatNumber } from "@/lib/formatters";
 import type { CapacityForecast } from "@/lib/graphql/types";
 
+import { PERCENTILE_ROLE, type Percentile } from "./ForecastTiles";
+
 const percentText = (share: number) =>
     `${formatNumber(share * 100, { maximumFractionDigits: 1 })}%`;
+
+/** The role word of a percentile as a label line starts with it: "Optimistic", "Target". */
+const roleWord = (name: Percentile) => {
+    const role = PERCENTILE_ROLE[name];
+    return `${role.charAt(0).toUpperCase()}${role.slice(1)}`;
+};
 
 /**
  * The "Completion range" card body (CHAOS-8477): the Monte Carlo forecast as a chance curve.
@@ -54,30 +62,29 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
     );
 
     const markers = useMemo((): RangeMarker[] => {
-        const percentiles: Array<[string, number | undefined, string | undefined]> = [
+        const percentiles: Array<[Percentile, number | undefined, string | undefined]> = [
             ["P50", p50Days, p50Date],
             ["P85", p85Days, p85Date],
             ["P95", p95Days, p95Date],
         ];
-        return percentiles.flatMap(([name, day, date]) =>
-            typeof day === "number"
-                ? [
-                      {
-                          name,
-                          day,
-                          label:
-                              day === horizonDays
-                                  ? // At the horizon the percentile means "that many days or
-                                    // more": the served date is not a finish date, so no date.
-                                    `${name} · ${dayCount(day)} or more`
-                                  : // "P85 · Jun 25 · 24 days": the served date, the served days.
-                                    [name, date ? formatServedDay(date) : null, dayCount(day)]
-                                        .filter(Boolean)
-                                        .join(" · "),
-                      },
-                  ]
-                : [],
-        );
+        return percentiles.flatMap(([name, day, date]) => {
+            if (typeof day !== "number") return [];
+            // At the horizon the percentile means "that many days or more": the served date is
+            // not a finish date, so no date.
+            const atHorizon = day === horizonDays;
+            return [
+                {
+                    name,
+                    day,
+                    // Two lines as the prototype (CHAOS-8614). "P85 · Jun 25": the served date.
+                    label: [name, !atHorizon && date ? formatServedDay(date) : null]
+                        .filter(Boolean)
+                        .join(" · "),
+                    // "Target · 24 days": the role word of the percentile, the served days.
+                    detail: `${roleWord(name)} · ${dayCount(day)}${atHorizon ? " or more" : ""}`,
+                },
+            ];
+        });
     }, [horizonDays, p50Date, p50Days, p85Date, p85Days, p95Date, p95Days]);
 
     const planningRange = useMemo(
@@ -181,7 +188,11 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
                     {didNotFinish(unfinishedRuns, horizonDays)}.
                 </p>
             ) : null}
-            <p className="mt-2 text-xs text-(--text-muted)">
+            {/* The prototype's note paragraph: body size and body colour, not a small muted line. */}
+            <p
+                data-testid="completion-range-advice"
+                className="mt-4 text-[0.8125rem] leading-5.5 text-foreground"
+            >
                 Use the target and conservative dates as different planning choices, not as one
                 promise.
             </p>
