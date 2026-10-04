@@ -24,7 +24,16 @@ type HeatmapChartProps = {
     className?: string;
     style?: CSSProperties;
     onCellSelectAction?: (cell: { x: string; y: string; value: number }) => void;
+    /**
+     * The hour-of-day by weekday grid (x = hours, y = weekdays): the weekdays read top-down in the
+     * served order (Mon first), the hour labels sit on top and show every third hour. Display
+     * only: each cell keeps its own (hour, weekday) pair and the axes keep their served order.
+     */
+    weekHours?: boolean;
 };
+
+/** Every third hour label on the hour axis (00, 03, 06, ...): ECharts `interval` skips 2 between. */
+export const HOUR_LABEL_INTERVAL = 2;
 
 export function HeatmapChart({
     data,
@@ -33,6 +42,7 @@ export function HeatmapChart({
     className,
     style,
     onCellSelectAction,
+    weekHours = false,
 }: HeatmapChartProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
@@ -115,13 +125,20 @@ export function HeatmapChart({
                     xAxis: {
                         type: "category",
                         data: data.axes.x,
+                        position: weekHours ? ("top" as const) : ("bottom" as const),
                         axisTick: { show: false },
                         axisLine: { lineStyle: { color: chartTheme.grid } },
-                        axisLabel: { color: chartTheme.muted, interval: 0 },
+                        axisLabel: {
+                            color: chartTheme.muted,
+                            interval: weekHours ? HOUR_LABEL_INTERVAL : 0,
+                        },
                     },
                     yAxis: {
                         type: "category",
                         data: data.axes.y,
+                        // ECharts draws the first category at the bottom: invert it so the first
+                        // served weekday is the top row. The data and the axis order are untouched.
+                        inverse: weekHours,
                         axisTick: { show: false },
                         axisLine: { lineStyle: { color: chartTheme.grid } },
                         axisLabel: { color: chartTheme.muted },

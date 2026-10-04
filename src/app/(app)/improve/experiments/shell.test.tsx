@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
+import { getMetricLabel } from "@/lib/metrics/catalog";
 
 import ExperimentsPage from "./page";
 
@@ -151,7 +152,9 @@ describe("Experiments in the shared app shell", () => {
             expect(cards).toHaveLength(2);
             expect(within(cards[0]).getByText("Suggestion 1")).toBeInTheDocument();
             expect(within(cards[1]).getByText("Suggestion 2")).toBeInTheDocument();
-            expect(within(cards[0]).getByText("review_latency")).toBeInTheDocument();
+            expect(
+                within(cards[0]).getByText(getMetricLabel("review_latency")),
+            ).toBeInTheDocument();
             expect(within(cards[0]).getByText("Trial a 24h review SLA")).toBeInTheDocument();
             expect(within(cards[0]).queryByText("SUGGESTED")).toBeNull();
         });
@@ -223,7 +226,7 @@ describe("Experiments in the shared app shell", () => {
             ]);
         expect(rows).toEqual([
             ["Suggested experiments", "2"],
-            ["Suggestion 1", "Trial a 24h review SLA (review_latency)"],
+            ["Suggestion 1", `Trial a 24h review SLA (${getMetricLabel("review_latency")})`],
             ["Suggestion 2", "Cap WIP per squad"],
         ]);
     });

@@ -186,6 +186,9 @@ export function HeatmapPanel({
 
     const data = initialData;
     const unit = data?.legend.unit;
+    // The team grid and the person grid are both hours by weekdays: one rule for both, the
+    // prototype's axes and captions.
+    const isWeekHours = request.type === "temporal_load" || request.type === "individual";
 
     // A cell is a mark on the chart canvas, not a focusable element: when the drawer closes, focus
     // goes back to the chart region.
@@ -264,8 +267,24 @@ export function HeatmapPanel({
                         {flatStateLabel}
                     </div>
                 ) : (
-                    <HeatmapChart data={data} height={320} onCellSelectAction={handleCellSelect} />
+                    <HeatmapChart
+                        data={data}
+                        height={320}
+                        onCellSelectAction={handleCellSelect}
+                        weekHours={isWeekHours}
+                    />
                 )}
+                {isWeekHours && !isFlat ? (
+                    <div
+                        data-testid="heatmap-axis-captions"
+                        className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-(--ink-muted)"
+                    >
+                        <span>Hour of day · day of week</span>
+                        <span>
+                            {title} · {request.scope_type} scope
+                        </span>
+                    </div>
+                ) : null}
             </div>
             <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">

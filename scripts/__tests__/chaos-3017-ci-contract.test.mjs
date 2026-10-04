@@ -131,9 +131,18 @@ describe("CHAOS-3017 CI contracts", () => {
             expect(new Set(shard).size).toBe(shard.length);
         }
 
-        const setup = full.filter((entry) => entry.startsWith("[auth-setup] › "));
+        // Dependency projects run whole in each shard: the sign-in, and the
+        // CHAOS-8538 logo canary that gates the `authenticated` project.
+        const setupProjects = ["auth-setup", "shell-logo-canary"];
+        const setup = full.filter((entry) =>
+            setupProjects.some((project) => entry.startsWith(`[${project}] › `)),
+        );
         const setupSet = new Set(setup);
-        expect(setup.length).toBeGreaterThan(0);
+        for (const project of setupProjects) {
+            expect(
+                setup.filter((entry) => entry.startsWith(`[${project}] › `)).length,
+            ).toBeGreaterThan(0);
+        }
         for (const shard of shards) {
             expect(shard.filter((entry) => setupSet.has(entry))).toEqual(setup);
         }
