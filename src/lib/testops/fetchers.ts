@@ -308,13 +308,15 @@ export async function fetchCoverageBaselines(
     }
 }
 
+/** The input of `coverageScopeBaseline`: the day after the window and an optional scope. */
+export type CoverageScopeBaselineInput = CoverageBaselinesInput;
+
 /**
- * The coverage baseline of the whole scope (the organization: no scope is sent, as the trend it
- * is drawn on sends none). A failed read (a GraphQL error, or an answer that is not the served
- * shape) is `{ fetchFailed: true }`, never a missing baseline.
+ * The coverage baseline of the selected scope. A failed read (a GraphQL error, or an answer that
+ * is not the served shape) is `{ fetchFailed: true }`, never a missing baseline.
  */
 export async function fetchCoverageScopeBaseline(
-    input: { /** "YYYY-MM-DD"; not included. */ endDate: string },
+    input: CoverageScopeBaselineInput,
     isTestMode: boolean = false,
     orgIdOverride?: string,
 ): Promise<ScopeCoverageBaselineState> {
@@ -326,7 +328,13 @@ export async function fetchCoverageScopeBaseline(
     try {
         const res = await graphqlFetch<{ coverageScopeBaseline: unknown }>(
             TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
-            { orgId, endDate: input.endDate },
+            {
+                orgId,
+                endDate: input.endDate,
+                // An empty list narrows to nothing, so omit an unset scope.
+                ...(input.repoIds?.length ? { repoIds: input.repoIds } : {}),
+                ...(input.teamIds?.length ? { teamIds: input.teamIds } : {}),
+            },
         );
         const parsed = ScopeCoverageBaselineSchema.safeParse(res.coverageScopeBaseline);
         if (!parsed.success) {
