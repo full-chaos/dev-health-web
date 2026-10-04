@@ -3,10 +3,11 @@
  * Snippets are reused verbatim from docs/customer-push-ingestion-setup-design.md
  * so the in-product tabs stay byte-identical to CHAOS-2713's eventual docs.
  *
- * The `dev-hops push` CLI (CHAOS-2700) does not exist yet as of this writing
- * (its flags here are illustrative, matching the design doc). Re-verify the
- * literal flag names against CHAOS-2700's implementation before treating
- * these as ground truth for customer-facing docs.
+ * The CLI is `dho push` (ops `internal/pushcli`): `validate`, `batch`, `status` and `sample` exist;
+ * `dho push export` is only a stub that exits 1, so no snippet calls an export command: the
+ * payload is the customer's own export in the external-ingest.v1 shape. The `dho` image
+ * (ghcr.io/full-chaos/dev-health-go-dho) is distroless: its entrypoint is `dho` and it has no
+ * shell, so it is used through `docker run`, never as a GitLab `script:` image.
  */
 
 import type { CustomerPushSystem } from "@/lib/admin/types";
@@ -26,17 +27,12 @@ export interface BuildExampleSnippetsArgs {
     tokenPlaceholder?: string;
 }
 
-/** `dev-hops push export` flag used to scope the export to one instance, per source system. */
-function exportInstanceFlag(sourceSystem: CustomerPushSystem): string {
-    switch (sourceSystem) {
-        case "github":
-            return '--repo "$GITHUB_REPOSITORY"';
-        case "gitlab":
-            return '--project "$CI_PROJECT_PATH"';
-        default:
-            return `--instance "${sourceSystem}"`;
-    }
-}
+/** The published operator image: its entrypoint is `dho`. */
+export const DHO_IMAGE = "ghcr.io/full-chaos/dev-health-go-dho:latest";
+
+/** Where the payload comes from: there is no export command yet. */
+export const PAYLOAD_NOTE =
+    "# payload.json: your own export in the external-ingest.v1 shape (no export command yet)";
 
 export function buildExampleSnippets({
     apiUrl = "$FULLCHAOS_API_URL",
@@ -62,12 +58,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate payload
-        run: dev-hops push export ${sourceSystem} ${exportInstanceFlag(sourceSystem)} --since "$SINCE" --until "$UNTIL" > payload.json
+      ${PAYLOAD_NOTE}
       - name: Validate payload
-        run: dev-hops push validate payload.json --schema external-ingest.v1
+        run: docker run --rm -i ${DHO_IMAGE} push validate - < payload.json
       - name: Push payload
-        run: dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
+        run: docker run --rm -i -e FULLCHAOS_API_URL -e FULLCHAOS_ORG_ID -e FULLCHAOS_INGEST_TOKEN ${DHO_IMAGE} push batch - --poll < payload.json
         env:
           FULLCHAOS_API_URL: ${apiUrl}
           FULLCHAOS_ORG_ID: \${{ vars.FULLCHAOS_ORG_ID }}
@@ -79,12 +74,12 @@ jobs:
         label: "GitLab Runner",
         language: "yaml",
         code: `${instanceComment}
+${PAYLOAD_NOTE}
+# The dho image has no shell, so a GitLab script job calls the API directly.
 push_dev_health:
-  image: ghcr.io/full-chaos/dev-hops:latest
+  image: curlimages/curl:latest
   script:
-    - dev-hops push export ${sourceSystem} ${exportInstanceFlag(sourceSystem)} --since "$SINCE" --until "$UNTIL" > payload.json
-    - dev-hops push validate payload.json --schema external-ingest.v1
-    - dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
+    - 'curl -sS -X POST "$FULLCHAOS_API_URL/api/v1/external-ingest/batches" -H "Authorization: Bearer $FULLCHAOS_INGEST_TOKEN" -H "Content-Type: application/json" -H "Idempotency-Key: $IDEMPOTENCY_KEY" --data-binary @payload.json'
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"`,
     };
@@ -94,13 +89,13 @@ push_dev_health:
         label: "Generic Docker",
         language: "bash",
         code: `${instanceComment}
-docker run --rm \\
+${PAYLOAD_NOTE}
+docker run --rm -i \\
   -e FULLCHAOS_API_URL="${apiUrl}" \\
   -e FULLCHAOS_ORG_ID="$FULLCHAOS_ORG_ID" \\
   -e FULLCHAOS_INGEST_TOKEN="${tokenPlaceholder}" \\
-  ghcr.io/full-chaos/dev-hops:latest \\
-  push export ${sourceSystem} ${exportInstanceFlag(sourceSystem)} --since "$SINCE" --until "$UNTIL" \\
-  | dev-hops push batch - --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
+  ${DHO_IMAGE} \\
+  push batch - --poll < payload.json
 
 # Cron/systemd-timer equivalent: run the same command on a schedule (e.g. every 30 minutes).`,
     };
