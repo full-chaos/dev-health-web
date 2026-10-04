@@ -561,6 +561,7 @@ query AIImpactSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
       incidentRate
       testGapPrs
       testGapRate
+      day
     }
     repoBreakdown {
       scopeId
