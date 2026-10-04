@@ -19,19 +19,11 @@ This is the application frontend for [dev-health-ops](https://github.com/chrisge
 npm install
 ```
 
-2. **Start ClickHouse** (from `dev-health-ops`):
+2. **Start the backend** (ClickHouse and the API, from `dev-health-ops`): follow the ops
+   [development environment guide](https://github.com/full-chaos/dev-health-ops/blob/main/docs/contribute/start/development-environment.md).
+   The Python CLI is removed; the Go binary is `dho` (`dho api` serves the API).
 
-```bash
-dev-hops grafana up
-```
-
-3. **Run the API:**
-
-```bash
-dev-hops api --db "clickhouse://localhost:8123/default" --reload
-```
-
-4. **Run the web app:**
+3. **Run the web app:**
 
 ```bash
 BACKEND_URL="http://127.0.0.1:8000" npm run dev

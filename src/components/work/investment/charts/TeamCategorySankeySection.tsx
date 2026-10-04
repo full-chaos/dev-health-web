@@ -8,13 +8,13 @@ import {
     TOP_N_REPOS,
     UNASSIGNED_TEAM_LABEL,
 } from "@/lib/investment";
-import { THEME_LABELS, titleCase } from "@/lib/investment/transforms";
 import { computeSankeyMetrics, filterSankeyToTeam } from "@/lib/sankey";
 import {
     computeSelectedPath,
     filterSankeyToEntity,
     findClickedNode,
     type SelectedEntity,
+    allocationNodeLabel,
 } from "@/lib/allocationSelection";
 import { withFilterParam } from "@/lib/filters/url";
 import { SelectedPathPanel } from "./SelectedPathPanel";
@@ -57,9 +57,6 @@ export type TeamCategorySankeySectionProps = {
 };
 
 const KIND_CHIP_LABEL = { team: "Team", theme: "Theme", subcategory: "Subcategory", repo: "Repo" };
-
-/** A theme as the page names it ("Feature Delivery"), never the raw key ("feature_delivery"). */
-const themeLabel = (key: string) => THEME_LABELS[key] ?? titleCase(key);
 
 export function TeamCategorySankeySection({
     filters,
@@ -247,7 +244,10 @@ export function TeamCategorySankeySection({
         }
         if (selectedCategory) {
             return {
-                selection: { kind: "theme" as const, label: selectedCategory },
+                selection: {
+                    kind: "theme" as const,
+                    label: allocationNodeLabel(selectedCategory, "category"),
+                },
                 numbers: computeSelectedPath({
                     base: sankeyFlow,
                     baseline: baselineFlow,
@@ -318,7 +318,7 @@ export function TeamCategorySankeySection({
                             }}
                             className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
                         >
-                            Drilldown: Theme = {themeLabel(selectedCategory)}
+                            Drilldown: Theme = {allocationNodeLabel(selectedCategory, "category")}
                             <span className="text-xs">x</span>
                         </button>
                     )}
@@ -356,6 +356,8 @@ export function TeamCategorySankeySection({
                             links={(chartFlow ?? sankeyFlow).links}
                             unit={effortUnit}
                             height={320}
+                            nodeLabelAction={allocationNodeLabel}
+                            showNodeValues
                             tooltipFormatterAction={sankeyTooltipFormatter}
                             onItemClickAction={(item) => {
                                 if (!sankeyFlow) return;

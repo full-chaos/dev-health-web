@@ -424,8 +424,9 @@ describe("Investment Evidence (prototype view 9)", () => {
             "Average quality",
             "Units",
             "Weighted effort",
+            "Evidence",
         ]);
-        const template = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem]";
+        const template = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem_6rem]";
         expect(head.className).toContain(template);
         for (const row of screen.getAllByTestId("evidence-group-row")) {
             expect(row.className).toContain(template);
@@ -674,6 +675,28 @@ describe("Investment Confidence (prototype view 10)", () => {
         expect(rework).toHaveTextContent("25%");
         expect(follows(screen.getByTestId("low-confidence-areas"), rework)).toBe(true);
         expect(rework.parentElement?.lastElementChild).toBe(rework);
+    });
+
+    // CHAOS-8584: the row name comes from the one theme label source, keyed by the served `theme`;
+    // a row with no `theme` key prints the served `label`.
+    it("'Rework by theme' names a row by the one label source, or by the served label without a theme key", () => {
+        const row = {
+            allocation: 0.25,
+            allocation_pct: 25,
+            prs_merged: 3,
+            churn_loc: 1200,
+        };
+        confidence(makeData(), {
+            reworkThemeAllocation: [
+                { ...row, theme: "quality", label: "Quality / Reliability" },
+                { ...row, theme: "", label: "Served only label" },
+            ],
+        });
+        const rework = screen.getByTestId("rework-by-theme");
+        const names = within(rework)
+            .getAllByRole("listitem")
+            .map((item) => item.querySelector("span.font-medium")?.textContent);
+        expect(names).toEqual(["Quality", "Served only label"]);
     });
 
     it("order: tiles, the two-card row, the low-confidence section", () => {

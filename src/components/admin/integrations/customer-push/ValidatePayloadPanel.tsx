@@ -156,7 +156,7 @@ export function ValidatePayloadPanel({
                 >
                     Server-side validation isn&apos;t available yet — it arrives with the validation
                     endpoint. You can prepare and inspect payloads here, or validate from CI with{" "}
-                    <code>dev-hops push validate</code>.
+                    <code>dho push validate</code>.
                 </div>
             )}
 
