@@ -225,8 +225,9 @@ describe("InvestmentView — Confidence tab", () => {
 
         // Label shows "25%", not "2500%"
         expect(screen.getByText("25%")).toBeInTheDocument();
-        // Theme label is rendered
-        expect(screen.getByText("Maintenance / Tech Debt")).toBeInTheDocument();
+        // Theme label is rendered by the one theme label source, keyed by the served theme
+        // (CHAOS-8584: changed on purpose; it was the served long label).
+        expect(screen.getByText("Maintenance")).toBeInTheDocument();
         // Bar div has width: 25%, not width: 2500%
         const bar = container.querySelector('[style*="width: 25%"]');
         expect(bar).not.toBeNull();
@@ -342,12 +343,16 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
 
         render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
 
-        // Grouped by theme → the canonical theme label appears as a group row,
-        // not a per-unit card grid.
-        expect(screen.getByRole("button", { name: /Feature Delivery/ })).toBeInTheDocument();
+        // Grouped by theme → the canonical theme label is a group row with its own Evidence
+        // action (not an expandable row, not a per-unit card grid).
+        const row = screen.getByTestId("evidence-group-row");
+        expect(row).toHaveTextContent("Feature Delivery");
+        expect(
+            within(row).getByRole("button", { name: "Evidence: Feature Delivery" }),
+        ).toBeInTheDocument();
     });
 
-    it("surfaces unit metadata inline when a row is expanded (no toggle gate)", () => {
+    it("surfaces unit metadata in the drawer a row Evidence action opens (no toggle gate)", () => {
         useInvestmentDataMock.mockReturnValue(
             makeData({
                 workUnits: [
@@ -364,8 +369,8 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
 
         render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
 
-        // Expand the theme group, then the work-unit row.
-        fireEvent.click(screen.getByRole("button", { name: /Feature Delivery/ }));
+        // Open the group's Evidence (the shared drawer), then the work-unit row in it.
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         fireEvent.click(screen.getByRole("button", { name: /Work unit a/ }));
 
         expect(screen.getByText("Classification rationale")).toBeInTheDocument();
@@ -409,10 +414,10 @@ describe("InvestmentView — Evidence tab team-attribution badge (CHAOS-2608)", 
         ];
 
         render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
-        // Expand the theme group so the unit row (and its badge) renders.
-        fireEvent.click(screen.getByRole("button", { name: /Feature Delivery/ }));
+        // Open the group's Evidence: the unit row and its badge render in the drawer.
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
 
-        const badge = screen.getByTestId("team-attribution-badge");
+        const badge = within(screen.getByRole("dialog")).getByTestId("team-attribution-badge");
         expect(badge).toHaveTextContent(/native team/i);
         expect(badge.getAttribute("title")).toMatch(/Platform/);
     });
@@ -437,8 +442,11 @@ describe("InvestmentView — Evidence tab team-attribution badge (CHAOS-2608)", 
         ];
 
         render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
-        fireEvent.click(screen.getByRole("button", { name: /Feature Delivery/ }));
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
 
-        expect(screen.queryByTestId("team-attribution-badge")).not.toBeInTheDocument();
+        // The drawer is open (the unit row is there) and still draws no badge.
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByRole("button", { name: /Work unit wu-7d3f/ })).toBeTruthy();
+        expect(within(drawer).queryByTestId("team-attribution-badge")).toBeNull();
     });
 });

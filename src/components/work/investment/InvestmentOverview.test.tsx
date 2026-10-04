@@ -288,7 +288,7 @@ describe("overview: classification table", () => {
         expect(rows[0]).toHaveTextContent("30");
         expect(rows[1]).toHaveTextContent("Quality");
         expect(rows[1]).toHaveTextContent("25%");
-        expect(screen.getByTestId("classification-table")).toHaveTextContent("delivery units");
+        expect(screen.getByTestId("classification-table")).toHaveTextContent("Delivery units");
         expect(screen.getByTestId("classification-table")).not.toHaveTextContent("Risk");
     });
 
@@ -301,6 +301,55 @@ describe("overview: classification table", () => {
         overview({ investmentMix: mix as never, setFocusTheme, focusTheme: "quality" });
         fireEvent.click(screen.getByRole("button", { name: "Quality" }));
         expect(setFocusTheme).toHaveBeenLastCalledWith(null);
+    });
+
+    it("heads the value column 'Delivery units' and ends each row with an Evidence action (CHAOS-8564)", () => {
+        overview({ investmentMix: mix as never });
+        const table = screen.getByTestId("classification-table");
+        expect(within(table).getByRole("columnheader", { name: "Delivery units" })).toBeTruthy();
+        expect(within(table).getAllByTestId("classification-evidence")).toHaveLength(2);
+    });
+
+    it("a row's Evidence action opens the shared drawer with that theme's served effort and share", async () => {
+        overview({ investmentMix: mix as never });
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
+        const facts = await screen.findByTestId("classification-evidence-facts");
+        expect(facts).toHaveTextContent("Quality");
+        expect(facts).toHaveTextContent("10 delivery units");
+        expect(facts).toHaveTextContent("25%");
+    });
+
+    it("the drawer shows the served average evidence quality and links to the Work Graph for the theme", async () => {
+        overview({
+            investmentMix: { ...mix, evidence_quality_distribution: { quality: 0.62 } } as never,
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
+        const facts = await screen.findByTestId("classification-evidence-facts");
+        expect(facts).toHaveTextContent(/Average evidence quality\s*0\.62/);
+        const link = within(screen.getByRole("dialog")).getByRole("link", {
+            name: "Open Work Graph",
+        });
+        const href = link.getAttribute("href") ?? "";
+        expect(href).toContain("/diagnose/work-graph");
+        expect(new URL(href, "https://app.example").searchParams.get("graph_theme")).toBe(
+            "quality",
+        );
+    });
+
+    it("the drawer falls back to the page effort unit when the mix serves none (as the treemap drawer does) and prints no quality when none is served", async () => {
+        overview({
+            investmentMix: {
+                theme_distribution: { quality: 10 },
+                subcategory_distribution: {},
+                evidence_quality_distribution: {},
+            } as never,
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
+        const facts = await screen.findByTestId("classification-evidence-facts");
+        expect(facts).not.toHaveTextContent("delivery units");
+        expect(facts).toHaveTextContent("Effort10 effortShare of the mix");
+        expect(facts).toHaveTextContent("100%");
+        expect(facts).toHaveTextContent("Average evidence qualityNot reported");
     });
 
     it("renders no table when the mix is empty or absent", () => {

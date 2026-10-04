@@ -83,6 +83,67 @@ describe("SankeyChart", () => {
         });
     });
 
+    it("draws theme keys as theme names and appends the node value, from the served flow only (CHAOS-8565)", () => {
+        const nodes: SankeyNode[] = [
+            { name: "Fullchaos", group: "team" },
+            { name: "feature_delivery", group: "category" },
+            { name: "dev-health-ops", group: "repo" },
+        ];
+        const links: SankeyLink[] = [
+            { source: "Fullchaos", target: "feature_delivery", value: 75.34 },
+            { source: "feature_delivery", target: "dev-health-ops", value: 75.34 },
+        ];
+        render(
+            <SankeyChart
+                nodes={nodes}
+                links={links}
+                nodeLabelAction={(label, group) =>
+                    group === "category"
+                        ? label.replace("feature_delivery", "Feature Delivery")
+                        : label
+                }
+                showNodeValues
+            />,
+        );
+        const props = chartSpy.mock.calls[0][0] as {
+            option: {
+                series: Array<{ label: { formatter: (p: unknown) => string } }>;
+            };
+        };
+        const label = props.option.series[0].label.formatter;
+        expect(label({ name: "category:feature_delivery", value: 75.34 })).toBe(
+            "Feature Delivery 75.3",
+        );
+        // A node value the chart did not give is the larger of its in/out flow, as the tooltip.
+        expect(label({ name: "repo:dev-health-ops" })).toBe("dev-health-ops 75.3");
+    });
+
+    it("a node with a value below the shown precision reads <0.1, a true zero reads 0", () => {
+        const nodes: SankeyNode[] = [{ name: "A" }, { name: "B" }, { name: "C" }];
+        const links: SankeyLink[] = [
+            { source: "A", target: "B", value: 0.04 },
+            { source: "A", target: "C", value: 0 },
+        ];
+        render(<SankeyChart nodes={nodes} links={links} showNodeValues />);
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ label: { formatter: (p: unknown) => string } }> };
+        };
+        const label = props.option.series[0].label.formatter;
+        expect(label({ name: "B", value: 0.04 })).toBe("B <0.1");
+        expect(label({ name: "C", value: 0 })).toBe("C 0");
+        expect(label({ name: "A", value: 0.05 })).toBe("A 0.1");
+    });
+
+    it("keeps the bare label when node values are off", () => {
+        render(<SankeyChart nodes={sampleNodes} links={sampleLinks} />);
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ label: { formatter: (p: unknown) => string } }> };
+        };
+        expect(props.option.series[0].label.formatter({ name: "Backlog", value: 12 })).toBe(
+            "Backlog",
+        );
+    });
+
     it("handles empty data and null click payload gracefully", () => {
         const onItemClick = vi.fn();
         render(<SankeyChart nodes={[]} links={[]} onItemClickAction={onItemClick} />);

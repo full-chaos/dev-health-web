@@ -1,4 +1,5 @@
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { titleCase } from "@/lib/investment";
 import { computeSankeyMetrics } from "@/lib/sankey";
 import type { SankeyLink, SankeyNode } from "@/lib/types";
 
@@ -21,6 +22,16 @@ export const entityKindForGroup = (group: string | undefined): AllocationEntityK
             return null;
     }
 };
+
+/**
+ * The label drawn on an Allocation Sankey node. A theme (group "category") is drawn with the
+ * label source the other Investment tabs use (`titleCase` from `@/lib/investment`: the
+ * classification table, the evidence table, the treemap): "Quality", never the raw key
+ * ("quality"). The last fallback for a theme is the same title-cased text. Other nodes
+ * (team, subcategory, repo) are unchanged.
+ */
+export const allocationNodeLabel = (label: string, group: string | undefined): string =>
+    group === "category" ? titleCase(label) : label;
 
 /**
  * Filter a flow to ONE entity: the node, every link that touches it, and the nodes at the
