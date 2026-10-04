@@ -116,7 +116,13 @@ describe("ReviewNetworkView restyle", () => {
             expect(panel.innerHTML).not.toContain(part);
         }
         expect(panel.querySelectorAll("td [title]")).toHaveLength(0);
-        expect(panel.querySelectorAll(".sr-only")).toHaveLength(0);
+        // Hidden text is allowed only in the Share cell (the served review count, CHAOS-8602),
+        // never in a person cell.
+        expect(
+            Array.from(panel.querySelectorAll(".sr-only")).filter(
+                (e) => !e.closest("td:last-child"),
+            ),
+        ).toHaveLength(0);
     });
 
     it("two people with no served name stay two rows, and the tiles count them", () => {
@@ -165,7 +171,13 @@ describe("ReviewNetworkView restyle", () => {
         expect(only.innerHTML).not.toContain(shown.reviewer);
         expect(only.innerHTML).not.toContain(shown.author);
         expect(only.innerHTML).not.toContain("key:");
-        expect(only.querySelectorAll(".sr-only")).toHaveLength(0);
+        // Hidden text is allowed only in the Share cell (the served review count, CHAOS-8602),
+        // never in a person cell.
+        expect(
+            Array.from(only.querySelectorAll(".sr-only")).filter(
+                (e) => !e.closest("td:last-child"),
+            ),
+        ).toHaveLength(0);
         expect(only.querySelectorAll("[title]")).toHaveLength(0);
     });
 
@@ -211,6 +223,22 @@ describe("ReviewNetworkView restyle", () => {
         for (const fill of fills) {
             expect(fill.className).toContain("bg-(--chart-color-1)");
             expect(fill.className).not.toMatch(/accent/u);
+            expect(fill.parentElement).toHaveAttribute("aria-hidden", "true");
+        }
+    });
+
+    it("share cell: the served review count is text for assistive technology (CHAOS-8602)", () => {
+        render(
+            <ReviewNetworkView
+                edges={rowsOf(served("a-fake", "b-fake", 1000), served("c-fake", "d-fake", 1))}
+                loading={false}
+                error={null}
+            />,
+        );
+        const rows = screen.getAllByRole("row").slice(1);
+        const shareCells = rows.map((r) => within(r).getAllByRole("cell")[3]);
+        expect(shareCells.map((c) => c.textContent)).toEqual(["1,000 reviews", "1 reviews"]);
+        for (const fill of document.querySelectorAll("[data-share-fill]")) {
             expect(fill.parentElement).toHaveAttribute("aria-hidden", "true");
         }
     });
