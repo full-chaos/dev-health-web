@@ -231,6 +231,38 @@ export const SAMPLE_COVERAGE_DATA: AnalyticsResult = {
     ],
 };
 
+/** Test-mode sample of `testopsJobFailures` (invented names and numbers). */
+export const SAMPLE_JOB_FAILURES_DATA = {
+    groups: [
+        {
+            workflowName: "CI",
+            jobName: "integration-tests",
+            provider: "github_actions",
+            runs: 48,
+            failedRuns: 12,
+            failureRate: 0.25,
+        },
+        {
+            workflowName: "CI",
+            jobName: "unit-tests",
+            provider: "github_actions",
+            runs: 52,
+            failedRuns: 4,
+            failureRate: 0.08,
+        },
+        {
+            workflowName: "Deploy",
+            jobName: "smoke",
+            provider: "github_actions",
+            runs: 20,
+            failedRuns: 2,
+            failureRate: 0.1,
+        },
+    ],
+    totalCount: 3,
+    truncated: false,
+};
+
 export const SAMPLE_RISK_DATA = {
     release_confidence: 0.82,
     quality_drag_hours: 14.5,
@@ -305,3 +337,45 @@ export const SAMPLE_PR_TESTOPS_DATA = {
     coverageDelta: 0.4,
     releaseConfidence: 0.92,
 };
+
+/**
+ * Test-mode sample of `coverageBaselines` (invented numbers), keyed like the sample coverage
+ * breakdown. One repository has no line baseline and one has no row: both read "Not reported".
+ */
+export const SAMPLE_COVERAGE_BASELINES = [
+    {
+        repoId: "frontend-web",
+        repoName: "sample/frontend-web",
+        lineBaselinePct: 83.9,
+        lineDays: 30,
+        branchBaselinePct: 76.4,
+        branchDays: 30,
+    },
+    {
+        repoId: "backend-api",
+        repoName: "sample/backend-api",
+        lineBaselinePct: 91.6,
+        lineDays: 28,
+        branchBaselinePct: 85.1,
+        branchDays: 28,
+    },
+    {
+        repoId: "mobile-app",
+        repoName: "sample/mobile-app",
+        lineBaselinePct: null,
+        lineDays: 4,
+        branchBaselinePct: null,
+        branchDays: 4,
+    },
+    {
+        repoId: "data-pipeline",
+        repoName: null,
+        lineBaselinePct: 75.0,
+        lineDays: 19,
+        branchBaselinePct: 0,
+        branchDays: 19,
+    },
+];
+
+/** Test-mode sample of `coverageScopeBaseline` (an invented number). */
+export const SAMPLE_COVERAGE_SCOPE_BASELINE = { lineBaselinePct: 82.6, lineDays: 30 };

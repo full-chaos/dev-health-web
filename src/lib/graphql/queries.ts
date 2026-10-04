@@ -341,6 +341,18 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
 }
 `;
 
+// Per-team completion-distribution read (CHAOS-8598); text must match the ops-registered document.
+export const CAPACITY_COMPLETION_DISTRIBUTION_QUERY = `
+query CapacityCompletionDistribution($orgId: String!, $input: CapacityForecastInput) {
+  capacityForecast(orgId: $orgId, input: $input) {
+    completionDistribution {
+      days { value count }
+      items { value count }
+    }
+  }
+}
+`;
+
 // Query for listing persisted capacity forecasts
 export const CAPACITY_FORECASTS_QUERY = `
 query CapacityForecasts($orgId: String!, $filters: CapacityForecastFilterInput) {

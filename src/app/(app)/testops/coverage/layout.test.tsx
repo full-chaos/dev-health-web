@@ -3,9 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { cleanup, render, screen, within } from "@/test/utils";
 
-const { mockCheckApiHealth, mockFetchCoverageMetrics, timeseriesSpy } = vi.hoisted(() => ({
+const {
+    mockCheckApiHealth,
+    mockFetchCoverageMetrics,
+    mockFetchCoverageBaselines,
+    mockFetchCoverageScopeBaseline,
+    timeseriesSpy,
+} = vi.hoisted(() => ({
     mockCheckApiHealth: vi.fn(),
     mockFetchCoverageMetrics: vi.fn(),
+    mockFetchCoverageBaselines: vi.fn(),
+    mockFetchCoverageScopeBaseline: vi.fn(),
     timeseriesSpy: vi.fn(),
 }));
 
@@ -18,8 +26,15 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: mockCheckApiHealth }));
-vi.mock("@/lib/testops/fetchers", () => ({ fetchCoverageMetrics: mockFetchCoverageMetrics }));
-vi.mock("@/lib/config", () => ({ getServerEnv: () => ({}) }));
+vi.mock("@/lib/testops/fetchers", () => ({
+    fetchCoverageMetrics: mockFetchCoverageMetrics,
+    fetchCoverageBaselines: mockFetchCoverageBaselines,
+    fetchCoverageScopeBaseline: mockFetchCoverageScopeBaseline,
+}));
+vi.mock("@/lib/config", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/config")>()),
+    getServerEnv: () => ({}),
+}));
 vi.mock("@/components/shell/ScopeBar", () => ({
     ScopeBar: () => <div data-testid="scope-bar" />,
 }));
@@ -100,9 +115,25 @@ const served = {
     ],
 };
 
-async function renderPage() {
-    return render(await CoveragePage({ searchParams: Promise.resolve({}) }));
+// The served baseline of the first repository; the second repository has no baseline row.
+const baselines = [
+    {
+        repoId: "repo-1",
+        repoName: "full-chaos/dev-health-web",
+        lineBaselinePct: 58.2,
+        lineDays: 22,
+        branchBaselinePct: 51,
+        branchDays: 20,
+    },
+];
+
+async function renderPage(searchParams: Record<string, string> = {}) {
+    return render(await CoveragePage({ searchParams: Promise.resolve(searchParams) }));
 }
+
+const f = (filter: Record<string, unknown>) => ({
+    f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
+});
 
 /** True when `a` comes before `b` in the document. */
 const before = (a: HTMLElement, b: HTMLElement) =>
@@ -112,6 +143,9 @@ beforeEach(() => {
     vi.clearAllMocks();
     mockCheckApiHealth.mockResolvedValue({ ok: true });
     mockFetchCoverageMetrics.mockResolvedValue(served);
+    mockFetchCoverageBaselines.mockResolvedValue(baselines);
+    // No baseline of the scope: fewer than 7 days hold a value.
+    mockFetchCoverageScopeBaseline.mockResolvedValue({ lineBaselinePct: null, lineDays: 2 });
 });
 afterEach(cleanup);
 
@@ -200,7 +234,7 @@ describe("TestOps Coverage page — approved layout", () => {
             within(repos[0])
                 .getAllByTestId("meter-row")
                 .map((row) => row.textContent),
-        ).toEqual(["Line coverage60%", "Branch coverage54%"]);
+        ).toEqual(["Line coverage60% · baseline 58%", "Branch coverage54% · baseline 51%"]);
         const second = within(repos[1]).getAllByTestId("meter-row");
         expect(second[1]).toHaveTextContent("Branch coverageNot reported");
         expect(second[1]).toHaveAttribute("data-reported", "false");
@@ -227,8 +261,9 @@ describe("TestOps Coverage page — approved layout", () => {
         const [repo] = within(screen.getByTestId("testops-coverage-baseline")).getAllByTestId(
             "testops-coverage-baseline-repo",
         );
+        // The served baseline stays, beside the row name.
         expect(within(repo).getAllByTestId("meter-row")[0]).toHaveTextContent(
-            "Line coverageNot reported",
+            "Line coverage (baseline 58%)Not reported",
         );
         const [row] = within(screen.getByTestId("testops-repository-coverage-table")).getAllByTestId(
             "testops-repository-coverage-row",
@@ -237,33 +272,36 @@ describe("TestOps Coverage page — approved layout", () => {
             within(row)
                 .getAllByRole("cell")
                 .map((td) => td.textContent),
-        ).toEqual(["dev-health-web", "Not reported", "80%"]);
+        ).toEqual(["dev-health-web", "Not reported", "58%"]);
     });
 
-    it("shows each repository against the one baseline: served line coverage; branch coverage not reported when no branch answer is served", async () => {
+    it("shows each repository against its own served baseline: served line coverage; branch coverage not reported when no branch answer is served", async () => {
         await renderPage();
         const card = screen.getByTestId("testops-coverage-baseline");
         expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(
             "Coverage against baseline",
         );
-        expect(within(card).getByTestId("testops-coverage-baseline-pill")).toHaveTextContent(
-            "80% baseline",
-        );
+        // No one baseline for all repositories: no pill in the card head.
+        expect(within(card).queryByTestId("testops-coverage-baseline-pill")).toBeNull();
         const repos = within(card).getAllByTestId("testops-coverage-baseline-repo");
         expect(repos).toHaveLength(2);
         expect(repos[0]).toHaveTextContent("dev-health-web");
         const rows = within(repos[0]).getAllByTestId("meter-row");
         expect(rows.map((row) => row.textContent)).toEqual([
-            "Line coverage60%",
-            "Branch coverageNot reported",
+            "Line coverage60% · baseline 58%",
+            "Branch coverage (baseline 51%)Not reported",
         ]);
         expect(rows[1]).toHaveAttribute("data-reported", "false");
         // An unresolved repository id is never shown as a bare UUID.
         expect(repos[1]).not.toHaveTextContent("0f2b9c1e-1111-4222-8333-944455556666");
+        // The second repository has no baseline row: "Not reported", never 0 and never 80%.
         expect(within(repos[1]).getAllByTestId("meter-row")[0]).toHaveTextContent(
-            "72%",
+            "72% · baseline Not reported",
         );
-        expect(card).toHaveTextContent("A per-repository baseline is not reported yet.");
+        expect(card).not.toHaveTextContent("80%");
+        expect(within(card).getByTestId("testops-coverage-baseline-note")).toHaveTextContent(
+            "The baseline of a repository is its own average coverage over the 30 days that end on the last day of the window.",
+        );
     });
 
     it("lists the repositories in the 'Repository coverage' table: Repository, Line coverage, Baseline", async () => {
@@ -283,22 +321,155 @@ describe("TestOps Coverage page — approved layout", () => {
                     .map((td) => td.textContent),
             ),
         ).toEqual([
-            ["dev-health-web", "60%", "80%"],
-            [expect.not.stringContaining("0f2b9c1e-1111"), "72%", "80%"],
+            ["dev-health-web", "60%", "58%"],
+            [expect.not.stringContaining("0f2b9c1e-1111"), "72%", "Not reported"],
         ]);
-        expect(card).toHaveTextContent("a per-repository baseline is not reported yet");
+        // The days behind the served baseline are its tooltip.
+        expect(within(rows[0]).getByTitle("30-day average of 22 days")).toHaveTextContent("58%");
+        expect(card).toHaveTextContent(
+            "The baseline of a repository is its own average line coverage over the 30 days that end on the last day of the window. A repository with fewer than 7 days of coverage in those 30 days has no baseline.",
+        );
     });
 
-    it("keeps the Line Coverage Trend below, with the served series and the target line", async () => {
-        await renderPage();
+    const SERIES = [
+        { day: "2026-09-01", value: 59 },
+        { day: "2026-09-02", value: 60 },
+    ];
+    const fact = (container: HTMLElement) =>
+        container.querySelector('[data-annotation="Chart threshold"]');
+
+    it("draws the served scope baseline as the trend's baseline line and as the fact 'Target baseline'", async () => {
+        mockFetchCoverageScopeBaseline.mockResolvedValue({ lineBaselinePct: 82.6, lineDays: 30 });
+        const { container } = await renderPage();
         expect(timeseriesSpy.mock.calls.at(-1)?.[0]).toEqual({
-            data: [
-                { day: "2026-09-01", value: 59 },
-                { day: "2026-09-02", value: 60 },
-            ],
+            data: SERIES,
             valueFormat: "percent",
-            baseline: { value: 80, label: "Target baseline" },
+            // The served value, not rounded and not a constant.
+            baseline: { value: 82.6, label: "Target baseline" },
         });
+        expect(fact(container)).toHaveTextContent("Target baseline83%");
+        // The hint of the value: what the target is, and the served days behind it.
+        expect(
+            within(fact(container) as HTMLElement).getByTitle(
+                "Running 30-day average of the organization's line coverage; 30 of the 30 days hold a value",
+            ),
+        ).toHaveTextContent("83%");
+        expect(screen.queryByText("80%")).toBeNull();
+    });
+
+    it("draws a served baseline of 0 as a line at 0 and '0%'", async () => {
+        mockFetchCoverageScopeBaseline.mockResolvedValue({ lineBaselinePct: 0, lineDays: 9 });
+        const { container } = await renderPage();
+        expect(timeseriesSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+            baseline: { value: 0, label: "Target baseline" },
+        });
+        expect(fact(container)).toHaveTextContent("Target baseline0%");
+    });
+
+    it("with no scope baseline: the fact stays and reads 'Not reported', and the chart has no baseline line", async () => {
+        const { container } = await renderPage();
+        expect(timeseriesSpy.mock.calls.at(-1)?.[0]).toEqual({ data: SERIES, valueFormat: "percent" });
+        expect(fact(container)).not.toBeNull();
+        expect(fact(container)).toHaveTextContent("Target baselineNot reported");
+        expect(fact(container)).not.toHaveTextContent("%");
+        // The hint stays, with the served days (2 in this answer).
+        expect(
+            within(fact(container) as HTMLElement).getByTitle(
+                "Running 30-day average of the organization's line coverage; 2 of the 30 days hold a value",
+            ),
+        ).toHaveTextContent("Not reported");
+    });
+
+    it("with a failed scope baseline read: the fact says 'Could not be read', no line, and the trend stays", async () => {
+        mockFetchCoverageScopeBaseline.mockResolvedValue({ fetchFailed: true });
+        const { container } = await renderPage();
+        expect(timeseriesSpy.mock.calls.at(-1)?.[0]).toEqual({ data: SERIES, valueFormat: "percent" });
+        expect(fact(container)).toHaveTextContent("Target baselineCould not be read");
+        expect(fact(container)).not.toHaveTextContent("Not reported");
+    });
+
+    it("asks for the scope baseline of the 30 days that end on the last day of the window, with no scope", async () => {
+        await renderPage(
+            f({
+                time: { range_days: 14, start_date: "2026-09-01", end_date: "2026-09-30" },
+                scope: { level: "team", ids: ["t1"] },
+                who: {},
+                what: {},
+                why: {},
+                how: {},
+            }),
+        );
+        expect(mockFetchCoverageScopeBaseline).toHaveBeenCalledTimes(1);
+        const [input, isTestMode] = mockFetchCoverageScopeBaseline.mock.calls[0];
+        // The trend is the organization's series whatever the scope: the baseline is asked for
+        // the same set.
+        expect(input).toEqual({ endDate: "2026-10-01" });
+        expect(isTestMode).toBe(false);
+    });
+
+    it("asks for the baselines of the 30 days that end on the last day of the window", async () => {
+        await renderPage(
+            f({
+                time: { range_days: 14, start_date: "2026-09-01", end_date: "2026-09-30" },
+                scope: { level: "team", ids: [] },
+                who: {},
+                what: {},
+                why: {},
+                how: {},
+            }),
+        );
+        expect(mockFetchCoverageBaselines).toHaveBeenCalledTimes(1);
+        const [input, isTestMode] = mockFetchCoverageBaselines.mock.calls[0];
+        // The API's end date is not included: the day after the window's last day.
+        expect(input).toEqual({ endDate: "2026-10-01" });
+        expect(isTestMode).toBe(false);
+    });
+
+    it("sends no scope to the baseline read when a repository or team scope is selected", async () => {
+        // The rows of this page are not narrowed by the scope (its coverage request sends no
+        // filter). A baseline list narrowed to the scope would have no row for the repositories
+        // outside it, and they would read "Not reported" though a baseline exists.
+        const scoped = (level: string, ids: string[]) =>
+            f({
+                time: { range_days: 14, start_date: "2026-09-01", end_date: "2026-09-14" },
+                scope: { level, ids },
+                who: {},
+                what: {},
+                why: {},
+                how: {},
+            });
+        await renderPage(scoped("repo", ["r1", "r2"]));
+        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({ endDate: "2026-09-15" });
+        // The coverage rows are asked without a filter too: the two reads cover the same set.
+        expect(mockFetchCoverageMetrics.mock.calls.at(-1)?.[0]).not.toHaveProperty("filters");
+        cleanup();
+        await renderPage(scoped("team", ["t1"]));
+        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({ endDate: "2026-09-15" });
+        expect(mockFetchCoverageMetrics.mock.calls.at(-1)?.[0]).not.toHaveProperty("filters");
+    });
+
+    it("says 'Could not be read' for the baselines when their read failed, and keeps the coverage values", async () => {
+        mockFetchCoverageBaselines.mockResolvedValue({ fetchFailed: true });
+        await renderPage();
+        const [repo] = within(screen.getByTestId("testops-coverage-baseline")).getAllByTestId(
+            "testops-coverage-baseline-repo",
+        );
+        expect(within(repo).getAllByTestId("meter-row")[0]).toHaveTextContent(
+            "Line coverage60% · baseline Could not be read",
+        );
+        const rows = within(screen.getByTestId("testops-repository-coverage-table")).getAllByTestId(
+            "testops-repository-coverage-row",
+        );
+        expect(
+            rows.map((row) =>
+                within(row)
+                    .getAllByRole("cell")
+                    .map((td) => td.textContent),
+            ),
+        ).toEqual([
+            ["dev-health-web", "60%", "Could not be read"],
+            [expect.not.stringContaining("0f2b9c1e-1111"), "72%", "Could not be read"],
+        ]);
     });
 
     it("shows empty states when no repository is served, and errors when the request failed", async () => {

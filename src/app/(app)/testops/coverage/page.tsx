@@ -14,8 +14,18 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
-import { COVERAGE_LINE_TARGET_PCT, TESTOPS_MEASURES } from "@/lib/testops/constants";
+import {
+    fetchCoverageBaselines,
+    fetchCoverageMetrics,
+    fetchCoverageScopeBaseline,
+} from "@/lib/testops/fetchers";
+import { TESTOPS_MEASURES } from "@/lib/testops/constants";
+import {
+    baselineEndDate,
+    baselineText,
+    scopeBaselineCell,
+    scopeBaselineHint,
+} from "@/lib/testops/coverageBaselines";
 import { BRANCH_BREAKDOWN_TOP_N, buildRepositoryCoverage } from "@/lib/testops/coverageRepos";
 import {
     TimeseriesResult,
@@ -73,8 +83,17 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
 
-    const [health, coverageData] = await Promise.all([
+    const [health, baselines, scopeBaselineState, coverageData] = await Promise.all([
         checkApiHealth(),
+        // The baseline of each repository: its own average over the 30 days that end on the
+        // window's last day (the API's end date is not included, so it is the day after).
+        // No scope is sent: the coverage request below sends no filter, so the rows of this page
+        // are not narrowed by the scope bar. A baseline list narrowed to the scope would have no
+        // row for the other repositories, and they would read "Not reported" though a baseline
+        // exists. The two reads cover the same set.
+        fetchCoverageBaselines({ endDate: baselineEndDate(endDate) }, isTestMode),
+        // The baseline of the whole set the trend below draws: the same 30 days, no scope.
+        fetchCoverageScopeBaseline({ endDate: baselineEndDate(endDate) }, isTestMode),
         fetchCoverageMetrics(
             {
                 timeseries: [
@@ -157,6 +176,10 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
           }))
         : [];
 
+    // The served baseline of the trend: a value, "Not reported" (null: fewer than 7 days hold a
+    // value) or "Could not be read". The web computes no mean of the repository baselines.
+    const scopeBaseline = scopeBaselineCell(scopeBaselineState);
+
     const repoBreakdown = (measure: string) =>
         coverageBreakdowns.find(
             (b: NullableBreakdownResult) => b.dimension === "REPO" && b.measure === measure,
@@ -203,7 +226,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
 
             <CoverageBaselineCard
                 repositories={repositories}
-                baselinePct={COVERAGE_LINE_TARGET_PCT}
+                baselines={baselines}
                 fetchFailed={fetchFailed}
             />
 
@@ -215,10 +238,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         message="Coverage analytics could not be loaded. The repositories will reappear once the data service recovers."
                     />
                 ) : (
-                    <RepositoryCoverageTable
-                        rows={repositories}
-                        baselinePct={COVERAGE_LINE_TARGET_PCT}
-                    />
+                    <RepositoryCoverageTable rows={repositories} baselines={baselines} />
                 )}
             </Section>
 
@@ -228,9 +248,16 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                 headingLevel="h2"
                 interpretation="Line coverage appears over time so drops are visible before they become release risk."
                 direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
+                // The fact stays whatever the answer: the served value, "Not reported" or "Could
+                // not be read". The target is the running 30-day average of the organization's
+                // coverage (no scope is sent); its hint says so, with the served days.
                 threshold={{
                     label: "Target baseline",
-                    value: `${COVERAGE_LINE_TARGET_PCT}%`,
+                    value: (
+                        <span title={scopeBaselineHint(scopeBaselineState)}>
+                            {baselineText(scopeBaseline)}
+                        </span>
+                    ),
                     tone: "info",
                 }}
                 isError={fetchFailed}
@@ -240,13 +267,13 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                 stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
             >
                 <div className="h-64">
+                    {/* The baseline line is the served value; no line when none is served. */}
                     <TimeseriesChart
                         data={timeseriesData}
                         valueFormat="percent"
-                        baseline={{
-                            value: COVERAGE_LINE_TARGET_PCT,
-                            label: "Target baseline",
-                        }}
+                        {...(scopeBaseline.kind === "value"
+                            ? { baseline: { value: scopeBaseline.pct, label: "Target baseline" } }
+                            : {})}
                     />
                 </div>
             </ChartFrame>

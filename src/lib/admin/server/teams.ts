@@ -113,10 +113,3 @@ export async function dismissTeamChanges(
         return result;
     });
 }
-
-export async function triggerTeamDriftSync(): Promise<ActionResult<{ status: string }>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
-        return adminApi.teams.triggerDriftSync(token, orgId);
-    });
-}
