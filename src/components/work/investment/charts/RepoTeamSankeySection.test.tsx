@@ -60,7 +60,7 @@ describe("RepoTeamSankeySection — unavailable vs measured absence", () => {
         expect(screen.getByTestId("mock-sankey-chart")).toBeInTheDocument();
     });
 
-    it("asks the chart for node values and draws a theme with its canonical name (CHAOS-8565)", () => {
+    it("asks the chart for node values and draws a theme with the Investment tabs' short name (CHAOS-8565)", () => {
         sankeySpy.mockClear();
         renderSection(withTeams);
         const props = sankeySpy.mock.calls.at(-1)?.[0] as {
@@ -68,7 +68,7 @@ describe("RepoTeamSankeySection — unavailable vs measured absence", () => {
             nodeLabelAction?: (label: string, group: string | undefined) => string;
         };
         expect(props.showNodeValues).toBe(true);
-        expect(props.nodeLabelAction?.("quality", "category")).toBe("Quality / Reliability");
+        expect(props.nodeLabelAction?.("quality", "category")).toBe("Quality");
         expect(props.nodeLabelAction?.("acme/api", "repo")).toBe("acme/api");
     });
 
