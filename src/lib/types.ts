@@ -117,6 +117,19 @@ export type DataConfidence = {
 };
 
 /**
+ * Server-produced confidence for the repositories selected by the Home scope.
+ * It is separate from the organization-wide `data_confidence` assessment.
+ */
+export type ScopeDataConfidence = {
+    level: ConfidenceLevel;
+    /** Null when the selected scope has no repository denominator. */
+    coverage_pct: number | null;
+    /** Null when the selected scope has no in-window repository metrics. */
+    last_ingested_at: string | null;
+    caveats: string[];
+};
+
+/**
  * Per-theme rework allocation breakdown from `/api/v1/home`.
  * Field names match the ops REST schema exactly (snake_case).
  * Themes are canonical lowercase keys: feature_delivery | operational |
@@ -144,6 +157,7 @@ export type HomeResponse = {
     signals?: CockpitSignal[];
     limiting_factor?: LimitingFactor;
     data_confidence?: DataConfidence;
+    scope_data_confidence?: ScopeDataConfidence;
     /** Rework distribution by investment theme (CHAOS-2163). Optional for back-compat. */
     rework_theme_allocation?: ReworkThemeAllocation[];
 };

@@ -122,6 +122,12 @@ const graphqlFixture: HomeGraphQLResult = {
         missingSources: [],
         caveats: [],
     },
+    scopeDataConfidence: {
+        level: "medium",
+        coveragePct: 50,
+        lastIngestedAt: "2026-09-28T01:00:00Z",
+        caveats: ["Repository metrics are partial for this window."],
+    },
 };
 
 describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", () => {
@@ -234,6 +240,12 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
             missing_sources: [],
             caveats: [],
         });
+        expect(result.scope_data_confidence).toEqual({
+            level: "medium",
+            coverage_pct: 50,
+            last_ingested_at: "2026-09-28T01:00:00Z",
+            caveats: ["Repository metrics are partial for this window."],
+        });
     });
 
     it("handles a null scopeEntity (org-wide signal) without inventing one", () => {
@@ -253,6 +265,30 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         });
 
         expect(result.freshness.coverage).toBeNull();
+    });
+
+    it("keeps an empty selected scope distinct from a measured zero", () => {
+        const emptyScope = toHomeResponse({
+            ...graphqlFixture,
+            scopeDataConfidence: {
+                ...graphqlFixture.scopeDataConfidence,
+                coveragePct: null,
+                lastIngestedAt: null,
+                caveats: ["The selected scope has no repositories."],
+            },
+        });
+        const measuredZero = toHomeResponse({
+            ...graphqlFixture,
+            scopeDataConfidence: {
+                ...graphqlFixture.scopeDataConfidence,
+                coveragePct: 0,
+                lastIngestedAt: null,
+                caveats: ["No repository metrics exist for this scope."],
+            },
+        });
+
+        expect(emptyScope.scope_data_confidence).toMatchObject({ coverage_pct: null });
+        expect(measuredZero.scope_data_confidence).toMatchObject({ coverage_pct: 0 });
     });
 
     it("handles empty freshness.sources and tiles as empty dicts, not undefined", () => {

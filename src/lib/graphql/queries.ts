@@ -1247,6 +1247,12 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       missingSources
       caveats
     }
+    scopeDataConfidence {
+      level
+      coveragePct
+      lastIngestedAt
+      caveats
+    }
   }
 }
 `;

@@ -1050,9 +1050,22 @@ export type HomeResult = {
   healthState: HealthState;
   limitingFactor: HomeLimitingFactor;
   reworkThemeAllocation: Array<ReworkThemeAllocation>;
+  /** Coverage and ingestion quality for the selected repository scope; distinct from org-wide dataConfidence. */
+  scopeDataConfidence: HomeScopeDataConfidence;
   signals: Array<HomeSignal>;
   summary: Array<SummarySentence>;
   tiles: Array<HomeTileEntry>;
+};
+
+/** Coverage and metric-ingestion quality for the repositories selected by this Home request. */
+export type HomeScopeDataConfidence = {
+  __typename?: 'HomeScopeDataConfidence';
+  caveats: Array<Scalars['String']['output']>;
+  /** Null when the selected scope has no repositories. */
+  coveragePct?: Maybe<Scalars['Float']['output']>;
+  /** Most recent in-window repository-metric ingestion, or null when the scope has none. */
+  lastIngestedAt?: Maybe<Scalars['String']['output']>;
+  level: Scalars['String']['output'];
 };
 
 export type HomeSignal = {
