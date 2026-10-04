@@ -57,6 +57,8 @@ type EvidencePanelData = {
     evidence: EvidenceItem[];
     actions: Action[];
     provenance?: EvidenceProvenance;
+    /** The served drivers: a driver row keeps its served change even when it is also a repository. */
+    drivers?: Contributor[];
     /** Served by explain for a repository-stored metric (CHAOS-8103); null = not stored per repository. */
     repositories?: ExplainRepository[] | null;
     /** Served by explain for a one-repository scope: the provider page (https). */
@@ -535,7 +537,7 @@ export function EvidencePanel({
                                 </p>
                             </div>
                         ) : null}
-                        {drawnEvidence(data.evidence, data.repositories)}
+                        {drawnEvidence(data.evidence, data.repositories, data.drivers)}
                         <EvidenceRepositories repositories={data.repositories} unit={data.unit} />
                         <EvidenceSourceLink url={data.source_url} />
                         <SuggestedActions actions={data.actions || []} />
@@ -553,15 +555,16 @@ export function EvidencePanel({
 
 /**
  * The "Supporting evidence" block. A repository-stored metric serves `repositories` from the same
- * rows as its contributors (ops #3775): a row whose id is one of them is drawn once, under
- * "Supporting repositories", not again here (CHAOS-8587, rule C1). Every other row (the drivers,
- * with their served change) stays. The "no contributing artifacts" note is a missing-data note: it
- * shows when nothing was served, whatever `repositories` is. With it null or absent the block is
- * exactly as before.
+ * rows as its contributors (ops #3775): a CONTRIBUTOR-ONLY row whose id is one of them is drawn
+ * once, under "Supporting repositories", not again here (CHAOS-8587, final rule). A row that is
+ * also a driver stays, with its served change. The "no contributing artifacts" note is a
+ * missing-data note: it shows when nothing was served, whatever `repositories` is. With
+ * `repositories` null or absent the block is exactly as before.
  */
 function drawnEvidence(
     evidence: EvidenceItem[] | undefined,
     repositories?: ExplainRepository[] | null,
+    drivers?: Contributor[],
 ) {
     const rows = evidence ?? [];
     // The missing-data note depends on what was SERVED, not on what is left after the filter.
@@ -575,8 +578,13 @@ function drawnEvidence(
     }
     if (!Array.isArray(repositories)) return <EvidenceItems items={rows} />;
     const own = new Set(repositories.map((repo) => repo.id));
-    // Draws nothing when every row was a repository (EvidenceItems returns null for an empty list).
-    return <EvidenceItems items={rows.filter((row) => !own.has(row.id))} />;
+    const driverIds = new Set((drivers ?? []).map((driver) => driver.id));
+    // A contributor-only row that is a repository is drawn once, under "Supporting repositories".
+    // A row that is also a driver stays: its served change must never vanish. EvidenceItems draws
+    // nothing for an empty list.
+    return (
+        <EvidenceItems items={rows.filter((row) => !own.has(row.id) || driverIds.has(row.id))} />
+    );
 }
 
 /**

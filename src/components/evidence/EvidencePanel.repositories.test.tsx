@@ -236,6 +236,38 @@ describe("the same rows are not drawn twice", () => {
         expect(screen.getAllByText("acme/api")).toHaveLength(1);
     });
 
+    it("a repository that is also a driver keeps its change row (a served change never vanishes) and still shows under Supporting repositories", async () => {
+        await open({
+            drivers: [
+                {
+                    id: "r1",
+                    label: "acme/api",
+                    display_name: "acme/api",
+                    value: 1200,
+                    delta_pct: 9,
+                    evidence_link: "",
+                },
+            ],
+            contributors,
+            repositories: [
+                { id: "r1", name: "acme/api", value: 1200, source_url: null },
+                { id: "r2", name: "acme/web", value: 34, source_url: null },
+            ],
+        });
+        const supporting = screen.getByTestId("evidence-supporting");
+        const rows = within(supporting).getAllByTestId("evidence-supporting-row");
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toHaveTextContent("acme/api");
+        expect(rows[0]).toHaveTextContent("+9%");
+        // the contributor-only repository is drawn once
+        expect(within(supporting).queryByText("acme/web")).toBeNull();
+        expect(screen.getAllByText("acme/web")).toHaveLength(1);
+        // the driver repository is in both places
+        expect(
+            within(screen.getByTestId("evidence-repositories")).getByText("acme/api"),
+        ).toBeInTheDocument();
+    });
+
     it("C1: a contributor that is NOT in repositories is kept", async () => {
         await open({
             contributors,
