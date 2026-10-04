@@ -1301,6 +1301,8 @@ export type OperatingReview = {
 export type OperatingReviewDelta = {
   __typename?: 'OperatingReviewDelta';
   absolute: Scalars['Float']['output'];
+  /** False = the prior week holds no stored value for the metric (CHAOS-8115); see ``OperatingReviewMetric.hasData``. ``priorValue`` is then a 0 placeholder, and ``absolute``, ``percent`` and ``status`` compare with that placeholder: a client draws "No data" for the prior week and no change. */
+  hasPriorData: Scalars['Boolean']['output'];
   percent?: Maybe<Scalars['Float']['output']>;
   priorValue: Scalars['Float']['output'];
   status: Scalars['String']['output'];
@@ -1315,6 +1317,8 @@ export type OperatingReviewInput = {
 export type OperatingReviewMetric = {
   __typename?: 'OperatingReviewMetric';
   delta: OperatingReviewDelta;
+  /** True = the week holds a stored value for the metric (CHAOS-8115). False = no row of the metric's daily table in the week, only NULL values, or a read that failed: ``value`` is then a 0 placeholder, not a measured zero, and a client draws "No data". True with ``value`` 0 is a stored zero. */
+  hasData: Scalars['Boolean']['output'];
   key: Scalars['String']['output'];
   label: Scalars['String']['output'];
   unit: Scalars['String']['output'];
