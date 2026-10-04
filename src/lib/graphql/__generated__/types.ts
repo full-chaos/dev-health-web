@@ -1915,10 +1915,20 @@ export type ReportRunType = {
 
 export type ReviewEdgeRow = {
   __typename?: 'ReviewEdgeRow';
+  /** The stored identity of the author: the pull request's author e-mail address when there is one, else its author name, else "unknown". It can be an e-mail address. Deprecated in favour of authorName and authorKey (CHAOS-8485): a client that may not show an e-mail address must not select it. */
   author: Scalars['String']['output'];
+  /** An opaque key of the author inside the org (CHAOS-8485); see reviewerKey. */
+  authorKey: Scalars['String']['output'];
+  /** The author's display name (CHAOS-8485): the display name of the org's identity the stored author belongs to; else, for an author stored by e-mail address, the author name the provider gave on the pull request; else the stored author itself when it is not an e-mail address. Never an e-mail address. Null = no name is known. */
+  authorName?: Maybe<Scalars['String']['output']>;
   day: Scalars['Date']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** The stored identity of the reviewer: a provider login or a display name. Deprecated in favour of reviewerName and reviewerKey (CHAOS-8485); it stays for clients that still read it. */
   reviewer: Scalars['String']['output'];
+  /** An opaque key of the reviewer inside the org (CHAOS-8485): the same person has the same key in every answer, as reviewer and as author when the identity resolves. It is not an e-mail address and not a name; use it only to tell people apart and to join rows. */
+  reviewerKey: Scalars['String']['output'];
+  /** The reviewer's display name (CHAOS-8485): the display name of the org's identity the stored reviewer belongs to; else the stored reviewer itself when it is not an e-mail address (a provider login). Never an e-mail address. Null = no name is known. */
+  reviewerName?: Maybe<Scalars['String']['output']>;
   reviewsCount: Scalars['Int']['output'];
 };
 
