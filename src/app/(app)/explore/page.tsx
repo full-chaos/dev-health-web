@@ -295,7 +295,13 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title={metricLabel}
-                trailLeaf={metricEvidenceLeaf("/explore", { metric, api: apiParam }) ?? undefined}
+                trailLeaf={
+                    // The page names the metric by the served label (as its title); the top bar has
+                    // only the URL, so it uses the catalog label.
+                    metricEvidenceLeaf("/explore", { metric, api: apiParam })
+                        ? `${metricLabel} evidence`
+                        : undefined
+                }
                 subtitle={
                     isBlockedWork
                         ? "Evidence table for the selected metric."
