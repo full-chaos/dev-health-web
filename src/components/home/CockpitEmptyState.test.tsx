@@ -19,6 +19,7 @@ describe("CockpitEmptyState", () => {
             const root = screen.getByTestId(`cockpit-empty-${variant}`);
             expect(root).toHaveAttribute("data-variant", variant);
             expect(screen.getByText(title)).toBeInTheDocument();
+            expect(root.querySelector("svg")).toBeInTheDocument();
         },
     );
 
