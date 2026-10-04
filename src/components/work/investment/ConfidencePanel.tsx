@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { buttonClassName } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
+import { allocationNodeLabel } from "@/lib/allocationSelection";
 import { CTA_LABELS } from "@/lib/design/cta";
 import Link from "next/link";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -364,7 +365,11 @@ export function ConfidencePanel({
                         {reworkThemeAllocation.map((row) => (
                             <li key={row.theme}>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">{row.label}</span>
+                                    <span className="font-medium">
+                                        {row.theme
+                                            ? allocationNodeLabel(row.theme, "category")
+                                            : row.label}
+                                    </span>
                                     <span className="text-xs text-(--ink-muted)">
                                         {formatNumber(row.allocation_pct, {
                                             maximumFractionDigits: 1,

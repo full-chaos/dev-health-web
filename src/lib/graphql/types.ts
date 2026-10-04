@@ -533,6 +533,12 @@ export interface OperatingReviewDelta {
     absolute: number;
     percent?: number | null;
     status: OperatingReviewDeltaStatus;
+    /**
+     * The prior week holds a stored value (CHAOS-8115). False = `priorValue`, `absolute`, `percent`
+     * and `status` compare with a 0 placeholder. Absent in an answer of an API before the flag:
+     * read it as true.
+     */
+    hasPriorData?: boolean;
 }
 
 export interface OperatingReviewMetric {
@@ -540,6 +546,12 @@ export interface OperatingReviewMetric {
     label: string;
     value: number;
     unit: string;
+    /**
+     * The week holds a stored value (CHAOS-8115). False = `value` is a 0 placeholder: "No data",
+     * never 0. A stored zero is true with value 0. Absent in an answer of an API before the flag:
+     * read it as true.
+     */
+    hasData?: boolean;
     delta: OperatingReviewDelta;
 }
 
