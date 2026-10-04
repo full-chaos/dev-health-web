@@ -6,10 +6,17 @@ import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
-import { Contributor, HomeResponse, InvestmentResponse, OpportunitiesResponse } from "@/lib/types";
+import {
+    Contributor,
+    ExplainRepository,
+    HomeResponse,
+    InvestmentResponse,
+    OpportunitiesResponse,
+} from "@/lib/types";
 import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
 import { EvidenceFact, EvidenceFactList, EvidenceProvenanceFacts } from "./EvidenceFacts";
 import { EvidenceItems, type EvidenceItem } from "./EvidenceItems";
+import { EvidenceRepositories, EvidenceSourceLink } from "./EvidenceRepositories";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -50,6 +57,10 @@ type EvidencePanelData = {
     evidence: EvidenceItem[];
     actions: Action[];
     provenance?: EvidenceProvenance;
+    /** Served by explain for a repository-stored metric (CHAOS-8103); null = not stored per repository. */
+    repositories?: ExplainRepository[] | null;
+    /** Served by explain for a one-repository scope: the provider page (https). */
+    source_url?: string | null;
 };
 
 type EvidencePanelResult = Partial<EvidencePanelData> & {
@@ -532,6 +543,8 @@ export function EvidencePanel({
                                 window. This is a partial-data state, not a zero signal.
                             </div>
                         )}
+                        <EvidenceRepositories repositories={data.repositories} unit={data.unit} />
+                        <EvidenceSourceLink url={data.source_url} />
                         <SuggestedActions actions={data.actions || []} />
                     </>
                 ) : (
