@@ -63,7 +63,7 @@ describe("ImproveAutomationsDashboard", () => {
         expect(tiles().queryByText("High WIP")).toBeNull();
     });
 
-    it("shows a table with Captured entity, Value and Threshold columns; Value and Threshold read Not reported until they are served", () => {
+    it("shows a table with Captured entity, Value and Threshold columns; Value and Threshold read Not reported when they are not served", () => {
         hook.mockReturnValue(result());
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
 
@@ -133,6 +133,120 @@ describe("ImproveAutomationsDashboard", () => {
         expect(rows).toContainEqual(["Recommended", "Add a second reviewer rota"]);
         expect(rows).toContainEqual(["Evidence reference 1", "review_latency"]);
         expect(rows).toContainEqual(["Evidence reference 2", "cycle_time"]);
+    });
+
+    // CHAOS-8500: the API serves the rule's own numbers (value, threshold, unit, thresholdDirection).
+    // The table shows them as served; the unit only decides how the number is written.
+    it.each([
+        [
+            "hours, above",
+            { value: 52.04, threshold: 24, unit: "HOURS", thresholdDirection: "ABOVE" },
+            "52 h",
+            "> 24 h",
+            "above 24 h",
+        ],
+        [
+            "a ratio, above: written as a percent",
+            { value: 0.56, threshold: 0.3, unit: "RATIO", thresholdDirection: "ABOVE" },
+            "56%",
+            "> 30%",
+            "above 30%",
+        ],
+        [
+            "a ratio over 1",
+            { value: 1.08, threshold: 0.4, unit: "RATIO", thresholdDirection: "ABOVE" },
+            "108%",
+            "> 40%",
+            "above 40%",
+        ],
+        [
+            "items, below; a served 0 is a value",
+            { value: 0, threshold: 2, unit: "ITEMS", thresholdDirection: "BELOW" },
+            "0 items",
+            "< 2 items",
+            "below 2 items",
+        ],
+        [
+            "one item",
+            { value: 1, threshold: 1, unit: "ITEMS", thresholdDirection: "BELOW" },
+            "1 item",
+            "< 1 item",
+            "below 1 item",
+        ],
+        [
+            "hours with a fraction",
+            { value: 160.5, threshold: 120, unit: "HOURS", thresholdDirection: "ABOVE" },
+            "160.5 h",
+            "> 120 h",
+            "above 120 h",
+        ],
+    ])("shows the served value and threshold: %s", (_name, served, value, threshold, spoken) => {
+        hook.mockReturnValue(result({ opportunities: [item(served)] }));
+        render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
+
+        const row = within(screen.getByTestId("improve-automations-row"));
+        expect(row.getByTestId("detection-value").textContent).toBe(value);
+        expect(row.getByTestId("detection-threshold").textContent).toBe(threshold);
+        // The direction sign has words for a screen reader.
+        expect(row.getByTestId("detection-threshold")).toHaveAttribute("aria-label", spoken);
+    });
+
+    it.each([
+        [
+            "no value",
+            { value: null, threshold: 24, unit: "HOURS", thresholdDirection: "ABOVE" },
+            "Not reported",
+            "> 24 h",
+        ],
+        [
+            "no threshold",
+            { value: 52, threshold: null, unit: "HOURS", thresholdDirection: "ABOVE" },
+            "52 h",
+            "Not reported",
+        ],
+        [
+            "no unit",
+            { value: 52, threshold: 24, unit: null, thresholdDirection: "ABOVE" },
+            "Not reported",
+            "Not reported",
+        ],
+        [
+            "no direction",
+            { value: 52, threshold: 24, unit: "HOURS", thresholdDirection: null },
+            "52 h",
+            "24 h",
+        ],
+        [
+            "a value that is not a number",
+            { value: Number.NaN, threshold: 24, unit: "HOURS", thresholdDirection: "ABOVE" },
+            "Not reported",
+            "> 24 h",
+        ],
+    ])(
+        "reads 'Not reported' for the part that is not served: %s",
+        (_name, served, value, threshold) => {
+            hook.mockReturnValue(result({ opportunities: [item(served)] }));
+            render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
+
+            const row = within(screen.getByTestId("improve-automations-row"));
+            expect(row.getByTestId("detection-value").textContent).toBe(value);
+            expect(row.getByTestId("detection-threshold").textContent).toBe(threshold);
+        },
+    );
+
+    it("writes a unit it does not know as served, never as a guess", () => {
+        hook.mockReturnValue(
+            result({
+                opportunities: [
+                    item({ value: 3, threshold: 5, unit: "DAYS", thresholdDirection: "ABOVE" }),
+                ],
+            }),
+        );
+        render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
+
+        const row = within(screen.getByTestId("improve-automations-row"));
+        expect(row.getByTestId("detection-value").textContent).toBe("3 DAYS");
+        expect(row.getByTestId("detection-threshold").textContent).toBe("> 5 DAYS");
     });
 
     it("says 'Not reported' for a detection with no evidence references", async () => {

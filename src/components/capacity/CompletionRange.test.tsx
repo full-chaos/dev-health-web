@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen } from "@/test/utils";
 import type { CapacityForecast } from "@/lib/graphql/types";
@@ -32,7 +32,7 @@ vi.mock("@/components/charts/Chart", () => ({
 
 import { CompletionRange } from "./CompletionRange";
 
-type Mark = { xAxis: number; label: { formatter: string } };
+type Mark = { xAxis: number; label: { formatter: string; align?: string } };
 type Series = {
     type: string;
     step?: string;
@@ -88,7 +88,16 @@ const base = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
     ...over,
 });
 
-beforeEach(() => chartSpy.mockClear());
+beforeEach(() => {
+    chartSpy.mockClear();
+    // A date shows its year when it is not in this year, so "today" is fixed: the day the fixture
+    // forecast was computed.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T12:00:00Z"));
+});
+afterEach(() => {
+    vi.useRealTimers();
+});
 
 describe("CompletionRange — the curve is the served points", () => {
     it("draws one point per served bin: the served day and the served cumulative share", () => {
@@ -350,7 +359,7 @@ describe("CompletionRange — runs that did not finish inside the horizon", () =
         );
         expect(unfinishedLine()).toBeNull();
         // with no served horizon no day is "the horizon": the markers keep their served dates
-        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1 · 365 days");
+        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1, 2027 · 365 days");
     });
 
     it("leaves the run total out of the sentence when it is not served", () => {
@@ -413,7 +422,7 @@ describe("CompletionRange — runs that did not finish inside the horizon", () =
         );
         const text = option().tooltip.formatter({ data: [365, 0.6] });
         expect(text).toContain("80 of 200 runs ended on this day");
-        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1 · 365 days");
+        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1, 2027 · 365 days");
     });
 
     it("draws the curve also when no run finished: one served point at 0%", () => {
@@ -433,6 +442,67 @@ describe("CompletionRange — runs that did not finish inside the horizon", () =
             "data-reported",
             "false",
         );
+    });
+});
+
+// CHAOS-8556: one date rule on the page. A date in another calendar year than today shows its
+// year, on the card as on the tiles: "Jan 31" for a day in the next year reads as a day of this
+// year.
+describe("CompletionRange — dates in another calendar year", () => {
+    const longForecast = () =>
+        base({
+            computedAt: "2026-10-03T19:05:00Z",
+            p50Days: 1,
+            p85Days: 100,
+            p95Days: 120,
+            p50Date: "2026-10-04",
+            p85Date: "2027-01-11",
+            p95Date: "2027-01-31",
+            completionDistribution: {
+                runs: 100,
+                unfinishedRuns: 0,
+                horizonDays: 365,
+                days: [
+                    { value: 1, count: 60, cumulativeShare: 0.6 },
+                    { value: 100, count: 26, cumulativeShare: 0.86 },
+                    { value: 120, count: 14, cumulativeShare: 1 },
+                ],
+                items: null,
+            },
+        });
+
+    it("a marker shows the year of a served date in another year, and no year for this year", () => {
+        vi.setSystemTime(new Date("2026-10-03T20:00:00Z"));
+        render(<CompletionRange forecast={longForecast()} />);
+        expect(curve().markLine!.data.map((mark) => mark.label.formatter)).toEqual([
+            "P50 · Oct 4 · 1 day",
+            "P85 · Jan 11, 2027 · 100 days",
+            "P95 · Jan 31, 2027 · 120 days",
+        ]);
+    });
+
+    // A label with a year is longer. A marker near the right end of the axis has its label end
+    // at the line, so the label is not cut at the edge of the chart; the others stay centred.
+    it("the label of a marker near the right end of the axis ends at its line, so it is not cut off", () => {
+        vi.setSystemTime(new Date("2026-10-03T20:00:00Z"));
+        render(<CompletionRange forecast={longForecast()} />);
+        expect(
+            curve().markLine!.data.map((mark) => [mark.xAxis, mark.label.align ?? "center"]),
+        ).toEqual([
+            [1, "center"],
+            [100, "center"],
+            [120, "right"],
+        ]);
+    });
+
+    it("the day axis and the tooltip heading show the year of a day in another year", () => {
+        vi.setSystemTime(new Date("2026-10-03T20:00:00Z"));
+        render(<CompletionRange forecast={longForecast()} />);
+        const { xAxis, tooltip } = option();
+        expect(xAxis.axisLabel.formatter(1)).toBe("Oct 4");
+        expect(xAxis.axisLabel.formatter(100)).toBe("Jan 11, 2027");
+        expect(tooltip.formatter({ data: [120, 1] })).toContain("Jan 31, 2027");
+        expect(tooltip.formatter({ data: [1, 0.6] })).not.toContain("2026");
     });
 });
 

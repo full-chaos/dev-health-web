@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen, within } from "@/test/utils";
 
@@ -22,7 +22,13 @@ const ORIGINAL_ZONE = process.env.TZ;
 const useZone = (zone: string) => {
     process.env.TZ = zone;
 };
+// A date shows its year when it is not in this year, so "today" is fixed: the day of the fixture.
+beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-03T19:05:00Z"));
+});
 afterEach(() => {
+    vi.useRealTimers();
     if (ORIGINAL_ZONE === undefined) delete process.env.TZ;
     else process.env.TZ = ORIGINAL_ZONE;
 });

@@ -8,6 +8,7 @@ import { Section } from "@/components/ui/Section";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { OpportunityCard as OpportunityCardData } from "@/lib/types";
 
+import { capturedChangeValue } from "./capturedChange";
 import { OpportunityCard } from "./OpportunityCard";
 
 type OpportunityMasterDetailProps = {
@@ -17,7 +18,8 @@ type OpportunityMasterDetailProps = {
 };
 
 /**
- * List on the left (title and the rationale sentence), the selected opportunity on the right.
+ * List on the left (title and the served change, "+1,041% · captured change", as the prototype),
+ * the selected opportunity on the right.
  * Selection is local state: opportunity ids are positional, so no address parameter carries it.
  */
 export function OpportunityMasterDetail({
@@ -56,7 +58,7 @@ export function OpportunityMasterDetail({
                                             {item.title}
                                         </span>
                                         <span className="mt-1 block text-xs text-(--ink-muted)">
-                                            {item.rationale}
+                                            {capturedChangeValue(item)} · captured change
                                         </span>
                                     </span>
                                     <ArrowRight
