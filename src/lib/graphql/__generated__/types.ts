@@ -252,8 +252,12 @@ export type AiOpportunity = {
   opportunityId: Scalars['String']['output'];
   rationale: Scalars['String']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** The repository's full name in the org's repository catalogue (CHAOS-8114). Null = the catalogue holds no name for ``repoId``, or the catalogue could not be read. It is never the id. */
+  repoName?: Maybe<Scalars['String']['output']>;
   score: Scalars['Float']['output'];
   teamId?: Maybe<Scalars['String']['output']>;
+  /** The name of the team ``teamId`` names, from the org's team catalogue (CHAOS-8114). Null = the opportunity has no team, the catalogue holds no name for it, or the catalogue could not be read. It is never the id. */
+  teamName?: Maybe<Scalars['String']['output']>;
   title: Scalars['String']['output'];
   workGraphDrilldowns: Array<AiWorkGraphDrilldownRef>;
 };

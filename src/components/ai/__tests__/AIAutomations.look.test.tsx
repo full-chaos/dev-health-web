@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 
 const { mockOpps } = vi.hoisted(() => ({ mockOpps: vi.fn() }));
 
@@ -47,7 +47,7 @@ describe("Automations look (CHAOS-7772)", () => {
         expect(chip.className).toContain("border-(--card-stroke)");
     });
 
-    it("never prints raw repo or team ids: short token plus Unresolved badge (A7)", () => {
+    it("never prints raw repo or team ids: with no served name the line reads 'Not reported', with no id token and no badge", () => {
         mockOpps.mockReturnValue({
             fetching: false,
             error: undefined,
@@ -73,6 +73,12 @@ describe("Automations look (CHAOS-7772)", () => {
         const item = screen.getByRole("listitem");
         expect(item).not.toHaveTextContent("11111111-2222-3333-4444-555555555555");
         expect(item).not.toHaveTextContent("66666666-7777-8888-9999-000000000000");
-        expect(item).toHaveTextContent("Unresolved");
+        // No short token of an id either, and no "Unresolved" badge: a name is served or it is not.
+        expect(item).not.toHaveTextContent("11111111");
+        expect(item).not.toHaveTextContent("66666666");
+        expect(item).not.toHaveTextContent("Unresolved");
+        expect(within(item).getByTestId("ai-opportunity-scope")).toHaveTextContent(
+            "repeat work · Repository: Not reported · Team: Not reported",
+        );
     });
 });
