@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useRef, type RefObject } from "react";
 
-import fcLogo from "@/assets/fc-logo.png";
+import fcLogo from "@/assets/fc-logo.svg";
 import { UserMenu } from "@/components/auth/UserMenu";
 import {
     OrgSwitcher,
@@ -107,9 +107,8 @@ export function ShellSidebar({
                         <Image
                             src={fcLogo}
                             alt="Full Chaos Dev Health logo"
-                            width={32}
+                            width={33}
                             height={32}
-                            sizes="32px"
                             className="h-8 w-auto"
                             priority
                         />
