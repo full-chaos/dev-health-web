@@ -146,4 +146,86 @@ describe("HeatmapChart", () => {
             expect(svg).toContain(item.itemStyle.color);
         }
     });
+
+    describe("weekHours layout (CHAOS-8568): display order only", () => {
+        const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const HOURS = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
+        // A distinct value per (day, hour): the value names its own cell.
+        const cells = DAYS.flatMap((day, d) =>
+            HOURS.map((hour, h) => ({ x: hour, y: day, value: d * 100 + h + 1 })),
+        );
+        const weekData: HeatmapResponse = {
+            axes: { x: HOURS, y: DAYS },
+            cells,
+            legend: { unit: "hours", scale: "linear" },
+        };
+
+        type Opt = {
+            xAxis: { data: string[]; position: string; axisLabel: { interval: number } };
+            yAxis: { data: string[]; inverse: boolean };
+            series: Array<{ data: Array<{ value: [string, string, number, number] }> }>;
+        };
+        const optionOf = (weekHours: boolean) => {
+            chartSpy.mockClear();
+            render(<HeatmapChart data={weekData} weekHours={weekHours} />);
+            return (chartSpy.mock.calls[0][0] as { option: EChartsOption })
+                .option as unknown as Opt;
+        };
+
+        it("keeps every cell on its own (hour, weekday) pair and the axes in served order", () => {
+            for (const weekHours of [false, true]) {
+                const option = optionOf(weekHours);
+                expect(option.xAxis.data).toEqual(HOURS);
+                expect(option.yAxis.data).toEqual(DAYS);
+                const drawn = option.series[0].data.map((item) => item.value);
+                expect(drawn).toHaveLength(cells.length);
+                drawn.forEach(([hour, day, value], index) => {
+                    expect([hour, day, value]).toEqual([
+                        cells[index].x,
+                        cells[index].y,
+                        cells[index].value,
+                    ]);
+                    // The value was built from the pair: day index * 100 + hour index + 1.
+                    expect(value).toBe(DAYS.indexOf(day) * 100 + HOURS.indexOf(hour) + 1);
+                });
+            }
+        });
+
+        it("draws Mon at the top row and Sun at the bottom, hours left to right, through a real chart", () => {
+            const props = (() => {
+                optionOf(true);
+                return chartSpy.mock.calls[0][0] as { option: EChartsOption };
+            })();
+            echarts.use([SVGRenderer]);
+            const chart = echarts.init(null, null, {
+                renderer: "svg",
+                ssr: true,
+                width: 1200,
+                height: 400,
+            });
+            chart.setOption(props.option);
+            const at = (hour: string, day: string) =>
+                chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [hour, day]) as number[];
+            const tops = DAYS.map((day) => at("00", day)[1]);
+            const lefts = HOURS.map((hour) => at(hour, "Mon")[0]);
+            chart.dispose();
+            for (let i = 1; i < tops.length; i += 1) expect(tops[i]).toBeGreaterThan(tops[i - 1]);
+            for (let i = 1; i < lefts.length; i += 1)
+                expect(lefts[i]).toBeGreaterThan(lefts[i - 1]);
+        });
+
+        it("labels every third hour, with the hour axis on top", () => {
+            const option = optionOf(true);
+            expect(option.xAxis.axisLabel.interval).toBe(2);
+            expect(option.xAxis.position).toBe("top");
+            expect(option.yAxis.inverse).toBe(true);
+        });
+
+        it("leaves every other heatmap as it was", () => {
+            const option = optionOf(false);
+            expect(option.xAxis.axisLabel.interval).toBe(0);
+            expect(option.xAxis.position).toBe("bottom");
+            expect(option.yAxis.inverse).toBe(false);
+        });
+    });
 });

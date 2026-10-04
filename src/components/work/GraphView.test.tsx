@@ -1484,30 +1484,26 @@ describe("GraphView", () => {
             refetch: vi.fn(),
         });
 
-        // Rows as the page hands them over: the served rows after the server step that takes
-        // e-mail addresses out (CHAOS-7973). These people have a login, so the login is the name.
+        // Rows as the page hands them over: the served rows (a key and a display name for each
+        // person, CHAOS-8485) after the last server step (CHAOS-7973).
+        const servedRow = (
+            reviewer: string,
+            author: string,
+            reviewsCount: number,
+            day: string,
+        ) => ({
+            reviewerKey: `k-${reviewer}`,
+            authorKey: `k-${author}`,
+            reviewerName: reviewer,
+            authorName: author,
+            reviewsCount,
+            day,
+            repoId: "repo-1",
+        });
         const reviewEdges = withoutEmailAddresses([
-            {
-                reviewer: "alice",
-                author: "bob",
-                reviewsCount: 12,
-                day: "2026-05-01",
-                repoId: "repo-1",
-            },
-            {
-                reviewer: "alice",
-                author: "bob",
-                reviewsCount: 5,
-                day: "2026-05-02",
-                repoId: "repo-1",
-            },
-            {
-                reviewer: "carol",
-                author: "bob",
-                reviewsCount: 3,
-                day: "2026-05-01",
-                repoId: "repo-1",
-            },
+            servedRow("alice", "bob", 12, "2026-05-01"),
+            servedRow("alice", "bob", 5, "2026-05-02"),
+            servedRow("carol", "bob", 3, "2026-05-01"),
         ]);
 
         render(
@@ -1871,13 +1867,22 @@ describe("GraphView", () => {
 
     // ── Review Network today (pinned before the CHAOS-7733 restyle) ──────────────
     describe("Review Network tab today", () => {
-        // A row as the page hands it over: the served row after the server step that takes
-        // e-mail addresses out (CHAOS-7973).
+        // A row as the page hands it over: the served row (a key and a display name for each
+        // person, CHAOS-8485) after the last server step (CHAOS-7973). A test person is written
+        // as one text; a person the API has no name for is written as an e-mail address here:
+        // the API serves a null name and a key that is not the address.
+        const personKeys = new Map<string, string>();
+        const person = (who: string) => {
+            if (!personKeys.has(who)) personKeys.set(who, `p${personKeys.size + 1}`);
+            return { key: personKeys.get(who)!, name: who.includes("@") ? null : who };
+        };
         const row = (reviewer: string, author: string, reviewsCount: number, day = "2026-09-01") =>
             withoutEmailAddresses([
                 {
-                    reviewer,
-                    author,
+                    reviewerKey: person(reviewer).key,
+                    authorKey: person(author).key,
+                    reviewerName: person(reviewer).name,
+                    authorName: person(author).name,
                     reviewsCount,
                     day,
                     repoId: "repo-1",
