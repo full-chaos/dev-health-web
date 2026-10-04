@@ -7,7 +7,7 @@ import { useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
-import { bucketLabel } from "./utils";
+import { bucketLabel, formatReviewTrendDay } from "./utils";
 
 type DailyRow = AiReviewLoadRow & { day?: string };
 
@@ -15,14 +15,6 @@ type AIReviewAmplificationTrendProps = {
     daily: DailyRow[];
     loading?: boolean;
 };
-
-export function formatReviewTrendDay(day: string) {
-    return new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-    }).format(new Date(`${day}T00:00:00Z`));
-}
 
 export function reviewAmplificationTrendRows(daily: DailyRow[]) {
     const datedRows = daily.filter((row): row is DailyRow & { day: string } => Boolean(row.day));
