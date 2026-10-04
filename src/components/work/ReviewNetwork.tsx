@@ -67,6 +67,10 @@ function Person({ name }: { name: string | null }) {
     return <span className="font-medium">{name}</span>;
 }
 
+function reviewCountText(totalReviews: number) {
+    return `${formatNumber(totalReviews)} ${totalReviews === 1 ? "review" : "reviews"}`;
+}
+
 type ReviewNetworkViewProps = {
     edges: ReviewEdgeRow[] | null;
     /** Daily review records the filters match before the server cut; null when unknown. */
@@ -126,7 +130,7 @@ export function ReviewNetworkView({
             // served review count as visually hidden text (CHAOS-8602); no share number is made here.
             render: (row) => (
                 <>
-                    <span className="sr-only">{formatNumber(row.totalReviews)} reviews</span>
+                    <span className="sr-only">{reviewCountText(row.totalReviews)}</span>
                     <div
                         aria-hidden
                         className="h-2 w-40 max-w-full rounded-r-(--radius-sm) bg-(--card-stroke)"

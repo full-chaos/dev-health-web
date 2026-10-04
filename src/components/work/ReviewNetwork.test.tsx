@@ -237,7 +237,7 @@ describe("ReviewNetworkView restyle", () => {
         );
         const rows = screen.getAllByRole("row").slice(1);
         const shareCells = rows.map((r) => within(r).getAllByRole("cell")[3]);
-        expect(shareCells.map((c) => c.textContent)).toEqual(["1,000 reviews", "1 reviews"]);
+        expect(shareCells.map((c) => c.textContent)).toEqual(["1,000 reviews", "1 review"]);
         for (const fill of document.querySelectorAll("[data-share-fill]")) {
             expect(fill.parentElement).toHaveAttribute("aria-hidden", "true");
         }
