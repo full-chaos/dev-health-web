@@ -1038,18 +1038,16 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                                         {formatNumber(row.outflow)}
                                     </td>
                                     <td className="px-5 py-3 align-middle">
-                                        <div className="flex items-center gap-2">
-                                            <span
-                                                data-testid="balance-pill"
-                                                className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                                                    row.inflow > row.outflow
-                                                        ? STATUS_PILL.info
-                                                        : STATUS_PILL.muted
-                                                }`}
-                                            >
-                                                {balanceLabel(row.inflow, row.outflow)}
-                                            </span>
-                                        </div>
+                                        <span
+                                            data-testid="balance-pill"
+                                            className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                row.inflow > row.outflow
+                                                    ? STATUS_PILL.info
+                                                    : STATUS_PILL.muted
+                                            }`}
+                                        >
+                                            {balanceLabel(row.inflow, row.outflow)}
+                                        </span>
                                     </td>
                                 </tr>
                             ))}
