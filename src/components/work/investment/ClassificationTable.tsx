@@ -66,11 +66,15 @@ export function ClassificationTable({
                     <EvidenceFact label="Theme" value={themeLabel} />
                     <EvidenceFact
                         label="Effort"
-                        value={`${formatNumber(value)} ${unit ?? "delivery units"}`}
+                        value={unit ? `${formatNumber(value)} ${unit}` : formatNumber(value)}
                     />
                     <EvidenceFact
                         label="Share of the mix"
-                        value={`${formatNumber(total > 0 ? (value / total) * 100 : 0, { maximumFractionDigits: 1 })}%`}
+                        value={
+                            total > 0
+                                ? `${formatNumber((value / total) * 100, { maximumFractionDigits: 1 })}%`
+                                : undefined
+                        }
                     />
                     <EvidenceFact
                         label="Average evidence quality"
