@@ -19,9 +19,12 @@ describe("reviewEdges request", () => {
         graphqlFetchMock.mockResolvedValue(ok);
     });
 
+    // CHAOS-8533: the text changed with its paired ops change (CHAOS-8485): it asks for the
+    // served keys and names (reviewerKey, authorKey, reviewerName, authorName) and no longer for
+    // the stored identities. The pin is the sha256 of that new text.
     it("the document text is unchanged (its sha256 is pinned: a change needs a paired ops swap)", () => {
         expect(createHash("sha256").update(REVIEW_EDGES_QUERY).digest("hex")).toBe(
-            "8c3822dce402e1ededb3858d5c76e5a37599d745db73655ccf4c72db1fb936bf",
+            "128394769f0cf448d9e7adbea62e080ffb44b3c29c6fa2edc4e75ad83ff6a0e8",
         );
     });
 

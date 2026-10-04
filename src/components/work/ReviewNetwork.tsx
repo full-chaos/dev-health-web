@@ -20,11 +20,11 @@ import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 // reviewer, author, repo and day; the tab sums them per (reviewer, author) over the window and
 // orders them by reviews, high to low.
 //
-// People (CHAOS-7973, ruling 51): a cell shows the served name, and NEVER an e-mail address or a
-// part of one. The API serves no display name; the stored identity of a person can be an e-mail
-// address. The server takes the addresses out before the rows come here (reviewEdgeIdentities.ts):
-// a row has a key per person (never shown) and a name, which is null when no name is served. A
-// person with no name reads "Not reported".
+// People (CHAOS-7973, ruling 51; CHAOS-8485): a cell shows the served display name, and NEVER an
+// e-mail address or a part of one. The API serves a display name (null when none is known) and an
+// opaque key for each person; the request does not ask for the stored identities, which can be
+// e-mail addresses. A row here has a key per person (never shown; it joins rows and counts
+// people) and a name. A person with no name reads "Not reported".
 
 type ReviewPair = {
     reviewer: string;

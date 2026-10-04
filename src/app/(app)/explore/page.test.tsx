@@ -132,6 +132,23 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         expect(actions.queryAllByRole("link")).toHaveLength(0);
     });
 
+    it("a served label that differs from the catalog label shows in the title AND the eyebrow (CHAOS-8570)", async () => {
+        explain.value = { ...FULL, label: "Lead Time To Merge" };
+        await renderExplore();
+        const header = within(screen.getByTestId("page-header"));
+        expect(header.getByRole("heading", { level: 1 })).toHaveTextContent("Lead Time To Merge");
+        expect(header.getByTestId("page-header-eyebrow")).toHaveTextContent(
+            "Diagnose / Lead Time To Merge evidence",
+        );
+    });
+
+    it("on the drilldown view the eyebrow keeps the area only", async () => {
+        await renderExplore({ api: "/api/v1/drilldown/prs" });
+        expect(
+            within(screen.getByTestId("page-header")).getByTestId("page-header-eyebrow"),
+        ).toHaveTextContent(/^Diagnose$/);
+    });
+
     it("View evidence opens the shared drawer for the page metric, with the role", async () => {
         await renderExplore({ role: "manager" });
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
