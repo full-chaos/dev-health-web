@@ -7,7 +7,7 @@ import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
-import { formatQuality, titleCase } from "@/lib/investment";
+import { titleCase } from "@/lib/investment";
 import { getSortedThemes } from "@/lib/investmentMix";
 import { MixSelectionFacts } from "./MixSelectionFacts";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
