@@ -336,7 +336,7 @@ describe("overview: classification table", () => {
         );
     });
 
-    it("the drawer prints no quality and no unit when none is served", async () => {
+    it("the drawer falls back to the page effort unit when the mix serves none (as the treemap drawer does) and prints no quality when none is served", async () => {
         overview({
             investmentMix: {
                 theme_distribution: { quality: 10 },
@@ -347,7 +347,7 @@ describe("overview: classification table", () => {
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
         const facts = await screen.findByTestId("classification-evidence-facts");
         expect(facts).not.toHaveTextContent("delivery units");
-        expect(facts).toHaveTextContent("Effort10Share of the mix");
+        expect(facts).toHaveTextContent("Effort10 effortShare of the mix");
         expect(facts).toHaveTextContent("100%");
         expect(facts).toHaveTextContent("Average evidence qualityNot reported");
     });

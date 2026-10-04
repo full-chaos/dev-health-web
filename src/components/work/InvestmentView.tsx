@@ -515,6 +515,7 @@ export function InvestmentView({
                 evidenceHref={withFilterParam("/investment?tab=evidence", filters, activeRole)}
                 filters={filters}
                 role={activeRole}
+                effortUnit={effortUnit}
             />
             {/* Not drawn in the prototype: the reading guidance stays, below the prototype blocks. */}
             <ExplainerCards />

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { Button, buttonClassName } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -10,6 +9,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
 import { formatQuality, titleCase } from "@/lib/investment";
 import { getSortedThemes } from "@/lib/investmentMix";
+import { MixSelectionFacts } from "./MixSelectionFacts";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
 
 type InvestmentMix = ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix>;
@@ -24,6 +24,8 @@ type ClassificationTableProps = {
     /** The page's filters and role: the drawer's Work Graph link carries them. */
     filters: MetricFilter;
     role?: string;
+    /** The page's effort unit: the unit when the mix serves none (as the treemap drawer does). */
+    effortUnit: string;
 };
 
 /**
@@ -38,12 +40,14 @@ export function ClassificationTable({
     evidenceHref,
     filters,
     role,
+    effortUnit,
 }: ClassificationTableProps) {
     const evidence = useEvidenceDrawer();
     const themes = investmentMix ? getSortedThemes(investmentMix) : [];
     if (!investmentMix || themes.length === 0) return null;
     const total = themes.reduce((sum, theme) => sum + theme.value, 0);
-    const unit = investmentMix.unit?.replace(/_/g, " ");
+    const servedUnit = investmentMix.unit?.replace(/_/g, " ");
+    const unit = servedUnit ?? effortUnit;
 
     // The row's Evidence action opens the ONE shared drawer with the served effort, share and
     // evidence quality of the theme (the same facts a treemap cell shows).
@@ -59,28 +63,14 @@ export function ClassificationTable({
         evidence.open({
             title: themeLabel,
             content: (
-                <EvidenceFactList
-                    aria-label="Theme evidence"
+                <MixSelectionFacts
                     testId="classification-evidence-facts"
-                >
-                    <EvidenceFact label="Theme" value={themeLabel} />
-                    <EvidenceFact
-                        label="Effort"
-                        value={unit ? `${formatNumber(value)} ${unit}` : formatNumber(value)}
-                    />
-                    <EvidenceFact
-                        label="Share of the mix"
-                        value={
-                            total > 0
-                                ? `${formatNumber((value / total) * 100, { maximumFractionDigits: 1 })}%`
-                                : undefined
-                        }
-                    />
-                    <EvidenceFact
-                        label="Average evidence quality"
-                        value={typeof quality === "number" ? formatQuality(quality) : undefined}
-                    />
-                </EvidenceFactList>
+                    themeLabel={themeLabel}
+                    value={value}
+                    total={total}
+                    unit={unit}
+                    quality={typeof quality === "number" ? quality : undefined}
+                />
             ),
             footer: (
                 <Link
@@ -115,7 +105,9 @@ export function ClassificationTable({
                             <th className="px-4 py-2 text-left font-medium">Theme</th>
                             <th className="px-4 py-2 text-right font-medium">Share</th>
                             <th className="px-4 py-2 text-right font-medium">
-                                {unit ? unit.charAt(0).toUpperCase() + unit.slice(1) : "Effort"}
+                                {servedUnit
+                                    ? servedUnit.charAt(0).toUpperCase() + servedUnit.slice(1)
+                                    : "Effort"}
                             </th>
                             <th className="px-4 py-2 text-right font-medium">
                                 <span className="sr-only">Evidence</span>
