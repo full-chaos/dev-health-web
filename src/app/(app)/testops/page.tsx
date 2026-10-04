@@ -13,7 +13,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { fetchTestOpsData } from "@/lib/testops/fetchers";
+import { fetchJobFailures, fetchTestOpsData } from "@/lib/testops/fetchers";
 import { buildFailurePatternsModel } from "@/lib/testops/failure-patterns";
 import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateTrend";
 import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
@@ -48,8 +48,20 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
 
-    const [health, testOpsData] = await Promise.all([
+    // The scope of the failing-jobs read: the selected repositories, or the repositories the
+    // selected teams own.
+    const scopeIds = filters?.scope?.ids?.length ? filters.scope.ids : null;
+    const [health, jobFailures, testOpsData] = await Promise.all([
         checkApiHealth(),
+        fetchJobFailures(
+            {
+                sinceDate: startDate,
+                untilDate: endDate,
+                repoIds: filters?.scope?.level === "repo" ? scopeIds : null,
+                teamIds: filters?.scope?.level === "team" ? scopeIds : null,
+            },
+            isTestMode,
+        ),
         fetchTestOpsData(
             {
                 timeseries: [
@@ -184,7 +196,11 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
             </Section>
 
             <div className="grid gap-4.5 lg:grid-cols-2">
-                <FailurePatternsCard model={failurePatterns} fetchFailed={fetchFailed} />
+                <FailurePatternsCard
+                    model={failurePatterns}
+                    fetchFailed={fetchFailed}
+                    jobFailures={jobFailures}
+                />
                 <InvestigateTestOps filters={filters} role={activeRole} />
             </div>
         </div>

@@ -3,11 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { cleanup, render, screen, within } from "@/test/utils";
 
-const { mockCheckApiHealth, mockFetchTestOpsData, rateChartSpy } = vi.hoisted(() => ({
-    mockCheckApiHealth: vi.fn(),
-    mockFetchTestOpsData: vi.fn(),
-    rateChartSpy: vi.fn(),
-}));
+const { mockCheckApiHealth, mockFetchTestOpsData, mockFetchJobFailures, rateChartSpy } = vi.hoisted(
+    () => ({
+        mockCheckApiHealth: vi.fn(),
+        mockFetchTestOpsData: vi.fn(),
+        mockFetchJobFailures: vi.fn(),
+        rateChartSpy: vi.fn(),
+    }),
+);
 
 const requireSessionMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
@@ -33,8 +36,15 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: mockCheckApiHealth }));
-vi.mock("@/lib/testops/fetchers", () => ({ fetchTestOpsData: mockFetchTestOpsData }));
-vi.mock("@/lib/config", () => ({ getServerEnv: () => ({}) }));
+vi.mock("@/lib/testops/fetchers", () => ({
+    fetchTestOpsData: mockFetchTestOpsData,
+    fetchJobFailures: mockFetchJobFailures,
+}));
+// The rest of the module stays real: the card's failed-read text loads the logger, which reads it.
+vi.mock("@/lib/config", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/config")>()),
+    getServerEnv: () => ({}),
+}));
 vi.mock("@/components/shell/ScopeBar", () => ({
     ScopeBar: () => <div data-testid="scope-bar" />,
 }));
@@ -128,6 +138,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     mockCheckApiHealth.mockResolvedValue({ ok: true });
     mockFetchTestOpsData.mockResolvedValue(served);
+    mockFetchJobFailures.mockResolvedValue({ groups: [], totalCount: 0, truncated: false });
 });
 afterEach(cleanup);
 
@@ -335,5 +346,92 @@ describe("TestOpsPage org scope (CHAOS-8272)", () => {
         render(await TestOpsPage({ searchParams: Promise.resolve({}) }));
         expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
         expect(mockFetchTestOpsData).not.toHaveBeenCalled();
+    });
+});
+
+// CHAOS-8514: the Overview reads the failing workflows and jobs for the page's window and scope and
+// hands the served answer to the "Failure patterns" card.
+describe("TestOps Overview: failing workflows and jobs", () => {
+    const f = (filter: Record<string, unknown>) => ({
+        f: Buffer.from(JSON.stringify(filter), "utf8").toString("base64url"),
+    });
+
+    it("asks for the page's window, with both days included, and no scope for the whole organization", async () => {
+        await renderPage();
+        expect(mockFetchJobFailures).toHaveBeenCalledTimes(1);
+        const [input, isTestMode] = mockFetchJobFailures.mock.calls[0];
+        expect(input.sinceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(input.untilDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(input.sinceDate < input.untilDate).toBe(true);
+        expect([input.repoIds, input.teamIds]).toEqual([null, null]);
+        expect(isTestMode).toBe(false);
+    });
+
+    it("sends a repository scope as repoIds and a team scope as teamIds", async () => {
+        await renderPage(
+            f({
+                time: { range_days: 30 },
+                scope: { level: "repo", ids: ["r1", "r2"] },
+                who: {},
+                what: {},
+                why: {},
+                how: {},
+            }),
+        );
+        expect(mockFetchJobFailures.mock.calls.at(-1)?.[0]).toMatchObject({
+            repoIds: ["r1", "r2"],
+            teamIds: null,
+        });
+        cleanup();
+        await renderPage(
+            f({
+                time: { range_days: 30 },
+                scope: { level: "team", ids: ["t1"] },
+                who: {},
+                what: {},
+                why: {},
+                how: {},
+            }),
+        );
+        expect(mockFetchJobFailures.mock.calls.at(-1)?.[0]).toMatchObject({
+            repoIds: null,
+            teamIds: ["t1"],
+        });
+    });
+
+    it("draws the served groups in the Failure patterns card", async () => {
+        mockFetchJobFailures.mockResolvedValue({
+            groups: [
+                {
+                    workflowName: "CI",
+                    jobName: "unit-tests",
+                    provider: "github",
+                    runs: 12,
+                    failedRuns: 3,
+                    failureRate: 0.25,
+                },
+            ],
+            totalCount: 9,
+            truncated: true,
+        });
+        await renderPage();
+        const part = within(screen.getByTestId("testops-failure-patterns")).getByTestId(
+            "testops-job-failures",
+        );
+        expect(within(part).getByTestId("meter-row")).toHaveTextContent(
+            "unit-tests · CI25% · 3 of 12 runs failed",
+        );
+        expect(within(part).getByTestId("testops-job-failures-cut")).toHaveTextContent(
+            "Showing 1 of 9 job groups",
+        );
+    });
+
+    it("says 'Could not be read' in that part when its read failed, and keeps the rest of the page", async () => {
+        mockFetchJobFailures.mockResolvedValue({ fetchFailed: true });
+        await renderPage();
+        expect(screen.getByTestId("testops-job-failures-failed")).toHaveTextContent(
+            "Could not be read",
+        );
+        expect(screen.getByTestId("testops-ci-health")).toBeInTheDocument();
     });
 });

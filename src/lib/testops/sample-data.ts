@@ -231,6 +231,38 @@ export const SAMPLE_COVERAGE_DATA: AnalyticsResult = {
     ],
 };
 
+/** Test-mode sample of `testopsJobFailures` (invented names and numbers). */
+export const SAMPLE_JOB_FAILURES_DATA = {
+    groups: [
+        {
+            workflowName: "CI",
+            jobName: "integration-tests",
+            provider: "github_actions",
+            runs: 48,
+            failedRuns: 12,
+            failureRate: 0.25,
+        },
+        {
+            workflowName: "CI",
+            jobName: "unit-tests",
+            provider: "github_actions",
+            runs: 52,
+            failedRuns: 4,
+            failureRate: 0.08,
+        },
+        {
+            workflowName: "Deploy",
+            jobName: "smoke",
+            provider: "github_actions",
+            runs: 20,
+            failedRuns: 2,
+            failureRate: 0.1,
+        },
+    ],
+    totalCount: 3,
+    truncated: false,
+};
+
 export const SAMPLE_RISK_DATA = {
     release_confidence: 0.82,
     quality_drag_hours: 14.5,
