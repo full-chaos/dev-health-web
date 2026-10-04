@@ -676,6 +676,28 @@ describe("Investment Confidence (prototype view 10)", () => {
         expect(rework.parentElement?.lastElementChild).toBe(rework);
     });
 
+    // CHAOS-8584: the row name comes from the one theme label source, keyed by the served `theme`;
+    // a row with no `theme` key prints the served `label`.
+    it("'Rework by theme' names a row by the one label source, or by the served label without a theme key", () => {
+        const row = {
+            allocation: 0.25,
+            allocation_pct: 25,
+            prs_merged: 3,
+            churn_loc: 1200,
+        };
+        confidence(makeData(), {
+            reworkThemeAllocation: [
+                { ...row, theme: "quality", label: "Quality / Reliability" },
+                { ...row, theme: "", label: "Served only label" },
+            ],
+        });
+        const rework = screen.getByTestId("rework-by-theme");
+        const names = within(rework)
+            .getAllByRole("listitem")
+            .map((item) => item.querySelector("span.font-medium")?.textContent);
+        expect(names).toEqual(["Quality", "Served only label"]);
+    });
+
     it("order: tiles, the two-card row, the low-confidence section", () => {
         confidence();
         const order = [

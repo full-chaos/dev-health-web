@@ -103,6 +103,30 @@ describe("TeamCategorySankeySection — no summary block above the chart (protot
         expect(chips).toHaveTextContent("Drilldown: Theme = Feature Delivery");
         expect(chips).not.toHaveTextContent("feature_delivery");
     });
+
+    // CHAOS-8584: the chip uses the one short label source of the page (the node, the tabs,
+    // the tables), not the long names of THEME_LABELS.
+    it("a theme drill chip uses the short label the node shows: 'Quality', not 'Quality / Reliability'", () => {
+        renderSection(
+            {
+                ...linkedFlow,
+                nodes: [
+                    { name: "Alpha", group: "team" },
+                    { name: "quality", group: "category" },
+                    { name: "repo-a", group: "repo" },
+                ],
+                links: [
+                    { source: "Alpha", target: "quality", value: 10 },
+                    { source: "quality", target: "repo-a", value: 10 },
+                ],
+            },
+            { selectedCategory: "quality" },
+        );
+        const chips = screen.getByTestId("allocation-drill-chips");
+        expect(chips).toHaveTextContent(/^Drilldown: Theme = Quality\s*x$/u);
+        expect(chips).not.toHaveTextContent("Reliability");
+        expect(screen.getByTestId("selected-path-title")).toHaveTextContent(/^Quality$/u);
+    });
 });
 
 describe("TeamCategorySankeySection — empty state", () => {
