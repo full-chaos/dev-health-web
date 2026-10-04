@@ -240,6 +240,7 @@ jobs:
 ```yaml
 # payload.json: your own export in the external-ingest.v1 shape (no export command yet)
 # The dho image has no shell, so a GitLab script job calls the API directly.
+# IDEMPOTENCY_KEY must equal the payload's idempotencyKey (the API refuses a mismatch).
 push_dev_health:
     image: curlimages/curl:latest
     script:

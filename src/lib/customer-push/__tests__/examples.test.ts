@@ -66,6 +66,13 @@ describe("buildExampleSnippets", () => {
         const code = buildExampleSnippets(base).find((t) => t.id === "gitlab-runner")?.code ?? "";
         expect(code).not.toContain("dev-health-go-dho");
         expect(code).toContain("/api/v1/external-ingest/batches");
+        // Every header is one the API reads (ops internal/api/externalingest: auth.go:240 Bearer,
+        // handlers.go:242 Idempotency-Key, which must equal the body's idempotencyKey).
+        expect(code).toContain('-H "Authorization: Bearer $FULLCHAOS_INGEST_TOKEN"');
+        expect(code).toContain('-H "Content-Type: application/json"');
+        expect(code).toContain('-H "Idempotency-Key: $IDEMPOTENCY_KEY"');
+        expect(code).toContain("IDEMPOTENCY_KEY must equal the payload's idempotencyKey");
+        expect(code).not.toContain("X-Org-Id");
         expect(code).toContain(PAYLOAD_NOTE);
     });
 
