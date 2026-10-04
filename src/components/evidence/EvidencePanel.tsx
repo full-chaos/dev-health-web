@@ -555,8 +555,8 @@ export function EvidencePanel({
  * The "Supporting evidence" block. A repository-stored metric serves `repositories` from the same
  * rows as its contributors (ops #3775): a row whose id is one of them is drawn once, under
  * "Supporting repositories", not again here (CHAOS-8587, rule C1). Every other row (the drivers,
- * with their served change) stays. With `repositories` a list the "no contributing artifacts" note
- * is the contributor list's own note, so it is not drawn; with it null or absent the block is
+ * with their served change) stays. The "no contributing artifacts" note is a missing-data note: it
+ * shows when nothing was served, whatever `repositories` is. With it null or absent the block is
  * exactly as before.
  */
 function drawnEvidence(
@@ -564,19 +564,19 @@ function drawnEvidence(
     repositories?: ExplainRepository[] | null,
 ) {
     const rows = evidence ?? [];
-    if (Array.isArray(repositories)) {
-        const own = new Set(repositories.map((repo) => repo.id));
-        const rest = rows.filter((row) => !own.has(row.id));
-        return <EvidenceItems items={rest} />; // draws nothing for an empty list
+    // The missing-data note depends on what was SERVED, not on what is left after the filter.
+    if (rows.length === 0) {
+        return (
+            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
+                No contributing artifacts were returned for this metric and filter window. This is a
+                partial-data state, not a zero signal.
+            </div>
+        );
     }
-    return rows.length ? (
-        <EvidenceItems items={rows} />
-    ) : (
-        <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
-            No contributing artifacts were returned for this metric and filter window. This is a
-            partial-data state, not a zero signal.
-        </div>
-    );
+    if (!Array.isArray(repositories)) return <EvidenceItems items={rows} />;
+    const own = new Set(repositories.map((repo) => repo.id));
+    // Draws nothing when every row was a repository (EvidenceItems returns null for an empty list).
+    return <EvidenceItems items={rows.filter((row) => !own.has(row.id))} />;
 }
 
 /**

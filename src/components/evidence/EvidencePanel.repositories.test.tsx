@@ -248,11 +248,23 @@ describe("the same rows are not drawn twice", () => {
         expect(rows[0]).toHaveTextContent("acme/web");
     });
 
-    it("repositories served and empty: still no 'Supporting evidence' and no partial-data box", async () => {
+    it("nothing served at all (empty drivers and contributors) with repositories []: the missing-data note stays", async () => {
         await open({ contributors: [], repositories: [] });
         expect(screen.queryByTestId("evidence-supporting")).toBeNull();
-        expect(screen.queryByText(/No contributing artifacts/u)).toBeNull();
+        expect(screen.getByText(/No contributing artifacts/u)).toBeInTheDocument();
         expect(screen.getByTestId("evidence-repositories")).toHaveTextContent("Not reported");
+    });
+
+    it("every served row is a repository: no 'Supporting evidence' section and NO missing-data note", async () => {
+        await open({
+            contributors,
+            repositories: [
+                { id: "r1", name: "acme/api", value: 1200, source_url: null },
+                { id: "r2", name: "acme/web", value: 34, source_url: null },
+            ],
+        });
+        expect(screen.queryByTestId("evidence-supporting")).toBeNull();
+        expect(screen.queryByText(/No contributing artifacts/u)).toBeNull();
     });
 
     it("repositories null (a team-stored metric): 'Supporting evidence' is drawn as before", async () => {
