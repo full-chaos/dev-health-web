@@ -379,7 +379,7 @@ function HotspotEvidence({ row }: { row: HotspotRow }) {
                     stacked
                     value={<span className="break-all font-mono font-medium">{row.filePath}</span>}
                 />
-                <EvidenceFact label="Repo" value={row.repoName || undefined} />
+                <EvidenceFact label="Repository" value={row.repoName || undefined} />
                 <EvidenceFact
                     label="Risk score"
                     value={formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
@@ -568,7 +568,7 @@ function HotspotsView({
                     testId="hotspot-table"
                     columns={[
                         { label: "File" },
-                        { label: "Repo" },
+                        { label: "Repository" },
                         { label: "Risk score", align: "right" },
                         { label: "Cyclomatic avg", align: "right" },
                         { label: "Churn LOC 30d", align: "right" },
@@ -653,7 +653,7 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                 testId="ownership-table"
                 columns={[
                     { label: "File" },
-                    { label: "Repo" },
+                    { label: "Repository" },
                     { label: "Owner concentration", align: "right" },
                     { label: "Risk score", align: "right" },
                     { label: CTA_LABELS.evidence },
@@ -740,7 +740,7 @@ function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                 testId="churn-table"
                 columns={[
                     { label: "File" },
-                    { label: "Repo" },
+                    { label: "Repository" },
                     { label: "Churn LOC 30d", align: "right" },
                     { label: "Commits 30d", align: "right" },
                     { label: "Risk score", align: "right" },
@@ -822,10 +822,9 @@ export function ComplexityDashboard({
                         No complexity history in this window.
                     </h2>
                     <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-                        Complexity data appears once{" "}
-                        <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> has
-                        processed at least one complexity analysis run for this org. The page
-                        populates automatically on the next metrics run.
+                        Complexity data appears once the daily metrics job has processed at least
+                        one complexity analysis run for this org. The page populates automatically
+                        on the next metrics run.
                     </p>
                     <p className="mt-2 text-xs text-(--ink-muted)">
                         Org <span className="font-mono">{orgId}</span>

@@ -252,8 +252,12 @@ export type AiOpportunity = {
   opportunityId: Scalars['String']['output'];
   rationale: Scalars['String']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** The repository's full name in the org's repository catalogue (CHAOS-8114). Null = the catalogue holds no name for ``repoId``, or the catalogue could not be read. It is never the id. */
+  repoName?: Maybe<Scalars['String']['output']>;
   score: Scalars['Float']['output'];
   teamId?: Maybe<Scalars['String']['output']>;
+  /** The name of the team ``teamId`` names, from the org's team catalogue (CHAOS-8114). Null = the opportunity has no team, the catalogue holds no name for it, or the catalogue could not be read. It is never the id. */
+  teamName?: Maybe<Scalars['String']['output']>;
   title: Scalars['String']['output'];
   workGraphDrilldowns: Array<AiWorkGraphDrilldownRef>;
 };
@@ -371,6 +375,10 @@ export type AiWorkflowGraphEdgeOut = {
 
 export type AiWorkflowGraphNodeOut = {
   __typename?: 'AIWorkflowGraphNodeOut';
+  /** The node's display name (CHAOS-8113). By ``nodeType``: ``pr`` = the pull request's title; ``deployment`` = "<environment> deploy"; ``incident`` = "<title> (<status>)"; ``issue`` = the issue's own id when it is a readable key. Null = no name is known: the catalogue does not name the node, the name read failed, or the type carries no name (see ``nameExpected``). It is never an id that is, or holds, a UUID or an opaque hash. Every end of an edge in ``edges`` that has an id has a node in ``nodes`` with the same type and id, so a client names an edge end by that node. */
+  displayName?: Maybe<Scalars['String']['output']>;
+  /** True = nodes of this type carry a name (``pr``, ``deployment``, ``incident``, ``issue``): a null ``displayName`` is then a gap, and a client draws "Not reported". False = the type has no name by design (a review outcome, an AI workflow run, a diff): a client draws the type words alone. */
+  nameExpected: Scalars['Boolean']['output'];
   nodeId: Scalars['String']['output'];
   nodeType: Scalars['String']['output'];
 };
@@ -1915,10 +1923,20 @@ export type ReportRunType = {
 
 export type ReviewEdgeRow = {
   __typename?: 'ReviewEdgeRow';
+  /** The stored identity of the author: the pull request's author e-mail address when there is one, else its author name, else "unknown". It can be an e-mail address. Deprecated in favour of authorName and authorKey (CHAOS-8485): a client that may not show an e-mail address must not select it. */
   author: Scalars['String']['output'];
+  /** An opaque key of the author inside the org (CHAOS-8485); see reviewerKey. */
+  authorKey: Scalars['String']['output'];
+  /** The author's display name (CHAOS-8485): the display name of the org's identity the stored author belongs to; else, for an author stored by e-mail address, the author name the provider gave on the pull request; else the stored author itself when it is not an e-mail address. Never an e-mail address. Null = no name is known. */
+  authorName?: Maybe<Scalars['String']['output']>;
   day: Scalars['Date']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** The stored identity of the reviewer: a provider login or a display name. Deprecated in favour of reviewerName and reviewerKey (CHAOS-8485); it stays for clients that still read it. */
   reviewer: Scalars['String']['output'];
+  /** An opaque key of the reviewer inside the org (CHAOS-8485): the same person has the same key in every answer, as reviewer and as author when the identity resolves. It is not an e-mail address and not a name; use it only to tell people apart and to join rows. */
+  reviewerKey: Scalars['String']['output'];
+  /** The reviewer's display name (CHAOS-8485): the display name of the org's identity the stored reviewer belongs to; else the stored reviewer itself when it is not an e-mail address (a provider login). Never an e-mail address. Null = no name is known. */
+  reviewerName?: Maybe<Scalars['String']['output']>;
   reviewsCount: Scalars['Int']['output'];
 };
 
