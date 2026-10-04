@@ -6,8 +6,12 @@ import { describeArtifact, HeatmapPanel } from "./HeatmapPanel";
 import type { HeatmapResponse } from "@/lib/types";
 
 // Stub the echarts-backed chart so the panel renders in jsdom without echarts.
+const { chartProps } = vi.hoisted(() => ({ chartProps: vi.fn() }));
 vi.mock("./HeatmapChart", () => ({
-    HeatmapChart: () => <div data-testid="heatmap-chart" />,
+    HeatmapChart: (props: unknown) => {
+        chartProps(props);
+        return <div data-testid="heatmap-chart" />;
+    },
 }));
 
 vi.mock("@/lib/api/visuals", () => ({
@@ -29,6 +33,56 @@ const baseResponse = (cells: HeatmapResponse["cells"]): HeatmapResponse => ({
 });
 
 const UUID = "550e8400-e29b-41d4-a716-446655440000";
+
+describe("HeatmapPanel — axis captions on the hours by weekdays grid (CHAOS-8568)", () => {
+    const data = baseResponse([
+        { x: "Mon", y: "auth", value: 5 },
+        { x: "Tue", y: "billing", value: 9 },
+    ]);
+    const draw = (type: "temporal_load" | "individual" | "risk" | "context_switch") =>
+        render(
+            <HeatmapPanel
+                title="Review wait density"
+                description="Find the hours."
+                request={{ ...request, type, scope_type: "team" }}
+                initialData={data}
+            />,
+        );
+
+    it("captions the axes under the temporal grid", () => {
+        draw("temporal_load");
+        expect(screen.getByTestId("heatmap-axis-captions")).toHaveTextContent(
+            "Hour of day · day of weekReview wait density · team scope",
+        );
+    });
+
+    it("turns the weekHours layout on for the two hour-by-weekday grids only (team and person)", () => {
+        chartProps.mockClear();
+        draw("temporal_load");
+        expect((chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours).toBe(true);
+        const flag = () => (chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours;
+        chartProps.mockClear();
+        draw("individual");
+        expect(flag()).toBe(true);
+        for (const type of ["risk", "context_switch"] as const) {
+            chartProps.mockClear();
+            draw(type);
+            expect(flag()).toBe(false);
+        }
+    });
+
+    it("captions the person grid the same way", () => {
+        draw("individual");
+        expect(screen.getByTestId("heatmap-axis-captions")).toHaveTextContent(
+            "Hour of day · day of weekReview wait density · team scope",
+        );
+    });
+
+    it("draws no caption under another heatmap", () => {
+        draw("risk");
+        expect(screen.queryByTestId("heatmap-axis-captions")).toBeNull();
+    });
+});
 
 describe("HeatmapPanel — hotspot evidence contract (CHAOS-2035)", () => {
     it("shows an explicit flat-data state instead of a uniform grid", () => {

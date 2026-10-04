@@ -42,10 +42,13 @@ describe("Plan route placement", () => {
 
         expect(source).toContain("Completion Forecast");
         expect(source).toContain("CapacityView");
-        expect(source).toContain("completion projection");
+        // The subtitle names only what the page draws: the Completion range card (CHAOS-8477).
+        expect(source).toContain("Monte Carlo is the method behind this completion range.");
         // CHAOS-7990: the page draws no throughput distribution, so the subtitle names none.
         expect(source).not.toContain("throughput distribution");
-        expect(source).toContain("confidence bands");
+        // The burn-down chart and its bands are not on the page.
+        expect(source).not.toContain("completion projection");
+        expect(source).not.toContain("confidence bands");
         expect(source).not.toContain("ModeTabs");
         expect(source).not.toContain("planForecastTabs");
         expect(source).not.toContain("Monte Carlo Forecast");

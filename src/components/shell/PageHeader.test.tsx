@@ -14,6 +14,15 @@ beforeEach(() => {
 });
 
 describe("PageHeader — eyebrow from the navigation trail", () => {
+    it("ends the eyebrow on the trail leaf of a metric evidence page", () => {
+        navigationMock.pathname = "/explore";
+        render(<PageHeader title="Blocked Work" trailLeaf="Blocked Work evidence" />);
+
+        expect(screen.getByTestId("page-header-eyebrow")).toHaveTextContent(
+            "Diagnose / Blocked Work evidence",
+        );
+    });
+
     it("shows AREA / DESTINATION for a child destination", () => {
         render(<PageHeader />);
 

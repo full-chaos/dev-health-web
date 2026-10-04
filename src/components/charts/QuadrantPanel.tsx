@@ -3,6 +3,7 @@
 import {
     type KeyboardEvent as ReactKeyboardEvent,
     useEffect,
+    useId,
     useMemo,
     useRef,
     useState,
@@ -103,6 +104,13 @@ type QuadrantPanelProps = {
      * title and under the chart, as on every other page.
      */
     actionsInHead?: boolean;
+    /**
+     * Draw the "Show interpretive overlay" checkbox in the control row even when the chart has no
+     * overlay to show: it is then disabled and the hint says when zones appear (prototype screens
+     * 02-04 and 27, CHAOS-8562). Default false: the checkbox appears only when there is an overlay.
+     * The guide then becomes an icon-only help button beside the checkbox (same dialog).
+     */
+    alwaysShowOverlayToggle?: boolean;
 };
 
 type ZoneLegendItem = {
@@ -125,7 +133,9 @@ export function QuadrantPanel({
     action,
     headChip,
     actionsInHead = false,
+    alwaysShowOverlayToggle = false,
 }: QuadrantPanelProps) {
+    const overlayHintId = useId();
     const scopeType = filters.scope.level === "developer" ? "person" : filters.scope.level;
     const isPersonScope = scopeType === "person";
     const scopeIds = filters.scope.ids;
@@ -367,16 +377,32 @@ export function QuadrantPanel({
     // In the head (Landscape, L13) the two actions are bordered buttons, as the concept draws them;
     // everywhere else they stay ghost buttons under the head.
     const actionVariant = actionsInHead ? "secondary" : "ghost";
+    // With the overlay checkbox in the row (`alwaysShowOverlayToggle`) the guide is an icon-only help
+    // button beside it: the same dialog, kept in a named place (scope document 6, CHAOS-8562).
     const guideButton = showViewGuide ? (
-        <button
-            ref={triggerRef}
-            type="button"
-            onClick={() => setIsGuideOpen(true)}
-            className={buttonClassName(actionVariant, "sm")}
-        >
-            <Info aria-hidden="true" className="h-3.5 w-3.5" />
-            {CTA_LABELS.viewGuide}
-        </button>
+        alwaysShowOverlayToggle && !actionsInHead ? (
+            <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => setIsGuideOpen(true)}
+                aria-label={CTA_LABELS.viewGuide}
+                title={CTA_LABELS.viewGuide}
+                data-testid="quadrant-guide-help"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-(--ink-muted) hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-2)"
+            >
+                <Info aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
+        ) : (
+            <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => setIsGuideOpen(true)}
+                className={buttonClassName(actionVariant, "sm")}
+            >
+                <Info aria-hidden="true" className="h-3.5 w-3.5" />
+                {CTA_LABELS.viewGuide}
+            </button>
+        )
     ) : null;
     const relatedLinksNode =
         supplementalLinks.length > 0 ? (
@@ -530,20 +556,27 @@ export function QuadrantPanel({
                 data-testid="quadrant-controls"
                 className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)"
             >
-                {actionsInHead ? null : guideButton}
-                {hasInterpretationOverlay ? (
+                {actionsInHead || alwaysShowOverlayToggle ? null : guideButton}
+                {hasInterpretationOverlay || alwaysShowOverlayToggle ? (
                     <div className="space-y-1">
-                        <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
-                            <input
-                                type="checkbox"
-                                checked={showZoneOverlay}
-                                onChange={(event) => handleZoneToggle(event.target.checked)}
-                                className="h-3.5 w-3.5 accent-(--accent-2)"
-                            />
-                            <span>Show interpretive overlay</span>
-                        </label>
-                        <p className="text-xs text-(--ink-muted)">
-                            Highlights common system modes observed in similar systems.
+                        <div className="flex items-center gap-2">
+                            <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
+                                <input
+                                    type="checkbox"
+                                    checked={hasInterpretationOverlay && showZoneOverlay}
+                                    disabled={!hasInterpretationOverlay}
+                                    aria-describedby={overlayHintId}
+                                    onChange={(event) => handleZoneToggle(event.target.checked)}
+                                    className="h-3.5 w-3.5 accent-(--accent-2)"
+                                />
+                                <span>Show interpretive overlay</span>
+                            </label>
+                            {alwaysShowOverlayToggle && !actionsInHead ? guideButton : null}
+                        </div>
+                        <p id={overlayHintId} className="text-xs text-(--ink-muted)">
+                            {hasInterpretationOverlay
+                                ? "Highlights common system modes observed in similar systems."
+                                : "Zones appear when two or more entities are in scope."}
                         </p>
                     </div>
                 ) : null}
