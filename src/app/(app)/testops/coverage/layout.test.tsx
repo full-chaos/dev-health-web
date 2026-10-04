@@ -84,9 +84,9 @@ vi.mock("@/components/charts/TimeseriesChart", () => ({
 
 import CoveragePage from "./page";
 
-const ts = (measure: string, buckets: Array<[string, number | null]>) => ({
+const ts = (measure: string, buckets: Array<[string, number | null]>, dimensionValue = "t") => ({
     dimension: "TEAM",
-    dimensionValue: "t",
+    dimensionValue,
     measure,
     buckets: buckets.map(([date, value]) => ({ date, value })),
 });
@@ -193,6 +193,75 @@ describe("TestOps Coverage page — approved layout", () => {
         ]);
         // No short note on these tiles (the long definitions are in the drawer).
         expect(tiles.map((tile) => tile.getAttribute("data-caption"))).toEqual(["", "", ""]);
+    });
+
+    it("renders every served team series and latest value when coverage has more than one series", async () => {
+        mockFetchCoverageMetrics.mockResolvedValue({
+            ...served,
+            timeseries: [
+                ts("COVERAGE_LINE_PCT", [["2026-09-01", 41], ["2026-09-02", 42]], "team-a"),
+                ts("COVERAGE_LINE_PCT", [["2026-09-01", 88], ["2026-09-02", 89]], "team-b"),
+                ts("COVERAGE_BRANCH_PCT", [["2026-09-01", 61], ["2026-09-02", 62]], "team-a"),
+                ts("COVERAGE_BRANCH_PCT", [["2026-09-01", 98], ["2026-09-02", 99]], "team-b"),
+                ts("COVERAGE_DELTA_PCT", [["2026-09-01", 0], ["2026-09-02", 1]], "team-a"),
+                ts("COVERAGE_DELTA_PCT", [["2026-09-01", 2], ["2026-09-02", 3]], "team-b"),
+            ],
+        });
+        mockFetchCoverageScopeBaseline.mockResolvedValue({ lineBaselinePct: 82.6, lineDays: 30 });
+
+        await renderPage();
+
+        const tiles = within(screen.getByTestId("testops-coverage-tiles")).getAllByTestId("metric-tile");
+        expect(tiles.map((tile) => tile.getAttribute("data-label"))).toEqual([
+            "Line Coverage · Team: team-a",
+            "Line Coverage · Team: team-b",
+            "Branch Coverage · Team: team-a",
+            "Branch Coverage · Team: team-b",
+            "Coverage Delta · Team: team-a",
+            "Coverage Delta · Team: team-b",
+        ]);
+        expect(tiles.map((tile) => tile.getAttribute("data-value"))).toEqual([
+            "42",
+            "89",
+            "62",
+            "99",
+            "1",
+            "3",
+        ]);
+        expect(tiles.map((tile) => tile.getAttribute("data-hide-trend"))).toEqual([
+            "true",
+            "true",
+            "false",
+            "false",
+            "false",
+            "false",
+        ]);
+
+        expect(screen.getByRole("heading", { level: 2, name: "Line Coverage Trends" })).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { level: 3, name: "Line Coverage Trend · Team: team-a" }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { level: 3, name: "Line Coverage Trend · Team: team-b" }),
+        ).toBeInTheDocument();
+        expect(timeseriesSpy.mock.calls.map(([props]) => props)).toEqual([
+            {
+                data: [
+                    { day: "2026-09-01", value: 41 },
+                    { day: "2026-09-02", value: 42 },
+                ],
+                valueFormat: "percent",
+                baseline: { value: 82.6, label: "Scope target baseline" },
+            },
+            {
+                data: [
+                    { day: "2026-09-01", value: 88 },
+                    { day: "2026-09-02", value: 89 },
+                ],
+                valueFormat: "percent",
+                baseline: { value: 82.6, label: "Scope target baseline" },
+            },
+        ]);
     });
 
     it("asks for branch coverage by repository beside line coverage, in the same request", async () => {
