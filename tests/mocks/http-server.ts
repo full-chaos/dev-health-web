@@ -4,6 +4,7 @@ import { setEntitlementScenario } from "./entitlementScenario";
 import { handlers } from "./handlers";
 import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
+import { hardenMockServer } from "./serverSockets";
 
 const app = express();
 const port = Number(process.env.MOCK_SERVER_PORT ?? 8000);
@@ -49,6 +50,9 @@ app.use("/graphql", (req, res, next) => {
 });
 app.use(createMiddleware(...handlers));
 
-app.listen(port, "127.0.0.1", () => {
-    console.log(`Mock API server listening on http://127.0.0.1:${port}`);
-});
+hardenMockServer(
+    app.listen(port, "127.0.0.1", () => {
+        console.log(`Mock API server listening on http://127.0.0.1:${port}`);
+    }),
+    "ops-8012",
+);

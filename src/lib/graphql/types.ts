@@ -1,6 +1,7 @@
 /**
  * GraphQL types for dev-health-ops analytics API.
- * Mirrors the Strawberry GraphQL schema in the backend.
+ * Mirrors the ops GraphQL contract (`contracts/graphql/v1/schema.graphql` in dev-health-ops, copied
+ * verbatim to `schema.graphql` next to this file).
  */
 
 // ==== Enums ====
