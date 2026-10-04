@@ -5,9 +5,9 @@ import { render, screen, within } from "@/test/utils";
 
 import {
     AIReviewAmplificationTrend,
-    formatReviewTrendDay,
     reviewAmplificationTrendRows,
 } from "../AIReviewAmplificationTrend";
+import { formatReviewTrendDay } from "../utils";
 
 vi.mock("@/components/charts/chartTheme", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/components/charts/chartTheme")>()),

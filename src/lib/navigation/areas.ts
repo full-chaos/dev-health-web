@@ -899,12 +899,19 @@ function resolveAreaAndChild(
  * landing route; the child crumb is the current page — rendered as the last,
  * link-less crumb. If no child owns the pathname, the area is the current crumb.
  *
+ * A page the nav config does not name (a metric evidence page) passes `leaf`: the area crumb then
+ * links to its landing route and `leaf` is the current, link-less crumb after it.
+ *
  * Returns `[]` for routes no area owns (callers fall back to bespoke crumbs).
  */
-export function navTrailForPathname(pathname: string): Crumb[] {
+export function navTrailForPathname(pathname: string, leaf?: string): Crumb[] {
     const resolved = resolveAreaAndChild(pathname);
     if (!resolved) return [];
     const { area, child } = resolved;
+
+    if (leaf && !child) {
+        return [{ label: area.label, href: area.href }, { label: leaf }];
+    }
 
     if (!child) {
         return [{ label: area.label }];
