@@ -24,6 +24,10 @@ const items = [
         rationale: "Review Latency climbed 1041% in the last 14 days.",
         evidence_links: ["/api/v1/explain?metric=review_latency"],
         suggested_experiments: ["Trial a review SLA"],
+        change_percent: 1041.4,
+        direction: "up" as const,
+        range_days: 14,
+        compare_days: 14,
     },
     {
         id: "opp-2",
@@ -31,16 +35,28 @@ const items = [
         rationale: "Cycle Time climbed 12% in the last 14 days.",
         evidence_links: [],
         suggested_experiments: ["Cap WIP"],
+        change_percent: 12.2,
+        direction: "up" as const,
+        range_days: 14,
+        compare_days: 14,
     },
 ];
 
 describe("OpportunityMasterDetail", () => {
-    it("lists every opportunity with its rationale sentence and selects the first", () => {
+    it("lists every opportunity with its served change (the prototype's second line) and selects the first", () => {
         render(<OpportunityMasterDetail items={items} filters={filters} />);
 
         const list = within(screen.getByTestId("opportunity-list"));
         expect(list.getByText("2 captured signals")).toBeInTheDocument();
-        expect(list.getByText("Review Latency climbed 1041% in the last 14 days.")).toBeVisible();
+        expect(list.getByText("+1,041% · captured change")).toBeVisible();
+        expect(list.getByText("+12% · captured change")).toBeVisible();
+        // the rationale sentence is in the detail card, not in the row
+        expect(list.queryByText("Review Latency climbed 1041% in the last 14 days.")).toBeNull();
+        expect(
+            within(screen.getByTestId("opportunity-detail")).getByText(
+                "Review Latency climbed 1041% in the last 14 days.",
+            ),
+        ).toBeInTheDocument();
         expect(list.getByRole("button", { name: /Reduce Review Latency/ })).toHaveAttribute(
             "aria-current",
             "true",
@@ -86,5 +102,26 @@ describe("OpportunityMasterDetail", () => {
         expect(screen.getByRole("button", { name: /Reduce Review Latency/ })).not.toHaveAttribute(
             "aria-current",
         );
+    });
+
+    it("a row whose change is not served reads Not reported, never 0%", () => {
+        const fallback = [
+            {
+                id: "opp-0",
+                title: "Maintain steady flow",
+                rationale: "Key metrics are stable. Focus on sustaining current practices.",
+                evidence_links: ["/api/v1/home?scope_type=org&scope_id=org-1"],
+                suggested_experiments: ["Share the current playbook with new teams."],
+                change_percent: null,
+                direction: null,
+                range_days: 14,
+                compare_days: 14,
+            },
+        ];
+        render(<OpportunityMasterDetail items={fallback} filters={filters} />);
+
+        const list = within(screen.getByTestId("opportunity-list"));
+        expect(list.getByText("Not reported · captured change")).toBeVisible();
+        expect(screen.getByTestId("opportunity-list")).not.toHaveTextContent("0%");
     });
 });
