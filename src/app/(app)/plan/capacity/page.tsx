@@ -79,7 +79,7 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
                         </>
                     ) : undefined
                 }
-                subtitle="Monte Carlo is the method behind this completion projection and its confidence bands. Adjust the date range to control how much history informs the forecast."
+                subtitle="Monte Carlo is the method behind this completion range. Adjust the date range to control how much history informs the forecast."
             />
 
             <ScopeBar view="capacity-planning" origin={activeOrigin} />

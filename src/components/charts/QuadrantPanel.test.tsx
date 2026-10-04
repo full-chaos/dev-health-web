@@ -108,6 +108,45 @@ describe("QuadrantPanel", () => {
         });
     });
 
+    describe("overlay checkbox instead of the guide link (CHAOS-8562)", () => {
+        it("without an overlay the checkbox is drawn, disabled, with the hint; the guide is the icon-only help button", () => {
+            render(<QuadrantPanel {...defaultProps} alwaysShowOverlayToggle />);
+            const box = screen.getByRole("checkbox", { name: "Show interpretive overlay" });
+            expect(box).toBeDisabled();
+            expect(box).toHaveAccessibleDescription(
+                "Zones appear when two or more entities are in scope.",
+            );
+            expect(box).not.toBeChecked();
+            expect(
+                screen.getByText("Zones appear when two or more entities are in scope."),
+            ).toBeInTheDocument();
+            // No guide LINK with text any more: the guide is the icon-only help button beside it.
+            const help = screen.getByRole("button", { name: "View guide" });
+            expect(help).toHaveAttribute("data-testid", "quadrant-guide-help");
+            expect(help).toHaveTextContent("");
+            expect(help.className).toContain("h-6");
+            expect(help.className).toContain("w-6");
+        });
+
+        it("the help button opens the same guide dialog and gives focus back to itself on close", async () => {
+            render(<QuadrantPanel {...defaultProps} alwaysShowOverlayToggle />);
+            const help = screen.getByTestId("quadrant-guide-help");
+            fireEvent.click(help);
+            const dialog = screen.getByRole("dialog", { name: "View guide" });
+            expect(within(dialog).getByText("Quadrant guide")).toBeInTheDocument();
+            expect(within(dialog).getByText(/1\. Emphasis:/u)).toBeInTheDocument();
+            expect(within(dialog).getByText(/2\. Dot:/u)).toBeInTheDocument();
+            expect(within(dialog).getByText(/3\. Next:/u)).toBeInTheDocument();
+            fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+            await waitFor(() => expect(document.activeElement).toBe(help));
+        });
+
+        it("by default (no prop) a panel with no overlay draws no checkbox", () => {
+            render(<QuadrantPanel {...defaultProps} showViewGuide={false} />);
+            expect(screen.queryByRole("checkbox")).toBeNull();
+        });
+    });
+
     describe("card head (shared Section look, optional action)", () => {
         const action = <a href="/explore?metric=cycle_time">Metric evidence</a>;
 

@@ -44,7 +44,9 @@ export function ExperimentCards({ experiments, filters }: ExperimentCardsProps) 
                                 data-testid="experiment-metric-pill"
                                 className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.info}`}
                             >
-                                {experiment.metric || "Experiment"}
+                                {experiment.metric
+                                    ? getMetricLabel(experiment.metric)
+                                    : "Experiment"}
                             </span>
                             <span className="shrink-0 text-xs text-(--ink-muted)">
                                 Suggestion {index + 1}

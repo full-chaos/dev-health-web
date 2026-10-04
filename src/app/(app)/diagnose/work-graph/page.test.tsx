@@ -44,7 +44,7 @@ async function renderPage(tab?: string) {
                 day: "2026-05-01",
             },
             {
-                reviewer: "stored:b-fake",
+                reviewer: "key:k-b",
                 author: "unnamed:2",
                 reviewerName: "b-fake",
                 authorName: null,

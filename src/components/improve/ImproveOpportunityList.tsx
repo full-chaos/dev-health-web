@@ -3,10 +3,11 @@
 import { ArrowRight, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { EvidenceFact, EvidenceFactList, NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { DataState } from "@/components/ui/DataState";
+import { formatNumber } from "@/lib/formatters";
 import type { ImproveOpportunity } from "@/lib/graphql/__generated__/types";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { STATUS_PILL } from "@/lib/statusPill";
@@ -51,6 +52,62 @@ function EntityCell({ item }: { item: ImproveOpportunity }) {
             <span className="text-(--ink-muted)">{item.entityType} </span>
             {entity.resolved ? entity.label : `${entity.short ?? entity.label} · Unresolved`}
         </span>
+    );
+}
+
+/**
+ * A served rule number written in its served unit (CHAOS-8500), or null when the number or the unit
+ * is not served. The unit only decides how the number is written: hours as "52 h", a ratio as a
+ * percent ("56%"), items as "2 items". A unit this page does not know is written as served.
+ */
+export function formatDetectionNumber(
+    value: number | null | undefined,
+    unit: string | null | undefined,
+): string | null {
+    if (typeof value !== "number" || !Number.isFinite(value) || !unit) return null;
+    switch (unit) {
+        case "HOURS":
+            return `${formatNumber(value, { maximumFractionDigits: 1 })} h`;
+        case "RATIO":
+            return `${formatNumber(value * 100, { maximumFractionDigits: 0 })}%`;
+        case "ITEMS":
+            return `${formatNumber(value)} ${value === 1 ? "item" : "items"}`;
+        default:
+            return `${formatNumber(value)} ${unit}`;
+    }
+}
+
+/** The side of the threshold that fires the rule, as served: a sign to read, a word to hear. */
+const DIRECTION: Record<string, { sign: string; word: string }> = {
+    ABOVE: { sign: ">", word: "above" },
+    BELOW: { sign: "<", word: "below" },
+};
+
+/** The measured value the rule compared. "Not reported" when the API did not serve it. */
+function ValueCell({ item }: { item: ImproveOpportunity }) {
+    const text = formatDetectionNumber(item.value, item.unit);
+    return (
+        <td
+            className={`px-3 py-3 tabular-nums ${text ? "" : "text-(--ink-muted)"}`}
+            data-testid="detection-value"
+        >
+            {text ?? NOT_REPORTED}
+        </td>
+    );
+}
+
+/** The rule's limit, with the side that fires it. "Not reported" when the API did not serve it. */
+function ThresholdCell({ item }: { item: ImproveOpportunity }) {
+    const text = formatDetectionNumber(item.threshold, item.unit);
+    const direction = item.thresholdDirection ? DIRECTION[item.thresholdDirection] : undefined;
+    return (
+        <td
+            className={`px-3 py-3 tabular-nums ${text ? "" : "text-(--ink-muted)"}`}
+            data-testid="detection-threshold"
+            aria-label={text && direction ? `${direction.word} ${text}` : undefined}
+        >
+            {text ? (direction ? `${direction.sign} ${text}` : text) : NOT_REPORTED}
+        </td>
     );
 }
 
@@ -170,19 +227,8 @@ export function ImproveOpportunityList({
                             <td className="px-3 py-3">
                                 <EntityCell item={item} />
                             </td>
-                            {/* Not served per detection yet (CHAOS-7626): never computed here. */}
-                            <td
-                                className="px-3 py-3 text-(--ink-muted)"
-                                data-testid="detection-value"
-                            >
-                                Not reported
-                            </td>
-                            <td
-                                className="px-3 py-3 text-(--ink-muted)"
-                                data-testid="detection-threshold"
-                            >
-                                Not reported
-                            </td>
+                            <ValueCell item={item} />
+                            <ThresholdCell item={item} />
                             <td className="px-3 py-3">
                                 <SeverityBadge severity={item.severity} />
                             </td>
