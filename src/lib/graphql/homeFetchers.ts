@@ -151,6 +151,21 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             recommended_action: s.recommendedAction,
             evidence_ref: s.evidenceRef,
             category: s.category as SignalCategory,
+            attribution: s.attribution
+                ? {
+                      items: s.attribution.items,
+                      sources: s.attribution.sources.map((source) => ({
+                          source: source.source,
+                          items: source.items,
+                          share: source.share,
+                      })),
+                      confidence: s.attribution.confidence.map((confidence) => ({
+                          confidence: confidence.confidence,
+                          items: confidence.items,
+                          share: confidence.share,
+                      })),
+                  }
+                : null,
         })),
         limiting_factor: {
             claim: result.limitingFactor.claim,

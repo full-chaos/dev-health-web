@@ -1074,6 +1074,8 @@ export type HomeScopeDataConfidence = {
 export type HomeSignal = {
   __typename?: 'HomeSignal';
   affectedScope: Scalars['String']['output'];
+  /** Current primary work-item attribution evidence for work-item metrics; null when this window has no attributable work items. */
+  attribution?: Maybe<SignalAttribution>;
   category: Scalars['String']['output'];
   confidence: Scalars['String']['output'];
   currentValue: Scalars['String']['output'];
@@ -2172,6 +2174,33 @@ export type SeverityBucket = {
   __typename?: 'SeverityBucket';
   count: Scalars['Int']['output'];
   severity: Scalars['String']['output'];
+};
+
+/** Source and confidence distribution for the work items behind one Home signal. */
+export type SignalAttribution = {
+  __typename?: 'SignalAttribution';
+  confidence: Array<SignalAttributionConfidenceCount>;
+  /** Number of attributed work items behind these distributions. */
+  items: Scalars['Int']['output'];
+  sources: Array<SignalAttributionSourceCount>;
+};
+
+/** One confidence bucket of a Home signal's work-item attribution distribution. */
+export type SignalAttributionConfidenceCount = {
+  __typename?: 'SignalAttributionConfidenceCount';
+  confidence: TeamAttributionConfidence;
+  items: Scalars['Int']['output'];
+  /** Fraction of SignalAttribution.items in this bucket. */
+  share: Scalars['Float']['output'];
+};
+
+/** One source bucket of a Home signal's work-item attribution distribution. */
+export type SignalAttributionSourceCount = {
+  __typename?: 'SignalAttributionSourceCount';
+  items: Scalars['Int']['output'];
+  /** Fraction of SignalAttribution.items in this bucket. */
+  share: Scalars['Float']['output'];
+  source: TeamAttributionSource;
 };
 
 export type SparkPoint = {

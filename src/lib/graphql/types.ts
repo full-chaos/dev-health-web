@@ -918,6 +918,24 @@ export interface HomeGraphQLScopeEntity {
     displayName: string;
 }
 
+export interface HomeGraphQLSignalAttributionSourceCount {
+    source: string;
+    items: number;
+    share: number;
+}
+
+export interface HomeGraphQLSignalAttributionConfidenceCount {
+    confidence: string;
+    items: number;
+    share: number;
+}
+
+export interface HomeGraphQLSignalAttribution {
+    items: number;
+    sources: HomeGraphQLSignalAttributionSourceCount[];
+    confidence: HomeGraphQLSignalAttributionConfidenceCount[];
+}
+
 export interface HomeGraphQLSignal {
     id: string;
     title: string;
@@ -935,6 +953,7 @@ export interface HomeGraphQLSignal {
     evidenceRef: string | null;
     category: string;
     scopeEntity: HomeGraphQLScopeEntity | null;
+    attribution: HomeGraphQLSignalAttribution | null;
 }
 
 export interface HomeGraphQLLimitingFactor {

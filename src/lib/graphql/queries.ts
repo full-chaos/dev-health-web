@@ -1232,6 +1232,19 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
         id
         displayName
       }
+      attribution {
+        items
+        sources {
+          source
+          items
+          share
+        }
+        confidence {
+          confidence
+          items
+          share
+        }
+      }
     }
     limitingFactor {
       claim

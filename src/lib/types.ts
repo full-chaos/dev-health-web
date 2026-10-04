@@ -79,6 +79,30 @@ export type EntityRef = {
     display_name?: string | null;
 };
 
+/** Server-served source distribution for a signal's current primary work-item attribution. */
+export type SignalAttributionSourceCount = {
+    source: string;
+    items: number;
+    share: number;
+};
+
+/** Server-served confidence distribution for a signal's current primary work-item attribution. */
+export type SignalAttributionConfidenceCount = {
+    confidence: string;
+    items: number;
+    share: number;
+};
+
+/**
+ * Server-served provenance for the work items behind a Home signal. Null means this window has
+ * no current primary work-item attribution; it is distinct from UNASSIGNED and NONE buckets.
+ */
+export type SignalAttribution = {
+    items: number;
+    sources: SignalAttributionSourceCount[];
+    confidence: SignalAttributionConfidenceCount[];
+};
+
 /** A ranked cockpit signal. Values are backend-formatted display strings. */
 export type CockpitSignal = {
     id: string;
@@ -101,6 +125,7 @@ export type CockpitSignal = {
     recommended_action: string;
     evidence_ref?: string | null;
     category: SignalCategory;
+    attribution?: SignalAttribution | null;
 };
 
 export type LimitingFactor = {
