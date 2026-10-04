@@ -71,11 +71,49 @@ const explain = vi.hoisted(() => ({
         drilldown_links: { "Pull requests": "/api/v1/drilldown/prs?metric=cycle_time" },
     } as Record<string, unknown> | null,
 }));
+const blockedIssues = vi.hoisted(() => ({
+    value: {
+        items: [
+            {
+                work_item_id: "linear:CHAOS-8106",
+                provider: "linear",
+                status: "blocked" as const,
+                team_id: "team-ops",
+                cycle_time_hours: null,
+                lead_time_hours: null,
+                started_at: null,
+                completed_at: null,
+            },
+            {
+                work_item_id: "github:full-chaos/dev-health#8106",
+                provider: "github",
+                status: "blocked" as const,
+                team_id: null,
+                cycle_time_hours: null,
+                lead_time_hours: null,
+                started_at: null,
+                completed_at: null,
+            },
+        ],
+        count: 2,
+    } as Record<string, unknown> | null,
+    request: vi.fn(),
+}));
+const genericDrilldownRequest = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api/home", () => ({
     getExplainData: async () => explain.value,
     getHomeData: async () => null,
 }));
-vi.mock("@/lib/api/investment", () => ({ getDrilldown: async () => null }));
+vi.mock("@/lib/api/investment", () => ({
+    getDrilldown: async (...args: unknown[]) => {
+        genericDrilldownRequest(...args);
+        return null;
+    },
+    getBlockedWorkIssues: async (...args: unknown[]) => {
+        blockedIssues.request(...args);
+        return blockedIssues.value;
+    },
+}));
 
 import Explore from "./page";
 
@@ -451,6 +489,33 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
     };
     beforeEach(() => {
         explain.value = { ...BLOCKED };
+        blockedIssues.value = {
+            items: [
+                {
+                    work_item_id: "linear:CHAOS-8106",
+                    provider: "linear",
+                    status: "blocked",
+                    team_id: "team-ops",
+                    cycle_time_hours: null,
+                    lead_time_hours: null,
+                    started_at: null,
+                    completed_at: null,
+                },
+                {
+                    work_item_id: "github:full-chaos/dev-health#8106",
+                    provider: "github",
+                    status: "blocked",
+                    team_id: null,
+                    cycle_time_hours: null,
+                    lead_time_hours: null,
+                    started_at: null,
+                    completed_at: null,
+                },
+            ],
+            count: 2,
+        };
+        blockedIssues.request.mockClear();
+        genericDrilldownRequest.mockClear();
     });
 
     it("header: the metric label and the prototype subtitle; View evidence stays", async () => {
@@ -482,33 +547,92 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
         }
     });
 
-    it("the count and the result table are not served: 'Not reported', and no 'Open complete table'", async () => {
+    it("renders the served count and item identity, without per-item duration or titles", async () => {
+        await renderExplore({ metric: "blocked_work" });
+        expect(screen.getByTestId("blocked-work-count")).toHaveTextContent(
+            "Captured work items: 2 items",
+        );
+        const items = screen.getAllByTestId("blocked-work-item");
+        expect(items.map((item) => item.textContent)).toEqual([
+            "linear:CHAOS-8106linearblockedteam-ops",
+            "github:full-chaos/dev-health#8106githubblockedNot reported",
+        ]);
+        expect(screen.queryByText(/cycle time/i)).toBeNull();
+        expect(screen.queryByText(/duration/i)).toBeNull();
+    });
+
+    it("uses the count measured before the endpoint limit and does not call the result complete", async () => {
+        blockedIssues.value = {
+            items: Array.from({ length: 50 }, (_, index) => ({
+                work_item_id: `linear:CHAOS-${8100 + index}`,
+                provider: "linear",
+                status: "blocked",
+                team_id: "team-ops",
+                cycle_time_hours: null,
+                lead_time_hours: null,
+                started_at: null,
+                completed_at: null,
+            })),
+            count: 51,
+        };
+        await renderExplore({ metric: "blocked_work" });
+        expect(screen.getByTestId("blocked-work-count")).toHaveTextContent(
+            "Captured work items: 51 items",
+        );
+        expect(
+            screen.getByText(
+                "The service returned the first 50 items of 51 items. It does not serve another page.",
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("blocked-work-complete-table")).toBeNull();
+    });
+
+    it("shows a measured zero and a missing result as different states", async () => {
+        blockedIssues.value = { items: [], count: 0 };
+        const { unmount } = await renderExplore({ metric: "blocked_work" });
+        expect(screen.getByTestId("blocked-work-count")).toHaveTextContent(
+            "Captured work items: 0 items",
+        );
+        expect(screen.getByTestId("blocked-work-items-empty")).toHaveTextContent(
+            "No blocked work items were served for this window.",
+        );
+        unmount();
+
+        blockedIssues.value = null;
         await renderExplore({ metric: "blocked_work" });
         expect(screen.getByTestId("blocked-work-count")).toHaveTextContent(
             "Captured work items: Not reported",
         );
-        expect(screen.queryByText(/Open complete table/)).toBeNull();
-        const rows = within(screen.getByTestId("blocked-work-table")).getAllByTestId(
-            "blocked-evidence-row",
+        expect(screen.getByTestId("blocked-work-items-unavailable")).toHaveTextContent(
+            "Blocked work items were not reported for this window.",
         );
-        expect(rows.map((row) => row.textContent)).toEqual([
-            "Metric headlineBlocked Work · 0 hours",
-            "Result tableNot reported",
-            expect.stringMatching(/^Time window\d+ days$/),
-        ]);
-        expect(rows[1]).toHaveAttribute("data-reported", "false");
-        // No web-made number: the served headline is the only value in the table.
-        expect(screen.queryByText(/captured work items$/i)).toBeNull();
     });
 
-    it("a headline the explain read did not serve is 'Not reported', never 0", async () => {
-        explain.value = null;
-        await renderExplore({ metric: "blocked_work" });
-        const rows = within(screen.getByTestId("blocked-work-table")).getAllByTestId(
-            "blocked-evidence-row",
+    it("marks the bounded complete-table link and reuses the endpoint-specific client", async () => {
+        const { unmount: unmountSummary } = await renderExplore({
+            metric: "blocked_work",
+            role: "manager",
+        });
+        const href = screen.getByTestId("blocked-work-complete-table").getAttribute("href") ?? "";
+        const url = new URL(href, "https://app.example");
+        expect(url.searchParams.get("api")).toBe("/api/v1/drilldown/issues");
+        expect(url.searchParams.get("blocked")).toBe("true");
+        expect(url.searchParams.get("metric")).toBe("blocked_work");
+        expect(blockedIssues.request).toHaveBeenCalledTimes(1);
+        unmountSummary();
+
+        const { unmount } = await renderExplore({
+            api: "/api/v1/drilldown/issues",
+            metric: "blocked_work",
+            blocked: "true",
+        });
+        expect(screen.getByTestId("blocked-work-complete-table-view")).toBeInTheDocument();
+        expect(screen.getByTestId("blocked-work-complete-table")).toHaveTextContent(
+            "linear:CHAOS-8106",
         );
-        expect(rows[0]).toHaveTextContent("Metric headlineNot reported");
-        expect(rows[0]).toHaveAttribute("data-reported", "false");
+        expect(blockedIssues.request).toHaveBeenCalledTimes(2);
+        expect(genericDrilldownRequest).not.toHaveBeenCalled();
+        unmount();
     });
 
     it("the inset says that zero is not evidence of no blocked work", async () => {
@@ -558,7 +682,7 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
             within(shortcuts)
                 .getAllByRole("link")
                 .map((l) => l.textContent),
-        ).toEqual(["prs", "issues"]);
+        ).toEqual(["prs"]);
     });
 
     it("another metric keeps the metric evidence layout (no Blocked Work section)", async () => {
