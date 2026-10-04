@@ -58,8 +58,6 @@ export type TeamCategorySankeySectionProps = {
 
 const KIND_CHIP_LABEL = { team: "Team", theme: "Theme", subcategory: "Subcategory", repo: "Repo" };
 
-/** A theme as the page names it ("Feature Delivery"), never the raw key ("feature_delivery"). */
-
 export function TeamCategorySankeySection({
     filters,
     focusedTeam,
