@@ -8,6 +8,7 @@ import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { Section } from "@/components/ui/Section";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
@@ -68,11 +69,21 @@ function Person({ name }: { name: string | null }) {
 
 type ReviewNetworkViewProps = {
     edges: ReviewEdgeRow[] | null;
+    /** Daily review records the filters match before the server cut; null when unknown. */
+    totalCount?: number | null;
+    /** A team scope is active (the edges are those on the team's repositories). */
+    teamScope?: boolean;
     loading: boolean;
     error: string | null;
 };
 
-export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
+export function ReviewNetworkView({
+    edges,
+    totalCount = null,
+    teamScope = false,
+    loading,
+    error,
+}: ReviewNetworkViewProps) {
     const router = useRouter();
     const rows = useMemo(() => (edges ? aggregateReviewEdges(edges) : []), [edges]);
 
@@ -81,6 +92,9 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
     const authorCount = useMemo(() => new Set(rows.map((r) => r.author)).size, [rows]);
     const totalReviews = useMemo(() => rows.reduce((sum, r) => sum + r.totalReviews, 0), [rows]);
     const maxReviews = rows.reduce((m, r) => Math.max(m, r.totalReviews), 1);
+    // The server cuts the list by daily records (CHAOS-7786). Cut = more records match than came back.
+    const returned = edges?.length ?? 0;
+    const cut = totalCount !== null && totalCount > returned;
 
     const columns: DataTableColumn<ReviewPair>[] = [
         {
@@ -137,6 +151,19 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
             title="Review Network"
             description="Reviewer-to-author collaboration—not a performance ranking."
         >
+            {/* What the list leaves out, and what a team scope means (CHAOS-7996). */}
+            <div
+                className="mb-4 space-y-1 text-xs text-(--ink-muted)"
+                data-testid="review-network-scope-notes"
+            >
+                <p>Automation accounts (logins ending in [bot]) and self-reviews are left out.</p>
+                {teamScope ? (
+                    <p data-testid="review-network-team-caption">
+                        Team scope: pairs on repositories this team owns. Reviewers and authors may
+                        belong to other teams.
+                    </p>
+                ) : null}
+            </div>
             {loading ? (
                 <DataState variant="loading" title="Loading…" />
             ) : error ? (
@@ -158,10 +185,23 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
                 <DataState
                     variant="detector-enabled-no-findings"
                     title="No review relationships to show"
-                    description="No reviewer→author activity was recorded in this scope and window. Widen the date range or remove repo filters to see data."
+                    description="No reviews between different people were recorded in this scope and window (automation accounts and self-reviews are left out). Widen the date range or change the repo or team filter."
                 />
             ) : (
                 <>
+                    {cut ? (
+                        <Notice
+                            variant="info"
+                            live={false}
+                            className="mb-4"
+                            data-testid="review-network-count-notice"
+                        >
+                            Showing the {formatNumber(returned)} largest of{" "}
+                            {formatNumber(totalCount ?? returned)} daily review records. Pairs and
+                            totals below count only the records shown; narrow the window or the repo
+                            or team filter to see the rest.
+                        </Notice>
+                    ) : null}
                     <MetricStrip className="mb-4" data-testid="review-network-tiles">
                         {[
                             ["Reviewer", reviewerCount, "distinct reviewers in the pairs below"],

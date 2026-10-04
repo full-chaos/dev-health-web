@@ -3,6 +3,7 @@ import { screen, within } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { getMetricLabel } from "@/lib/metrics/catalog";
 import { STATUS_PILL } from "@/lib/statusPill";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { Experiment } from "@/lib/graphql/types";
@@ -51,6 +52,10 @@ describe("ExperimentCards", () => {
 
         const first = within(screen.getAllByTestId("experiment-card")[0]);
         expect(first.getByTestId("experiment-metric-pill").className).toContain(STATUS_PILL.info);
+        expect(first.getByTestId("experiment-metric-pill")).toHaveTextContent(
+            getMetricLabel("review_latency"),
+        );
+        expect(first.getByTestId("experiment-metric-pill")).not.toHaveTextContent("review_latency");
         expect(first.getByText("Suggestion 1")).toBeInTheDocument();
         expect(
             first.getByRole("heading", { level: 3, name: "Trial a 24h review SLA" }),

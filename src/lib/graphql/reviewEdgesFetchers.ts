@@ -43,6 +43,8 @@ interface ReviewEdgesQueryResponse {
  * @param untilDate - End of the time window, inclusive ("YYYY-MM-DD").
  * @param repoIds   - Optional repo filter. When the active filter scope targets specific
  *                    repositories, pass them so the resolver narrows review_edges_daily.
+ * @param teamIds   - Optional team scope (CHAOS-7785): the repositories these teams OWN. Sent only
+ *                    when non-empty, so a query-api that predates the field is not asked for it.
  * @param limit     - Max rows to return (default 500, as per SDL default).
  */
 export async function getReviewEdgesViaGraphQL(params: {
@@ -50,6 +52,7 @@ export async function getReviewEdgesViaGraphQL(params: {
     sinceDate: string;
     untilDate: string;
     repoIds?: string[] | null;
+    teamIds?: string[] | null;
     limit?: number;
 }): Promise<ReviewEdgesResult> {
     const response = await graphqlFetch<ReviewEdgesQueryResponse>(
@@ -60,6 +63,7 @@ export async function getReviewEdgesViaGraphQL(params: {
                 sinceDate: params.sinceDate,
                 untilDate: params.untilDate,
                 repoIds: params.repoIds ?? null,
+                ...(params.teamIds && params.teamIds.length > 0 ? { teamIds: params.teamIds } : {}),
                 limit: params.limit ?? 500,
             },
         },

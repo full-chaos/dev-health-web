@@ -1404,7 +1404,9 @@ describe("GraphView", () => {
         );
 
         expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
-        expect(screen.getByText(/No reviewer→author activity/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/No reviews between different people were recorded/i),
+        ).toBeInTheDocument();
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
@@ -1883,7 +1885,12 @@ describe("GraphView", () => {
             ])[0];
         const renderReview = (
             edges: ReturnType<typeof row>[] | null,
-            extra: { loading?: boolean; error?: string | null } = {},
+            extra: {
+                loading?: boolean;
+                error?: string | null;
+                totalCount?: number | null;
+                teamScope?: boolean;
+            } = {},
         ) => {
             mockUseWorkGraphEdges.mockReturnValue({
                 edges: [],
@@ -1899,6 +1906,8 @@ describe("GraphView", () => {
                     reviewEdges={edges}
                     reviewEdgesLoading={extra.loading ?? false}
                     reviewEdgesError={extra.error ?? null}
+                    reviewEdgesTotalCount={extra.totalCount ?? null}
+                    reviewEdgesTeamScope={extra.teamScope ?? false}
                 />,
             );
         };
@@ -1972,6 +1981,14 @@ describe("GraphView", () => {
             expect(widths).toEqual(["100%", "50%", "20%"]);
         });
 
+        it("passes the server total and the team scope on to the view", () => {
+            renderReview(pairs, { totalCount: 1820, teamScope: true });
+            expect(screen.getByTestId("review-network-count-notice")).toHaveTextContent(
+                "Showing the 4 largest of 1,820 daily review records",
+            );
+            expect(screen.getByTestId("review-network-team-caption")).toBeInTheDocument();
+        });
+
         it("card text, the three states and the test ids", () => {
             const { unmount } = renderReview(pairs);
             expect(screen.getByText("Review Network")).toBeInTheDocument();
@@ -1994,7 +2011,7 @@ describe("GraphView", () => {
             renderReview([]);
             expect(screen.getByText("No review relationships to show")).toBeInTheDocument();
             expect(
-                screen.getByText(/Widen the date range or remove repo filters to see data/),
+                screen.getByText(/Widen the date range or change the repo or team filter/),
             ).toBeInTheDocument();
         });
     });
