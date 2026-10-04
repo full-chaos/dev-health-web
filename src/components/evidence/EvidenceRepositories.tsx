@@ -17,13 +17,16 @@ export const EVIDENCE_REPOSITORIES_TITLE = "Supporting repositories";
 
 /**
  * The served provider URL when it is an absolute https URL with a host; else null (no link).
- * (The URL parser already refuses an https URL with no host.) The string that is returned is the served one, unchanged: the web builds no URL.
+ * (The URL parser already refuses an https URL with no host; a URL with user info is refused here.) The string that is returned is the served one, unchanged: the web builds no URL.
  */
 export function servedSourceUrl(value: string | null | undefined): string | null {
     if (typeof value !== "string" || value === "") return null;
     try {
         const url = new URL(value);
-        return url.protocol === "https:" ? value : null;
+        // No user info: a URL with credentials in it is never linked.
+        return url.protocol === "https:" && url.username === "" && url.password === ""
+            ? value
+            : null;
     } catch {
         return null;
     }

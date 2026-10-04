@@ -160,6 +160,9 @@ describe("View original source", () => {
         ["javascript:", "javascript:alert(1)"],
         ["no host", "https://"],
         ["not a URL", "acme/api"],
+        ["https with a user name", "https://user@github.com/acme/api"],
+        ["https with a user name and password", "https://user:secret@github.com/acme/api"],
+        ["https with an empty user name and a password", "https://:secret@github.com/acme/api"],
     ])("no link for a served source_url that is %s", async (_name, value) => {
         await open({ source_url: value });
         expect(sourceLink()).toBeNull();
