@@ -8,6 +8,7 @@ import {
     coverageBaselinesFailed,
     type RepoCoverageBaseline,
     scopeBaselineCell,
+    scopeBaselineHint,
 } from "../coverageBaselines";
 
 const row = (over: Partial<RepoCoverageBaseline> = {}): RepoCoverageBaseline => ({
@@ -115,5 +116,25 @@ describe("scopeBaselineCell", () => {
 
     it("a failed read is 'failed', not 'no baseline'", () => {
         expect(scopeBaselineCell({ fetchFailed: true })).toEqual({ kind: "failed" });
+    });
+});
+
+// The hint of the fact "Target baseline": what the value is (the running 30-day average of the
+// scope's own coverage) and the served number of days behind it.
+describe("scopeBaselineHint", () => {
+    it("says what the baseline is and how many of the 30 days hold a value", () => {
+        expect(scopeBaselineHint({ lineBaselinePct: 82.6, lineDays: 30 })).toBe(
+            "Running 30-day average of this scope's line coverage; 30 of the 30 days hold a value",
+        );
+    });
+
+    it("says the same for no baseline, with the served days: the reader sees why there is none", () => {
+        expect(scopeBaselineHint({ lineBaselinePct: null, lineDays: 3 })).toBe(
+            "Running 30-day average of this scope's line coverage; 3 of the 30 days hold a value",
+        );
+    });
+
+    it("has no hint for a failed read: no days were served", () => {
+        expect(scopeBaselineHint({ fetchFailed: true })).toBeUndefined();
     });
 });

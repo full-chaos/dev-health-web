@@ -348,10 +348,12 @@ describe("TestOps Coverage page — approved layout", () => {
             baseline: { value: 82.6, label: "Target baseline" },
         });
         expect(fact(container)).toHaveTextContent("Target baseline83%");
-        // The days behind the served baseline are the tooltip of the value.
-        expect(within(fact(container) as HTMLElement).getByTitle("30-day average of 30 days")).toHaveTextContent(
-            "83%",
-        );
+        // The hint of the value: what the target is, and the served days behind it.
+        expect(
+            within(fact(container) as HTMLElement).getByTitle(
+                "Running 30-day average of this scope's line coverage; 30 of the 30 days hold a value",
+            ),
+        ).toHaveTextContent("83%");
         expect(screen.queryByText("80%")).toBeNull();
     });
 
@@ -370,6 +372,12 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(fact(container)).not.toBeNull();
         expect(fact(container)).toHaveTextContent("Target baselineNot reported");
         expect(fact(container)).not.toHaveTextContent("%");
+        // The hint stays, with the served days (2 in this answer).
+        expect(
+            within(fact(container) as HTMLElement).getByTitle(
+                "Running 30-day average of this scope's line coverage; 2 of the 30 days hold a value",
+            ),
+        ).toHaveTextContent("Not reported");
     });
 
     it("with a failed scope baseline read: the fact says 'Could not be read', no line, and the trend stays", async () => {

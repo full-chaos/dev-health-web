@@ -23,8 +23,8 @@ import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 import {
     baselineEndDate,
     baselineText,
-    baselineTitle,
     scopeBaselineCell,
+    scopeBaselineHint,
 } from "@/lib/testops/coverageBaselines";
 import { BRANCH_BREAKDOWN_TOP_N, buildRepositoryCoverage } from "@/lib/testops/coverageRepos";
 import {
@@ -249,11 +249,12 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                 interpretation="Line coverage appears over time so drops are visible before they become release risk."
                 direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
                 // The fact stays whatever the answer: the served value, "Not reported" or "Could
-                // not be read".
+                // not be read". The target is the running 30-day average of the scope's own
+                // coverage; its hint says so, with the served days.
                 threshold={{
                     label: "Target baseline",
                     value: (
-                        <span title={baselineTitle(scopeBaseline)}>
+                        <span title={scopeBaselineHint(scopeBaselineState)}>
                             {baselineText(scopeBaseline)}
                         </span>
                     ),
