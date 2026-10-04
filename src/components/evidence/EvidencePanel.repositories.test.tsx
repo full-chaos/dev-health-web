@@ -170,3 +170,72 @@ describe("View original source", () => {
         expect(screen.getByRole("link", { name: "Open evidence" })).toBeInTheDocument();
     });
 });
+
+// Rule C (team-lead, CHAOS-8587): ops serves `repositories` from the same rows as `contributors`.
+// A repository-stored metric draws them ONCE, under "Supporting repositories"; a metric with
+// `repositories` null keeps "Supporting evidence" exactly as before.
+describe("the same rows are not drawn twice", () => {
+    const contributors = [
+        {
+            id: "r1",
+            label: "acme/api",
+            display_name: "acme/api",
+            value: 1200,
+            delta_pct: 4,
+            evidence_link: "",
+        },
+        {
+            id: "r2",
+            label: "acme/web",
+            display_name: "acme/web",
+            value: 34,
+            delta_pct: -2,
+            evidence_link: "",
+        },
+    ];
+
+    it("repositories served: each repository appears once, and no 'Supporting evidence' section", async () => {
+        await open({
+            contributors,
+            repositories: [
+                { id: "r1", name: "acme/api", value: 1200, source_url: null },
+                { id: "r2", name: "acme/web", value: 34, source_url: null },
+            ],
+        });
+        expect(screen.queryByTestId("evidence-supporting")).toBeNull();
+        expect(screen.queryByText("Supporting evidence")).toBeNull();
+        expect(screen.getAllByText("acme/api")).toHaveLength(1);
+        expect(screen.getAllByText("acme/web")).toHaveLength(1);
+        expect(screen.getAllByTestId("evidence-repository-row")).toHaveLength(2);
+    });
+
+    it("repositories served and empty: still no 'Supporting evidence' and no partial-data box", async () => {
+        await open({ contributors: [], repositories: [] });
+        expect(screen.queryByTestId("evidence-supporting")).toBeNull();
+        expect(screen.queryByText(/No contributing artifacts/u)).toBeNull();
+        expect(screen.getByTestId("evidence-repositories")).toHaveTextContent("Not reported");
+    });
+
+    it("repositories null (a team-stored metric): 'Supporting evidence' is drawn as before", async () => {
+        await open({ contributors, repositories: null });
+        const supporting = screen.getByTestId("evidence-supporting");
+        expect(within(supporting).getAllByTestId("evidence-supporting-row")).toHaveLength(2);
+        expect(screen.queryByTestId("evidence-repositories")).toBeNull();
+    });
+
+    it("repositories absent (an older API): 'Supporting evidence' is drawn as before", async () => {
+        await open({ contributors });
+        expect(screen.getByTestId("evidence-supporting")).toBeInTheDocument();
+    });
+
+    it("the Artifacts fact still counts the served rows (the count is not the drawn list)", async () => {
+        await open({
+            contributors,
+            repositories: [{ id: "r1", name: "acme/api", value: 1200, source_url: null }],
+        });
+        const artifacts = screen
+            .getAllByTestId("evidence-fact")
+            .find((row) => within(row).queryByText("Artifacts", { selector: "dt" }));
+        expect(artifacts).toHaveTextContent("2 artifacts");
+    });
+});

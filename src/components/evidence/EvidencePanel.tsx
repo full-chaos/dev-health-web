@@ -535,14 +535,19 @@ export function EvidencePanel({
                                 </p>
                             </div>
                         ) : null}
-                        {data.evidence?.length ? (
-                            <EvidenceItems items={data.evidence} />
-                        ) : (
-                            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
-                                No contributing artifacts were returned for this metric and filter
-                                window. This is a partial-data state, not a zero signal.
-                            </div>
-                        )}
+                        {
+                            // A repository-stored metric serves its repositories (the same rows as
+                            // the contributors): they are drawn once, under "Supporting
+                            // repositories" below (CHAOS-8587), not again here.
+                            Array.isArray(data.repositories) ? null : data.evidence?.length ? (
+                                <EvidenceItems items={data.evidence} />
+                            ) : (
+                                <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
+                                    No contributing artifacts were returned for this metric and
+                                    filter window. This is a partial-data state, not a zero signal.
+                                </div>
+                            )
+                        }
                         <EvidenceRepositories repositories={data.repositories} unit={data.unit} />
                         <EvidenceSourceLink url={data.source_url} />
                         <SuggestedActions actions={data.actions || []} />
