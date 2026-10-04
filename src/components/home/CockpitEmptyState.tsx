@@ -14,13 +14,18 @@ import { STATE_ICONS } from "@/components/ui/stateIcons";
  *
  * | variant                  | meaning                                          |
  * | ------------------------ | ------------------------------------------------ |
+ * | no-data-window           | The selected window has no stored data.          |
  * | no-data-connected        | No source feeds this panel yet.                  |
  * | detector-unavailable     | Sources connected, but the detector can't run.   |
  * | no-findings              | Detector ran and surfaced nothing for the window.|
  * | insufficient-confidence  | Some evidence, but not enough to show a result.  |
  */
 export type CockpitEmptyStateVariant =
-    "no-data-connected" | "detector-unavailable" | "no-findings" | "insufficient-confidence";
+    | "no-data-window"
+    | "no-data-connected"
+    | "detector-unavailable"
+    | "no-findings"
+    | "insufficient-confidence";
 
 type VariantCopy = {
     title: string;
@@ -28,6 +33,10 @@ type VariantCopy = {
 };
 
 const VARIANT_COPY: Record<CockpitEmptyStateVariant, VariantCopy> = {
+    "no-data-window": {
+        title: "No data",
+        description: "No data for this window.",
+    },
     "no-data-connected": {
         title: "No data connected",
         description:

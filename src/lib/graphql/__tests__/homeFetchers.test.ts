@@ -52,6 +52,8 @@ const graphqlFixture: HomeGraphQLResult = {
             value: 42,
             unit: "prs/week",
             deltaPct: 0.1,
+            hasData: true,
+            hasPriorData: true,
             spark: [{ ts: "2026-09-27", value: 40 }],
         },
     ],
@@ -166,6 +168,8 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
                 value: 42,
                 unit: "prs/week",
                 delta_pct: 0.1,
+                has_data: true,
+                has_prior_data: true,
                 spark: [{ ts: "2026-09-27", value: 40 }],
             },
         ]);
@@ -260,6 +264,40 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
 
         expect(result.freshness.sources).toEqual({});
         expect(result.tiles).toEqual({});
+    });
+
+    it("maps explicit no-data facts without treating a served zero as data", () => {
+        const result = toHomeResponse({
+            ...graphqlFixture,
+            deltas: [
+                {
+                    ...graphqlFixture.deltas[0],
+                    value: 0,
+                    deltaPct: -100,
+                    hasData: false,
+                    hasPriorData: false,
+                },
+            ],
+            summary: [],
+            events: [],
+            constraint: null,
+            healthState: {
+                ...graphqlFixture.healthState,
+                status: "no_data",
+                headline: "",
+                summary: "",
+            },
+            signals: [],
+        });
+
+        expect(result.deltas[0]).toMatchObject({
+            value: 0,
+            delta_pct: -100,
+            has_data: false,
+            has_prior_data: false,
+        });
+        expect(result.constraint).toBeNull();
+        expect(result.health_state).toEqual({ status: "no_data", headline: "", summary: "" });
     });
 });
 

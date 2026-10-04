@@ -87,6 +87,8 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             value: d.value,
             unit: d.unit,
             delta_pct: d.deltaPct,
+            has_data: d.hasData,
+            has_prior_data: d.hasPriorData,
             spark: d.spark.map((p) => ({ ts: p.ts, value: p.value })),
         })),
         rework_theme_allocation: result.reworkThemeAllocation.map((r) => ({
@@ -108,12 +110,17 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
                 { title: t.value.title, subtitle: t.value.subtitle, link: t.value.link },
             ]),
         ),
-        constraint: {
-            title: result.constraint.title,
-            claim: result.constraint.claim,
-            evidence: result.constraint.evidence.map((e) => ({ label: e.label, link: e.link })),
-            experiments: result.constraint.experiments,
-        },
+        constraint: result.constraint
+            ? {
+                  title: result.constraint.title,
+                  claim: result.constraint.claim,
+                  evidence: result.constraint.evidence.map((e) => ({
+                      label: e.label,
+                      link: e.link,
+                  })),
+                  experiments: result.constraint.experiments,
+              }
+            : null,
         events: result.events.map((e) => ({
             ts: e.ts,
             type: e.type,

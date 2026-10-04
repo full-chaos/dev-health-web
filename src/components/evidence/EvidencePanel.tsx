@@ -110,6 +110,7 @@ const normalizeHomeEvidence = (
         ? `Repository coverage ${formatPercent(coverage.repos_covered_pct)}, linked PR coverage ${formatPercent(coverage.prs_linked_to_issues_pct)}, cycle-state coverage ${formatPercent(coverage.issues_with_cycle_states_pct)}.`
         : "";
     const summaryText = result.summary.map((sentence) => sentence.text).join(" ");
+    const constraint = result.constraint;
     const evidence: EvidenceItem[] = [
         ...result.summary.map((sentence) => ({
             id: sentence.id,
@@ -118,13 +119,15 @@ const normalizeHomeEvidence = (
             type: "other" as const,
             meta: "Home summary",
         })),
-        ...result.constraint.evidence.map((item, index) => ({
-            id: `constraint-${index}`,
-            title: item.label,
-            url: item.link,
-            type: "other" as const,
-            meta: result.constraint.title,
-        })),
+        ...(constraint
+            ? constraint.evidence.map((item, index) => ({
+                  id: `constraint-${index}`,
+                  title: item.label,
+                  url: item.link,
+                  type: "other" as const,
+                  meta: constraint.title,
+              }))
+            : []),
         ...result.events.map((event, index) => ({
             id: `event-${index}`,
             title: event.text,
@@ -141,16 +144,16 @@ const normalizeHomeEvidence = (
                 ? coverageSummary
                 : result.health_state?.summary ||
                   summaryText ||
-                  result.constraint.claim ||
+                  constraint?.claim ||
                   coverageSummary,
         why_it_matters:
             thread === "measure"
                 ? result.data_confidence?.caveats.join(" ") ||
                   "Coverage and freshness determine how much context Home can safely explain."
-                : result.constraint.claim ||
+                : constraint?.claim ||
                   "This context comes from the same Home payload that ranks current operating signals.",
         evidence,
-        actions: result.constraint.experiments.map((experiment, index) => ({
+        actions: (constraint?.experiments ?? []).map((experiment, index) => ({
             id: `experiment-${index}`,
             label: experiment,
             type: "experiment" as const,
