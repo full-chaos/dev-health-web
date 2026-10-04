@@ -2,8 +2,12 @@
 
 import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
 import { DataNote } from "@/components/charts/DataNote";
+import { ArrowRight } from "lucide-react";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import {
@@ -71,20 +75,246 @@ function groupKeyForUnit(dimension: GroupDimension, unit: WorkUnitInvestment): s
     return unit.work_unit_type ?? "__none__";
 }
 
+type LiveSnapshot = {
+    groups: EvidenceGroup[];
+    groupBy: GroupDimension;
+    effortUnit: string;
+    attributionByWorkUnit?: Map<string, WorkUnitTeamAttribution>;
+};
+type LiveEvidence = { snapshot: LiveSnapshot; listeners: Set<() => void> };
+
+/** The body of the group's drawer: the served numbers, then the units with their details. */
+function GroupEvidenceBody({
+    store,
+    groupKey,
+    onOpenUnitEvidence,
+}: {
+    store: LiveEvidence;
+    groupKey: string;
+    onOpenUnitEvidence: (workUnitId: string) => void;
+}) {
+    const snapshot = useSyncExternalStore(
+        (listener) => {
+            store.listeners.add(listener);
+            return () => {
+                store.listeners.delete(listener);
+            };
+        },
+        () => store.snapshot,
+        () => store.snapshot,
+    );
+    const group = snapshot.groups.find((entry) => entry.key === groupKey);
+    if (!group) return null;
+    return (
+        <div className="space-y-4">
+            <EvidenceFactList aria-label="Evidence group" testId="evidence-group-facts">
+                <EvidenceFact
+                    label="Average quality"
+                    value={group.avgQuality !== null ? formatQuality(group.avgQuality) : "Unknown"}
+                />
+                <EvidenceFact label="Units" value={String(group.entries.length)} />
+                <EvidenceFact
+                    label="Weighted effort"
+                    value={`${formatNumber(group.totalEffort)} ${snapshot.effortUnit}`}
+                />
+            </EvidenceFactList>
+            <GroupUnitsList
+                entries={group.entries}
+                effortUnit={snapshot.effortUnit}
+                attributionByWorkUnit={snapshot.attributionByWorkUnit}
+                onOpenUnitEvidence={onOpenUnitEvidence}
+            />
+        </div>
+    );
+}
+
+type GroupUnitsListProps = {
+    entries: WorkUnitListEntry[];
+    effortUnit: string;
+    attributionByWorkUnit?: Map<string, WorkUnitTeamAttribution>;
+    /** Select the work unit for the "How this was calculated" block below the table. */
+    onOpenUnitEvidence: (workUnitId: string) => void;
+};
+
+/**
+ * The work units of one group, each expandable to its classification rationale and linked
+ * metadata. It is the body the row's Evidence action puts in the shared drawer (it was the
+ * expandable row before); every served field it showed there is still shown.
+ */
+export function GroupUnitsList({
+    entries,
+    effortUnit,
+    attributionByWorkUnit,
+    onOpenUnitEvidence,
+}: GroupUnitsListProps) {
+    const [openUnits, setOpenUnits] = useState<Set<string>>(new Set());
+    const toggleUnit = (id: string) => {
+        setOpenUnits((current) => {
+            const next = new Set(current);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+    return (
+        <ul className="space-y-2">
+            {entries.map((entry) => {
+                const unit = entry.unit;
+                const unitOpen = openUnits.has(unit.work_unit_id);
+                const attribution = attributionByWorkUnit?.get(unit.work_unit_id);
+                const textual = unit.evidence?.textual ?? [];
+                const metadata = [
+                    ...(unit.evidence?.structural ?? []),
+                    ...(unit.evidence?.contextual ?? []),
+                ];
+                return (
+                    <li
+                        key={unit.work_unit_id}
+                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70)"
+                    >
+                        <button
+                            type="button"
+                            aria-expanded={unitOpen}
+                            onClick={() => toggleUnit(unit.work_unit_id)}
+                            className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left"
+                        >
+                            <span className="flex min-w-0 items-center gap-2">
+                                <span
+                                    aria-hidden
+                                    className={`text-(--accent-2) transition-transform ${unitOpen ? "rotate-90" : ""}`}
+                                >
+                                    ›
+                                </span>
+                                <span className="truncate text-sm font-medium text-foreground">
+                                    {formatWorkUnitLabel(unit)}
+                                </span>
+                                {formatWorkUnitTypeLabel(unit) ? (
+                                    <span className="shrink-0 rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        {formatWorkUnitTypeLabel(unit)}
+                                    </span>
+                                ) : null}
+                                {attribution ? (
+                                    <TeamAttributionBadge
+                                        source={attribution.source}
+                                        confidence={attribution.confidence}
+                                        teamName={attribution.teamName}
+                                    />
+                                ) : null}
+                            </span>
+                            <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
+                                <span>
+                                    {formatNumber(entry.weightedEffort)} {effortUnit}
+                                </span>
+                                <span>
+                                    {unit.evidence_quality.value !== null
+                                        ? formatBandLabel(unit.evidence_quality.band ?? "unknown")
+                                        : "Unknown"}
+                                </span>
+                            </span>
+                        </button>
+
+                        {unitOpen && (
+                            <div className="space-y-4 border-t border-(--card-stroke) px-4 py-4">
+                                <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                    <span>
+                                        ID:{" "}
+                                        <span className="font-mono tracking-normal text-(--ink)">
+                                            {formatWorkUnitIdToken(unit.work_unit_id)}
+                                        </span>
+                                    </span>
+                                    <span>
+                                        Evidence quality:{" "}
+                                        {unit.evidence_quality.value !== null
+                                            ? `${formatQuality(unit.evidence_quality.value)} (${formatBandLabel(unit.evidence_quality.band ?? "unknown")})`
+                                            : "Unknown"}
+                                    </span>
+                                    {attribution ? (
+                                        <span className="flex items-center gap-2">
+                                            Team attribution:
+                                            <TeamAttributionBadge
+                                                source={attribution.source}
+                                                confidence={attribution.confidence}
+                                                teamName={attribution.teamName}
+                                            />
+                                            {attribution.teamName ? (
+                                                <span className="tracking-normal text-(--ink)">
+                                                    {attribution.teamName}
+                                                </span>
+                                            ) : null}
+                                        </span>
+                                    ) : null}
+                                </div>
+
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        Classification rationale
+                                    </p>
+                                    {textual.length === 0 ? (
+                                        <p className="mt-2 text-xs text-(--ink-muted)">
+                                            No textual rationale reported for this work unit.
+                                        </p>
+                                    ) : (
+                                        <div className="mt-2 space-y-2">
+                                            {textual.map((item, idx) => (
+                                                <EvidenceEntryCard
+                                                    key={`textual-${idx}`}
+                                                    entry={item as Record<string, unknown>}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        Linked metadata
+                                    </p>
+                                    {metadata.length === 0 ? (
+                                        <p className="mt-2 text-xs text-(--ink-muted)">
+                                            No structural or contextual metadata reported.
+                                        </p>
+                                    ) : (
+                                        <div className="mt-2 grid gap-2">
+                                            {metadata.map((item, idx) => (
+                                                <EvidenceEntryCard
+                                                    key={`metadata-${idx}`}
+                                                    entry={item as Record<string, unknown>}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => onOpenUnitEvidence(unit.work_unit_id)}
+                                    className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
+                                >
+                                    {CTA_LABELS.openEvidence}
+                                </button>
+                            </div>
+                        )}
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}
+
 /**
  * Evidence tab — table-first work-unit drilldown.
  *
  * Replaces the old "Unit Investment" card grid. Work units are grouped by a
  * real, persisted dimension (theme / subcategory / type) read from each unit's
- * investment vector; no categories are recomputed here. Each group expands to
- * its work units, and each work unit expands inline to its classification
+ * investment vector; no categories are recomputed here. Each group row has an Evidence action that opens the shared drawer with its
+ * work units, and each work unit expands there to its classification
  * rationale (textual evidence) and linked metadata (structural + contextual
  * evidence rendered as labelled rows). This is also where the retired
  * "Metadata only" toggle is subsumed: metadata is always surfaced in the
- * expandable rows instead of being gated behind a control that changed nothing.
+ * drawer rows instead of being gated behind a control that changed nothing.
  */
 /** One column template for the head and every group row, so the four columns line up. */
-const EVIDENCE_COLUMNS = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem]";
+const EVIDENCE_COLUMNS = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem_6rem]";
 
 export function InvestmentEvidenceTable({
     workUnits,
@@ -93,8 +323,7 @@ export function InvestmentEvidenceTable({
     attributionByWorkUnit,
 }: InvestmentEvidenceTableProps) {
     const [groupBy, setGroupBy] = useState<GroupDimension>("theme");
-    const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-    const [openUnits, setOpenUnits] = useState<Set<string>>(new Set());
+    const evidence = useEvidenceDrawer();
 
     const allEntries = useMemo<WorkUnitListEntry[]>(
         () =>
@@ -137,21 +366,33 @@ export function InvestmentEvidenceTable({
             .sort((a, b) => b.totalEffort - a.totalEffort);
     }, [allEntries, groupBy]);
 
-    const toggleGroup = (key: string) => {
-        setOpenGroups((current) => {
-            const next = new Set(current);
-            if (next.has(key)) next.delete(key);
-            else next.add(key);
-            return next;
-        });
-    };
+    // The drawer body is mounted once, at the click, so it cannot re-render with this table. It
+    // reads the CURRENT groups and team attribution from this store instead, so a team badge that
+    // arrives after the drawer opened (its own query) shows up without opening it again.
+    const live = useRef<LiveEvidence>({
+        snapshot: { groups, groupBy, effortUnit, attributionByWorkUnit },
+        listeners: new Set(),
+    });
+    useEffect(() => {
+        live.current.snapshot = { groups, groupBy, effortUnit, attributionByWorkUnit };
+        live.current.listeners.forEach((listener) => listener());
+    }, [groups, groupBy, effortUnit, attributionByWorkUnit]);
 
-    const toggleUnit = (id: string) => {
-        setOpenUnits((current) => {
-            const next = new Set(current);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
+    // The row's Evidence action opens the ONE shared drawer: the group's served numbers, then its
+    // work units with their details (what the expandable row held before).
+    const openGroupEvidence = (group: EvidenceGroup) => {
+        evidence.open({
+            title: group.label,
+            content: (
+                <GroupEvidenceBody
+                    store={live.current}
+                    groupKey={group.key}
+                    onOpenUnitEvidence={(workUnitId) => {
+                        onSelectWorkUnit(workUnitId);
+                        evidence.close();
+                    }}
+                />
+            ),
         });
     };
 
@@ -180,6 +421,7 @@ export function InvestmentEvidenceTable({
                     <span className="text-right">Average quality</span>
                     <span className="text-right">Units</span>
                     <span className="text-right">Weighted effort</span>
+                    <span className="sr-only">Evidence</span>
                 </div>
 
                 {groups.length === 0 ? (
@@ -188,26 +430,16 @@ export function InvestmentEvidenceTable({
                     </p>
                 ) : (
                     groups.map((group) => {
-                        const isOpen = openGroups.has(group.key);
                         return (
                             <div
                                 key={group.key}
                                 className="border-b border-(--card-stroke) last:border-b-0"
                             >
-                                <button
-                                    type="button"
-                                    aria-expanded={isOpen}
-                                    onClick={() => toggleGroup(group.key)}
+                                <div
                                     data-testid="evidence-group-row"
-                                    className={`grid w-full ${EVIDENCE_COLUMNS} items-center gap-3 px-4 py-3 text-left transition hover:bg-(--card-70)`}
+                                    className={`grid ${EVIDENCE_COLUMNS} items-center gap-3 px-4 py-3 transition hover:bg-(--card-70)`}
                                 >
                                     <span className="flex min-w-0 items-center gap-2">
-                                        <span
-                                            aria-hidden
-                                            className={`text-(--accent-2) transition-transform ${isOpen ? "rotate-90" : ""}`}
-                                        >
-                                            ›
-                                        </span>
                                         <span className="truncate text-sm font-medium text-foreground">
                                             {group.label}
                                         </span>
@@ -227,193 +459,19 @@ export function InvestmentEvidenceTable({
                                     <span className="text-right text-sm tabular-nums text-foreground">
                                         {formatNumber(group.totalEffort)} {effortUnit}
                                     </span>
-                                </button>
-
-                                {isOpen && (
-                                    <ul className="space-y-2 bg-(--card-80) px-4 pb-4">
-                                        {group.entries.map((entry) => {
-                                            const unit = entry.unit;
-                                            const unitOpen = openUnits.has(unit.work_unit_id);
-                                            const attribution = attributionByWorkUnit?.get(
-                                                unit.work_unit_id,
-                                            );
-                                            const textual = unit.evidence?.textual ?? [];
-                                            const metadata = [
-                                                ...(unit.evidence?.structural ?? []),
-                                                ...(unit.evidence?.contextual ?? []),
-                                            ];
-                                            return (
-                                                <li
-                                                    key={unit.work_unit_id}
-                                                    className="rounded-2xl border border-(--card-stroke) bg-(--card-70)"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        aria-expanded={unitOpen}
-                                                        onClick={() =>
-                                                            toggleUnit(unit.work_unit_id)
-                                                        }
-                                                        className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left"
-                                                    >
-                                                        <span className="flex min-w-0 items-center gap-2">
-                                                            <span
-                                                                aria-hidden
-                                                                className={`text-(--accent-2) transition-transform ${unitOpen ? "rotate-90" : ""}`}
-                                                            >
-                                                                ›
-                                                            </span>
-                                                            <span className="truncate text-sm font-medium text-foreground">
-                                                                {formatWorkUnitLabel(unit)}
-                                                            </span>
-                                                            {formatWorkUnitTypeLabel(unit) ? (
-                                                                <span className="shrink-0 rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                                    {formatWorkUnitTypeLabel(unit)}
-                                                                </span>
-                                                            ) : null}
-                                                            {attribution ? (
-                                                                <TeamAttributionBadge
-                                                                    source={attribution.source}
-                                                                    confidence={
-                                                                        attribution.confidence
-                                                                    }
-                                                                    teamName={attribution.teamName}
-                                                                />
-                                                            ) : null}
-                                                        </span>
-                                                        <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
-                                                            <span>
-                                                                {formatNumber(entry.weightedEffort)}{" "}
-                                                                {effortUnit}
-                                                            </span>
-                                                            <span>
-                                                                {unit.evidence_quality.value !==
-                                                                null
-                                                                    ? formatBandLabel(
-                                                                          unit.evidence_quality
-                                                                              .band ?? "unknown",
-                                                                      )
-                                                                    : "Unknown"}
-                                                            </span>
-                                                        </span>
-                                                    </button>
-
-                                                    {unitOpen && (
-                                                        <div className="space-y-4 border-t border-(--card-stroke) px-4 py-4">
-                                                            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                                <span>
-                                                                    ID:{" "}
-                                                                    <span className="font-mono tracking-normal text-(--ink)">
-                                                                        {formatWorkUnitIdToken(
-                                                                            unit.work_unit_id,
-                                                                        )}
-                                                                    </span>
-                                                                </span>
-                                                                <span>
-                                                                    Evidence quality:{" "}
-                                                                    {unit.evidence_quality.value !==
-                                                                    null
-                                                                        ? `${formatQuality(unit.evidence_quality.value)} (${formatBandLabel(unit.evidence_quality.band ?? "unknown")})`
-                                                                        : "Unknown"}
-                                                                </span>
-                                                                {attribution ? (
-                                                                    <span className="flex items-center gap-2">
-                                                                        Team attribution:
-                                                                        <TeamAttributionBadge
-                                                                            source={
-                                                                                attribution.source
-                                                                            }
-                                                                            confidence={
-                                                                                attribution.confidence
-                                                                            }
-                                                                            teamName={
-                                                                                attribution.teamName
-                                                                            }
-                                                                        />
-                                                                        {attribution.teamName ? (
-                                                                            <span className="tracking-normal text-(--ink)">
-                                                                                {
-                                                                                    attribution.teamName
-                                                                                }
-                                                                            </span>
-                                                                        ) : null}
-                                                                    </span>
-                                                                ) : null}
-                                                            </div>
-
-                                                            <div>
-                                                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                                    Classification rationale
-                                                                </p>
-                                                                {textual.length === 0 ? (
-                                                                    <p className="mt-2 text-xs text-(--ink-muted)">
-                                                                        No textual rationale
-                                                                        reported for this work unit.
-                                                                    </p>
-                                                                ) : (
-                                                                    <div className="mt-2 space-y-2">
-                                                                        {textual.map(
-                                                                            (item, idx) => (
-                                                                                <EvidenceEntryCard
-                                                                                    key={`textual-${idx}`}
-                                                                                    entry={
-                                                                                        item as Record<
-                                                                                            string,
-                                                                                            unknown
-                                                                                        >
-                                                                                    }
-                                                                                />
-                                                                            ),
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div>
-                                                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                                    Linked metadata
-                                                                </p>
-                                                                {metadata.length === 0 ? (
-                                                                    <p className="mt-2 text-xs text-(--ink-muted)">
-                                                                        No structural or contextual
-                                                                        metadata reported.
-                                                                    </p>
-                                                                ) : (
-                                                                    <div className="mt-2 grid gap-2 md:grid-cols-2">
-                                                                        {metadata.map(
-                                                                            (item, idx) => (
-                                                                                <EvidenceEntryCard
-                                                                                    key={`metadata-${idx}`}
-                                                                                    entry={
-                                                                                        item as Record<
-                                                                                            string,
-                                                                                            unknown
-                                                                                        >
-                                                                                    }
-                                                                                />
-                                                                            ),
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    onSelectWorkUnit(
-                                                                        unit.work_unit_id,
-                                                                    )
-                                                                }
-                                                                className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
-                                                            >
-                                                                {CTA_LABELS.openEvidence}
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                )}
+                                    <span className="text-right">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            icon={<ArrowRight />}
+                                            aria-label={`${CTA_LABELS.evidence}: ${group.label}`}
+                                            data-testid="evidence-group-action"
+                                            onClick={() => openGroupEvidence(group)}
+                                        >
+                                            {CTA_LABELS.evidence}
+                                        </Button>
+                                    </span>
+                                </div>
                             </div>
                         );
                     })
@@ -422,9 +480,9 @@ export function InvestmentEvidenceTable({
             {/* The list of work units is capped by its query, so a group can hold fewer units than
                 the window has. The note says what the average is taken over. */}
             <DataNote>
-                Expand a group to read each unit&apos;s rationale and linked metadata. Average
-                quality is the mean evidence quality of the work units listed in the group; the list
-                may not hold every work unit of the window.
+                Open a group&apos;s Evidence to read each unit&apos;s rationale and linked metadata.
+                Average quality is the mean evidence quality of the work units listed in the group;
+                the list may not hold every work unit of the window.
             </DataNote>
         </Section>
     );
