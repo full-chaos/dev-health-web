@@ -1,6 +1,7 @@
 /**
  * GraphQL types for dev-health-ops analytics API.
- * Mirrors the Strawberry GraphQL schema in the backend.
+ * Mirrors the ops GraphQL contract (`contracts/graphql/v1/schema.graphql` in dev-health-ops, copied
+ * verbatim to `schema.graphql` next to this file).
  */
 
 // ==== Enums ====
@@ -392,12 +393,40 @@ export interface CapacityForecast {
 
 /** One simulated outcome and how many runs ended on it. */
 export interface CapacityDistributionBin {
+    /**
+     * The outcome. In the days mode: the number of days after the day the forecast was computed,
+     * the same axis as p50Days / p85Days / p95Days.
+     */
     value: number;
     count: number;
+    /**
+     * The share of ALL the mode's runs that FINISHED on this value or a lower one (CHAOS-8477): 0
+     * to 1, computed by the API. The chance curve is these points as served. In the days mode the
+     * bin at `horizonDays` adds nothing to it, so the last share is below 1 when runs did not
+     * finish inside the horizon.
+     */
+    cumulativeShare: number;
 }
 
 /** Per mode, ascending by value. A mode that did not simulate is null. */
 export interface CapacityDistribution {
+    /**
+     * The number of simulation runs behind each mode (CHAOS-8477): the counts of one mode's bins
+     * sum to it. The running share is served on each bin (`cumulativeShare`); the web adds up no
+     * total and no share of its own.
+     */
+    runs: number;
+    /**
+     * The number of days-mode runs that did NOT finish inside the simulated horizon: the
+     * simulation stops a run after `horizonDays` days and records it in the `days` bin at
+     * `horizonDays`. Such a run is not done. Null = the days mode did not simulate.
+     */
+    unfinishedRuns?: number | null;
+    /**
+     * The horizon of the days simulation, in days, as served. A `days` bin with this value means
+     * "this many days or more". The web has no horizon constant of its own.
+     */
+    horizonDays: number;
     /** Fixed-scope mode: days to complete the target items. */
     days?: CapacityDistributionBin[] | null;
     /** Fixed-date mode: items completed by the target date. */

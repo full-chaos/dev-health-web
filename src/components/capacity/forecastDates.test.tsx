@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen, within } from "@/test/utils";
 
@@ -8,7 +8,7 @@ vi.mock("@/lib/graphql/hooks", () => ({
 }));
 vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-1" }));
 
-import { markerLabel } from "@/components/charts/ConfidenceBandChart";
+import { formatDayOffset, formatServedDay } from "@/lib/capacityDates";
 import type { CapacityForecast } from "@/lib/graphql/types";
 
 import { forecastFacts } from "./ForecastEvidenceAction";
@@ -22,7 +22,13 @@ const ORIGINAL_ZONE = process.env.TZ;
 const useZone = (zone: string) => {
     process.env.TZ = zone;
 };
+// A date shows its year when it is not in this year, so "today" is fixed: the day of the fixture.
+beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-03T19:05:00Z"));
+});
 afterEach(() => {
+    vi.useRealTimers();
     if (ORIGINAL_ZONE === undefined) delete process.env.TZ;
     else process.env.TZ = ORIGINAL_ZONE;
 });
@@ -94,9 +100,13 @@ describe.each([
         expect(facts).toContainEqual(["P95 · conservative", "Oct 5 · 2 days"]);
     });
 
-    it("the markers of the projection chart show the served days", () => {
+    // The burn-down chart is gone (the Completion range card took its place); the card's markers
+    // and its day axis print days with these two helpers.
+    it("the markers and the day axis of the Completion range card show the served days", () => {
         useZone(zone);
-        expect(markerLabel("P50", "2026-10-04", 1)).toBe("P50 · Oct 4 · 1 day");
-        expect(markerLabel("P95", "2026-10-05", 2)).toBe("P95 · Oct 5 · 2 days");
+        expect(formatServedDay("2026-10-04")).toBe("Oct 4");
+        expect(formatServedDay("2026-10-05")).toBe("Oct 5");
+        expect(formatDayOffset("2026-10-03T19:05:00Z", 1)).toBe("Oct 4");
+        expect(formatDayOffset("2026-10-03T19:05:00Z", 2)).toBe("Oct 5");
     });
 });
