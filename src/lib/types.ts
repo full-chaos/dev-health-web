@@ -162,6 +162,16 @@ export type Contributor = {
     display_name?: string | null;
 };
 
+/** One repository behind a repository-stored metric (served by explain; CHAOS-8103). */
+export type ExplainRepository = {
+    id: string;
+    /** The stored repository name; null when none is stored. Never the id. */
+    name: string | null;
+    value: number;
+    /** The provider URL of this repository; null when none is stored. Not drawn by the drawer. */
+    source_url: string | null;
+};
+
 export type ExplainResponse = {
     metric: string;
     label: string;
@@ -171,6 +181,10 @@ export type ExplainResponse = {
     drivers: Contributor[];
     contributors: Contributor[];
     drilldown_links: Record<string, string>;
+    /** The repositories behind a repository-stored metric; null for a team-stored metric. */
+    repositories?: ExplainRepository[] | null;
+    /** The provider URL of the one repository in scope (https); null otherwise. */
+    source_url?: string | null;
 };
 
 export type InvestmentFindingEvidence = {
