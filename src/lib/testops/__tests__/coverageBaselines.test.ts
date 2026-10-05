@@ -7,6 +7,8 @@ import {
     baselineTitle,
     coverageBaselinesFailed,
     type RepoCoverageBaseline,
+    scopeBaselineCell,
+    scopeBaselineHint,
 } from "../coverageBaselines";
 
 const row = (over: Partial<RepoCoverageBaseline> = {}): RepoCoverageBaseline => ({
@@ -86,5 +88,59 @@ describe("baselineText and baselineTitle", () => {
 
     it("writes a served 0 as '0%'", () => {
         expect(baselineText({ kind: "value", pct: 0, days: 9 })).toBe("0%");
+    });
+});
+
+// The baseline of the whole scope (`coverageScopeBaseline`): one served value, the 30-day mean of
+// the day values the Line Coverage Trend draws.
+describe("scopeBaselineCell", () => {
+    it("gives the served value with its days", () => {
+        expect(scopeBaselineCell({ lineBaselinePct: 82.6, lineDays: 30 })).toEqual({
+            kind: "value",
+            pct: 82.6,
+            days: 30,
+        });
+    });
+
+    it("a null baseline is no baseline: never 0", () => {
+        expect(scopeBaselineCell({ lineBaselinePct: null, lineDays: 4 })).toEqual({ kind: "none" });
+    });
+
+    it("a served 0 is a value", () => {
+        expect(scopeBaselineCell({ lineBaselinePct: 0, lineDays: 12 })).toEqual({
+            kind: "value",
+            pct: 0,
+            days: 12,
+        });
+    });
+
+    it("a failed read is 'failed', not 'no baseline'", () => {
+        expect(scopeBaselineCell({ fetchFailed: true })).toEqual({ kind: "failed" });
+    });
+});
+
+// The hint of the fact "Target baseline": what the value is (the running 30-day average) and the
+// served number of days behind it. The page sends no scope, so the served value is the
+// organization's: the hint says "the organization's", never "this scope's" (a team in the scope bar
+// does not narrow it).
+describe("scopeBaselineHint", () => {
+    it("says what the baseline is and how many of the 30 days hold a value", () => {
+        expect(scopeBaselineHint({ lineBaselinePct: 82.6, lineDays: 30 })).toBe(
+            "Running 30-day average of the organization's line coverage; 30 of the 30 days hold a value",
+        );
+    });
+
+    it("says the same for no baseline, with the served days: the reader sees why there is none", () => {
+        expect(scopeBaselineHint({ lineBaselinePct: null, lineDays: 3 })).toBe(
+            "Running 30-day average of the organization's line coverage; 3 of the 30 days hold a value",
+        );
+    });
+
+    it("does not say 'this scope': the value is not narrowed by the scope bar", () => {
+        expect(scopeBaselineHint({ lineBaselinePct: 82.6, lineDays: 30 })).not.toMatch(/scope/i);
+    });
+
+    it("has no hint for a failed read: no days were served", () => {
+        expect(scopeBaselineHint({ fetchFailed: true })).toBeUndefined();
     });
 });
