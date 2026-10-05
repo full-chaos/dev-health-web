@@ -376,3 +376,6 @@ export const SAMPLE_COVERAGE_BASELINES = [
         branchDays: 19,
     },
 ];
+
+/** Test-mode sample of `coverageScopeBaseline` (an invented number). */
+export const SAMPLE_COVERAGE_SCOPE_BASELINE = { lineBaselinePct: 82.6, lineDays: 30 };

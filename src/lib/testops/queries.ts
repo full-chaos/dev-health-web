@@ -125,6 +125,19 @@ query CoverageBaselines($orgId: String!, $endDate: Date!, $repoIds: [String!], $
 }
 `;
 
+// Coverage baseline of the whole scope: the 30-day mean of the day values the Line Coverage Trend
+// draws. No scope variables: that trend is not narrowed by a scope, and the baseline covers the
+// same set. No region draws a branch baseline of the scope, so only the line fields are asked.
+// The text is registered on the API side.
+export const TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY = `
+query CoverageScopeBaseline($orgId: String!, $endDate: Date!) {
+  coverageScopeBaseline(orgId: $orgId, endDate: $endDate) {
+    lineBaselinePct
+    lineDays
+  }
+}
+`;
+
 // Failing workflows and jobs (CHAOS-8514). One group per (workflow name, job name, provider);
 // `failureRate` is a share from 0 to 1. The text is registered on the API side.
 export const TESTOPS_JOB_FAILURES_QUERY = `
