@@ -85,6 +85,37 @@ const servedThemeQuality = [
     { key: "feature_delivery", label: "feature_delivery", mean: 0.7, total: 2 },
 ];
 
+const equalDominantGroupCases: Array<{
+    name: string;
+    control: string;
+    group: { key: string; label: string; mean: number; total: number };
+    investment: WorkUnitInvestment["investment"];
+}> = [
+    {
+        name: "theme",
+        control: "Theme",
+        group: { key: "feature_delivery", label: "feature_delivery", mean: 0.6, total: 1 },
+        investment: {
+            themes: { quality: 0.5, feature_delivery: 0.5 },
+            subcategories: { "feature.build": 1 },
+        },
+    },
+    {
+        name: "subcategory",
+        control: "Subcategory",
+        group: {
+            key: "feature.delivery",
+            label: "feature.delivery",
+            mean: 0.6,
+            total: 1,
+        },
+        investment: {
+            themes: { feature_delivery: 1 },
+            subcategories: { "quality.reliability": 0.5, "feature.delivery": 0.5 },
+        },
+    },
+];
+
 beforeEach(() => {
     useInvestmentEvidenceQualityGroupsMock.mockReset();
     useInvestmentEvidenceQualityGroupsMock.mockReturnValue({
@@ -141,6 +172,34 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
 
         expect(screen.getByTestId("evidence-group-quality")).toHaveTextContent(/^Not reported$/);
     });
+
+    it.each(equalDominantGroupCases)(
+        "uses Analytics' lexical winner for an equal $name vector",
+        ({ control, group, investment }) => {
+            useInvestmentEvidenceQualityGroupsMock.mockReturnValue({
+                groups: [group],
+                loading: false,
+                error: null,
+                refetch: vi.fn(),
+            });
+
+            render(
+                <InvestmentEvidenceTable
+                    workUnits={[{ ...unit, investment }]}
+                    effortUnit="active hours"
+                    filters={filters}
+                    onSelectWorkUnit={vi.fn()}
+                />,
+            );
+            if (control !== "Theme") {
+                fireEvent.click(screen.getByRole("radio", { name: control }));
+            }
+
+            expect(screen.getByTestId("evidence-group-quality")).toHaveTextContent(
+                new RegExp(`^${formatQuality(group.mean)}$`),
+            );
+        },
+    );
 
     it("has no expandable row: the group row is not a toggle", () => {
         draw();

@@ -24,7 +24,6 @@ import {
     formatWorkUnitTypeLabel,
     selectWorkUnitEntries,
     titleCase,
-    topInvestmentKey,
     type WorkUnitListEntry,
 } from "@/lib/investment";
 import type { WorkUnitInvestment } from "@/lib/types";
@@ -72,12 +71,30 @@ function groupLabel(dimension: GroupDimension, key: string): string {
     return titleCase(key);
 }
 
+/**
+ * Match Analytics' persisted reporting group for an equal-weight vector.
+ * This applies only to the served-mean lookup in this table; it neither
+ * changes classifications nor recomputes the producer aggregate.
+ */
+function evidenceQualityGroupKey(vector: Record<string, number> | undefined | null): string | null {
+    if (!vector) return null;
+    let bestKey: string | null = null;
+    let bestValue = Number.NEGATIVE_INFINITY;
+    for (const [key, value] of Object.entries(vector)) {
+        if (value > bestValue || (value === bestValue && (bestKey === null || key < bestKey))) {
+            bestKey = key;
+            bestValue = value;
+        }
+    }
+    return bestKey;
+}
+
 function groupKeyForUnit(dimension: GroupDimension, unit: WorkUnitInvestment): string {
     if (dimension === "theme") {
-        return topInvestmentKey(unit.investment?.themes) ?? "__none__";
+        return evidenceQualityGroupKey(unit.investment?.themes) ?? "__none__";
     }
     if (dimension === "subcategory") {
-        return topInvestmentKey(unit.investment?.subcategories) ?? "__none__";
+        return evidenceQualityGroupKey(unit.investment?.subcategories) ?? "__none__";
     }
     return unit.work_unit_type ?? "__none__";
 }
