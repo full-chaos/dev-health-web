@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent } from "@testing-library/react";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, within } from "@/test/utils";
@@ -14,6 +14,16 @@ import {
 } from "@/lib/investment";
 import type { WorkUnitInvestment } from "@/lib/types";
 import type { WorkUnitTeamAttribution } from "@/lib/graphql/__generated__/types";
+import type { MetricFilter } from "@/lib/filters/types";
+
+const { useInvestmentEvidenceQualityGroupsMock } = vi.hoisted(() => ({
+    useInvestmentEvidenceQualityGroupsMock: vi.fn(),
+}));
+
+vi.mock("@/lib/graphql/hooks/useInvestment", () => ({
+    useInvestmentEvidenceQualityGroups: (...args: unknown[]) =>
+        useInvestmentEvidenceQualityGroupsMock(...args),
+}));
 
 import { InvestmentEvidenceTable } from "./InvestmentEvidenceTable";
 
@@ -62,6 +72,29 @@ const attribution = new Map<string, WorkUnitTeamAttribution>([
     ],
 ]);
 
+const filters: MetricFilter = {
+    scope: { level: "org", ids: ["org-1"] },
+    time: { range_days: 30, compare_days: 30 },
+    who: { developers: [] },
+    what: { repos: [] },
+    why: { work_category: [] },
+    how: {},
+};
+
+const servedThemeQuality = [
+    { key: "feature_delivery", label: "feature_delivery", mean: 0.7, total: 2 },
+];
+
+beforeEach(() => {
+    useInvestmentEvidenceQualityGroupsMock.mockReset();
+    useInvestmentEvidenceQualityGroupsMock.mockReturnValue({
+        groups: servedThemeQuality,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+    });
+});
+
 const table = (
     onSelectWorkUnit: (id: string) => void,
     attributionByWorkUnit?: Map<string, WorkUnitTeamAttribution>,
@@ -69,6 +102,7 @@ const table = (
     <InvestmentEvidenceTable
         workUnits={[unit, second]}
         effortUnit="active hours"
+        filters={filters}
         onSelectWorkUnit={onSelectWorkUnit}
         attributionByWorkUnit={attributionByWorkUnit}
     />
@@ -80,6 +114,34 @@ const draw = (onSelectWorkUnit = vi.fn()) => {
 };
 
 describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
+    it("uses the served zero mean instead of averaging displayed work units", () => {
+        useInvestmentEvidenceQualityGroupsMock.mockReturnValue({
+            groups: [{ ...servedThemeQuality[0], mean: 0 }],
+            loading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        draw();
+
+        expect(screen.getByTestId("evidence-group-quality")).toHaveTextContent(
+            new RegExp(`^${formatQuality(0)}$`),
+        );
+    });
+
+    it("shows a served null mean as not reported", () => {
+        useInvestmentEvidenceQualityGroupsMock.mockReturnValue({
+            groups: [{ ...servedThemeQuality[0], mean: null }],
+            loading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        draw();
+
+        expect(screen.getByTestId("evidence-group-quality")).toHaveTextContent(/^Not reported$/);
+    });
+
     it("has no expandable row: the group row is not a toggle", () => {
         draw();
         const row = screen.getByTestId("evidence-group-row");
