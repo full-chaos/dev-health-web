@@ -91,10 +91,10 @@ test("P0 PagerDuty credential page exposes shared-wizard auth methods", async ({
     await captureScenario(page, testInfo, scenario, signals);
 });
 
-test("P0 browser signals retain an unrecovered capability abort", async ({ page, request }) => {
+test("P0 browser signals retain an unrecovered request abort", async ({ page, request }) => {
     await setPagerDutyScenario(request, "not-connected");
     const signals = collectBrowserSignals(page);
-    await page.route("**/api/v1/dev/capabilities", (route) => route.abort("aborted"));
+    await page.route("**/api/auth/organizations", (route) => route.abort("aborted"));
     await page.goto("/org/admin/integrations/pagerduty");
     await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
 
@@ -105,7 +105,7 @@ test("P0 browser signals retain an unrecovered capability abort", async ({ page,
         })
         .toContainEqual({
             method: "GET",
-            path: "/api/v1/dev/capabilities",
+            path: "/api/auth/organizations",
             query_keys: [],
         });
 });

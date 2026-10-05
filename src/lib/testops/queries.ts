@@ -108,3 +108,38 @@ query TestOpsRisk($orgId: String!, $input: TestOpsRiskInput!) {
   }
 }
 `;
+
+// Coverage baseline per repository: its own mean coverage over the 30 days before `endDate` (that
+// day is not included). Percent, 0 to 100; null = no baseline. The text is registered on the API
+// side.
+export const TESTOPS_COVERAGE_BASELINES_QUERY = `
+query CoverageBaselines($orgId: String!, $endDate: Date!, $repoIds: [String!], $teamIds: [String!]) {
+  coverageBaselines(orgId: $orgId, endDate: $endDate, repoIds: $repoIds, teamIds: $teamIds) {
+    repoId
+    repoName
+    lineBaselinePct
+    lineDays
+    branchBaselinePct
+    branchDays
+  }
+}
+`;
+
+// Failing workflows and jobs (CHAOS-8514). One group per (workflow name, job name, provider);
+// `failureRate` is a share from 0 to 1. The text is registered on the API side.
+export const TESTOPS_JOB_FAILURES_QUERY = `
+query TestOpsJobFailures($orgId: String!, $input: TestOpsJobFailuresInput!) {
+  testopsJobFailures(orgId: $orgId, input: $input) {
+    groups {
+      workflowName
+      jobName
+      provider
+      runs
+      failedRuns
+      failureRate
+    }
+    totalCount
+    truncated
+  }
+}
+`;
