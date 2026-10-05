@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * CHAOS-8494 (same rule as ruling 51): no e-mail address leaves the server on the PR detail read.
- * The tests go through the fetcher (the real producer of the rows the page gets); only the network
- * call is replaced.
+ * CHAOS-8494 protects person fields. Ruling 139 also removes only the two identity trailers from
+ * commit messages. The tests go through the fetcher (the real producer of the rows the page gets);
+ * only the network call is replaced.
  */
 vi.mock("../server", () => ({ graphqlFetch: vi.fn() }));
 
@@ -41,10 +41,10 @@ const served = (over: Record<string, unknown> = {}) => ({
     ...over,
 });
 
-describe("getPrDetailViaGraphQL: no e-mail address", () => {
+describe("getPrDetailViaGraphQL: person fields and commit trailers", () => {
     beforeEach(() => mockedFetch.mockReset());
 
-    it("drops every address field and holds no '@' in the result", async () => {
+    it("drops address fields and keeps the default safe result address-free", async () => {
         mockedFetch.mockResolvedValueOnce({ pr: served() });
         const pr = await getPrDetailViaGraphQL({ orgId: "org-1", id: "repo#pr1" });
         expect(pr).not.toBeNull();
@@ -77,6 +77,35 @@ describe("getPrDetailViaGraphQL: no e-mail address", () => {
         const pr = await getPrDetailViaGraphQL({ orgId: "org-1", id: "repo#pr1" });
         expect(pr?.title).toBe("Bump lodash@4.17.21 and actions/checkout@v4");
         expect(pr?.commits[0].message).toBe("Upgrade to react@19");
+    });
+
+    it("drops only Co-authored-by and Signed-off-by commit trailer lines", async () => {
+        mockedFetch.mockResolvedValueOnce({
+            pr: served({
+                commits: [
+                    {
+                        hash: "abc",
+                        message: [
+                            "Keep the implementation as served",
+                            "Co-authored-by: Ada Example <ada@example.test>",
+                            "SIGNED-OFF-BY: Bo Example <bo@example.test>",
+                            "Reviewed-by: Cy Example <cy@example.test>",
+                            "Keep lodash@4.17.21",
+                        ].join("\n"),
+                    },
+                ],
+            }),
+        });
+
+        const pr = await getPrDetailViaGraphQL({ orgId: "org-1", id: "repo#pr1" });
+
+        expect(pr?.commits[0].message).toBe(
+            [
+                "Keep the implementation as served",
+                "Reviewed-by: Cy Example <cy@example.test>",
+                "Keep lodash@4.17.21",
+            ].join("\n"),
+        );
     });
 
     it("passes a missing PR through", async () => {

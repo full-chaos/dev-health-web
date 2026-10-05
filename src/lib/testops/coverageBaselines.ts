@@ -1,0 +1,84 @@
+import { z } from "zod";
+
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
+import { formatPercent } from "@/lib/formatters";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+
+/**
+ * Coverage baseline per repository: the answer of `coverageBaselines`.
+ *
+ * The baseline of a repository is its own mean coverage over the 30 days BEFORE the request's
+ * `endDate` (that day is not included). It is not a set target. The two baselines are in percent
+ * (0 to 100), the unit of the coverage values. Null = fewer than 7 days of the 30 hold a value:
+ * there is no baseline (never 0, never the current value). One row per repository with a stored
+ * coverage row in those 30 days; a repository with no row has no baseline. The web writes the
+ * served numbers and computes none of them.
+ */
+export const RepoCoverageBaselineSchema = z.object({
+    repoId: z.string(),
+    /** Null = the catalogue holds no name. Never the id. */
+    repoName: z.string().nullable(),
+    lineBaselinePct: z.number().nullable(),
+    /** Days of the 30 that hold a line coverage value. */
+    lineDays: z.number(),
+    branchBaselinePct: z.number().nullable(),
+    /** Days of the 30 that hold a branch coverage value. */
+    branchDays: z.number(),
+});
+
+export const CoverageBaselinesSchema = z.array(RepoCoverageBaselineSchema);
+
+export type RepoCoverageBaseline = z.infer<typeof RepoCoverageBaselineSchema>;
+
+/** What the page gets: the served rows, or the fact that the read failed. */
+export type CoverageBaselinesState = RepoCoverageBaseline[] | { fetchFailed: true };
+
+export const coverageBaselinesFailed = (
+    state: CoverageBaselinesState,
+): state is { fetchFailed: true } => !Array.isArray(state);
+
+/**
+ * The `endDate` of the baseline read for a page window that ends on `windowEnd` ("YYYY-MM-DD",
+ * included): the day after it. The API does not include `endDate`, so the 30 days then end on the
+ * window's last day.
+ */
+export function baselineEndDate(windowEnd: string): string {
+    const day = new Date(`${windowEnd}T00:00:00Z`);
+    day.setUTCDate(day.getUTCDate() + 1);
+    return day.toISOString().slice(0, 10);
+}
+
+/** One baseline as the page shows it. */
+export type BaselineCell =
+    /** A served baseline, with the days of the 30 that hold a value. */
+    | { kind: "value"; pct: number; days: number }
+    /** No baseline: a null value, or no row for the repository. */
+    | { kind: "none" }
+    /** The baseline read failed. */
+    | { kind: "failed" };
+
+/** The line or branch baseline of one repository, joined by the repository id. */
+export function baselineOf(
+    state: CoverageBaselinesState,
+    repoId: string,
+    which: "line" | "branch",
+): BaselineCell {
+    if (coverageBaselinesFailed(state)) return { kind: "failed" };
+    const row = state.find((item) => item.repoId === repoId);
+    const pct = which === "line" ? row?.lineBaselinePct : row?.branchBaselinePct;
+    if (!row || pct === null || pct === undefined) return { kind: "none" };
+    return { kind: "value", pct, days: which === "line" ? row.lineDays : row.branchDays };
+}
+
+/** The baseline as text: the served percent, "Not reported" or "Could not be read". */
+export function baselineText(cell: BaselineCell): string {
+    if (cell.kind === "failed") return READ_FAILED_MESSAGE;
+    if (cell.kind === "none") return NOT_REPORTED;
+    return formatPercent(cell.pct);
+}
+
+/** The days behind a served baseline, for a tooltip. */
+export function baselineTitle(cell: BaselineCell): string | undefined {
+    if (cell.kind !== "value") return undefined;
+    return `30-day average of ${cell.days} ${cell.days === 1 ? "day" : "days"}`;
+}

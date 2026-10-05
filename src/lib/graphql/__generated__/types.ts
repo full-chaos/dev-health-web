@@ -1543,6 +1543,8 @@ export type Query = {
   complexityTimeseries: ComplexityTimeseriesResult;
   /** Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components. */
   compoundingRisk: CompoundingRiskResult;
+  /** Each repository's coverage baseline (CHAOS-8111): its own mean coverage over the 30 days before ``endDate`` (``endDate`` itself is not included). Not a set target. One row per repository with a stored coverage row in those 30 days, in ``repoId`` order. */
+  coverageBaselines: Array<RepoCoverageBaseline>;
   /** Operator data-health and trust surface */
   dataHealth: DataHealth;
   /** Experiments derived from opportunity suggested_experiments (CHAOS-2219). v1: computed at query-time — no persistence table. Each experiment is a typed promotion of a suggestion string with hypothesis / metric / owner / stop_condition. ``derived_from_opportunities`` is False when the opportunities service was unavailable; items will be empty in that case. */
@@ -1579,6 +1581,8 @@ export type Query = {
   securityAlerts: SecurityAlertConnection;
   /** Aggregated security posture for the dashboard */
   securityOverview: SecurityOverview;
+  /** CI job names that failed in a window, by workflow and job name (CHAOS-8513). Computed at read time from the stored job runs of every CI provider. */
+  testopsJobFailures: TestOpsJobFailuresResult;
   /** Persisted TestOps Delivery Risk metrics from release confidence, quality drag, and pipeline stability tables. */
   testopsRisk: TestOpsRiskResult;
   /** Compute throughput-based capacity forecast */
@@ -1713,6 +1717,14 @@ export type QueryCompoundingRiskArgs = {
 };
 
 
+export type QueryCoverageBaselinesArgs = {
+  endDate: Scalars['Date']['input'];
+  orgId: Scalars['String']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
 export type QueryDataHealthArgs = {
   team: Scalars['ID']['input'];
 };
@@ -1828,6 +1840,12 @@ export type QuerySecurityOverviewArgs = {
 };
 
 
+export type QueryTestopsJobFailuresArgs = {
+  input: TestOpsJobFailuresInput;
+  orgId: Scalars['String']['input'];
+};
+
+
 export type QueryTestopsRiskArgs = {
   input: TestOpsRiskInput;
   orgId: Scalars['String']['input'];
@@ -1901,6 +1919,21 @@ export type RepoBusFactor = {
   repoName: Scalars['String']['output'];
   topMaintainers: Array<MaintainerShare>;
   value: Scalars['Int']['output'];
+};
+
+export type RepoCoverageBaseline = {
+  __typename?: 'RepoCoverageBaseline';
+  /** Mean branch coverage, in percent; the same rules as ``lineBaselinePct``. */
+  branchBaselinePct?: Maybe<Scalars['Float']['output']>;
+  /** Days of the 30 that hold a branch coverage value. */
+  branchDays: Scalars['Int']['output'];
+  /** Mean line coverage, in percent (0 to 100), over the days of the 30 that hold a value. Null = fewer than 7 such days (``lineDays``): then there is no baseline. Never 0 for "none", never the current value. */
+  lineBaselinePct?: Maybe<Scalars['Float']['output']>;
+  /** Days of the 30 that hold a line coverage value. */
+  lineDays: Scalars['Int']['output'];
+  repoId: Scalars['String']['output'];
+  /** The repository's full name in the org's catalogue. Null = the catalogue holds no name; never the id. */
+  repoName?: Maybe<Scalars['String']['output']>;
 };
 
 export type ReportRunConnection = {
@@ -2188,6 +2221,43 @@ export type TeamAttributionSource =
   | 'PROJECT_OWNERSHIP'
   | 'REPO_OWNERSHIP'
   | 'UNASSIGNED';
+
+export type TestOpsJobFailureGroup = {
+  __typename?: 'TestOpsJobFailureGroup';
+  /** The runs that failed (a failure, an error or a timeout). Always above 0: a group with no failed run is not served. */
+  failedRuns: Scalars['Int']['output'];
+  /** ``failedRuns / runs``: a share from 0 to 1, NOT a percent. Null = no run to divide by (not served today: every served group has a failed run). */
+  failureRate?: Maybe<Scalars['Float']['output']>;
+  jobName: Scalars['String']['output'];
+  /** The CI provider of the runs, as the pipeline row stores it (for example ``github_actions``). Null = the job runs have no stored pipeline row. */
+  provider?: Maybe<Scalars['String']['output']>;
+  /** Job runs of this group that started in the window and reached a result (success, failure or cancelled). A skipped, queued or running job is not a run. */
+  runs: Scalars['Int']['output'];
+  /** The workflow (GitHub Actions) or pipeline (GitLab CI) name of the runs. Null = the job runs have no stored pipeline row, or the row has no name. */
+  workflowName?: Maybe<Scalars['String']['output']>;
+};
+
+export type TestOpsJobFailuresInput = {
+  /** Most groups to serve: 1 to 100. */
+  limit?: Scalars['Int']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** First day of the window (UTC), included. The day a job run started places it. */
+  sinceDate: Scalars['Date']['input'];
+  /** Team ids. Narrows the runs to the repositories these teams OWN (team_repo_ownership, as of now); person membership is never read. With ``repoIds`` both apply. */
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Last day of the window (UTC), included. At most 90 days after ``sinceDate`` (a "90 days" window of today minus 90 days to today is served); a later day, or a day before ``sinceDate``, is an error, not a cut answer. */
+  untilDate: Scalars['Date']['input'];
+};
+
+export type TestOpsJobFailuresResult = {
+  __typename?: 'TestOpsJobFailuresResult';
+  /** The groups with the most failed runs first (then by job name, workflow name and provider), cut at ``limit``. */
+  groups: Array<TestOpsJobFailureGroup>;
+  /** Number of groups that match before the ``limit`` cut. Never less than ``groups``. */
+  totalCount: Scalars['Int']['output'];
+  /** True = ``totalCount`` is above the number of ``groups`` served. */
+  truncated: Scalars['Boolean']['output'];
+};
 
 export type TestOpsRiskBreakdownItem = {
   __typename?: 'TestOpsRiskBreakdownItem';
