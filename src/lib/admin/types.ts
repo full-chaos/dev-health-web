@@ -718,9 +718,13 @@ export interface AuditLog {
     id: string;
     org_id: string;
     user_id: string | null;
+    /** Authoritative actor name served by the org audit-log API, if still resolvable. */
+    actor_display_name: string | null;
     action: string;
     resource_type: string;
     resource_id: string;
+    /** Authoritative resource name served by the org audit-log API, if still resolvable. */
+    resource_display_name: string | null;
     description: string | null;
     changes: Record<string, unknown> | null;
     request_metadata: Record<string, unknown> | null;

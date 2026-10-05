@@ -8,25 +8,51 @@ describe("AuditIdentityLabel", () => {
     afterEach(() => cleanup());
 
     it("renders the empty label when id is null (e.g. a system-initiated action)", () => {
-        render(<AuditIdentityLabel id={null} emptyLabel="System" copyLabel="actor ID" />);
+        render(
+            <AuditIdentityLabel
+                id={null}
+                displayName={null}
+                emptyLabel="System"
+                copyLabel="actor ID"
+            />,
+        );
         expect(screen.getByText("System")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /copy/i })).not.toBeInTheDocument();
     });
 
     it("shows an explicit Unresolved primary label for an id with no known name", () => {
-        render(<AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />);
+        render(
+            <AuditIdentityLabel
+                id={UUID}
+                displayName={null}
+                emptyLabel="System"
+                copyLabel="actor ID"
+            />,
+        );
         expect(screen.getByText("Unresolved")).toBeInTheDocument();
     });
 
     it("never renders the raw id as the primary label", () => {
-        render(<AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />);
+        render(
+            <AuditIdentityLabel
+                id={UUID}
+                displayName={null}
+                emptyLabel="System"
+                copyLabel="actor ID"
+            />,
+        );
         const primary = screen.getByText("Unresolved").closest("span");
         expect(primary).not.toHaveTextContent(UUID);
     });
 
     it("prints no full id in the cell (AD-3): short id + Unresolved + an icon Copy that carries the full id", () => {
         const { container } = render(
-            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />,
+            <AuditIdentityLabel
+                id={UUID}
+                displayName={null}
+                emptyLabel="System"
+                copyLabel="actor ID"
+            />,
         );
         expect(container.textContent).not.toContain(UUID);
         const copy = screen.getByRole("button", { name: /copy actor id/i });
@@ -37,7 +63,13 @@ describe("AuditIdentityLabel", () => {
 
     it("keeps the full id as a second line when asked (the detail drawer)", () => {
         render(
-            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" showFullId />,
+            <AuditIdentityLabel
+                id={UUID}
+                displayName={null}
+                emptyLabel="System"
+                copyLabel="actor ID"
+                showFullId
+            />,
         );
         expect(screen.getByText(UUID)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /copy actor id/i })).toBeInTheDocument();
@@ -45,7 +77,12 @@ describe("AuditIdentityLabel", () => {
 
     it("keeps the Copy icon on the same row as the label in the stacked cell (design: inline)", () => {
         const { container } = render(
-            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />,
+            <AuditIdentityLabel
+                id={UUID}
+                displayName={null}
+                emptyLabel="System"
+                copyLabel="actor ID"
+            />,
         );
 
         const row = container.firstElementChild as HTMLElement;
@@ -53,5 +90,21 @@ describe("AuditIdentityLabel", () => {
         expect(row.className).toContain("items-center");
         expect(row).toContainElement(screen.getByText("Unresolved"));
         expect(row).toContainElement(screen.getByRole("button", { name: /copy actor id/i }));
+    });
+
+    it("uses only the served display name while retaining the served id", () => {
+        render(
+            <AuditIdentityLabel
+                id={UUID}
+                displayName="Audit Actor"
+                emptyLabel="System"
+                copyLabel="actor ID"
+                showFullId
+            />,
+        );
+
+        expect(screen.getByText("Audit Actor")).toBeInTheDocument();
+        expect(screen.getByText(UUID)).toBeInTheDocument();
+        expect(screen.queryByText("Unresolved")).not.toBeInTheDocument();
     });
 });

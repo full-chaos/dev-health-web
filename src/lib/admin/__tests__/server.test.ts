@@ -728,9 +728,11 @@ describe("admin/server audit log actions", () => {
                         id: "al-1",
                         org_id: "org-1",
                         user_id: "u-1",
+                        actor_display_name: "Audit Actor",
                         action: "user.login",
                         resource_type: "user",
                         resource_id: "u-1",
+                        resource_display_name: "Audit Resource",
                         description: null,
                         changes: null,
                         request_metadata: null,
@@ -750,6 +752,10 @@ describe("admin/server audit log actions", () => {
             const result = await listAuditLogs();
             expect(result.data).toBeDefined();
             expect(result.data?.items).toHaveLength(1);
+            expect(result.data?.items[0]).toMatchObject({
+                actor_display_name: "Audit Actor",
+                resource_display_name: "Audit Resource",
+            });
             expect(result.error).toBeUndefined();
             fetchSpy.mockRestore();
         });
@@ -768,9 +774,11 @@ describe("admin/server audit log actions", () => {
                 id: "al-1",
                 org_id: "org-1",
                 user_id: "u-1",
+                actor_display_name: null,
                 action: "user.login",
                 resource_type: "user",
                 resource_id: "u-1",
+                resource_display_name: null,
                 description: null,
                 changes: null,
                 request_metadata: null,
@@ -785,6 +793,10 @@ describe("admin/server audit log actions", () => {
             const result = await getAuditLog("al-1");
             expect(result.data).toBeDefined();
             expect(result.data?.id).toBe("al-1");
+            expect(result.data).toMatchObject({
+                actor_display_name: null,
+                resource_display_name: null,
+            });
             fetchSpy.mockRestore();
         });
     });

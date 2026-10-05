@@ -4,6 +4,8 @@ import { CopyIdButton } from "./CopyIdButton";
 type AuditIdentityLabelProps = {
     /** Raw actor/resource identifier from the audit-log API. */
     id: string | null;
+    /** Authoritative API display name, or null when the audited object is unavailable. */
+    displayName: string | null;
     /** Rendered when `id` is null — e.g. "System" for an unattributed action. */
     emptyLabel: string;
     /** Description passed to the copy affordance, e.g. "actor ID". */
@@ -11,9 +13,8 @@ type AuditIdentityLabelProps = {
     /** "stacked" for compact table cells, "inline" for the wider detail drawer. */
     layout?: "stacked" | "inline";
     /**
-     * Print the full raw id as a second line. Off in table cells (design AD-3: the cell shows the
-     * name, or a short id + "Unresolved", and an icon Copy; the full id is the copied value and the
-     * title); on in the detail drawer, which keeps the full id.
+     * Print the full served id with the identity label. The audit-log table and
+     * detail drawer enable this so the name never replaces audit traceability.
      */
     showFullId?: boolean;
 };
@@ -21,15 +22,14 @@ type AuditIdentityLabelProps = {
 /**
  * Resolved actor/resource identity display (CHAOS-2843, design system A7).
  *
- * The audit-log API currently returns only a bare id for `user_id` and
- * `resource_id` — no display name field exists on `AuditLog` yet. `EntityLabel`
- * is still the canonical primitive: it renders the name when one IS available
- * (once the API adds one) and otherwise shows the explicit "Unresolved"
- * treatment rather than a raw id as the primary label. A table cell shows no second id line: the
- * Copy icon copies the full id (design AD-3). The detail drawer passes `showFullId` and keeps it.
+ * The org audit-log API serves a nullable authoritative display name alongside
+ * each actor or resource identifier. `EntityLabel` renders that name when it
+ * exists and keeps the established identifier-safe treatment when it is null.
+ * This component never derives a name from another field.
  */
 export function AuditIdentityLabel({
     id,
+    displayName,
     emptyLabel,
     copyLabel,
     layout = "stacked",
@@ -44,7 +44,7 @@ export function AuditIdentityLabel({
 
     return (
         <div className={containerClass}>
-            <EntityLabel id={id} className="text-xs font-medium" />
+            <EntityLabel id={id} displayName={displayName} className="text-xs font-medium" />
             <div className="flex items-center gap-1.5">
                 {showFullId ? (
                     <span className="font-mono text-xs text-(--ink-muted)">{id}</span>

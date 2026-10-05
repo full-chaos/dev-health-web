@@ -23,9 +23,11 @@ function makeEntry(overrides: Partial<AuditLog> = {}): AuditLog {
         id: "al-1",
         org_id: "org-1",
         user_id: null,
+        actor_display_name: null,
         action: "org.create",
         resource_type: "organization",
         resource_id: "org-1",
+        resource_display_name: null,
         description: "Created the organization",
         changes: null,
         request_metadata: null,
@@ -131,18 +133,27 @@ describe("OrgAuditLogPage", () => {
         expect(screen.queryByText(/could not be loaded/u)).toBeNull();
     });
 
-    it("prints no full resource or actor id in a row (AD-3); the drawer keeps them", async () => {
+    it("renders served names and ids in the row and detail drawer", async () => {
         const RES = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
         const ACT = "550e8400-e29b-41d4-a716-446655440000";
         mockListAuditLogs.mockResolvedValue(
-            respondWith([makeEntry({ resource_id: RES, user_id: ACT })]),
+            respondWith([
+                makeEntry({
+                    resource_id: RES,
+                    resource_display_name: "Audited Organization",
+                    user_id: ACT,
+                    actor_display_name: "Audit Actor",
+                }),
+            ]),
         );
         const user = userEvent.setup();
         render(<OrgAuditLogPage />);
         const row = (await screen.findByText("org.create")).closest("tr")!;
 
-        expect(row.textContent).not.toContain(RES);
-        expect(row.textContent).not.toContain(ACT);
+        expect(row).toHaveTextContent("Audited Organization");
+        expect(row).toHaveTextContent("Audit Actor");
+        expect(row).toHaveTextContent(RES);
+        expect(row).toHaveTextContent(ACT);
         expect(within(row).getByRole("button", { name: /copy resource id/i })).toHaveAttribute(
             "title",
             `Copy resource ID: ${RES}`,
