@@ -6,10 +6,17 @@ import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
-import { Contributor, HomeResponse, InvestmentResponse, OpportunitiesResponse } from "@/lib/types";
+import {
+    Contributor,
+    ExplainRepository,
+    HomeResponse,
+    InvestmentResponse,
+    OpportunitiesResponse,
+} from "@/lib/types";
 import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
 import { EvidenceFact, EvidenceFactList, EvidenceProvenanceFacts } from "./EvidenceFacts";
 import { EvidenceItems, type EvidenceItem } from "./EvidenceItems";
+import { EvidenceRepositories, EvidenceSourceLink } from "./EvidenceRepositories";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -50,6 +57,12 @@ type EvidencePanelData = {
     evidence: EvidenceItem[];
     actions: Action[];
     provenance?: EvidenceProvenance;
+    /** The served drivers: a driver row keeps its served change even when it is also a repository. */
+    drivers?: Contributor[];
+    /** Served by explain for a repository-stored metric (CHAOS-8103); null = not stored per repository. */
+    repositories?: ExplainRepository[] | null;
+    /** Served by explain for a one-repository scope: the provider page (https). */
+    source_url?: string | null;
 };
 
 type EvidencePanelResult = Partial<EvidencePanelData> & {
@@ -524,14 +537,9 @@ export function EvidencePanel({
                                 </p>
                             </div>
                         ) : null}
-                        {data.evidence?.length ? (
-                            <EvidenceItems items={data.evidence} />
-                        ) : (
-                            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
-                                No contributing artifacts were returned for this metric and filter
-                                window. This is a partial-data state, not a zero signal.
-                            </div>
-                        )}
+                        {drawnEvidence(data.evidence, data.repositories, data.drivers)}
+                        <EvidenceRepositories repositories={data.repositories} unit={data.unit} />
+                        <EvidenceSourceLink url={data.source_url} />
                         <SuggestedActions actions={data.actions || []} />
                     </>
                 ) : (
@@ -542,6 +550,40 @@ export function EvidencePanel({
                 )}
             </>
         </EvidenceDrawerShell>
+    );
+}
+
+/**
+ * The "Supporting evidence" block. A repository-stored metric serves `repositories` from the same
+ * rows as its contributors (ops #3775): a CONTRIBUTOR-ONLY row whose id is one of them is drawn
+ * once, under "Supporting repositories", not again here (CHAOS-8587, final rule). A row that is
+ * also a driver stays, with its served change. The "no contributing artifacts" note is a
+ * missing-data note: it shows when nothing was served, whatever `repositories` is. With
+ * `repositories` null or absent the block is exactly as before.
+ */
+function drawnEvidence(
+    evidence: EvidenceItem[] | undefined,
+    repositories?: ExplainRepository[] | null,
+    drivers?: Contributor[],
+) {
+    const rows = evidence ?? [];
+    // The missing-data note depends on what was SERVED, not on what is left after the filter.
+    if (rows.length === 0) {
+        return (
+            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
+                No contributing artifacts were returned for this metric and filter window. This is a
+                partial-data state, not a zero signal.
+            </div>
+        );
+    }
+    if (!Array.isArray(repositories)) return <EvidenceItems items={rows} />;
+    const own = new Set(repositories.map((repo) => repo.id));
+    const driverIds = new Set((drivers ?? []).map((driver) => driver.id));
+    // A contributor-only row that is a repository is drawn once, under "Supporting repositories".
+    // A row that is also a driver stays: its served change must never vanish. EvidenceItems draws
+    // nothing for an empty list.
+    return (
+        <EvidenceItems items={rows.filter((row) => !own.has(row.id) || driverIds.has(row.id))} />
     );
 }
 
