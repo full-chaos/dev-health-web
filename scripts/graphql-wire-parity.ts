@@ -75,7 +75,11 @@ import {
     RELEASE_IMPACT_QUERY,
     FEATURE_FLAG_TIMESERIES_QUERY,
 } from "../src/lib/feature-flags/queries";
-import { TESTOPS_RISK_QUERY } from "../src/lib/testops/queries";
+import {
+    TESTOPS_COVERAGE_BASELINES_QUERY,
+    TESTOPS_JOB_FAILURES_QUERY,
+    TESTOPS_RISK_QUERY,
+} from "../src/lib/testops/queries";
 import {
     TESTOPS_COVERAGE_QUERY,
     TESTOPS_PIPELINE_QUERY,
@@ -186,11 +190,13 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     reviewEdges: REVIEW_EDGES_QUERY,
     savedReport: SAVED_REPORT_QUERY,
     savedReports: SAVED_REPORTS_QUERY,
+    coverageBaselines: TESTOPS_COVERAGE_BASELINES_QUERY,
     testOpsCoverage: TESTOPS_COVERAGE_QUERY,
     testOpsPipeline: TESTOPS_PIPELINE_QUERY,
     testOpsTest: TESTOPS_TEST_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
+    testopsJobFailures: TESTOPS_JOB_FAILURES_QUERY,
     testopsRisk: TESTOPS_RISK_QUERY,
     throughputForecast: THROUGHPUT_FORECAST_QUERY,
     triggerReport: TRIGGER_REPORT_MUTATION,

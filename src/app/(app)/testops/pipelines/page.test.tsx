@@ -34,7 +34,11 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: mockCheckApiHealth }));
 vi.mock("@/lib/testops/fetchers", () => ({ fetchTestOpsData: mockFetchTestOpsData }));
-vi.mock("@/lib/config", () => ({ getServerEnv: () => ({}) }));
+// The rest of the module stays real: the card's failed-read text loads the logger, which reads it.
+vi.mock("@/lib/config", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/config")>()),
+    getServerEnv: () => ({}),
+}));
 vi.mock("@/components/shell/ScopeBar", () => ({
     ScopeBar: () => <div data-testid="scope-bar" />,
 }));

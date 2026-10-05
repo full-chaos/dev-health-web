@@ -109,8 +109,6 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
     },
 };
 
-// Product-level target already shipped as the "Target baseline" annotation on
-// the Coverage page; centralized so the pill and the on-chart baseline can't
-// drift apart. No equivalent documented target exists for pipeline measures —
-// do not invent one (CHAOS-2038).
-export const COVERAGE_LINE_TARGET_PCT = 80;
+// No target is set here for a coverage or pipeline measure. The coverage baseline of a repository
+// is served per repository (`coverageBaselines`, src/lib/testops/coverageBaselines.ts); do not
+// invent a target (CHAOS-2038).
