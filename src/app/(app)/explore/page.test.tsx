@@ -8,6 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, userEvent, within } from "@/test/utils";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const { panelSpy, orgName } = vi.hoisted(() => ({
     panelSpy: vi.fn(),
@@ -613,7 +614,9 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
             metric: "blocked_work",
             role: "manager",
         });
-        const href = screen.getByTestId("blocked-work-complete-table").getAttribute("href") ?? "";
+        const completeTable = screen.getByTestId("blocked-work-complete-table");
+        expect(completeTable).toHaveTextContent(CTA_LABELS.openCompleteTable);
+        const href = completeTable.getAttribute("href") ?? "";
         const url = new URL(href, "https://app.example");
         expect(url.searchParams.get("api")).toBe("/api/v1/drilldown/issues");
         expect(url.searchParams.get("blocked")).toBe("true");

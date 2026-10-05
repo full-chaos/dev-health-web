@@ -194,7 +194,7 @@ export function BlockedWorkEvidence({
                     data-testid="blocked-work-complete-table"
                     className={`${buttonClassName("secondary", "sm")} mt-4`}
                 >
-                    Open complete table
+                    {CTA_LABELS.openCompleteTable}
                 </Link>
             ) : null}
         </Section>
