@@ -337,3 +337,42 @@ export const SAMPLE_PR_TESTOPS_DATA = {
     coverageDelta: 0.4,
     releaseConfidence: 0.92,
 };
+
+/**
+ * Test-mode sample of `coverageBaselines` (invented numbers), keyed like the sample coverage
+ * breakdown. One repository has no line baseline and one has no row: both read "Not reported".
+ */
+export const SAMPLE_COVERAGE_BASELINES = [
+    {
+        repoId: "frontend-web",
+        repoName: "sample/frontend-web",
+        lineBaselinePct: 83.9,
+        lineDays: 30,
+        branchBaselinePct: 76.4,
+        branchDays: 30,
+    },
+    {
+        repoId: "backend-api",
+        repoName: "sample/backend-api",
+        lineBaselinePct: 91.6,
+        lineDays: 28,
+        branchBaselinePct: 85.1,
+        branchDays: 28,
+    },
+    {
+        repoId: "mobile-app",
+        repoName: "sample/mobile-app",
+        lineBaselinePct: null,
+        lineDays: 4,
+        branchBaselinePct: null,
+        branchDays: 4,
+    },
+    {
+        repoId: "data-pipeline",
+        repoName: null,
+        lineBaselinePct: 75.0,
+        lineDays: 19,
+        branchBaselinePct: 0,
+        branchDays: 19,
+    },
+];

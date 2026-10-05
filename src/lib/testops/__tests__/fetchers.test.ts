@@ -13,6 +13,7 @@ import {
     fetchRiskMetrics,
     fetchTestOpsData,
     fetchCoverageMetrics,
+    fetchCoverageBaselines,
     fetchJobFailures,
     normalizeAnalyticsDurations,
 } from "../fetchers";
@@ -441,6 +442,74 @@ describe("fetchJobFailures", () => {
             true,
         );
         expect("groups" in result && result.groups.length).toBeGreaterThan(0);
+        expect(graphqlFetch).not.toHaveBeenCalled();
+    });
+});
+
+describe("fetchCoverageBaselines", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        mockAuth({ user: { org_id: "org-1" } });
+    });
+
+    const served = [
+        {
+            repoId: "repo-1",
+            repoName: "full-chaos/dev-health-web",
+            lineBaselinePct: 58.2,
+            lineDays: 22,
+            branchBaselinePct: null,
+            branchDays: 3,
+        },
+    ];
+
+    it("sends the organization, the end date and only a scope that is set", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ coverageBaselines: served });
+
+        await fetchCoverageBaselines({ endDate: "2026-09-15", repoIds: [], teamIds: ["t1"] });
+
+        const [, variables] = vi.mocked(graphqlFetch).mock.calls[0];
+        expect(variables).toEqual({ orgId: "org-1", endDate: "2026-09-15", teamIds: ["t1"] });
+    });
+
+    it("does not send an empty team scope", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ coverageBaselines: served });
+
+        await fetchCoverageBaselines({ endDate: "2026-09-15", repoIds: ["r1"], teamIds: [] });
+
+        const [, variables] = vi.mocked(graphqlFetch).mock.calls[0];
+        expect(variables).toEqual({ orgId: "org-1", endDate: "2026-09-15", repoIds: ["r1"] });
+    });
+
+    it("returns the served rows; a null baseline stays null", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ coverageBaselines: served });
+        expect(await fetchCoverageBaselines({ endDate: "2026-09-15" })).toEqual(served);
+    });
+
+    it("an empty answer is an empty list, not a failed read", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ coverageBaselines: [] });
+        expect(await fetchCoverageBaselines({ endDate: "2026-09-15" })).toEqual([]);
+    });
+
+    it("a GraphQL error is a failed read, not an empty list", async () => {
+        vi.mocked(graphqlFetch).mockRejectedValue(new Error("[GraphQL] not authorized"));
+        expect(await fetchCoverageBaselines({ endDate: "2026-09-15" })).toEqual({
+            fetchFailed: true,
+        });
+    });
+
+    it("an answer that is not the served shape is a failed read", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({
+            coverageBaselines: [{ repoId: "repo-1", lineBaselinePct: "58" }],
+        });
+        expect(await fetchCoverageBaselines({ endDate: "2026-09-15" })).toEqual({
+            fetchFailed: true,
+        });
+    });
+
+    it("test mode returns the sample and makes no request", async () => {
+        const result = await fetchCoverageBaselines({ endDate: "2026-09-15" }, true);
+        expect(Array.isArray(result) && result.length).toBeGreaterThan(0);
         expect(graphqlFetch).not.toHaveBeenCalled();
     });
 });
