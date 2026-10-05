@@ -13,6 +13,7 @@ import {
     fetchRiskMetrics,
     fetchTestOpsData,
     fetchCoverageMetrics,
+    fetchJobFailures,
     normalizeAnalyticsDurations,
 } from "../fetchers";
 import { SAMPLE_RISK_DATA } from "../sample-data";
@@ -333,6 +334,113 @@ describe("TestOps fetchers without a session org (CHAOS-8272)", () => {
         await expect(fetchTestOpsData(batch)).rejects.toThrow();
         await expect(fetchCoverageMetrics(batch)).rejects.toThrow();
         await expect(fetchRiskMetrics(batch)).rejects.toThrow();
+        expect(graphqlFetch).not.toHaveBeenCalled();
+    });
+});
+
+// CHAOS-8514
+describe("fetchJobFailures", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        mockAuth({ user: { org_id: "org-1" } });
+    });
+
+    const served = {
+        groups: [
+            {
+                workflowName: "CI",
+                jobName: "unit-tests",
+                provider: "github",
+                runs: 12,
+                failedRuns: 3,
+                failureRate: 0.25,
+            },
+        ],
+        totalCount: 1,
+        truncated: false,
+    };
+
+    it("sends the window, the limit and only a scope that is set", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsJobFailures: served });
+
+        await fetchJobFailures({
+            sinceDate: "2026-08-01",
+            untilDate: "2026-08-31",
+            repoIds: [],
+            teamIds: ["t1"],
+        });
+
+        const [, variables] = vi.mocked(graphqlFetch).mock.calls[0];
+        expect(variables).toEqual({
+            orgId: "org-1",
+            input: { sinceDate: "2026-08-01", untilDate: "2026-08-31", teamIds: ["t1"], limit: 20 },
+        });
+    });
+
+    it("does not send an empty team scope, and sends a caller's limit", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsJobFailures: served });
+
+        await fetchJobFailures({
+            sinceDate: "2026-08-01",
+            untilDate: "2026-08-31",
+            repoIds: ["r1"],
+            teamIds: [],
+            limit: 5,
+        });
+
+        const [, variables] = vi.mocked(graphqlFetch).mock.calls[0];
+        expect(variables).toEqual({
+            orgId: "org-1",
+            input: { sinceDate: "2026-08-01", untilDate: "2026-08-31", repoIds: ["r1"], limit: 5 },
+        });
+    });
+
+    it("returns the served answer", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsJobFailures: served });
+        expect(
+            await fetchJobFailures({ sinceDate: "2026-08-01", untilDate: "2026-08-31" }),
+        ).toEqual(served);
+    });
+
+    it("an empty window is an empty list, not a failed read", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({
+            testopsJobFailures: { groups: [], totalCount: 0, truncated: false },
+        });
+        expect(
+            await fetchJobFailures({ sinceDate: "2026-08-01", untilDate: "2026-08-31" }),
+        ).toEqual({
+            groups: [],
+            totalCount: 0,
+            truncated: false,
+        });
+    });
+
+    it("a GraphQL error is a failed read, not an empty list", async () => {
+        vi.mocked(graphqlFetch).mockRejectedValue(
+            new Error("[GraphQL] window longer than 90 days"),
+        );
+        expect(
+            await fetchJobFailures({ sinceDate: "2026-01-01", untilDate: "2026-08-31" }),
+        ).toEqual({
+            fetchFailed: true,
+        });
+    });
+
+    it("an answer that is not the served shape is a failed read", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({ testopsJobFailures: { groups: "none" } });
+        expect(
+            await fetchJobFailures({ sinceDate: "2026-08-01", untilDate: "2026-08-31" }),
+        ).toEqual({
+            fetchFailed: true,
+        });
+    });
+
+    it("test mode returns the sample and makes no request", async () => {
+        const result = await fetchJobFailures(
+            { sinceDate: "2026-08-01", untilDate: "2026-08-31" },
+            true,
+        );
+        expect("groups" in result && result.groups.length).toBeGreaterThan(0);
         expect(graphqlFetch).not.toHaveBeenCalled();
     });
 });
