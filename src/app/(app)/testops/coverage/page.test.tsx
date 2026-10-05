@@ -2,24 +2,31 @@ import { render, screen, within } from "@/test/utils";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCheckApiHealth, mockFetchCoverageMetrics, timeseriesSpy } = vi.hoisted(() => ({
-    mockCheckApiHealth: vi.fn(),
-    mockFetchCoverageMetrics: vi.fn(),
-    timeseriesSpy: vi.fn(),
-}));
+const { mockCheckApiHealth, mockFetchCoverageMetrics, mockFetchCoverageBaselines, timeseriesSpy } =
+    vi.hoisted(() => ({
+        mockCheckApiHealth: vi.fn(),
+        mockFetchCoverageMetrics: vi.fn(),
+        mockFetchCoverageBaselines: vi.fn(),
+        timeseriesSpy: vi.fn(),
+    }));
 
 const requireSessionMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
-beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
+beforeEach(() => {
+    requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } });
+    mockFetchCoverageBaselines.mockResolvedValue([]);
+});
 vi.mock("@/lib/api/system", () => ({
     checkApiHealth: mockCheckApiHealth,
 }));
 
 vi.mock("@/lib/testops/fetchers", () => ({
     fetchCoverageMetrics: mockFetchCoverageMetrics,
+    fetchCoverageBaselines: mockFetchCoverageBaselines,
 }));
 
-vi.mock("@/lib/config", () => ({
+vi.mock("@/lib/config", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/config")>()),
     getServerEnv: () => ({}),
 }));
 
@@ -183,8 +190,10 @@ describe("CoveragePage org scope (CHAOS-8272)", () => {
     it("shows one plain sentence and makes no request when the session has no org", async () => {
         requireSessionMock.mockResolvedValue({ user: {} });
         mockFetchCoverageMetrics.mockClear();
+        mockFetchCoverageBaselines.mockClear();
         render(await CoveragePage({ searchParams: Promise.resolve({}) }));
         expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
         expect(mockFetchCoverageMetrics).not.toHaveBeenCalled();
+        expect(mockFetchCoverageBaselines).not.toHaveBeenCalled();
     });
 });
