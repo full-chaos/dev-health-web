@@ -1045,7 +1045,8 @@ export type HomeLimitingFactor = {
 
 export type HomeResult = {
   __typename?: 'HomeResult';
-  constraint: ConstraintCard;
+  /** The present constraint when current-window data exists; null when the window has no data. */
+  constraint?: Maybe<ConstraintCard>;
   dataConfidence: HomeDataConfidence;
   deltas: Array<MetricDelta>;
   events: Array<EventItem>;
@@ -1074,6 +1075,8 @@ export type HomeScopeDataConfidence = {
 export type HomeSignal = {
   __typename?: 'HomeSignal';
   affectedScope: Scalars['String']['output'];
+  /** Current primary work-item attribution evidence for work-item metrics; null when this window has no attributable work items. */
+  attribution?: Maybe<SignalAttribution>;
   category: Scalars['String']['output'];
   confidence: Scalars['String']['output'];
   currentValue: Scalars['String']['output'];
@@ -1236,6 +1239,10 @@ export type MeasureInput =
 export type MetricDelta = {
   __typename?: 'MetricDelta';
   deltaPct: Scalars['Float']['output'];
+  /** Whether the current window has one or more stored source rows. A stored zero has this field set to true. */
+  hasData: Scalars['Boolean']['output'];
+  /** Whether the comparison window has one or more stored source rows. */
+  hasPriorData: Scalars['Boolean']['output'];
   label: Scalars['String']['output'];
   metric: Scalars['String']['output'];
   spark: Array<SparkPoint>;
@@ -1561,6 +1568,8 @@ export type Query = {
   compoundingRisk: CompoundingRiskResult;
   /** Each repository's coverage baseline (CHAOS-8111): its own mean coverage over the 30 days before ``endDate`` (``endDate`` itself is not included). Not a set target. One row per repository with a stored coverage row in those 30 days, in ``repoId`` order. */
   coverageBaselines: Array<RepoCoverageBaseline>;
+  /** The coverage baseline of a whole scope (CHAOS-8541): the mean, over the 30 days before ``endDate`` (``endDate`` itself is not included), of the scope's coverage of each day. The scope's coverage of a day is the mean of its repositories' coverage of that day (a repository with no value that day is left out): the value the coverage trend serves for a day. The same window and the same 7-day minimum as ``coverageBaselines``. Not a set target, and not the mean of the repository baselines. Scope: ``repoIds`` and the repositories that ``teamIds`` own; neither = the whole org. */
+  coverageScopeBaseline: ScopeCoverageBaseline;
   /** Operator data-health and trust surface */
   dataHealth: DataHealth;
   /** Experiments derived from opportunity suggested_experiments (CHAOS-2219). v1: computed at query-time — no persistence table. Each experiment is a typed promotion of a suggestion string with hypothesis / metric / owner / stop_condition. ``derived_from_opportunities`` is False when the opportunities service was unavailable; items will be empty in that case. */
@@ -1734,6 +1743,14 @@ export type QueryCompoundingRiskArgs = {
 
 
 export type QueryCoverageBaselinesArgs = {
+  endDate: Scalars['Date']['input'];
+  orgId: Scalars['String']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
+export type QueryCoverageScopeBaselineArgs = {
   endDate: Scalars['Date']['input'];
   orgId: Scalars['String']['input'];
   repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -2092,6 +2109,18 @@ export type SavedReportType = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type ScopeCoverageBaseline = {
+  __typename?: 'ScopeCoverageBaseline';
+  /** Mean branch coverage, in percent; the same rules as ``lineBaselinePct``. */
+  branchBaselinePct?: Maybe<Scalars['Float']['output']>;
+  /** Days of the 30 on which at least one repository of the scope holds a branch coverage value. */
+  branchDays: Scalars['Int']['output'];
+  /** Mean, in percent (0 to 100), of the scope's line coverage of each day that holds a value, over the 30 days. Null = fewer than 7 such days (``lineDays``): then there is no baseline. Never 0 for "none", never the current value. */
+  lineBaselinePct?: Maybe<Scalars['Float']['output']>;
+  /** Days of the 30 on which at least one repository of the scope holds a line coverage value. */
+  lineDays: Scalars['Int']['output'];
+};
+
 export type ScopeEntityRef = {
   __typename?: 'ScopeEntityRef';
   displayName: Scalars['String']['output'];
@@ -2205,6 +2234,33 @@ export type SeverityBucket = {
   __typename?: 'SeverityBucket';
   count: Scalars['Int']['output'];
   severity: Scalars['String']['output'];
+};
+
+/** Source and confidence distribution for the work items behind one Home signal. */
+export type SignalAttribution = {
+  __typename?: 'SignalAttribution';
+  confidence: Array<SignalAttributionConfidenceCount>;
+  /** Number of attributed work items behind these distributions. */
+  items: Scalars['Int']['output'];
+  sources: Array<SignalAttributionSourceCount>;
+};
+
+/** One confidence bucket of a Home signal's work-item attribution distribution. */
+export type SignalAttributionConfidenceCount = {
+  __typename?: 'SignalAttributionConfidenceCount';
+  confidence: TeamAttributionConfidence;
+  items: Scalars['Int']['output'];
+  /** Fraction of SignalAttribution.items in this bucket. */
+  share: Scalars['Float']['output'];
+};
+
+/** One source bucket of a Home signal's work-item attribution distribution. */
+export type SignalAttributionSourceCount = {
+  __typename?: 'SignalAttributionSourceCount';
+  items: Scalars['Int']['output'];
+  /** Fraction of SignalAttribution.items in this bucket. */
+  share: Scalars['Float']['output'];
+  source: TeamAttributionSource;
 };
 
 export type SparkPoint = {
