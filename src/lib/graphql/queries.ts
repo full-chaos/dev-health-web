@@ -230,6 +230,22 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
 }
 `;
 
+// Served persisted evidence-quality means for the Evidence drilldown groups.
+// The batch includes one minimal breakdown solely because the Analytics contract
+// takes the quality window from its first breakdown date range.
+export const INVESTMENT_EVIDENCE_QUALITY_QUERY = `
+query InvestmentEvidenceQuality($orgId: String!, $batch: AnalyticsRequestInput!) {
+  analytics(orgId: $orgId, batch: $batch) {
+    evidenceQualityByGroup {
+      key
+      label
+      mean
+      total
+    }
+  }
+}
+`;
+
 // ==== Capacity Planning Queries ====
 
 // Query for on-demand capacity forecast computation

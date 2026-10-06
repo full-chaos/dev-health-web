@@ -61,7 +61,29 @@ vi.mock("@/lib/graphql/provider", () => ({
     useSsr: () => null,
 }));
 vi.mock("urql", () => ({
-    useQuery: () => [{ data: undefined, fetching: false, error: undefined }, vi.fn()],
+    useQuery: (args: { query?: string }) => [
+        args.query?.includes("query InvestmentEvidenceQuality")
+            ? {
+                  data: {
+                      analytics: {
+                          evidenceQualityByGroup: [
+                              {
+                                  key: "feature_delivery",
+                                  label: "feature_delivery",
+                                  mean: 0.82,
+                                  total: 12,
+                              },
+                              { key: "quality", label: "quality", mean: null, total: 3 },
+                              { key: "pr", label: "pr", mean: 0.5, total: 15 },
+                          ],
+                      },
+                  },
+                  fetching: false,
+                  error: undefined,
+              }
+            : { data: undefined, fetching: false, error: undefined },
+        vi.fn(),
+    ],
 }));
 
 import { InvestmentView } from "../InvestmentView";
@@ -433,27 +455,27 @@ describe("Investment Evidence (prototype view 9)", () => {
         }
     });
 
-    it("Average quality is the value the group row printed before, in its own column; 'Unknown' when a group has none", () => {
+    it("Average quality is the served persisted group mean; a served null is not reported", () => {
         view("evidence", makeData({ workUnits: units }));
         const rows = screen.getAllByTestId("evidence-group-row");
         const byLabel = (label: string) => rows.find((r) => r.textContent?.includes(label))!;
-        // Mean of the two units' served quality (0.5 and 0.7).
+        // The producer's 0.82 differs from the listed units' 0.5/0.7 mean.
         expect(
             within(byLabel("Feature Delivery")).getByTestId("evidence-group-quality"),
-        ).toHaveTextContent(new RegExp(`^${formatQuality(0.6)}$`));
+        ).toHaveTextContent(new RegExp(`^${formatQuality(0.82)}$`));
         expect(within(byLabel("Quality")).getByTestId("evidence-group-quality")).toHaveTextContent(
-            /^Unknown$/,
+            /^Not reported$/,
         );
         // The inline "avg quality:" text is gone from the group name.
         expect(screen.queryByText(/avg quality:/)).toBeNull();
     });
 
-    it("says what the average is taken over: the listed work units, which may not be all of the window", () => {
+    it("states that the served persisted mean is not calculated from the listed work units", () => {
         view("evidence", makeData({ workUnits: units }));
         expect(
             within(screen.getByTestId("investment-evidence-table")).getByTestId("data-note"),
         ).toHaveTextContent(
-            "Average quality is the mean evidence quality of the work units listed in the group; the list may not hold every work unit of the window.",
+            "Average quality is the persisted group mean served for the selected window. It is not calculated from the listed work units. Not reported means Analytics has no persisted quality mean for the group.",
         );
     });
 

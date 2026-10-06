@@ -114,6 +114,7 @@ export interface AnalyticsRequestInput {
     flowMatrix?: FlowMatrixRequestInput;
     useInvestment?: boolean;
     filters?: FilterInput;
+    evidenceQualityGroupBy?: DimensionInput;
 }
 
 // ==== Output Types ====

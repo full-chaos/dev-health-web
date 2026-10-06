@@ -134,8 +134,11 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
 
         const inputs = within(screen.getByTestId("forecast-inputs"));
         expect(inputs.getByText("Forecast inputs")).toBeInTheDocument();
-        expect(inputs.getByText("3.3 items/day")).toBeInTheDocument();
-        expect(inputs.getByText("1.1 items/day")).toBeInTheDocument();
+        // CHAOS-8614: the prototype's subtitle, and the unit spaced as the prototype ("items / day")
+        expect(inputs.getByText("Keep model inputs inspectable.")).toBeInTheDocument();
+        expect(inputs.queryByText(/items\/day/u)).toBeNull();
+        expect(inputs.getByText("3.3 items / day")).toBeInTheDocument();
+        expect(inputs.getByText("1.1 items / day")).toBeInTheDocument();
         expect(inputs.getByText("90 days")).toBeInTheDocument();
         expect(inputs.getByText("42")).toBeInTheDocument();
     });
@@ -305,8 +308,8 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.queryByText(/days of historical data/)).toBeNull();
 
         const inputs = within(screen.getByTestId("forecast-inputs"));
-        expect(inputs.getByText("3.3 items/day")).toBeInTheDocument();
-        expect(inputs.getByText("1.1 items/day")).toBeInTheDocument();
+        expect(inputs.getByText("3.3 items / day")).toBeInTheDocument();
+        expect(inputs.getByText("1.1 items / day")).toBeInTheDocument();
         expect(inputs.getByText("90 days")).toBeInTheDocument();
     });
 });
