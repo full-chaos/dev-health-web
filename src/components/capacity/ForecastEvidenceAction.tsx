@@ -10,7 +10,8 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { CapacityForecast } from "@/lib/graphql/types";
 import { capacityForecastInput } from "@/components/work/capacityInput";
 
-import { percentileText, servedHorizon } from "./ForecastTiles";
+import { itemsPerDay } from "./ForecastInputsCard";
+import { PERCENTILE_ROLE, percentileText, servedHorizon } from "./ForecastTiles";
 
 /**
  * The percentile as the tile shows it: the date, then the days; at the horizon of the simulation
@@ -30,16 +31,19 @@ export function forecastFacts(forecast: CapacityForecast): PageFact[] {
             value: `${forecast.backlogSize} ${forecast.backlogSize === 1 ? "item" : "items"}`,
         },
         {
-            label: "P50 · optimistic",
+            label: `P50 · ${PERCENTILE_ROLE.P50}`,
             value: percentile(forecast.p50Date, forecast.p50Days, horizon),
         },
-        { label: "P85 · target", value: percentile(forecast.p85Date, forecast.p85Days, horizon) },
         {
-            label: "P95 · conservative",
+            label: `P85 · ${PERCENTILE_ROLE.P85}`,
+            value: percentile(forecast.p85Date, forecast.p85Days, horizon),
+        },
+        {
+            label: `P95 · ${PERCENTILE_ROLE.P95}`,
             value: percentile(forecast.p95Date, forecast.p95Days, horizon),
         },
-        { label: "Mean throughput", value: `${forecast.throughputMean.toFixed(1)} items/day` },
-        { label: "Standard deviation", value: `${forecast.throughputStddev.toFixed(1)} items/day` },
+        { label: "Mean throughput", value: itemsPerDay(forecast.throughputMean) },
+        { label: "Standard deviation", value: itemsPerDay(forecast.throughputStddev) },
         { label: "History", value: `${forecast.historyDays} days` },
     ];
 }
