@@ -388,7 +388,7 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(fact(container)).not.toHaveTextContent("Not reported");
     });
 
-    it("asks for the scope baseline of the 30 days that end on the last day of the window, with no scope", async () => {
+    it("asks for the selected team's baseline of the 30 days that end on the last day of the window", async () => {
         await renderPage(
             f({
                 time: { range_days: 14, start_date: "2026-09-01", end_date: "2026-09-30" },
@@ -401,9 +401,7 @@ describe("TestOps Coverage page — approved layout", () => {
         );
         expect(mockFetchCoverageScopeBaseline).toHaveBeenCalledTimes(1);
         const [input, isTestMode] = mockFetchCoverageScopeBaseline.mock.calls[0];
-        // The trend is the organization's series whatever the scope: the baseline is asked for
-        // the same set.
-        expect(input).toEqual({ endDate: "2026-10-01" });
+        expect(input).toEqual({ endDate: "2026-10-01", teamIds: ["t1"] });
         expect(isTestMode).toBe(false);
     });
 
@@ -425,27 +423,32 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(isTestMode).toBe(false);
     });
 
-    it("sends no scope to the baseline read when a repository or team scope is selected", async () => {
-        // The rows of this page are not narrowed by the scope (its coverage request sends no
-        // filter). A baseline list narrowed to the scope would have no row for the repositories
-        // outside it, and they would read "Not reported" though a baseline exists.
-        const scoped = (level: string, ids: string[]) =>
+    it("sends the scope bar's team and repository selection to every coverage read", async () => {
+        await renderPage(
             f({
                 time: { range_days: 14, start_date: "2026-09-01", end_date: "2026-09-14" },
-                scope: { level, ids },
+                scope: { level: "team", ids: ["t1"] },
                 who: {},
-                what: {},
+                what: { repos: ["r1", "r2"] },
                 why: {},
                 how: {},
-            });
-        await renderPage(scoped("repo", ["r1", "r2"]));
-        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({ endDate: "2026-09-15" });
-        // The coverage rows are asked without a filter too: the two reads cover the same set.
-        expect(mockFetchCoverageMetrics.mock.calls.at(-1)?.[0]).not.toHaveProperty("filters");
-        cleanup();
-        await renderPage(scoped("team", ["t1"]));
-        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({ endDate: "2026-09-15" });
-        expect(mockFetchCoverageMetrics.mock.calls.at(-1)?.[0]).not.toHaveProperty("filters");
+            }),
+        );
+        const scope = { repoIds: ["r1", "r2"], teamIds: ["t1"] };
+        expect(mockFetchCoverageBaselines.mock.calls.at(-1)?.[0]).toEqual({
+            endDate: "2026-09-15",
+            ...scope,
+        });
+        expect(mockFetchCoverageScopeBaseline.mock.calls.at(-1)?.[0]).toEqual({
+            endDate: "2026-09-15",
+            ...scope,
+        });
+        expect(mockFetchCoverageMetrics.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: {
+                scope: { level: "TEAM", ids: ["t1"] },
+                what: { repos: ["r1", "r2"] },
+            },
+        });
     });
 
     it("says 'Could not be read' for the baselines when their read failed, and keeps the coverage values", async () => {

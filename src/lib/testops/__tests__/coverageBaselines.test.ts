@@ -119,10 +119,8 @@ describe("scopeBaselineCell", () => {
     });
 });
 
-// The hint of the fact "Target baseline": what the value is (the running 30-day average) and the
-// served number of days behind it. The page sends no scope, so the served value is the
-// organization's: the hint says "the organization's", never "this scope's" (a team in the scope bar
-// does not narrow it).
+// The hint of the fact "Target baseline": what the value is (the running 30-day average), whose
+// scope it describes, and the served number of days behind it.
 describe("scopeBaselineHint", () => {
     it("says what the baseline is and how many of the 30 days hold a value", () => {
         expect(scopeBaselineHint({ lineBaselinePct: 82.6, lineDays: 30 })).toBe(
@@ -136,8 +134,10 @@ describe("scopeBaselineHint", () => {
         );
     });
 
-    it("does not say 'this scope': the value is not narrowed by the scope bar", () => {
-        expect(scopeBaselineHint({ lineBaselinePct: 82.6, lineDays: 30 })).not.toMatch(/scope/i);
+    it("names the selected scope when the baseline query is narrowed", () => {
+        expect(scopeBaselineHint({ lineBaselinePct: 82.6, lineDays: 30 }, true)).toBe(
+            "Running 30-day average of the selected scope's line coverage; 30 of the 30 days hold a value",
+        );
     });
 
     it("has no hint for a failed read: no days were served", () => {
