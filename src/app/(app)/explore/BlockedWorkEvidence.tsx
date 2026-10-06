@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -7,7 +6,8 @@ import { buttonClassName } from "@/components/shared/Button";
 import { Inset } from "@/components/ui/Inset";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatMetricParts } from "@/lib/formatters";
+import { formatMetricParts, formatNumber } from "@/lib/formatters";
+import type { BlockedWorkIssuesResponse } from "@/lib/types";
 
 type BlockedWorkEvidenceProps = {
     /** The served metric label ("Blocked Work"). */
@@ -18,45 +18,113 @@ type BlockedWorkEvidenceProps = {
     unit?: string;
     /** The window the page reads, in days. */
     rangeDays: number;
+    /** The endpoint-specific blocked-item result; null means it was not served. */
+    blockedIssues: BlockedWorkIssuesResponse | null;
+    /** A marked link to a bounded complete table, when this response has all items. */
+    completeTableHref?: string;
     /** Where "Return to investigation" goes (the served origin, else the metric's Flow tab). */
     returnHref: string;
 };
 
-/** One row of the evidence table: the surface and its state. No value served = "Not reported". */
-function SurfaceRow({ surface, state }: { surface: string; state?: ReactNode }) {
-    const reported = state !== undefined && state !== null;
-    return (
-        <tr data-testid="blocked-evidence-row" data-reported={reported}>
-            <td className="border-b border-(--card-stroke) px-3 py-3.25">{surface}</td>
-            <td
-                className={`border-b border-(--card-stroke) px-3 py-3.25 tabular-nums ${
-                    reported ? "text-foreground" : "text-(--ink-muted)"
-                }`}
+type BlockedWorkItemsTableProps = {
+    blockedIssues: BlockedWorkIssuesResponse | null;
+    tableTestId?: string;
+};
+
+const itemLabel = (count: number) => `${formatNumber(count)} ${count === 1 ? "item" : "items"}`;
+
+/**
+ * The API serves item identity only. Keep this table separate from generic
+ * drilldown rendering so a missing title, URL, or duration is never invented.
+ */
+export function BlockedWorkItemsTable({
+    blockedIssues,
+    tableTestId = "blocked-work-table",
+}: BlockedWorkItemsTableProps) {
+    if (!blockedIssues) {
+        return (
+            <p
+                data-testid="blocked-work-items-unavailable"
+                className="mt-4 text-sm text-(--ink-muted)"
             >
-                {reported ? state : NOT_REPORTED}
-            </td>
-        </tr>
+                Blocked work items were not reported for this window.
+            </p>
+        );
+    }
+
+    if (!blockedIssues.items.length) {
+        return (
+            <p data-testid="blocked-work-items-empty" className="mt-4 text-sm text-(--ink-muted)">
+                No blocked work items were served for this window.
+            </p>
+        );
+    }
+
+    return (
+        <div className="mt-4 overflow-auto">
+            <table data-testid={tableTestId} className="w-full text-left text-xs">
+                <thead>
+                    <tr>
+                        <th className="bg-background px-3 py-2.75 text-label-caps uppercase text-(--ink-muted)">
+                            Work item
+                        </th>
+                        <th className="bg-background px-3 py-2.75 text-label-caps uppercase text-(--ink-muted)">
+                            Provider
+                        </th>
+                        <th className="bg-background px-3 py-2.75 text-label-caps uppercase text-(--ink-muted)">
+                            Status
+                        </th>
+                        <th className="bg-background px-3 py-2.75 text-label-caps uppercase text-(--ink-muted)">
+                            Team
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {blockedIssues.items.map((item) => (
+                        <tr
+                            key={`${item.provider}:${item.work_item_id}`}
+                            data-testid="blocked-work-item"
+                        >
+                            <td className="border-b border-(--card-stroke) px-3 py-3.25 font-medium">
+                                {item.work_item_id}
+                            </td>
+                            <td className="border-b border-(--card-stroke) px-3 py-3.25">
+                                {item.provider}
+                            </td>
+                            <td className="border-b border-(--card-stroke) px-3 py-3.25">
+                                {item.status}
+                            </td>
+                            <td className="border-b border-(--card-stroke) px-3 py-3.25">
+                                {item.team_id ?? NOT_REPORTED}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }
 
 /**
  * The Blocked Work evidence section (approved prototype `blockedEvidence()`, app.js line 102):
- * the work-item count, the "Zero is not a substitute for evidence" inset and the evidence table.
- * The list and the count of blocked work items are not served yet (backend ticket CHAOS-8106),
- * so they read "Not reported" and the "Open complete table" action is left out: the served
- * issue drilldown is not limited to blocked items. Every other value is served.
+ * it combines the served metric headline with the endpoint-specific item list and count.
  */
 export function BlockedWorkEvidence({
     label,
     value,
     unit,
     rangeDays,
+    blockedIssues,
+    completeTableHref,
     returnHref,
 }: BlockedWorkEvidenceProps) {
     const parts = value !== undefined ? formatMetricParts(value, unit ?? "") : null;
     const headline = parts
         ? `${label} · ${[parts.value, parts.unit].filter(Boolean).join(" ")}`
-        : undefined;
+        : NOT_REPORTED;
+    const shownCount = blockedIssues?.items.length ?? 0;
+    const hasCompleteBoundedResult =
+        blockedIssues !== null && blockedIssues.count > 0 && blockedIssues.count === shownCount;
 
     return (
         <Section
@@ -77,11 +145,26 @@ export function BlockedWorkEvidence({
             <div data-testid="blocked-work-count">
                 <h3 className="text-sm font-semibold text-foreground">
                     Captured work items:{" "}
-                    <span className="font-normal text-(--ink-muted)">{NOT_REPORTED}</span>
+                    <span className="font-normal text-(--ink-muted)">
+                        {blockedIssues ? itemLabel(blockedIssues.count) : NOT_REPORTED}
+                    </span>
                 </h3>
-                <p className="mt-1 text-xs text-(--ink-muted)">
-                    The list of blocked work items is not served for this window yet.
-                </p>
+                {blockedIssues && blockedIssues.count > shownCount ? (
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        The service returned the first {itemLabel(shownCount)} of{" "}
+                        {itemLabel(blockedIssues.count)}. It does not serve another page.
+                    </p>
+                ) : blockedIssues ? (
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        {blockedIssues.count === 0
+                            ? "No blocked work items were served for this window."
+                            : `All ${itemLabel(blockedIssues.count)} are shown.`}
+                    </p>
+                ) : (
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        The blocked work-item list was not served for this window.
+                    </p>
+                )}
             </div>
 
             <Inset
@@ -97,25 +180,23 @@ export function BlockedWorkEvidence({
                 </p>
             </Inset>
 
-            <div className="mt-4 overflow-auto">
-                <table data-testid="blocked-work-table" className="w-full text-left text-xs">
-                    <thead>
-                        <tr>
-                            <th className="bg-background px-3 py-2.75 text-label-caps uppercase text-(--ink-muted)">
-                                Evidence surface
-                            </th>
-                            <th className="bg-background px-3 py-2.75 text-label-caps uppercase text-(--ink-muted)">
-                                Captured state
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <SurfaceRow surface="Metric headline" state={headline} />
-                        <SurfaceRow surface="Result table" />
-                        <SurfaceRow surface="Time window" state={`${rangeDays} days`} />
-                    </tbody>
-                </table>
+            <div data-testid="blocked-work-headline" className="mt-4 text-xs text-(--ink-muted)">
+                Metric headline: <span className="text-foreground">{headline}</span>
             </div>
+            <p data-testid="blocked-work-window" className="mt-1 text-xs text-(--ink-muted)">
+                Window: {rangeDays} days
+            </p>
+            <BlockedWorkItemsTable blockedIssues={blockedIssues} />
+
+            {hasCompleteBoundedResult && completeTableHref ? (
+                <Link
+                    href={completeTableHref}
+                    data-testid="blocked-work-complete-table"
+                    className={`${buttonClassName("secondary", "sm")} mt-4`}
+                >
+                    {CTA_LABELS.openCompleteTable}
+                </Link>
+            ) : null}
         </Section>
     );
 }
