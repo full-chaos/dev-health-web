@@ -521,15 +521,19 @@ describe("fetchCoverageScopeBaseline", () => {
         mockAuth({ user: { org_id: "org-1" } });
     });
 
-    it("sends the organization and the end date, and nothing else", async () => {
+    it("sends the organization and end date, with a selected scope only", async () => {
         vi.mocked(graphqlFetch).mockResolvedValue({
             coverageScopeBaseline: { lineBaselinePct: 82.6, lineDays: 30 },
         });
 
-        await fetchCoverageScopeBaseline({ endDate: "2026-09-15" });
+        await fetchCoverageScopeBaseline({
+            endDate: "2026-09-15",
+            repoIds: ["r1"],
+            teamIds: [],
+        });
 
         const [, variables] = vi.mocked(graphqlFetch).mock.calls[0];
-        expect(variables).toEqual({ orgId: "org-1", endDate: "2026-09-15" });
+        expect(variables).toEqual({ orgId: "org-1", endDate: "2026-09-15", repoIds: ["r1"] });
     });
 
     it("returns the served value; a null baseline stays null", async () => {

@@ -399,6 +399,29 @@ describe("TestOps Overview: failing workflows and jobs", () => {
         });
     });
 
+    it("sends the scope bar's team and repository selection to analytics and failing jobs", async () => {
+        await renderPage(
+            f({
+                time: { range_days: 30 },
+                scope: { level: "team", ids: ["t1"] },
+                who: {},
+                what: { repos: ["r1", "r2"] },
+                why: {},
+                how: {},
+            }),
+        );
+        expect(mockFetchJobFailures.mock.calls.at(-1)?.[0]).toMatchObject({
+            repoIds: ["r1", "r2"],
+            teamIds: ["t1"],
+        });
+        expect(mockFetchTestOpsData.mock.calls.at(-1)?.[0]).toMatchObject({
+            filters: {
+                scope: { level: "TEAM", ids: ["t1"] },
+                what: { repos: ["r1", "r2"] },
+            },
+        });
+    });
+
     it("draws the served groups in the Failure patterns card", async () => {
         mockFetchJobFailures.mockResolvedValue({
             groups: [
