@@ -9,7 +9,12 @@ import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
+import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
+import {
+    useInvestmentEvidenceQualityGroups,
+    type InvestmentEvidenceQualityGroupDimension,
+} from "@/lib/graphql/hooks/useInvestment";
 import {
     formatBandLabel,
     formatQuality,
@@ -19,7 +24,6 @@ import {
     formatWorkUnitTypeLabel,
     selectWorkUnitEntries,
     titleCase,
-    topInvestmentKey,
     type WorkUnitListEntry,
 } from "@/lib/investment";
 import type { WorkUnitInvestment } from "@/lib/types";
@@ -27,19 +31,21 @@ import type { WorkUnitTeamAttribution } from "@/lib/graphql/__generated__/types"
 import { EvidenceEntryCard } from "./EvidenceEntryCard";
 import { TeamAttributionBadge } from "./TeamAttributionBadge";
 
-type GroupDimension = "theme" | "subcategory" | "type";
+type GroupDimension = InvestmentEvidenceQualityGroupDimension;
 
 type EvidenceGroup = {
     key: string;
     label: string;
     entries: WorkUnitListEntry[];
     totalEffort: number;
-    avgQuality: number | null;
+    /** Persisted group mean served by Analytics; never derived from displayed units. */
+    qualityMean: number | null;
 };
 
 type InvestmentEvidenceTableProps = {
     workUnits: WorkUnitInvestment[];
     effortUnit: string;
+    filters: MetricFilter;
     onSelectWorkUnit: (workUnitId: string) => void;
     /**
      * Render-only backend team attribution, keyed by work UNIT id (CHAOS-2608 /
@@ -65,12 +71,30 @@ function groupLabel(dimension: GroupDimension, key: string): string {
     return titleCase(key);
 }
 
+/**
+ * Match Analytics' persisted reporting group for an equal-weight vector.
+ * This applies only to the served-mean lookup in this table; it neither
+ * changes classifications nor recomputes the producer aggregate.
+ */
+function evidenceQualityGroupKey(vector: Record<string, number> | undefined | null): string | null {
+    if (!vector) return null;
+    let bestKey: string | null = null;
+    let bestValue = Number.NEGATIVE_INFINITY;
+    for (const [key, value] of Object.entries(vector)) {
+        if (value > bestValue || (value === bestValue && (bestKey === null || key < bestKey))) {
+            bestKey = key;
+            bestValue = value;
+        }
+    }
+    return bestKey;
+}
+
 function groupKeyForUnit(dimension: GroupDimension, unit: WorkUnitInvestment): string {
     if (dimension === "theme") {
-        return topInvestmentKey(unit.investment?.themes) ?? "__none__";
+        return evidenceQualityGroupKey(unit.investment?.themes) ?? "__none__";
     }
     if (dimension === "subcategory") {
-        return topInvestmentKey(unit.investment?.subcategories) ?? "__none__";
+        return evidenceQualityGroupKey(unit.investment?.subcategories) ?? "__none__";
     }
     return unit.work_unit_type ?? "__none__";
 }
@@ -110,7 +134,11 @@ function GroupEvidenceBody({
             <EvidenceFactList aria-label="Evidence group" testId="evidence-group-facts">
                 <EvidenceFact
                     label="Average quality"
-                    value={group.avgQuality !== null ? formatQuality(group.avgQuality) : "Unknown"}
+                    value={
+                        group.qualityMean !== null
+                            ? formatQuality(group.qualityMean)
+                            : "Not reported"
+                    }
                 />
                 <EvidenceFact label="Units" value={String(group.entries.length)} />
                 <EvidenceFact
@@ -319,11 +347,16 @@ const EVIDENCE_COLUMNS = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem_6rem]";
 export function InvestmentEvidenceTable({
     workUnits,
     effortUnit,
+    filters,
     onSelectWorkUnit,
     attributionByWorkUnit,
 }: InvestmentEvidenceTableProps) {
     const [groupBy, setGroupBy] = useState<GroupDimension>("theme");
     const evidence = useEvidenceDrawer();
+    const { groups: servedQualityGroups } = useInvestmentEvidenceQualityGroups({
+        filters,
+        groupBy,
+    });
 
     const allEntries = useMemo<WorkUnitListEntry[]>(
         () =>
@@ -333,6 +366,11 @@ export function InvestmentEvidenceTable({
                 fallbackToAll: true,
             }),
         [workUnits],
+    );
+
+    const qualityByGroup = useMemo(
+        () => new Map(servedQualityGroups.map((group) => [group.key, group.mean])),
+        [servedQualityGroups],
     );
 
     const groups = useMemo<EvidenceGroup[]>(() => {
@@ -349,22 +387,16 @@ export function InvestmentEvidenceTable({
         return [...buckets.entries()]
             .map(([key, entries]) => {
                 const totalEffort = entries.reduce((sum, entry) => sum + entry.weightedEffort, 0);
-                const qualityValues = entries
-                    .map((entry) => entry.unit.evidence_quality.value)
-                    .filter((value): value is number => value !== null);
-                const avgQuality = qualityValues.length
-                    ? qualityValues.reduce((sum, value) => sum + value, 0) / qualityValues.length
-                    : null;
                 return {
                     key,
                     label: groupLabel(groupBy, key),
                     entries,
                     totalEffort,
-                    avgQuality,
+                    qualityMean: qualityByGroup.get(key) ?? null,
                 };
             })
             .sort((a, b) => b.totalEffort - a.totalEffort);
-    }, [allEntries, groupBy]);
+    }, [allEntries, groupBy, qualityByGroup]);
 
     // The drawer body is mounted once, at the click, so it cannot re-render with this table. It
     // reads the CURRENT groups and team attribution from this store instead, so a team badge that
@@ -449,9 +481,9 @@ export function InvestmentEvidenceTable({
                                         data-testid="evidence-group-quality"
                                         className="text-right text-sm tabular-nums text-(--ink-muted)"
                                     >
-                                        {group.avgQuality !== null
-                                            ? formatQuality(group.avgQuality)
-                                            : "Unknown"}
+                                        {group.qualityMean !== null
+                                            ? formatQuality(group.qualityMean)
+                                            : "Not reported"}
                                     </span>
                                     <span className="text-right text-sm tabular-nums text-(--ink-muted)">
                                         {group.entries.length}
@@ -477,12 +509,13 @@ export function InvestmentEvidenceTable({
                     })
                 )}
             </div>
-            {/* The list of work units is capped by its query, so a group can hold fewer units than
-                the window has. The note says what the average is taken over. */}
+            {/* The visible unit list can be capped. The mean stays a persisted aggregate served
+                for the selected group and window, so it is never recomputed from that list. */}
             <DataNote>
                 Open a group&apos;s Evidence to read each unit&apos;s rationale and linked metadata.
-                Average quality is the mean evidence quality of the work units listed in the group;
-                the list may not hold every work unit of the window.
+                Average quality is the persisted group mean served for the selected window. It is
+                not calculated from the listed work units. Not reported means Analytics has no
+                persisted quality mean for the group.
             </DataNote>
         </Section>
     );

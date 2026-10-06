@@ -421,6 +421,13 @@ export type AliasSuggestion = {
 
 export type AnalyticsRequestInput = {
   breakdowns?: Array<BreakdownRequestInput>;
+  /**
+   * Optional grouping for persisted work-unit evidence quality. Only THEME,
+   * SUBCATEGORY and WORK_TYPE are valid. The selected key is the unit's
+   * deterministic dominant persisted value, so one unit contributes to one
+   * group.
+   */
+  evidenceQualityGroupBy?: InputMaybe<DimensionInput>;
   filters?: InputMaybe<FilterInput>;
   flowMatrix?: InputMaybe<FlowMatrixRequestInput>;
   sankey?: InputMaybe<SankeyRequestInput>;
@@ -431,6 +438,7 @@ export type AnalyticsRequestInput = {
 export type AnalyticsResult = {
   __typename?: 'AnalyticsResult';
   breakdowns: Array<BreakdownResult>;
+  evidenceQualityByGroup?: Maybe<Array<EvidenceQualityGroup>>;
   evidenceQualityDistribution?: Maybe<Scalars['JSON']['output']>;
   evidenceQualityStats?: Maybe<EvidenceQualityStats>;
   flowMatrix?: Maybe<FlowMatrixResult>;
@@ -448,6 +456,11 @@ export type BreakdownItem = {
 export type BreakdownRequestInput = {
   dateRange: DateRangeInput;
   dimension: DimensionInput;
+  /**
+   * Optional exact dimension keys. When present, returns these keys without the
+   * independent topN cut so related breakdown measures can be joined safely.
+   */
+  keys?: InputMaybe<Array<Scalars['String']['input']>>;
   measure: MeasureInput;
   topN?: Scalars['Int']['input'];
 };
@@ -888,6 +901,18 @@ export type EventItem = {
   text: Scalars['String']['output'];
   ts: Scalars['String']['output'];
   type: Scalars['String']['output'];
+};
+
+/**
+ * One persisted-work-unit evidence-quality aggregate. `total` counts every unit
+ * in the group. `mean` is null when no unit in the group has a known quality.
+ */
+export type EvidenceQualityGroup = {
+  __typename?: 'EvidenceQualityGroup';
+  key: Scalars['String']['output'];
+  label?: Maybe<Scalars['String']['output']>;
+  mean?: Maybe<Scalars['Float']['output']>;
+  total: Scalars['Int']['output'];
 };
 
 export type EvidenceQualityStats = {

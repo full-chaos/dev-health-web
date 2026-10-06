@@ -9,6 +9,7 @@ export { useCatalog, useDimensionValues } from "./useCatalog";
 export { useCapacityForecast } from "./useCapacityForecast";
 export {
     useInvestmentMix,
+    useInvestmentEvidenceQualityGroups,
     useInvestmentFlow,
     useInvestmentRepoTeamFlow,
     useWorkUnitTeamAttributions,
