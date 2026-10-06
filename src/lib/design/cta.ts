@@ -25,6 +25,8 @@ export const CTA_LABELS = {
     skipToMainContent: "Skip to main content",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
+    /** Open the bounded complete table behind a metric-evidence result. */
+    openCompleteTable: "Open complete table",
     /** Evidence drawer: open the provider page of the one repository in scope (served URL). */
     viewOriginalSource: "View original source",
     /** Page header action: open the shared evidence drawer for the page as a whole. */
