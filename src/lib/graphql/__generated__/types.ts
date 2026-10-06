@@ -456,6 +456,11 @@ export type BreakdownItem = {
 export type BreakdownRequestInput = {
   dateRange: DateRangeInput;
   dimension: DimensionInput;
+  /**
+   * Optional exact dimension keys. When present, returns these keys without the
+   * independent topN cut so related breakdown measures can be joined safely.
+   */
+  keys?: InputMaybe<Array<Scalars['String']['input']>>;
   measure: MeasureInput;
   topN?: Scalars['Int']['input'];
 };
@@ -838,9 +843,12 @@ export type ConstraintEvidence = {
 
 export type Coverage = {
   __typename?: 'Coverage';
-  issuesWithCycleStatesPct: Scalars['Float']['output'];
-  prsLinkedToIssuesPct: Scalars['Float']['output'];
-  reposCoveredPct: Scalars['Float']['output'];
+  /** Null when the current window contains no work items for cycle-state coverage. */
+  issuesWithCycleStatesPct?: Maybe<Scalars['Float']['output']>;
+  /** Null when the current window contains no work items to link. */
+  prsLinkedToIssuesPct?: Maybe<Scalars['Float']['output']>;
+  /** Null when no repositories are available to measure. */
+  reposCoveredPct?: Maybe<Scalars['Float']['output']>;
 };
 
 export type CoverageStat = {
@@ -1062,7 +1070,8 @@ export type HomeLimitingFactor = {
 
 export type HomeResult = {
   __typename?: 'HomeResult';
-  constraint: ConstraintCard;
+  /** The present constraint when current-window data exists; null when the window has no data. */
+  constraint?: Maybe<ConstraintCard>;
   dataConfidence: HomeDataConfidence;
   deltas: Array<MetricDelta>;
   events: Array<EventItem>;
@@ -1070,14 +1079,29 @@ export type HomeResult = {
   healthState: HealthState;
   limitingFactor: HomeLimitingFactor;
   reworkThemeAllocation: Array<ReworkThemeAllocation>;
+  /** Coverage and ingestion quality for the selected repository scope; distinct from org-wide dataConfidence. */
+  scopeDataConfidence: HomeScopeDataConfidence;
   signals: Array<HomeSignal>;
   summary: Array<SummarySentence>;
   tiles: Array<HomeTileEntry>;
 };
 
+/** Coverage and metric-ingestion quality for the repositories selected by this Home request. */
+export type HomeScopeDataConfidence = {
+  __typename?: 'HomeScopeDataConfidence';
+  caveats: Array<Scalars['String']['output']>;
+  /** Null when the selected scope has no repositories. */
+  coveragePct?: Maybe<Scalars['Float']['output']>;
+  /** Most recent in-window repository-metric ingestion, or null when the scope has none. */
+  lastIngestedAt?: Maybe<Scalars['String']['output']>;
+  level: Scalars['String']['output'];
+};
+
 export type HomeSignal = {
   __typename?: 'HomeSignal';
   affectedScope: Scalars['String']['output'];
+  /** Current primary work-item attribution evidence for work-item metrics; null when this window has no attributable work items. */
+  attribution?: Maybe<SignalAttribution>;
   category: Scalars['String']['output'];
   confidence: Scalars['String']['output'];
   currentValue: Scalars['String']['output'];
@@ -1240,6 +1264,10 @@ export type MeasureInput =
 export type MetricDelta = {
   __typename?: 'MetricDelta';
   deltaPct: Scalars['Float']['output'];
+  /** Whether the current window has one or more stored source rows. A stored zero has this field set to true. */
+  hasData: Scalars['Boolean']['output'];
+  /** Whether the comparison window has one or more stored source rows. */
+  hasPriorData: Scalars['Boolean']['output'];
   label: Scalars['String']['output'];
   metric: Scalars['String']['output'];
   spark: Array<SparkPoint>;
@@ -2231,6 +2259,33 @@ export type SeverityBucket = {
   __typename?: 'SeverityBucket';
   count: Scalars['Int']['output'];
   severity: Scalars['String']['output'];
+};
+
+/** Source and confidence distribution for the work items behind one Home signal. */
+export type SignalAttribution = {
+  __typename?: 'SignalAttribution';
+  confidence: Array<SignalAttributionConfidenceCount>;
+  /** Number of attributed work items behind these distributions. */
+  items: Scalars['Int']['output'];
+  sources: Array<SignalAttributionSourceCount>;
+};
+
+/** One confidence bucket of a Home signal's work-item attribution distribution. */
+export type SignalAttributionConfidenceCount = {
+  __typename?: 'SignalAttributionConfidenceCount';
+  confidence: TeamAttributionConfidence;
+  items: Scalars['Int']['output'];
+  /** Fraction of SignalAttribution.items in this bucket. */
+  share: Scalars['Float']['output'];
+};
+
+/** One source bucket of a Home signal's work-item attribution distribution. */
+export type SignalAttributionSourceCount = {
+  __typename?: 'SignalAttributionSourceCount';
+  items: Scalars['Int']['output'];
+  /** Fraction of SignalAttribution.items in this bucket. */
+  share: Scalars['Float']['output'];
+  source: TeamAttributionSource;
 };
 
 export type SparkPoint = {
