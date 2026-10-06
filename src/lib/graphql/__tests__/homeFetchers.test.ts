@@ -275,6 +275,26 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         expect(result.freshness.coverage).toBeNull();
     });
 
+    it("keeps each absent coverage denominator distinct from an observed zero", () => {
+        const result = toHomeResponse({
+            ...graphqlFixture,
+            freshness: {
+                ...graphqlFixture.freshness,
+                coverage: {
+                    reposCoveredPct: null,
+                    prsLinkedToIssuesPct: 0,
+                    issuesWithCycleStatesPct: null,
+                },
+            },
+        });
+
+        expect(result.freshness.coverage).toEqual({
+            repos_covered_pct: null,
+            prs_linked_to_issues_pct: 0,
+            issues_with_cycle_states_pct: null,
+        });
+    });
+
     it("keeps an empty selected scope distinct from a measured zero", () => {
         const emptyScope = toHomeResponse({
             ...graphqlFixture,

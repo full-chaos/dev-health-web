@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
-import { screen, within } from "@/test/utils";
+import { screen, userEvent, within } from "@/test/utils";
 
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { checkApiHealth } from "@/lib/api/system";
@@ -136,5 +136,38 @@ describe("dashboard freshness", () => {
 
         expect(screen.getByTestId("org-data-confidence")).toHaveTextContent("high");
         expect(screen.getByTestId("scope-data-confidence")).toHaveTextContent("low/0/null");
+    });
+
+    it("renders each missing coverage denominator as Not reported while retaining zero", async () => {
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
+            ...HOME_DATA,
+            freshness: {
+                ...HOME_DATA.freshness,
+                coverage: {
+                    repos_covered_pct: null,
+                    prs_linked_to_issues_pct: 0,
+                    issues_with_cycle_states_pct: null,
+                },
+            },
+        });
+
+        render(await Home({ searchParams: Promise.resolve({}) }));
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+
+        const facts = screen.getByTestId("home-evidence-coverage");
+        const fact = (label: string) => {
+            const row = within(facts)
+                .getAllByTestId("evidence-fact")
+                .find((candidate) => within(candidate).queryByText(label) !== null);
+            if (!row) throw new Error(`missing ${label} coverage fact`);
+            return row;
+        };
+
+        expect(fact("Repositories covered")).toHaveTextContent("Not reported");
+        expect(fact("Repositories covered")).toHaveAttribute("data-reported", "false");
+        expect(fact("PRs linked to issues")).toHaveTextContent("0%");
+        expect(fact("PRs linked to issues")).toHaveAttribute("data-reported", "true");
+        expect(fact("Issues with cycle states")).toHaveTextContent("Not reported");
+        expect(fact("Issues with cycle states")).toHaveAttribute("data-reported", "false");
     });
 });
