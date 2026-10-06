@@ -245,6 +245,28 @@ export type DrilldownResponse = {
     items: Array<Record<string, unknown>>;
 };
 
+/**
+ * The endpoint-specific blocked-work issue drilldown contract. The API only
+ * serves identity and status for these items; it does not serve per-item
+ * duration, title, or source URL.
+ */
+export type BlockedWorkIssue = {
+    work_item_id: string;
+    provider: string;
+    status: "blocked";
+    team_id: string | null;
+    cycle_time_hours: null;
+    lead_time_hours: null;
+    started_at: null;
+    completed_at: null;
+};
+
+/** Count is measured before the endpoint applies its item limit. */
+export type BlockedWorkIssuesResponse = {
+    items: BlockedWorkIssue[];
+    count: number;
+};
+
 export type OpportunityCard = {
     id: string;
     title: string;
