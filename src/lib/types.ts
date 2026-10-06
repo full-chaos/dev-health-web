@@ -24,6 +24,10 @@ export type MetricDelta = {
     value: number;
     unit: string;
     delta_pct: number;
+    /** Explicit producer fact. A numeric zero remains valid only when this is true. */
+    has_data?: boolean;
+    /** Explicit producer fact. A missing comparison must not render as a -100% change. */
+    has_prior_data?: boolean;
     spark: SparkPoint[];
 };
 
@@ -50,7 +54,7 @@ export type EventItem = {
 // Cockpit decision model (CHAOS-2030 Phase 3). Additive fields on HomeResponse.
 // Field names/enums mirror the backend `/api/v1/home` schema exactly
 // (dev-health-ops HomeHealthState/HomeSignal/HomeLimitingFactor/HomeDataConfidence).
-export type CockpitHealthStatus = "healthy" | "watch" | "at_risk" | "critical";
+export type CockpitHealthStatus = "healthy" | "watch" | "at_risk" | "critical" | "no_data";
 export type SignalSeverity = "critical" | "high" | "medium" | "low";
 export type ConfidenceLevel = "high" | "medium" | "low";
 export type SignalDirection = "up" | "down" | "flat";
@@ -132,7 +136,8 @@ export type HomeResponse = {
     deltas: MetricDelta[];
     summary: SummarySentence[];
     tiles: Record<string, { title: string; subtitle?: string; link: string }>;
-    constraint: Constraint;
+    /** Null when the selected window has no data; this is distinct from an empty constraint. */
+    constraint: Constraint | null;
     events: EventItem[];
     // Cockpit decision model (CHAOS-2030 Phase 3) — additive, optional for back-compat.
     health_state?: HealthState;

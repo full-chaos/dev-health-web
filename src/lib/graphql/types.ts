@@ -857,6 +857,8 @@ export interface HomeGraphQLDelta {
     value: number;
     unit: string;
     deltaPct: number;
+    hasData: boolean;
+    hasPriorData: boolean;
     spark: HomeGraphQLSparkPoint[];
 }
 
@@ -958,7 +960,7 @@ export interface HomeGraphQLResult {
     reworkThemeAllocation: HomeGraphQLReworkThemeAllocation[];
     summary: HomeGraphQLSummarySentence[];
     tiles: HomeGraphQLTileEntry[];
-    constraint: HomeGraphQLConstraint;
+    constraint: HomeGraphQLConstraint | null;
     events: HomeGraphQLEvent[];
     healthState: HomeGraphQLHealthState;
     signals: HomeGraphQLSignal[];

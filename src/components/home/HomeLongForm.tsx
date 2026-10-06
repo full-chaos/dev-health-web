@@ -63,7 +63,7 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
 
     const limitingClaim =
         home?.limiting_factor?.claim ??
-        home?.constraint.claim ??
+        home?.constraint?.claim ??
         "Evidence will appear once data is ingested.";
 
     return (
@@ -105,7 +105,7 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
                     </Link>
                 </div>
                 <p className="mt-1 text-xs text-(--ink-muted)">
-                    {home?.constraint.title ?? "Constraint pending"}
+                    {home?.constraint?.title ?? "Constraint pending"}
                 </p>
                 <div className="mt-3 space-y-2">
                     {home?.tiles
@@ -141,10 +141,10 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
                             Focus thread
                         </span>{" "}
                         <span className="mt-1 block text-sm font-semibold text-foreground">
-                            {home?.constraint.title ?? "Constraint pending"}
+                            {home?.constraint?.title ?? "Constraint pending"}
                         </span>{" "}
                         <span className="mt-1 block text-sm text-(--ink-muted)">
-                            {home?.constraint.claim ?? "Limiting factor pending."}
+                            {home?.constraint?.claim ?? "Limiting factor pending."}
                         </span>
                     </Link>
                 </div>
@@ -183,7 +183,7 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
                     </div>
                 ) : null}
                 <div className="mt-3 space-y-2">
-                    {(home?.constraint.evidence ?? []).map((item) => (
+                    {(home?.constraint?.evidence ?? []).map((item) => (
                         <button
                             type="button"
                             key={`${item.label}-${item.link}`}
@@ -195,7 +195,7 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
                     ))}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
-                    {(home?.constraint.experiments ?? []).map((experiment) => (
+                    {(home?.constraint?.experiments ?? []).map((experiment) => (
                         <span
                             key={experiment}
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
