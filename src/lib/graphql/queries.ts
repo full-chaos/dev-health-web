@@ -431,6 +431,7 @@ query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
         value
         unit
         hasData
+        scope
         delta {
           value
           priorValue
@@ -1247,6 +1248,19 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       scopeEntity {
         id
         displayName
+      }
+      attribution {
+        items
+        sources {
+          source
+          items
+          share
+        }
+        confidence {
+          confidence
+          items
+          share
+        }
       }
     }
     limitingFactor {

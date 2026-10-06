@@ -522,9 +522,18 @@ export interface ThroughputForecastQueryResponse {
 // ==== Operating Review Types ====
 
 export interface OperatingReviewInput {
-    teamId: string | null;
+    /** One team, or null for all teams. Never sent together with `teamIds` (the API refuses it). */
+    teamId?: string | null;
+    /** Several teams: the API answers the review of these teams together (CHAOS-8516). */
+    teamIds?: string[];
     weekStart: string;
 }
+
+/**
+ * Whether the request's team selection narrows a metric (CHAOS-8516). TEAM = the value follows the
+ * selection. ORGANIZATION = the value is the whole organization's, whatever team is selected.
+ */
+export type OperatingReviewMetricScope = "TEAM" | "ORGANIZATION";
 
 export type OperatingReviewDeltaStatus = "changed" | "improved" | "worsened" | "unchanged";
 
@@ -553,6 +562,8 @@ export interface OperatingReviewMetric {
      * read it as true.
      */
     hasData?: boolean;
+    /** Served per metric; the web keeps no list of keys. Absent in an answer of an API before it. */
+    scope?: OperatingReviewMetricScope;
     delta: OperatingReviewDelta;
 }
 
@@ -919,6 +930,24 @@ export interface HomeGraphQLScopeEntity {
     displayName: string;
 }
 
+export interface HomeGraphQLSignalAttributionSourceCount {
+    source: string;
+    items: number;
+    share: number;
+}
+
+export interface HomeGraphQLSignalAttributionConfidenceCount {
+    confidence: string;
+    items: number;
+    share: number;
+}
+
+export interface HomeGraphQLSignalAttribution {
+    items: number;
+    sources: HomeGraphQLSignalAttributionSourceCount[];
+    confidence: HomeGraphQLSignalAttributionConfidenceCount[];
+}
+
 export interface HomeGraphQLSignal {
     id: string;
     title: string;
@@ -936,6 +965,7 @@ export interface HomeGraphQLSignal {
     evidenceRef: string | null;
     category: string;
     scopeEntity: HomeGraphQLScopeEntity | null;
+    attribution: HomeGraphQLSignalAttribution | null;
 }
 
 export interface HomeGraphQLLimitingFactor {

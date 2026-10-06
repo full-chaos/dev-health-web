@@ -1359,6 +1359,8 @@ export type OperatingReviewDelta = {
 
 export type OperatingReviewInput = {
   teamId?: InputMaybe<Scalars['String']['input']>;
+  /** Teams to review together (CHAOS-8516). The answer is the review of the UNION of these teams' stored rows, by the same rules as the one-team and the all-teams review: a count is a sum, a ratio is made from summed numerators and denominators, and a mean is a mean over the stored rows, never a mean of team values. One id gives the one-team review. Null or empty = ``teamId`` applies (or all teams). ``teamId`` and ``teamIds`` together are an error. Rows with no team are in the all-teams review only. */
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
   weekStart: Scalars['Date']['input'];
 };
 
@@ -1369,9 +1371,17 @@ export type OperatingReviewMetric = {
   hasData: Scalars['Boolean']['output'];
   key: Scalars['String']['output'];
   label: Scalars['String']['output'];
+  /** Whether the request's team selection narrows this metric (CHAOS-8516). */
+  scope: OperatingReviewMetricScope;
   unit: Scalars['String']['output'];
   value: Scalars['Float']['output'];
 };
+
+export type OperatingReviewMetricScope =
+  /** The value is the whole organisation's, whatever team is selected: the metric's daily tables hold no team. A client labels it "organisation", not as the selection's value. */
+  | 'ORGANIZATION'
+  /** The value follows the request's team selection: one team, several teams together, or all teams when none is selected. */
+  | 'TEAM';
 
 export type OperatingReviewSection = {
   __typename?: 'OperatingReviewSection';

@@ -18,15 +18,15 @@ import { isTelemetryOptedOut, setTelemetryOptOut } from "@/lib/telemetry/config"
 
 type Listener = () => void;
 
-const telemetryListeners = new Set<Listener>();
+const optOutListeners = new Set<Listener>();
 
 const subscribeTelemetry = (listener: Listener) => {
-    telemetryListeners.add(listener);
-    return () => telemetryListeners.delete(listener);
+    optOutListeners.add(listener);
+    return () => optOutListeners.delete(listener);
 };
 
 const notifyTelemetry = () => {
-    telemetryListeners.forEach((listener) => {
+    optOutListeners.forEach((listener) => {
         listener();
     });
 };

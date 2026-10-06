@@ -453,6 +453,7 @@ export function InvestmentEvidenceTable({
                     <span className="text-right">Average quality</span>
                     <span className="text-right">Units</span>
                     <span className="text-right">Weighted effort</span>
+                    {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}
                     <span className="sr-only">Evidence</span>
                 </div>
 

@@ -114,6 +114,17 @@ const graphqlFixture: HomeGraphQLResult = {
             evidenceRef: "ref-1",
             category: "delivery",
             scopeEntity: { id: "team-1", displayName: "Platform" },
+            attribution: {
+                items: 4,
+                sources: [
+                    { source: "NATIVE_TEAM", items: 2, share: 0.5 },
+                    { source: "UNASSIGNED", items: 2, share: 0.5 },
+                ],
+                confidence: [
+                    { confidence: "HIGH", items: 2, share: 0.5 },
+                    { confidence: "NONE", items: 2, share: 0.5 },
+                ],
+            },
         },
     ],
     limitingFactor: {
@@ -232,6 +243,17 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
                 recommended_action: "Add reviewer capacity.",
                 evidence_ref: "ref-1",
                 category: "delivery",
+                attribution: {
+                    items: 4,
+                    sources: [
+                        { source: "NATIVE_TEAM", items: 2, share: 0.5 },
+                        { source: "UNASSIGNED", items: 2, share: 0.5 },
+                    ],
+                    confidence: [
+                        { confidence: "HIGH", items: 2, share: 0.5 },
+                        { confidence: "NONE", items: 2, share: 0.5 },
+                    ],
+                },
             },
         ]);
         expect(result.limiting_factor).toEqual({
@@ -263,6 +285,15 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         });
 
         expect(result.signals?.[0].scope_entity).toBeNull();
+    });
+
+    it("keeps absent signal attribution distinct from served UNASSIGNED and NONE buckets", () => {
+        const result = toHomeResponse({
+            ...graphqlFixture,
+            signals: [{ ...graphqlFixture.signals[0], attribution: null }],
+        });
+
+        expect(result.signals?.[0].attribution).toBeNull();
     });
 
     it("keeps a coverage that is not served as null: never three zeros", () => {

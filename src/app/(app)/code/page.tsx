@@ -246,6 +246,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                 <th className="py-2 text-left font-medium">Churn</th>
                                 <th className="py-2 text-left font-medium">File-change samples</th>
                                 <th className="py-2 text-right font-medium">
+                                    {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}
                                     <span className="sr-only">Evidence</span>
                                 </th>
                             </tr>
