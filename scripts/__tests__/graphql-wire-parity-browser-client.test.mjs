@@ -125,4 +125,59 @@ describe("providerClient (browser urql client) matches wireForm() too, not just 
             else process.env.BACKEND_URL = previousBackendUrl;
         }
     });
+
+    it("investmentEvidenceQuality: a real browser-client query's bytes equal wireForm()'s output", async () => {
+        const { port, captured } = await startCaptureServer();
+        const previousBackendUrl = process.env.BACKEND_URL;
+        process.env.BACKEND_URL = `http://127.0.0.1:${port}`;
+
+        try {
+            const { createGraphQLClientOptions } =
+                await import("../../src/lib/graphql/providerClient");
+            const { INVESTMENT_EVIDENCE_QUALITY_QUERY } =
+                await import("../../src/lib/graphql/queries");
+
+            const options = createGraphQLClientOptions({
+                orgId: "wire-parity-browser-client-test",
+                ssr: ssrExchange({ isClient: false }),
+            });
+            const client = createClient(options);
+
+            try {
+                await client
+                    .query(INVESTMENT_EVIDENCE_QUALITY_QUERY, {
+                        orgId: "wire-parity-browser-client-test",
+                        batch: {
+                            breakdowns: [
+                                {
+                                    dimension: "THEME",
+                                    measure: "COUNT",
+                                    dateRange: { startDate: "2026-09-01", endDate: "2026-10-01" },
+                                    topN: 1,
+                                },
+                            ],
+                            useInvestment: true,
+                            evidenceQualityGroupBy: "THEME",
+                        },
+                    })
+                    .toPromise();
+            } catch {
+                // The fixture server only captures the real client request.
+            }
+
+            expect(captured).toHaveLength(1);
+            const realQuery = extractQuery(captured[0]);
+            expect(realQuery).toBeTruthy();
+
+            const expected = wireForm(INVESTMENT_EVIDENCE_QUALITY_QUERY);
+            expect(realQuery.trim()).toBe(expected.trim());
+
+            const realDigest = createHash("sha256").update(realQuery.trim()).digest("hex");
+            const wireFormDigest = createHash("sha256").update(expected.trim()).digest("hex");
+            expect(realDigest).toBe(wireFormDigest);
+        } finally {
+            if (previousBackendUrl === undefined) delete process.env.BACKEND_URL;
+            else process.env.BACKEND_URL = previousBackendUrl;
+        }
+    });
 });

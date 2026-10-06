@@ -3,11 +3,16 @@ import { useMemo } from "react";
 import { AuthErrors } from "@/lib/constants/errors";
 import {
     INVESTMENT_BREAKDOWN_QUERY,
+    INVESTMENT_EVIDENCE_QUALITY_QUERY,
     INVESTMENT_FULL_QUERY,
     WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY,
     WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
 } from "../queries";
-import type { WorkUnitTeamAttribution, WorkItemTeamAttribution } from "../__generated__/types";
+import type {
+    AnalyticsResult as GraphQLAnalyticsResult,
+    WorkUnitTeamAttribution,
+    WorkItemTeamAttribution,
+} from "../__generated__/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse } from "@/lib/types";
 import {
@@ -156,6 +161,103 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
 
     return {
         data,
+        loading: result.fetching,
+        error: result.error ?? null,
+        refetch: reexecute,
+    };
+}
+
+export type InvestmentEvidenceQualityGroupDimension = "theme" | "subcategory" | "type";
+
+export type InvestmentEvidenceQualityGroup = {
+    key: string;
+    label: string | null;
+    /** Null is served when this group has no work unit with known quality. */
+    mean: number | null;
+    /** The producer's full persisted-group count; the visible unit list can be capped. */
+    total: number;
+};
+
+interface UseInvestmentEvidenceQualityGroupsOptions {
+    filters: MetricFilter;
+    groupBy: InvestmentEvidenceQualityGroupDimension;
+    pause?: boolean;
+}
+
+interface UseInvestmentEvidenceQualityGroupsResult {
+    groups: InvestmentEvidenceQualityGroup[];
+    loading: boolean;
+    error: Error | null;
+    refetch: () => void;
+}
+
+type EvidenceQualityGroupsResponse = {
+    analytics: Pick<GraphQLAnalyticsResult, "evidenceQualityByGroup">;
+};
+
+const evidenceQualityDimension: Record<InvestmentEvidenceQualityGroupDimension, DimensionInput> = {
+    theme: "THEME",
+    subcategory: "SUBCATEGORY",
+    type: "WORK_TYPE",
+};
+
+/**
+ * Fetch the producer's persisted evidence-quality mean for each visible Evidence
+ * grouping. The table keeps its existing work-unit rows and labels, but never
+ * derives this mean from that potentially capped list.
+ */
+export function useInvestmentEvidenceQualityGroups(
+    options: UseInvestmentEvidenceQualityGroupsOptions,
+): UseInvestmentEvidenceQualityGroupsResult {
+    const { filters, groupBy, pause = false } = options;
+    const contextOrgId = useOrgId();
+
+    const variables = useMemo(() => {
+        // The Evidence tab must remain safely empty while the org context is not
+        // available, as the attribution hook does.
+        let orgId = "";
+        try {
+            orgId = getOrgId(filters, contextOrgId);
+        } catch {
+            orgId = "";
+        }
+        const dateRange = buildDateRange(filters);
+        const batch: AnalyticsRequestInput = {
+            // Analytics takes the evidence-quality window from its first
+            // breakdown. Its result is deliberately not selected or displayed.
+            breakdowns: [
+                {
+                    dimension: "THEME" as DimensionInput,
+                    measure: "COUNT" as MeasureInput,
+                    dateRange,
+                    topN: 1,
+                },
+            ],
+            useInvestment: true,
+            filters: translateFilters(filters),
+            evidenceQualityGroupBy: evidenceQualityDimension[groupBy],
+        };
+        return { orgId, batch };
+    }, [filters, groupBy, contextOrgId]);
+
+    const [result, reexecute] = useQuery<EvidenceQualityGroupsResponse>({
+        query: INVESTMENT_EVIDENCE_QUALITY_QUERY,
+        variables,
+        pause: pause || !variables.orgId,
+        requestPolicy: "cache-and-network",
+    });
+
+    const groups = useMemo<InvestmentEvidenceQualityGroup[]>(() => {
+        return (result.data?.analytics.evidenceQualityByGroup ?? []).map((group) => ({
+            key: group.key,
+            label: group.label ?? null,
+            mean: group.mean ?? null,
+            total: group.total,
+        }));
+    }, [result.data]);
+
+    return {
+        groups,
         loading: result.fetching,
         error: result.error ?? null,
         refetch: reexecute,
