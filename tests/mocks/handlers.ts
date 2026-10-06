@@ -1151,6 +1151,15 @@ function homeRestFixture() {
             missing_sources: ["CI", "Incidents"],
             caveats: ["Some repos lack linked issues."],
         },
+        // Mirrors HomeScopeDataConfidence in the registered Ops Home document:
+        // it describes the selected scope and stays distinct from org-wide
+        // data_confidence above.
+        scope_data_confidence: {
+            level: "medium",
+            coverage_pct: 50,
+            last_ingested_at: new Date().toISOString(),
+            caveats: ["Repository coverage appears partial for the selected scope and window."],
+        },
         // CHAOS-2163: allocation_pct is already 0-100 (ops computes allocation/total*100.0).
         // Themes are canonical keys from investment_taxonomy.py.
         rework_theme_allocation: [
@@ -1274,6 +1283,12 @@ function homeRestToGraphQL(rest: HomeRestFixture) {
             connectedSources: rest.data_confidence.connected_sources,
             missingSources: rest.data_confidence.missing_sources,
             caveats: rest.data_confidence.caveats,
+        },
+        scopeDataConfidence: {
+            level: rest.scope_data_confidence.level,
+            coveragePct: rest.scope_data_confidence.coverage_pct,
+            lastIngestedAt: rest.scope_data_confidence.last_ingested_at,
+            caveats: rest.scope_data_confidence.caveats,
         },
     };
 }
