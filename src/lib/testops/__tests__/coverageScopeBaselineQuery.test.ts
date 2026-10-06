@@ -47,11 +47,18 @@ describe("TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY", () => {
         expect(fieldsOf("coverageScopeBaseline")).toEqual(["lineBaselinePct", "lineDays"]);
     });
 
-    it("takes the organization and the end date, and no scope: the trend it sits on is not narrowed by a scope", () => {
-        expect(variables()).toEqual({ orgId: "String!", endDate: "Date!" });
+    it("takes the organization, end date, and optional repository or team scope", () => {
+        expect(variables()).toEqual({
+            orgId: "String!",
+            endDate: "Date!",
+            repoIds: "[String!]",
+            teamIds: "[String!]",
+        });
         expect(argumentsOf("coverageScopeBaseline")).toEqual({
             orgId: "$orgId",
             endDate: "$endDate",
+            repoIds: "$repoIds",
+            teamIds: "$teamIds",
         });
     });
 });
