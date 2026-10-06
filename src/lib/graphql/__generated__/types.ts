@@ -456,6 +456,11 @@ export type BreakdownItem = {
 export type BreakdownRequestInput = {
   dateRange: DateRangeInput;
   dimension: DimensionInput;
+  /**
+   * Optional exact dimension keys. When present, returns these keys without the
+   * independent topN cut so related breakdown measures can be joined safely.
+   */
+  keys?: InputMaybe<Array<Scalars['String']['input']>>;
   measure: MeasureInput;
   topN?: Scalars['Int']['input'];
 };
