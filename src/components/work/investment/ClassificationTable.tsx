@@ -110,6 +110,7 @@ export function ClassificationTable({
                                     : "Effort"}
                             </th>
                             <th className="px-4 py-2 text-right font-medium">
+                                {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}
                                 <span className="sr-only">Evidence</span>
                             </th>
                         </tr>
