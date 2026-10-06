@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { render, screen } from "@/test/utils";
+import { act, render, screen } from "@/test/utils";
 import type { CapacityForecast } from "@/lib/graphql/types";
 
 // CHAOS-8477: the "Completion range" card. The curve is the Monte Carlo forecast as the API serves
@@ -32,7 +32,15 @@ vi.mock("@/components/charts/Chart", () => ({
 
 import { CompletionRange } from "./CompletionRange";
 
-type Mark = { xAxis: number; label: { formatter: string; align?: string } };
+type Mark = {
+    xAxis: number;
+    label: {
+        formatter: string;
+        align?: string;
+        offset: [number, number];
+        rich: Record<"head" | "detail", { color: string; fontSize: number; fontWeight: number }>;
+    };
+};
 type Series = {
     type: string;
     step?: string;
@@ -41,6 +49,7 @@ type Series = {
     markArea?: { data: Array<[{ xAxis: number; name?: string }, { xAxis: number }]> };
 };
 type Option = {
+    grid: { top: number };
     xAxis: { type: string; min?: number; axisLabel: { formatter: (value: number) => string } };
     yAxis: {
         name?: string;
@@ -53,6 +62,9 @@ type Option = {
 };
 const option = () => (chartSpy.mock.calls.at(-1)?.[0] as { option: Option }).option;
 const curve = () => option().series[0];
+/** The lines of a marker label as a reader sees them: the style tags of the chart are cut. */
+const lines = (mark: Mark) => mark.label.formatter.replace(/\{\w+\|([^}]*)\}/gu, "$1").split("\n");
+const labels = () => curve().markLine!.data.map(lines);
 
 type Distribution = NonNullable<CapacityForecast["completionDistribution"]>;
 const base = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
@@ -202,11 +214,34 @@ describe("CompletionRange — markers and planning range", () => {
         render(<CompletionRange forecast={base()} />);
         const marks = curve().markLine!.data;
         expect(marks.map((mark) => mark.xAxis)).toEqual([19, 24, 27]);
-        expect(marks.map((mark) => mark.label.formatter)).toEqual([
-            "P50 · Jun 20 · 19 days",
-            "P85 · Jun 25 · 24 days",
-            "P95 · Jun 28 · 27 days",
+        expect(marks.map(lines)).toEqual([
+            ["P50 · Jun 20", "Optimistic · 19 days"],
+            ["P85 · Jun 25", "Target · 24 days"],
+            ["P95 · Jun 28", "Conservative · 27 days"],
         ]);
+    });
+
+    // CHAOS-8614: the label is two lines as the prototype. The first line is the percentile and
+    // its served date; the second line is the role word and the served days.
+    it("draws each label as two lines: the percentile and its date, then the role word and the days", () => {
+        render(<CompletionRange forecast={base()} />);
+        const [p50, p85] = curve().markLine!.data;
+        expect(p50.label.formatter).toBe("{head|P50 · Jun 20}\n{detail|Optimistic · 19 days}");
+        // the first line is the text colour and bold; the second line is muted and regular
+        expect(p50.label.rich.head).toMatchObject({ color: chartTheme.text, fontSize: 11 });
+        expect(p50.label.rich.detail).toMatchObject({
+            color: chartTheme.muted,
+            fontSize: 11,
+            fontWeight: 400,
+        });
+        expect(p50.label.rich.head.fontWeight).toBeGreaterThan(p50.label.rich.detail.fontWeight);
+        // the recommended P85 stays the heavier label
+        expect(p85.label.rich.head.fontWeight).toBeGreaterThan(p50.label.rich.head.fontWeight);
+    });
+
+    it("gives the percentile name alone on the first line when its date is not served", () => {
+        render(<CompletionRange forecast={base({ p50Date: undefined })} />);
+        expect(labels()[0]).toEqual(["P50", "Optimistic · 19 days"]);
     });
 
     it("leaves out the marker of a percentile that is not served", () => {
@@ -237,6 +272,21 @@ describe("CompletionRange — words", () => {
         expect(screen.getByTestId("completion-range-note")).toHaveTextContent(
             "Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.",
         );
+    });
+
+    // CHAOS-8614: the planning-choice sentence is the prototype's note paragraph: body size and
+    // body colour, not a small muted line.
+    it("prints the planning-choice sentence at body size and in the body colour", () => {
+        render(<CompletionRange forecast={base()} />);
+        const advice = screen.getByTestId("completion-range-advice");
+        expect(advice).toHaveTextContent(
+            /^Use the target and conservative dates as different planning choices, not as one promise\.$/u,
+        );
+        expect(advice).toHaveClass("text-[0.8125rem]", "text-foreground");
+        expect(advice).not.toHaveClass("text-xs");
+        expect(advice.className).not.toContain("muted");
+        // the two notes above it stay small and muted
+        expect(screen.getByTestId("completion-range-note")).toHaveClass("text-xs");
     });
 
     it("the tooltip gives the served share, the day and the served counts", () => {
@@ -359,7 +409,7 @@ describe("CompletionRange — runs that did not finish inside the horizon", () =
         );
         expect(unfinishedLine()).toBeNull();
         // with no served horizon no day is "the horizon": the markers keep their served dates
-        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1, 2027 · 365 days");
+        expect(labels()[1]).toEqual(["P85 · Jun 1, 2027", "Target · 365 days"]);
     });
 
     it("leaves the run total out of the sentence when it is not served", () => {
@@ -384,10 +434,10 @@ describe("CompletionRange — runs that did not finish inside the horizon", () =
 
     it("a percentile at the horizon reads 'or more' and names no date; the others keep their date", () => {
         render(<CompletionRange forecast={capped()} />);
-        expect(curve().markLine!.data.map((mark) => [mark.xAxis, mark.label.formatter])).toEqual([
-            [19, "P50 · Jun 20 · 19 days"],
-            [365, "P85 · 365 days or more"],
-            [365, "P95 · 365 days or more"],
+        expect(curve().markLine!.data.map((mark) => [mark.xAxis, lines(mark)])).toEqual([
+            [19, ["P50 · Jun 20", "Optimistic · 19 days"]],
+            [365, ["P85", "Target · 365 days or more"]],
+            [365, ["P95", "Conservative · 365 days or more"]],
         ]);
     });
 
@@ -422,7 +472,7 @@ describe("CompletionRange — runs that did not finish inside the horizon", () =
         );
         const text = option().tooltip.formatter({ data: [365, 0.6] });
         expect(text).toContain("80 of 200 runs ended on this day");
-        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1, 2027 · 365 days");
+        expect(labels()[1]).toEqual(["P85 · Jun 1, 2027", "Target · 365 days"]);
     });
 
     it("draws the curve also when no run finished: one served point at 0%", () => {
@@ -474,10 +524,10 @@ describe("CompletionRange — dates in another calendar year", () => {
     it("a marker shows the year of a served date in another year, and no year for this year", () => {
         vi.setSystemTime(new Date("2026-10-03T20:00:00Z"));
         render(<CompletionRange forecast={longForecast()} />);
-        expect(curve().markLine!.data.map((mark) => mark.label.formatter)).toEqual([
-            "P50 · Oct 4 · 1 day",
-            "P85 · Jan 11, 2027 · 100 days",
-            "P95 · Jan 31, 2027 · 120 days",
+        expect(labels()).toEqual([
+            ["P50 · Oct 4", "Optimistic · 1 day"],
+            ["P85 · Jan 11, 2027", "Target · 100 days"],
+            ["P95 · Jan 31, 2027", "Conservative · 120 days"],
         ]);
     });
 
@@ -503,6 +553,131 @@ describe("CompletionRange — dates in another calendar year", () => {
         expect(xAxis.axisLabel.formatter(100)).toBe("Jan 11, 2027");
         expect(tooltip.formatter({ data: [120, 1] })).toContain("Jan 31, 2027");
         expect(tooltip.formatter({ data: [1, 0.6] })).not.toContain("2026");
+    });
+});
+
+// CHAOS-8614: where the marker labels sit above the plot. Labels with room share the row next to
+// the plot, as the prototype draws them. Labels that would touch (two percentiles on one day, or
+// on near days) go to different rows, so no label prints on top of another. The rows come from
+// the measured width of the chart; until it is measured each label has its own row.
+describe("CompletionRange — marker label rows", () => {
+    /** Two text lines of 14px: the height of one label row. */
+    const ROW = 28;
+    let resize: ((width: number) => void) | null = null;
+    const measure = (width: number) => act(() => resize!(width));
+    const rows = () => curve().markLine!.data.map((mark) => Math.abs(mark.label.offset[1]) / ROW);
+
+    beforeEach(() => {
+        resize = null;
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                constructor(
+                    callback: (entries: Array<{ contentRect: { width: number } }>) => void,
+                ) {
+                    resize = (width) => callback([{ contentRect: { width } }]);
+                }
+                observe() {}
+                disconnect() {}
+            },
+        );
+    });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    // Days 10, 40 and 70 of a 100-day curve: the three labels are far from each other.
+    const spread = () =>
+        base({
+            p50Days: 10,
+            p85Days: 40,
+            p95Days: 70,
+            p50Date: "2026-06-11",
+            p85Date: "2026-07-11",
+            p95Date: "2026-08-10",
+            completionDistribution: {
+                runs: 200,
+                unfinishedRuns: 0,
+                horizonDays: 365,
+                days: [
+                    { value: 10, count: 100, cumulativeShare: 0.5 },
+                    { value: 40, count: 70, cumulativeShare: 0.85 },
+                    { value: 100, count: 30, cumulativeShare: 1 },
+                ],
+                items: null,
+            },
+        });
+    // P50 and P85 on one day (the data case of the audit), P95 later.
+    const sameDay = () => base({ p50Days: 19, p85Days: 19, p85Date: "2026-06-20", p95Days: 27 });
+
+    it("gives each label its own row until the width is measured, so the labels never collide", () => {
+        render(<CompletionRange forecast={spread()} />);
+        expect(rows()).toEqual([0, 1, 2]);
+        // room above the plot for the three rows
+        expect(option().grid.top).toBe(24 + 3 * ROW);
+    });
+
+    it("puts labels with room in one row, as the prototype draws them", () => {
+        render(<CompletionRange forecast={spread()} />);
+        measure(1000);
+        expect(rows()).toEqual([0, 0, 0]);
+        expect(curve().markLine!.data.map((mark) => mark.label.offset)).toEqual([
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ]);
+        // room above the plot for the one row
+        expect(option().grid.top).toBe(24 + ROW);
+    });
+
+    it("puts two percentiles of one day in different rows: their labels do not overlap", () => {
+        render(<CompletionRange forecast={sameDay()} />);
+        measure(1000);
+        const marks = curve().markLine!.data;
+        expect(marks.map((mark) => mark.xAxis)).toEqual([19, 19, 27]);
+        expect(labels().slice(0, 2)).toEqual([
+            ["P50 · Jun 20", "Optimistic · 19 days"],
+            ["P85 · Jun 20", "Target · 19 days"],
+        ]);
+        // P50 next to the plot, P85 one row up; P95 has room beside P50 in the first row.
+        expect(rows()).toEqual([0, 1, 0]);
+        expect(marks[1].label.offset).toEqual([0, -ROW]);
+        expect(option().grid.top).toBe(24 + 2 * ROW);
+    });
+
+    it("puts labels of near days in different rows when the chart is too narrow for one row", () => {
+        render(<CompletionRange forecast={spread()} />);
+        measure(1000);
+        expect(rows()).toEqual([0, 0, 0]);
+        // A narrow chart (a phone): the same three labels no longer fit side by side.
+        measure(300);
+        expect(rows()).toEqual([0, 1, 2]);
+        expect(option().grid.top).toBe(24 + 3 * ROW);
+    });
+
+    it("does not draw the chart again when a new width changes no row", () => {
+        render(<CompletionRange forecast={spread()} />);
+        measure(1000);
+        const drawn = chartSpy.mock.calls.at(-1)?.[0] as { option: Option };
+        measure(1010);
+        expect((chartSpy.mock.calls.at(-1)?.[0] as { option: Option }).option).toBe(drawn.option);
+    });
+
+    it("does not take a width of zero as a measurement: the last measured width stays", () => {
+        render(<CompletionRange forecast={spread()} />);
+        measure(0);
+        expect(rows()).toEqual([0, 1, 2]);
+        measure(1000);
+        expect(rows()).toEqual([0, 0, 0]);
+        // a hidden chart reports zero: the rows of the last real width stay
+        measure(0);
+        expect(rows()).toEqual([0, 0, 0]);
+    });
+
+    it("works with no ResizeObserver: each label keeps its own row", () => {
+        vi.stubGlobal("ResizeObserver", undefined);
+        render(<CompletionRange forecast={sameDay()} />);
+        expect(rows()).toEqual([0, 1, 2]);
     });
 });
 
