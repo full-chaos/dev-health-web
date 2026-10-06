@@ -62,6 +62,17 @@ function Tile({
     );
 }
 
+/**
+ * The role word of each percentile: one source for the tiles, the evidence facts and the marker
+ * labels of the Completion range card (CHAOS-8614).
+ */
+export const PERCENTILE_ROLE = {
+    P50: "optimistic",
+    P85: "target",
+    P95: "conservative",
+} as const;
+export type Percentile = keyof typeof PERCENTILE_ROLE;
+
 /** A served day count as "1 day" / "14 days". */
 const daysText = (days: number) => `${days} ${days === 1 ? "day" : "days"}`;
 
@@ -143,20 +154,20 @@ export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
                 <>
                     <Tile
                         testId="tile-p50"
-                        label="P50 · optimistic"
+                        label={`P50 · ${PERCENTILE_ROLE.P50}`}
                         valueText={p50.value}
                         caption={p50.caption}
                     />
                     <Tile
                         testId="tile-p85"
-                        label="P85 · target"
+                        label={`P85 · ${PERCENTILE_ROLE.P85}`}
                         pill="Target"
                         valueText={p85.value}
                         caption={p85.caption}
                     />
                     <Tile
                         testId="tile-p95"
-                        label="P95 · conservative"
+                        label={`P95 · ${PERCENTILE_ROLE.P95}`}
                         valueText={p95.value}
                         caption={p95.caption}
                     />
