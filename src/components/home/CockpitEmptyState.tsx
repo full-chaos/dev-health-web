@@ -58,6 +58,14 @@ const VARIANT_COPY: Record<CockpitEmptyStateVariant, VariantCopy> = {
     },
 };
 
+const VARIANT_ICONS: Record<CockpitEmptyStateVariant, ReactNode> = {
+    "no-data-window": STATE_ICONS["no-data-connected"],
+    "no-data-connected": STATE_ICONS["no-data-connected"],
+    "detector-unavailable": STATE_ICONS["detector-unavailable"],
+    "no-findings": STATE_ICONS["no-findings"],
+    "insufficient-confidence": STATE_ICONS["insufficient-confidence"],
+};
+
 type CockpitEmptyStateProps = {
     variant: CockpitEmptyStateVariant;
     /** Optional override for the default variant title. */
@@ -84,7 +92,7 @@ export function CockpitEmptyState({
     return (
         <div data-testid={testId ?? `cockpit-empty-${variant}`} data-variant={variant}>
             <EmptyState
-                icon={icon ?? STATE_ICONS[variant]}
+                icon={icon ?? VARIANT_ICONS[variant]}
                 title={title ?? copy.title}
                 description={description ?? copy.description}
                 action={action}
