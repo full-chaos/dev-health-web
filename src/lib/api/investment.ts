@@ -1,4 +1,5 @@
 import type {
+    BlockedWorkIssuesResponse,
     DrilldownResponse,
     InvestmentResponse,
     InvestmentMixExplanation,
@@ -156,6 +157,24 @@ export async function getDrilldown(
 ) {
     const normalized = normalizeFilters(filters);
     return postJson<DrilldownResponse>(path, { filters: normalized, limit }, 30);
+}
+
+/**
+ * Read the persisted blocked-work items. `blocked` deliberately exists only
+ * in this POST body: the shared MetricFilter and its URL encoding must not
+ * carry this endpoint-specific selector.
+ */
+export async function getBlockedWorkIssues(filters: MetricFilter, limit = 50) {
+    const normalized = normalizeFilters(filters);
+    const blockedFilters = {
+        ...normalized,
+        how: { ...normalized.how, blocked: true as const },
+    };
+    return postJson<BlockedWorkIssuesResponse>(
+        "/api/v1/drilldown/issues",
+        { filters: blockedFilters, limit },
+        30,
+    );
 }
 
 export async function getWorkUnitExplanation(params: {

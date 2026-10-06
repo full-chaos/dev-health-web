@@ -2,11 +2,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { DataNote } from "@/components/charts/DataNote";
-import { BlockedWorkEvidence } from "./BlockedWorkEvidence";
+import { BlockedWorkEvidence, BlockedWorkItemsTable } from "./BlockedWorkEvidence";
 import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
-import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { EvidenceFact, EvidenceFactList, NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
@@ -19,7 +19,7 @@ import { Section } from "@/components/ui/Section";
 import { getCurrentOrg } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
-import { getDrilldown } from "@/lib/api/investment";
+import { getBlockedWorkIssues, getDrilldown } from "@/lib/api/investment";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -117,6 +117,29 @@ const investigationPath = (metric: string): string => {
     return tab ? tabHref(getTabSet("metrics"), tab.id) : "/metrics";
 };
 
+const BLOCKED_WORK_MARKER = "blocked";
+
+/**
+ * `how.blocked` is intentionally outside the shared URL filter. This explicit
+ * marker makes a table link choose the endpoint-specific POST client instead.
+ */
+const blockedWorkTableHref = (
+    filters: Parameters<typeof buildExploreUrl>[0]["filters"],
+    role?: string,
+) => {
+    const url = new URL(
+        buildExploreUrl({
+            metric: "blocked_work",
+            api: "/api/v1/drilldown/issues",
+            filters,
+            role,
+        }),
+        "http://localhost",
+    );
+    url.searchParams.set(BLOCKED_WORK_MARKER, "true");
+    return `${url.pathname}${url.search}`;
+};
+
 type ExplorePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
@@ -140,30 +163,67 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         : new URL("/api/v1/explain", "http://localhost");
     const endpoint = apiUrl.pathname || "/api/v1/explain";
     const metricFromApi = apiUrl.searchParams.get("metric") ?? metric;
+    const blockedMarker = Array.isArray(params[BLOCKED_WORK_MARKER])
+        ? params[BLOCKED_WORK_MARKER][0]
+        : params[BLOCKED_WORK_MARKER];
+    // The marker only affects this endpoint. It never enters MetricFilter or its URL encoding.
+    const isBlockedWorkTable = endpoint === "/api/v1/drilldown/issues" && blockedMarker === "true";
+    const isBlockedWork = endpoint === "/api/v1/explain" && metricFromApi === "blocked_work";
 
     // Build the view-specific data promise so it runs in parallel with the health check.
     type ExplainResult = Awaited<ReturnType<typeof getExplainData>> | null;
     type DrilldownResult = Awaited<ReturnType<typeof getDrilldown>> | null;
+    type BlockedWorkIssuesResult = Awaited<ReturnType<typeof getBlockedWorkIssues>> | null;
+    type BlockedWorkEvidenceResult = {
+        explain: ExplainResult;
+        issues: BlockedWorkIssuesResult;
+    };
     type HomeResult = Awaited<ReturnType<typeof getHomeData>> | null;
 
-    let view: "explain" | "drilldown" | "home" | "unknown";
-    let dataPromise: Promise<ExplainResult | DrilldownResult | HomeResult | null>;
+    let view: "explain" | "drilldown" | "blocked-drilldown" | "home" | "unknown";
+    let dataPromise: Promise<
+        | ExplainResult
+        | DrilldownResult
+        | BlockedWorkIssuesResult
+        | BlockedWorkEvidenceResult
+        | HomeResult
+        | null
+    >;
 
     if (endpoint === "/api/v1/drilldown/prs" || endpoint === "/api/v1/drilldown/issues") {
-        view = "drilldown";
-        dataPromise = fetchOrNull(
-            getDrilldown(endpoint as "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues", filters),
-            `explore/drilldown-${endpoint}`,
-        );
+        if (isBlockedWorkTable) {
+            view = "blocked-drilldown";
+            dataPromise = fetchOrNull(
+                getBlockedWorkIssues(filters),
+                "explore/blocked-work-items-table",
+            );
+        } else {
+            view = "drilldown";
+            dataPromise = fetchOrNull(
+                getDrilldown(
+                    endpoint as "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
+                    filters,
+                ),
+                `explore/drilldown-${endpoint}`,
+            );
+        }
     } else if (endpoint === "/api/v1/home") {
         view = "home";
         dataPromise = fetchOrNull(getHomeData(filters), "explore/home-data");
     } else if (endpoint === "/api/v1/explain") {
         view = "explain";
-        dataPromise = fetchOrNull(
-            getExplainData({ metric: metricFromApi, filters }),
-            `explore/explain-${metricFromApi}`,
-        );
+        dataPromise = isBlockedWork
+            ? Promise.all([
+                  fetchOrNull(
+                      getExplainData({ metric: metricFromApi, filters }),
+                      `explore/explain-${metricFromApi}`,
+                  ),
+                  fetchOrNull(getBlockedWorkIssues(filters), "explore/blocked-work-items"),
+              ]).then(([explain, issues]) => ({ explain, issues }))
+            : fetchOrNull(
+                  getExplainData({ metric: metricFromApi, filters }),
+                  `explore/explain-${metricFromApi}`,
+              );
     } else {
         view = "unknown";
         dataPromise = Promise.resolve(null);
@@ -181,17 +241,30 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         return <ServiceUnavailable landmark={false} />;
     }
 
-    const data = view === "explain" ? (rawResult as ExplainResult) : null;
+    const blockedWorkEvidence = isBlockedWork ? (rawResult as BlockedWorkEvidenceResult) : null;
+    const data =
+        view === "explain"
+            ? isBlockedWork
+                ? (blockedWorkEvidence?.explain ?? null)
+                : (rawResult as ExplainResult)
+            : null;
     const drilldown = view === "drilldown" ? (rawResult as DrilldownResult) : null;
+    const blockedIssues = isBlockedWork
+        ? (blockedWorkEvidence?.issues ?? null)
+        : view === "blocked-drilldown"
+          ? (rawResult as BlockedWorkIssuesResult)
+          : null;
     const home = view === "home" ? (rawResult as HomeResult) : null;
 
     const metricLabel = data?.label ?? getMetricLabel(metricFromApi);
     const sourceLabel =
         view === "drilldown"
             ? "Evidence drilldown"
-            : view === "home"
-              ? "Home summary"
-              : "Metric explanation";
+            : view === "blocked-drilldown"
+              ? "Blocked work items"
+              : view === "home"
+                ? "Home summary"
+                : "Metric explanation";
     const scopeDetail = filters.scope.ids.length
         ? filters.scope.ids.join(", ")
         : `all ${filters.scope.level}s`;
@@ -237,8 +310,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     // "Return to investigation": the served origin (an internal path only), else the metric's Flow tab.
     const returnHref =
         servedOrigin ?? withFilterParam(investigationPath(metricFromApi), filters, activeRole);
-    // Blocked Work has its own evidence page (approved prototype `blockedEvidence()`, view 28).
-    const isBlockedWork = view === "explain" && metricFromApi === "blocked_work";
+    const evidenceLinks = Object.entries(data?.drilldown_links ?? {}).filter(
+        ([, link]) =>
+            !isBlockedWork ||
+            !new URL(link, "http://localhost").pathname.startsWith("/api/v1/drilldown/issues"),
+    );
 
     const contextCard = (
         <Section
@@ -303,7 +379,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                         : undefined
                 }
                 subtitle={
-                    isBlockedWork
+                    isBlockedWork || view === "blocked-drilldown"
                         ? "Evidence table for the selected metric."
                         : "Evidence detail for the selected metric."
                 }
@@ -331,6 +407,8 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                         value={data?.value}
                         unit={data?.unit}
                         rangeDays={filters.time.range_days}
+                        blockedIssues={blockedIssues}
+                        completeTableHref={blockedWorkTableHref(filters, activeRole)}
                         returnHref={returnHref}
                     />
                 </>
@@ -530,6 +608,39 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 </section>
             )}
 
+            {view === "blocked-drilldown" && (
+                <section
+                    data-testid="blocked-work-complete-table-view"
+                    className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+                >
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">Blocked work items</h2>
+                        <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            {blockedIssues
+                                ? `${formatNumber(blockedIssues.items.length)} of ${formatNumber(blockedIssues.count)}`
+                                : NOT_REPORTED}
+                        </span>
+                    </div>
+                    {blockedIssues && blockedIssues.count > blockedIssues.items.length ? (
+                        <p className="mt-2 text-xs text-(--ink-muted)">
+                            The service returned the first{" "}
+                            {formatNumber(blockedIssues.items.length)} of{" "}
+                            {formatNumber(blockedIssues.count)} items. It does not serve another
+                            page.
+                        </p>
+                    ) : (
+                        <p className="mt-2 text-xs text-(--ink-muted)">
+                            Item identity and status are served for the selected scope. No duration
+                            is added here.
+                        </p>
+                    )}
+                    <BlockedWorkItemsTable
+                        blockedIssues={blockedIssues}
+                        tableTestId="blocked-work-complete-table"
+                    />
+                </section>
+            )}
+
             {view === "home" && (
                 <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <h2 className="font-(--font-display) text-xl">Home Snapshot</h2>
@@ -556,7 +667,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     description="Evidence links stay in this scope."
                 >
                     <div className="flex flex-wrap gap-2 text-sm">
-                        {Object.entries(data?.drilldown_links ?? {}).map(([label, link]) => (
+                        {evidenceLinks.map(([label, link]) => (
                             <Link
                                 key={label}
                                 href={buildExploreUrl({
@@ -569,7 +680,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                                 {label}
                             </Link>
                         ))}
-                        {!Object.keys(data?.drilldown_links ?? {}).length && (
+                        {!evidenceLinks.length && (
                             <p className="text-sm text-(--ink-muted)">
                                 Evidence links will appear once data is ingested.
                             </p>

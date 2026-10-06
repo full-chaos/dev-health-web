@@ -455,6 +455,7 @@ export function InvestmentView({
                 <InvestmentEvidenceTable
                     workUnits={data.workUnits}
                     effortUnit={effortUnit}
+                    filters={filters}
                     onSelectWorkUnit={data.handleSelect}
                     attributionByWorkUnit={teamAttributions.byWorkUnitId}
                 />

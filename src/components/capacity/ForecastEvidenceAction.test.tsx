@@ -52,7 +52,7 @@ describe("ForecastEvidenceAction", () => {
         expect(all).toContainEqual(["P85 · target", "Jun 20 · 19 days"]);
         // No P95 served: the row says so, never a date or 0.
         expect(all).toContainEqual(["P95 · conservative", "Not reported"]);
-        expect(all).toContainEqual(["Mean throughput", "3.3 items/day"]);
+        expect(all).toContainEqual(["Mean throughput", "3.3 items / day"]);
         expect(all).toContainEqual(["History", "90 days"]);
     });
 

@@ -15,6 +15,12 @@ function scopeLabel(forecast: CapacityForecast, teamCount: number): string | nul
     return "All Teams";
 }
 
+/**
+ * A served throughput value with its unit, "15.7 items / day": one text for the inputs card and
+ * the evidence facts (CHAOS-8614: the unit is spaced as the prototype).
+ */
+export const itemsPerDay = (value: number) => `${value.toFixed(1)} items / day`;
+
 /** What the forecast was computed from: scope, throughput, history and the remaining items. */
 export function ForecastInputsCard({
     forecast,
@@ -25,16 +31,20 @@ export function ForecastInputsCard({
 }) {
     const scope = scopeLabel(forecast, teamCount);
     return (
-        <Section data-testid="forecast-inputs" title="Forecast inputs">
+        <Section
+            data-testid="forecast-inputs"
+            title="Forecast inputs"
+            description="Keep model inputs inspectable."
+        >
             <EvidenceFactList aria-label="Forecast inputs" testId="forecast-input-facts">
                 {scope ? <EvidenceFact label="Scope" value={scope} /> : null}
                 <EvidenceFact
                     label="Mean throughput"
-                    value={`${forecast.throughputMean.toFixed(1)} items/day`}
+                    value={itemsPerDay(forecast.throughputMean)}
                 />
                 <EvidenceFact
                     label="Standard deviation"
-                    value={`${forecast.throughputStddev.toFixed(1)} items/day`}
+                    value={itemsPerDay(forecast.throughputStddev)}
                 />
                 <EvidenceFact label="History" value={`${forecast.historyDays} days`} />
                 <EvidenceFact label="Remaining items" value={`${forecast.backlogSize}`} />
