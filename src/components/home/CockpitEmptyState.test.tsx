@@ -4,6 +4,7 @@ import { CockpitEmptyState, type CockpitEmptyStateVariant } from "./CockpitEmpty
 import { render, screen } from "@/test/utils";
 
 const VARIANT_TITLES: Record<CockpitEmptyStateVariant, string> = {
+    "no-data-window": "No data",
     "no-data-connected": "No data connected",
     "detector-unavailable": "Connected but detector unavailable",
     "no-findings": "Enabled but no findings",
@@ -18,6 +19,7 @@ describe("CockpitEmptyState", () => {
             const root = screen.getByTestId(`cockpit-empty-${variant}`);
             expect(root).toHaveAttribute("data-variant", variant);
             expect(screen.getByText(title)).toBeInTheDocument();
+            expect(root.querySelector("svg")).toBeInTheDocument();
         },
     );
 

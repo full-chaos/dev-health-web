@@ -52,6 +52,8 @@ const graphqlFixture: HomeGraphQLResult = {
             value: 42,
             unit: "prs/week",
             deltaPct: 0.1,
+            hasData: true,
+            hasPriorData: true,
             spark: [{ ts: "2026-09-27", value: 40 }],
         },
     ],
@@ -104,6 +106,17 @@ const graphqlFixture: HomeGraphQLResult = {
             evidenceRef: "ref-1",
             category: "delivery",
             scopeEntity: { id: "team-1", displayName: "Platform" },
+            attribution: {
+                items: 4,
+                sources: [
+                    { source: "NATIVE_TEAM", items: 2, share: 0.5 },
+                    { source: "UNASSIGNED", items: 2, share: 0.5 },
+                ],
+                confidence: [
+                    { confidence: "HIGH", items: 2, share: 0.5 },
+                    { confidence: "NONE", items: 2, share: 0.5 },
+                ],
+            },
         },
     ],
     limitingFactor: {
@@ -119,6 +132,12 @@ const graphqlFixture: HomeGraphQLResult = {
         connectedSources: ["github", "jira"],
         missingSources: [],
         caveats: [],
+    },
+    scopeDataConfidence: {
+        level: "medium",
+        coveragePct: 50,
+        lastIngestedAt: "2026-09-28T01:00:00Z",
+        caveats: ["Repository metrics are partial for this window."],
     },
 };
 
@@ -166,6 +185,8 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
                 value: 42,
                 unit: "prs/week",
                 delta_pct: 0.1,
+                has_data: true,
+                has_prior_data: true,
                 spark: [{ ts: "2026-09-27", value: 40 }],
             },
         ]);
@@ -214,6 +235,17 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
                 recommended_action: "Add reviewer capacity.",
                 evidence_ref: "ref-1",
                 category: "delivery",
+                attribution: {
+                    items: 4,
+                    sources: [
+                        { source: "NATIVE_TEAM", items: 2, share: 0.5 },
+                        { source: "UNASSIGNED", items: 2, share: 0.5 },
+                    ],
+                    confidence: [
+                        { confidence: "HIGH", items: 2, share: 0.5 },
+                        { confidence: "NONE", items: 2, share: 0.5 },
+                    ],
+                },
             },
         ]);
         expect(result.limiting_factor).toEqual({
@@ -230,6 +262,12 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
             missing_sources: [],
             caveats: [],
         });
+        expect(result.scope_data_confidence).toEqual({
+            level: "medium",
+            coverage_pct: 50,
+            last_ingested_at: "2026-09-28T01:00:00Z",
+            caveats: ["Repository metrics are partial for this window."],
+        });
     });
 
     it("handles a null scopeEntity (org-wide signal) without inventing one", () => {
@@ -239,6 +277,15 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         });
 
         expect(result.signals?.[0].scope_entity).toBeNull();
+    });
+
+    it("keeps absent signal attribution distinct from served UNASSIGNED and NONE buckets", () => {
+        const result = toHomeResponse({
+            ...graphqlFixture,
+            signals: [{ ...graphqlFixture.signals[0], attribution: null }],
+        });
+
+        expect(result.signals?.[0].attribution).toBeNull();
     });
 
     it("keeps a coverage that is not served as null: never three zeros", () => {
@@ -251,6 +298,50 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         expect(result.freshness.coverage).toBeNull();
     });
 
+    it("keeps each absent coverage denominator distinct from an observed zero", () => {
+        const result = toHomeResponse({
+            ...graphqlFixture,
+            freshness: {
+                ...graphqlFixture.freshness,
+                coverage: {
+                    reposCoveredPct: null,
+                    prsLinkedToIssuesPct: 0,
+                    issuesWithCycleStatesPct: null,
+                },
+            },
+        });
+
+        expect(result.freshness.coverage).toEqual({
+            repos_covered_pct: null,
+            prs_linked_to_issues_pct: 0,
+            issues_with_cycle_states_pct: null,
+        });
+    });
+
+    it("keeps an empty selected scope distinct from a measured zero", () => {
+        const emptyScope = toHomeResponse({
+            ...graphqlFixture,
+            scopeDataConfidence: {
+                ...graphqlFixture.scopeDataConfidence,
+                coveragePct: null,
+                lastIngestedAt: null,
+                caveats: ["The selected scope has no repositories."],
+            },
+        });
+        const measuredZero = toHomeResponse({
+            ...graphqlFixture,
+            scopeDataConfidence: {
+                ...graphqlFixture.scopeDataConfidence,
+                coveragePct: 0,
+                lastIngestedAt: null,
+                caveats: ["No repository metrics exist for this scope."],
+            },
+        });
+
+        expect(emptyScope.scope_data_confidence).toMatchObject({ coverage_pct: null });
+        expect(measuredZero.scope_data_confidence).toMatchObject({ coverage_pct: 0 });
+    });
+
     it("handles empty freshness.sources and tiles as empty dicts, not undefined", () => {
         const result = toHomeResponse({
             ...graphqlFixture,
@@ -260,6 +351,40 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
 
         expect(result.freshness.sources).toEqual({});
         expect(result.tiles).toEqual({});
+    });
+
+    it("maps explicit no-data facts without treating a served zero as data", () => {
+        const result = toHomeResponse({
+            ...graphqlFixture,
+            deltas: [
+                {
+                    ...graphqlFixture.deltas[0],
+                    value: 0,
+                    deltaPct: -100,
+                    hasData: false,
+                    hasPriorData: false,
+                },
+            ],
+            summary: [],
+            events: [],
+            constraint: null,
+            healthState: {
+                ...graphqlFixture.healthState,
+                status: "no_data",
+                headline: "",
+                summary: "",
+            },
+            signals: [],
+        });
+
+        expect(result.deltas[0]).toMatchObject({
+            value: 0,
+            delta_pct: -100,
+            has_data: false,
+            has_prior_data: false,
+        });
+        expect(result.constraint).toBeNull();
+        expect(result.health_state).toEqual({ status: "no_data", headline: "", summary: "" });
     });
 });
 

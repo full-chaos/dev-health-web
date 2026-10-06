@@ -2,6 +2,7 @@ import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { CockpitSummary } from "@/components/home/CockpitSummary";
 import { RankedSignals } from "@/components/home/RankedSignals";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
+import { ScopeDataConfidenceIndicator } from "@/components/home/ScopeDataConfidenceIndicator";
 import { EvidenceContextCard } from "@/components/home/EvidenceContextCard";
 import { HomeMonitoring } from "@/components/home/HomeMonitoring";
 import { InvestigationThreads } from "@/components/home/InvestigationThreads";
@@ -160,6 +161,10 @@ export default async function Home({ searchParams }: HomePageProps) {
             <div className="flex min-w-0 flex-col gap-4.5" data-testid="home-primary">
                 {home?.data_confidence ? (
                     <DataConfidenceIndicator confidence={home.data_confidence} />
+                ) : null}
+
+                {home?.scope_data_confidence ? (
+                    <ScopeDataConfidenceIndicator confidence={home.scope_data_confidence} />
                 ) : null}
 
                 <CockpitSummary home={home} filters={filters} />

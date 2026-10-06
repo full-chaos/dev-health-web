@@ -128,4 +128,42 @@ describe("wireForm matches the REAL configured client (not just its own hard-cod
             else process.env.BACKEND_URL = previousBackendUrl;
         }
     });
+
+    it("home: the real client sends the no-data fields the Home consumer reads", async () => {
+        const { port, captured } = await startCaptureServer();
+        const previousBackendUrl = process.env.BACKEND_URL;
+        process.env.BACKEND_URL = `http://127.0.0.1:${port}`;
+
+        try {
+            const { graphqlFetch } = await import("../../src/lib/graphql/server");
+            const { HOME_QUERY } = await import("../../src/lib/graphql/queries");
+
+            try {
+                await graphqlFetch(
+                    HOME_QUERY,
+                    {
+                        orgId: "wire-parity-home-test",
+                        filters: null,
+                        window: null,
+                    },
+                    { orgId: "wire-parity-home-test" },
+                );
+            } catch {
+                // The capture server returns a minimal payload. The request bytes are the contract under test.
+            }
+
+            expect(captured).toHaveLength(1);
+            const realQuery = extractQuery(captured[0]);
+            expect(realQuery).toBeTruthy();
+            expect(realQuery.trim()).toBe(wireForm(HOME_QUERY).trim());
+
+            // These assertions use the bytes emitted by the normal production client. A source-only
+            // check would not catch a client/exchange change that drops or rewrites the operation.
+            expect(realQuery).toMatch(/healthState\s*\{[^}]*status/u);
+            expect(realQuery).toMatch(/deltas\s*\{[^}]*hasData[^}]*hasPriorData/u);
+        } finally {
+            if (previousBackendUrl === undefined) delete process.env.BACKEND_URL;
+            else process.env.BACKEND_URL = previousBackendUrl;
+        }
+    });
 });

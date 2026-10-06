@@ -840,9 +840,9 @@ export interface HomeGraphQLFreshness {
     latestSuccessfulSyncAt: string | null;
     sources: HomeGraphQLFreshnessSource[];
     coverage: {
-        reposCoveredPct: number;
-        prsLinkedToIssuesPct: number;
-        issuesWithCycleStatesPct: number;
+        reposCoveredPct: number | null;
+        prsLinkedToIssuesPct: number | null;
+        issuesWithCycleStatesPct: number | null;
     } | null;
 }
 
@@ -857,6 +857,8 @@ export interface HomeGraphQLDelta {
     value: number;
     unit: string;
     deltaPct: number;
+    hasData: boolean;
+    hasPriorData: boolean;
     spark: HomeGraphQLSparkPoint[];
 }
 
@@ -917,6 +919,24 @@ export interface HomeGraphQLScopeEntity {
     displayName: string;
 }
 
+export interface HomeGraphQLSignalAttributionSourceCount {
+    source: string;
+    items: number;
+    share: number;
+}
+
+export interface HomeGraphQLSignalAttributionConfidenceCount {
+    confidence: string;
+    items: number;
+    share: number;
+}
+
+export interface HomeGraphQLSignalAttribution {
+    items: number;
+    sources: HomeGraphQLSignalAttributionSourceCount[];
+    confidence: HomeGraphQLSignalAttributionConfidenceCount[];
+}
+
 export interface HomeGraphQLSignal {
     id: string;
     title: string;
@@ -934,6 +954,7 @@ export interface HomeGraphQLSignal {
     evidenceRef: string | null;
     category: string;
     scopeEntity: HomeGraphQLScopeEntity | null;
+    attribution: HomeGraphQLSignalAttribution | null;
 }
 
 export interface HomeGraphQLLimitingFactor {
@@ -952,18 +973,27 @@ export interface HomeGraphQLDataConfidence {
     caveats: string[];
 }
 
+/** Confidence served for the repositories selected by this Home request. */
+export interface HomeGraphQLScopeDataConfidence {
+    level: string;
+    coveragePct: number | null;
+    lastIngestedAt: string | null;
+    caveats: string[];
+}
+
 export interface HomeGraphQLResult {
     freshness: HomeGraphQLFreshness;
     deltas: HomeGraphQLDelta[];
     reworkThemeAllocation: HomeGraphQLReworkThemeAllocation[];
     summary: HomeGraphQLSummarySentence[];
     tiles: HomeGraphQLTileEntry[];
-    constraint: HomeGraphQLConstraint;
+    constraint: HomeGraphQLConstraint | null;
     events: HomeGraphQLEvent[];
     healthState: HomeGraphQLHealthState;
     signals: HomeGraphQLSignal[];
     limitingFactor: HomeGraphQLLimitingFactor;
     dataConfidence: HomeGraphQLDataConfidence;
+    scopeDataConfidence: HomeGraphQLScopeDataConfidence;
 }
 
 export interface HomeQueryResponse {

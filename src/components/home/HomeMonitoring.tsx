@@ -165,6 +165,18 @@ export function HomeMonitoring({
                                     />
                                 );
                             }
+                            if (delta.has_data === false) {
+                                return (
+                                    <MetricCard
+                                        key={metric}
+                                        testId={`monitoring-tile-${metric}`}
+                                        label={delta.label}
+                                        valueText="No data for this window"
+                                        deltaSlot={<></>}
+                                        hideTrend
+                                    />
+                                );
+                            }
                             return (
                                 <MetricCard
                                     key={metric}
@@ -173,7 +185,9 @@ export function HomeMonitoring({
                                     href={buildExploreUrl({ metric, filters, role: activeRole })}
                                     value={delta.value}
                                     unit={delta.unit}
-                                    delta={delta.delta_pct}
+                                    delta={
+                                        delta.has_prior_data === false ? undefined : delta.delta_pct
+                                    }
                                     inverseGood={metricInverseGood(metric)}
                                     spark={delta.spark}
                                     caption={MONITORING_TILE_NOTE}

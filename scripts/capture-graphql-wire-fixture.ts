@@ -12,7 +12,7 @@
  *   2. Points `resolveOrigin()` (src/lib/origin.ts) at that server via
  *      `BACKEND_URL`, the SAME env var production uses.
  *   3. Imports and calls the real, unmodified `graphqlFetch` from
- *      src/lib/graphql/server.ts with the real `FEATURE_FLAG_REGISTRY_QUERY`
+ *      src/lib/graphql/server.ts with the selected production query export
  *      export -- so createClient, the real exchange chain
  *      (timingExchange, errorExchange, cacheExchange, fetchExchange), and
  *      the real global `fetch()` all run exactly as they would inside a
@@ -23,7 +23,7 @@
  *      provenance and both digests (source-copy digest vs captured-wire
  *      digest) so a reader never has to trust this script's own claim.
  *
- * Usage: tsx scripts/capture-graphql-wire-fixture.ts --out-dir <path>
+ * Usage: tsx scripts/capture-graphql-wire-fixture.ts --out-dir <path> [--operation featureFlags|home]
  */
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -45,6 +45,11 @@ if (outDirArg === -1 || !process.argv[outDirArg + 1]) {
     process.exit(2);
 }
 const outDir = path.resolve(process.argv[outDirArg + 1]);
+const operationArg = process.argv.indexOf("--operation");
+const operation = operationArg === -1 ? "featureFlags" : process.argv[operationArg + 1];
+if (operation !== "featureFlags" && operation !== "home") {
+    throw new Error("capture-graphql-wire-fixture: --operation must be featureFlags or home");
+}
 
 interface Captured {
     method: string;
@@ -111,19 +116,28 @@ async function main() {
 
     const { graphqlFetch } = await import("../src/lib/graphql/server");
     const { FEATURE_FLAG_REGISTRY_QUERY } = await import("../src/lib/feature-flags/queries");
+    const { HOME_QUERY } = await import("../src/lib/graphql/queries");
+    const capture =
+        operation === "home"
+            ? {
+                  document: HOME_QUERY,
+                  variables: { orgId: "capture-fixture-org", filters: null, window: null },
+                  name: "home",
+              }
+            : {
+                  document: FEATURE_FLAG_REGISTRY_QUERY,
+                  variables: {
+                      orgId: "capture-fixture-org",
+                      provider: null,
+                      project: null,
+                      includeArchived: false,
+                      limit: 50,
+                  },
+                  name: "featureFlags",
+              };
 
     try {
-        await graphqlFetch(
-            FEATURE_FLAG_REGISTRY_QUERY,
-            {
-                orgId: "capture-fixture-org",
-                provider: null,
-                project: null,
-                includeArchived: false,
-                limit: 50,
-            },
-            { orgId: "capture-fixture-org" },
-        );
+        await graphqlFetch(capture.document, capture.variables, { orgId: "capture-fixture-org" });
     } catch (err) {
         // graphqlFetch may throw on unauthenticated/degraded paths after
         // the request already left the process -- the capture already
@@ -181,44 +195,33 @@ async function main() {
         );
     }
     const capturedDigest = createHash("sha256").update(capturedQuery.trim()).digest("hex");
-    const sourceCopyDigest = createHash("sha256")
-        .update(FEATURE_FLAG_REGISTRY_QUERY.trim())
-        .digest("hex");
+    const sourceCopyDigest = createHash("sha256").update(capture.document.trim()).digest("hex");
 
     fs.mkdirSync(outDir, { recursive: true });
-    const fixturePath = path.join(outDir, "featureflags_captured.graphql");
+    const fixturePath = path.join(outDir, `${capture.name}_captured.graphql`);
     fs.writeFileSync(fixturePath, capturedQuery, "utf8");
 
     const readmePath = path.join(outDir, "README.md");
-    const readme = `# featureFlags wire-capture fixture (CHAOS-4696)
+    const readme = `# ${capture.name} wire-capture fixture (CHAOS-4696)
 
-\`featureflags_captured.graphql\` is the RAW \`query\` text captured off a
+\`${capture.name}_captured.graphql\` is the RAW \`query\` text captured off a
 real HTTP request, produced by this repo's own UNMODIFIED \`graphqlFetch\`
 (\`src/lib/graphql/server.ts\`) calling the real \`@urql/core\` client's
 exchange chain (\`createClient\` -> \`timingExchange\` -> \`errorExchange\`
 -> \`cacheExchange\` -> \`fetchExchange\`) against a real local HTTP
-listener, with the real \`FEATURE_FLAG_REGISTRY_QUERY\` export
-(\`src/lib/feature-flags/queries.ts\`) as input variables. Nothing in this
+listener, with the real \`${capture.name}\` operation export as input variables. Nothing in this
 capture path calls \`createRequest\`/\`stringifyDocument\` directly, and
 nothing hand-reprints the query -- the bytes below are what a real
 \`fetch()\` call actually put on the wire.
 
 **Transport observed: \`${method}\`.** This repo's client never sets
 \`preferGetMethod\`, so \`createClient\`'s default (\`'within-url-limit'\`)
-applies: a query whose fully-encoded URL fits under 2047 characters goes
-out as \`GET\` with the query in a URL search parameter, not a POST JSON
-body -- featureFlags's short variable set falls under that limit. The WIRE
-FORM TEXT is byte-identical either way (both transports build it via the
+applies. The WIRE FORM TEXT is byte-identical either way (both transports build it via the
 same \`stringifyDocument(request.query)\` call inside \`@urql/core\` --
 see \`makeFetchURL\`/\`makeFetchBody\` in
 \`@urql/core/dist/urql-core-chunk.js\`); only the encoding differs, and
 this script extracts the \`query\` value from whichever transport the real
-client actually used. **Separately reported, out of this PR's scope:**
-query-api's \`/query\` route currently accepts POST only
-(\`query_route.go\`'s method check) and returns 405 for a spec-valid GET;
-whatever proxies real traffic to query-api must normalize this, or GET
-requests under the URL-length threshold never reach the digest check at
-all.
+client actually used.
 
 Capture mechanism: \`scripts/capture-graphql-wire-fixture.ts\`. Re-run it
 to refresh this fixture (e.g. after an intentional query text change).
@@ -227,14 +230,11 @@ to refresh this fixture (e.g. after an intentional query text change).
 
 | digest of | value |
 | --- | --- |
-| \`FEATURE_FLAG_REGISTRY_QUERY\` (web source text, unprinted) | \`${sourceCopyDigest}\` |
+| \`${capture.name}\` source text, unprinted | \`${sourceCopyDigest}\` |
 | this captured fixture (real wire bytes) | \`${capturedDigest}\` |
 
-These two digests are DIFFERENT (the source text has a 122-character
-single-line \`featureFlags(...)\` field argument list; urql's real
-\`print()\` reflows it past 80 characters) -- this is exactly CHAOS-4696's
-defect. \`cmd/query-api/query_route.go\`'s \`registeredFeatureFlagsDocument\`
-const must digest to \`${capturedDigest}\`, not \`${sourceCopyDigest}\`, for
+\`cmd/query-api/query_route.go\`'s registered \`${capture.name}\` document
+must digest to \`${capturedDigest}\`, not \`${sourceCopyDigest}\`, for
 query-api to accept a real client's request.
 
 Captured: ${new Date().toISOString()}, ops tip at capture time: see the
