@@ -954,6 +954,14 @@ export interface HomeGraphQLDataConfidence {
     caveats: string[];
 }
 
+/** Confidence served for the repositories selected by this Home request. */
+export interface HomeGraphQLScopeDataConfidence {
+    level: string;
+    coveragePct: number | null;
+    lastIngestedAt: string | null;
+    caveats: string[];
+}
+
 export interface HomeGraphQLResult {
     freshness: HomeGraphQLFreshness;
     deltas: HomeGraphQLDelta[];
@@ -966,6 +974,7 @@ export interface HomeGraphQLResult {
     signals: HomeGraphQLSignal[];
     limitingFactor: HomeGraphQLLimitingFactor;
     dataConfidence: HomeGraphQLDataConfidence;
+    scopeDataConfidence: HomeGraphQLScopeDataConfidence;
 }
 
 export interface HomeQueryResponse {

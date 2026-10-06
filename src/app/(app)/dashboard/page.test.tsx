@@ -28,7 +28,21 @@ vi.mock("@/components/home/HomeMonitoring", () => ({ HomeMonitoring: () => null 
 vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/CockpitSummary", () => ({ CockpitSummary: () => null }));
 vi.mock("@/components/home/DataConfidenceIndicator", () => ({
-    DataConfidenceIndicator: () => null,
+    DataConfidenceIndicator: ({ confidence }: { confidence: { level: string } }) => (
+        <span data-testid="org-data-confidence">{confidence.level}</span>
+    ),
+}));
+vi.mock("@/components/home/ScopeDataConfidenceIndicator", () => ({
+    ScopeDataConfidenceIndicator: ({
+        confidence,
+    }: {
+        confidence: { level: string; coverage_pct: number | null; last_ingested_at: string | null };
+    }) => (
+        <span data-testid="scope-data-confidence">
+            {confidence.level}/{String(confidence.coverage_pct)}/
+            {String(confidence.last_ingested_at)}
+        </span>
+    ),
 }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
@@ -99,4 +113,28 @@ describe("dashboard freshness", () => {
             expect(screen.queryByText(/2026-07-12T00:07:00Z/)).toBeNull();
         },
     );
+
+    it("passes the served scope confidence separately from organization confidence", async () => {
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
+            ...HOME_DATA,
+            data_confidence: {
+                level: "high",
+                coverage_pct: 92,
+                connected_sources: ["github"],
+                missing_sources: [],
+                caveats: [],
+            },
+            scope_data_confidence: {
+                level: "low",
+                coverage_pct: 0,
+                last_ingested_at: null,
+                caveats: ["No repository metrics exist for this scope."],
+            },
+        });
+
+        render(await Home({ searchParams: Promise.resolve({}) }));
+
+        expect(screen.getByTestId("org-data-confidence")).toHaveTextContent("high");
+        expect(screen.getByTestId("scope-data-confidence")).toHaveTextContent("low/0/null");
+    });
 });

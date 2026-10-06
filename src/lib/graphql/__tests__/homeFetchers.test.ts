@@ -1,4 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { setupServer } from "msw/node";
 
 vi.mock("../urqlClient", () => ({
     graphqlFetch: vi.fn(),
@@ -10,10 +11,17 @@ vi.mock("@/lib/auth", () => ({
 
 import { graphqlFetch } from "../urqlClient";
 import { getHomeDataViaGraphQL, toHomeResponse } from "../homeFetchers";
+import { HOME_QUERY } from "../queries";
 import type { HomeGraphQLResult } from "../types";
 import type { MetricFilter } from "@/lib/filters/types";
+import { handlers } from "../../../../tests/mocks/handlers";
 
 const mockedFetch = vi.mocked(graphqlFetch);
+const mockServer = setupServer(...handlers);
+
+beforeAll(() => mockServer.listen({ onUnhandledRequest: "error" }));
+afterEach(() => mockServer.resetHandlers());
+afterAll(() => mockServer.close());
 
 const baseFilters: MetricFilter = {
     scope: { level: "org", ids: ["org-1"] },
@@ -121,6 +129,12 @@ const graphqlFixture: HomeGraphQLResult = {
         connectedSources: ["github", "jira"],
         missingSources: [],
         caveats: [],
+    },
+    scopeDataConfidence: {
+        level: "medium",
+        coveragePct: 50,
+        lastIngestedAt: "2026-09-28T01:00:00Z",
+        caveats: ["Repository metrics are partial for this window."],
     },
 };
 
@@ -234,6 +248,12 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
             missing_sources: [],
             caveats: [],
         });
+        expect(result.scope_data_confidence).toEqual({
+            level: "medium",
+            coverage_pct: 50,
+            last_ingested_at: "2026-09-28T01:00:00Z",
+            caveats: ["Repository metrics are partial for this window."],
+        });
     });
 
     it("handles a null scopeEntity (org-wide signal) without inventing one", () => {
@@ -253,6 +273,30 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         });
 
         expect(result.freshness.coverage).toBeNull();
+    });
+
+    it("keeps an empty selected scope distinct from a measured zero", () => {
+        const emptyScope = toHomeResponse({
+            ...graphqlFixture,
+            scopeDataConfidence: {
+                ...graphqlFixture.scopeDataConfidence,
+                coveragePct: null,
+                lastIngestedAt: null,
+                caveats: ["The selected scope has no repositories."],
+            },
+        });
+        const measuredZero = toHomeResponse({
+            ...graphqlFixture,
+            scopeDataConfidence: {
+                ...graphqlFixture.scopeDataConfidence,
+                coveragePct: 0,
+                lastIngestedAt: null,
+                caveats: ["No repository metrics exist for this scope."],
+            },
+        });
+
+        expect(emptyScope.scope_data_confidence).toMatchObject({ coverage_pct: null });
+        expect(measuredZero.scope_data_confidence).toMatchObject({ coverage_pct: 0 });
     });
 
     it("handles empty freshness.sources and tiles as empty dicts, not undefined", () => {
@@ -298,6 +342,33 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         });
         expect(result.constraint).toBeNull();
         expect(result.health_state).toEqual({ status: "no_data", headline: "", summary: "" });
+    });
+});
+
+describe("shared Home GraphQL fixture", () => {
+    it("maps the producer-required scope confidence object through the mock transport", async () => {
+        const response = await fetch("http://mock.dev-health.test/graphql", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: HOME_QUERY, variables: { orgId: "org-1" } }),
+        });
+
+        expect(response.ok).toBe(true);
+        const payload = (await response.json()) as { data: { home: HomeGraphQLResult } };
+        const mapped = toHomeResponse(payload.data.home);
+
+        expect(payload.data.home.scopeDataConfidence).toEqual({
+            level: "medium",
+            coveragePct: 50,
+            lastIngestedAt: expect.any(String),
+            caveats: ["Repository coverage appears partial for the selected scope and window."],
+        });
+        expect(mapped.scope_data_confidence).toEqual({
+            level: "medium",
+            coverage_pct: 50,
+            last_ingested_at: payload.data.home.scopeDataConfidence.lastIngestedAt,
+            caveats: ["Repository coverage appears partial for the selected scope and window."],
+        });
     });
 });
 

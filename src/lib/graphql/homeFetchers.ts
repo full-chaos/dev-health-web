@@ -166,6 +166,12 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             missing_sources: result.dataConfidence.missingSources,
             caveats: result.dataConfidence.caveats,
         },
+        scope_data_confidence: {
+            level: result.scopeDataConfidence.level as ConfidenceLevel,
+            coverage_pct: result.scopeDataConfidence.coveragePct,
+            last_ingested_at: result.scopeDataConfidence.lastIngestedAt,
+            caveats: result.scopeDataConfidence.caveats,
+        },
     };
 }
 
