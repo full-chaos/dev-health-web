@@ -301,6 +301,29 @@ describe("InvestigationThreads long-form drawer", () => {
         expect(focus).toHaveTextContent("Limiting factor pending.");
     });
 
+    it("opens the no-data Home drawer when the served constraint is null", async () => {
+        draw({
+            ...HOME,
+            summary: [],
+            tiles: {},
+            constraint: null,
+            limiting_factor: undefined,
+            events: [],
+        } as HomeResponse);
+
+        expect(screen.getByTestId("thread-row-recent-events")).toHaveTextContent(
+            "Evidence will appear once data is ingested.",
+        );
+        const drawer = await openLongForm();
+        const threads = drawer.getByTestId("long-form-threads");
+        const limiting = drawer.getByTestId("long-form-limiting-factor");
+
+        expect(threads).toHaveTextContent("Constraint pending");
+        expect(threads).toHaveTextContent("Limiting factor pending.");
+        expect(limiting).toHaveTextContent("Evidence will appear once data is ingested.");
+        expect(within(limiting).queryAllByRole("button")).toHaveLength(1);
+    });
+
     it("Limiting factor: claim, why, recommended action, evidence buttons, experiment chips, and the evidence opener", async () => {
         const fetchSpy = vi
             .spyOn(globalThis, "fetch")

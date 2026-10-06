@@ -87,6 +87,8 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             value: d.value,
             unit: d.unit,
             delta_pct: d.deltaPct,
+            has_data: d.hasData,
+            has_prior_data: d.hasPriorData,
             spark: d.spark.map((p) => ({ ts: p.ts, value: p.value })),
         })),
         rework_theme_allocation: result.reworkThemeAllocation.map((r) => ({
@@ -108,12 +110,17 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
                 { title: t.value.title, subtitle: t.value.subtitle, link: t.value.link },
             ]),
         ),
-        constraint: {
-            title: result.constraint.title,
-            claim: result.constraint.claim,
-            evidence: result.constraint.evidence.map((e) => ({ label: e.label, link: e.link })),
-            experiments: result.constraint.experiments,
-        },
+        constraint: result.constraint
+            ? {
+                  title: result.constraint.title,
+                  claim: result.constraint.claim,
+                  evidence: result.constraint.evidence.map((e) => ({
+                      label: e.label,
+                      link: e.link,
+                  })),
+                  experiments: result.constraint.experiments,
+              }
+            : null,
         events: result.events.map((e) => ({
             ts: e.ts,
             type: e.type,
@@ -144,6 +151,21 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             recommended_action: s.recommendedAction,
             evidence_ref: s.evidenceRef,
             category: s.category as SignalCategory,
+            attribution: s.attribution
+                ? {
+                      items: s.attribution.items,
+                      sources: s.attribution.sources.map((source) => ({
+                          source: source.source,
+                          items: source.items,
+                          share: source.share,
+                      })),
+                      confidence: s.attribution.confidence.map((confidence) => ({
+                          confidence: confidence.confidence,
+                          items: confidence.items,
+                          share: confidence.share,
+                      })),
+                  }
+                : null,
         })),
         limiting_factor: {
             claim: result.limitingFactor.claim,
@@ -158,6 +180,12 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             connected_sources: result.dataConfidence.connectedSources,
             missing_sources: result.dataConfidence.missingSources,
             caveats: result.dataConfidence.caveats,
+        },
+        scope_data_confidence: {
+            level: result.scopeDataConfidence.level as ConfidenceLevel,
+            coverage_pct: result.scopeDataConfidence.coveragePct,
+            last_ingested_at: result.scopeDataConfidence.lastIngestedAt,
+            caveats: result.scopeDataConfidence.caveats,
         },
     };
 }

@@ -8,6 +8,7 @@ import { CircleHelp, Database, Eye, Hourglass, Inbox, Unplug } from "lucide-reac
 const icon = (Icon: typeof Database): ReactNode => <Icon aria-hidden="true" />;
 
 export const STATE_ICONS = {
+    "no-data-window": icon(Database),
     "no-data-connected": icon(Database),
     "source-unsupported": icon(Unplug),
     "detector-unavailable": icon(CircleHelp),

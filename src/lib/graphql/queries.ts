@@ -1180,6 +1180,8 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       value
       unit
       deltaPct
+      hasData
+      hasPriorData
       spark {
         ts
         value
@@ -1247,6 +1249,19 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
         id
         displayName
       }
+      attribution {
+        items
+        sources {
+          source
+          items
+          share
+        }
+        confidence {
+          confidence
+          items
+          share
+        }
+      }
     }
     limitingFactor {
       claim
@@ -1260,6 +1275,12 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       coveragePct
       connectedSources
       missingSources
+      caveats
+    }
+    scopeDataConfidence {
+      level
+      coveragePct
+      lastIngestedAt
       caveats
     }
   }
