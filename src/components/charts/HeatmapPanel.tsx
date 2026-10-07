@@ -148,7 +148,7 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
         const prTitle = asText(item.title);
         return {
             type: "PR",
-            label: prTitle ? `${prTitle} #${number}` : `Title not reported #${number}`,
+            label: prTitle ? `${prTitle} #${number}` : `Pull request #${number}`,
             title: repo ? `${repo}#${number}` : `#${number}`,
             timestamp,
             value,
