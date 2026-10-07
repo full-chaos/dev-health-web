@@ -108,6 +108,10 @@ function entityArtifactLabel(
     return { label: short ?? label, title };
 }
 
+/** What a linked artifact row opens: its detail page, named by the kind of the row. */
+const openLabel = (type: string): string =>
+    type === "PR" ? "Open pull request" : type === "Work item" ? "Open work item" : "Open details";
+
 export function describeArtifact(item: Record<string, unknown>, index: number): ResolvedArtifact {
     const explicitName =
         asText(item.title) ?? asText(item.name) ?? asText(item.repo_name) ?? asText(item.author);
@@ -137,12 +141,11 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
     }
     if (number !== null) {
         const repo = asText(item.repo_id);
-        const repoLabel = repo
-            ? entityArtifactLabel(repo, { name: asText(item.repo_name) }).label
-            : null;
+        // The served PR title names the row; a repository id is never drawn as a name.
+        const prTitle = asText(item.title);
         return {
             type: "PR",
-            label: repoLabel ? `${repoLabel} #${number}` : `#${number}`,
+            label: prTitle ? `${prTitle} #${number}` : `Pull request #${number}`,
             title: repo ? `${repo}#${number}` : `#${number}`,
             timestamp,
             value,
@@ -345,7 +348,7 @@ function HeatmapArtifactList({ artifacts }: { artifacts: ResolvedArtifact[] }) {
                                 </span>
                             ) : artifact.link ? (
                                 <span className="shrink-0 text-xs text-(--ink-muted)">
-                                    Open flame
+                                    {openLabel(artifact.type)}
                                 </span>
                             ) : null}
                         </div>
