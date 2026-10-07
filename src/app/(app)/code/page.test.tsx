@@ -277,11 +277,8 @@ describe("CodePage", () => {
                 ]);
             expect(facts).toEqual([
                 ["Repository", "org/ops"],
-                ["Hotspot score", "Not reported"],
                 ["Bus factor", "1"],
-                ["Churn", "Not reported"],
                 ["File-change samples", "1,947"],
-                ["Maintainer", "Not reported"],
             ]);
         });
 

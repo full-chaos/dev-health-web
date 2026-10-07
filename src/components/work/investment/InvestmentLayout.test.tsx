@@ -267,7 +267,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         expect(screen.queryByRole("button", { name: "All themes" })).toBeNull();
     });
 
-    it("a quality the mix does not serve is 'Not reported' in the drawer, never a number", () => {
+    it("a quality the mix does not serve draws no row in the drawer, never a number", () => {
         view("overview", data());
         // Theme "feature_delivery" has no entry in the served quality distribution.
         fireEvent.click(screen.getAllByTestId("column-treemap-head")[0]);
@@ -278,7 +278,6 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
             "ThemeFeature Delivery",
             "Effort60 delivery units",
             "Share of the mix60%",
-            "Average evidence qualityNot reported",
         ]);
     });
 
@@ -629,8 +628,7 @@ describe("Investment Confidence (prototype view 10)", () => {
                 .map((r) => r.textContent),
         ).toEqual([
             "Team coverage68%",
-            // Not produced by the backend: "Not reported", never 0%.
-            "Repo coverageNot reported",
+            // Not produced by the backend: no row, never 0%.
             "Unassigned ownershipnone detected",
         ]);
         expect(gaps).toHaveTextContent(

@@ -32,12 +32,12 @@ describe("MixSelectionFacts (one component for the treemap cell and the table ro
         expect(screen.getByTestId("facts")).toHaveTextContent("25 work units");
     });
 
-    it("an unserved value reads as not reported, not zero", () => {
+    it("an unserved value draws no row, not zero", () => {
         draw({ value: undefined, quality: undefined });
         const facts = screen.getByTestId("facts");
         expect(facts).not.toHaveTextContent("work units");
         expect(facts).not.toHaveTextContent("%");
-        expect(facts).toHaveTextContent("Not reported");
+        expect(facts).not.toHaveTextContent("Not reported");
     });
 
     it("a subcategory adds its own fact", () => {

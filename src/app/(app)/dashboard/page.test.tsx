@@ -70,10 +70,9 @@ const HOME_DATA: HomeResponse = {
 const lastSyncRow = () => {
     const card = within(screen.getByTestId("evidence-context-card"));
     const row = card
-        .getAllByTestId("evidence-fact")
+        .queryAllByTestId("evidence-fact")
         .find((candidate) => within(candidate).queryByText("Last sync") !== null);
-    if (!row) throw new Error('no "Last sync" row');
-    return row;
+    return row ?? null;
 };
 
 describe("dashboard freshness", () => {
@@ -95,7 +94,7 @@ describe("dashboard freshness", () => {
     // Changed with CHAOS-8063: the row is named "Last sync", so a metric computation (ingest) time
     // is not shown under that name. Before, the header row "Last updated" fell back to it.
     it.each([null, undefined])(
-        "reads Not reported, not the metric computation time, when successful sync time is %s",
+        "draws no Last sync row, and not the metric computation time, when successful sync time is %s",
         async (latestSuccessfulSyncAt) => {
             vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
                 ...HOME_DATA,
@@ -108,8 +107,7 @@ describe("dashboard freshness", () => {
 
             render(await Home({ searchParams: Promise.resolve({}) }));
 
-            expect(lastSyncRow()).toHaveTextContent("Not reported");
-            expect(lastSyncRow()).toHaveAttribute("data-reported", "false");
+            expect(lastSyncRow()).toBeNull();
             expect(screen.queryByText(/2026-07-12T00:07:00Z/)).toBeNull();
         },
     );
@@ -138,7 +136,7 @@ describe("dashboard freshness", () => {
         expect(screen.getByTestId("scope-data-confidence")).toHaveTextContent("low/0/null");
     });
 
-    it("renders each missing coverage denominator as Not reported while retaining zero", async () => {
+    it("draws no row for a missing coverage denominator while retaining zero", async () => {
         vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
             ...HOME_DATA,
             freshness: {
@@ -155,19 +153,19 @@ describe("dashboard freshness", () => {
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
 
         const facts = screen.getByTestId("home-evidence-coverage");
-        const fact = (label: string) => {
-            const row = within(facts)
-                .getAllByTestId("evidence-fact")
+        const find = (label: string) =>
+            within(facts)
+                .queryAllByTestId("evidence-fact")
                 .find((candidate) => within(candidate).queryByText(label) !== null);
+        const fact = (label: string) => {
+            const row = find(label);
             if (!row) throw new Error(`missing ${label} coverage fact`);
             return row;
         };
 
-        expect(fact("Repositories covered")).toHaveTextContent("Not reported");
-        expect(fact("Repositories covered")).toHaveAttribute("data-reported", "false");
+        expect(find("Repositories covered")).toBeUndefined();
         expect(fact("PRs linked to issues")).toHaveTextContent("0%");
         expect(fact("PRs linked to issues")).toHaveAttribute("data-reported", "true");
-        expect(fact("Issues with cycle states")).toHaveTextContent("Not reported");
-        expect(fact("Issues with cycle states")).toHaveAttribute("data-reported", "false");
+        expect(find("Issues with cycle states")).toBeUndefined();
     });
 });

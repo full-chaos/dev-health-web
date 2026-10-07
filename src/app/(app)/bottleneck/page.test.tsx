@@ -265,7 +265,7 @@ describe("/bottleneck in the approved prototype layout (CHAOS-8070)", () => {
         }
     });
 
-    it("no served rows: tiles and facts say 'Not reported', associations say data will appear", async () => {
+    it("no served rows: tiles say 'Not reported', facts draw no row, associations say data will appear", async () => {
         homeOverride.value = { deltas: [] };
         explainOverride.value = { ...wipExplain, drivers: [] };
         await draw();
@@ -278,9 +278,9 @@ describe("/bottleneck in the approved prototype layout (CHAOS-8070)", () => {
             screen.getByText("WIP association detail will appear once data is ingested."),
         ).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
-        const rows = within(screen.getByTestId("page-evidence-facts")).getAllByTestId(
+        const rows = within(screen.getByTestId("page-evidence-facts")).queryAllByTestId(
             "evidence-fact",
         );
-        expect(rows.every((row) => row.getAttribute("data-reported") === "false")).toBe(true);
+        expect(rows).toHaveLength(0);
     });
 });

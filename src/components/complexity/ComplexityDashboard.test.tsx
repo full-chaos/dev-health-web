@@ -442,16 +442,16 @@ describe("ComplexityDashboard", () => {
         expect(opener).toHaveFocus();
     });
 
-    it("shows 'Not reported' in the drawer for an owner concentration the query did not serve", async () => {
+    it("draws no row in the drawer for an owner concentration the query did not serve", async () => {
         const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
 
         await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
 
         const row = within(screen.getByRole("dialog"))
-            .getAllByTestId("evidence-fact")
+            .queryAllByTestId("evidence-fact")
             .find((fact) => fact.querySelector("dt")?.textContent === "Owner concentration");
-        expect(row?.querySelector("dd")).toHaveTextContent(/^Not reported$/);
+        expect(row).toBeUndefined();
     });
 
     it("closes the drawer when the user follows the footer evidence link", async () => {

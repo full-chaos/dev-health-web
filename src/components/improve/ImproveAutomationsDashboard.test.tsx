@@ -249,16 +249,14 @@ describe("ImproveAutomationsDashboard", () => {
         expect(row.getByTestId("detection-threshold").textContent).toBe("> 5 DAYS");
     });
 
-    it("says 'Not reported' for a detection with no evidence references", async () => {
+    it("draws no Evidence references row for a detection with no evidence references", async () => {
         hook.mockReturnValue(result({ opportunities: [item({ evidenceRefs: [] })] }));
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
 
         await userEvent.click(screen.getByTestId("detection-evidence-button"));
 
-        const row = within(await screen.findByTestId("detection-evidence-facts"))
-            .getByText("Evidence references")
-            .closest("[data-testid='evidence-fact']");
-        expect(row).toHaveTextContent("Not reported");
+        const facts = await screen.findByTestId("detection-evidence-facts");
+        expect(within(facts).queryByText("Evidence references")).toBeNull();
     });
 
     it("draws the arrow before 'View AI automations' (prototype btn())", () => {

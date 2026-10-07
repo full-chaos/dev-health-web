@@ -141,9 +141,9 @@ describe("AI overview cards", () => {
         const facts = await screen.findByTestId("page-evidence-facts");
         const text = facts.textContent ?? "";
         expect(text.indexOf("Review Load")).toBeLessThan(text.indexOf("Impact"));
-        expect(text.indexOf("Impact")).toBeLessThan(text.indexOf("Governance Risk"));
-        expect(text.indexOf("Governance Risk")).toBeLessThan(text.indexOf("Automations"));
-        expect(within(facts).getByText("Not reported")).toBeInTheDocument();
+        // Cards whose value is not served draw no row.
+        expect(text).not.toContain("Governance Risk");
+        expect(within(facts).queryByText("Not reported")).toBeNull();
     });
 
     it("emphasizes the most severe severity-bearing card, once", async () => {
