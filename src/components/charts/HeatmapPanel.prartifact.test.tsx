@@ -60,9 +60,9 @@ describe("HeatmapPanel PR artifact rows", () => {
         expect(row).not.toHaveTextContent("#3f2a9c1e");
     });
 
-    it("a PR row without a served title says the title is not reported, never an id token", () => {
+    it("a PR row without a served title reads Pull request #n, never an id token", () => {
         const [row] = renderRows([{ repo_id: REPO, number: 7, title: null }]);
-        expect(row).toHaveTextContent("Title not reported");
+        expect(row).toHaveTextContent("Pull request #7");
         expect(row).toHaveTextContent("#7");
         expect(row).not.toHaveTextContent("3f2a9c1e");
         expect(row).toHaveTextContent("Open pull request");
