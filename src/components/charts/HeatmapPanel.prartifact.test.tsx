@@ -67,4 +67,21 @@ describe("HeatmapPanel PR artifact rows", () => {
         expect(row).not.toHaveTextContent("3f2a9c1e");
         expect(row).toHaveTextContent("Open pull request");
     });
+
+    it("shows the served repository name on a PR row", () => {
+        const [row] = renderRows([
+            { repo_id: REPO, repo_name: "acme/billing", number: 42, title: "Cap retry backoff" },
+        ]);
+        expect(row).toHaveTextContent("acme/billing");
+        expect(row).toHaveTextContent("Cap retry backoff");
+        expect(row).not.toHaveTextContent("3f2a9c1e");
+    });
+
+    it("a PR row with no repository name says so, never the id", () => {
+        const [row] = renderRows([
+            { repo_id: REPO, repo_name: null, number: 42, title: "Cap retry backoff" },
+        ]);
+        expect(row).toHaveTextContent("Repository not reported");
+        expect(row).not.toHaveTextContent("3f2a9c1e");
+    });
 });

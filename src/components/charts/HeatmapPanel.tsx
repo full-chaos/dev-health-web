@@ -82,6 +82,8 @@ type ResolvedArtifact = {
     timestamp: string | null;
     value: number | null;
     link: string | null;
+    /** The served repository name of a PR row; null = not served. Never the repository id. */
+    repoName?: string | null;
 };
 
 /**
@@ -150,6 +152,7 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
             timestamp,
             value,
             link,
+            repoName: asText(item.repo_name),
         };
     }
     if (workItem) {
@@ -352,6 +355,11 @@ function HeatmapArtifactList({ artifacts }: { artifacts: ResolvedArtifact[] }) {
                                 </span>
                             ) : null}
                         </div>
+                        {artifact.type === "PR" ? (
+                            <span className="mt-1 block truncate text-xs text-(--ink-muted)">
+                                {artifact.repoName ?? "Repository not reported"}
+                            </span>
+                        ) : null}
                         {artifact.timestamp ? (
                             <ClientTimestamp
                                 value={artifact.timestamp}
