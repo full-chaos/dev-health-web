@@ -3,6 +3,9 @@ import type { ACRExpandedEvidenceV1 } from "@/lib/acr/generated";
 import { SAMPLE_EXPANDED_EVIDENCE } from "./samplePacket";
 import { requestEvidence, resetEvidenceRequestRegistryForTests } from "./evidenceRequestRegistry";
 
+const warn = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/logger", () => ({ logger: { warn } }));
+
 type DeferredResponse = {
     readonly promise: Promise<Response>;
     readonly reject: (error: Error) => void;
@@ -59,9 +62,45 @@ function jsonResponse(value: ACRExpandedEvidenceV1): Response {
 afterEach(() => {
     resetEvidenceRequestRegistryForTests();
     vi.restoreAllMocks();
+    warn.mockClear();
 });
 
 describe("evidence request registry", () => {
+    it("logs a failed evidence request and does not log an aborted one", async () => {
+        const failed = deferredResponse();
+        const aborted = deferredResponse();
+        vi.spyOn(globalThis, "fetch")
+            .mockReturnValueOnce(failed.promise)
+            .mockReturnValueOnce(aborted.promise);
+
+        const failedLease = requestEvidence({
+            evidenceRefId: "ev-network-failure",
+            packetIdentity: "packet",
+            repository: "full-chaos/dev-health",
+            signal: new AbortController().signal,
+        });
+        const networkError = new TypeError("Failed to fetch");
+        failed.reject(networkError);
+        await expect(failedLease.promise).resolves.toBeNull();
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledWith(
+            { err: networkError, evidenceRefId: "ev-network-failure" },
+            "Evidence request failed; the reference is shown as unavailable",
+        );
+
+        const controller = new AbortController();
+        const abortedLease = requestEvidence({
+            evidenceRefId: "ev-aborted",
+            packetIdentity: "packet",
+            repository: "full-chaos/dev-health",
+            signal: controller.signal,
+        });
+        controller.abort();
+        aborted.reject(new DOMException("Aborted", "AbortError"));
+        await expect(abortedLease.promise).resolves.toBeNull();
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+
     it("rejects a mismatched evidence response and retries without caching or displaying it", async () => {
         const requestedEvidenceRefId = "ev_01J0ACR001";
         const fetchMock = vi
