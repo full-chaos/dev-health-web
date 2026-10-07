@@ -45,7 +45,7 @@ describe("AuditIdentityLabel", () => {
         expect(primary).not.toHaveTextContent(UUID);
     });
 
-    it("prints no full id in the cell (AD-3): short id + Unresolved + an icon Copy that carries the full id", () => {
+    it("prints no id or id piece in the cell: Unresolved + an icon Copy that carries the full id", () => {
         const { container } = render(
             <AuditIdentityLabel
                 id={UUID}
@@ -90,6 +90,14 @@ describe("AuditIdentityLabel", () => {
         expect(row.className).toContain("items-center");
         expect(row).toContainElement(screen.getByText("Unresolved"));
         expect(row).toContainElement(screen.getByRole("button", { name: /copy actor id/i }));
+    });
+
+    it("treats an absent displayName like null and never shows an id piece", () => {
+        const { container } = render(
+            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />,
+        );
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+        expect(container.textContent).not.toMatch(/550e8400|[0-9a-f]{8}/i);
     });
 
     it("uses only the served display name while retaining the served id", () => {

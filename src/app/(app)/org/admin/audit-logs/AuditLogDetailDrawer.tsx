@@ -83,7 +83,7 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                     <DetailRow label="Actor">
                         <AuditIdentityLabel
                             id={entry.user_id}
-                            displayName={entry.actor_display_name}
+                            displayName={entry.actor_display_name ?? null}
                             emptyLabel="System"
                             copyLabel="actor ID"
                             layout="inline"
@@ -97,7 +97,7 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                             </span>
                             <AuditIdentityLabel
                                 id={entry.resource_id}
-                                displayName={entry.resource_display_name}
+                                displayName={entry.resource_display_name ?? null}
                                 emptyLabel="—"
                                 copyLabel="resource ID"
                                 layout="inline"

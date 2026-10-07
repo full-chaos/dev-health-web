@@ -79,8 +79,29 @@ describe("AuditLogRows", () => {
 
         expect(screen.getByText("Audit Actor")).toBeInTheDocument();
         expect(screen.getByText("Audit Resource")).toBeInTheDocument();
-        expect(screen.getByText(actorId)).toBeInTheDocument();
-        expect(screen.getByText(resourceId)).toBeInTheDocument();
+        expect(screen.queryByText(actorId)).not.toBeInTheDocument();
+        expect(screen.queryByText(resourceId)).not.toBeInTheDocument();
+        expect(screen.getByText("Audit Actor")).toHaveAttribute("title", actorId);
+        expect(screen.getByText("Audit Resource")).toHaveAttribute("title", resourceId);
+        expect(screen.getByRole("button", { name: /copy actor id/i })).toHaveAttribute(
+            "title",
+            `Copy actor ID: ${actorId}`,
+        );
+    });
+
+    it("shows no id text or id piece for null or absent names (old backend)", () => {
+        const absent = makeEntry();
+        delete absent.actor_display_name;
+        delete absent.resource_display_name;
+        const { container } = render(
+            <AuditLogRows
+                entries={[makeEntry(), absent, makeEntry({ actor_display_name: "  " })]}
+                onRowSelectAction={vi.fn()}
+            />,
+        );
+        expect(screen.getAllByText("Unresolved")).toHaveLength(6);
+        expect(container.textContent).not.toMatch(/550e8400|660e8400|[0-9a-f]{8}/i);
+        expect(container.textContent).not.toContain("Not reported");
     });
 
     it("calls onRowSelectAction when the explicit Open details button is clicked", async () => {

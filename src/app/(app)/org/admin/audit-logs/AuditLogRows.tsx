@@ -62,20 +62,18 @@ export function AuditLogRows({ entries, onRowSelectAction }: AuditLogRowsProps) 
                                     </span>
                                     <AuditIdentityLabel
                                         id={entry.resource_id}
-                                        displayName={entry.resource_display_name}
+                                        displayName={entry.resource_display_name ?? null}
                                         emptyLabel="—"
                                         copyLabel="resource ID"
-                                        showFullId
                                     />
                                 </div>
                             </td>
                             <td className="px-6 py-4">
                                 <AuditIdentityLabel
                                     id={entry.user_id}
-                                    displayName={entry.actor_display_name}
+                                    displayName={entry.actor_display_name ?? null}
                                     emptyLabel="System"
                                     copyLabel="actor ID"
-                                    showFullId
                                 />
                             </td>
                             <td className="px-6 py-4">
