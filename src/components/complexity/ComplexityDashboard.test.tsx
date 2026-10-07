@@ -410,7 +410,7 @@ describe("ComplexityDashboard", () => {
         );
     });
 
-    it("shows one muted provenance line in the row drawer, not five empty rows (the hotspots query serves none)", async () => {
+    it("draws no provenance rows in the row drawer (the hotspots query serves none)", async () => {
         const hotspots = [
             makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py", blameConcentration: 0.5 }),
         ];
@@ -418,9 +418,7 @@ describe("ComplexityDashboard", () => {
         await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
 
         const drawer = screen.getByRole("dialog");
-        expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
-            "Provenance is not reported for this item.",
-        );
+        expect(within(drawer).queryByTestId("evidence-provenance-not-reported")).toBeNull();
         expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
         expect(within(drawer).queryByText("Not reported")).toBeNull();
         expect(within(drawer).getByTestId("evidence-subject-facts")).toBeInTheDocument();

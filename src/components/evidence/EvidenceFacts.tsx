@@ -64,98 +64,67 @@ export type EvidenceProvenanceValues = {
     source?: string | null;
     quality?: string | null;
     lastSync?: string | null;
-    /** 0 to 1. */
-    identityConfidence?: number | null;
     /**
      * How many artifacts the API returned for the subject. Leave it undefined when the subject has
-     * no artifact list, or the list is not loaded: the row then reads "Not reported". `0` is an
-     * empty list and reads "None returned", never "0".
+     * no artifact list, or the list is not loaded. `0` is an empty list and reads "None returned",
+     * never "0".
      */
     artifactCount?: number;
 };
 
-/** The one line a drawer shows in place of five empty provenance rows. */
-export const PROVENANCE_NOT_REPORTED = "Provenance is not reported for this item.";
-
-type EvidenceProvenanceFactsProps = EvidenceProvenanceValues & {
-    /**
-     * What to show when NO row is served. `rows` (default): the five rows, each "Not reported";
-     * the explain-backed drawer uses it, because its request can serve every row. `line`: one
-     * muted line in place of five empty rows; a drawer whose query serves none of them uses it.
-     * As soon as one row is served, the five rows show (the others read "Not reported").
-     */
-    whenEmpty?: "rows" | "line";
-};
-
 /**
- * The provenance block an evidence drawer starts with (approved prototype `openEvidence`,
- * `app.js:122`): Source, Data quality, Last sync, Identity confidence, Artifacts. A subject
- * passes only what was served for it; the other rows read "Not reported".
+ * The provenance block an evidence drawer starts with: Source, Data quality, Last sync,
+ * Artifacts. A row exists only for a field the API served; a field with no value is not drawn,
+ * and when nothing is served the block is not drawn. A failed read is the caller's error state,
+ * never this block's silence.
  */
 export function EvidenceProvenanceFacts({
     source,
     quality,
     lastSync,
-    identityConfidence,
     artifactCount,
-    whenEmpty = "rows",
-}: EvidenceProvenanceFactsProps) {
-    const anyServed =
-        Boolean(source) ||
-        Boolean(quality) ||
-        Boolean(lastSync) ||
-        typeof identityConfidence === "number" ||
-        artifactCount !== undefined;
-
-    if (!anyServed && whenEmpty === "line") {
-        return (
-            <p
-                data-testid="evidence-provenance-not-reported"
-                className="text-xs text-(--ink-muted)"
-            >
-                {PROVENANCE_NOT_REPORTED}
-            </p>
-        );
-    }
-
-    return (
-        <EvidenceFactList aria-label="Quality and provenance">
-            <EvidenceFact label="Source" value={source || undefined} />
+}: EvidenceProvenanceValues) {
+    const rows: ReactNode[] = [];
+    if (source) rows.push(<EvidenceFact key="source" label="Source" value={source} />);
+    if (quality) {
+        rows.push(
             <EvidenceFact
+                key="quality"
                 label="Data quality"
                 value={
-                    quality ? (
-                        <span
-                            className={`rounded-full border px-2 py-0.5 font-medium ${STATUS_PILL.muted}`}
-                        >
-                            {quality.charAt(0).toUpperCase() + quality.slice(1)}
-                        </span>
-                    ) : undefined
+                    <span
+                        className={`rounded-full border px-2 py-0.5 font-medium ${STATUS_PILL.muted}`}
+                    >
+                        {quality.charAt(0).toUpperCase() + quality.slice(1)}
+                    </span>
                 }
-            />
+            />,
+        );
+    }
+    if (lastSync) {
+        rows.push(
             <EvidenceFact
+                key="last-sync"
                 label="Last sync"
                 // An unparseable value is shown as served, not replaced.
-                value={lastSync ? formatTimestamp(lastSync, lastSync) : undefined}
-            />
+                value={formatTimestamp(lastSync, lastSync)}
+            />,
+        );
+    }
+    if (artifactCount !== undefined) {
+        rows.push(
             <EvidenceFact
-                label="Identity confidence"
-                value={
-                    typeof identityConfidence === "number"
-                        ? `${Math.round(identityConfidence * 100)}%`
-                        : undefined
-                }
-            />
-            <EvidenceFact
+                key="artifacts"
                 label="Artifacts"
                 value={
-                    artifactCount === undefined
-                        ? undefined
-                        : artifactCount > 0
-                          ? `${artifactCount} ${artifactCount === 1 ? "artifact" : "artifacts"}`
-                          : "None returned"
+                    artifactCount > 0
+                        ? `${artifactCount} ${artifactCount === 1 ? "artifact" : "artifacts"}`
+                        : "None returned"
                 }
-            />
-        </EvidenceFactList>
-    );
+            />,
+        );
+    }
+    if (rows.length === 0) return null;
+
+    return <EvidenceFactList aria-label="Quality and provenance">{rows}</EvidenceFactList>;
 }

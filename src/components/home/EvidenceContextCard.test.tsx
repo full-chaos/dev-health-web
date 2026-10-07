@@ -63,19 +63,19 @@ const fact = (label: string) => {
 
 // The "Evidence & context" card of Home (CHAOS-8063): approved prototype `app.js:100`.
 describe("EvidenceContextCard", () => {
-    it("has the approved title, description and the four fact rows in order", () => {
+    it("has the approved title, description and the three fact rows in order (no Identity confidence row)", () => {
         render(<EvidenceContextCard home={makeHome()} />);
         expect(screen.getByRole("heading", { name: "Evidence & context" })).toBeInTheDocument();
         expect(screen.getByText("Keep uncertainty beside the claim.")).toBeInTheDocument();
         const labels = screen
             .getAllByTestId("evidence-fact")
             .map((row) => row.querySelector("dt")?.textContent);
-        expect(labels).toEqual(["Source", "Signal quality", "Last sync", "Identity confidence"]);
+        expect(labels).toEqual(["Source", "Signal quality", "Last sync"]);
     });
 
-    it("reads Not reported for Source and Identity confidence: the Home API does not serve them", () => {
+    it("reads Not reported for Source: the Home API does not serve it", () => {
         render(<EvidenceContextCard home={makeHome()} />);
-        for (const label of ["Source", "Identity confidence"]) {
+        for (const label of ["Source"]) {
             expect(fact(label)).toHaveAttribute("data-reported", "false");
             expect(fact(label)).toHaveTextContent("Not reported");
         }
@@ -166,7 +166,7 @@ describe("EvidenceContextCard", () => {
 
         render(<EvidenceContextCard home={null} />);
         const rows = screen.getAllByTestId("evidence-fact");
-        expect(rows).toHaveLength(4);
+        expect(rows).toHaveLength(3);
         for (const row of rows) expect(row).toHaveAttribute("data-reported", "false");
     });
 });
