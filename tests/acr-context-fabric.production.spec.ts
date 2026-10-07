@@ -712,8 +712,9 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expect.poll(async () => (await evidenceRequestStats(page.request)).active).toBe(0);
         const stats = await evidenceRequestStats(page.request);
         expect(stats.count).toBe(9);
-        expect(stats.maxConcurrent).toBeGreaterThan(1);
-        expect(stats.maxConcurrent).toBeLessThanOrEqual(8);
+        // Exactly the registry cap. It is below the browser's per-host limit of 6, so the mock sees
+        // the cap itself; a higher cap would read 6 here whatever its value.
+        expect(stats.maxConcurrent).toBe(4);
     });
 
     test("resets browser-only feedback after replacement without sending feedback over the network", async ({

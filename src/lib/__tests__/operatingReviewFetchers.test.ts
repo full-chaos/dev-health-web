@@ -37,4 +37,20 @@ describe("getOperatingReviewViaGraphQL", () => {
             { orgId: "org-1" },
         );
     });
+
+    it("sends a team set as teamIds, with no teamId", async () => {
+        vi.mocked(graphqlFetch).mockClear();
+        vi.mocked(graphqlFetch).mockResolvedValue({ operatingReview: { sections: [] } });
+
+        await getOperatingReviewViaGraphQL("org-1", {
+            teamIds: ["team-a", "team-b"],
+            weekStart: "2026-05-18",
+        });
+
+        expect(graphqlFetch).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(graphqlFetch).mock.calls[0][1]).toEqual({
+            orgId: "org-1",
+            input: { teamIds: ["team-a", "team-b"], weekStart: "2026-05-18" },
+        });
+    });
 });

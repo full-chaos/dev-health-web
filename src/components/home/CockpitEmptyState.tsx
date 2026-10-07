@@ -14,13 +14,18 @@ import { STATE_ICONS } from "@/components/ui/stateIcons";
  *
  * | variant                  | meaning                                          |
  * | ------------------------ | ------------------------------------------------ |
+ * | no-data-window           | The selected window has no stored data.          |
  * | no-data-connected        | No source feeds this panel yet.                  |
  * | detector-unavailable     | Sources connected, but the detector can't run.   |
  * | no-findings              | Detector ran and surfaced nothing for the window.|
  * | insufficient-confidence  | Some evidence, but not enough to show a result.  |
  */
 export type CockpitEmptyStateVariant =
-    "no-data-connected" | "detector-unavailable" | "no-findings" | "insufficient-confidence";
+    | "no-data-window"
+    | "no-data-connected"
+    | "detector-unavailable"
+    | "no-findings"
+    | "insufficient-confidence";
 
 type VariantCopy = {
     title: string;
@@ -28,6 +33,10 @@ type VariantCopy = {
 };
 
 const VARIANT_COPY: Record<CockpitEmptyStateVariant, VariantCopy> = {
+    "no-data-window": {
+        title: "No data",
+        description: "No data for this window.",
+    },
     "no-data-connected": {
         title: "No data connected",
         description:
@@ -47,6 +56,14 @@ const VARIANT_COPY: Record<CockpitEmptyStateVariant, VariantCopy> = {
         description:
             "There is some evidence, but not enough to show a reliable result for this window.",
     },
+};
+
+const VARIANT_ICONS: Record<CockpitEmptyStateVariant, ReactNode> = {
+    "no-data-window": STATE_ICONS["no-data-connected"],
+    "no-data-connected": STATE_ICONS["no-data-connected"],
+    "detector-unavailable": STATE_ICONS["detector-unavailable"],
+    "no-findings": STATE_ICONS["no-findings"],
+    "insufficient-confidence": STATE_ICONS["insufficient-confidence"],
 };
 
 type CockpitEmptyStateProps = {
@@ -75,7 +92,7 @@ export function CockpitEmptyState({
     return (
         <div data-testid={testId ?? `cockpit-empty-${variant}`} data-variant={variant}>
             <EmptyState
-                icon={icon ?? STATE_ICONS[variant]}
+                icon={icon ?? VARIANT_ICONS[variant]}
                 title={title ?? copy.title}
                 description={description ?? copy.description}
                 action={action}

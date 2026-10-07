@@ -4,7 +4,7 @@ import { Inset } from "@/components/ui/Inset";
 
 type IntroSignal = Pick<
     CockpitSignal,
-    "why_it_matters" | "recommended_action" | "affected_scope" | "scope_entity"
+    "why_it_matters" | "recommended_action" | "affected_scope" | "scope_entity" | "attribution"
 >;
 
 /**
@@ -56,6 +56,61 @@ export function SignalEvidenceIntro({ signal }: { signal: IntroSignal }) {
                     </p>
                 </div>
             ) : null}
+            <div data-testid="signal-attribution">
+                <h4 className="text-xs font-semibold text-foreground">Attribution provenance</h4>
+                {signal.attribution ? (
+                    <div
+                        data-testid="signal-attribution-reported"
+                        className="mt-1 space-y-2 text-xs leading-5 text-(--ink-muted)"
+                    >
+                        <p data-testid="signal-attribution-items">
+                            Attributed items: {signal.attribution.items}
+                        </p>
+                        <div>
+                            <h5 className="font-semibold text-foreground">Sources</h5>
+                            <ul className="mt-1 space-y-1" data-testid="signal-attribution-sources">
+                                {signal.attribution.sources.map((source, index) => (
+                                    <li key={`${source.source}-${index}`}>
+                                        <span data-testid="signal-attribution-source">
+                                            {source.source}
+                                        </span>
+                                        {": "}
+                                        <span data-testid="signal-attribution-source-values">
+                                            {source.items} items · share {source.share}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div>
+                            <h5 className="font-semibold text-foreground">Confidence</h5>
+                            <ul
+                                className="mt-1 space-y-1"
+                                data-testid="signal-attribution-confidence"
+                            >
+                                {signal.attribution.confidence.map((confidence, index) => (
+                                    <li key={`${confidence.confidence}-${index}`}>
+                                        <span data-testid="signal-attribution-confidence-level">
+                                            {confidence.confidence}
+                                        </span>
+                                        {": "}
+                                        <span data-testid="signal-attribution-confidence-values">
+                                            {confidence.items} items · share {confidence.share}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                ) : (
+                    <p
+                        data-testid="signal-attribution-not-reported"
+                        className="mt-1 text-xs leading-5 text-(--ink-muted)"
+                    >
+                        Not reported
+                    </p>
+                )}
+            </div>
         </Inset>
     );
 }

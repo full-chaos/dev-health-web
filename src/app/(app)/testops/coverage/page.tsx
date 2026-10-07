@@ -2,7 +2,6 @@ import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { requireSession } from "@/lib/auth";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
-import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -15,9 +14,19 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { fetchCoverageBaselines, fetchCoverageMetrics } from "@/lib/testops/fetchers";
+import {
+    fetchCoverageBaselines,
+    fetchCoverageMetrics,
+    fetchCoverageScopeBaseline,
+} from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
-import { baselineEndDate } from "@/lib/testops/coverageBaselines";
+import {
+    baselineEndDate,
+    baselineText,
+    scopeBaselineCell,
+    scopeBaselineHint,
+} from "@/lib/testops/coverageBaselines";
+import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import { BRANCH_BREAKDOWN_TOP_N, buildRepositoryCoverage } from "@/lib/testops/coverageRepos";
 import {
     TimeseriesResult,
@@ -33,22 +42,32 @@ type CoveragePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-// The Coverage tab reads the FIRST served series of a measure (not the team roll-up of the other
-// TestOps tabs). That is production data logic and stays as it is.
-function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
+function getLatestValue(series: TimeseriesResult | undefined) {
     if (!series || !series.buckets || series.buckets.length === 0) return undefined;
     // A null latest bucket is "no value" (rendered "--"), never a 0.
     return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
 
-function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
+function getSparkline(series: TimeseriesResult | undefined) {
     if (!series || !series.buckets) return undefined;
     return series.buckets.map((b: TimeseriesBucket) => ({
         ts: b.date,
         value: b.value,
     }));
+}
+
+function coverageSeriesName(series: TimeseriesResult) {
+    if (!series.dimensionValue) return "Organization";
+    const dimension = series.dimension
+        ? `${series.dimension[0]}${series.dimension.slice(1).toLowerCase()}`
+        : "Series";
+    return `${dimension}: ${series.dimensionValue}`;
+}
+
+function coverageSeriesPoints(series: TimeseriesResult | undefined) {
+    return series?.buckets
+        ? series.buckets.map((bucket: TimeseriesBucket) => ({ day: bucket.date, value: bucket.value }))
+        : [];
 }
 
 const COVERAGE_TILES = ["COVERAGE_LINE_PCT", "COVERAGE_BRANCH_PCT", "COVERAGE_DELTA_PCT"];
@@ -74,16 +93,17 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
         filters?.time?.start_date ??
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
+    const { analytics: analyticsScope, ...baselineScope } = testOpsScopeFromFilters(filters);
+    const isSelectedScope = Boolean(baselineScope.repoIds?.length || baselineScope.teamIds?.length);
 
-    const [health, baselines, coverageData] = await Promise.all([
+    const [health, baselines, scopeBaselineState, coverageData] = await Promise.all([
         checkApiHealth(),
         // The baseline of each repository: its own average over the 30 days that end on the
         // window's last day (the API's end date is not included, so it is the day after).
-        // No scope is sent: the coverage request below sends no filter, so the rows of this page
-        // are not narrowed by the scope bar. A baseline list narrowed to the scope would have no
-        // row for the other repositories, and they would read "Not reported" though a baseline
-        // exists. The two reads cover the same set.
-        fetchCoverageBaselines({ endDate: baselineEndDate(endDate) }, isTestMode),
+        // Scope arguments keep the repository rows aligned with the selected coverage trend.
+        fetchCoverageBaselines({ endDate: baselineEndDate(endDate), ...baselineScope }, isTestMode),
+        // The trend baseline covers the same selected scope and 30-day window.
+        fetchCoverageScopeBaseline({ endDate: baselineEndDate(endDate), ...baselineScope }, isTestMode),
         fetchCoverageMetrics(
             {
                 timeseries: [
@@ -124,6 +144,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         topN: BRANCH_BREAKDOWN_TOP_N,
                     },
                 ],
+                filters: analyticsScope,
             },
             isTestMode,
         ),
@@ -140,31 +161,35 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
     const tiles: TestOpsTile[] = COVERAGE_TILES.flatMap((id) => {
         const def = TESTOPS_MEASURES[id];
         if (!def) return [];
-        return [
-            {
-                id,
-                label: def.label,
+        const servedSeries = coverageTimeseries.filter((series) => series.measure === id);
+        // Preserve the established three tiles when the API returns one series. When it returns
+        // more, each tile keeps the exact served series identity and value: no first-series
+        // fallback and no client-side roll-up.
+        return (servedSeries.length > 0 ? servedSeries : [undefined]).map((series, index) => ({
+                id: `${id}-${series?.dimension ?? "unreported"}-${series?.dimensionValue ?? index}`,
+                label:
+                    servedSeries.length > 1 && series
+                        ? `${def.label} · ${coverageSeriesName(series)}`
+                        : def.label,
                 description: def.description,
                 note: def.note,
                 unit: def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : "",
                 inverseGood: def.goodDirection === "down",
-                value: getLatestValue(coverageTimeseries, id),
+                value: getLatestValue(series),
                 // No change value is served on this tab: the tile reads "No prior period".
                 delta: undefined,
-                spark: getSparkline(coverageTimeseries, id),
-            },
-        ];
+                spark: getSparkline(series),
+            }));
     });
 
-    const lineCoverageSeries = coverageTimeseries.find(
-        (s: TimeseriesResult) => s.measure === "COVERAGE_LINE_PCT",
+    const lineCoverageSeries = coverageTimeseries.filter(
+        (series: TimeseriesResult) => series.measure === "COVERAGE_LINE_PCT",
     );
-    const timeseriesData = lineCoverageSeries?.buckets
-        ? lineCoverageSeries.buckets.map((b: TimeseriesBucket) => ({
-              day: b.date,
-              value: b.value,
-          }))
-        : [];
+    const hasMultipleLineCoverageSeries = lineCoverageSeries.length > 1;
+
+    // The served baseline of the trend: a value, "Not reported" (null: fewer than 7 days hold a
+    // value) or "Could not be read". The web computes no mean of the repository baselines.
+    const scopeBaseline = scopeBaselineCell(scopeBaselineState);
 
     const repoBreakdown = (measure: string) =>
         coverageBreakdowns.find(
@@ -174,6 +199,56 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
         repoBreakdown("COVERAGE_LINE_PCT"),
         repoBreakdown("COVERAGE_BRANCH_PCT"),
     );
+
+    const lineCoverageTrend = (
+        series: TimeseriesResult | undefined,
+        title: string,
+        headingLevel: "h2" | "h3",
+    ) => {
+        const timeseriesData = coverageSeriesPoints(series);
+        const targetLabel = hasMultipleLineCoverageSeries ? "Scope target baseline" : "Target baseline";
+        return (
+            <ChartFrame
+                key={series ? `${series.dimension}-${series.dimensionValue}` : "not-reported"}
+                title={title}
+                headingLevel={headingLevel}
+                interpretation={
+                    hasMultipleLineCoverageSeries && series
+                        ? `Line coverage for ${coverageSeriesName(series)} appears over time so drops are visible before they become release risk.`
+                        : "Line coverage appears over time so drops are visible before they become release risk."
+                }
+                direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
+                // The fact stays whatever the answer: the served value, "Not reported" or "Could
+                // not be read". The target is the running 30-day average of the selected scope's
+                // coverage; it is shown as scope context when individual team series are served.
+                threshold={{
+                    label: targetLabel,
+                    value: (
+                        <span title={scopeBaselineHint(scopeBaselineState, isSelectedScope)}>
+                            {baselineText(scopeBaseline)}
+                        </span>
+                    ),
+                    tone: "info",
+                }}
+                isError={fetchFailed}
+                stateMessage="Coverage analytics could not be loaded. Coverage history will reappear once the data service recovers."
+                isEmpty={!timeseriesData.some((point) => point.value !== null)}
+                stateTitle="Coverage trend not populated"
+                stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
+            >
+                <div className="h-64">
+                    {/* The baseline line is the served value; no line when none is served. */}
+                    <TimeseriesChart
+                        data={timeseriesData}
+                        valueFormat="percent"
+                        {...(scopeBaseline.kind === "value"
+                            ? { baseline: { value: scopeBaseline.pct, label: targetLabel } }
+                            : {})}
+                    />
+                </div>
+            </ChartFrame>
+        );
+    };
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -203,8 +278,8 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         unit={tile.unit}
                         // The approved Line Coverage tile has no sparkline; its trend is the
                         // "Line Coverage Trend" card below. The other tiles keep their served spark.
-                        spark={tile.id === "COVERAGE_LINE_PCT" ? undefined : tile.spark}
-                        hideTrend={tile.id === "COVERAGE_LINE_PCT"}
+                        spark={tile.id.startsWith("COVERAGE_LINE_PCT-") ? undefined : tile.spark}
+                        hideTrend={tile.id.startsWith("COVERAGE_LINE_PCT-")}
                         caption={tile.note}
                     />
                 ))}
@@ -229,26 +304,21 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
             </Section>
 
             {/* Not in the approved view: kept as a secondary card below it (it is served data). */}
-            <ChartFrame
-                title="Line Coverage Trend"
-                headingLevel="h2"
-                interpretation="Line coverage appears over time so drops are visible before they become release risk."
-                direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
-                // The baseline of the whole scope is not served (the API serves one per
-                // repository). The fact stays and says so; the web makes no mean of the repository
-                // baselines, and the chart draws no baseline line until a scope value is served.
-                threshold={{ label: "Target baseline", value: NOT_REPORTED, tone: "info" }}
-                isError={fetchFailed}
-                stateMessage="Coverage analytics could not be loaded. Coverage history will reappear once the data service recovers."
-                isEmpty={!timeseriesData.some((p) => p.value !== null)}
-                stateTitle="Coverage trend not populated"
-                stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
-            >
-                <div className="h-64">
-                    {/* No baseline line: no baseline of the whole scope is served. */}
-                    <TimeseriesChart data={timeseriesData} valueFormat="percent" />
-                </div>
-            </ChartFrame>
+            {hasMultipleLineCoverageSeries ? (
+                <Section title="Line Coverage Trends">
+                    <div className="grid gap-6 xl:grid-cols-2">
+                        {lineCoverageSeries.map((series) =>
+                            lineCoverageTrend(
+                                series,
+                                `Line Coverage Trend · ${coverageSeriesName(series)}`,
+                                "h3",
+                            ),
+                        )}
+                    </div>
+                </Section>
+            ) : (
+                lineCoverageTrend(lineCoverageSeries[0], "Line Coverage Trend", "h2")
+            )}
         </div>
     );
 }

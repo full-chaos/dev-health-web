@@ -13,12 +13,11 @@ import { logger } from "@/lib/logger";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
-import type { OperatingReview } from "@/lib/graphql/types";
-import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
+import type { OperatingReview, OperatingReviewInput } from "@/lib/graphql/types";
 import { balancedColumns } from "@/lib/operatingReviewColumns";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
 
-import { MetricTile, TINT } from "./MetricTile";
+import { MetricTile, TINT, WHOLE_ORGANIZATION } from "./MetricTile";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { Inset } from "@/components/ui/Inset";
@@ -65,16 +64,10 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
     // downstream review fetch.
     const orgId = session?.user?.org_id ?? undefined;
 
-    // CHAOS-1755: when no team is selected, request the cross-team aggregate
-    // ("All Teams" mode) from the backend by passing teamId: null. The
-    // resolver returns an aggregate payload with documented per-metric
-    // aggregation rules (see ops docs/api/operating-review.md); the response
-    // surfaces teamId: null so we render an explicit "All Teams" badge rather
-    // than pretending a single team was chosen. The GraphQL contract still
-    // accepts one teamId per request, so multi-team filter selections fan out to
-    // team requests and a cross-team ceiling. The selected-team aggregate is
-    // bounded by the cross-team aggregate so overlapping team ownership cannot
-    // render counts above the All Teams total.
+    // One request for every selection. No team: `teamId: null`, the cross-team review ("All
+    // Teams", CHAOS-1755). One team: `teamId`. Several teams: `teamIds` (CHAOS-8516): the API
+    // answers the review of those teams together (values, changes, status, sentences and
+    // recommendations), so the web sums and caps nothing.
     const result = orgId
         ? await resolveOperatingReview(orgId, selectedTeamIds, weekStart)
         : ({ status: "empty" } as ReviewResult);
@@ -103,7 +96,14 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
             <ScopeBar view="capacity-planning" origin={activeOrigin} />
 
             {isAllTeams ? <AllTeamsBadge /> : null}
-            {isMultiTeam ? <SelectedTeamsBadge teamIds={selectedTeamIds} /> : null}
+            {isMultiTeam ? (
+                <SelectedTeamsBadge
+                    teamIds={selectedTeamIds}
+                    hasOrganizationMetrics={
+                        result.status === "ok" && hasOrganizationMetrics(result.review)
+                    }
+                />
+            ) : null}
             {result.status === "error" ? (
                 <DataState
                     variant="error"
@@ -126,24 +126,11 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
                     weekStart={weekStart}
                 />
             ) : null}
-            {result.status === "ok" ? <OperatingReviewAgenda review={result.review} /> : null}
+            {result.status === "ok" ? (
+                <OperatingReviewAgenda review={result.review} teamSelected={!isAllTeams} />
+            ) : null}
         </div>
     );
-}
-
-async function fetchReview(
-    orgId: string,
-    teamId: string | null,
-    weekStart: string,
-    label: string,
-): Promise<{ ok: true; review: OperatingReview } | { ok: false; threw: boolean }> {
-    try {
-        const review = await getOperatingReviewViaGraphQL(orgId, { teamId, weekStart });
-        return { ok: true, review };
-    } catch (err: unknown) {
-        logger.warn({ err, label }, `operating-review: fetch failed for ${label}`);
-        return { ok: false, threw: true };
-    }
 }
 
 async function resolveOperatingReview(
@@ -151,41 +138,25 @@ async function resolveOperatingReview(
     selectedTeamIds: string[],
     weekStart: string,
 ): Promise<ReviewResult> {
-    if (selectedTeamIds.length <= 1) {
-        const res = await fetchReview(
-            orgId,
-            selectedTeamIds[0] ?? null,
-            weekStart,
-            selectedTeamIds[0] ?? "all-teams",
-        );
-        if (!res.ok) return { status: "error" };
-        return { status: "ok", review: res.review };
+    // `teamId` and `teamIds` are never sent together: the API refuses that.
+    const input: OperatingReviewInput =
+        selectedTeamIds.length > 1
+            ? { teamIds: selectedTeamIds, weekStart }
+            : { teamId: selectedTeamIds[0] ?? null, weekStart };
+    const label = selectedTeamIds.length ? selectedTeamIds.join(",") : "all-teams";
+    try {
+        return { status: "ok", review: await getOperatingReviewViaGraphQL(orgId, input) };
+    } catch (err: unknown) {
+        logger.warn({ err, label }, `operating-review: fetch failed for ${label}`);
+        return { status: "error" };
     }
+}
 
-    const [ceilingRes, teamResults] = await Promise.all([
-        fetchReview(orgId, null, weekStart, "all-teams-ceiling"),
-        Promise.all(selectedTeamIds.map((teamId) => fetchReview(orgId, teamId, weekStart, teamId))),
-    ]);
-
-    const anyError = !ceilingRes.ok || teamResults.some((r) => !r.ok);
-    const successTeamReviews = teamResults
-        .filter((r): r is { ok: true; review: OperatingReview } => r.ok)
-        .map((r) => r.review);
-
-    if (!ceilingRes.ok) {
-        const fallback = successTeamReviews[0];
-        if (!fallback) return anyError ? { status: "error" } : { status: "empty" };
-        return { status: "ok", review: fallback };
-    }
-
-    return {
-        status: "ok",
-        review: aggregateOperatingReviews({
-            ceilingReview: ceilingRes.review,
-            reviews: successTeamReviews,
-            teamIds: selectedTeamIds,
-        }),
-    };
+/** The answer holds a metric the API marks as the whole organization's (`scope`). */
+function hasOrganizationMetrics(review: OperatingReview): boolean {
+    return review.sections.some((section) =>
+        section.metrics.some((metric) => metric.scope === "ORGANIZATION"),
+    );
 }
 
 function AllTeamsBadge() {
@@ -199,20 +170,35 @@ function AllTeamsBadge() {
     );
 }
 
-function SelectedTeamsBadge({ teamIds }: { teamIds: string[] }) {
+function SelectedTeamsBadge({
+    teamIds,
+    hasOrganizationMetrics,
+}: {
+    teamIds: string[];
+    /** From the served `scope` of the metrics: the web keeps no list of sections or keys. */
+    hasOrganizationMetrics: boolean;
+}) {
     return (
         <Notice variant="info" live={false} data-testid="selected-teams-notice">
             Showing operating review data for{" "}
             <span className="font-medium text-foreground">
                 {teamIds.length} selected {teamIds.length === 1 ? "team" : "teams"}
             </span>
-            . The Risk and Reliability sections reflect org-wide signals (repo-scoped,
-            team-agnostic) even in filtered mode.
+            .
+            {hasOrganizationMetrics
+                ? ` Metrics marked “${WHOLE_ORGANIZATION}” are not narrowed by the team filter.`
+                : null}
         </Notice>
     );
 }
 
-function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
+function OperatingReviewAgenda({
+    review,
+    teamSelected,
+}: {
+    review: OperatingReview;
+    teamSelected: boolean;
+}) {
     return (
         <div className="flex flex-col gap-6">
             <nav
@@ -264,6 +250,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                                     key={metric.key}
                                     metric={metric}
                                     narrow={balancedColumns(section.metrics.length) >= 5}
+                                    teamSelected={teamSelected}
                                 />
                             ))}
                         </MetricStrip>

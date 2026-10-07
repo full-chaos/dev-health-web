@@ -31,6 +31,15 @@ type CockpitSummaryProps = {
 
 export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     const evidence = useEvidenceDrawer();
+
+    if (home?.health_state?.status === "no_data") {
+        return (
+            <section data-testid="cockpit-summary" aria-label="Primary signal">
+                <CockpitEmptyState variant="no-data-window" data-testid="cockpit-no-data" />
+            </section>
+        );
+    }
+
     const topSignal = home?.signals?.[0];
 
     if (!topSignal) {

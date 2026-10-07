@@ -297,6 +297,41 @@ describe("HomeMonitoring tiles", () => {
         expect(tile("cycle_time")).not.toHaveTextContent("0%");
     });
 
+    it("shows an explicit current no-data marker instead of the served zero or -100%", () => {
+        draw(
+            makeHome([
+                {
+                    ...delta("cycle_time", "Cycle Time", 0, "days", -100),
+                    has_data: false,
+                    has_prior_data: false,
+                },
+            ]),
+        );
+
+        const currentMissing = tile("cycle_time");
+        expect(currentMissing).toHaveTextContent("No data for this window");
+        expect(currentMissing).not.toHaveTextContent("-100%");
+        expect(within(currentMissing).queryByRole("link")).toBeNull();
+        expect(within(currentMissing).queryByTestId("sparkline")).toBeNull();
+    });
+
+    it("keeps a stored zero and shows no prior period when only the comparison is absent", () => {
+        draw(
+            makeHome([
+                {
+                    ...delta("cycle_time", "Cycle Time", 0, "days", -100),
+                    has_data: true,
+                    has_prior_data: false,
+                },
+            ]),
+        );
+
+        const priorMissing = tile("cycle_time");
+        expect(within(priorMissing).getByTestId("metric-value")).toHaveTextContent("0 days");
+        expect(priorMissing).toHaveTextContent("No prior period");
+        expect(priorMissing).not.toHaveTextContent("-100%");
+    });
+
     it("with no served delta: 'no data connected' without sources, 'no findings' with sources", () => {
         const { unmount } = draw(makeHome([]));
         expect(

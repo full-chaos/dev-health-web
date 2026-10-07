@@ -8,13 +8,19 @@ import {
     CoverageAnalyticsResultSchema,
 } from "@/lib/graphql/schemas/analytics";
 import { logger } from "@/lib/logger";
-import { CoverageBaselinesSchema, type CoverageBaselinesState } from "./coverageBaselines";
+import {
+    CoverageBaselinesSchema,
+    ScopeCoverageBaselineSchema,
+    type CoverageBaselinesState,
+    type ScopeCoverageBaselineState,
+} from "./coverageBaselines";
 import { JobFailuresResultSchema, type JobFailuresState } from "./jobFailures";
 import {
     TESTOPS_PIPELINE_QUERY,
     TESTOPS_TEST_QUERY,
     TESTOPS_COVERAGE_BASELINES_QUERY,
     TESTOPS_COVERAGE_QUERY,
+    TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
     TESTOPS_JOB_FAILURES_QUERY,
     TESTOPS_RISK_QUERY,
 } from "./queries";
@@ -25,6 +31,7 @@ import {
     SAMPLE_TESTS_DATA,
     SAMPLE_COVERAGE_BASELINES,
     SAMPLE_COVERAGE_DATA,
+    SAMPLE_COVERAGE_SCOPE_BASELINE,
     SAMPLE_JOB_FAILURES_DATA,
     SAMPLE_RISK_DATA,
 } from "./sample-data";
@@ -297,6 +304,49 @@ export async function fetchCoverageBaselines(
         return parsed.data;
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch coverage baselines");
+        return { fetchFailed: true };
+    }
+}
+
+/** The input of `coverageScopeBaseline`: the day after the window and an optional scope. */
+export type CoverageScopeBaselineInput = CoverageBaselinesInput;
+
+/**
+ * The coverage baseline of the selected scope. A failed read (a GraphQL error, or an answer that
+ * is not the served shape) is `{ fetchFailed: true }`, never a missing baseline.
+ */
+export async function fetchCoverageScopeBaseline(
+    input: CoverageScopeBaselineInput,
+    isTestMode: boolean = false,
+    orgIdOverride?: string,
+): Promise<ScopeCoverageBaselineState> {
+    if (isTestMode) {
+        return SAMPLE_COVERAGE_SCOPE_BASELINE;
+    }
+
+    const orgId = await resolveOrgId(orgIdOverride);
+    try {
+        const res = await graphqlFetch<{ coverageScopeBaseline: unknown }>(
+            TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
+            {
+                orgId,
+                endDate: input.endDate,
+                // An empty list narrows to nothing, so omit an unset scope.
+                ...(input.repoIds?.length ? { repoIds: input.repoIds } : {}),
+                ...(input.teamIds?.length ? { teamIds: input.teamIds } : {}),
+            },
+        );
+        const parsed = ScopeCoverageBaselineSchema.safeParse(res.coverageScopeBaseline);
+        if (!parsed.success) {
+            logger.error(
+                { err: parsed.error },
+                "Coverage scope baseline failed schema validation; reporting a failed read",
+            );
+            return { fetchFailed: true };
+        }
+        return parsed.data;
+    } catch (error) {
+        logger.error({ err: error }, "Failed to fetch the coverage scope baseline");
         return { fetchFailed: true };
     }
 }

@@ -70,6 +70,47 @@ export function baselineOf(
     return { kind: "value", pct, days: which === "line" ? row.lineDays : row.branchDays };
 }
 
+/**
+ * The coverage baseline of the whole scope: the answer of `coverageScopeBaseline`. The mean, over
+ * the 30 days before the request's `endDate`, of the scope's line coverage of each day: the day
+ * values the Line Coverage Trend draws. Null = fewer than 7 of the 30 days hold a value: there is
+ * no baseline (never 0, never the current value).
+ */
+export const ScopeCoverageBaselineSchema = z.object({
+    lineBaselinePct: z.number().nullable(),
+    /** Days of the 30 on which the scope holds a line coverage value. */
+    lineDays: z.number(),
+});
+
+export type ScopeCoverageBaseline = z.infer<typeof ScopeCoverageBaselineSchema>;
+
+/** What the page gets: the served answer, or the fact that the read failed. */
+export type ScopeCoverageBaselineState = ScopeCoverageBaseline | { fetchFailed: true };
+
+/** The scope baseline as the page shows it. */
+export function scopeBaselineCell(state: ScopeCoverageBaselineState): BaselineCell {
+    if ("fetchFailed" in state) return { kind: "failed" };
+    if (state.lineBaselinePct === null) return { kind: "none" };
+    return { kind: "value", pct: state.lineBaselinePct, days: state.lineDays };
+}
+
+/**
+ * The hint of the scope baseline (the fact "Target baseline"): the target is the running 30-day
+ * average of line coverage, and `lineDays` is the served number of the 30 days that hold a value.
+ * It is the same for a served value and for no baseline (the days then show why there is none). A
+ * failed read has no hint: no days were served.
+ *
+ * The hint names the organization for an unscoped query and the selected scope for a narrowed one.
+ */
+export function scopeBaselineHint(
+    state: ScopeCoverageBaselineState,
+    isSelectedScope: boolean = false,
+): string | undefined {
+    if ("fetchFailed" in state) return undefined;
+    const scope = isSelectedScope ? "the selected scope's" : "the organization's";
+    return `Running 30-day average of ${scope} line coverage; ${state.lineDays} of the 30 days hold a value`;
+}
+
 /** The baseline as text: the served percent, "Not reported" or "Could not be read". */
 export function baselineText(cell: BaselineCell): string {
     if (cell.kind === "failed") return READ_FAILED_MESSAGE;

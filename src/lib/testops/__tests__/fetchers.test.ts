@@ -14,6 +14,7 @@ import {
     fetchTestOpsData,
     fetchCoverageMetrics,
     fetchCoverageBaselines,
+    fetchCoverageScopeBaseline,
     fetchJobFailures,
     normalizeAnalyticsDurations,
 } from "../fetchers";
@@ -510,6 +511,60 @@ describe("fetchCoverageBaselines", () => {
     it("test mode returns the sample and makes no request", async () => {
         const result = await fetchCoverageBaselines({ endDate: "2026-09-15" }, true);
         expect(Array.isArray(result) && result.length).toBeGreaterThan(0);
+        expect(graphqlFetch).not.toHaveBeenCalled();
+    });
+});
+
+describe("fetchCoverageScopeBaseline", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        mockAuth({ user: { org_id: "org-1" } });
+    });
+
+    it("sends the organization and end date, with a selected scope only", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({
+            coverageScopeBaseline: { lineBaselinePct: 82.6, lineDays: 30 },
+        });
+
+        await fetchCoverageScopeBaseline({
+            endDate: "2026-09-15",
+            repoIds: ["r1"],
+            teamIds: [],
+        });
+
+        const [, variables] = vi.mocked(graphqlFetch).mock.calls[0];
+        expect(variables).toEqual({ orgId: "org-1", endDate: "2026-09-15", repoIds: ["r1"] });
+    });
+
+    it("returns the served value; a null baseline stays null", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({
+            coverageScopeBaseline: { lineBaselinePct: null, lineDays: 4 },
+        });
+        expect(await fetchCoverageScopeBaseline({ endDate: "2026-09-15" })).toEqual({
+            lineBaselinePct: null,
+            lineDays: 4,
+        });
+    });
+
+    it("a GraphQL error is a failed read, not a missing baseline", async () => {
+        vi.mocked(graphqlFetch).mockRejectedValue(new Error("[GraphQL] not authorized"));
+        expect(await fetchCoverageScopeBaseline({ endDate: "2026-09-15" })).toEqual({
+            fetchFailed: true,
+        });
+    });
+
+    it("an answer that is not the served shape is a failed read", async () => {
+        vi.mocked(graphqlFetch).mockResolvedValue({
+            coverageScopeBaseline: { lineBaselinePct: "82" },
+        });
+        expect(await fetchCoverageScopeBaseline({ endDate: "2026-09-15" })).toEqual({
+            fetchFailed: true,
+        });
+    });
+
+    it("test mode returns the sample and makes no request", async () => {
+        const result = await fetchCoverageScopeBaseline({ endDate: "2026-09-15" }, true);
+        expect("lineDays" in result).toBe(true);
         expect(graphqlFetch).not.toHaveBeenCalled();
     });
 });

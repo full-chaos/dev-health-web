@@ -127,3 +127,49 @@ describe("Operating Review metric tile", () => {
         expect(text()).toContain("Prior: 9");
     });
 });
+
+// The API says per metric whether the team selection narrows it (`scope`). A metric of the whole
+// organization is labeled when a team is selected, so its value is not read as the selection's.
+describe("Operating Review metric tile: served scope", () => {
+    const LABEL = "Whole organization";
+
+    it("labels a whole-organization metric when a team is selected", () => {
+        render(
+            <MetricTile metric={metric({ scope: "ORGANIZATION" })} narrow={false} teamSelected />,
+        );
+        expect(text()).toContain(LABEL);
+    });
+
+    it("does not label a metric that follows the team selection", () => {
+        render(<MetricTile metric={metric({ scope: "TEAM" })} narrow={false} teamSelected />);
+        expect(text()).not.toContain(LABEL);
+    });
+
+    it("does not label when no team is selected: every value is the organization's then", () => {
+        render(
+            <MetricTile
+                metric={metric({ scope: "ORGANIZATION" })}
+                narrow={false}
+                teamSelected={false}
+            />,
+        );
+        expect(text()).not.toContain(LABEL);
+    });
+
+    it("does not label a metric with no served scope (an API before the field)", () => {
+        render(<MetricTile metric={metric()} narrow={false} teamSelected />);
+        expect(text()).not.toContain(LABEL);
+    });
+
+    it("keeps the label on a whole-organization metric with no data", () => {
+        render(
+            <MetricTile
+                metric={metric({ scope: "ORGANIZATION", hasData: false, value: 0 })}
+                narrow={false}
+                teamSelected
+            />,
+        );
+        expect(text()).toContain("No data for this window");
+        expect(text()).toContain(LABEL);
+    });
+});

@@ -96,6 +96,17 @@ const throughput = metric("throughput", "Throughput", {
     delta: "-53%",
     direction: "down",
 });
+const throughputAttribution = {
+    items: 4,
+    sources: [
+        { source: "NATIVE_TEAM", items: 2, share: 0.5 },
+        { source: "UNASSIGNED", items: 2, share: 0.5 },
+    ],
+    confidence: [
+        { confidence: "HIGH", items: 2, share: 0.5 },
+        { confidence: "NONE", items: 2, share: 0.5 },
+    ],
+};
 
 const METRICS: Array<[string, string]> = [
     ["review_latency", "Review Latency"],
@@ -339,7 +350,7 @@ describe("RankedSignals evidence", () => {
             }),
         );
 
-        draw([hero, churn, throughput]);
+        draw([hero, churn, { ...throughput, attribution: throughputAttribution }]);
 
         const buttons = screen.getAllByTestId("signal-open-evidence");
         expect(buttons).toHaveLength(2);
@@ -359,6 +370,32 @@ describe("RankedSignals evidence", () => {
         expect(within(drawer).getByTestId("signal-recommended-action")).toHaveTextContent(
             "Rebalance reviewer rotation.",
         );
+        // The provenance values are served, including real UNASSIGNED and NONE buckets.
+        const attribution = within(drawer).getByTestId("signal-attribution-reported");
+        const attributionScope = within(attribution);
+        expect(attributionScope.getByTestId("signal-attribution-items")).toHaveTextContent(
+            "Attributed items: 4",
+        );
+        expect(
+            attributionScope
+                .getAllByTestId("signal-attribution-source")
+                .map((node) => node.textContent),
+        ).toEqual(["NATIVE_TEAM", "UNASSIGNED"]);
+        expect(
+            attributionScope
+                .getAllByTestId("signal-attribution-source-values")
+                .map((node) => node.textContent),
+        ).toEqual(["2 items · share 0.5", "2 items · share 0.5"]);
+        expect(
+            attributionScope
+                .getAllByTestId("signal-attribution-confidence-level")
+                .map((node) => node.textContent),
+        ).toEqual(["HIGH", "NONE"]);
+        expect(
+            attributionScope
+                .getAllByTestId("signal-attribution-confidence-values")
+                .map((node) => node.textContent),
+        ).toEqual(["2 items · share 0.5", "2 items · share 0.5"]);
         await waitFor(() =>
             expect(within(drawer).getByTestId("evidence-facts")).toBeInTheDocument(),
         );
@@ -366,6 +403,19 @@ describe("RankedSignals evidence", () => {
         expect(within(drawer).getByText("Shorten review queue")).toBeInTheDocument();
         expect(within(drawer).getByTestId("evidence-facts")).toHaveTextContent("workGraphEdges");
         expect(global.fetch).toHaveBeenCalledWith("/api/home/explain/throughput");
+    });
+
+    it("reads absent attribution as Not reported without collapsing served buckets", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+        draw([hero, churn, { ...throughput, attribution: null }]);
+
+        await userEvent.click(screen.getAllByTestId("signal-open-evidence")[1]);
+
+        const drawer = within(screen.getByRole("dialog", { name: "Evidence & Context" }));
+        expect(drawer.getByTestId("signal-attribution-not-reported")).toHaveTextContent(
+            "Not reported",
+        );
+        expect(drawer.queryByTestId("signal-attribution-reported")).toBeNull();
     });
 
     it("keeps the why and the recommended action out of the page body", () => {

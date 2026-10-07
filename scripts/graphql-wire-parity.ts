@@ -77,6 +77,7 @@ import {
 } from "../src/lib/feature-flags/queries";
 import {
     TESTOPS_COVERAGE_BASELINES_QUERY,
+    TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
     TESTOPS_JOB_FAILURES_QUERY,
     TESTOPS_RISK_QUERY,
 } from "../src/lib/testops/queries";
@@ -111,6 +112,7 @@ import {
     RECOMMENDATIONS_QUERY,
     IMPROVE_OPPORTUNITIES_QUERY,
     INVESTMENT_BREAKDOWN_QUERY,
+    INVESTMENT_EVIDENCE_QUALITY_QUERY,
     INVESTMENT_FULL_QUERY,
     OPERATING_REVIEW_QUERY,
     PR_DETAIL_QUERY,
@@ -179,6 +181,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     recommendations: RECOMMENDATIONS_QUERY,
     improveOpportunities: IMPROVE_OPPORTUNITIES_QUERY,
     investmentBreakdown: INVESTMENT_BREAKDOWN_QUERY,
+    investmentEvidenceQuality: INVESTMENT_EVIDENCE_QUALITY_QUERY,
     investmentFull: INVESTMENT_FULL_QUERY,
     operatingReview: OPERATING_REVIEW_QUERY,
     pr: PR_DETAIL_QUERY,
@@ -191,6 +194,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     savedReport: SAVED_REPORT_QUERY,
     savedReports: SAVED_REPORTS_QUERY,
     coverageBaselines: TESTOPS_COVERAGE_BASELINES_QUERY,
+    coverageScopeBaseline: TESTOPS_COVERAGE_SCOPE_BASELINE_QUERY,
     testOpsCoverage: TESTOPS_COVERAGE_QUERY,
     testOpsPipeline: TESTOPS_PIPELINE_QUERY,
     testOpsTest: TESTOPS_TEST_QUERY,

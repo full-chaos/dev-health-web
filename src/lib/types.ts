@@ -1,7 +1,10 @@
 export type Coverage = {
-    repos_covered_pct: number;
-    prs_linked_to_issues_pct: number;
-    issues_with_cycle_states_pct: number;
+    /** Null when no repositories are available to measure. */
+    repos_covered_pct: number | null;
+    /** Null when the current window contains no work items to link. */
+    prs_linked_to_issues_pct: number | null;
+    /** Null when the current window contains no work items for cycle-state coverage. */
+    issues_with_cycle_states_pct: number | null;
 };
 
 export type Freshness = {
@@ -24,6 +27,10 @@ export type MetricDelta = {
     value: number;
     unit: string;
     delta_pct: number;
+    /** Explicit producer fact. A numeric zero remains valid only when this is true. */
+    has_data?: boolean;
+    /** Explicit producer fact. A missing comparison must not render as a -100% change. */
+    has_prior_data?: boolean;
     spark: SparkPoint[];
 };
 
@@ -50,7 +57,7 @@ export type EventItem = {
 // Cockpit decision model (CHAOS-2030 Phase 3). Additive fields on HomeResponse.
 // Field names/enums mirror the backend `/api/v1/home` schema exactly
 // (dev-health-ops HomeHealthState/HomeSignal/HomeLimitingFactor/HomeDataConfidence).
-export type CockpitHealthStatus = "healthy" | "watch" | "at_risk" | "critical";
+export type CockpitHealthStatus = "healthy" | "watch" | "at_risk" | "critical" | "no_data";
 export type SignalSeverity = "critical" | "high" | "medium" | "low";
 export type ConfidenceLevel = "high" | "medium" | "low";
 export type SignalDirection = "up" | "down" | "flat";
@@ -70,6 +77,30 @@ export type HealthState = {
 export type EntityRef = {
     id: string;
     display_name?: string | null;
+};
+
+/** Server-served source distribution for a signal's current primary work-item attribution. */
+export type SignalAttributionSourceCount = {
+    source: string;
+    items: number;
+    share: number;
+};
+
+/** Server-served confidence distribution for a signal's current primary work-item attribution. */
+export type SignalAttributionConfidenceCount = {
+    confidence: string;
+    items: number;
+    share: number;
+};
+
+/**
+ * Server-served provenance for the work items behind a Home signal. Null means this window has
+ * no current primary work-item attribution; it is distinct from UNASSIGNED and NONE buckets.
+ */
+export type SignalAttribution = {
+    items: number;
+    sources: SignalAttributionSourceCount[];
+    confidence: SignalAttributionConfidenceCount[];
 };
 
 /** A ranked cockpit signal. Values are backend-formatted display strings. */
@@ -94,6 +125,7 @@ export type CockpitSignal = {
     recommended_action: string;
     evidence_ref?: string | null;
     category: SignalCategory;
+    attribution?: SignalAttribution | null;
 };
 
 export type LimitingFactor = {
@@ -109,6 +141,19 @@ export type DataConfidence = {
     coverage_pct?: number | null;
     connected_sources: string[];
     missing_sources: string[];
+    caveats: string[];
+};
+
+/**
+ * Server-produced confidence for the repositories selected by the Home scope.
+ * It is separate from the organization-wide `data_confidence` assessment.
+ */
+export type ScopeDataConfidence = {
+    level: ConfidenceLevel;
+    /** Null when the selected scope has no repository denominator. */
+    coverage_pct: number | null;
+    /** Null when the selected scope has no in-window repository metrics. */
+    last_ingested_at: string | null;
     caveats: string[];
 };
 
@@ -132,13 +177,15 @@ export type HomeResponse = {
     deltas: MetricDelta[];
     summary: SummarySentence[];
     tiles: Record<string, { title: string; subtitle?: string; link: string }>;
-    constraint: Constraint;
+    /** Null when the selected window has no data; this is distinct from an empty constraint. */
+    constraint: Constraint | null;
     events: EventItem[];
     // Cockpit decision model (CHAOS-2030 Phase 3) — additive, optional for back-compat.
     health_state?: HealthState;
     signals?: CockpitSignal[];
     limiting_factor?: LimitingFactor;
     data_confidence?: DataConfidence;
+    scope_data_confidence?: ScopeDataConfidence;
     /** Rework distribution by investment theme (CHAOS-2163). Optional for back-compat. */
     rework_theme_allocation?: ReworkThemeAllocation[];
 };
@@ -221,6 +268,28 @@ export type InvestmentMixExplanation = {
 
 export type DrilldownResponse = {
     items: Array<Record<string, unknown>>;
+};
+
+/**
+ * The endpoint-specific blocked-work issue drilldown contract. The API only
+ * serves identity and status for these items; it does not serve per-item
+ * duration, title, or source URL.
+ */
+export type BlockedWorkIssue = {
+    work_item_id: string;
+    provider: string;
+    status: "blocked";
+    team_id: string | null;
+    cycle_time_hours: null;
+    lead_time_hours: null;
+    started_at: null;
+    completed_at: null;
+};
+
+/** Count is measured before the endpoint applies its item limit. */
+export type BlockedWorkIssuesResponse = {
+    items: BlockedWorkIssue[];
+    count: number;
 };
 
 export type OpportunityCard = {

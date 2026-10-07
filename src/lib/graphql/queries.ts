@@ -230,6 +230,22 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
 }
 `;
 
+// Served persisted evidence-quality means for the Evidence drilldown groups.
+// The batch includes one minimal breakdown solely because the Analytics contract
+// takes the quality window from its first breakdown date range.
+export const INVESTMENT_EVIDENCE_QUALITY_QUERY = `
+query InvestmentEvidenceQuality($orgId: String!, $batch: AnalyticsRequestInput!) {
+  analytics(orgId: $orgId, batch: $batch) {
+    evidenceQualityByGroup {
+      key
+      label
+      mean
+      total
+    }
+  }
+}
+`;
+
 // ==== Capacity Planning Queries ====
 
 // Query for on-demand capacity forecast computation
@@ -415,6 +431,7 @@ query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
         value
         unit
         hasData
+        scope
         delta {
           value
           priorValue
@@ -1163,6 +1180,8 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       value
       unit
       deltaPct
+      hasData
+      hasPriorData
       spark {
         ts
         value
@@ -1230,6 +1249,19 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
         id
         displayName
       }
+      attribution {
+        items
+        sources {
+          source
+          items
+          share
+        }
+        confidence {
+          confidence
+          items
+          share
+        }
+      }
     }
     limitingFactor {
       claim
@@ -1243,6 +1275,12 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       coveragePct
       connectedSources
       missingSources
+      caveats
+    }
+    scopeDataConfidence {
+      level
+      coveragePct
+      lastIngestedAt
       caveats
     }
   }

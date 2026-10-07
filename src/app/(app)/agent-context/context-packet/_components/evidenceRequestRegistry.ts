@@ -1,7 +1,10 @@
 import type { ACRExpandedEvidenceV1 } from "@/lib/acr/generated";
+import { logger } from "@/lib/logger";
 import { isExpandedEvidence } from "./contextPacketResponse";
 
-const MAX_CONCURRENT_EVIDENCE_REQUESTS = 8;
+// Below the browser's per-host connection limit (6 on HTTP/1.1): a fetch that waits for a socket
+// fails with net::ERR_NETWORK_CHANGED when a host address changes; one in this queue does not.
+const MAX_CONCURRENT_EVIDENCE_REQUESTS = 4;
 
 type QueueJob = () => void;
 
@@ -64,7 +67,15 @@ function enqueueEvidenceRequest(
                         ? value
                         : null;
                 })
-                .then(resolve, () => resolve(null))
+                .then(resolve, (error: unknown) => {
+                    if (!controller.signal.aborted) {
+                        logger.warn(
+                            { err: error, evidenceRefId },
+                            "Evidence request failed; the reference is shown as unavailable",
+                        );
+                    }
+                    resolve(null);
+                })
                 .finally(() => {
                     activeRequests -= 1;
                     startNextRequest();

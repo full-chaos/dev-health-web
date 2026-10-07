@@ -16,6 +16,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchJobFailures, fetchTestOpsData } from "@/lib/testops/fetchers";
 import { buildFailurePatternsModel } from "@/lib/testops/failure-patterns";
 import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateTrend";
+import { testOpsScopeFromFilters } from "@/lib/testops/scope";
 import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
@@ -47,18 +48,15 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         filters?.time?.start_date ??
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
-
-    // The scope of the failing-jobs read: the selected repositories, or the repositories the
-    // selected teams own.
-    const scopeIds = filters?.scope?.ids?.length ? filters.scope.ids : null;
+    const { analytics: analyticsScope, ...scope } = testOpsScopeFromFilters(filters);
     const [health, jobFailures, testOpsData] = await Promise.all([
         checkApiHealth(),
         fetchJobFailures(
             {
                 sinceDate: startDate,
                 untilDate: endDate,
-                repoIds: filters?.scope?.level === "repo" ? scopeIds : null,
-                teamIds: filters?.scope?.level === "team" ? scopeIds : null,
+                repoIds: scope.repoIds ?? null,
+                teamIds: scope.teamIds ?? null,
             },
             isTestMode,
         ),
@@ -105,6 +103,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                         topN: 10,
                     },
                 ],
+                filters: analyticsScope,
             },
             isTestMode,
         ),

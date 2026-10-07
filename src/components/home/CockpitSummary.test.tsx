@@ -104,6 +104,24 @@ describe("CockpitSummary primary-signal hero", () => {
         expect(screen.getByTestId("area-signal-driver").textContent).toBe("0.9 hours");
     });
 
+    it("renders the served no-data state apart from no findings or a failed read", () => {
+        render(
+            <CockpitSummary
+                home={makeHome({
+                    health_state: { status: "no_data", headline: "", summary: "" },
+                    signals: [],
+                })}
+                filters={filters}
+            />,
+        );
+
+        const state = screen.getByTestId("cockpit-no-data");
+        expect(state).toHaveAttribute("data-variant", "no-data-window");
+        expect(state).toHaveTextContent("No data");
+        expect(state).toHaveTextContent("No data for this window.");
+        expect(screen.queryByTestId("cockpit-top-change-empty")).toBeNull();
+    });
+
     it("draws no big value when the API served no change (never a made-up number)", () => {
         render(
             <CockpitSummary

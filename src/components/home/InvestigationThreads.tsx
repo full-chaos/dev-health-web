@@ -50,7 +50,7 @@ export function InvestigationThreads({ home, filters, activeRole }: Investigatio
 
     const limitingClaim =
         home?.limiting_factor?.claim ??
-        home?.constraint.claim ??
+        home?.constraint?.claim ??
         "Evidence will appear once data is ingested.";
 
     const linkRows = [
