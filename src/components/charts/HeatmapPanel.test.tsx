@@ -187,8 +187,8 @@ describe("HeatmapPanel — hotspot evidence contract (CHAOS-2035)", () => {
         expect(fileLabel).toHaveAttribute("title", "src/services/auth/login.ts");
         expect(screen.queryByText("src/services/auth/login.ts")).not.toBeInTheDocument();
 
-        // UUID work item reads "Name not reported" (CHAOS-8902) — never the bare UUID.
-        expect(screen.getByText("Name not reported")).toBeInTheDocument();
+        // UUID work item reads its type word (CHAOS-8902) — never the bare UUID.
+        expect(screen.getAllByText("Work item").length).toBeGreaterThan(1);
         expect(screen.queryByText(UUID)).not.toBeInTheDocument();
 
         // No raw JSON dump of the evidence object.
@@ -208,7 +208,7 @@ describe("describeArtifact — unresolved-id crash guard (heatmap cell click)", 
             const item = { work_item_id: UUID, value: 3 };
             expect(() => describeArtifact(item, 0)).not.toThrow();
             const out = describeArtifact(item, 0);
-            expect(out.label).toBe("Name not reported");
+            expect(out.label).toBe("Work item");
             expect(out.title).toBe(UUID);
         } finally {
             vi.unstubAllEnvs();

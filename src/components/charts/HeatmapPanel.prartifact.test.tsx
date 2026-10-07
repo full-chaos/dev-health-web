@@ -77,36 +77,34 @@ describe("HeatmapPanel PR artifact rows", () => {
         expect(row).not.toHaveTextContent("3f2a9c1e");
     });
 
-    it("a PR row with no repository name says so, never the id", () => {
+    it("a PR row with no repository name draws no repository text, never the id", () => {
         const [row] = renderRows([
             { repo_id: REPO, repo_name: null, number: 42, title: "Cap retry backoff" },
         ]);
-        expect(row).toHaveTextContent("Repository not reported");
+        expect(row).not.toHaveTextContent(/repository/i);
+        expect(row).toHaveTextContent("Cap retry backoff #42");
         expect(row).not.toHaveTextContent("3f2a9c1e");
     });
 
     it.each([
         ["Work item", { work_item_id: REPO }],
         ["Deployment", { deployment_id: REPO }],
-    ])(
-        "a %s row with only an id says the name is not reported, never an id token",
-        (_kind, item) => {
-            render(
-                <HeatmapPanel
-                    title="Review wait"
-                    description="d"
-                    request={{
-                        type: "temporal_load",
-                        metric: "review_wait_density",
-                        scope_type: "org",
-                        range_days: 90,
-                    }}
-                    initialData={grid([item])}
-                />,
-            );
-            const row = screen.getByText(/Name not reported/);
-            expect(row).toBeInTheDocument();
-            expect(document.body).not.toHaveTextContent("3f2a9c1e");
-        },
-    );
+    ])("a %s row with only an id reads its type word, never an id token", (_kind, item) => {
+        render(
+            <HeatmapPanel
+                title="Review wait"
+                description="d"
+                request={{
+                    type: "temporal_load",
+                    metric: "review_wait_density",
+                    scope_type: "org",
+                    range_days: 90,
+                }}
+                initialData={grid([item])}
+            />,
+        );
+        // The type badge and the label both read the type word.
+        expect(screen.getAllByText(_kind)).toHaveLength(2);
+        expect(document.body).not.toHaveTextContent("3f2a9c1e");
+    });
 });
