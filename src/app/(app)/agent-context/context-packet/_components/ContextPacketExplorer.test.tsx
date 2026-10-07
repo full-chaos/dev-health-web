@@ -472,7 +472,7 @@ describe("ContextPacketExplorer", () => {
         for (const button of screen.getAllByRole("button", { name: "Open evidence" })) {
             await user.click(button);
         }
-        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(8));
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(4));
         expect(resolvers.get("ev-cap-0")).toBeDefined();
 
         resolvers.get("ev-cap-0")?.(
@@ -487,7 +487,7 @@ describe("ContextPacketExplorer", () => {
                 { status: 200 },
             ),
         );
-        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(9));
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(5));
     });
 
     it("aborts an unneeded evidence request when its packet is replaced", async () => {
