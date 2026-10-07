@@ -82,6 +82,8 @@ type ResolvedArtifact = {
     timestamp: string | null;
     value: number | null;
     link: string | null;
+    /** The served repository name of a PR row; null = not served. Never the repository id. */
+    repoName?: string | null;
 };
 
 /**
@@ -98,14 +100,16 @@ type ResolvedArtifact = {
  */
 function entityArtifactLabel(
     id: string | null | undefined,
-    options: { name?: string | null; fallback?: string } = {},
+    options: { name?: string | null; fallback?: string; kind?: string } = {},
 ): { label: string; title: string } {
-    const { label, title, short } = resolveEntityLabel(id, {
+    const { label, title, resolved } = resolveEntityLabel(id, {
         name: options.name ?? undefined,
         fallback: options.fallback,
         unresolvedFallback: "Unresolved",
     });
-    return { label: short ?? label, title };
+    // An id with no served name is never drawn as a label: the plain type word shows and the id
+    // stays in the tooltip.
+    return { label: resolved || !id || !options.kind ? label : options.kind, title };
 }
 
 /** What a linked artifact row opens: its detail page, named by the kind of the row. */
@@ -126,7 +130,7 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
     const deployment = asText(item.deployment_id);
 
     if (path) {
-        const { label, title } = entityArtifactLabel(path, { name: explicitName });
+        const { label, title } = entityArtifactLabel(path, { name: explicitName, kind: "File" });
         return { type: "File", label, title, timestamp, value, link };
     }
     if (commit) {
@@ -150,17 +154,20 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
             timestamp,
             value,
             link,
+            repoName: asText(item.repo_name),
         };
     }
     if (workItem) {
         const { label, title } = entityArtifactLabel(workItem, {
             name: explicitName,
+            kind: "Work item",
         });
         return { type: "Work item", label, title, timestamp, value, link };
     }
     if (deployment) {
         const { label, title } = entityArtifactLabel(deployment, {
             name: explicitName,
+            kind: "Deployment",
         });
         return { type: "Deployment", label, title, timestamp, value, link };
     }
@@ -352,6 +359,11 @@ function HeatmapArtifactList({ artifacts }: { artifacts: ResolvedArtifact[] }) {
                                 </span>
                             ) : null}
                         </div>
+                        {artifact.type === "PR" && artifact.repoName ? (
+                            <span className="mt-1 block truncate text-xs text-(--ink-muted)">
+                                {artifact.repoName}
+                            </span>
+                        ) : null}
                         {artifact.timestamp ? (
                             <ClientTimestamp
                                 value={artifact.timestamp}
