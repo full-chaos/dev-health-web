@@ -84,4 +84,29 @@ describe("HeatmapPanel PR artifact rows", () => {
         expect(row).toHaveTextContent("Repository not reported");
         expect(row).not.toHaveTextContent("3f2a9c1e");
     });
+
+    it.each([
+        ["Work item", { work_item_id: REPO }],
+        ["Deployment", { deployment_id: REPO }],
+    ])(
+        "a %s row with only an id says the name is not reported, never an id token",
+        (_kind, item) => {
+            render(
+                <HeatmapPanel
+                    title="Review wait"
+                    description="d"
+                    request={{
+                        type: "temporal_load",
+                        metric: "review_wait_density",
+                        scope_type: "org",
+                        range_days: 90,
+                    }}
+                    initialData={grid([item])}
+                />,
+            );
+            const row = screen.getByText(/Name not reported/);
+            expect(row).toBeInTheDocument();
+            expect(document.body).not.toHaveTextContent("3f2a9c1e");
+        },
+    );
 });

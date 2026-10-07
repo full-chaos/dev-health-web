@@ -102,12 +102,13 @@ function entityArtifactLabel(
     id: string | null | undefined,
     options: { name?: string | null; fallback?: string } = {},
 ): { label: string; title: string } {
-    const { label, title, short } = resolveEntityLabel(id, {
+    const { label, title, resolved } = resolveEntityLabel(id, {
         name: options.name ?? undefined,
         fallback: options.fallback,
         unresolvedFallback: "Unresolved",
     });
-    return { label: short ?? label, title };
+    // An id with no served name is never drawn as a label; the id stays in the tooltip.
+    return { label: resolved || !id ? label : "Name not reported", title };
 }
 
 /** What a linked artifact row opens: its detail page, named by the kind of the row. */
