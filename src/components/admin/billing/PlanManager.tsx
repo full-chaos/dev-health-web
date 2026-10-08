@@ -360,6 +360,10 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             </div>
 
                             <div className="mt-3 text-xs text-(--ink-muted)">
+                                Stripe: {plan.stripe_product_id ? "synced" : "not synced"}
+                            </div>
+
+                            <div className="mt-3 text-xs text-(--ink-muted)">
                                 Tier: {plan.tier} | Order: {plan.display_order} | Status:{" "}
                                 {plan.is_active ? "active" : "inactive"}
                             </div>

@@ -42,7 +42,8 @@ test("superadmin billing plan management supports CRUD and sync", async ({ page 
         has: page.getByRole("heading", { name: "Growth Plus" }),
     });
     await updatedCard.getByRole("button", { name: "Sync Stripe" }).click();
-    await expect(updatedCard.getByText("Stripe product:", { exact: false })).toContainText("prod_");
+    await expect(updatedCard.getByText("Stripe: synced", { exact: true })).toBeVisible();
+    await expect(updatedCard.getByText("prod_", { exact: false })).toHaveCount(0);
 
     await updatedCard.getByRole("button", { name: "Archive" }).click();
     await expect(updatedCard.getByText("Status: inactive")).toBeVisible();
