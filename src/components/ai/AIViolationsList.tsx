@@ -1,3 +1,5 @@
+import { containsIdToken } from "@/lib/labels/idToken";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { AiGovernanceViolationRow } from "@/lib/graphql/__generated__/types";
 
@@ -58,10 +60,12 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
                                         </span>
                                     </td>
                                     <td className="px-3 py-3.25 align-top font-medium">
-                                        {violation.ruleId}
+                                        {containsIdToken(violation.ruleId)
+                                            ? UNRESOLVED
+                                            : violation.ruleId}
                                     </td>
                                     <td className="whitespace-nowrap px-3 py-3.25 align-top text-(--ink-muted)">
-                                        PR {violation.subjectId}
+                                        Pull request · {UNRESOLVED}
                                     </td>
                                     <td className="px-3 py-3.25 align-top text-(--ink-muted)">
                                         {violation.evidence}

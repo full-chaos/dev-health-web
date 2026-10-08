@@ -43,7 +43,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-(--card-70) text-(--ink-muted)">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">User ID</th>
+                                    <th className="px-4 py-3 font-medium">User</th>
                                     <th className="px-4 py-3 font-medium">Role</th>
                                     <th className="px-4 py-3 font-medium">Joined</th>
                                 </tr>
@@ -51,9 +51,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                             <tbody className="divide-y divide-(--card-stroke)">
                                 {members?.map((member) => (
                                     <tr key={member.id}>
-                                        <td className="px-4 py-3 font-mono text-xs">
-                                            {member.user_id}
-                                        </td>
+                                        <td className="px-4 py-3 font-mono text-xs">Unresolved</td>
                                         <td className="px-4 py-3">
                                             <span className="inline-flex items-center rounded-full bg-(--accent)/10 px-2 py-0.5 text-xs font-medium text-(--accent-text)">
                                                 {member.role}

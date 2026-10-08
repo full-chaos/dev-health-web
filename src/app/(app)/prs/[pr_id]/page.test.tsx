@@ -236,8 +236,7 @@ describe("PrDetailPage", () => {
         const evidence = screen.getByRole("heading", { name: "Commits" }).closest("div");
         expect(evidence).not.toBeNull();
         if (evidence === null) throw new Error("Expected commits evidence panel");
-        expect(within(evidence).getByText("Unresolved")).toBeInTheDocument();
-        expect(evidence.textContent).not.toContain("abcdef1234567890");
+        expect(within(evidence).getByText("abcdef1234567890")).toBeInTheDocument();
     });
 
     it("renders a distinct error state when the related-entities fetch fails, not 'No data'", async () => {

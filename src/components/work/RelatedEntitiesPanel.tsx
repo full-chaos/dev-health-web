@@ -8,6 +8,7 @@ import type {
 } from "@/lib/graphql/types";
 import { formatNumber } from "@/lib/formatters";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 import { labelInvestmentKey } from "@/lib/workGraph/taxonomy";
 
 type RelatedEntitiesPanelProps = {
@@ -88,6 +89,13 @@ function groupEdgesByRelatedType(
     }
     return grouped;
 }
+
+const SOURCE_TYPE_WORDS: Record<string, string> = {
+    issue: "Issue",
+    pr: "Pull request",
+    commit: "Commit",
+};
+const sourceTypeWord = (type: string) => SOURCE_TYPE_WORDS[type.toLowerCase()] ?? "Source";
 
 export function RelatedEntitiesPanel({
     rootType,
@@ -174,7 +182,9 @@ export function RelatedEntitiesPanel({
                                                         href={entityHref(linkedType, linkedId)}
                                                         className="font-medium underline-offset-4 hover:underline"
                                                     >
-                                                        {chartEntityLabel(linkedId)}
+                                                        {linkedType.toLowerCase() === "commit"
+                                                            ? linkedId
+                                                            : chartEntityLabel(linkedId)}
                                                     </Link>
                                                     <span className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                                                         {labelInvestmentKey(edge.edgeType)}
@@ -229,7 +239,7 @@ export function RelatedEntitiesPanel({
                             <li key={`${quote.sourceType}:${quote.sourceId}:${quote.quote}`}>
                                 “{quote.quote}”{" "}
                                 <span className="text-foreground">
-                                    {quote.sourceType}:{quote.sourceId}
+                                    {sourceTypeWord(quote.sourceType)} · {UNRESOLVED}
                                 </span>
                             </li>
                         ))}

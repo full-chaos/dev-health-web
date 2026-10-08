@@ -559,8 +559,8 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
         );
         const items = screen.getAllByTestId("blocked-work-item");
         expect(items.map((item) => item.textContent)).toEqual([
-            "linear:CHAOS-8106linearblockedOperations",
-            "github:full-chaos/dev-health#8106githubblockedUnresolved",
+            "UnresolvedlinearblockedOperations",
+            "UnresolvedgithubblockedUnresolved",
         ]);
         expect(screen.queryByText(/cycle time/i)).toBeNull();
         expect(screen.queryByText(/duration/i)).toBeNull();
@@ -669,9 +669,7 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
             blocked: "true",
         });
         expect(screen.getByTestId("blocked-work-complete-table-view")).toBeInTheDocument();
-        expect(screen.getByTestId("blocked-work-complete-table")).toHaveTextContent(
-            "linear:CHAOS-8106",
-        );
+        expect(screen.getByTestId("blocked-work-complete-table")).toHaveTextContent("Operations");
         expect(blockedIssues.request).toHaveBeenCalledTimes(2);
         expect(genericDrilldownRequest).not.toHaveBeenCalled();
         unmount();

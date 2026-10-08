@@ -1,3 +1,4 @@
+import { entityHeading } from "@/lib/labels/unresolved";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -46,7 +47,7 @@ export default async function DeploymentDetailPage({ params }: DeploymentDetailP
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-(--font-display) text-xl">
-                                {String(flame.entity.deployment_id ?? "Deployment")}
+                                {entityHeading(flame.entity, "Deployment")}
                             </h2>
                             <p className="mt-2 text-xs text-(--ink-muted)">
                                 <ClientTimestamp value={flame.timeline.start} suffix=" – " />

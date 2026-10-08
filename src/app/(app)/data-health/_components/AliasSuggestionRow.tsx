@@ -1,6 +1,7 @@
 "use client";
 
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 type AliasSuggestion = {
@@ -56,9 +57,7 @@ export function AliasSuggestionRow({ suggestion }: { suggestion: AliasSuggestion
                     <div className="text-xs text-(--ink-muted) mb-1 uppercase tracking-wider">
                         Suggested Canonical
                     </div>
-                    <div className="font-mono text-sm text-(--accent-text)">
-                        {suggestedCanonicalId}
-                    </div>
+                    <div className="font-mono text-sm text-(--accent-text)">{UNRESOLVED}</div>
                 </div>
             </div>
 

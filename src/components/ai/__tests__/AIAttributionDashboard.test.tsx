@@ -70,9 +70,9 @@ describe("AIAttributionDashboard", () => {
         expect(within(evidenceRow).getByTestId("ai-attribution-badge")).toHaveTextContent(
             "AI-assisted",
         );
-        expect(screen.getByText("pull_request #101")).toBeInTheDocument();
+        expect(screen.getByText("Pull request · Unresolved")).toBeInTheDocument();
         expect(screen.getByText("github")).toBeInTheDocument();
-        expect(screen.getByText("team-1")).toBeInTheDocument();
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
         expect(screen.getByTestId("ai-attribution-evidence-count")).toHaveTextContent(
             "4 resolved signals",
         );

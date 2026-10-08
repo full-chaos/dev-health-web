@@ -3,6 +3,7 @@
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
+import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import type { SyncStatus } from "@/lib/sync-types";
 
 export type ConnectorFailure = {
@@ -34,7 +35,9 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
         {
             key: "scope",
             header: "Scope",
-            render: (row) => <span className="text-sm text-(--ink-muted)">{row.scope}</span>,
+            render: (row) => (
+                <span className="text-sm text-(--ink-muted)">{chartEntityLabel(row.scope)}</span>
+            ),
         },
         {
             key: "status",
