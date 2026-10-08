@@ -60,3 +60,54 @@ describe("EvidenceEntryCard", () => {
         expect(screen.getByText(/change type:/i)).toBeInTheDocument();
     });
 });
+
+describe("EvidenceEntryCard evidence_quote", () => {
+    const id = "0b8f6a52-1c3d-4e5f-8a9b-0c1d2e3f4a5b";
+
+    it("shows the served source title and not the source id", () => {
+        render(
+            <EvidenceEntryCard
+                entry={{
+                    type: "evidence_quote",
+                    quote: "Fix login",
+                    source: "issue",
+                    id,
+                    source_title: "Fix login redirect",
+                }}
+            />,
+        );
+        expect(screen.getByText("Fix login redirect")).toBeInTheDocument();
+        expect(screen.queryByText(id)).not.toBeInTheDocument();
+    });
+
+    it("shows Unresolved when the title is null or absent", () => {
+        const { unmount } = render(
+            <EvidenceEntryCard
+                entry={{ type: "evidence_quote", quote: "q", source: "pr", id, source_title: null }}
+            />,
+        );
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+        expect(screen.queryByText(id)).not.toBeInTheDocument();
+        unmount();
+        render(
+            <EvidenceEntryCard entry={{ type: "evidence_quote", quote: "q", source: "pr", id }} />,
+        );
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+    });
+
+    it("keeps a commit hash and adds no title row", () => {
+        render(
+            <EvidenceEntryCard
+                entry={{
+                    type: "evidence_quote",
+                    quote: "q",
+                    source: "commit",
+                    id: "9f59478d",
+                    source_title: null,
+                }}
+            />,
+        );
+        expect(screen.getByText("9f59478d")).toBeInTheDocument();
+        expect(screen.queryByText("Unresolved")).not.toBeInTheDocument();
+    });
+});
