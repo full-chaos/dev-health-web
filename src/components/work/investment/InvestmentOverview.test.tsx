@@ -319,13 +319,22 @@ describe("overview: classification table", () => {
         expect(facts).toHaveTextContent("25%");
     });
 
-    it("the drawer shows the served average evidence quality and links to the Work Graph for the theme", async () => {
+    it("the drawer shows no evidence-quality row (served org-wide band counts) and links to the Work Graph for the theme", async () => {
         overview({
-            investmentMix: { ...mix, evidence_quality_distribution: { quality: 0.62 } } as never,
+            investmentMix: {
+                ...mix,
+                evidence_quality_distribution: {
+                    high: 35,
+                    moderate: 1353,
+                    low: 973,
+                    very_low: 1694,
+                    unknown: 0,
+                },
+            } as never,
         });
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
         const facts = await screen.findByTestId("classification-evidence-facts");
-        expect(facts).toHaveTextContent(/Average evidence quality\s*0\.62/);
+        expect(facts).not.toHaveTextContent(/evidence quality/i);
         const link = within(screen.getByRole("dialog")).getByRole("link", {
             name: "Open Work Graph",
         });
@@ -336,7 +345,7 @@ describe("overview: classification table", () => {
         );
     });
 
-    it("the drawer falls back to the page effort unit when the mix serves none (as the treemap drawer does) and prints no quality when none is served", async () => {
+    it("the drawer falls back to the page effort unit when the mix serves none (as the treemap drawer does) and has no quality row", async () => {
         overview({
             investmentMix: {
                 theme_distribution: { quality: 10 },
@@ -349,7 +358,7 @@ describe("overview: classification table", () => {
         expect(facts).not.toHaveTextContent("delivery units");
         expect(facts).toHaveTextContent("Effort10 effortShare of the mix");
         expect(facts).toHaveTextContent("100%");
-        expect(facts).toHaveTextContent("Average evidence qualityUnknown");
+        expect(facts).not.toHaveTextContent(/evidence quality/i);
     });
 
     it("renders no table when the mix is empty or absent", () => {

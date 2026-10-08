@@ -1,6 +1,5 @@
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { formatNumber } from "@/lib/formatters";
-import { formatQuality } from "@/lib/investment";
 
 type MixSelectionFactsProps = {
     testId: string;
@@ -13,13 +12,11 @@ type MixSelectionFactsProps = {
     total: number;
     /** The mix's unit with underscores as spaces, else the page's effort unit. */
     unit: string;
-    /** The served average evidence quality; `undefined` = not served. */
-    quality: number | undefined;
 };
 
 /**
  * The facts the shared evidence drawer shows for a theme or subcategory of the investment mix:
- * served effort, share of the mix and average evidence quality. ONE component for the treemap
+ * served effort and share of the mix. No quality row: the API serves evidence quality as org-wide band counts, never per theme. ONE component for the treemap
  * cell and the classification table row, so the two drawers can never disagree (CHAOS-8564).
  */
 export function MixSelectionFacts({
@@ -29,7 +26,6 @@ export function MixSelectionFacts({
     value,
     total,
     unit,
-    quality,
 }: MixSelectionFactsProps) {
     return (
         <EvidenceFactList aria-label="Investment mix selection" testId={testId}>
@@ -48,10 +44,6 @@ export function MixSelectionFacts({
                         ? undefined
                         : `${formatNumber((value / total) * 100, { maximumFractionDigits: 1 })}%`
                 }
-            />
-            <EvidenceFact
-                label="Average evidence quality"
-                value={typeof quality === "number" ? formatQuality(quality) : undefined}
             />
         </EvidenceFactList>
     );
