@@ -1169,6 +1169,7 @@ export type HotspotsInput = {
 
 export type HotspotsResult = {
   __typename?: 'HotspotsResult';
+  repos: Array<RepoHotspot>;
   rows: Array<HotspotRow>;
 };
 
@@ -2002,6 +2003,16 @@ export type RepoCoverageBaseline = {
   repoId: Scalars['String']['output'];
   /** The repository's full name in the org's catalogue. Null = the catalogue holds no name; never the id. */
   repoName?: Maybe<Scalars['String']['output']>;
+};
+
+/** Each repository's single highest-risk file in the requested window and scope: the driver, linked to that file's evidence. riskScore is the served file score (an unbounded z-sum), not a repository score; no repository-level score or hotspot count exists. A repository with no hotspot file row is absent. */
+export type RepoHotspot = {
+  __typename?: 'RepoHotspot';
+  evidenceUrl?: Maybe<Scalars['String']['output']>;
+  repoId: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
+  topFilePath: Scalars['String']['output'];
+  topRiskScore: Scalars['Float']['output'];
 };
 
 export type ReportRunConnection = {

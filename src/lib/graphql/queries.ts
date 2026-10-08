@@ -1060,6 +1060,13 @@ query Hotspots($input: HotspotsInput!) {
       riskScore
       evidenceUrl
     }
+    repos {
+      repoId
+      repoName
+      topFilePath
+      topRiskScore
+      evidenceUrl
+    }
   }
 }
 `;

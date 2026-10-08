@@ -9,6 +9,7 @@ const getExplainDataMock = vi.fn();
 const getHeatmapMock = vi.fn();
 const getQuadrantMock = vi.fn();
 const getBusFactorDataMock = vi.fn();
+const getRepoTopHotspotsMock = vi.fn();
 
 vi.mock("@/components/shell/ScopeBar", () => ({
     ScopeBar: () => <div data-testid="scope-bar" />,
@@ -61,6 +62,7 @@ vi.mock("@/lib/api/visuals", () => ({
 
 vi.mock("@/lib/api/code", () => ({
     getBusFactorData: (...args: unknown[]) => getBusFactorDataMock(...args),
+    getRepoTopHotspots: (...args: unknown[]) => getRepoTopHotspotsMock(...args),
 }));
 
 import CodePage from "./page";
@@ -188,6 +190,7 @@ describe("CodePage", () => {
             getHeatmapMock.mockResolvedValue(null);
             getQuadrantMock.mockResolvedValue(null);
             getBusFactorDataMock.mockResolvedValue(busFactor);
+            getRepoTopHotspotsMock.mockResolvedValue([]);
         };
 
         it("shows the samples and the bus factor as tiles", async () => {
@@ -220,7 +223,7 @@ describe("CodePage", () => {
             expect(screen.getByTestId("tile-Bus factor")).toHaveAttribute("data-value", "none");
         });
 
-        it("lists repositories by lowest bus factor as Repository hotspots, with no Hotspot score column (none exists per repository)", async () => {
+        it("lists repositories by lowest bus factor as Repository hotspots, with a Top hotspot column and no Hotspot score column", async () => {
             setup({ ...base, value: 1, evidenceSampleCount: 3773 });
             await renderPage();
             const section = within(screen.getByTestId("code-repo-bus-factor"));
@@ -232,6 +235,7 @@ describe("CodePage", () => {
                 "Repository",
                 "Bus factor",
                 "Churn",
+                "Top hotspot",
                 "File-change samples",
                 "Evidence",
             ]);
@@ -258,6 +262,54 @@ describe("CodePage", () => {
             expect(churn[1]).toBe("Not reported");
             // The hotspot score is a different metric: not served per repository, so no column.
             expect(screen.queryAllByTestId("repo-hotspot-score")).toHaveLength(0);
+        });
+
+        it("shows each repository's served top file and its score, linked to the served evidence, with no count and no repository score", async () => {
+            setup({ ...base, value: 1, evidenceSampleCount: 3773 });
+            getRepoTopHotspotsMock.mockResolvedValue([
+                {
+                    repoId: "r1",
+                    repoName: "org/ops",
+                    topFilePath: "api/server.go",
+                    topRiskScore: 0.8249,
+                    evidenceUrl: "/code?file=api/server.go",
+                },
+            ]);
+            await renderPage();
+            const cells = screen.getAllByTestId("repo-top-hotspot");
+            // Rows are sorted by bus factor: org/ops first.
+            expect(cells[0]).toHaveTextContent("api/server.go (0.82)");
+            expect(cells[0]).not.toHaveTextContent(/hotspot files/i);
+            const link = within(cells[0]).getByRole("link", { name: "api/server.go" });
+            expect(link).toHaveAttribute("href", "/code?file=api/server.go");
+            // org/web has no served row: no value at all, never 0, never "Not reported".
+            expect(cells[1]).toBeEmptyDOMElement();
+        });
+
+        it("keeps a served score of 0 as 0.00 and shows no link when the file has no served evidence", async () => {
+            setup({ ...base, value: 1, evidenceSampleCount: 3773 });
+            getRepoTopHotspotsMock.mockResolvedValue([
+                {
+                    repoId: "r1",
+                    repoName: "org/ops",
+                    topFilePath: "a.go",
+                    topRiskScore: 0,
+                    evidenceUrl: null,
+                },
+            ]);
+            await renderPage();
+            const cell = screen.getAllByTestId("repo-top-hotspot")[0];
+            expect(cell).toHaveTextContent("a.go (0.00)");
+            expect(within(cell).queryByRole("link")).toBeNull();
+        });
+
+        it("shows the repository table without a Top hotspot value when the hotspot read failed", async () => {
+            setup({ ...base, value: 1, evidenceSampleCount: 3773 });
+            getRepoTopHotspotsMock.mockRejectedValue(new Error("boom"));
+            await renderPage();
+            const cells = screen.getAllByTestId("repo-top-hotspot");
+            expect(cells).toHaveLength(2);
+            cells.forEach((c) => expect(c).toBeEmptyDOMElement());
         });
 
         it("opens the shared drawer from a row's Evidence button with the repository's values", async () => {

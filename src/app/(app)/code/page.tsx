@@ -15,7 +15,7 @@ import { Section } from "@/components/ui/Section";
 import { ChurnTrend } from "./ChurnTrend";
 import { RepoEvidenceButton } from "./RepoEvidenceButton";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { getBusFactorData } from "@/lib/api/code";
+import { getBusFactorData, getRepoTopHotspots } from "@/lib/api/code";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
@@ -54,24 +54,26 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               : "org";
 
     // Run health check in parallel with all data fetches to eliminate the waterfall.
-    const [health, home, churnExplain, churnThroughput, busFactor] = await Promise.all([
-        checkApiHealth(),
-        fetchOrNull(getHomeDataViaGraphQL(filters), "code/home-data"),
-        fetchOrNull(getExplainData({ metric: "churn", filters }), "code/explain-churn"),
-        fetchOrNull(
-            getQuadrant({
-                type: "churn_throughput",
-                scope_type: quadrantScope,
-                scope_id: scopeId,
-                range_days: filters.time.range_days,
-                bucket: "week",
-                start_date: filters.time.start_date,
-                end_date: filters.time.end_date,
-            }),
-            "code/churn-throughput-quadrant",
-        ),
-        fetchOrNull(getBusFactorData(filters), "code/bus-factor"),
-    ]);
+    const [health, home, churnExplain, churnThroughput, busFactor, repoHotspots] =
+        await Promise.all([
+            checkApiHealth(),
+            fetchOrNull(getHomeDataViaGraphQL(filters), "code/home-data"),
+            fetchOrNull(getExplainData({ metric: "churn", filters }), "code/explain-churn"),
+            fetchOrNull(
+                getQuadrant({
+                    type: "churn_throughput",
+                    scope_type: quadrantScope,
+                    scope_id: scopeId,
+                    range_days: filters.time.range_days,
+                    bucket: "week",
+                    start_date: filters.time.start_date,
+                    end_date: filters.time.end_date,
+                }),
+                "code/churn-throughput-quadrant",
+            ),
+            fetchOrNull(getBusFactorData(filters), "code/bus-factor"),
+            fetchOrNull(getRepoTopHotspots(filters), "code/repo-top-hotspots"),
+        ]);
 
     if (!health.ok) {
         return <ServiceUnavailable landmark={false} />;
@@ -103,7 +105,13 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     }));
 
     // Churn per repository, from the churn explain contributors. It is churn, NOT the hotspot score
-    // (a different metric: the heatmap's "hotspot score"), so it never fills a repository hotspot score (the column returns with CHAOS-8488).
+    // (a different metric: the heatmap's "hotspot score"), so it never fills the Top hotspot column.
+    // That column shows the served top file of each repository and its served file score as the
+    // driver; there is no repository score and no hotspot count (no threshold is defined).
+    const topHotspotOf = (repo: { repoId: string; repoName: string }) =>
+        (repoHotspots ?? []).find(
+            (item) => item.repoId === repo.repoId || item.repoName === repo.repoName,
+        );
     const contributorOf = (repo: { repoId: string; repoName: string }) =>
         (churnExplain?.contributors ?? []).find(
             (item) => item.id === repo.repoId || item.label === repo.repoName,
@@ -116,6 +124,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     };
     const repoRows = riskyRepos.map((repo) => ({
         repo,
+        topHotspot: topHotspotOf(repo),
         facts: {
             repoName: repo.repoName,
             churn: churnOf(repo),
@@ -243,6 +252,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                 <th className="py-2 text-left font-medium">Repository</th>
                                 <th className="py-2 text-left font-medium">Bus factor</th>
                                 <th className="py-2 text-left font-medium">Churn</th>
+                                <th className="py-2 text-left font-medium">Top hotspot</th>
                                 <th className="py-2 text-left font-medium">File-change samples</th>
                                 <th className="py-2 text-right font-medium">
                                     {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}
@@ -251,7 +261,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            {repoRows.map(({ repo, facts }) => (
+                            {repoRows.map(({ repo, facts, topHotspot }) => (
                                 <tr key={repo.repoId} className="border-t border-(--card-stroke)">
                                     <td className="py-2.5">{repo.repoName}</td>
                                     <td className="py-2.5 tabular-nums">{repo.value}</td>
@@ -262,6 +272,34 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                         }`}
                                     >
                                         {facts.churn ?? "Not reported"}
+                                    </td>
+                                    <td data-testid="repo-top-hotspot" className="py-2.5">
+                                        {topHotspot ? (
+                                            <span className="inline-flex max-w-xs items-baseline gap-1">
+                                                {topHotspot.evidenceUrl ? (
+                                                    <Link
+                                                        href={topHotspot.evidenceUrl}
+                                                        title={topHotspot.topFilePath}
+                                                        className="truncate text-(--accent-2) hover:underline"
+                                                    >
+                                                        {topHotspot.topFilePath}
+                                                    </Link>
+                                                ) : (
+                                                    <span
+                                                        title={topHotspot.topFilePath}
+                                                        className="truncate"
+                                                    >
+                                                        {topHotspot.topFilePath}
+                                                    </span>
+                                                )}{" "}
+                                                <span className="shrink-0 tabular-nums text-(--ink-muted)">
+                                                    {`(${formatNumber(topHotspot.topRiskScore, {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    })})`}
+                                                </span>
+                                            </span>
+                                        ) : null}
                                     </td>
                                     <td className="py-2.5 tabular-nums">{facts.samples}</td>
                                     <td className="py-1.5 text-right">
