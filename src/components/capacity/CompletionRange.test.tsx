@@ -190,7 +190,7 @@ describe("CompletionRange — the curve is the served points", () => {
             expect(option().yAxis.name).toBe("Chance all items are done");
             const note = screen.getByTestId("completion-range-note");
             expect(note).toHaveTextContent(
-                "Monte Carlo forecast: each step is the share of the 200 simulation runs in which all items were done by that day.",
+                "Monte Carlo forecast: each point is the share of the 200 simulation runs in which all items were done by that day.",
             );
             expect(note.textContent).not.toContain("55");
         },
@@ -274,7 +274,7 @@ describe("CompletionRange — words", () => {
     it("says what a point is, with the served run total", () => {
         render(<CompletionRange forecast={base()} />);
         expect(screen.getByTestId("completion-range-note")).toHaveTextContent(
-            "Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.",
+            "Monte Carlo forecast: each point is the share of the 200 simulation runs in which all 40 items were done by that day.",
         );
     });
 
@@ -311,7 +311,7 @@ describe("CompletionRange — words", () => {
         render(<CompletionRange forecast={{ ...forecast, completionDistribution: withoutRuns }} />);
 
         expect(screen.getByTestId("completion-range-note")).toHaveTextContent(
-            "Monte Carlo forecast: each step is the share of the simulation runs in which all 40 items were done by that day.",
+            "Monte Carlo forecast: each point is the share of the simulation runs in which all 40 items were done by that day.",
         );
         const text = option().tooltip.formatter({ data: [19, 0.85] });
         expect(text).toContain("120 runs ended on this day");
