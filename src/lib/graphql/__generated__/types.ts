@@ -1642,6 +1642,8 @@ export type Query = {
   securityAlerts: SecurityAlertConnection;
   /** Aggregated security posture for the dashboard */
   securityOverview: SecurityOverview;
+  /** Source health of the caller's organization (CHAOS-8906): per sync configuration that is active or carries a failure newer than its last successful sync, provider (a platform provider, else ``other``), scope, last successful sync time, and the last failure as a time and a stage code. Served to every member of the organization; no error text. */
+  sourceHealth: Array<SourceHealth>;
   /** CI job names that failed in a window, by workflow and job name (CHAOS-8513). Computed at read time from the stored job runs of every CI provider. */
   testopsJobFailures: TestOpsJobFailuresResult;
   /** Persisted TestOps Delivery Risk metrics from release confidence, quality drag, and pipeline stability tables. */
@@ -1905,6 +1907,11 @@ export type QuerySecurityAlertsArgs = {
 
 export type QuerySecurityOverviewArgs = {
   filters?: InputMaybe<SecurityAlertFilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QuerySourceHealthArgs = {
   orgId: Scalars['String']['input'];
 };
 
@@ -2307,6 +2314,24 @@ export type SignalAttributionSourceCount = {
   /** Fraction of SignalAttribution.items in this bucket. */
   share: Scalars['Float']['output'];
   source: TeamAttributionSource;
+};
+
+/** Org-level source health (CHAOS-8906): one row per sync configuration of the caller's organization that is active or carries a failure newer than its last successful sync; every integration with an active configuration shows at least one row. A member read, not an operator view: provider, scope, the last successful sync time, and the last failure as a time and a closed stage code. Never an error message. */
+export type SourceHealth = {
+  __typename?: 'SourceHealth';
+  /** Set when the latest sync of the source failed; null when it did not. */
+  lastFailure?: Maybe<SourceHealthFailure>;
+  /** The last successful sync. Null when the source has never synced successfully (never synced, or its only attempts failed). */
+  lastSyncAt?: Maybe<Scalars['DateTime']['output']>;
+  provider: Scalars['String']['output'];
+  scope: Scalars['String']['output'];
+};
+
+export type SourceHealthFailure = {
+  __typename?: 'SourceHealthFailure';
+  occurredAt: Scalars['DateTime']['output'];
+  /** A closed stage code; ``other`` when the stage is not one the platform names. */
+  stage: Scalars['String']['output'];
 };
 
 export type SparkPoint = {
