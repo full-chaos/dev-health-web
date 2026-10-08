@@ -43,15 +43,15 @@ const rows = async () => {
 };
 
 describe("ForecastEvidenceAction", () => {
-    it("lists the forecast's served values as the tiles and inputs show them, no row when not served", async () => {
+    it("lists the forecast's served values as the tiles and inputs show them, 'Not reported' when not served", async () => {
         render(<ForecastEvidenceAction filters={defaultMetricFilter} />);
 
         const all = await rows();
         expect(all).toContainEqual(["Remaining work", "42 items"]);
         expect(all).toContainEqual(["P50 · optimistic", "Jun 10 · 9 days"]);
         expect(all).toContainEqual(["P85 · target", "Jun 20 · 19 days"]);
-        // No P95 served: no row, never a date or 0.
-        expect(all.map(([label]) => label)).not.toContain("P95 · conservative");
+        // No P95 served: the row says so, never a date or 0.
+        expect(all).toContainEqual(["P95 · conservative", "Not reported"]);
         expect(all).toContainEqual(["Mean throughput", "3.3 items / day"]);
         expect(all).toContainEqual(["History", "90 days"]);
     });

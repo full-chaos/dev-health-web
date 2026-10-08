@@ -95,7 +95,7 @@ describe("areaOverviewBodyOrder", () => {
 });
 
 describe("areaOverviewFacts (the page facts of an overview page)", () => {
-    it("lists every signal's served value and state in body order; no data has no value", () => {
+    it("lists every signal's served value and state in body order; no data reads 'Not reported'", () => {
         expect(areaOverviewFacts("diagnose", FLAT)).toEqual([
             { label: "crit · crit metric", value: "42% · Critical" },
             { label: "high · high metric", value: "42% · High" },
@@ -123,14 +123,16 @@ describe("AreaOverviewEvidenceAction (the 'View evidence' action of an overview 
             "low · low metric42% · Low",
             "neutral · neutral metric42% · Info",
             "high-demoted · high-demoted metric42% · High",
+            "none · none metricNot reported",
         ]);
+        expect(rows.at(-1)).toHaveAttribute("data-reported", "false");
         // A content subject: the request panel (an explain metric) is not mounted.
         expect(dialog.queryByTestId("evidence-panel")).toBeNull();
     });
 });
 
 describe("areaOverviewFacts for a failed read (CHAOS-8168)", () => {
-    it("says Could not be read for a failed read and keeps an empty one without a value", () => {
+    it("says Could not be read for a failed read and keeps Not reported for an empty one", () => {
         const facts = areaOverviewFacts("diagnose", [
             signal("failed-one", "unavailable", { failed: true }),
             signal("empty-one", "unavailable"),
@@ -139,6 +141,6 @@ describe("areaOverviewFacts for a failed read (CHAOS-8168)", () => {
             facts.map((f) => [String(f.label).split(" · ")[0], f.value]),
         );
         expect(byLabel["failed-one"]).toBe("Could not be read");
-        expect(byLabel["empty-one"]).toBeUndefined(); // an undefined value draws no row
+        expect(byLabel["empty-one"]).toBeUndefined(); // undefined value renders "Not reported"
     });
 });

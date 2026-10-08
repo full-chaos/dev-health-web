@@ -145,6 +145,7 @@ describe("Diagnose overview layout (approved prototype diagnoseHub, CHAOS-8065)"
         expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
             "Code · Code churn1,320,441 · Critical",
             "Complexity · Avg complexity121.3 · High",
+            "Landscape · Bus factorNot reported",
         ]);
     });
 
@@ -157,8 +158,8 @@ describe("Diagnose overview layout (approved prototype diagnoseHub, CHAOS-8065)"
         fireEvent.click(screen.getByRole("button", { name: "View evidence" }));
 
         expect(evidencePanelSpy).not.toHaveBeenCalled();
-        expect(within(screen.getByRole("dialog")).queryAllByTestId("evidence-fact")).toHaveLength(
-            0,
-        );
+        const row = within(screen.getByRole("dialog")).getByTestId("evidence-fact");
+        expect(row).toHaveAttribute("data-reported", "false");
+        expect(row).toHaveTextContent("Not reported");
     });
 });

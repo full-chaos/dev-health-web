@@ -134,7 +134,7 @@ describe("Improve overview in the shared app shell", () => {
         expect(screen.queryByText(/ordered by severity/)).toBeNull();
     });
 
-    it("has a View evidence action that lists the served signals, no row for an unavailable one", async () => {
+    it("has a View evidence action that lists the served signals, 'Not reported' for an unavailable one", async () => {
         vi.mocked(getAreaSignals).mockResolvedValueOnce([
             {
                 id: "opportunities",
@@ -166,7 +166,10 @@ describe("Improve overview in the shared app shell", () => {
                 row.querySelector("dt")?.textContent,
                 row.querySelector("dd")?.textContent,
             ]);
-        expect(rows).toEqual([["Opportunities", "4 open · 4 evidence-linked"]]);
+        expect(rows).toEqual([
+            ["Opportunities", "4 open · 4 evidence-linked"],
+            ["Automations", "Not reported"],
+        ]);
     });
 
     it("passes the note on the two automation destinations to the overview", async () => {

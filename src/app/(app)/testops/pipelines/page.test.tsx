@@ -305,6 +305,7 @@ describe("TestOps Pipelines page — approved layout", () => {
             "Failure Rate3%",
             "P95 Duration9.8m",
             "Queue Time0m",
+            "Rerun RateNot reported",
         ]);
         const definitions = within(evidence).getByTestId("testops-evidence-definitions");
         expect(definitions).toHaveTextContent("Average time pipelines spend waiting to start");

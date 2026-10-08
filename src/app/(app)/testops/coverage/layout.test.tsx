@@ -581,6 +581,7 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(facts.map((fact) => fact.textContent)).toEqual([
             "Line Coverage60%",
             "Branch Coverage54%",
+            "Coverage DeltaNot reported",
         ]);
         expect(within(evidence).getByTestId("testops-evidence-definitions")).toHaveTextContent(
             "Percentage of code branches covered by tests",

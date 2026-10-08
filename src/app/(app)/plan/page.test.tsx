@@ -244,7 +244,7 @@ describe("Plan overview — what the page shows (pins)", () => {
 });
 
 describe("Plan overview — View evidence", () => {
-    it("adds a View evidence action whose subject lists the page's served values, no row for a missing one", async () => {
+    it("adds a View evidence action whose subject lists the page's served values, 'Not reported' for a missing one", async () => {
         mockForecast.mockResolvedValue(forecast({ p75Weeks: null }));
         await renderPage();
 
@@ -257,12 +257,12 @@ describe("Plan overview — View evidence", () => {
             ]);
         expect(rows).toContainEqual(["Open items", "51"]);
         expect(rows).toContainEqual(["P50 forecast", "1 week"]);
-        expect(rows.map(([label]) => label)).not.toContain("P75 forecast");
+        expect(rows).toContainEqual(["P75 forecast", "Not reported"]);
         expect(rows).toContainEqual(["Rolling throughput · 4w", "12 items/week"]);
         expect(rows).toContainEqual(["WIP congestion", "0.69× · Normal"]);
     });
 
-    it("shows the served history state, no row when the flag is absent", async () => {
+    it("shows the served history state, 'Not reported' only when the flag is absent", async () => {
         const history = async (over: Record<string, unknown>) => {
             mockForecast.mockResolvedValue(forecast(over));
             const view = await renderPage();
@@ -270,14 +270,14 @@ describe("Plan overview — View evidence", () => {
             const row = within(drawer.container)
                 .getAllByTestId("evidence-fact")
                 .find((r) => r.querySelector("dt")?.textContent === "History");
-            const text = row ? row.querySelector("dd")?.textContent : "no row";
+            const text = row?.querySelector("dd")?.textContent;
             drawer.unmount();
             view.unmount();
             return text;
         };
         expect(await history({ insufficientHistory: false })).toBe("Sufficient");
         expect(await history({ insufficientHistory: true })).toBe("Insufficient");
-        expect(await history({ insufficientHistory: undefined })).toBe("no row");
+        expect(await history({ insufficientHistory: undefined })).toBe("Not reported");
     });
 
     it("has no View evidence action when there is no forecast", async () => {

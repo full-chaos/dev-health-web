@@ -326,7 +326,9 @@ describe("TestOps Overview page — approved layout", () => {
             "Failure Rate3%",
             "P95 Duration9.8m",
             "Flake Rate0%",
+            "Line CoverageNot reported",
         ]);
+        expect(facts[4]).toHaveAttribute("data-reported", "false");
         // The full definitions (no longer on the tiles) are in the drawer.
         const definitions = within(evidence).getByTestId("testops-evidence-definitions");
         expect(definitions).toHaveTextContent(

@@ -179,7 +179,7 @@ describe("Home page header", () => {
 
     const drawerRows = () =>
         within(within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"))
-            .queryAllByTestId("evidence-fact")
+            .getAllByTestId("evidence-fact")
             .map((row) => [
                 row.querySelector("dt")?.textContent,
                 row.querySelector("dd")?.textContent,
@@ -207,6 +207,7 @@ describe("Home page header", () => {
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
         // Every served number, zero included (zero is a served value, not a missing one).
         expect(drawerRows()).toEqual([
+            ["Coverage", "Not reported"],
             ["Last ingested", formatTimestamp("2026-07-12T00:07:00Z")],
             ["Repositories covered", "100%"],
             ["PRs linked to issues", "0%"],
@@ -224,13 +225,19 @@ describe("Home page header", () => {
             { last_ingested_at: null, sources: {}, coverage: {} },
         ],
     ])(
-        "draws no row for a freshness fact that is not served, never a zero, when %s",
+        "reads 'Not reported' for each freshness fact, never a zero, when %s",
         async (_name, freshness) => {
             vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(homeWithFreshness(freshness));
             await renderCockpit();
             await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
 
-            expect(drawerRows()).toEqual([]);
+            expect(drawerRows()).toEqual([
+                ["Coverage", "Not reported"],
+                ["Last ingested", "Not reported"],
+                ["Repositories covered", "Not reported"],
+                ["PRs linked to issues", "Not reported"],
+                ["Issues with cycle states", "Not reported"],
+            ]);
         },
     );
 
@@ -262,7 +269,7 @@ describe("Home page header", () => {
         expect(Object.keys(await vi.importActual("@/lib/api/system"))).not.toContain("getApiMeta");
     });
 
-    it("shows the served source coverage in the page evidence drawer, or no row", async () => {
+    it("shows the served source coverage in the page evidence drawer, or Not reported", async () => {
         const home = (coveragePct: number | null) =>
             ({
                 freshness: { last_ingested_at: null, sources: {}, coverage: {} },
@@ -299,7 +306,7 @@ describe("Home page header", () => {
         expect(
             within(
                 within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
-            ).queryByText("Coverage"),
-        ).toBeNull();
+            ).getAllByTestId("evidence-fact")[0],
+        ).toHaveTextContent("CoverageNot reported");
     });
 });

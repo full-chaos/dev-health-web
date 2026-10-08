@@ -278,13 +278,13 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         expect(screen.queryByText("Active filters")).toBeNull();
     });
 
-    it("Context: an organization name that is not served draws no row", async () => {
+    it("Context: an organization name that is not served is 'Not reported'", async () => {
         orgName.value = undefined;
         await renderExplore();
         const rows = within(screen.getByTestId("explore-context"))
             .getAllByTestId("evidence-fact")
             .map((row) => row.textContent);
-        expect(rows.some((text) => text?.startsWith("Organization"))).toBe(false);
+        expect(rows[1]).toBe("OrganizationNot reported");
     });
 
     it("an old URL that carries the removed filters shows rows only for the filters a query reads (CHAOS-7799)", async () => {

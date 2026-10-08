@@ -41,14 +41,16 @@ describe("PageFactsEvidenceAction", () => {
         ]);
     });
 
-    it("draws no row for a value that was not served, never a number", async () => {
+    it("reads 'Not reported' for a value that was not served, never a number", async () => {
         page([{ label: "P75 forecast" }]);
 
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
 
-        const list = await screen.findByTestId("page-evidence-facts");
-        expect(within(list).queryByTestId("evidence-fact")).toBeNull();
-        expect(list).not.toHaveTextContent("Not reported");
+        const row = within(await screen.findByTestId("page-evidence-facts")).getByTestId(
+            "evidence-fact",
+        );
+        expect(row).toHaveAttribute("data-reported", "false");
+        expect(row).toHaveTextContent("Not reported");
         await waitFor(() => expect(screen.getAllByRole("dialog").length).toBeGreaterThan(0));
     });
 });

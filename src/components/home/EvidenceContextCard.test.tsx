@@ -63,21 +63,22 @@ const fact = (label: string) => {
 
 // The "Evidence & context" card of Home (CHAOS-8063): approved prototype `app.js:100`.
 describe("EvidenceContextCard", () => {
-    it("has the approved title, description and only the served fact rows in order (no Source, no Identity confidence row)", () => {
+    it("has the approved title, description and the three fact rows in order (no Identity confidence row)", () => {
         render(<EvidenceContextCard home={makeHome()} />);
         expect(screen.getByRole("heading", { name: "Evidence & context" })).toBeInTheDocument();
         expect(screen.getByText("Keep uncertainty beside the claim.")).toBeInTheDocument();
         const labels = screen
             .getAllByTestId("evidence-fact")
             .map((row) => row.querySelector("dt")?.textContent);
-        expect(labels).toEqual(["Signal quality", "Last sync"]);
+        expect(labels).toEqual(["Source", "Signal quality", "Last sync"]);
     });
 
-    it("draws no Source row: the Home API does not serve it", () => {
+    it("reads Not reported for Source: the Home API does not serve it", () => {
         render(<EvidenceContextCard home={makeHome()} />);
-        expect(screen.queryByText("Source")).toBeNull();
-        expect(screen.queryByText("Identity confidence")).toBeNull();
-        expect(screen.queryByText("Not reported")).toBeNull();
+        for (const label of ["Source"]) {
+            expect(fact(label)).toHaveAttribute("data-reported", "false");
+            expect(fact(label)).toHaveTextContent("Not reported");
+        }
     });
 
     it.each([
@@ -99,9 +100,9 @@ describe("EvidenceContextCard", () => {
         },
     );
 
-    it("Signal quality draws no row when no signal is served", () => {
+    it("Signal quality reads Not reported when no signal is served", () => {
         render(<EvidenceContextCard home={makeHome({ signals: [] })} />);
-        expect(screen.queryByText("Signal quality")).toBeNull();
+        expect(fact("Signal quality")).toHaveTextContent("Not reported");
         expect(screen.queryByTestId("evidence-context-quality")).toBeNull();
     });
 
@@ -115,7 +116,7 @@ describe("EvidenceContextCard", () => {
         expect(formatTimestamp(SYNC_AT, SYNC_AT)).not.toBe(formatTimestamp(INGEST_AT, INGEST_AT));
     });
 
-    it("Last sync draws no row with no successful sync: an ingest time is not a sync", () => {
+    it("Last sync reads Not reported with no successful sync: an ingest time is not a sync", () => {
         render(
             <EvidenceContextCard
                 home={makeHome({
@@ -132,7 +133,8 @@ describe("EvidenceContextCard", () => {
                 })}
             />,
         );
-        expect(screen.queryByText("Last sync")).toBeNull();
+        expect(fact("Last sync")).toHaveAttribute("data-reported", "false");
+        expect(fact("Last sync").querySelector("dd")?.textContent).toBe("Not reported");
     });
 
     it("holds the approved sentence and the served caveats in the inset", () => {
@@ -157,12 +159,14 @@ describe("EvidenceContextCard", () => {
         );
     });
 
-    it("has no caveat list when the API served none, and no row is drawn with no payload", () => {
+    it("has no caveat list when the API served none, and every row reads Not reported with no payload", () => {
         const { unmount } = render(<EvidenceContextCard home={makeHome()} />);
         expect(screen.queryByTestId("data-confidence-caveats")).toBeNull();
         unmount();
 
         render(<EvidenceContextCard home={null} />);
-        expect(screen.queryAllByTestId("evidence-fact")).toHaveLength(0);
+        const rows = screen.getAllByTestId("evidence-fact");
+        expect(rows).toHaveLength(3);
+        for (const row of rows) expect(row).toHaveAttribute("data-reported", "false");
     });
 });
