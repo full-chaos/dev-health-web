@@ -123,7 +123,7 @@ describe("AreaOverviewEvidenceAction (the 'View evidence' action of an overview 
             "low · low metric42% · Low",
             "neutral · neutral metric42% · Info",
             "high-demoted · high-demoted metric42% · High",
-            "none · none metricNot reported",
+            "none · none metricUnknown",
         ]);
         expect(rows.at(-1)).toHaveAttribute("data-reported", "false");
         // A content subject: the request panel (an explain metric) is not mounted.

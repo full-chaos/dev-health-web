@@ -349,7 +349,7 @@ describe("overview: classification table", () => {
         expect(facts).not.toHaveTextContent("delivery units");
         expect(facts).toHaveTextContent("Effort10 effortShare of the mix");
         expect(facts).toHaveTextContent("100%");
-        expect(facts).toHaveTextContent("Average evidence qualityNot reported");
+        expect(facts).toHaveTextContent("Average evidence qualityUnknown");
     });
 
     it("renders no table when the mix is empty or absent", () => {

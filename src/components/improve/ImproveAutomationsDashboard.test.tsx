@@ -258,7 +258,7 @@ describe("ImproveAutomationsDashboard", () => {
         const row = within(await screen.findByTestId("detection-evidence-facts"))
             .getByText("Evidence references")
             .closest("[data-testid='evidence-fact']");
-        expect(row).toHaveTextContent("Not reported");
+        expect(row).toHaveTextContent("Unknown");
     });
 
     it("draws the arrow before 'View AI automations' (prototype btn())", () => {

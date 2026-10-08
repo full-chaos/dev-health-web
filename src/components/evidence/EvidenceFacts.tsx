@@ -6,9 +6,12 @@ import { STATUS_PILL } from "@/lib/statusPill";
 /** Shown for a field the API did not serve. */
 export const NOT_REPORTED = "Not reported";
 
+/** Shown in a fact row whose value the API did not serve (one word for every fact row). */
+export const UNKNOWN = "Unknown";
+
 /**
  * The fact rows of the evidence drawer: one row per field, label left and value right.
- * A field with no served value shows "Not reported"; the web never fills a value in.
+ * A field with no served value shows "Unknown"; the web never fills a value in.
  */
 export function EvidenceFactList({
     children,
@@ -54,7 +57,7 @@ export function EvidenceFact({
                     reported ? "font-semibold text-foreground" : "text-(--ink-muted)"
                 }`}
             >
-                {reported ? value : NOT_REPORTED}
+                {reported ? value : UNKNOWN}
             </dd>
         </div>
     );

@@ -451,7 +451,7 @@ describe("ComplexityDashboard", () => {
         const row = within(screen.getByRole("dialog"))
             .getAllByTestId("evidence-fact")
             .find((fact) => fact.querySelector("dt")?.textContent === "Owner concentration");
-        expect(row?.querySelector("dd")).toHaveTextContent(/^Not reported$/);
+        expect(row?.querySelector("dd")).toHaveTextContent(/^Unknown$/);
     });
 
     it("closes the drawer when the user follows the footer evidence link", async () => {

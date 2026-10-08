@@ -77,7 +77,7 @@ describe("EvidenceContextCard", () => {
         render(<EvidenceContextCard home={makeHome()} />);
         for (const label of ["Source"]) {
             expect(fact(label)).toHaveAttribute("data-reported", "false");
-            expect(fact(label)).toHaveTextContent("Not reported");
+            expect(fact(label)).toHaveTextContent("Unknown");
         }
     });
 
@@ -102,7 +102,7 @@ describe("EvidenceContextCard", () => {
 
     it("Signal quality reads Not reported when no signal is served", () => {
         render(<EvidenceContextCard home={makeHome({ signals: [] })} />);
-        expect(fact("Signal quality")).toHaveTextContent("Not reported");
+        expect(fact("Signal quality")).toHaveTextContent("Unknown");
         expect(screen.queryByTestId("evidence-context-quality")).toBeNull();
     });
 
@@ -134,7 +134,7 @@ describe("EvidenceContextCard", () => {
             />,
         );
         expect(fact("Last sync")).toHaveAttribute("data-reported", "false");
-        expect(fact("Last sync").querySelector("dd")?.textContent).toBe("Not reported");
+        expect(fact("Last sync").querySelector("dd")?.textContent).toBe("Unknown");
     });
 
     it("holds the approved sentence and the served caveats in the inset", () => {

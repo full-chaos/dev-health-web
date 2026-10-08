@@ -145,7 +145,7 @@ describe("Diagnose overview layout (approved prototype diagnoseHub, CHAOS-8065)"
         expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
             "Code · Code churn1,320,441 · Critical",
             "Complexity · Avg complexity121.3 · High",
-            "Landscape · Bus factorNot reported",
+            "Landscape · Bus factorUnknown",
         ]);
     });
 
@@ -160,6 +160,6 @@ describe("Diagnose overview layout (approved prototype diagnoseHub, CHAOS-8065)"
         expect(evidencePanelSpy).not.toHaveBeenCalled();
         const row = within(screen.getByRole("dialog")).getByTestId("evidence-fact");
         expect(row).toHaveAttribute("data-reported", "false");
-        expect(row).toHaveTextContent("Not reported");
+        expect(row).toHaveTextContent("Unknown");
     });
 });

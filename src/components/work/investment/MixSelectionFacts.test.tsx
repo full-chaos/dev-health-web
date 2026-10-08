@@ -37,7 +37,7 @@ describe("MixSelectionFacts (one component for the treemap cell and the table ro
         const facts = screen.getByTestId("facts");
         expect(facts).not.toHaveTextContent("work units");
         expect(facts).not.toHaveTextContent("%");
-        expect(facts).toHaveTextContent("Not reported");
+        expect(facts).toHaveTextContent("Unknown");
     });
 
     it("a subcategory adds its own fact", () => {
