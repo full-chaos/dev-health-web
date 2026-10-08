@@ -120,7 +120,7 @@ export function InvestmentMixSection({
     );
 
     // A treemap cell (or a column head) opens the ONE shared evidence drawer for that theme or
-    // subcategory. The drawer shows the served effort, the share and the evidence quality of the
+    // subcategory. The drawer shows the served effort and the share of the
     // node, and its footer links to the Work Graph for it. The selection stays marked while the
     // drawer is open and is cleared when it closes.
     const handleTreemapSelection = useCallback(
@@ -131,7 +131,6 @@ export function InvestmentMixSection({
                       themeKey?: string;
                       categoryId?: string;
                       categoryLabel?: string;
-                      qualityValue?: number;
                   })
                 | undefined;
 
@@ -148,14 +147,6 @@ export function InvestmentMixSection({
                     : `theme:${themeKey ?? node.name}`;
 
             const value = typeof nodeData?.value === "number" ? nodeData.value : undefined;
-            // The theme quality is the served `evidence_quality_distribution[theme]`; a
-            // subcategory carries its own. Absent means not served, never zero.
-            const quality =
-                nodeType === "subcategory"
-                    ? nodeData?.qualityValue
-                    : themeKey
-                      ? investmentMix?.evidence_quality_distribution?.[themeKey]
-                      : undefined;
             const workGraphUrl = themeKey
                 ? buildInvestmentWorkGraphUrl({
                       filters,
@@ -175,7 +166,6 @@ export function InvestmentMixSection({
                         value={value}
                         total={mixTotalValue}
                         unit={investmentMix?.unit?.replace(/_/g, " ") ?? effortUnit}
-                        quality={typeof quality === "number" ? quality : undefined}
                     />
                 ),
                 footer: workGraphUrl ? (

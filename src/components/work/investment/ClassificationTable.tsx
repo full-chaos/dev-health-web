@@ -49,11 +49,10 @@ export function ClassificationTable({
     const servedUnit = investmentMix.unit?.replace(/_/g, " ");
     const unit = servedUnit ?? effortUnit;
 
-    // The row's Evidence action opens the ONE shared drawer with the served effort, share and
-    // evidence quality of the theme (the same facts a treemap cell shows).
+    // The row's Evidence action opens the ONE shared drawer with the served effort and share
+    // of the theme (the same facts a treemap cell shows).
     const openThemeEvidence = (themeKey: string, value: number) => {
         const themeLabel = titleCase(themeKey);
-        const quality = investmentMix.evidence_quality_distribution?.[themeKey];
         const workGraphUrl = buildInvestmentWorkGraphUrl({
             filters,
             role,
@@ -69,7 +68,6 @@ export function ClassificationTable({
                     value={value}
                     total={total}
                     unit={unit}
-                    quality={typeof quality === "number" ? quality : undefined}
                 />
             ),
             footer: (

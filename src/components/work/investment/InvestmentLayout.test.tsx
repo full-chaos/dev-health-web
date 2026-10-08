@@ -160,7 +160,14 @@ const mix = {
         "feature_delivery.enablement": 15,
         "quality.bugfix": 40,
     },
-    evidence_quality_distribution: { "feature_delivery.roadmap": 0.42, quality: 0.8 },
+    // The served shape: org-wide band counts keyed by band, never by theme.
+    evidence_quality_distribution: {
+        high: 35,
+        moderate: 1353,
+        low: 973,
+        very_low: 1694,
+        unknown: 0,
+    },
     unit: "delivery_units",
 };
 
@@ -235,7 +242,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         ).toEqual(["Feature Delivery60%", "Quality40%"]);
     });
 
-    it("a cell opens the ONE shared drawer with the served effort, share and quality, and the Work Graph link", () => {
+    it("a cell opens the ONE shared drawer with the served effort and share (no quality row), and the Work Graph link", () => {
         view("overview", data());
         expect(screen.queryByRole("dialog")).toBeNull();
         const cell = screen
@@ -253,7 +260,6 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
             "SubcategoryRoadmap",
             "Effort45 delivery units",
             "Share of the mix45%",
-            `Average evidence quality${formatQuality(0.42)}`,
         ]);
         const link = drawer.getByTestId("mix-selection-work-graph");
         expect(link).toHaveTextContent("Open Work Graph");
@@ -267,9 +273,8 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         expect(screen.queryByRole("button", { name: "All themes" })).toBeNull();
     });
 
-    it("a quality the mix does not serve is 'Not reported' in the drawer, never a number", () => {
+    it("the theme drawer has no evidence-quality row: the API serves quality as org-wide band counts, never per theme", () => {
         view("overview", data());
-        // Theme "feature_delivery" has no entry in the served quality distribution.
         fireEvent.click(screen.getAllByTestId("column-treemap-head")[0]);
         const rows = within(screen.getByRole("dialog"))
             .getAllByTestId("evidence-fact")
@@ -278,7 +283,6 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
             "ThemeFeature Delivery",
             "Effort60 delivery units",
             "Share of the mix60%",
-            "Average evidence qualityUnknown",
         ]);
     });
 
