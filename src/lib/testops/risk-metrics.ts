@@ -24,6 +24,7 @@ const RiskMetricsSchema = z.object({
     quadrantData: z.array(
         z.object({
             id: z.string(),
+            name: z.string().nullish(),
             pipelineSuccessRate: z.number().nullish(),
             testPassRate: z.number().nullish(),
         }),
@@ -42,7 +43,12 @@ export type RiskMetricsResult = {
     pipeline_stability?: number;
     timeseries: { date: string; riskScore: number }[];
     quality_drag_breakdown: { category: string; hours: number }[];
-    quadrant_data: { id: string; pipeline_success_rate?: number; test_pass_rate?: number }[];
+    quadrant_data: {
+        id: string;
+        name?: string;
+        pipeline_success_rate?: number;
+        test_pass_rate?: number;
+    }[];
     confidence_spark: { ts: string; value: number }[];
     confidence_delta?: number;
     drag_spark: { ts: string; value: number }[];
@@ -64,6 +70,7 @@ export function mapRiskMetricsPayload(value: unknown): RiskMetricsResult | null 
         quality_drag_breakdown: risk.qualityDragBreakdown,
         quadrant_data: risk.quadrantData.map((item) => ({
             id: item.id,
+            name: item.name ?? undefined,
             pipeline_success_rate:
                 item.pipelineSuccessRate == null ? undefined : item.pipelineSuccessRate * 100,
             test_pass_rate: item.testPassRate == null ? undefined : item.testPassRate * 100,

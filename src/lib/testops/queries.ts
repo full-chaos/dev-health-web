@@ -87,6 +87,7 @@ query TestOpsRisk($orgId: String!, $input: TestOpsRiskInput!) {
     }
     quadrantData {
       id
+      name
       pipelineSuccessRate
       testPassRate
     }

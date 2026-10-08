@@ -78,6 +78,21 @@ describe("AIAttributionDashboard", () => {
         );
     });
 
+    it("shows the served pull request title and team name (CHAOS-8954)", () => {
+        const [row] = overview().rows;
+        mockUseAIAttributionOverview.mockReturnValue({
+            data: overview({ rows: [{ ...row, subjectTitle: "Fix login", teamName: "Platform" }] }),
+            fetching: false,
+            error: undefined,
+        });
+
+        const { container } = render(<AIAttributionDashboard filter={filter} />);
+
+        expect(screen.getByText("Pull request · Fix login")).toBeInTheDocument();
+        expect(screen.getByText("Platform")).toBeInTheDocument();
+        expect(container.textContent).not.toContain("team-1");
+    });
+
     it("renders an honest no-data state when nothing has resolved yet", () => {
         mockUseAIAttributionOverview.mockReturnValue({
             data: overview({ mix: [], rows: [], totalAttributed: 0, dataAvailable: false }),

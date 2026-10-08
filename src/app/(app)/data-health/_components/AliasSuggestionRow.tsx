@@ -1,7 +1,7 @@
 "use client";
 
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
-import { UNRESOLVED } from "@/lib/labels/unresolved";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 type AliasSuggestion = {
@@ -11,6 +11,7 @@ type AliasSuggestion = {
         displayName?: string | null;
     };
     suggestedCanonicalId: string;
+    suggestedCanonicalName?: string | null;
     confidence: number;
 };
 
@@ -57,7 +58,9 @@ export function AliasSuggestionRow({ suggestion }: { suggestion: AliasSuggestion
                     <div className="text-xs text-(--ink-muted) mb-1 uppercase tracking-wider">
                         Suggested Canonical
                     </div>
-                    <div className="font-mono text-sm text-(--accent-text)">{UNRESOLVED}</div>
+                    <div className="font-mono text-sm text-(--accent-text)">
+                        {nameOrUnresolved(suggestion.suggestedCanonicalName)}
+                    </div>
                 </div>
             </div>
 

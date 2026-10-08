@@ -720,6 +720,7 @@ query ImproveOpportunities($scope: AIScopeInput, $limit: Int! = 10, $windowDays:
       threshold
       unit
       thresholdDirection
+      entityDisplayName
     }
   }
 }
@@ -968,6 +969,10 @@ query AIGovernanceSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope
       repoId
       observedAt
       evidence
+      repoName
+      teamName
+      subjectTitle
+      ruleName
     }
   }
 }
@@ -1030,6 +1035,9 @@ query AIAttributionOverview($orgId: String!, $dateRange: AIDateRangeInput!, $sco
       evidence
       observedAt
       teamId
+      repoName
+      teamName
+      subjectTitle
     }
   }
 }

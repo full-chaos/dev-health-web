@@ -36,6 +36,7 @@ describe("IMPROVE_OPPORTUNITIES_QUERY", () => {
             "threshold",
             "unit",
             "thresholdDirection",
+            "entityDisplayName",
         ]);
     });
 });

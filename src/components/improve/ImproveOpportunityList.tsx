@@ -9,7 +9,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { DataState } from "@/components/ui/DataState";
 import { formatNumber } from "@/lib/formatters";
 import type { ImproveOpportunity } from "@/lib/graphql/__generated__/types";
-import { resolveEntityLabel } from "@/lib/labels/entityLabel";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { STATUS_PILL } from "@/lib/statusPill";
 
 export const KIND_LABELS: Record<string, string> = {
@@ -46,7 +46,7 @@ function SeverityBadge({ severity }: { severity: string }) {
 
 /** The name when the page has one; otherwise "Unresolved" (the id is not shown). */
 function EntityCell({ item }: { item: ImproveOpportunity }) {
-    const entity = resolveEntityLabel(item.entityId);
+    const entity = { label: nameOrUnresolved(item.entityDisplayName) };
     return (
         <span>
             <span className="text-(--ink-muted)">{item.entityType} </span>
@@ -114,7 +114,7 @@ function ThresholdCell({ item }: { item: ImproveOpportunity }) {
 /** The row's served fields in the shared drawer: the detection, then each evidence reference. */
 function RowEvidenceButton({ item }: { item: ImproveOpportunity }) {
     const evidence = useEvidenceDrawer();
-    const entity = resolveEntityLabel(item.entityId);
+    const entity = { label: nameOrUnresolved(item.entityDisplayName) };
     const entityText = `${item.entityType} ${entity.label}`;
     return (
         <Button

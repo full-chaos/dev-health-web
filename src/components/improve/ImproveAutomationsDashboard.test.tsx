@@ -48,7 +48,11 @@ describe("ImproveAutomationsDashboard", () => {
                 totalCount: 3,
                 opportunities: [
                     item(),
-                    item({ opportunityId: "o2", entityId: "repo-web" }),
+                    item({
+                        opportunityId: "o2",
+                        entityId: "repo-web",
+                        entityDisplayName: "full-chaos/web",
+                    }),
                     item({ opportunityId: "o3", kind: "HIGH_CHURN", entityId: "repo-ops" }),
                 ],
             }),
@@ -282,7 +286,14 @@ describe("ImproveAutomationsDashboard", () => {
     it("shows Unresolved for an id without a name, the id nowhere", () => {
         hook.mockReturnValue(
             result({
-                opportunities: [item(), item({ opportunityId: "o2", entityId: "repo-web" })],
+                opportunities: [
+                    item(),
+                    item({
+                        opportunityId: "o2",
+                        entityId: "repo-web",
+                        entityDisplayName: "full-chaos/web",
+                    }),
+                ],
             }),
         );
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
@@ -291,8 +302,9 @@ describe("ImproveAutomationsDashboard", () => {
         expect(rows[0]).toHaveTextContent("Unresolved");
         expect(rows[0].innerHTML).not.toContain("3f2a9c1e-1111-4222-8333-444455556666");
         expect(rows[0]).not.toHaveTextContent("3f2a9c1e-1111-4222-8333-444455556666");
-        // A readable name is shown as is.
-        expect(within(rows[1]).getByText(/repo-web/)).toBeInTheDocument();
+        // The served entityDisplayName is shown, the id is not.
+        expect(within(rows[1]).getByText(/full-chaos\/web/)).toBeInTheDocument();
+        expect(rows[1]).not.toHaveTextContent("repo-web");
         expect(rows[1]).not.toHaveTextContent("Unresolved");
     });
 
