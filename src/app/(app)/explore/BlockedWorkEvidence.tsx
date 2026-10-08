@@ -9,6 +9,9 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricParts, formatNumber } from "@/lib/formatters";
 import type { BlockedWorkIssuesResponse } from "@/lib/types";
 
+/** Shown when the API serves no team name; the team key stays in the cell tooltip only. */
+const UNRESOLVED_TEAM = "Unresolved";
+
 type BlockedWorkEvidenceProps = {
     /** The served metric label ("Blocked Work"). */
     label: string;
@@ -94,8 +97,11 @@ export function BlockedWorkItemsTable({
                             <td className="border-b border-(--card-stroke) px-3 py-3.25">
                                 {item.status}
                             </td>
-                            <td className="border-b border-(--card-stroke) px-3 py-3.25">
-                                {item.team_id ?? NOT_REPORTED}
+                            <td
+                                className="border-b border-(--card-stroke) px-3 py-3.25"
+                                title={item.team_id ?? undefined}
+                            >
+                                {item.team_name || UNRESOLVED_TEAM}
                             </td>
                         </tr>
                     ))}
