@@ -274,6 +274,15 @@ jobs:
                   WEB_CREDENTIAL_CLASSES_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.schema.json
               run: bash ci/run_tests.sh auth-profiles-gate
             - run: bash ci/run_tests.sh quality
+            # CHAOS-8789: diagnostic only. Splits lint output into changed-path
+            # findings and unchanged baseline in the job summary. The quality
+            # step above stays the gate; this step fails only on a lint error
+            # on a changed path.
+            - name: Lint baseline diagnostics (CHAOS-8789)
+              if: ${{ !cancelled() }}
+              env:
+                  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+              run: node scripts/ci-baseline-diagnostics.mjs lint
 
     build:
         name: Build
@@ -305,7 +314,16 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - run: bash ci/run_tests.sh unit
+            - name: Unit tests
+              run: |
+                  set -o pipefail
+                  bash ci/run_tests.sh unit 2>&1 | tee "$RUNNER_TEMP/unit.log"
+            # CHAOS-8789: diagnostic only, never fails the job.
+            - name: Rolldown parse baseline diagnostics (CHAOS-8789)
+              if: ${{ !cancelled() }}
+              env:
+                  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+              run: node scripts/ci-baseline-diagnostics.mjs parse "$RUNNER_TEMP/unit.log"
             - name: Upload coverage lcov
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
