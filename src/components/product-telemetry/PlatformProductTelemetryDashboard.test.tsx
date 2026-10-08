@@ -105,6 +105,30 @@ describe("PlatformProductTelemetryDashboard", () => {
         expect(screen.queryByRole("link", { name: "Unresolved" })).toBeNull();
     });
 
+    it("labels an org with a slug but no name Unresolved, never the slug", () => {
+        render(
+            <PlatformProductTelemetryDashboard
+                dashboard={{
+                    ...baseDashboard,
+                    topOrgs: [
+                        {
+                            orgSlug: "acme-slug",
+                            orgIdHash: "hash_without_name_1234567890",
+                            events: 6,
+                            sessions: 1,
+                            anonymousUsers: 1,
+                        },
+                    ],
+                }}
+                startDate={startDate}
+                endDate={endDate}
+            />,
+        );
+
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+        expect(screen.queryByText("acme-slug")).toBeNull();
+    });
+
     it("renders an empty state when no top orgs exist", () => {
         render(
             <PlatformProductTelemetryDashboard
