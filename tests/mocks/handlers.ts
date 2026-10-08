@@ -2880,10 +2880,10 @@ export const handlers = [
                 { day: "2025-01-08", value: 38 },
                 { day: "2025-01-15", value: 36 },
             ],
-            breakdown: {
+            breakdowns: {
                 by_repo: [
-                    { repo: "dev-health-ops", value: 30 },
-                    { repo: "dev-health-web", value: 42 },
+                    { label: "dev-health-ops", value: 30 },
+                    { label: "dev-health-web", value: 42 },
                 ],
             },
         }),
