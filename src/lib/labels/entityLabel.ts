@@ -44,7 +44,7 @@ export interface ResolveEntityLabelOptions {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const HEX32_RE = /^[0-9a-f]{32}$/i;
+const HEX_HASH_RE = /^(?=.*\d)(?=.*[a-f])[0-9a-f]{8,}$/i;
 const KNOWN_PREFIXES = ["repo:", "org:", "team:", "service:", "user:", "author:", "file:"] as const;
 
 function stripPrefix(id: string): { prefix: string; rest: string } {
@@ -64,7 +64,7 @@ function lastSegment(s: string): string {
 }
 
 function isUuidLike(s: string): boolean {
-    return UUID_RE.test(s) || HEX32_RE.test(s);
+    return UUID_RE.test(s) || HEX_HASH_RE.test(s);
 }
 
 /**
