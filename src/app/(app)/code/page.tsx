@@ -103,7 +103,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     }));
 
     // Churn per repository, from the churn explain contributors. It is churn, NOT the hotspot score
-    // (a different metric: the heatmap's "hotspot score"), so it never fills the Hotspot score column.
+    // (a different metric: the heatmap's "hotspot score"), so it never fills a repository hotspot score (the column returns with CHAOS-8488).
     const contributorOf = (repo: { repoId: string; repoName: string }) =>
         (churnExplain?.contributors ?? []).find(
             (item) => item.id === repo.repoId || item.label === repo.repoName,
@@ -241,7 +241,6 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                         <thead className="text-label-caps uppercase text-(--ink-muted)">
                             <tr>
                                 <th className="py-2 text-left font-medium">Repository</th>
-                                <th className="py-2 text-left font-medium">Hotspot score</th>
                                 <th className="py-2 text-left font-medium">Bus factor</th>
                                 <th className="py-2 text-left font-medium">Churn</th>
                                 <th className="py-2 text-left font-medium">File-change samples</th>
@@ -255,13 +254,6 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                             {repoRows.map(({ repo, facts }) => (
                                 <tr key={repo.repoId} className="border-t border-(--card-stroke)">
                                     <td className="py-2.5">{repo.repoName}</td>
-                                    {/* Not served per repository (the heatmap has a score per file, not per repo). */}
-                                    <td
-                                        data-testid="repo-hotspot-score"
-                                        className="py-2.5 text-(--ink-muted)"
-                                    >
-                                        Not reported
-                                    </td>
                                     <td className="py-2.5 tabular-nums">{repo.value}</td>
                                     <td
                                         data-testid="repo-churn"
