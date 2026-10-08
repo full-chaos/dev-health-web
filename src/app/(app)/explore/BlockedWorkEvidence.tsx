@@ -7,7 +7,6 @@ import { Inset } from "@/components/ui/Inset";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricParts, formatNumber } from "@/lib/formatters";
-import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import type { BlockedWorkIssuesResponse } from "@/lib/types";
 
@@ -36,8 +35,9 @@ type BlockedWorkItemsTableProps = {
 const itemLabel = (count: number) => `${formatNumber(count)} ${count === 1 ? "item" : "items"}`;
 
 /**
- * The API serves item identity only. Keep this table separate from generic
- * drilldown rendering so a missing title, URL, or duration is never invented.
+ * The API serves item identity, status and title. Keep this table separate from generic
+ * drilldown rendering so a missing title, URL, or duration is never invented; a null title
+ * reads "Unresolved", never the work item id.
  */
 export function BlockedWorkItemsTable({
     blockedIssues,
@@ -88,7 +88,7 @@ export function BlockedWorkItemsTable({
                             data-testid="blocked-work-item"
                         >
                             <td className="border-b border-(--card-stroke) px-3 py-3.25 font-medium">
-                                {chartEntityLabel(item.work_item_id)}
+                                {nameOrUnresolved(item.title)}
                             </td>
                             <td className="border-b border-(--card-stroke) px-3 py-3.25">
                                 {item.provider}

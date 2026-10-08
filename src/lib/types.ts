@@ -272,13 +272,15 @@ export type DrilldownResponse = {
 
 /**
  * The endpoint-specific blocked-work issue drilldown contract. The API only
- * serves identity and status for these items; it does not serve per-item
- * duration, title, or source URL.
+ * serves identity, status and title for these items; it does not serve per-item
+ * duration or source URL.
  */
 export type BlockedWorkIssue = {
     work_item_id: string;
     provider: string;
     status: "blocked";
+    /** The work item's served title; null or absent when the API holds none. */
+    title?: string | null;
     team_id: string | null;
     /** The team's served display name; null or absent when the API holds none. */
     team_name?: string | null;
