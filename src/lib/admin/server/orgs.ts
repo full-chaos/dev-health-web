@@ -2,11 +2,13 @@
 
 import { adminApi, AdminApiError } from "../api";
 import type { ActionResult } from "@/lib/result";
+import { ORG_MEMBER_ROLES } from "../types";
 import type {
     Organization,
     OrganizationCreate,
     OrganizationUpdate,
     Membership,
+    OrgMemberRole,
     PlatformStats,
     AuditLogListResponse,
     AuditLogFilter,
@@ -219,6 +221,47 @@ export async function listOrgMembers(orgId: string): Promise<ActionResult<Member
     return withErrorHandling(async () => {
         const token = await requireSuperuserToken();
         return adminApi.orgs.members.list(orgId, token);
+    });
+}
+
+function requireMemberRole(role: string): OrgMemberRole {
+    if (!(ORG_MEMBER_ROLES as readonly string[]).includes(role)) {
+        throw new AdminApiError(422, "Unprocessable Entity", `Unknown role "${role}"`);
+    }
+    return role as OrgMemberRole;
+}
+
+/** Adds an existing user, found by exact email, to an organization. */
+export async function addOrgMemberByEmail(
+    orgId: string,
+    email: string,
+    role: string,
+): Promise<ActionResult<Membership>> {
+    return withErrorHandling(async () => {
+        const token = await requireSuperuserToken();
+        const memberRole = requireMemberRole(role);
+        const wanted = email.trim().toLowerCase();
+        if (!wanted) {
+            throw new AdminApiError(422, "Unprocessable Entity", "Email is required");
+        }
+        const candidates = await adminApi.users.list(token, undefined, wanted);
+        const user = candidates.find((u) => u.email.toLowerCase() === wanted);
+        if (!user) {
+            throw new AdminApiError(404, "Not Found", `No user with email ${email.trim()}`);
+        }
+        return adminApi.orgs.members.add(orgId, { user_id: user.id, role: memberRole }, token);
+    });
+}
+
+export async function changeOrgMemberRole(
+    orgId: string,
+    userId: string,
+    role: string,
+): Promise<ActionResult<Membership>> {
+    return withErrorHandling(async () => {
+        const token = await requireSuperuserToken();
+        const memberRole = requireMemberRole(role);
+        return adminApi.orgs.members.updateRole(orgId, userId, { role: memberRole }, token);
     });
 }
 

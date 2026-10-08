@@ -701,6 +701,9 @@ export interface Membership {
     updated_at: string;
 }
 
+export const ORG_MEMBER_ROLES = ["owner", "admin", "member", "viewer"] as const;
+export type OrgMemberRole = (typeof ORG_MEMBER_ROLES)[number];
+
 export interface MembershipCreate {
     user_id: string;
     role?: string;

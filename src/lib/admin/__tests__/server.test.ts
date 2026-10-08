@@ -11,6 +11,8 @@ import {
     listUsers,
     listPlatformUsers,
     createPlatformUser,
+    addOrgMemberByEmail,
+    changeOrgMemberRole,
     createCredential,
     deleteCredential,
     listCredentials,
@@ -712,6 +714,109 @@ describe("createPlatformUser (CHAOS-8967)", () => {
         expect(url).toContain("/api/v1/admin/users");
         expect(options?.method).toBe("POST");
         expect((options?.headers as Record<string, string>)["X-Org-Id"]).toBeUndefined();
+        fetchSpy.mockRestore();
+    });
+});
+
+describe("org membership actions (CHAOS-8994)", () => {
+    const superSession = () =>
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: true } });
+    const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+    beforeEach(() => {
+        vi.resetAllMocks();
+        vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+    });
+
+    it("refuses a non-superuser without calling the backend", async () => {
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: false } });
+        const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(json({}));
+
+        const added = await addOrgMemberByEmail("org-9", "a@b.co", "member");
+        const changed = await changeOrgMemberRole("org-9", "u-2", "admin");
+
+        expect(added.error).toBeDefined();
+        expect(changed.error).toBeDefined();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        fetchSpy.mockRestore();
+    });
+
+    it("looks the user up by email, then adds with the role and no org header", async () => {
+        superSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValueOnce(
+                json([
+                    { id: "u-x", email: "ab@b.co" },
+                    { id: "u-2", email: "A@B.co" },
+                ]),
+            )
+            .mockResolvedValueOnce(json({ id: "m-1", user_id: "u-2", role: "viewer" }, 201));
+
+        const result = await addOrgMemberByEmail("org-9", " a@b.co ", "viewer");
+
+        expect(result.error).toBeUndefined();
+        const [lookupUrl] = fetchSpy.mock.calls[0] as [string];
+        expect(lookupUrl).toContain("/api/v1/admin/users?q=a%40b.co");
+        const [url, options] = fetchSpy.mock.calls[1] as [string, RequestInit];
+        expect(url).toContain("/api/v1/admin/orgs/org-9/members");
+        expect(options.method).toBe("POST");
+        expect(JSON.parse(options.body as string)).toEqual({ user_id: "u-2", role: "viewer" });
+        expect((options.headers as Record<string, string>)["X-Org-Id"]).toBeUndefined();
+        fetchSpy.mockRestore();
+    });
+
+    it("says so when no user has that email and does not add", async () => {
+        superSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValueOnce(json([{ id: "u-x", email: "other@b.co" }]));
+
+        const result = await addOrgMemberByEmail("org-9", "a@b.co", "member");
+
+        expect(result.error).toContain("No user with email a@b.co");
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        fetchSpy.mockRestore();
+    });
+
+    it("shows the backend error for a duplicate member", async () => {
+        superSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValueOnce(json([{ id: "u-2", email: "a@b.co" }]))
+            .mockResolvedValueOnce(json({ detail: "User is already a member" }, 409));
+
+        const result = await addOrgMemberByEmail("org-9", "a@b.co", "member");
+
+        expect(result.data).toBeUndefined();
+        expect(result.error).toContain("already a member");
+        fetchSpy.mockRestore();
+    });
+
+    it("rejects an unknown role before any backend call", async () => {
+        superSession();
+        const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(json({}));
+
+        const result = await addOrgMemberByEmail("org-9", "a@b.co", "root");
+
+        expect(result.error).toContain("Unknown role");
+        expect(fetchSpy).not.toHaveBeenCalled();
+        fetchSpy.mockRestore();
+    });
+
+    it("changes a role with PATCH", async () => {
+        superSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(json({ id: "m-1", user_id: "u-2", role: "admin" }));
+
+        const result = await changeOrgMemberRole("org-9", "u-2", "admin");
+
+        expect(result.error).toBeUndefined();
+        const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
+        expect(url).toContain("/api/v1/admin/orgs/org-9/members/u-2");
+        expect(options.method).toBe("PATCH");
+        expect(JSON.parse(options.body as string)).toEqual({ role: "admin" });
         fetchSpy.mockRestore();
     });
 });
