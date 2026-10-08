@@ -2316,7 +2316,7 @@ export type SignalAttributionSourceCount = {
   source: TeamAttributionSource;
 };
 
-/** Org-level source health: one row per active sync configuration of the caller's organization (CHAOS-8906). A member read, not an operator view: provider, scope, the last successful sync time, and the last failure as a time and a closed stage code. Never an error message. */
+/** Org-level source health (CHAOS-8906): one row per sync configuration of the caller's organization that is active or carries a failure newer than its last successful sync; every integration with an active configuration shows at least one row. A member read, not an operator view: provider, scope, the last successful sync time, and the last failure as a time and a closed stage code. Never an error message. */
 export type SourceHealth = {
   __typename?: 'SourceHealth';
   /** Set when the latest sync of the source failed; null when it did not. */
