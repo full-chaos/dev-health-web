@@ -1,6 +1,6 @@
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const HEX_RUN = "[0-9a-f]{8,}";
-const PROVIDERS = "jira|gh|github|gitlab|linear|bitbucket|ado|azure|pagerduty|opsgenie";
+const PROVIDERS = "jira|gh|gl|github|gitlab|linear|ms-teams|bitbucket|ado|azure|pagerduty|opsgenie";
 const PROVIDER_KEYED_RE = new RegExp(`(?<![0-9a-z])(?:${PROVIDERS}):[^\\s]`, "i");
 const ID_TOKEN_RE = new RegExp(`(?<![0-9a-z])(?:${UUID}|${HEX_RUN})(?![0-9a-z])`, "i");
 

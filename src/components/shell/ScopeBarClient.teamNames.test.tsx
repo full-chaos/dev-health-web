@@ -95,6 +95,53 @@ describe("scope-bar team picker labels", () => {
     });
 });
 
+describe.each([
+    ["jira:<uuid>", "jira:44444444-4444-4444-8444-444444444444"],
+    ["linear:KEY", "linear:ENG"],
+    ["gl:slug", "gl:full-chaos/platform"],
+])("scope-bar team picker with a %s team id (CHAOS-8939)", (_form, id) => {
+    beforeEach(async () => {
+        optionsMock.value = {
+            ...optionsMock.value,
+            teams: [id, ID_UNNAMED],
+            team_names: { [id]: "Platform" },
+        };
+    });
+
+    it("lists the served name, Unresolved for an unnamed one, and writes the prefixed id", async () => {
+        const user = userEvent.setup();
+        const { container } = render(<ScopeBarClient {...HOME} />);
+
+        await user.click(screen.getByRole("button", { name: /team/i }));
+        expect(screen.getByLabelText("Unresolved")).toBeTruthy();
+        expect(container.textContent).not.toContain(id);
+        await user.click(screen.getByLabelText("Platform"));
+
+        await waitFor(() => expect(scopeBarUrl.lastFilter().scope.ids).toEqual([id]));
+    });
+
+    it("labels a team restored from the URL by its name, never its prefixed id", () => {
+        const f = btoa(
+            JSON.stringify({
+                how: {},
+                scope: { ids: [id], level: "team" },
+                time: { compare_days: 14, range_days: 14 },
+                what: {},
+                who: {},
+                why: {},
+            }),
+        )
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, "");
+        scopeBarUrl.reset(`f=${f}`);
+        const { container } = render(<ScopeBarClient {...HOME} />);
+
+        expect(container.textContent).toContain("Platform");
+        expect(container.textContent).not.toContain(id);
+    });
+});
+
 describe("useFilterOptions", () => {
     it("keeps the served team_names", async () => {
         vi.mocked(apiClient.getJson).mockResolvedValue({
