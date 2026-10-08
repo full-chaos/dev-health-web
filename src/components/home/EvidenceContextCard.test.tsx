@@ -64,7 +64,13 @@ const fact = (label: string) => {
 // The "Evidence & context" card of Home (CHAOS-8063): approved prototype `app.js:100`.
 describe("EvidenceContextCard", () => {
     it("has the approved title, description and the three fact rows in order (no Identity confidence row)", () => {
-        render(<EvidenceContextCard home={makeHome()} />);
+        render(
+            <EvidenceContextCard
+                home={makeHome({
+                    freshness: { ...makeHome().freshness, sources: { github: "ok" } },
+                })}
+            />,
+        );
         expect(screen.getByRole("heading", { name: "Evidence & context" })).toBeInTheDocument();
         expect(screen.getByText("Keep uncertainty beside the claim.")).toBeInTheDocument();
         const labels = screen
@@ -73,12 +79,27 @@ describe("EvidenceContextCard", () => {
         expect(labels).toEqual(["Source", "Signal quality", "Last sync"]);
     });
 
-    it("reads Not reported for Source: the Home API does not serve it", () => {
+    it('Source is the served providers, sorted and joined with ", " (any status, never a raw id)', () => {
+        render(
+            <EvidenceContextCard
+                home={makeHome({
+                    freshness: {
+                        ...makeHome().freshness,
+                        sources: { jira: "down", github: "ok", gitlab: "degraded" },
+                    },
+                })}
+            />,
+        );
+        expect(fact("Source")).toHaveAttribute("data-reported", "true");
+        expect(fact("Source").querySelector("dd")?.textContent).toBe("github, gitlab, jira");
+    });
+
+    it("draws no Source row when no provider is served", () => {
         render(<EvidenceContextCard home={makeHome()} />);
-        for (const label of ["Source"]) {
-            expect(fact(label)).toHaveAttribute("data-reported", "false");
-            expect(fact(label)).toHaveTextContent("Unknown");
-        }
+        const labels = screen
+            .getAllByTestId("evidence-fact")
+            .map((row) => row.querySelector("dt")?.textContent);
+        expect(labels).toEqual(["Signal quality", "Last sync"]);
     });
 
     it.each([
@@ -166,7 +187,7 @@ describe("EvidenceContextCard", () => {
 
         render(<EvidenceContextCard home={null} />);
         const rows = screen.getAllByTestId("evidence-fact");
-        expect(rows).toHaveLength(3);
+        expect(rows).toHaveLength(2);
         for (const row of rows) expect(row).toHaveAttribute("data-reported", "false");
     });
 });

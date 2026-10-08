@@ -23,8 +23,9 @@ const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1
  * "Evidence & context" card of Home, beside the ranked signals (approved prototype
  * `section('Evidence & context', fact(...))`, `app.js:100`).
  *
- * Fact rows, each from a served field or "Not reported" (the web fills no value in):
- * - Source: not served on the Home response (backend ticket CHAOS-8102).
+ * Fact rows, each from a served field (the web fills no value in):
+ * - Source: the provider names in `freshness.sources` (every served provider, whatever its
+ *   status), sorted and ", "-joined. No provider served: no row.
  * - Signal quality: the primary signal's served `confidence`. The API derives it from that
  *   signal's evidence count and the coverage (ops `internal/queryapi/home/signals.go`,
  *   `confidenceFromEvidence`), so it is the evidence quality of the signal.
@@ -36,6 +37,10 @@ const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1
 export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
     const quality = home?.signals?.[0]?.confidence;
     const lastSync = home?.freshness.latest_successful_sync_at;
+    // Org scope: the providers behind the data, sorted. An empty list serves no Source row.
+    const source = Object.keys(home?.freshness.sources ?? {})
+        .sort()
+        .join(", ");
     const caveats = home?.data_confidence?.caveats ?? [];
 
     return (
@@ -45,7 +50,7 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
             data-testid="evidence-context-card"
         >
             <EvidenceFactList aria-label="Evidence and context" testId="evidence-context-facts">
-                <EvidenceFact label="Source" />
+                {source ? <EvidenceFact label="Source" value={source} /> : null}
                 <EvidenceFact
                     label="Signal quality"
                     value={
