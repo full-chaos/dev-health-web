@@ -14,7 +14,7 @@ import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { getServerEnv } from "@/lib/config";
-import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { isFiniteNumber, normalizePercent } from "@/lib/guards/numbers";
 
 type RiskPageProps = {
@@ -102,7 +102,12 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 
     const quadrantPoints = riskData.quadrant_data
         ? riskData.quadrant_data.flatMap(
-              (item: { id: string; pipeline_success_rate?: number; test_pass_rate?: number }) => {
+              (item: {
+                  id: string;
+                  name?: string;
+                  pipeline_success_rate?: number;
+                  test_pass_rate?: number;
+              }) => {
                   if (
                       !isFiniteNumber(item.pipeline_success_rate) ||
                       !isFiniteNumber(item.test_pass_rate)
@@ -112,7 +117,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                   return [
                       {
                           entity_id: item.id,
-                          entity_label: chartEntityLabel(item.id),
+                          entity_label: nameOrUnresolved(item.name),
                           x: normalizePercent(item.pipeline_success_rate),
                           y: normalizePercent(item.test_pass_rate),
                           window_start: startDate,

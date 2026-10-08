@@ -9,7 +9,7 @@ import { encodeAIFilter, type AIFilter } from "@/lib/filters/ai";
 import type { AiAttributionEvidenceRow } from "@/lib/graphql/__generated__/types";
 import { useAIAttributionOverview } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIAttributionBadge, attributionBucketForKind } from "./AIAttributionBadge";
-import { UNRESOLVED } from "@/lib/labels/unresolved";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { bucketLabel, formatPercent } from "./utils";
 
 const SUBJECT_TYPE_WORDS: Record<string, string> = {
@@ -208,7 +208,8 @@ export function AIAttributionDashboard({ filter }: AIAttributionDashboardProps) 
                                             data-testid="ai-attribution-evidence-row"
                                         >
                                             <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
-                                                {subjectTypeWord(row.subjectType)} · {UNRESOLVED}
+                                                {subjectTypeWord(row.subjectType)} ·{" "}
+                                                {nameOrUnresolved(row.subjectTitle)}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <AIAttributionBadge
@@ -223,7 +224,7 @@ export function AIAttributionDashboard({ filter }: AIAttributionDashboardProps) 
                                                 {row.provider}
                                             </td>
                                             <td className="px-4 py-3 text-(--ink-muted)">
-                                                {row.teamId ? UNRESOLVED : "—"}
+                                                {row.teamId ? nameOrUnresolved(row.teamName) : "—"}
                                             </td>
                                             <td className="px-4 py-3 text-(--ink-muted)">
                                                 {formatObservedAt(row.observedAt)}

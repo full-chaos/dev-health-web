@@ -22,4 +22,23 @@ describe("AliasSuggestionRow", () => {
         expect(button.className).not.toMatch(/blue-|text-white/);
         expect(screen.getByText("90% match")).toBeInTheDocument();
     });
+
+    it("shows the served canonical name, Unresolved when null, never the id (CHAOS-8954)", () => {
+        const make = (suggestedCanonicalName: string | null) => (
+            <AliasSuggestionRow
+                suggestion={{
+                    unmappedIdentity: { provider: "github", displayName: "Sample User" },
+                    suggestedCanonicalId: "9b2f6c1e-0000-4000-8000-000000000001",
+                    suggestedCanonicalName,
+                    confidence: 0.9,
+                }}
+            />
+        );
+        const { container, unmount } = render(make("Ada Lovelace"));
+        expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+        expect(container.textContent).not.toContain("9b2f6c1e");
+        unmount();
+        render(make(null));
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+    });
 });

@@ -16,7 +16,7 @@ export type DataHealthIdentityQueryVariables = Exact<{
 }>;
 
 
-export type DataHealthIdentityQuery = { dataHealth: { identityMapping: { unmappedCount: number, unmappedIdentities: Array<{ provider: string, email: string | null, displayName: string | null, observedCount: number | null }>, suggestedAliases: Array<{ suggestedCanonicalId: string, confidence: number, unmappedIdentity: { provider: string, email: string | null, displayName: string | null } }> } } };
+export type DataHealthIdentityQuery = { dataHealth: { identityMapping: { unmappedCount: number, unmappedIdentities: Array<{ provider: string, email: string | null, displayName: string | null, observedCount: number | null }>, suggestedAliases: Array<{ suggestedCanonicalId: string, suggestedCanonicalName: string | null, confidence: number, unmappedIdentity: { provider: string, email: string | null, displayName: string | null } }> } } };
 
 export type MetricLineageQueryVariables = Exact<{
   metricId: string | number;
@@ -86,6 +86,7 @@ export const DataHealthIdentityDocument = new TypedDocumentString(`
           displayName
         }
         suggestedCanonicalId
+        suggestedCanonicalName
         confidence
       }
     }

@@ -49,3 +49,27 @@ describe("AIViolationsList", () => {
         expect(screen.getByText("evidence 7")).toBeInTheDocument();
     });
 });
+
+describe("AIViolationsList served names (CHAOS-8954)", () => {
+    it("shows the served rule name and pull request title", () => {
+        render(
+            <AIViolationsList
+                violations={[
+                    { ...violation, ruleName: "Human review required", subjectTitle: "Fix login" },
+                ]}
+            />,
+        );
+        expect(screen.getByText("Human review required")).toBeInTheDocument();
+        expect(screen.getByText("Pull request · Fix login")).toBeInTheDocument();
+    });
+
+    it("shows Unresolved for a null title and never the pull request id", () => {
+        const { container } = render(
+            <AIViolationsList
+                violations={[{ ...violation, subjectId: "987654", subjectTitle: null }]}
+            />,
+        );
+        expect(screen.getByText("Pull request · Unresolved")).toBeInTheDocument();
+        expect(container.textContent).not.toContain("987654");
+    });
+});
