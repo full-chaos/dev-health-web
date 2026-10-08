@@ -31,6 +31,8 @@ export const CTA_LABELS = {
     viewOriginalSource: "View original source",
     /** Page header action: open the shared evidence drawer for the page as a whole. */
     viewEvidence: "View evidence",
+    /** Top bar entry: open the shared evidence drawer for the current page's evidence. */
+    sources: "Sources",
     /** Home Monitoring: link to the full diagnostic page of the chosen metric group. */
     jumpToDiagnosticViews: "Jump to full diagnostic views",
     /** Primary-signal hero action for the Code destination (approved copy, app.js line 97). */
