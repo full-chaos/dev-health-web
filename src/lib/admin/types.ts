@@ -638,7 +638,12 @@ export interface UserCreate {
     auth_provider_id?: string | null;
     is_verified?: boolean;
     is_superuser?: boolean;
+    /** The org membership role of an org-scoped add; omit for a platform create. */
+    role?: UserCreateRole;
 }
+
+export const USER_CREATE_ROLES = ["member", "admin", "viewer"] as const;
+export type UserCreateRole = (typeof USER_CREATE_ROLES)[number];
 
 export interface UserUpdate {
     email?: string | null;

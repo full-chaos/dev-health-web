@@ -1,5 +1,5 @@
 import type { SyntheticEvent } from "react";
-import type { UserCreate, User } from "@/lib/admin/types";
+import { USER_CREATE_ROLES, type UserCreate, type User } from "@/lib/admin/types";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -11,6 +11,14 @@ type UserFormProps = {
     onCancel: () => void;
     isEdit?: boolean;
     isLoading?: boolean;
+    /** Show the org role choice (an org-scoped add only). */
+    withRole?: boolean;
+};
+
+const ROLE_LABELS: Record<(typeof USER_CREATE_ROLES)[number], string> = {
+    member: "Member",
+    admin: "Admin",
+    viewer: "Viewer",
 };
 
 export function UserForm({
@@ -19,6 +27,7 @@ export function UserForm({
     onCancel,
     isEdit = false,
     isLoading = false,
+    withRole = false,
 }: UserFormProps) {
     const { formData, handleChange } = useBaseFormState<UserFormData>({
         email: initialData?.email || "",
@@ -26,6 +35,7 @@ export function UserForm({
         username: initialData?.username || "",
         password: "",
         is_active: initialData?.is_active ?? true,
+        ...(withRole ? { role: "member" as const } : {}),
     });
 
     const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
@@ -111,6 +121,28 @@ export function UserForm({
                     <p className="text-xs text-(--ink-muted)">
                         Optional — leave blank if the user will set their own password later
                     </p>
+                </div>
+            )}
+
+            {withRole && !isEdit && (
+                <div className="space-y-2">
+                    <label htmlFor="role" className="text-sm font-medium text-(--ink-muted)">
+                        Role
+                    </label>
+                    <select
+                        id="role"
+                        name="role"
+                        value={formData.role ?? "member"}
+                        onChange={handleChange}
+                        disabled={isLoading}
+                        className={inputClass}
+                    >
+                        {USER_CREATE_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                                {ROLE_LABELS[role]}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             )}
 
