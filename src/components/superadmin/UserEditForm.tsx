@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type SyntheticEvent } from "react";
 import { toast } from "sonner";
 import { updateUser } from "@/lib/admin/server";
 import type { User } from "@/lib/admin/types";
@@ -9,30 +9,55 @@ type UserEditFormProps = {
     user: User;
 };
 
+type FormValues = {
+    email: string;
+    username: string;
+    full_name: string;
+    is_active: boolean;
+    is_verified: boolean;
+    is_superuser: boolean;
+};
+
+function toFormValues(user: User): FormValues {
+    return {
+        email: user.email,
+        username: user.username || "",
+        full_name: user.full_name || "",
+        is_active: user.is_active,
+        is_verified: user.is_verified,
+        is_superuser: user.is_superuser,
+    };
+}
+
 export function UserEditForm({ user }: UserEditFormProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [values, setValues] = useState<FormValues>(() => toFormValues(user));
 
-    async function handleSubmit(formData: FormData) {
+    async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
+        event.preventDefault();
         setIsLoading(true);
         const result = await updateUser(user.id, {
-            email: formData.get("email") as string,
-            username: (formData.get("username") as string) || null,
-            full_name: (formData.get("full_name") as string) || null,
-            is_active: formData.get("is_active") === "on",
-            is_verified: formData.get("is_verified") === "on",
-            is_superuser: formData.get("is_superuser") === "on",
+            email: values.email,
+            username: values.username || null,
+            full_name: values.full_name || null,
+            is_active: values.is_active,
+            is_verified: values.is_verified,
+            is_superuser: values.is_superuser,
         });
         setIsLoading(false);
 
         if (result.error) {
             toast.error(result.error);
-        } else {
-            toast.success("User updated successfully");
+            return;
         }
+        if (result.data) {
+            setValues(toFormValues(result.data));
+        }
+        toast.success("User updated successfully");
     }
 
     return (
-        <form action={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                     <label htmlFor="email" className="text-sm font-medium">
@@ -42,7 +67,8 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         id="email"
                         name="email"
                         type="email"
-                        defaultValue={user.email}
+                        value={values.email}
+                        onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
                         required
                         className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent-2)"
                     />
@@ -54,7 +80,8 @@ export function UserEditForm({ user }: UserEditFormProps) {
                     <input
                         id="username"
                         name="username"
-                        defaultValue={user.username || ""}
+                        value={values.username}
+                        onChange={(e) => setValues((v) => ({ ...v, username: e.target.value }))}
                         className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent-2)"
                     />
                 </div>
@@ -67,7 +94,8 @@ export function UserEditForm({ user }: UserEditFormProps) {
                 <input
                     id="full_name"
                     name="full_name"
-                    defaultValue={user.full_name || ""}
+                    value={values.full_name}
+                    onChange={(e) => setValues((v) => ({ ...v, full_name: e.target.value }))}
                     className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent-2)"
                 />
             </div>
@@ -78,7 +106,8 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         type="checkbox"
                         id="is_active"
                         name="is_active"
-                        defaultChecked={user.is_active}
+                        checked={values.is_active}
+                        onChange={(e) => setValues((v) => ({ ...v, is_active: e.target.checked }))}
                         className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-70) text-(--accent) focus:ring-(--accent-2)"
                     />
                     <label htmlFor="is_active" className="text-sm font-medium">
@@ -90,7 +119,10 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         type="checkbox"
                         id="is_verified"
                         name="is_verified"
-                        defaultChecked={user.is_verified}
+                        checked={values.is_verified}
+                        onChange={(e) =>
+                            setValues((v) => ({ ...v, is_verified: e.target.checked }))
+                        }
                         className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-70) text-(--accent) focus:ring-(--accent-2)"
                     />
                     <label htmlFor="is_verified" className="text-sm font-medium">
@@ -102,7 +134,10 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         type="checkbox"
                         id="is_superuser"
                         name="is_superuser"
-                        defaultChecked={user.is_superuser}
+                        checked={values.is_superuser}
+                        onChange={(e) =>
+                            setValues((v) => ({ ...v, is_superuser: e.target.checked }))
+                        }
                         className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-70) text-(--accent) focus:ring-(--accent-2)"
                     />
                     <label htmlFor="is_superuser" className="text-sm font-medium">
