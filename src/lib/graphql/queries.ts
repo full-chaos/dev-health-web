@@ -369,6 +369,21 @@ query CapacityCompletionDistribution($orgId: String!, $input: CapacityForecastIn
 }
 `;
 
+// Org source-health read (CHAOS-8906); text must match the ops-registered document. The web does not call it.
+export const SOURCE_HEALTH_QUERY = `
+query SourceHealth($orgId: String!) {
+  sourceHealth(orgId: $orgId) {
+    provider
+    scope
+    lastSyncAt
+    lastFailure {
+      occurredAt
+      stage
+    }
+  }
+}
+`;
+
 // Query for listing persisted capacity forecasts
 export const CAPACITY_FORECASTS_QUERY = `
 query CapacityForecasts($orgId: String!, $filters: CapacityForecastFilterInput) {
