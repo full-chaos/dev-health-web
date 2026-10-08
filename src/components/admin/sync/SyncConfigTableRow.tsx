@@ -10,6 +10,7 @@ import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { Button, buttonClassName } from "@/components/shared/Button";
 import { toggleSyncActive } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { toSameSiteHref } from "@/lib/sameSiteHref";
 import { SyncConfigDeleteControls } from "./SyncConfigDeleteControls";
 import {
     groupStatus,
@@ -20,6 +21,12 @@ import {
 } from "./syncConfigTableModel";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { useSyncTrigger } from "./useSyncTrigger";
+
+const SYNC_ADMIN_PATH = "/org/admin/sync";
+
+function syncConfigHref(configId: string): string {
+    return toSameSiteHref(`${SYNC_ADMIN_PATH}/${encodeURIComponent(configId)}`) ?? SYNC_ADMIN_PATH;
+}
 
 type SyncConfigTableRowProps = {
     readonly row: SyncConfigTableRowData;
@@ -142,7 +149,7 @@ function ConfigTableRow({
             <th scope="row" className="px-4 py-3 font-normal">
                 <div className={row.kind === "child" ? "pl-7" : undefined}>
                     <Link
-                        href={`/org/admin/sync/${row.config.id}`}
+                        href={syncConfigHref(row.config.id)}
                         className="font-medium text-foreground hover:underline"
                     >
                         {row.config.name}
@@ -180,7 +187,7 @@ function ConfigTableRow({
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
-                            href={`/org/admin/sync/${encodeURIComponent(row.config.id)}`}
+                            href={syncConfigHref(row.config.id)}
                             aria-label={`Manage ${row.config.name}`}
                             className={buttonClassName("secondary", "sm")}
                         >
