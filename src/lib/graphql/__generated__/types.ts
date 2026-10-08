@@ -31,10 +31,16 @@ export type AiAttributionEvidenceRow = {
   observedAt: Scalars['DateTime']['output'];
   provider: Scalars['String']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** Full name of the repository `repoId` names, from the repository catalogue of the caller's organization. Null when the repository has no stored name; never the id. */
+  repoName?: Maybe<Scalars['String']['output']>;
   source: Scalars['String']['output'];
   subjectId: Scalars['String']['output'];
+  /** Title of the pull request the row's subject names (subjectType `pull_request`), from the stored pull request. Null for any other subject type or when no title is stored; never the id. */
+  subjectTitle?: Maybe<Scalars['String']['output']>;
   subjectType: Scalars['String']['output'];
   teamId?: Maybe<Scalars['String']['output']>;
+  /** Name of the team `teamId` names, from the team catalogue of the caller's organization. Null when there is no team or it has no stored name; never the id. */
+  teamName?: Maybe<Scalars['String']['output']>;
 };
 
 export type AiAttributionMixRow = {
@@ -140,11 +146,19 @@ export type AiGovernanceViolationRow = {
   evidence: Scalars['String']['output'];
   observedAt: Scalars['DateTime']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** Full name of the repository `repoId` names, from the repository catalogue of the caller's organization. Null when the repository has no stored name; never the id. */
+  repoName?: Maybe<Scalars['String']['output']>;
   ruleId: Scalars['String']['output'];
+  /** Fixed display name of the policy rule `ruleId` names (a code-owned set of rules). Null for a rule id outside that set; never the id. */
+  ruleName?: Maybe<Scalars['String']['output']>;
   severity: Scalars['String']['output'];
   subjectId: Scalars['String']['output'];
+  /** Title of the pull request the row's subject names (subjectType `pull_request`), from the stored pull request. Null for any other subject type or when no title is stored; never the id. */
+  subjectTitle?: Maybe<Scalars['String']['output']>;
   subjectType: Scalars['String']['output'];
   teamId?: Maybe<Scalars['String']['output']>;
+  /** Name of the team `teamId` names, from the team catalogue of the caller's organization. Null when there is no team or it has no stored name; never the id. */
+  teamName?: Maybe<Scalars['String']['output']>;
 };
 
 export type AiHotspotOverlapRow = {
@@ -416,6 +430,8 @@ export type AliasSuggestion = {
   __typename?: 'AliasSuggestion';
   confidence: Scalars['Float']['output'];
   suggestedCanonicalId: Scalars['String']['output'];
+  /** Display name of the suggested canonical identity, else its email. Null when neither is stored; never the id. */
+  suggestedCanonicalName?: Maybe<Scalars['String']['output']>;
   unmappedIdentity: UnmappedIdentity;
 };
 
@@ -1194,6 +1210,8 @@ export type ImproveOpportunitiesResult = {
 
 export type ImproveOpportunity = {
   __typename?: 'ImproveOpportunity';
+  /** Name of the entity `entityId` names: the repository full name for entityType `repo`, the team name for `team`, from the catalogues of the caller's organization. Null when no name is stored; never the id. */
+  entityDisplayName?: Maybe<Scalars['String']['output']>;
   entityId: Scalars['String']['output'];
   entityType: Scalars['String']['output'];
   evidenceRefs: Array<Scalars['String']['output']>;
@@ -2416,6 +2434,8 @@ export type TestOpsRiskInput = {
 export type TestOpsRiskQuadrantPoint = {
   __typename?: 'TestOpsRiskQuadrantPoint';
   id: Scalars['String']['output'];
+  /** Full name of the repository the point stands for. Null when the repository has no stored name; never the id. */
+  name?: Maybe<Scalars['String']['output']>;
   pipelineSuccessRate?: Maybe<Scalars['Float']['output']>;
   testPassRate?: Maybe<Scalars['Float']['output']>;
 };
