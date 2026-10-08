@@ -7,6 +7,7 @@ import { Inset } from "@/components/ui/Inset";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricParts, formatNumber } from "@/lib/formatters";
+import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import type { BlockedWorkIssuesResponse } from "@/lib/types";
 
@@ -87,7 +88,7 @@ export function BlockedWorkItemsTable({
                             data-testid="blocked-work-item"
                         >
                             <td className="border-b border-(--card-stroke) px-3 py-3.25 font-medium">
-                                {item.work_item_id}
+                                {chartEntityLabel(item.work_item_id)}
                             </td>
                             <td className="border-b border-(--card-stroke) px-3 py-3.25">
                                 {item.provider}

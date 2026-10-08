@@ -411,23 +411,15 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expect(page.getByRole("button", { name: "Account options" })).toHaveCount(0);
     });
 
-    test("renders a full commit hash accessibly without truncating its tablet layout", async ({
-        page,
-    }, testInfo) => {
+    test("renders a commit without its hash on the tablet layout", async ({ page }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
         const faults = recordBrowserFaults(page);
         await page.setViewportSize({ width: 768, height: 900 });
         await page.goto("/prs/e2e-pr-detail");
 
-        const commit = page.getByRole("button", {
-            name: `Full commit hash: ${FULL_COMMIT_SHA}. Activate to reveal.`,
-        });
-        await expect(commit).toContainText(FULL_COMMIT_SHA.slice(0, 8));
-        await expect(commit).toHaveAccessibleName(
-            `Full commit hash: ${FULL_COMMIT_SHA}. Activate to reveal.`,
-        );
-        await commit.press("Enter");
-        await expect(page.locator("code")).toHaveText(FULL_COMMIT_SHA);
+        const commit = page.getByRole("button", { name: "Commit" });
+        await expect(commit).toBeVisible();
+        await expect(page.locator("body")).not.toContainText(FULL_COMMIT_SHA.slice(0, 8));
         await page.screenshot({
             path: testInfo.outputPath("full-commit-768.png"),
             fullPage: true,

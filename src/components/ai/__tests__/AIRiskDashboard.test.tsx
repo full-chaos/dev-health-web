@@ -150,7 +150,7 @@ describe("AIRiskDashboard", () => {
         render(<AIRiskDashboard filter={filter} />);
         expect(screen.getByText("Rework rate")).toBeInTheDocument();
         expect(screen.getByText("Hotspot file overlap")).toBeInTheDocument();
-        expect(screen.getByText("PR 44")).toBeInTheDocument();
+        expect(screen.getByText("Pull request · Unresolved")).toBeInTheDocument();
         expect(screen.getByTestId("ai-linked-incidents")).toHaveTextContent("1");
     });
 

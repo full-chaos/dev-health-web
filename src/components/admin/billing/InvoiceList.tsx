@@ -9,6 +9,7 @@ import {
     type InvoiceListResponse,
     type InvoiceRecord,
 } from "@/lib/billing/actions";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { InvoiceDetailModal } from "./InvoiceDetailModal";
@@ -127,7 +128,7 @@ export function InvoiceList({
                 key: "org",
                 header: "Org",
                 className: "px-4 py-3 text-xs text-(--ink-muted)",
-                render: (invoice) => invoice.org_id,
+                render: () => UNRESOLVED,
             });
         }
 

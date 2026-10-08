@@ -8,6 +8,7 @@ import type {
 } from "@/lib/graphql/types";
 import { formatNumber } from "@/lib/formatters";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 import { labelInvestmentKey } from "@/lib/workGraph/taxonomy";
 
 type RelatedEntitiesPanelProps = {
@@ -88,6 +89,13 @@ function groupEdgesByRelatedType(
     }
     return grouped;
 }
+
+const SOURCE_TYPE_WORDS: Record<string, string> = {
+    issue: "Issue",
+    pr: "Pull request",
+    commit: "Commit",
+};
+const sourceTypeWord = (type: string) => SOURCE_TYPE_WORDS[type.toLowerCase()] ?? "Source";
 
 export function RelatedEntitiesPanel({
     rootType,
@@ -229,7 +237,7 @@ export function RelatedEntitiesPanel({
                             <li key={`${quote.sourceType}:${quote.sourceId}:${quote.quote}`}>
                                 “{quote.quote}”{" "}
                                 <span className="text-foreground">
-                                    {quote.sourceType}:{quote.sourceId}
+                                    {sourceTypeWord(quote.sourceType)} · {UNRESOLVED}
                                 </span>
                             </li>
                         ))}

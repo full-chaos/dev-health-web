@@ -146,11 +146,8 @@ describe("PrDetailPage", () => {
         expect(screen.getByRole("heading", { name: "Wire PR detail" })).toBeInTheDocument();
         expect(screen.getByText("full-chaos/dev-health-web · #42")).toBeInTheDocument();
         expect(screen.getByText("reviewer-login")).toBeInTheDocument();
-        expect(
-            screen.getByRole("button", {
-                name: "Full commit hash: abcdef1234567890. Activate to reveal.",
-            }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Commit" })).toBeInTheDocument();
+        expect(document.body.textContent).not.toContain("abcdef1234567890");
         expect(getPrDetailViaGraphQLMock).toHaveBeenCalledWith({ orgId: "org-1", id: prId });
         expect(getAIWorkflowDrilldownViaGraphQLMock).toHaveBeenCalledWith({
             orgId: "org-1",
@@ -161,7 +158,7 @@ describe("PrDetailPage", () => {
         expect(getWorkUnitInvestmentDistributionMock).not.toHaveBeenCalled();
     });
 
-    it("keeps a long commit readable while exposing its complete hash accessibly", async () => {
+    it("keeps a long commit readable while exposing its hash out of the page", async () => {
         const fullHash = "a".repeat(64);
         getPrDetailViaGraphQLMock.mockResolvedValue({
             ...samplePr,
@@ -170,10 +167,8 @@ describe("PrDetailPage", () => {
 
         await renderPage();
 
-        const disclosure = screen.getByRole("button", {
-            name: `Full commit hash: ${fullHash}. Activate to reveal.`,
-        });
-        expect(disclosure).toHaveTextContent("aaaaaaaa");
+        const disclosure = screen.getByRole("button", { name: "Commit" });
+        expect(document.body.textContent).not.toContain("aaaaaaaa");
         expect(disclosure.closest("li")).toHaveClass("break-words");
     });
 

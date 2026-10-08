@@ -28,7 +28,7 @@ describe("AIViolationsList", () => {
     it("renders populated PR violations", () => {
         render(<AIViolationsList violations={[violation]} />);
         expect(screen.getByText("human-review-required")).toBeInTheDocument();
-        expect(screen.getByText("PR 123")).toBeInTheDocument();
+        expect(screen.getByText("Pull request · Unresolved")).toBeInTheDocument();
     });
 
     it("keeps the count, severity word, rule, PR, evidence text and the 8-row cap", () => {
@@ -45,8 +45,7 @@ describe("AIViolationsList", () => {
         );
         expect(screen.getByText("10")).toBeInTheDocument();
         expect(screen.getAllByText("high")).toHaveLength(8);
-        expect(screen.getByText("PR 100")).toBeInTheDocument();
+        expect(screen.getAllByText("Pull request · Unresolved")).toHaveLength(8);
         expect(screen.getByText("evidence 7")).toBeInTheDocument();
-        expect(screen.queryByText("PR 108")).not.toBeInTheDocument();
     });
 });
