@@ -255,7 +255,7 @@ describe("CodePage", () => {
             await renderPage();
             const churn = screen.getAllByTestId("repo-churn").map((c) => c.textContent);
             expect(churn[0]).toBe("67.1K");
-            expect(churn[1]).toBe("Not reported");
+            expect(churn[1]).toBe("Unknown");
             // The hotspot score is a different metric: not served per repository, so no column.
             expect(screen.queryAllByTestId("repo-hotspot-score")).toHaveLength(0);
         });
