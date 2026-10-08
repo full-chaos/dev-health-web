@@ -438,6 +438,15 @@ function HeatmapCellEvidence({
         [state],
     );
 
+    // The served provider of the cell's rows: distinct `source` values, sorted, joined. None served = no value.
+    const source = useMemo(() => {
+        if (state.status !== "loaded") return undefined;
+        const names = new Set(
+            state.evidence.map((item) => asText(item.source)).filter((name) => name !== null),
+        );
+        return names.size > 0 ? [...names].sort().join(", ") : undefined;
+    }, [state]);
+
     return (
         <div data-testid="heatmap-cell-evidence" className="space-y-4">
             {/* The heatmap query serves no source, quality, sync time or identity confidence for
@@ -447,6 +456,7 @@ function HeatmapCellEvidence({
             {state.status === "loading" ? null : (
                 <EvidenceProvenanceFacts
                     whenEmpty="line"
+                    source={source}
                     artifactCount={state.status === "loaded" ? artifacts.length : undefined}
                 />
             )}
