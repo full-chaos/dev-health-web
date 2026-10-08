@@ -12,6 +12,7 @@ import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { buttonClassName } from "@/components/shared/Button";
 import { MeterRows, type MeterRow } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
+import { UNKNOWN } from "@/components/evidence/EvidenceFacts";
 import { ChurnTrend } from "./ChurnTrend";
 import { RepoEvidenceButton } from "./RepoEvidenceButton";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -261,7 +262,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                             facts.churn ? "" : "text-(--ink-muted)"
                                         }`}
                                     >
-                                        {facts.churn ?? "Not reported"}
+                                        {facts.churn ?? UNKNOWN}
                                     </td>
                                     <td className="py-2.5 tabular-nums">{facts.samples}</td>
                                     <td className="py-1.5 text-right">
