@@ -189,7 +189,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
         expect(card.getByTestId("range-chart")).toBeInTheDocument();
         expect(card.getByTestId("completion-range-note")).toHaveTextContent(
-            "Monte Carlo forecast: each point is the share of the 100 simulation runs in which all 40 items were done by that day.",
+            "Monte Carlo forecast: each step is the share of the 100 simulation runs in which all 40 items were done by that day.",
         );
         expect(
             card.getByText(

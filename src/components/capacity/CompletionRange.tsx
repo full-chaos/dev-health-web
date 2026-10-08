@@ -43,7 +43,13 @@ const roleWord = (name: Percentile) => {
  * A forecast with no stored distribution (or with no days mode) reads "Not reported": the card
  * never draws an empty or a made-up curve.
  */
-export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
+export function CompletionRange({
+    forecast,
+    interpolation = "step",
+}: {
+    forecast: CapacityForecast;
+    interpolation?: "step" | "curve";
+}) {
     const distribution = forecast.completionDistribution;
     const bins = distribution?.days && distribution.days.length > 0 ? distribution.days : null;
     const runs =
@@ -173,12 +179,13 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
                 chanceAxisName={`Chance ${allItems} ${isOrAre} done`}
                 dayLabel={dayLabel}
                 tooltipLines={tooltipLines}
+                interpolation={interpolation}
                 height={320}
             />
             <p data-testid="completion-range-note" className="mt-2 text-xs text-(--text-muted)">
-                Monte Carlo forecast: each point is the share of the{" "}
-                {runs === null ? "" : `${formatNumber(runs)} `}simulation runs in which {allItems}{" "}
-                {wasOrWere} done by that day.
+                Monte Carlo forecast: each {interpolation === "curve" ? "point" : "step"} is the
+                share of the {runs === null ? "" : `${formatNumber(runs)} `}simulation runs in which{" "}
+                {allItems} {wasOrWere} done by that day.
             </p>
             {unfinishedRuns !== null && unfinishedRuns > 0 && horizonDays !== null ? (
                 <p
