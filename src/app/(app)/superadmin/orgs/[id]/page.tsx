@@ -1,4 +1,5 @@
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
@@ -51,7 +52,14 @@ export default async function OrgDetailPage({ params }: PageProps) {
                             <tbody className="divide-y divide-(--card-stroke)">
                                 {members?.map((member) => (
                                     <tr key={member.id}>
-                                        <td className="px-4 py-3 font-mono text-xs">Unresolved</td>
+                                        <td className="px-4 py-3">
+                                            <span>{nameOrUnresolved(member.user_name)}</span>
+                                            {member.user_email ? (
+                                                <span className="block text-xs text-(--ink-muted)">
+                                                    {member.user_email}
+                                                </span>
+                                            ) : null}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className="inline-flex items-center rounded-full bg-(--accent)/10 px-2 py-0.5 text-xs font-medium text-(--accent-text)">
                                                 {member.role}

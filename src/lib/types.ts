@@ -557,7 +557,11 @@ export type FlameFrame = {
 };
 
 export type FlameResponse = {
-    entity: Record<string, unknown>;
+    /**
+     * `title` (issue) and `name` (deployment, its release_ref) are served by ops since CHAOS-8946:
+     * null when ops holds none, absent before that ops pin. Never an id.
+     */
+    entity: Record<string, unknown> & { title?: string | null; name?: string | null };
     timeline: { start: string; end: string };
     frames: FlameFrame[];
 };

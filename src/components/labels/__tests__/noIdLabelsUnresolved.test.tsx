@@ -10,7 +10,7 @@ import { AIViolationsList } from "@/components/ai/AIViolationsList";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
 import { RelatedEntitiesPanel } from "@/components/work/RelatedEntitiesPanel";
 import { containsIdToken } from "@/lib/labels/idToken";
-import { entityHeading, UNRESOLVED } from "@/lib/labels/unresolved";
+import { servedEntityName, UNRESOLVED } from "@/lib/labels/unresolved";
 
 const { mockOverview } = vi.hoisted(() => ({ mockOverview: vi.fn() }));
 vi.mock("@/lib/graphql/hooks/useAIReviewRisk", () => ({ useAIAttributionOverview: mockOverview }));
@@ -191,10 +191,11 @@ describe("other id-free guards", () => {
         expect(container.textContent).toContain(HASH.slice(0, 8));
     });
 
-    it("entityHeading falls back to the type word for ids", () => {
-        expect(entityHeading({ work_item_id: UUID }, "Issue")).toBe("Issue");
-        expect(entityHeading({ title: UUID }, "Issue")).toBe("Issue");
-        expect(entityHeading({ title: `jira:${UUID}` }, "Issue")).toBe("Issue");
-        expect(entityHeading({ name: "Deploy web" }, "Deployment")).toBe("Deploy web");
+    it("servedEntityName shows the served name, Unresolved when null, absent or blank", () => {
+        expect(servedEntityName({ title: "Fix login" }, "title")).toBe("Fix login");
+        expect(servedEntityName({ name: "release-1.2" }, "name")).toBe("release-1.2");
+        expect(servedEntityName({ title: null, work_item_id: UUID }, "title")).toBe(UNRESOLVED);
+        expect(servedEntityName({ work_item_id: `jira:${UUID}` }, "title")).toBe(UNRESOLVED);
+        expect(servedEntityName({ name: "  " }, "name")).toBe(UNRESOLVED);
     });
 });

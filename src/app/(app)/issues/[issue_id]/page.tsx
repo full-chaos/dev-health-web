@@ -1,4 +1,4 @@
-import { entityHeading } from "@/lib/labels/unresolved";
+import { servedEntityName } from "@/lib/labels/unresolved";
 import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -64,7 +64,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-(--font-display) text-xl">
-                                {entityHeading(flame.entity, "Issue")}
+                                {servedEntityName(flame.entity, "title")}
                             </h2>
                             <p className="mt-2 text-xs text-(--ink-muted)">
                                 <ClientTimestamp value={flame.timeline.start} suffix=" – " />
