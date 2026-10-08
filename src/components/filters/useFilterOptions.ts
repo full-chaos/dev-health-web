@@ -21,7 +21,7 @@ export function useFilterOptions(): FilterOptions {
         let active = true;
 
         apiClient
-            .getJson<FilterOptions>("/api/v1/filters/options")
+            .getJson<Partial<FilterOptions>>("/api/v1/filters/options")
             .then((payload) => {
                 if (!active) {
                     return;
@@ -29,6 +29,7 @@ export function useFilterOptions(): FilterOptions {
 
                 setOptions({
                     teams: payload.teams ?? [],
+                    team_names: payload.team_names ?? {},
                     repos: payload.repos ?? [],
                     services: payload.services ?? [],
                     developers: payload.developers ?? [],

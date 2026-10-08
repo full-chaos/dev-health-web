@@ -34,6 +34,7 @@ export const scopeBarUrl = {
 
 export const FILTER_OPTIONS = {
     teams: ["platform", "payments"],
+    team_names: { platform: "platform", payments: "payments" },
     repos: ["org/api", "org/web"],
     services: [],
     developers: ["ana@example.com", "bo@example.com"],
