@@ -9,6 +9,7 @@ export type RefundStatus = "pending" | "succeeded" | "failed" | "canceled";
 export type RefundRecord = {
     id: string;
     org_id: string;
+    org_name?: string | null;
     invoice_id: string | null;
     subscription_id: string | null;
     stripe_refund_id: string;

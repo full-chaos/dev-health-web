@@ -50,6 +50,7 @@ type CheckoutSessionResponse = {
 
 export type SubscriptionRecord = SubscriptionDetails & {
     org_id: string;
+    org_name?: string | null;
 };
 
 export type SubscriptionListResponse = {

@@ -2,6 +2,7 @@
 
 import type { InvoiceRecord } from "@/lib/billing/actions";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { invoiceLabel } from "./invoiceLabel";
 
 type InvoiceDetailModalProps = {
@@ -45,7 +46,13 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                     </button>
                 </div>
 
-                <div className="grid gap-4 border-b border-(--card-stroke) bg-(--card-80) px-6 py-4 text-sm sm:grid-cols-3">
+                <div className="grid gap-4 border-b border-(--card-stroke) bg-(--card-80) px-6 py-4 text-sm sm:grid-cols-4">
+                    <div>
+                        <p className="text-(--ink-muted)">Organization</p>
+                        <p className="font-medium text-foreground" data-testid="invoice-org-name">
+                            {nameOrUnresolved(invoice.org_name)}
+                        </p>
+                    </div>
                     <div>
                         <p className="text-(--ink-muted)">Status</p>
                         <p className="font-medium text-foreground">{invoice.status}</p>

@@ -18,6 +18,8 @@ export type InvoiceLineItem = {
 export type InvoiceRecord = {
     id: string;
     org_id: string;
+    /** Served by ops after the pin 18 roll; null or absent when the organisation has no name. */
+    org_name?: string | null;
     subscription_id: string | null;
     stripe_invoice_id: string;
     stripe_customer_id: string;

@@ -7,6 +7,8 @@ test("invoice list renders and void flow works", async ({ page }) => {
     await expect(page.getByText(/^Invoice( \d.*)?$/).first()).toBeVisible();
     await expect(page.getByText("in_e2e_001")).toHaveCount(0);
     await expect(page.getByText("$120.00")).toBeVisible();
+    await expect(page.getByText("Acme Corp")).toBeVisible();
+    await expect(page.getByText("org-e2e")).toHaveCount(0);
 
     await page.getByRole("button", { name: "View" }).first().click();
     await expect(page.getByRole("heading", { name: "Invoice Details" })).toBeVisible();

@@ -7,6 +7,7 @@ import {
     type SubscriptionListResponse,
     type SubscriptionRecord,
 } from "@/lib/billing/actions";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 
 type SubscriptionListProps = {
@@ -73,7 +74,7 @@ export function SubscriptionList({ initialData, initialOrgFilter = "" }: Subscri
                 key: "org",
                 header: "Org",
                 className: "px-4 py-3 text-xs text-(--ink-muted)",
-                render: (subscription) => subscription.org_id,
+                render: (subscription) => nameOrUnresolved(subscription.org_name),
             },
             {
                 key: "status",
