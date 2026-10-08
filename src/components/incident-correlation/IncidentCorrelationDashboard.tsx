@@ -282,15 +282,15 @@ export function buildSankeyData(
     };
 
     for (const row of limited) {
-        // Incident label: prefer server-resolved display name; fall back to short ID prefix
-        const incLabel = row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
+        // Incident label: prefer server-resolved display name; fall back to the plain type word
+        const incLabel = row.incidentDisplayName?.trim() || "Incident";
         addNode(row.incidentId, incLabel, "incident");
         const incKey = makeNodeKey("incident", row.incidentId);
 
         for (const depId of row.deploymentIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
             // CHAOS-2119: use server-resolved deployment name when available
             const resolved = row.deploymentDisplayNames?.[depId];
-            const depLabel = resolved?.trim() || `dep:${depId.slice(0, 8)}`;
+            const depLabel = resolved?.trim() || "Deployment";
             addNode(depId, depLabel, "deployment");
             const depKey = makeNodeKey("deployment", depId);
             // Flow: deployment → incident (link by composite key, never by label)
@@ -308,7 +308,7 @@ export function buildSankeyData(
             for (const prId of prIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
                 // CHAOS-2119: use server-resolved PR name when available
                 const resolved = row.prDisplayNames?.[prId];
-                const prLabel = resolved?.trim() || `pr:${prId.slice(0, 8)}`;
+                const prLabel = resolved?.trim() || "Pull request";
                 addNode(prId, prLabel, "pr");
                 const prKey = makeNodeKey("pr", prId);
                 links.push({ source: prKey, target: depKey, value: 1 });

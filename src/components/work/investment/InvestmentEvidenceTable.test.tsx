@@ -7,7 +7,6 @@ import { formatNumber } from "@/lib/formatters";
 import {
     formatBandLabel,
     formatQuality,
-    formatWorkUnitIdToken,
     formatWorkUnitLabel,
     formatWorkUnitTypeLabel,
     selectWorkUnitEntries,
@@ -233,7 +232,6 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
         for (const expected of [
             formatWorkUnitLabel(unit),
             formatWorkUnitTypeLabel(unit),
-            formatWorkUnitIdToken(unit.work_unit_id),
             `${formatQuality(0.7)} (${formatBandLabel("moderate")})`,
             "Payments",
             "Classification rationale",

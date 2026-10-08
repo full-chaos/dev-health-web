@@ -31,6 +31,7 @@ import {
     layoutLayered,
 } from "@/lib/workGraphLayout";
 import { ChartTypeToggle } from "./ChartTypeToggle";
+import { nameOrUnresolved, UNRESOLVED } from "@/lib/labels/unresolved";
 import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
 
 echarts.use([GraphChart]);
@@ -240,7 +241,7 @@ function edgesToGraph(
         if (!nodeMap.has(sourceKey)) {
             nodeMap.set(sourceKey, {
                 id: sourceKey,
-                name: edge.sourceId,
+                name: nameOrUnresolved(edge.sourceDisplayName),
                 type: edge.sourceType,
                 category: ALL_NODE_TYPES.indexOf(edge.sourceType),
                 symbolSize: NODE_SIZE[edge.sourceType] ?? 30,
@@ -250,7 +251,7 @@ function edgesToGraph(
         if (!nodeMap.has(targetKey)) {
             nodeMap.set(targetKey, {
                 id: targetKey,
-                name: edge.targetId,
+                name: nameOrUnresolved(edge.targetDisplayName),
                 type: edge.targetType,
                 category: ALL_NODE_TYPES.indexOf(edge.targetType),
                 symbolSize: NODE_SIZE[edge.targetType] ?? 30,
@@ -460,8 +461,8 @@ export function WorkGraphExplorer({
                     };
                     if (p.dataType === "node") {
                         const nodeId = p.data?.id ?? "";
-                        const [type, id] = nodeId.split(":");
-                        return `<strong>${type}</strong><br/>${id}`;
+                        const type = nodeId.split(":")[0];
+                        return `<strong>${type}</strong><br/>${p.data?.name ?? UNRESOLVED}`;
                     }
                     if (p.dataType === "edge") {
                         return `${p.data?.edgeType ?? "relates"}`;

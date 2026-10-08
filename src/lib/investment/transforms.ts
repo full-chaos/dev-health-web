@@ -308,27 +308,6 @@ export const formatWorkUnitLabel = (unit: WorkUnitInvestment): string => {
         return candidates[0];
     }
 
-    const provider = typeof unit.provider === "string" ? unit.provider.trim() : "";
-    const itemType = typeof unit.item_type === "string" ? unit.item_type.trim() : "";
-    const keyCandidate =
-        [
-            typeof unit.key === "string" ? unit.key.trim() : "",
-            typeof unit.external_key === "string" ? unit.external_key.trim() : "",
-        ].find(Boolean) ?? "";
-
-    if (provider && itemType && keyCandidate) {
-        return `${provider}:${itemType}:${keyCandidate}`;
-    }
-
-    if (provider && itemType) {
-        return `${provider}:${itemType}`;
-    }
-
-    const idValue = typeof unit.work_unit_id === "string" ? unit.work_unit_id.trim() : "";
-    if (idValue.includes(":")) {
-        return idValue;
-    }
-
     return "Work unit";
 };
 
@@ -341,18 +320,6 @@ export const formatWorkUnitTypeLabel = (unit: WorkUnitInvestment): string => {
     const value = primary || fallback;
     if (!value) return "";
     return titleCase(value.replace(/_/g, " "));
-};
-
-/**
- * Format a work unit ID token for display.
- */
-export const formatWorkUnitIdToken = (workUnitId: string): string => {
-    if (!workUnitId) return "";
-    const trimmed = workUnitId.trim();
-    if (trimmed.length <= 14) {
-        return trimmed;
-    }
-    return `${trimmed.slice(0, 8)}…${trimmed.slice(-4)}`;
 };
 
 // ============================================================================

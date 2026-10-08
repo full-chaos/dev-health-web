@@ -82,17 +82,17 @@ describe("AIOpportunityList", () => {
             workGraphDrilldowns: [{ rootType: "pr", rootId: "r#1", label: `PR ${UUID}` }],
         };
 
-        it("shows a plain phrase in the title, rationale and chip, and the full id only in the tooltip", () => {
+        it("shows a plain phrase in the title, rationale and chip, and no tooltip carries the id", () => {
             render(<AIOpportunityList detectorReady recommendations={[withIds]} />);
             const list = document.body;
             expect(list.textContent).not.toContain(UUID);
             const title = screen.getByText("Mechanical migration toil in an unresolved item");
-            expect(title).toHaveAttribute("title", `Mechanical migration toil in ${UUID}`);
+            expect(title).not.toHaveAttribute("title");
             expect(
                 screen.getByText("Repeated edits in an unresolved item match one pattern."),
-            ).toHaveAttribute("title", `Repeated edits in ${UUID} match one pattern.`);
+            ).not.toHaveAttribute("title");
             const chip = screen.getByRole("button", { name: /Work Graph: PR an unresolved item/ });
-            expect(chip).toHaveAttribute("title", `PR ${UUID}`);
+            expect(chip).not.toHaveAttribute("title");
         });
 
         it("the Loading line for a chosen chip does not print the full id either", async () => {

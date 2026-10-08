@@ -716,6 +716,7 @@ describe("GraphView", () => {
                     provenance: "NATIVE",
                     confidence: 1.0,
                     evidence: "Touches src/app/page.tsx",
+                    targetDisplayName: "src/app/page.tsx",
                     theme: "quality",
                     subcategory: "quality.bugfix",
                 },

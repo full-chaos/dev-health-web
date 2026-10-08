@@ -182,9 +182,9 @@ describe("HeatmapPanel — hotspot evidence contract (CHAOS-2035)", () => {
         // Default summary is shown before any cell is selected.
         expect(screen.getByText(/Leading hotspots: Auth Service/)).toBeInTheDocument();
 
-        // File artifact: render-safe basename, full path only in the tooltip.
+        // File artifact: render-safe basename; a repository path is not an id, but the tooltip adds nothing.
         const fileLabel = screen.getByText("login.ts");
-        expect(fileLabel).toHaveAttribute("title", "src/services/auth/login.ts");
+        expect(fileLabel).toHaveAttribute("title", "login.ts");
         expect(screen.queryByText("src/services/auth/login.ts")).not.toBeInTheDocument();
 
         // UUID work item reads its type word (CHAOS-8902) — never the bare UUID.
@@ -209,7 +209,7 @@ describe("describeArtifact — unresolved-id crash guard (heatmap cell click)", 
             expect(() => describeArtifact(item, 0)).not.toThrow();
             const out = describeArtifact(item, 0);
             expect(out.label).toBe("Work item");
-            expect(out.title).toBe(UUID);
+            expect(out.title).toBe("Work item");
         } finally {
             vi.unstubAllEnvs();
         }

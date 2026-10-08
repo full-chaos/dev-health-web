@@ -94,20 +94,20 @@ type ResolvedArtifact = {
  */
 /**
  * Resolve an entity id to a render-safe { label, title }. A degraded UUID/hash
- * id with no served name shows the plain type word (or "Unresolved"); the id stays in the tooltip.
+ * id with no served name shows the plain type word (or "Unresolved"); the id is not shown.
  */
 function entityArtifactLabel(
     id: string | null | undefined,
     options: { name?: string | null; fallback?: string; kind?: string } = {},
 ): { label: string; title: string } {
-    const { label, title, resolved } = resolveEntityLabel(id, {
+    const { label, resolved } = resolveEntityLabel(id, {
         name: options.name ?? undefined,
         fallback: options.fallback,
         unresolvedFallback: "Unresolved",
     });
-    // An id with no served name is never drawn as a label: the plain type word shows and the id
-    // stays in the tooltip.
-    return { label: resolved || !id || !options.kind ? label : options.kind, title };
+    // An id with no served name is never drawn as a label: the plain type word shows.
+    const shown = resolved || !id || !options.kind ? label : options.kind;
+    return { label: shown, title: shown };
 }
 
 /** What a linked artifact row opens: its detail page, named by the kind of the row. */
@@ -135,20 +135,19 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
         return {
             type: "Commit",
             label: explicitName ?? "Commit",
-            title: commit,
+            title: explicitName ?? "Commit",
             timestamp,
             value,
             link,
         };
     }
     if (number !== null) {
-        const repo = asText(item.repo_id);
         // The served PR title names the row; a repository id is never drawn as a name.
         const prTitle = asText(item.title);
         return {
             type: "PR",
             label: prTitle ? `${prTitle} #${number}` : `Pull request #${number}`,
-            title: repo ? `${repo}#${number}` : `#${number}`,
+            title: `#${number}`,
             timestamp,
             value,
             link,

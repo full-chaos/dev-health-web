@@ -50,10 +50,10 @@ test("security repo evidence page renders with locked pill", async ({ page }) =>
         timeout: 10000,
     });
 
-    // With no served name the pill says "Repository"; the id is its tooltip.
+    // With no served name the pill says "Repository"; the id is not shown, not even as a tooltip.
     const pill = page.getByTestId("locked-repo-pill");
     await expect(pill).toContainText("Repository");
-    await expect(pill).toHaveAttribute("title", "Repository id: test-repo-id");
+    await expect(pill).not.toHaveAttribute("title");
 });
 
 test("security in primary nav links to /security", async ({ page }) => {

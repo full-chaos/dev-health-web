@@ -100,9 +100,9 @@ describe("PlatformProductTelemetryDashboard", () => {
             `/superadmin/product-telemetry/${orgId}?startDate=${startDate}&endDate=${endDate}`,
         );
 
-        const hashLabel = `${orgIdHash.slice(0, 12)}…`;
-        expect(screen.getByText(hashLabel)).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: hashLabel })).toBeNull();
+        expect(screen.queryByText(orgIdHash.slice(0, 12), { exact: false })).toBeNull();
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Unresolved" })).toBeNull();
     });
 
     it("renders an empty state when no top orgs exist", () => {

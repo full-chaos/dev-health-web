@@ -44,11 +44,11 @@ function SeverityBadge({ severity }: { severity: string }) {
     );
 }
 
-/** The name when the page has one; otherwise "Unresolved" (full id in the tooltip). */
+/** The name when the page has one; otherwise "Unresolved" (the id is not shown). */
 function EntityCell({ item }: { item: ImproveOpportunity }) {
     const entity = resolveEntityLabel(item.entityId);
     return (
-        <span title={entity.title}>
+        <span>
             <span className="text-(--ink-muted)">{item.entityType} </span>
             {entity.label}
         </span>

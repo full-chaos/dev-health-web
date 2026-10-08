@@ -279,7 +279,7 @@ describe("ImproveAutomationsDashboard", () => {
         expect(pill.querySelector("svg")).not.toBeNull();
     });
 
-    it("shows Unresolved for an id without a name, the full id in the tooltip", () => {
+    it("shows Unresolved for an id without a name, the id nowhere", () => {
         hook.mockReturnValue(
             result({
                 opportunities: [item(), item({ opportunityId: "o2", entityId: "repo-web" })],
@@ -289,8 +289,7 @@ describe("ImproveAutomationsDashboard", () => {
 
         const rows = screen.getAllByTestId("improve-automations-row");
         expect(rows[0]).toHaveTextContent("Unresolved");
-        const raw = within(rows[0]).getByText(/Unresolved/);
-        expect(raw).toHaveAttribute("title", "3f2a9c1e-1111-4222-8333-444455556666");
+        expect(rows[0].innerHTML).not.toContain("3f2a9c1e-1111-4222-8333-444455556666");
         expect(rows[0]).not.toHaveTextContent("3f2a9c1e-1111-4222-8333-444455556666");
         // A readable name is shown as is.
         expect(within(rows[1]).getByText(/repo-web/)).toBeInTheDocument();

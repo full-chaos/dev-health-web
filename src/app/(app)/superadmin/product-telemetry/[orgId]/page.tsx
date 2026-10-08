@@ -52,7 +52,7 @@ export default async function ProductTelemetryOrgDashboardPage({
                 ← Back to all orgs
             </Link>
             <AdminHeader
-                title={`Product telemetry · ${orgId}`}
+                title="Product telemetry"
                 description="Drilldown view for a single organization, using persisted ClickHouse product telemetry for the selected date range."
             />
             <ProductTelemetryDashboard dashboard={dashboard} startDate={start} endDate={end} />

@@ -188,7 +188,7 @@ describe("ScopeBarFrame — the repository control is the owner's", () => {
         expect(onChange).toHaveBeenLastCalledWith([]);
     });
 
-    it("shows a selected id that has no option as the id, and keeps it in a change", async () => {
+    it("shows a selected id that has no option as Unresolved, and keeps the id in a change", async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();
         render(
@@ -199,14 +199,14 @@ describe("ScopeBarFrame — the repository control is the owner's", () => {
             />,
         );
 
-        expect(screen.getByRole("button", { name: /^Repo/ })).toHaveTextContent("unknown-id");
+        expect(screen.getByRole("button", { name: /^Repo/ })).toHaveTextContent("Unresolved");
         await user.click(screen.getByRole("button", { name: /^Repo/ }));
         await user.click(screen.getByRole("checkbox", { name: "org/api" }));
 
         expect(onChange).toHaveBeenLastCalledWith(["unknown-id", API]);
     });
 
-    it("tells two repositories with one name apart by the id", async () => {
+    it("tells two repositories with one name apart by a number, never the id", async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();
         render(
@@ -225,7 +225,7 @@ describe("ScopeBarFrame — the repository control is the owner's", () => {
         );
 
         await user.click(screen.getByRole("button", { name: /^Repo/ }));
-        await user.click(screen.getByRole("checkbox", { name: "org/api (id-2)" }));
+        await user.click(screen.getByRole("checkbox", { name: "org/api (2)" }));
 
         expect(onChange).toHaveBeenCalledWith(["id-2"]);
     });

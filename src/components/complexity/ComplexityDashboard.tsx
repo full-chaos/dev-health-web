@@ -792,7 +792,6 @@ function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
 // ---------------------------------------------------------------------------
 
 export function ComplexityDashboard({
-    orgId,
     points,
     hotspotRows,
     activeTab = "overview",
@@ -818,9 +817,6 @@ export function ComplexityDashboard({
                         Complexity data appears once the daily metrics job has processed at least
                         one complexity analysis run for this org. The page populates automatically
                         on the next metrics run.
-                    </p>
-                    <p className="mt-2 text-xs text-(--ink-muted)">
-                        Org <span className="font-mono">{orgId}</span>
                     </p>
                 </section>
 

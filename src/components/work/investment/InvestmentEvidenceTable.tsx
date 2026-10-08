@@ -19,7 +19,6 @@ import {
     formatBandLabel,
     formatQuality,
     formatSubcategoryLabel,
-    formatWorkUnitIdToken,
     formatWorkUnitLabel,
     formatWorkUnitTypeLabel,
     selectWorkUnitEntries,
@@ -244,12 +243,6 @@ export function GroupUnitsList({
                         {unitOpen && (
                             <div className="space-y-4 border-t border-(--card-stroke) px-4 py-4">
                                 <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    <span>
-                                        ID:{" "}
-                                        <span className="font-mono tracking-normal text-(--ink)">
-                                            {formatWorkUnitIdToken(unit.work_unit_id)}
-                                        </span>
-                                    </span>
                                     <span>
                                         Evidence quality:{" "}
                                         {unit.evidence_quality.value !== null

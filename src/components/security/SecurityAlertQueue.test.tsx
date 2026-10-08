@@ -169,10 +169,7 @@ describe("SecurityAlertQueue", () => {
 
         const pill = screen.getByTestId("locked-repo-pill");
         expect(pill.textContent).toBe("Repository");
-        expect(pill).toHaveAttribute(
-            "title",
-            "Repository id: 3f2a9c1e-7b4d-4e8a-9c21-5d6e7f8a9b0c",
-        );
+        expect(pill).not.toHaveAttribute("title");
     });
 
     it("renders a Load more button and calls fetchMore with the end cursor", async () => {
