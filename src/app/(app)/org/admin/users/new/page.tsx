@@ -36,7 +36,7 @@ export default function NewUserPage() {
     };
 
     return (
-        <div className="max-w-2xl">
+        <div>
             <AdminHeader
                 title="Add User"
                 description="Add a new team member to the organization."

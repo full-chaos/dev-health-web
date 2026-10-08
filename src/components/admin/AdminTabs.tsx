@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
@@ -45,7 +45,22 @@ export function AdminTabs() {
     const { features } = useAdminTier();
     const { isPlatformAdmin } = useAdminNav();
 
+    const rowRef = useRef<HTMLDivElement>(null);
     const found = routeTabForPathname(pathname);
+    const activeTabId = found?.tab.id;
+
+    useEffect(() => {
+        const list = rowRef.current?.querySelector<HTMLElement>('[role="tablist"]');
+        const current = list?.querySelector<HTMLElement>('[aria-current="page"]');
+        if (!list || !current) return;
+        const left = current.offsetLeft - list.offsetLeft;
+        const right = left + current.offsetWidth;
+        if (left < list.scrollLeft) list.scrollLeft = left;
+        else if (right > list.scrollLeft + list.clientWidth) {
+            list.scrollLeft = right - list.clientWidth;
+        }
+    }, [activeTabId]);
+
     if (!found || found.set.areaId !== "admin") return null;
     const { set, tab: active } = found;
 
@@ -70,7 +85,7 @@ export function AdminTabs() {
         }));
 
     return (
-        <div data-testid="admin-tabs" className="flex items-end gap-2">
+        <div ref={rowRef} data-testid="admin-tabs" className="flex items-end gap-2">
             <ViewSet
                 orientation="tabs"
                 items={items}

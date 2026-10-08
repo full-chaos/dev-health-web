@@ -14,7 +14,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
     const user = result.data;
 
     return (
-        <div className="max-w-2xl">
+        <div>
             <AdminHeader
                 title="Edit User"
                 description={`Update details for ${user.full_name || user.email}`}
