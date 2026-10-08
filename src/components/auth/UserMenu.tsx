@@ -17,12 +17,35 @@ type UserMenuProps = {
     detail?: string | null;
 };
 
+type SessionProbe = "pending" | "signed-out" | "failed";
+
+/**
+ * next-auth reports "unauthenticated" both for a real no-session answer and for a failed
+ * /api/auth/session fetch. Ask the endpoint ourselves, with one retry, so only a confirmed
+ * answer reads as signed out.
+ */
+async function probeSession(signal: AbortSignal): Promise<SessionProbe | "signed-in"> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+            const res = await fetch("/api/auth/session", { credentials: "same-origin", signal });
+            if (res.ok) {
+                const body = (await res.json()) as { user?: unknown } | null;
+                return body?.user ? "signed-in" : "signed-out";
+            }
+        } catch {
+            if (signal.aborted) return "pending";
+        }
+    }
+    return "failed";
+}
+
 export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
     const inSidebar = placement === "sidebar";
     // Both placements can be mounted at once (the shell shows one per breakpoint),
     // so each needs its own menu id.
     const menuId = inSidebar ? "account-options-sidebar" : "account-options";
-    const { data: session, status } = useSession();
+    const { data: session, status, update } = useSession();
+    const [probe, setProbe] = useState<SessionProbe>("pending");
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -36,8 +59,36 @@ export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const updateRef = useRef(update);
+    useEffect(() => {
+        updateRef.current = update;
+    });
+    const unauthenticated = status !== "loading" && !session;
+    useEffect(() => {
+        if (!unauthenticated) return;
+        const controller = new AbortController();
+        void probeSession(controller.signal).then((result) => {
+            if (controller.signal.aborted) return;
+            if (result === "signed-in") {
+                void updateRef.current?.();
+                return;
+            }
+            setProbe(result);
+        });
+        return () => controller.abort();
+    }, [unauthenticated]);
+
     if (status === "loading") {
         return <div className="h-8 w-8 animate-pulse rounded-full bg-[var(--card-stroke)]" />;
+    }
+
+    if (!session && probe !== "signed-out") {
+        return (
+            <div
+                data-testid="account-session-pending"
+                className="h-8 w-8 animate-pulse rounded-full bg-[var(--card-stroke)]"
+            />
+        );
     }
 
     if (!session) {

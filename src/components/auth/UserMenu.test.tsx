@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 const { signOutMock, useSessionMock } = vi.hoisted(() => ({
@@ -92,5 +92,56 @@ describe("UserMenu", () => {
         ]) {
             expect(item.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
         }
+    });
+
+    describe("no session from useSession", () => {
+        const fetchMock = vi.fn();
+
+        beforeEach(() => {
+            fetchMock.mockReset();
+            vi.stubGlobal("fetch", fetchMock);
+            useSessionMock.mockReturnValue({ data: null, status: "unauthenticated" });
+        });
+
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        it("a failed session read (network error, then a failed retry) never reads as signed out", async () => {
+            fetchMock.mockRejectedValue(new TypeError("network changed"));
+            render(<UserMenu />);
+
+            await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+            expect(fetchMock).toHaveBeenCalledWith("/api/auth/session", expect.anything());
+            expect(screen.queryByText(CTA_LABELS.signIn)).not.toBeInTheDocument();
+            expect(screen.getByTestId("account-session-pending")).toBeInTheDocument();
+        });
+
+        it("a non-OK session response is a failed read, not a signed-out user", async () => {
+            fetchMock.mockResolvedValue(new Response("boom", { status: 502 }));
+            render(<UserMenu />);
+
+            await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+            expect(screen.queryByText(CTA_LABELS.signIn)).not.toBeInTheDocument();
+        });
+
+        it("one retry recovers: a failed read followed by a 200 with no user shows Sign In", async () => {
+            fetchMock
+                .mockRejectedValueOnce(new TypeError("network changed"))
+                .mockResolvedValueOnce(Response.json(null));
+            render(<UserMenu />);
+
+            expect(await screen.findByText(CTA_LABELS.signIn)).toBeInTheDocument();
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it("a confirmed 200 with no user still shows Sign In", async () => {
+            fetchMock.mockResolvedValue(Response.json({}));
+            render(<UserMenu />);
+
+            const link = await screen.findByText(CTA_LABELS.signIn);
+            expect(link).toHaveAttribute("href", "/auth/signin");
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
     });
 });
