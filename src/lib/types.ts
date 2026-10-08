@@ -498,9 +498,10 @@ export type PersonMetricTimeseriesPoint = {
 };
 
 export type PersonMetricBreakdown = {
-    by_repo?: Array<{ repo: string; value: number }>;
-    by_work_type?: Array<{ work_type: string; value: number }>;
-    by_stage?: Array<{ stage: string; value: number }>;
+    /** ops serves `label` for every breakdown; by_repo's label is the repository name (repos.repo). */
+    by_repo?: Array<{ label: string; value: number }>;
+    by_work_type?: Array<{ label: string; value: number }>;
+    by_stage?: Array<{ label: string; value: number }>;
 };
 
 export type PersonMetricDriver = {

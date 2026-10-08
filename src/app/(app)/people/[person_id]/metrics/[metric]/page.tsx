@@ -14,8 +14,6 @@ import { formatNumber } from "@/lib/formatters";
 import { getMetricLabel } from "@/lib/metrics/catalog";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
-import { EntityLabel } from "@/components/labels/EntityLabel";
-import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 import { Notice } from "@/components/ui/Notice";
 import { PersonEvidenceTable } from "@/components/people/PersonEvidenceTable";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -143,7 +141,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
             label: "By repo",
             items:
                 breakdowns.by_repo?.map((item) => ({
-                    label: item.repo,
+                    label: item.label,
                     value: item.value,
                 })) ?? [],
         },
@@ -153,7 +151,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
             label: "By work type",
             items:
                 breakdowns.by_work_type?.map((item) => ({
-                    label: item.work_type,
+                    label: item.label,
                     value: item.value,
                 })) ?? [],
         },
@@ -163,7 +161,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
             label: "By stage",
             items:
                 breakdowns.by_stage?.map((item) => ({
-                    label: item.stage,
+                    label: item.label,
                     value: item.value,
                 })) ?? [],
         },
@@ -280,18 +278,6 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
 
             <section className="grid gap-6 lg:grid-cols-3">
                 {breakdownGroups.map((group) => {
-                    // Repo breakdown labels are entity ids — route through the A7
-                    // resolver so a raw repo id degrades to a stable short token
-                    // (with the full id in the axis tooltip). Work-type / stage
-                    // labels are plain categories and pass through untouched.
-                    const chartLabels = group.isEntity
-                        ? resolveEntityLabels(
-                              group.items.map((item) => item.label),
-                              {
-                                  unresolvedFallback: "Unresolved",
-                              },
-                          )
-                        : null;
                     return (
                         <div
                             key={group.id}
@@ -306,15 +292,8 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                             <div className="mt-4">
                                 {group.items.length ? (
                                     <HorizontalBarChart
-                                        categories={
-                                            chartLabels
-                                                ? chartLabels.labels
-                                                : group.items.map((item) => item.label)
-                                        }
+                                        categories={group.items.map((item) => item.label)}
                                         values={group.items.map((item) => item.value)}
-                                        categoryTitles={
-                                            chartLabels ? chartLabels.titles : undefined
-                                        }
                                     />
                                 ) : (
                                     <div className="flex h-56 items-center justify-center rounded-(--radius-md) border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
@@ -328,11 +307,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                         key={`${group.id}-${item.label ?? "unknown"}-${item.value}`}
                                         className="flex items-center justify-between rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                                     >
-                                        {group.isEntity ? (
-                                            <EntityLabel id={item.label} />
-                                        ) : (
-                                            <span>{item.label}</span>
-                                        )}
+                                        <span>{item.label}</span>
                                         <span className="text-xs text-(--ink-muted)">
                                             {formatNumber(item.value)}
                                         </span>

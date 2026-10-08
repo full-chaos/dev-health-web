@@ -64,3 +64,32 @@ describe("contributorMeterRows", () => {
         );
     });
 });
+
+describe("served display_name (explain drivers and contributors)", () => {
+    const served = (display_name: string | null, label: string) => ({
+        ...row("team-1", label, 5, 12),
+        display_name,
+    });
+
+    it.each([
+        ["bare uuid", "3f2a9c1e-7b4d-4e8a-9c21-5d6e7f8a9b0c"],
+        ["provider-keyed", "jira:3f2a9c1e-7b4d-4e8a-9c21-5d6e7f8a9b0c"],
+        ["short token", "#3f2a9c1e"],
+    ])("the served name wins over a %s label", (_kind, label) => {
+        const [driver] = associationMeterRows([served("Platform", label)]);
+        const [contributor] = contributorMeterRows([served("Platform", label)], "hours");
+        expect(driver.label).toBe("Platform");
+        expect(contributor.label).toBe("Platform");
+        expect(driver.title).toBe("Platform");
+    });
+
+    it.each(["3f2a9c1e-7b4d-4e8a-9c21-5d6e7f8a9b0c", "gh:platform", "#3f2a9c1e"])(
+        "no served name and the label %s is an id: the row reads Unresolved",
+        (label) => {
+            expect(associationMeterRows([served(null, label)])[0].label).toBe("Unresolved");
+            expect(contributorMeterRows([served(null, label)], undefined)[0].label).toBe(
+                "Unresolved",
+            );
+        },
+    );
+});

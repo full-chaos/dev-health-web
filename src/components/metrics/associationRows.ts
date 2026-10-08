@@ -1,4 +1,5 @@
 import type { MeterRow } from "@/components/ui/MeterRows";
+import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import type { Contributor } from "@/lib/types";
 
@@ -15,10 +16,15 @@ export const signedPercent = (value: number) => {
 
 type Labels = { labels: string[]; titles: (string | undefined)[] };
 
-const labelAt = (labels: Labels | undefined, index: number, fallback: string) => ({
-    label: labels?.labels[index] ?? fallback,
-    title: labels?.titles[index],
-});
+// The served `display_name` names the row; without one the label is guarded so an id never shows.
+const labelAt = (labels: Labels | undefined, index: number, row: Contributor) => {
+    const name = row.display_name?.trim();
+    if (name) return { label: name, title: name };
+    return {
+        label: labels?.labels[index] ?? chartEntityLabel(row.label),
+        title: labels?.titles[index],
+    };
+};
 
 /**
  * "Likely associations" as meter rows (prototype `bars()`). The text is the served signed percent
@@ -33,7 +39,7 @@ export function associationMeterRows(
 ): MeterRow[] {
     return drivers.map((driver, index) => ({
         key: driver.id,
-        ...labelAt(labels, index, driver.label),
+        ...labelAt(labels, index, driver),
         value: options.signed ? driver.delta_pct : Math.abs(driver.delta_pct),
         display: signedPercent(driver.delta_pct),
     }));
@@ -47,7 +53,7 @@ export function contributorMeterRows(
 ): MeterRow[] {
     return contributors.map((contributor, index) => ({
         key: contributor.id,
-        ...labelAt(labels, index, contributor.label),
+        ...labelAt(labels, index, contributor),
         value: contributor.value,
         display: unit ? formatMetricValue(contributor.value, unit) : undefined,
     }));
