@@ -30,6 +30,13 @@ import {
     innerLinkCurveness,
     layoutLayered,
 } from "@/lib/workGraphLayout";
+import {
+    bucketGraph,
+    bucketId,
+    bucketableTypes,
+    bucketType,
+    isBucketId,
+} from "@/lib/workGraphBuckets";
 import { ChartTypeToggle } from "./ChartTypeToggle";
 import { nameOrUnresolved, UNRESOLVED } from "@/lib/labels/unresolved";
 import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
@@ -134,6 +141,8 @@ export type WorkGraphLayoutMode = "layered" | "network";
 export const ZOOM_LEVELS = [1, 1.5, 2, 3, 4] as const;
 /** A drag shorter than this is a click (the chart library uses the same limit). */
 const DRAG_START_PX = 4;
+/** Mark size of a bucket node (a collapsed column). */
+const BUCKET_SYMBOL_SIZE = 44;
 /** The wheel gives at most one zoom step in this time (a pinch sends many wheel events). */
 const WHEEL_ZOOM_GAP_MS = 150;
 
@@ -334,12 +343,39 @@ export function WorkGraphExplorer({
         [edges, hiddenNodeTypes],
     );
 
-    const layered = useMemo(
-        () => layoutLayered(nodes, links, { width: canvasWidth }),
-        [nodes, links, canvasWidth],
-    );
+    // A tall column is one bucket until it is opened: by a click on the bucket, or by zooming in
+    // (any zoom step opens all of them; zooming back out to the fit closes them). Client state only.
+    const [openTypes, setOpenTypes] = useState<ReadonlySet<WorkGraphNodeType>>(() => new Set());
+    const collapsible = useMemo(() => bucketableTypes(nodes), [nodes]);
+    const expanded: ReadonlySet<WorkGraphNodeType> = zoomStep > 0 ? collapsible : openTypes;
+    // The opening mode counts every tall column as one row, so zooming in never flips the mode.
+    const openingColumns = useMemo(() => {
+        const counts = new Map<WorkGraphNodeType, number>();
+        for (const node of nodes) counts.set(node.type, (counts.get(node.type) ?? 0) + 1);
+        return Array.from(counts, ([type, count]) => ({
+            count: collapsible.has(type) ? 1 : count,
+        }));
+    }, [nodes, collapsible]);
     // One rule picks the opening mode (see defaultGraphMode); an explicit choice always wins.
-    const layoutMode: WorkGraphLayoutMode = chosenMode ?? defaultGraphMode(layered.columns);
+    const layoutMode: WorkGraphLayoutMode = chosenMode ?? defaultGraphMode(openingColumns);
+
+    const bucketed = useMemo(
+        () =>
+            bucketGraph(nodes, links, collapsible, expanded, (type, count) => ({
+                id: bucketId(type),
+                type,
+                bucketCount: count,
+            })),
+        [nodes, links, collapsible, expanded],
+    );
+    const layered = useMemo(
+        () =>
+            layoutMode === "layered"
+                ? layoutLayered(bucketed.nodes, bucketed.links, { width: canvasWidth })
+                : layoutLayered([], [], { width: canvasWidth }),
+        [layoutMode, bucketed, canvasWidth],
+    );
+    const hasOpenGroups = layoutMode === "layered" && zoomStep === 0 && openTypes.size > 0;
     const setLayoutMode = setChosenMode;
     // The scroll box is on the page only in the layered mode of a graph that has edges. The
     // effects that need the box run again when this changes (a graph can get its edges after the
@@ -374,11 +410,28 @@ export function WorkGraphExplorer({
         const animateGraph = totalGraphics < 2000;
         const isLayered = layoutMode === "layered";
         const useForceLayout = !isLayered && totalGraphics < 900;
+        const plainById = new Map(nodes.map((node) => [node.id, node]));
+        const drawnNodes = (isLayered ? bucketed.nodes : nodes).map((node) => {
+            if ("bucketCount" in node) {
+                return {
+                    id: node.id,
+                    type: node.type,
+                    name: `${NODE_TYPE_LABELS[node.type]} · ${node.bucketCount}`,
+                    symbolSize: BUCKET_SYMBOL_SIZE,
+                    isBucket: true,
+                };
+            }
+            const plain = plainById.get(node.id)!;
+            return { ...plain, isBucket: false };
+        });
+        const drawnLinks: Array<WorkGraphLink & { count: number }> = isLayered
+            ? (bucketed.links as Array<WorkGraphLink & { count: number }>)
+            : links.map((link) => ({ ...link, count: 1 }));
         const showNodeLabels = nodes.length <= 120;
-        const echartsNodes = nodes.map((node) => ({
+        const echartsNodes = drawnNodes.map((node) => ({
             id: node.id,
             name: node.name,
-            category: node.category,
+            category: ALL_NODE_TYPES.indexOf(node.type),
             // layered: coordinates go through explicit axes (below), so the drawing is placed
             // exactly (no automatic fit); network: the layout algorithm places the node
             ...(isLayered
@@ -391,12 +444,13 @@ export function WorkGraphExplorer({
                 : {}),
             symbolSize: (() => {
                 // dense columns get smaller marks so rows do not overlap
-                const base = isLayered
-                    ? Math.min(node.symbolSize, Math.max(6, layered.rowPitch * 0.7))
-                    : node.symbolSize;
+                const base =
+                    isLayered && !node.isBucket
+                        ? Math.min(node.symbolSize, Math.max(6, layered.rowPitch * 0.7))
+                        : node.symbolSize;
                 return selectedNodeId === node.id ? base * 1.5 : base;
             })(),
-            symbol: NODE_TYPE_SYMBOLS[node.type],
+            symbol: node.isBucket ? "roundRect" : NODE_TYPE_SYMBOLS[node.type],
             itemStyle: {
                 color: nodeTypeColors[node.type],
                 borderColor: selectedNodeId === node.id ? chartTheme.text : undefined,
@@ -407,14 +461,15 @@ export function WorkGraphExplorer({
                 show: isLayered ? true : showNodeLabels && node.symbolSize > 25,
                 ...(isLayered ? { width: LABEL_WIDTH, overflow: "truncate" as const } : {}),
                 position: isLayered ? ("right" as const) : ("bottom" as const),
-                fontSize: 10,
+                fontSize: node.isBucket ? 12 : 10,
+                ...(node.isBucket ? { distance: 12 } : {}),
                 color: chartTheme.text,
             },
         }));
 
-        const nodeById = new Map(nodes.map((node) => [node.id, node]));
+        const nodeById = new Map(drawnNodes.map((node) => [node.id, node]));
         const bowRoom = new Map(layered.columns.map((column) => [column.type, column.bowRoom]));
-        const echartsLinks = links.map((link) => {
+        const echartsLinks = drawnLinks.map((link) => {
             const linkStyle = edgeTypeStyles[link.edgeType] ?? {
                 color: chartTheme.muted,
                 type: "solid" as const,
@@ -430,10 +485,16 @@ export function WorkGraphExplorer({
             return {
                 source: link.source,
                 target: link.target,
+                // `count` > 1: one drawn edge stands for that many served links
+                value: link.count,
+                edgeType: link.edgeType,
                 lineStyle: {
                     color: linkStyle.color,
                     type: linkStyle.type,
-                    width: link.lineStyle?.width ?? 1,
+                    width:
+                        link.count > 1
+                            ? Math.min(8, 1 + Math.log2(link.count))
+                            : (link.lineStyle?.width ?? 1),
                     opacity: link.lineStyle?.opacity ?? 0.6,
                     curveness: insideColumn
                         ? innerLinkCurveness(
@@ -457,15 +518,20 @@ export function WorkGraphExplorer({
                 formatter: (params: unknown) => {
                     const p = params as {
                         dataType?: string;
-                        data?: { name?: string; id?: string; edgeType?: string };
+                        data?: { name?: string; id?: string; edgeType?: string; value?: number };
                     };
                     if (p.dataType === "node") {
                         const nodeId = p.data?.id ?? "";
+                        if (isBucketId(nodeId)) {
+                            return `<strong>${p.data?.name ?? UNRESOLVED}</strong><br/>Click, or zoom in, to open`;
+                        }
                         const type = nodeId.split(":")[0];
                         return `<strong>${type}</strong><br/>${p.data?.name ?? UNRESOLVED}`;
                     }
                     if (p.dataType === "edge") {
-                        return `${p.data?.edgeType ?? "relates"}`;
+                        const count = p.data?.value ?? 1;
+                        const kind = p.data?.edgeType ?? "relates";
+                        return count > 1 ? `${kind} · ${count} links` : `${kind}`;
                     }
                     return "";
                 },
@@ -543,6 +609,7 @@ export function WorkGraphExplorer({
     }, [
         nodes,
         links,
+        bucketed,
         categories,
         chartTheme,
         selectedNodeId,
@@ -557,6 +624,11 @@ export function WorkGraphExplorer({
         () => ({
             click: (params: unknown) => {
                 const p = params as { dataType?: string; data?: { id?: string } };
+                if (p.dataType === "node" && p.data?.id && isBucketId(p.data.id)) {
+                    const type = bucketType(p.data.id);
+                    setOpenTypes((prev) => new Set(prev).add(type));
+                    return;
+                }
                 if (p.dataType === "node" && p.data?.id && onNodeClickAction) {
                     const [type, id] = p.data.id.split(":");
                     onNodeClickAction(id, type as WorkGraphNodeType);
@@ -590,6 +662,7 @@ export function WorkGraphExplorer({
                 const at = offset ?? box.clientWidth / 2;
                 zoomAnchor.current = { share: (box.scrollLeft + at) / canvasWidth, offset: at };
             }
+            if (next === 0) setOpenTypes(new Set());
             setZoomStep(next);
         },
         [canvasWidth, zoomStep],
@@ -702,7 +775,8 @@ export function WorkGraphExplorer({
                                 className="absolute top-0 whitespace-nowrap"
                                 style={{ left: MARGIN_LEFT + column.x - 6 }}
                             >
-                                {NODE_TYPE_LABELS[column.type]} · {column.count}
+                                {NODE_TYPE_LABELS[column.type]} ·{" "}
+                                {bucketed.buckets.get(column.type) ?? column.count}
                             </span>
                         ))}
                     </div>
@@ -712,6 +786,9 @@ export function WorkGraphExplorer({
                 <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs text-(--ink-muted)">
                     <p className="mr-1" data-testid="work-graph-move-hint">
                         Drag or scroll to move. Zoom with the buttons or Ctrl + wheel.
+                        {collapsible.size > 0 && zoomStep === 0
+                            ? " A large column is one group: click it, or zoom in, to open it."
+                            : ""}
                     </p>
                     <Button
                         variant="ghost"
@@ -731,6 +808,16 @@ export function WorkGraphExplorer({
                     >
                         {CTA_LABELS.zoomOut}
                     </Button>
+                    {hasOpenGroups ? (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<RotateCcw />}
+                            onClick={() => setOpenTypes(new Set())}
+                        >
+                            {CTA_LABELS.groupLargeColumns}
+                        </Button>
+                    ) : null}
                     {zoomStep > 0 ? (
                         <Button
                             variant="ghost"

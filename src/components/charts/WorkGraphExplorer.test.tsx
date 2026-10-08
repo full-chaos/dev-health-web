@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@/test/utils";
 
 import type { WorkGraphEdge } from "@/lib/graphql/types";
 import { MARGIN_LEFT, MARGIN_RIGHT } from "@/lib/workGraphLayout";
+import { BUCKET_THRESHOLD } from "@/lib/workGraphBuckets";
 import {
     WorkGraphExplorer,
     WorkGraphLayerToggles,
@@ -108,16 +109,19 @@ describe("WorkGraphExplorer layout modes", () => {
         expect(series().roam).toBe(false);
     });
 
-    it("a tall graph opens in Network by default; the switch still reaches Layered and the canvas grows without hiding a node", () => {
+    it("a tall graph opens in Layered with one bucket per tall column; Network stays available", () => {
         const many = Array.from({ length: 60 }, (_, i) => edge("ISSUE", `I${i}`, "PR", `P${i}`));
         render(<WorkGraphExplorer edges={many} />);
-        expect(series().layout).not.toBe("none");
-        expect(screen.queryByTestId("work-graph-scroll")).toBeNull();
-        fireEvent.click(screen.getByRole("radio", { name: "Layered" }));
         expect(series().layout).toBe("none");
+        expect(screen.getByTestId("work-graph-scroll")).toBeTruthy();
+        expect(
+            series()
+                .data.map((node) => node.id)
+                .sort(),
+        ).toEqual(["bucket:ISSUE", "bucket:PR"]);
+        fireEvent.click(screen.getByRole("radio", { name: "Network" }));
+        expect(series().layout).not.toBe("none");
         expect(series().data).toHaveLength(120);
-        const props = chartSpy.mock.calls.at(-1)![0] as { style: { height: number } };
-        expect(props.style.height).toBe(60 * 14 + 96);
     });
 
     it("an explicit choice survives data changes", () => {
@@ -166,7 +170,7 @@ describe("layered mode with links inside a column", () => {
     ];
     const open = () => {
         render(<WorkGraphExplorer edges={inner} />);
-        fireEvent.click(screen.getByRole("radio", { name: "Layered" }));
+        act(() => chartProps().onEvents.click({ dataType: "node", data: { id: "bucket:ISSUE" } }));
     };
     // jsdom has no layout: the explorer keeps its start width of 900 px.
     const usable = 900 - MARGIN_LEFT - MARGIN_RIGHT;
@@ -284,7 +288,9 @@ describe("layered mode with links inside a column", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Reset zoom" }));
         expect(chartProps().style.width).toBe("100%");
-        expect(strip()).toEqual(before);
+        // zooming out to the fit closes the opened column again (one bucket, same count)
+        expect(series().data).toHaveLength(2);
+        expect(strip().map((c) => c.text)).toEqual(before.map((c) => c.text));
         expect(screen.queryByRole("button", { name: "Reset zoom" })).toBeNull();
     });
 
@@ -441,6 +447,7 @@ describe("layered mode with links inside a column", () => {
 
     it("Network mode keeps its own pan and zoom (roam): no hint, no zoom buttons", () => {
         render(<WorkGraphExplorer edges={inner} />);
+        fireEvent.click(screen.getByRole("radio", { name: "Network" }));
         expect(series().roam).toBe(true);
         expect(chartProps().option.dataZoom).toBeUndefined();
         expect(screen.queryByTestId("work-graph-move-hint")).toBeNull();
@@ -544,5 +551,123 @@ describe("layer visibility owned by the page", () => {
         expect(container.innerHTML).not.toContain("writing-mode");
         fireEvent.click(screen.getByRole("button", { name: /legend/i }));
         expect(toggle).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("buckets: a tall column is one node until it is opened", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    const issueId = (i: number) => `I${String(i).padStart(3, "0")}`;
+    // 100 issues, 40 PRs. Issue i is fixed by PR (i % 40): 100 served links, 40 PR ends.
+    const big = Array.from({ length: 100 }, (_, i) => ({
+        ...edge("ISSUE", issueId(i), "PR", `P${i % 40}`),
+        sourceDisplayName: `Issue ${i}`,
+        targetDisplayName: `PR ${i % 40}`,
+    })) as WorkGraphEdge[];
+    const ids = () =>
+        series()
+            .data.map((node) => node.id)
+            .sort();
+    const clickBucket = (id: string) =>
+        act(() => chartProps().onEvents.click({ dataType: "node", data: { id } }));
+
+    it("opens in Layered: both tall columns are one bucket node each, with the count", () => {
+        render(<WorkGraphExplorer edges={big} />);
+        expect(series().layout).toBe("none");
+        expect(ids()).toEqual(["bucket:ISSUE", "bucket:PR"].sort());
+        const names = series().data.map((node) => (node as unknown as { name: string }).name);
+        expect(names.sort()).toEqual(["Issue · 100", "PR · 40"].sort());
+        expect(screen.getByTestId("work-graph-columns").textContent).toContain("Issue · 100");
+    });
+
+    it("a column at the threshold is not bucketed; one above it is", () => {
+        const at = Array.from({ length: BUCKET_THRESHOLD }, (_, i) =>
+            edge("ISSUE", `I${i}`, "PR", `P${i}`),
+        );
+        render(<WorkGraphExplorer edges={at} />);
+        expect(series().data).toHaveLength(2 * BUCKET_THRESHOLD);
+        chartSpy.mockClear();
+        const over = Array.from({ length: BUCKET_THRESHOLD + 1 }, (_, i) =>
+            edge("ISSUE", `I${i}`, "PR", `P${i}`),
+        );
+        render(<WorkGraphExplorer edges={over} />);
+        expect(ids()).toEqual(["bucket:ISSUE", "bucket:PR"].sort());
+    });
+
+    it("edges to a bucket are merged into one edge that carries the count", () => {
+        render(<WorkGraphExplorer edges={big} />);
+        const links = series().links as unknown as Array<{
+            source: string;
+            target: string;
+            value: number;
+        }>;
+        expect(links).toHaveLength(1);
+        expect(links[0]).toMatchObject({ source: "bucket:ISSUE", target: "bucket:PR", value: 100 });
+    });
+
+    it("a bucket next to a small column keeps one edge per served end, each with its count", () => {
+        const mixed = [
+            ...big.map((e) => ({ ...e, targetId: `P${Number(e.sourceId.slice(1)) % 3}` })),
+        ] as WorkGraphEdge[];
+        render(<WorkGraphExplorer edges={mixed} />);
+        const links = series().links as unknown as Array<{
+            source: string;
+            target: string;
+            value: number;
+        }>;
+        expect(links.map((l) => l.target).sort()).toEqual(["PR:P0", "PR:P1", "PR:P2"]);
+        expect(links.reduce((sum, l) => sum + l.value, 0)).toBe(100);
+        expect(links.every((l) => l.source === "bucket:ISSUE")).toBe(true);
+    });
+
+    it("a click on the bucket opens its members, with names and no raw id; Group large columns closes", () => {
+        render(<WorkGraphExplorer edges={big} />);
+        clickBucket("bucket:ISSUE");
+        const data = series().data as unknown as Array<{ id: string; name: string }>;
+        expect(data.filter((node) => node.id.startsWith("ISSUE:"))).toHaveLength(100);
+        expect(data.some((node) => node.id === "bucket:ISSUE")).toBe(false);
+        expect(data.some((node) => node.id === "bucket:PR")).toBe(true);
+        for (const node of data.filter((n) => n.id.startsWith("ISSUE:"))) {
+            expect(node.name).toMatch(/^Issue \d+$/);
+            expect(node.name).not.toContain(node.id.split(":")[1]);
+        }
+        fireEvent.click(screen.getByRole("button", { name: "Group large columns" }));
+        expect(ids()).toEqual(["bucket:ISSUE", "bucket:PR"].sort());
+    });
+
+    it("a member without a served name reads Unresolved, never its id", () => {
+        const unnamed = big.map((e) => ({ ...e, sourceDisplayName: null }));
+        render(<WorkGraphExplorer edges={unnamed} />);
+        clickBucket("bucket:ISSUE");
+        const names = (series().data as unknown as Array<{ id: string; name: string }>)
+            .filter((n) => n.id.startsWith("ISSUE:"))
+            .map((n) => n.name);
+        expect(new Set(names)).toEqual(new Set(["Unresolved"]));
+    });
+
+    it("zooming in opens every bucket; zooming back out to the fit closes them", () => {
+        render(<WorkGraphExplorer edges={big} />);
+        fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+        expect(series().data).toHaveLength(140);
+        fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+        expect(ids()).toEqual(["bucket:ISSUE", "bucket:PR"].sort());
+    });
+
+    it("opening a bucket by click does not call the node click handler", () => {
+        const onNodeClickAction = vi.fn();
+        render(<WorkGraphExplorer edges={big} onNodeClickAction={onNodeClickAction} />);
+        clickBucket("bucket:ISSUE");
+        expect(onNodeClickAction).not.toHaveBeenCalled();
+    });
+
+    it("1300+ nodes: collapsed it draws two nodes", () => {
+        const huge = Array.from({ length: 660 }, (_, i) => ({
+            ...edge("ISSUE", `I${i}`, "PR", `P${i}`),
+            sourceDisplayName: `Issue ${i}`,
+            targetDisplayName: `PR ${i}`,
+        })) as WorkGraphEdge[];
+        render(<WorkGraphExplorer edges={huge} />);
+        expect(series().layout).toBe("none");
+        expect(series().data).toHaveLength(2);
     });
 });
