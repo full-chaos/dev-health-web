@@ -3690,6 +3690,33 @@ export const handlers = [
         ]),
     ),
 
+    http.post("*/api/v1/admin/users", async ({ request }) => {
+        const body = (await request.json()) as { email?: string; full_name?: string };
+        if (body.email === "taken@example.com") {
+            return HttpResponse.json(
+                { detail: "User with email taken@example.com already exists" },
+                { status: 400 },
+            );
+        }
+        return HttpResponse.json(
+            {
+                id: "e2e-user-new",
+                email: body.email,
+                username: null,
+                full_name: body.full_name ?? null,
+                avatar_url: null,
+                auth_provider: "local",
+                is_active: true,
+                is_verified: false,
+                is_superuser: false,
+                last_login_at: null,
+                created_at: "2025-01-01T00:00:00Z",
+                updated_at: "2025-01-01T00:00:00Z",
+            },
+            { status: 201 },
+        );
+    }),
+
     http.get("*/api/v1/admin/settings/categories", () =>
         HttpResponse.json(["general", "security"]),
     ),
