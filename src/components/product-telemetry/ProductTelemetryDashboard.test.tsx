@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 
+const chartProps = vi.hoisted(() => ({ data: [] as Array<{ day: string; value: number | null }> }));
+
+vi.mock("@/components/charts/TimeseriesChart", () => ({
+    TimeseriesChart: (props: { data: Array<{ day: string; value: number | null }> }) => {
+        chartProps.data = props.data;
+        return <div data-testid="timeseries" />;
+    },
+}));
+
 import { ProductTelemetryDashboard } from "./ProductTelemetryDashboard";
 import type { ProductTelemetryDashboardData } from "@/lib/graphql/productTelemetryFetchers";
 
@@ -101,8 +110,65 @@ describe("ProductTelemetryDashboard", () => {
             />,
         );
 
-        expect(screen.getAllByText("No product telemetry events in this window.")).toHaveLength(6);
+        expect(screen.getAllByText("No product telemetry events in this window.")).toHaveLength(1);
+        for (const kind of [
+            "page_viewed",
+            "feature_viewed",
+            "filter_changed",
+            "chart_interacted",
+            "client_error",
+        ]) {
+            expect(
+                screen.getByText(`No ${kind} events recorded in this window.`),
+            ).toBeInTheDocument();
+        }
         // Each empty feed adopts the shared DataState taxonomy (CHAOS-2061).
         expect(screen.getAllByText("Enabled but no findings")).toHaveLength(6);
+    });
+
+    it("says what each tile counts, naming the day of the latest-day tile", () => {
+        render(
+            <ProductTelemetryDashboard
+                dashboard={{
+                    ...sampleDashboard,
+                    dailyActiveUsers: [
+                        { day: "2026-05-24", activeAnonymousUsers: 7 },
+                        { day: "2026-05-10", activeAnonymousUsers: 3 },
+                    ],
+                }}
+                startDate="2026-05-01"
+                endDate="2026-05-25"
+            />,
+        );
+
+        expect(screen.getByText("Anonymous users, latest day")).toBeInTheDocument();
+        expect(
+            screen.getByText("Distinct anonymous users on 2026-05-24, the latest day with events"),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Page-view events in the top 25 route patterns"),
+        ).toBeInTheDocument();
+    });
+
+    it("plots the whole window and leaves days without rows as gaps", () => {
+        render(
+            <ProductTelemetryDashboard
+                dashboard={{
+                    ...sampleDashboard,
+                    dailyActiveUsers: [
+                        { day: "2026-05-24", activeAnonymousUsers: 7 },
+                        { day: "2026-05-10", activeAnonymousUsers: 3 },
+                    ],
+                }}
+                startDate="2026-05-01"
+                endDate="2026-05-25"
+            />,
+        );
+
+        expect(chartProps.data).toHaveLength(24);
+        expect(chartProps.data.filter((p) => p.value !== null).map((p) => p.day)).toEqual([
+            "2026-05-10",
+            "2026-05-24",
+        ]);
     });
 });

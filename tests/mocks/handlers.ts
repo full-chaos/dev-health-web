@@ -1312,6 +1312,55 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         dimension?: { dimension?: string } | string;
     };
 
+    // Platform product telemetry (CHAOS-8968): the prod shape. Two days with rows
+    // inside a 30-day window, one org without a served name, empty event kinds.
+    if (query.includes("ProductTelemetryPlatformDashboard")) {
+        return HttpResponse.json({
+            data: {
+                productTelemetryPlatformDashboard: {
+                    totals: { activeOrgs: 2, anonymousUsers: 2, sessions: 1, events: 52 },
+                    dailyActiveUsers: [
+                        { day: "2026-10-01", activeAnonymousUsers: 2 },
+                        { day: "2026-10-02", activeAnonymousUsers: 1 },
+                    ],
+                    topRoutes: [
+                        { routePattern: "/dashboard", events: 4, sessions: 1, anonymousUsers: 2 },
+                        { routePattern: "/diagnose", events: 3, sessions: 1, anonymousUsers: 1 },
+                    ],
+                    featureViews: [],
+                    filterChanges: [],
+                    chartInteractions: [],
+                    clientErrors: [],
+                    sessionSummary: {
+                        p50DurationMs: 2057200,
+                        p75DurationMs: 7448700,
+                        p90DurationMs: 9970400,
+                        p95DurationMs: 10489400,
+                        avgPagesViewed: 6.4,
+                        avgInteractions: 0,
+                    },
+                    topOrgs: [
+                        {
+                            orgId: "org-full-chaos",
+                            orgName: "Full Chaos",
+                            orgSlug: "full-chaos",
+                            orgIdHash: "hash-full-chaos-0123456789",
+                            events: 46,
+                            sessions: 1,
+                            anonymousUsers: 1,
+                        },
+                        {
+                            orgIdHash: "hash-unnamed-0123456789abcdef",
+                            events: 6,
+                            sessions: 1,
+                            anonymousUsers: 1,
+                        },
+                    ],
+                },
+            },
+        });
+    }
+
     // Work-UNIT team attribution (CHAOS-2608 / CS7). Render-only: one row per
     // unit (the backend already collapsed member items to the owning team).
     // Keyed by workUnitId — the SAME ids as workUnitInvestmentsSample — so the

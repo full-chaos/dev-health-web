@@ -2,6 +2,7 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { DataState } from "@/components/ui/DataState";
 import { VALUE_ABSENCE_LABEL } from "@/lib/chartUtils";
 import type { ProductTelemetryDashboardData } from "@/lib/graphql/productTelemetryFetchers";
+import { dailyWindowSeries } from "./dailyWindowSeries";
 
 type ProductTelemetryDashboardProps = {
     dashboard: ProductTelemetryDashboardData;
@@ -39,17 +40,29 @@ function SectionCard({
     );
 }
 
-function EmptyState() {
+function EmptyState({ eventKind }: { eventKind?: string }) {
     return (
         <DataState
             variant="detector-enabled-no-findings"
-            description="No product telemetry events in this window."
+            description={
+                eventKind
+                    ? `No ${eventKind} events recorded in this window.`
+                    : "No product telemetry events in this window."
+            }
         />
     );
 }
 
-function DataTable({ headers, rows }: { headers: string[]; rows: Array<Array<string | number>> }) {
-    if (rows.length === 0) return <EmptyState />;
+function DataTable({
+    headers,
+    rows,
+    eventKind,
+}: {
+    headers: string[];
+    rows: Array<Array<string | number>>;
+    eventKind: string;
+}) {
+    if (rows.length === 0) return <EmptyState eventKind={eventKind} />;
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -94,7 +107,9 @@ export function ProductTelemetryDashboard({
     startDate,
     endDate,
 }: ProductTelemetryDashboardProps) {
-    const latestActiveUsers = dashboard.dailyActiveUsers.at(-1)?.activeAnonymousUsers;
+    const latestDay = [...dashboard.dailyActiveUsers]
+        .sort((a, b) => a.day.localeCompare(b.day))
+        .at(-1);
     const totalRouteEvents = dashboard.topRoutes.reduce((total, row) => total + row.events, 0);
     const totalFeatureViews = dashboard.featureViews.reduce((total, row) => total + row.views, 0);
     const totalErrors = dashboard.clientErrors.reduce((total, row) => total + row.errors, 0);
@@ -104,13 +119,27 @@ export function ProductTelemetryDashboard({
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {[
                     [
-                        "Active users",
-                        formatNumber(latestActiveUsers),
-                        "Latest daily anonymous users",
+                        "Anonymous users, latest day",
+                        formatNumber(latestDay?.activeAnonymousUsers),
+                        latestDay
+                            ? `Distinct anonymous users on ${latestDay.day}, the latest day with events`
+                            : "No day in the window has events",
                     ],
-                    ["Route events", formatNumber(totalRouteEvents), "Page views in top routes"],
-                    ["Feature views", formatNumber(totalFeatureViews), "Stable feature IDs viewed"],
-                    ["Client errors", formatNumber(totalErrors), "Rendered by route and boundary"],
+                    [
+                        "Route events",
+                        formatNumber(totalRouteEvents),
+                        "Page-view events in the top 25 route patterns",
+                    ],
+                    [
+                        "Feature views",
+                        formatNumber(totalFeatureViews),
+                        "feature_viewed events in window (none emitted yet)",
+                    ],
+                    [
+                        "Client errors",
+                        formatNumber(totalErrors),
+                        "client_error events in window (none emitted yet)",
+                    ],
                 ].map(([label, value, caption]) => (
                     <div
                         key={label}
@@ -129,14 +158,11 @@ export function ProductTelemetryDashboard({
 
             <SectionCard
                 title="Daily active anonymous users"
-                description={`Half-open window from ${startDate} to ${endDate}.`}
+                description={`Distinct anonymous users per day, ${startDate} to ${endDate} (end day excluded). Days without events are gaps.`}
             >
                 {dashboard.dailyActiveUsers.length ? (
                     <TimeseriesChart
-                        data={dashboard.dailyActiveUsers.map((point) => ({
-                            day: point.day,
-                            value: point.activeAnonymousUsers,
-                        }))}
+                        data={dailyWindowSeries(dashboard.dailyActiveUsers, startDate, endDate)}
                         height={240}
                     />
                 ) : (
@@ -150,6 +176,7 @@ export function ProductTelemetryDashboard({
                     description="Page-view events by route pattern."
                 >
                     <DataTable
+                        eventKind="page_viewed"
                         headers={["Route", "Events", "Sessions", "Users"]}
                         rows={dashboard.topRoutes.map((row) => [
                             row.routePattern,
@@ -162,6 +189,7 @@ export function ProductTelemetryDashboard({
 
                 <SectionCard title="Feature views" description="Stable feature IDs by surface.">
                     <DataTable
+                        eventKind="feature_viewed"
                         headers={["Feature", "Surface", "Views", "Users"]}
                         rows={dashboard.featureViews.map((row) => [
                             row.feature,
@@ -177,6 +205,7 @@ export function ProductTelemetryDashboard({
                     description="Filter usage by view and filter key."
                 >
                     <DataTable
+                        eventKind="filter_changed"
                         headers={["Filter", "View", "Changes", "Avg values"]}
                         rows={dashboard.filterChanges.map((row) => [
                             row.filterKey,
@@ -192,6 +221,7 @@ export function ProductTelemetryDashboard({
                     description="Chart actions by chart type and surface."
                 >
                     <DataTable
+                        eventKind="chart_interacted"
                         headers={["Chart", "Action", "Surface", "Interactions"]}
                         rows={dashboard.chartInteractions.map((row) => [
                             row.chart,
@@ -207,6 +237,7 @@ export function ProductTelemetryDashboard({
                     description="Client error classes by route and boundary."
                 >
                     <DataTable
+                        eventKind="client_error"
                         headers={["Error class", "Route", "Boundary", "Errors"]}
                         rows={dashboard.clientErrors.map((row) => [
                             row.errorClass,

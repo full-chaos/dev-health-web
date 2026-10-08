@@ -62,7 +62,7 @@ function TopOrgsTable({
                 </thead>
                 <tbody className="divide-y divide-(--card-stroke)">
                     {rows.map((org) => {
-                        const label = nameOrUnresolved(org.orgName || org.orgSlug);
+                        const label = nameOrUnresolved(org.orgName);
                         const href = drilldownHref(org);
                         return (
                             <tr key={org.orgIdHash}>
@@ -114,22 +114,22 @@ export function PlatformProductTelemetryDashboard({
                 <StatCard
                     label="Active orgs"
                     value={formatNumber(totals.activeOrgs)}
-                    caption="Distinct tenants with events in window"
+                    caption="Orgs with at least one event in the window"
                 />
                 <StatCard
                     label="Anonymous users"
                     value={formatNumber(totals.anonymousUsers)}
-                    caption="Distinct anon users across all orgs"
+                    caption="Distinct anonymous users in the window, all orgs"
                 />
                 <StatCard
                     label="Sessions"
                     value={formatNumber(totals.sessions)}
-                    caption="Distinct sessions across all orgs"
+                    caption="Distinct sessions in the window, all orgs"
                 />
                 <StatCard
                     label="Events"
                     value={formatNumber(totals.events)}
-                    caption="Total raw events in window"
+                    caption="All telemetry events in the window"
                 />
             </div>
 
