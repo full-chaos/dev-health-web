@@ -12,6 +12,7 @@ import { CoverageBaselineCard } from "@/components/testops/CoverageBaselineCard"
 import { RepositoryCoverageTable } from "@/components/testops/RepositoryCoverageTable";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
+import { fetchTeamNames } from "@/lib/api/filterOptions";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import {
@@ -56,11 +57,18 @@ function getSparkline(series: TimeseriesResult | undefined) {
     }));
 }
 
-function coverageSeriesName(series: TimeseriesResult) {
+const UNRESOLVED_TEAM = "Unresolved";
+
+// A team series is named by the served team name; a team without one reads "Unresolved", never
+// its key.
+function coverageSeriesName(series: TimeseriesResult, teamNames: Record<string, string>) {
     if (!series.dimensionValue) return "Organization";
     const dimension = series.dimension
         ? `${series.dimension[0]}${series.dimension.slice(1).toLowerCase()}`
         : "Series";
+    if (series.dimension === "TEAM") {
+        return `${dimension}: ${teamNames[series.dimensionValue]?.trim() || UNRESOLVED_TEAM}`;
+    }
     return `${dimension}: ${series.dimensionValue}`;
 }
 
@@ -96,7 +104,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
     const { analytics: analyticsScope, ...baselineScope } = testOpsScopeFromFilters(filters);
     const isSelectedScope = Boolean(baselineScope.repoIds?.length || baselineScope.teamIds?.length);
 
-    const [health, baselines, scopeBaselineState, coverageData] = await Promise.all([
+    const [health, baselines, scopeBaselineState, coverageData, teamNames] = await Promise.all([
         checkApiHealth(),
         // The baseline of each repository: its own average over the 30 days that end on the
         // window's last day (the API's end date is not included, so it is the day after).
@@ -148,6 +156,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
             },
             isTestMode,
         ),
+        isTestMode ? Promise.resolve<Record<string, string>>({}) : fetchTeamNames(),
     ]);
 
     if (!health.ok && !isTestMode) {
@@ -169,7 +178,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                 id: `${id}-${series?.dimension ?? "unreported"}-${series?.dimensionValue ?? index}`,
                 label:
                     servedSeries.length > 1 && series
-                        ? `${def.label} · ${coverageSeriesName(series)}`
+                        ? `${def.label} · ${coverageSeriesName(series, teamNames)}`
                         : def.label,
                 description: def.description,
                 note: def.note,
@@ -214,7 +223,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                 headingLevel={headingLevel}
                 interpretation={
                     hasMultipleLineCoverageSeries && series
-                        ? `Line coverage for ${coverageSeriesName(series)} appears over time so drops are visible before they become release risk.`
+                        ? `Line coverage for ${coverageSeriesName(series, teamNames)} appears over time so drops are visible before they become release risk.`
                         : "Line coverage appears over time so drops are visible before they become release risk."
                 }
                 direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
@@ -310,7 +319,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         {lineCoverageSeries.map((series) =>
                             lineCoverageTrend(
                                 series,
-                                `Line Coverage Trend · ${coverageSeriesName(series)}`,
+                                `Line Coverage Trend · ${coverageSeriesName(series, teamNames)}`,
                                 "h3",
                             ),
                         )}

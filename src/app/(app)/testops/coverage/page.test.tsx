@@ -16,10 +16,14 @@ const {
     timeseriesSpy: vi.fn(),
 }));
 
+const mockFetchTeamNames = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/api/filterOptions", () => ({ fetchTeamNames: mockFetchTeamNames }));
+
 const requireSessionMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
 beforeEach(() => {
     requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } });
+    mockFetchTeamNames.mockResolvedValue({});
     mockFetchCoverageBaselines.mockResolvedValue([]);
     mockFetchCoverageScopeBaseline.mockResolvedValue({ lineBaselinePct: null, lineDays: 0 });
 });
@@ -191,6 +195,59 @@ describe("CoveragePage", () => {
         render(await CoveragePage({ searchParams: Promise.resolve({}) }));
         expect(lineCard()).toHaveAttribute("data-value", "0");
         expect(screen.getByTestId("coverage-chart-frame")).toHaveAttribute("data-is-empty", "false");
+    });
+});
+
+describe("CoveragePage team series names (CHAOS-8748)", () => {
+    const teamSeries = (dimensionValue: string) => ({
+        dimension: "TEAM",
+        dimensionValue,
+        measure: "COVERAGE_LINE_PCT",
+        buckets: [{ date: "2026-06-01", value: 80 }],
+    });
+
+    it("names each team series by its served name, else Unresolved, never by the key", async () => {
+        // One team id form per provider: jira project key, github, gitlab, and a linear team key
+        // the API holds no name for.
+        mockFetchTeamNames.mockResolvedValue({
+            ENG: "Engineering",
+            "gh:platform": "Platform",
+            "gl:group/api": "API",
+        });
+        mockFetchCoverageMetrics.mockResolvedValue({
+            timeseries: ["ENG", "gh:platform", "gl:group/api", "LIN"].map(teamSeries),
+            breakdowns: [],
+        });
+        render(await CoveragePage({ searchParams: Promise.resolve({}) }));
+
+        for (const label of [
+            "Line Coverage · Team: Engineering",
+            "Line Coverage · Team: Platform",
+            "Line Coverage · Team: API",
+            "Line Coverage · Team: Unresolved",
+        ]) {
+            expect(screen.getByTestId(`card-${label}`), label).toBeInTheDocument();
+        }
+        for (const heading of [
+            "Line Coverage Trend · Team: Engineering",
+            "Line Coverage Trend · Team: Platform",
+            "Line Coverage Trend · Team: API",
+            "Line Coverage Trend · Team: Unresolved",
+        ]) {
+            expect(screen.getByRole("heading", { name: heading }), heading).toBeInTheDocument();
+        }
+        for (const key of ["ENG", "gh:platform", "gl:group/api", "LIN"]) {
+            expect(screen.queryByText(new RegExp(key)), key).toBeNull();
+        }
+    });
+
+    it("reads Unresolved for every team when no names are served", async () => {
+        mockFetchCoverageMetrics.mockResolvedValue({
+            timeseries: ["ENG", "OPS"].map(teamSeries),
+            breakdowns: [],
+        });
+        render(await CoveragePage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getAllByTestId("card-Line Coverage · Team: Unresolved")).toHaveLength(2);
     });
 });
 

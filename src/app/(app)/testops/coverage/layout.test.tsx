@@ -26,6 +26,10 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: mockCheckApiHealth }));
+// team-a has a served name; team-b has none and reads "Unresolved" (CHAOS-8748).
+vi.mock("@/lib/api/filterOptions", () => ({
+    fetchTeamNames: vi.fn().mockResolvedValue({ "team-a": "Team Alpha" }),
+}));
 vi.mock("@/lib/testops/fetchers", () => ({
     fetchCoverageMetrics: mockFetchCoverageMetrics,
     fetchCoverageBaselines: mockFetchCoverageBaselines,
@@ -213,12 +217,12 @@ describe("TestOps Coverage page — approved layout", () => {
 
         const tiles = within(screen.getByTestId("testops-coverage-tiles")).getAllByTestId("metric-tile");
         expect(tiles.map((tile) => tile.getAttribute("data-label"))).toEqual([
-            "Line Coverage · Team: team-a",
-            "Line Coverage · Team: team-b",
-            "Branch Coverage · Team: team-a",
-            "Branch Coverage · Team: team-b",
-            "Coverage Delta · Team: team-a",
-            "Coverage Delta · Team: team-b",
+            "Line Coverage · Team: Team Alpha",
+            "Line Coverage · Team: Unresolved",
+            "Branch Coverage · Team: Team Alpha",
+            "Branch Coverage · Team: Unresolved",
+            "Coverage Delta · Team: Team Alpha",
+            "Coverage Delta · Team: Unresolved",
         ]);
         expect(tiles.map((tile) => tile.getAttribute("data-value"))).toEqual([
             "42",
@@ -239,10 +243,10 @@ describe("TestOps Coverage page — approved layout", () => {
 
         expect(screen.getByRole("heading", { level: 2, name: "Line Coverage Trends" })).toBeInTheDocument();
         expect(
-            screen.getByRole("heading", { level: 3, name: "Line Coverage Trend · Team: team-a" }),
+            screen.getByRole("heading", { level: 3, name: "Line Coverage Trend · Team: Team Alpha" }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole("heading", { level: 3, name: "Line Coverage Trend · Team: team-b" }),
+            screen.getByRole("heading", { level: 3, name: "Line Coverage Trend · Team: Unresolved" }),
         ).toBeInTheDocument();
         expect(timeseriesSpy.mock.calls.map(([props]) => props)).toEqual([
             {
