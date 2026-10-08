@@ -691,6 +691,9 @@ export interface Membership {
     id: string;
     org_id: string;
     user_id: string;
+    /** Served by the member list since CHAOS-8946: null when there is no user row or no name; absent before that ops pin. */
+    user_name?: string | null;
+    user_email?: string | null;
     role: string;
     invited_by_id: string | null;
     joined_at: string | null;

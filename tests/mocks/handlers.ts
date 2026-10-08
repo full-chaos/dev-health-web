@@ -1006,6 +1006,7 @@ function customerPushDuplicateRegistration(system: string, instance: string) {
 const buildDeploymentFlameResponse = (deploymentId: string) => ({
     entity: {
         deployment_id: deploymentId,
+        name: "release-2025.02",
         environment: "staging",
     },
     timeline: {
