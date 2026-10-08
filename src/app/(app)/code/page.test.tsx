@@ -220,7 +220,7 @@ describe("CodePage", () => {
             expect(screen.getByTestId("tile-Bus factor")).toHaveAttribute("data-value", "none");
         });
 
-        it("lists repositories by lowest bus factor as Repository hotspots, Hotspot score 'Not reported' until served", async () => {
+        it("lists repositories by lowest bus factor as Repository hotspots, with no Hotspot score column (none exists per repository)", async () => {
             setup({ ...base, value: 1, evidenceSampleCount: 3773 });
             await renderPage();
             const section = within(screen.getByTestId("code-repo-bus-factor"));
@@ -230,7 +230,6 @@ describe("CodePage", () => {
             const table = within(screen.getByTestId("code-repo-bus-factor-table"));
             expect(table.getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
                 "Repository",
-                "Hotspot score",
                 "Bus factor",
                 "Churn",
                 "File-change samples",
@@ -242,12 +241,10 @@ describe("CodePage", () => {
             expect(rows[1]).toHaveTextContent("org/ops");
             expect(rows[1]).toHaveTextContent("1,947");
             expect(rows[2]).toHaveTextContent("org/web");
-            for (const cell of screen.getAllByTestId("repo-hotspot-score")) {
-                expect(cell).toHaveTextContent("Not reported");
-            }
+            expect(screen.queryAllByTestId("repo-hotspot-score")).toHaveLength(0);
         });
 
-        it("shows a served repository churn from the churn explain, and never puts it in the Hotspot score column", async () => {
+        it("shows a served repository churn from the churn explain, and draws no Hotspot score column", async () => {
             setup({ ...base, value: 1, evidenceSampleCount: 3773 });
             getExplainDataMock.mockResolvedValue({
                 unit: "loc",
@@ -259,10 +256,8 @@ describe("CodePage", () => {
             const churn = screen.getAllByTestId("repo-churn").map((c) => c.textContent);
             expect(churn[0]).toBe("67.1K");
             expect(churn[1]).toBe("Not reported");
-            // The hotspot score is a different metric: not served per repository.
-            for (const cell of screen.getAllByTestId("repo-hotspot-score")) {
-                expect(cell).toHaveTextContent("Not reported");
-            }
+            // The hotspot score is a different metric: not served per repository, so no column.
+            expect(screen.queryAllByTestId("repo-hotspot-score")).toHaveLength(0);
         });
 
         it("opens the shared drawer from a row's Evidence button with the repository's values", async () => {
@@ -277,7 +272,6 @@ describe("CodePage", () => {
                 ]);
             expect(facts).toEqual([
                 ["Repository", "org/ops"],
-                ["Hotspot score", "Unknown"],
                 ["Bus factor", "1"],
                 ["Churn", "Unknown"],
                 ["File-change samples", "1,947"],

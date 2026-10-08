@@ -47,8 +47,6 @@ export function RepoEvidenceButton({ repo }: { repo: RepoEvidenceFacts }) {
                     content: (
                         <EvidenceFactList aria-label="Repository" testId="repo-evidence-facts">
                             <EvidenceFact label="Repository" value={repo.repoName} />
-                            {/* Not served per repository: never filled from another metric. */}
-                            <EvidenceFact label="Hotspot score" />
                             <EvidenceFact label="Bus factor" value={repo.busFactor} />
                             <EvidenceFact label="Churn" value={repo.churn} />
                             <EvidenceFact label="File-change samples" value={repo.samples} />
