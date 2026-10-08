@@ -15,9 +15,9 @@ afterEach(() => {
 });
 
 describe("resolveEntityLabel", () => {
-    it("prefers an explicit name and keeps the full id as the tooltip title", () => {
+    it("prefers an explicit name and tooltip is the name, never the id", () => {
         const result = resolveEntityLabel(UUID, { name: "Web App" });
-        expect(result).toEqual({ label: "Web App", title: UUID, resolved: true });
+        expect(result).toEqual({ label: "Web App", title: "Web App", resolved: true });
     });
 
     it("resolves via a nameMap lookup", () => {
@@ -25,23 +25,32 @@ describe("resolveEntityLabel", () => {
             nameMap: { [UUID]: "Frontend Web" },
         });
         expect(result.label).toBe("Frontend Web");
-        expect(result.title).toBe(UUID);
+        expect(result.title).toBe(result.label);
         expect(result.resolved).toBe(true);
     });
 
-    it("NEVER renders an ID — the label says Unresolved, the id is the tooltip", () => {
+    it("NEVER renders an ID — the label says Unresolved, the tooltip never has the id", () => {
         const result = resolveEntityLabel(UUID);
         expect(result.label).toBe("Unresolved");
-        expect(result.title).toBe(UUID);
+        expect(result.title).toBe(result.label);
         expect(result.resolved).toBe(false);
     });
 
     it("degrades a 32-char hex id the same way", () => {
         const result = resolveEntityLabel(HEX32);
         expect(result.label).toBe("Unresolved");
-        expect(result.title).toBe(HEX32);
+        expect(result.title).toBe(result.label);
         expect(result.resolved).toBe(false);
     });
+
+    it.each([`jira:${UUID}`, "gh:platform-team", "linear:ENG", `github:${UUID}`])(
+        "degrades the provider-keyed id %s",
+        (id) => {
+            expect(resolveEntityLabel(id).label).toBe("Unresolved");
+            expect(resolveEntityLabel(id).title).toBe("Unresolved");
+            expect(resolveEntityLabel(id, { name: "Platform" }).label).toBe("Platform");
+        },
+    );
 
     it("is stable: the same UUID always degrades to the same label", () => {
         expect(resolveEntityLabel(UUID).label).toBe(resolveEntityLabel(UUID).label);
@@ -50,7 +59,7 @@ describe("resolveEntityLabel", () => {
     it("degrades a prefixed UUID without printing the prefix or the id", () => {
         const result = resolveEntityLabel(`repo:${UUID}`);
         expect(result.label).toBe("Unresolved");
-        expect(result.title).toBe(`repo:${UUID}`);
+        expect(result.title).toBe(result.label);
         expect(result.resolved).toBe(false);
     });
 
@@ -88,7 +97,7 @@ describe("resolveEntityLabel", () => {
         expect(resolveEntityLabel(UUID).label).toBe("Unresolved");
         expect(resolveEntityLabel(UUID, { unresolvedFallback: "No name" })).toEqual({
             label: "No name",
-            title: UUID,
+            title: "No name",
             resolved: false,
         });
     });
@@ -98,7 +107,7 @@ describe("resolveEntityLabels", () => {
     it("returns column-aligned labels and titles for chart axes", () => {
         const { labels, titles } = resolveEntityLabels(["frontend-web", UUID, "repo:web-app"]);
         expect(labels).toEqual(["frontend-web", "Unresolved", "web-app"]);
-        expect(titles).toEqual(["frontend-web", UUID, "repo:web-app"]);
+        expect(titles).toEqual(["frontend-web", "Unresolved", "web-app"]);
         // No raw UUID survives as a primary label.
         expect(labels).not.toContain(UUID);
     });
@@ -117,7 +126,7 @@ describe("resolveEntityLabels", () => {
         vi.stubEnv("NODE_ENV", "development");
         const { labels, titles } = resolveEntityLabels([UUID, "repo:web-app"]);
         expect(labels).toEqual(["Unresolved", "web-app"]);
-        expect(titles).toEqual([UUID, "repo:web-app"]);
+        expect(titles).toEqual(["Unresolved", "web-app"]);
     });
 });
 

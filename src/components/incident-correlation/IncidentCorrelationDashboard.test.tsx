@@ -543,11 +543,11 @@ describe("buildSankeyData", () => {
             expect.arrayContaining([
                 expect.objectContaining({
                     id: "deployment:abcdef12-0000-0000-0000-000000000000",
-                    name: "dep:abcdef12",
+                    name: "Deployment",
                 }),
                 expect.objectContaining({
                     id: "pr:12345678-0000-0000-0000-000000000000",
-                    name: "pr:12345678",
+                    name: "Pull request",
                 }),
             ]),
         );

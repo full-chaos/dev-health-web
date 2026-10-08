@@ -1,3 +1,4 @@
+import { isProviderKeyedId } from "@/lib/labels/idToken";
 import {
     resolveEntityLabel,
     scrubIdentifiers,
@@ -14,8 +15,7 @@ import {
  *   1. server-resolved display name (`displayName`) — preferred
  *   2. an explicit client `name` / `nameMap` hit
  *   3. a repo/name slug or path segment (e.g. `org/web-app` → `web-app`)
- *   4. otherwise the label reads "Unresolved" and the id moves to the tooltip
- *      (an ID is never the visible label)
+ *   4. otherwise the label reads "Unresolved" (an ID is never the label or the tooltip)
  *
  * Reuse this everywhere an entity is surfaced so every cockpit, chart, and list
  * degrades identically. Pure + hook-free, so it is safe in both Server and
@@ -62,7 +62,7 @@ export function EntityLabel({
     // unresolved id directly into a sentence. Scrub embedded UUID/hash tokens to
     // stable short tokens so a raw id never renders inside a headline / title.
     // Prose with no id tokens (or an explicit display name) renders verbatim.
-    if (variant === "text" && !resolvedName && raw) {
+    if (variant === "text" && !resolvedName && raw && !isProviderKeyedId(raw)) {
         const scrubbed = scrubIdentifiers(raw);
         if (!scrubbed.changed) {
             return (
@@ -72,7 +72,7 @@ export function EntityLabel({
             );
         }
         return (
-            <span className={className} title={raw} data-testid={testId} data-resolved="false">
+            <span className={className} data-testid={testId} data-resolved="false">
                 {scrubbed.text}
             </span>
         );
@@ -86,25 +86,15 @@ export function EntityLabel({
 
     if (resolved.resolved) {
         return (
-            <span
-                className={className}
-                title={resolved.title}
-                data-testid={testId}
-                data-resolved="true"
-            >
+            <span className={className} data-testid={testId} data-resolved="true">
                 {resolved.label}
             </span>
         );
     }
 
-    // Degraded: the label says "Unresolved"; the id stays in the tooltip.
+    // Degraded: the label says "Unresolved"; the id is not shown.
     return (
-        <span
-            className={className}
-            title={resolved.title}
-            data-testid={testId}
-            data-resolved="false"
-        >
+        <span className={className} data-testid={testId} data-resolved="false">
             {resolved.label}
         </span>
     );

@@ -597,12 +597,7 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
             "API",
             "Unresolved",
         ]);
-        expect(cells.map((cell) => cell.getAttribute("title"))).toEqual([
-            "OPS",
-            "gh:platform",
-            "gl:group/api",
-            "ENG",
-        ]);
+        expect(cells.map((cell) => cell.getAttribute("title"))).toEqual([null, null, null, null]);
         expect(screen.queryByText("Not reported", { selector: "td" })).toBeNull();
     });
 

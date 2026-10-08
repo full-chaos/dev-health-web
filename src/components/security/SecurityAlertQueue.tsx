@@ -28,7 +28,6 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
     const pageInfo = data?.securityAlerts?.pageInfo;
     const totalCount = data?.securityAlerts?.totalCount ?? 0;
     // The repository name from the rows (they carry it); "Repository" when there is no row yet.
-    // The id is the tooltip, never the label.
     const lockedLabel =
         allEdges.find((edge) => edge.node.repoId === lockedRepoId)?.node.repoName?.trim() ||
         "Repository";
@@ -49,7 +48,6 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
                     <span
                         className="inline-flex items-center gap-1.5 rounded-full border border-(--border) bg-(--surface) px-3 py-1 text-xs text-(--text-muted)"
                         data-testid="locked-repo-pill"
-                        title={`Repository id: ${lockedRepoId}`}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"

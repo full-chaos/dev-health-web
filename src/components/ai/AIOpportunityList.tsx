@@ -12,16 +12,14 @@ import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
 
 /**
  * A served text read as a name (design A5, AD-3): a full UUID inside it is shown as
- * "an unresolved item", and the full original text is the tooltip. Text with no id is untouched
- * and has no tooltip. No name is made up here.
+ * "an unresolved item", and no tooltip carries the original. Text with no id is untouched. No name is made up here.
  */
 /** The served name, or what is missing: "Repository: Unknown". Never an id. */
 const servedName = (what: string, name: string | null | undefined): string =>
     name?.trim() || `${what}: ${UNKNOWN}`;
 
-function readable(text: string): { text: string; title?: string } {
-    const scrubbed = scrubIdentifiers(text);
-    return scrubbed.changed ? { text: scrubbed.text, title: text } : { text };
+function readable(text: string): { text: string } {
+    return { text: scrubIdentifiers(text).text };
 }
 
 function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef | null }) {
@@ -128,13 +126,8 @@ export function AIOpportunityList({
                     <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                             <div>
-                                <p className="font-medium" title={readable(item.title).title}>
-                                    {readable(item.title).text}
-                                </p>
-                                <p
-                                    className="mt-1 text-sm text-(--ink-muted)"
-                                    title={readable(item.rationale).title}
-                                >
+                                <p className="font-medium">{readable(item.title).text}</p>
+                                <p className="mt-1 text-sm text-(--ink-muted)">
                                     {readable(item.rationale).text}
                                 </p>
                             </div>
@@ -173,7 +166,6 @@ export function AIOpportunityList({
                                         <button
                                             key={`${ref.rootType}:${ref.rootId}`}
                                             type="button"
-                                            title={readable(ref.label).title}
                                             onClick={() => setSelectedRef(selected ? null : ref)}
                                             className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${selected ? "border-(--accent) bg-(--accent)/10 text-foreground" : "border-(--card-stroke) bg-background/60 text-(--ink-muted) hover:text-foreground"}`}
                                         >

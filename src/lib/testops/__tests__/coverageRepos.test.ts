@@ -95,7 +95,7 @@ describe("buildRepositoryCoverage", () => {
         );
         expect(rows[0].name).toBe("dev-health-web");
         expect(rows[1].name).not.toContain(UUID);
-        expect(rows[1].title).toBe(UUID);
+        expect(rows[1].title).toBe(rows[1].name);
     });
 
     // The branch answer is asked with the largest topN the API accepts. A list shorter than that is

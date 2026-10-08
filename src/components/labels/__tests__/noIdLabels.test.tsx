@@ -1,9 +1,12 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { BlockedWorkItemsTable } from "@/app/(app)/explore/BlockedWorkEvidence";
 import { describeArtifact } from "@/components/charts/HeatmapPanel";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { PersonEvidenceTable } from "@/components/people/PersonEvidenceTable";
+import { NodeDetailPanel } from "@/components/work/GraphView";
+import { ScopeBarFrame } from "@/components/shell/ScopeBarFrame";
 import { SecurityRepoScopeBar } from "@/components/security/SecurityRepoScopeBar";
 import {
     chartEntityLabel,
@@ -14,6 +17,9 @@ import {
 import { containsIdToken } from "@/lib/labels/idToken";
 
 vi.mock("@/components/charts/HeatmapChart", () => ({ HeatmapChart: () => null }));
+vi.mock("@/lib/graphql/hooks", () => ({}));
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org" }));
+vi.mock("@/components/charts/WorkGraphExplorer", () => ({ WorkGraphExplorer: () => null }));
 vi.mock("@/lib/api/visuals", () => ({ getHeatmap: vi.fn() }));
 vi.mock("next/navigation", () => ({
     usePathname: () => "/code",
@@ -37,7 +43,25 @@ const expectNoIdText = (root: Element) => {
     for (const text of visibleTexts(root)) expect(containsIdToken(text), text).toBe(false);
 };
 
-const ID_SHAPES = [UUID, HEX32, `repo:${UUID}`, `org/${UUID}`, `team:${HEX32}`];
+const expectNoIdAttrs = (root: Element) => {
+    for (const el of [root, ...Array.from(root.querySelectorAll("*"))]) {
+        for (const attr of ["title", "aria-label", "placeholder", "alt"]) {
+            const value = el.getAttribute(attr);
+            if (value) expect(containsIdToken(value), `${attr}=${value}`).toBe(false);
+        }
+    }
+};
+
+const ID_SHAPES = [
+    UUID,
+    HEX32,
+    `repo:${UUID}`,
+    `org/${UUID}`,
+    `team:${HEX32}`,
+    `jira:${UUID}`,
+    "gh:platform-team",
+    "linear:ENG",
+];
 
 describe("containsIdToken", () => {
     it.each([
@@ -48,6 +72,10 @@ describe("containsIdToken", () => {
         `repo·${UUID.slice(0, 8)}`,
         UUID.slice(0, 8),
     ])("flags %s", (text) => expect(containsIdToken(text)).toBe(true));
+    it.each([`jira:${UUID}`, "gh:platform-team", "linear:ENG", "team:jira:abc"])(
+        "flags %s",
+        (text) => expect(containsIdToken(text)).toBe(true),
+    );
     it.each(["web-app", "Pull request #42", "Unresolved", "Item 3", "Feature delivery", "Commit"])(
         "passes %s",
         (text) => expect(containsIdToken(text)).toBe(false),
@@ -83,10 +111,11 @@ describe("label helpers never return an ID as a label", () => {
         expect(containsIdToken(text)).toBe(false);
     });
 
-    it.each(ID_SHAPES)("EntityLabel(%s) shows no ID, keeps it in the tooltip", (id) => {
+    it.each(ID_SHAPES)("EntityLabel(%s) shows no ID as text or tooltip", (id) => {
         const { container } = render(<EntityLabel id={id} />);
         expectNoIdText(container);
-        expect(container.querySelector("[title]")?.getAttribute("title")).toBe(id);
+        expectNoIdAttrs(container);
+        expect(container.textContent).toBe("Unresolved");
     });
 
     it.each(ID_SHAPES)("EntityLabel variant=text of a bare id %s", (id) => {
@@ -136,15 +165,85 @@ describe("surfaces that print a label", () => {
             <PersonEvidenceTable type={type} items={items} fallbackHref="/people" />,
         );
         expectNoIdText(container);
+        expectNoIdAttrs(container);
     });
 
     it("SecurityRepoScopeBar without a name shows no ID", () => {
         const { container } = render(<SecurityRepoScopeBar repoId={UUID} />);
         expectNoIdText(container);
+        expectNoIdAttrs(container);
     });
 
     it("SecurityRepoScopeBar with a name shows the name", () => {
         const { container } = render(<SecurityRepoScopeBar repoId={UUID} name="web-app" />);
         expect(container.textContent).toContain("web-app");
+    });
+});
+
+describe("fixed surfaces never show an id, as text or attribute (bare uuid and provider-keyed)", () => {
+    const TEAM_IDS = [UUID, `jira:${UUID}`, "gh:platform-team", "linear:ENG"];
+
+    it.each(TEAM_IDS)("BlockedWorkItemsTable team cell for team_id %s", (teamId) => {
+        const { container } = render(
+            <BlockedWorkItemsTable
+                blockedIssues={{
+                    count: 1,
+                    items: [
+                        {
+                            work_item_id: "item",
+                            provider: "jira",
+                            status: "blocked",
+                            team_id: teamId,
+                            team_name: null,
+                            cycle_time_hours: null,
+                            lead_time_hours: null,
+                            started_at: null,
+                            completed_at: null,
+                        },
+                    ],
+                }}
+            />,
+        );
+        const cell = container.querySelectorAll("td")[3];
+        expect(cell.textContent).toBe("Unresolved");
+        expectNoIdAttrs(container);
+    });
+
+    it.each(TEAM_IDS)("ScopeBarFrame with the selected id %s that has no option", (id) => {
+        const { container } = render(
+            <ScopeBarFrame
+                orgName="Test"
+                repos={{ options: [], selected: [id], onChange: () => {} }}
+                onReset={() => {}}
+            />,
+        );
+        expectNoIdText(container);
+        expectNoIdAttrs(container);
+    });
+
+    it.each(TEAM_IDS)("work graph node panel for the node id %s with no name", (id) => {
+        const edge = {
+            edgeId: "e1",
+            sourceType: "PR",
+            sourceId: id,
+            targetType: "ISSUE",
+            targetId: id,
+            edgeType: "REFERENCES",
+            provenance: "NATIVE",
+            confidence: 1,
+            evidence: null,
+            repoId: null,
+            provider: null,
+        } as never;
+        const { container } = render(
+            <NodeDetailPanel
+                node={{ id, type: "PR" } as never}
+                incomingEdges={[edge]}
+                outgoingEdges={[edge]}
+                onClose={() => {}}
+            />,
+        );
+        expectNoIdText(container);
+        expectNoIdAttrs(container);
     });
 });

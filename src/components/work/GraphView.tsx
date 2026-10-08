@@ -39,6 +39,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { useOrgId } from "@/lib/graphql/provider";
 import { formatNumber } from "@/lib/formatters";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { nodeTypeDotClass } from "@/lib/workGraphNodeColors";
 import {
     INVESTMENT_SUBCATEGORIES,
@@ -1235,6 +1236,9 @@ export function NodeDetailPanel({
     outgoingEdges,
     onClose,
 }: NodeDetailPanelProps) {
+    const nodeName = nameOrUnresolved(
+        outgoingEdges[0]?.sourceDisplayName ?? incomingEdges[0]?.targetDisplayName,
+    );
     return (
         <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
             <div className="flex items-start justify-between mb-4">
@@ -1244,7 +1248,7 @@ export function NodeDetailPanel({
                         <p className="text-xs text-(--ink-muted) uppercase tracking-wider">
                             {NODE_TYPE_LABELS[node.type]}
                         </p>
-                        <h4 className="text-lg font-medium font-mono">{node.id}</h4>
+                        <h4 className="text-lg font-medium">{nodeName}</h4>
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1277,14 +1281,14 @@ export function NodeDetailPanel({
                     title="Incoming"
                     subtitle="Other nodes pointing to this"
                     edges={incomingEdges}
-                    getLabel={(e) => `${e.sourceType}:${e.sourceId}`}
+                    getLabel={(e) => nameOrUnresolved(e.sourceDisplayName)}
                     getRelation={(e) => e.edgeType}
                 />
                 <EdgeList
                     title="Outgoing"
                     subtitle="This node points to"
                     edges={outgoingEdges}
-                    getLabel={(e) => `${e.targetType}:${e.targetId}`}
+                    getLabel={(e) => nameOrUnresolved(e.targetDisplayName)}
                     getRelation={(e) => e.edgeType}
                 />
             </div>

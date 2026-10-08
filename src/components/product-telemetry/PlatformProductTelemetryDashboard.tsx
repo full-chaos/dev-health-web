@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ProductTelemetryDashboard } from "@/components/product-telemetry/ProductTelemetryDashboard";
 import type { ProductTelemetryPlatformDashboardData } from "@/lib/graphql/productTelemetryFetchers";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 
 type PlatformProductTelemetryDashboardProps = {
     dashboard: ProductTelemetryPlatformDashboardData;
@@ -61,8 +62,7 @@ function TopOrgsTable({
                 </thead>
                 <tbody className="divide-y divide-(--card-stroke)">
                     {rows.map((org) => {
-                        const label =
-                            org.orgName || org.orgSlug || `${org.orgIdHash.slice(0, 12)}\u2026`;
+                        const label = nameOrUnresolved(org.orgName || org.orgSlug);
                         const href = drilldownHref(org);
                         return (
                             <tr key={org.orgIdHash}>

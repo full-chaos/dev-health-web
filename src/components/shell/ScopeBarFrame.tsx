@@ -10,6 +10,7 @@ import {
     useState,
 } from "react";
 
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 import { Copy } from "lucide-react";
 
 import { formatSelection, toggleValue } from "@/components/filters/filterBarUtils";
@@ -253,7 +254,7 @@ export function ScopeBarFrame({
     const options = repos?.options;
     const selected = repos?.selected;
     // The menu works with the text it shows. A name that two options share gets
-    // its id, and a selected id with no option is shown as the id.
+    // a number, and a selected id with no option reads "Unresolved". An id is never shown.
     const names = useMemo(() => {
         const list = options ?? [];
         const count = new Map<string, number>();
@@ -262,17 +263,28 @@ export function ScopeBarFrame({
         }
         const nameById = new Map<string, string>();
         const idByName = new Map<string, string>();
+        const seen = new Map<string, number>();
         for (const option of list) {
+            const ordinal = (seen.get(option.label) ?? 0) + 1;
+            seen.set(option.label, ordinal);
             const name =
-                (count.get(option.label) ?? 0) > 1
-                    ? `${option.label} (${option.id})`
-                    : option.label;
+                (count.get(option.label) ?? 0) > 1 ? `${option.label} (${ordinal})` : option.label;
             nameById.set(option.id, name);
             idByName.set(name, option.id);
         }
-        const selectedNames = (selected ?? []).map((id) => nameById.get(id) ?? id);
+        const all = [...idByName.keys()];
+        const selectedNames: string[] = [];
+        for (const id of selected ?? []) {
+            let name = nameById.get(id);
+            if (!name) {
+                const count = selectedNames.filter((n) => n.startsWith(UNRESOLVED)).length + 1;
+                name = count > 1 ? `${UNRESOLVED} (${count})` : UNRESOLVED;
+                idByName.set(name, id);
+            }
+            selectedNames.push(name);
+        }
         return {
-            all: [...idByName.keys()],
+            all,
             selected: selectedNames,
             toIds: (values: string[]) => values.map((value) => idByName.get(value) ?? value),
         };

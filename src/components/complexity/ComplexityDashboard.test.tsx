@@ -275,9 +275,9 @@ describe("ComplexityDashboard", () => {
         expect(empty.querySelector("code")).toBeNull();
     });
 
-    it("includes orgId in the empty state message", () => {
+    it("does not show the org id in the empty state message", () => {
         render(<ComplexityDashboard {...baseProps} orgId="org-sentinel" />);
-        expect(screen.getByText(/org-sentinel/)).toBeInTheDocument();
+        expect(screen.queryByText(/org-sentinel/)).toBeNull();
     });
 
     it("renders the dashboard container when points are present", () => {

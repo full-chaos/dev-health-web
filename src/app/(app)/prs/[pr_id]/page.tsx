@@ -67,7 +67,7 @@ function PrDetailSummary({ pr }: { pr: PullRequestDetail }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                        {pr.repoName ?? pr.repoId} · #{pr.number}
+                        {pr.repoName ?? "Repository"} · #{pr.number}
                     </p>
                     <h2 className="mt-2 font-(--font-display) text-2xl">
                         {pr.title ?? "Untitled pull request"}

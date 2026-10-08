@@ -7,6 +7,7 @@ import type {
     WorkUnitInvestmentDistribution,
 } from "@/lib/graphql/types";
 import { formatNumber } from "@/lib/formatters";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 import { labelInvestmentKey } from "@/lib/workGraph/taxonomy";
 
 type RelatedEntitiesPanelProps = {
@@ -173,7 +174,7 @@ export function RelatedEntitiesPanel({
                                                         href={entityHref(linkedType, linkedId)}
                                                         className="font-medium underline-offset-4 hover:underline"
                                                     >
-                                                        {linkedId}
+                                                        {UNRESOLVED}
                                                     </Link>
                                                     <span className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                                                         {labelInvestmentKey(edge.edgeType)}

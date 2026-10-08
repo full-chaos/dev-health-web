@@ -1,10 +1,13 @@
+import { isProviderKeyedId } from "@/lib/labels/idToken";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
+
 /**
  * Render-safe entity label resolution.
  *
  * Resolves repo / org / team / service / user / file identifiers — UUIDs,
  * prefixed ids like `repo:web-app`, and path-like ids like `org/web-app` —
  * into human-readable labels. When a real name cannot be resolved, the label
- * says "Unresolved" and the full identifier moves to the tooltip (`title`).
+ * says "Unresolved"; the identifier is shown nowhere (not in the tooltip either).
  * It NEVER returns an ID (UUID, UUID prefix, short token, hash) as the label.
  *
  * Shared across charts and lists so every surface renders entities the
@@ -17,7 +20,7 @@
 export interface EntityLabel {
     /** Render-safe display label. Never an ID token. */
     label: string;
-    /** Full identifier for tooltip / `title` attribute (traceability). */
+    /** Tooltip text. Equals `label`: an id never reaches a tooltip. */
     title: string;
     /**
      * True when `label` is a confident human-readable name — an explicit
@@ -89,13 +92,19 @@ export function resolveEntityLabel(
 
     // 2. Explicit name wins (prefer repoName carried on data).
     if (name && name.trim()) {
-        return { label: name.trim(), title: raw, resolved: true };
+        return { label: name.trim(), title: name.trim(), resolved: true };
     }
 
     // 3. Map lookup.
     const mapped = nameMap?.[raw];
     if (mapped && mapped.trim()) {
-        return { label: mapped.trim(), title: raw, resolved: true };
+        return { label: mapped.trim(), title: mapped.trim(), resolved: true };
+    }
+
+    // Provider-keyed ids (jira:<uuid>, gh:<slug>, linear:<id>) are ids whatever follows the prefix.
+    if (isProviderKeyedId(raw)) {
+        const label = unresolvedFallback ?? UNRESOLVED;
+        return { label, title: label, resolved: false };
     }
 
     // 4. Strip a known entity prefix (repo:, org:, …) and take the last
@@ -106,16 +115,17 @@ export function resolveEntityLabel(
     // 5. UUID (with or without prefix / path) → the label says so; the full id
     //    stays in the tooltip. An ID is never the label.
     if (isUuidLike(segment)) {
-        return { label: unresolvedFallback ?? "Unresolved", title: raw, resolved: false };
+        const label = unresolvedFallback ?? UNRESOLVED;
+        return { label, title: label, resolved: false };
     }
 
     // 6. Human-readable slug / segment.
     if (segment) {
-        return { label: segment, title: raw, resolved: true };
+        return { label: segment, title: segment, resolved: true };
     }
 
     // Absolute fallback — never an ID.
-    return { label: fallback, title: raw, resolved: false };
+    return { label: fallback, title: fallback, resolved: false };
 }
 
 /**

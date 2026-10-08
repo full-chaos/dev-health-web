@@ -35,23 +35,12 @@ const CELL = "px-3 py-2 align-middle";
  * link in its own cell; no interactive element is nested in another.
  */
 export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
-    const {
-        alertId,
-        repoId,
-        repoName,
-        url,
-        source,
-        severity,
-        state,
-        packageName,
-        cveId,
-        title,
-        createdAt,
-    } = alert;
+    const { repoId, repoName, url, source, severity, state, packageName, cveId, title, createdAt } =
+        alert;
 
     const searchParams = useSearchParams();
     const f = searchParams.get("f") ?? undefined;
-    const label = title ?? alertId;
+    const label = title?.trim() || cveId || packageName || "Untitled alert";
 
     const chip = packageName ? (
         <span className="max-w-30 truncate rounded-(--radius-sm) bg-(--surface-raised) px-1.5 py-0.5 font-mono text-xs text-(--text-muted)">
