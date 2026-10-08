@@ -8,9 +8,11 @@ function makeEntry(overrides: Partial<AuditLog> = {}): AuditLog {
         id: "al-1",
         org_id: "org-1",
         user_id: "550e8400-e29b-41d4-a716-446655440000",
+        actor_display_name: null,
         action: "team.role_change",
         resource_type: "team_member",
         resource_id: "660e8400-e29b-41d4-a716-446655440111",
+        resource_display_name: null,
         description: "Promoted a member to admin",
         changes: { old_role: "member", new_role: "admin" },
         request_metadata: { ip: "203.0.113.4" },
@@ -46,6 +48,28 @@ describe("AuditLogDetailDrawer", () => {
         expect(screen.getByText("team_member")).toBeInTheDocument();
         expect(screen.getByText("Success")).toBeInTheDocument();
         expect(screen.getAllByText("Unresolved")).toHaveLength(2);
+    });
+
+    it("renders served names with the actor and resource ids in the detail drawer", () => {
+        const actorId = "550e8400-e29b-41d4-a716-446655440000";
+        const resourceId = "660e8400-e29b-41d4-a716-446655440111";
+        render(
+            <AuditLogDetailDrawer
+                entry={makeEntry({
+                    user_id: actorId,
+                    actor_display_name: "Audit Actor",
+                    resource_id: resourceId,
+                    resource_display_name: "Audit Resource",
+                })}
+                isOpen
+                onCloseAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText("Audit Actor")).toBeInTheDocument();
+        expect(screen.getByText("Audit Resource")).toBeInTheDocument();
+        expect(screen.getByText(actorId)).toBeInTheDocument();
+        expect(screen.getByText(resourceId)).toBeInTheDocument();
     });
 
     it("renders Changes and Request details as typed, labeled fields — never a raw JSON dump", () => {

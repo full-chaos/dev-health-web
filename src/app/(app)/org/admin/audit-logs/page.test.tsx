@@ -23,9 +23,11 @@ function makeEntry(overrides: Partial<AuditLog> = {}): AuditLog {
         id: "al-1",
         org_id: "org-1",
         user_id: null,
+        actor_display_name: null,
         action: "org.create",
         resource_type: "organization",
         resource_id: "org-1",
+        resource_display_name: null,
         description: "Created the organization",
         changes: null,
         request_metadata: null,
@@ -131,18 +133,27 @@ describe("OrgAuditLogPage", () => {
         expect(screen.queryByText(/could not be loaded/u)).toBeNull();
     });
 
-    it("prints no full resource or actor id in a row (AD-3); the drawer keeps them", async () => {
+    it("renders served names and ids in the row and detail drawer", async () => {
         const RES = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
         const ACT = "550e8400-e29b-41d4-a716-446655440000";
         mockListAuditLogs.mockResolvedValue(
-            respondWith([makeEntry({ resource_id: RES, user_id: ACT })]),
+            respondWith([
+                makeEntry({
+                    resource_id: RES,
+                    resource_display_name: "Audited Organization",
+                    user_id: ACT,
+                    actor_display_name: "Audit Actor",
+                }),
+            ]),
         );
         const user = userEvent.setup();
         render(<OrgAuditLogPage />);
         const row = (await screen.findByText("org.create")).closest("tr")!;
 
-        expect(row.textContent).not.toContain(RES);
-        expect(row.textContent).not.toContain(ACT);
+        expect(row).toHaveTextContent("Audited Organization");
+        expect(row).toHaveTextContent("Audit Actor");
+        expect(row).not.toHaveTextContent(RES);
+        expect(row).not.toHaveTextContent(ACT);
         expect(within(row).getByRole("button", { name: /copy resource id/i })).toHaveAttribute(
             "title",
             `Copy resource ID: ${RES}`,
@@ -152,5 +163,25 @@ describe("OrgAuditLogPage", () => {
         const drawer = await screen.findByTestId("audit-log-detail-drawer");
         expect(drawer).toHaveTextContent(RES);
         expect(drawer).toHaveTextContent(ACT);
+    });
+
+    it("shows Unresolved and no id text when a backend row has null or absent name keys", async () => {
+        const ACT = "550e8400-e29b-41d4-a716-446655440000";
+        const absent = makeEntry({ id: "al-2", user_id: ACT });
+        delete absent.actor_display_name;
+        delete absent.resource_display_name;
+        mockListAuditLogs.mockResolvedValue(
+            respondWith([
+                makeEntry({ user_id: ACT, actor_display_name: null, resource_display_name: null }),
+                absent,
+            ]),
+        );
+        render(<OrgAuditLogPage />);
+        const rows = (await screen.findAllByText("org.create")).map((el) => el.closest("tr")!);
+
+        for (const row of rows) {
+            expect(within(row).getAllByText("Unresolved")).toHaveLength(2);
+            expect(row.textContent).not.toMatch(/[0-9a-f]{8}-|Not reported/i);
+        }
     });
 });

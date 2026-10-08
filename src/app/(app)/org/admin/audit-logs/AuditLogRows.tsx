@@ -17,9 +17,10 @@ type AuditLogRowsProps = {
 
 /**
  * Investigation-oriented audit-log table (CHAOS-2843). Actor/resource cells
- * render through {@link AuditIdentityLabel} so an unresolved id never becomes
- * the primary label. Compact by design: the fuller record (description,
- * Changes, Request details) lives in the detail drawer, not this row.
+ * render through {@link AuditIdentityLabel}: served names and identifiers stay
+ * together, and a null served name uses the established identifier-safe state.
+ * The fuller record (description, Changes, Request details) lives in the
+ * detail drawer, not this row.
  *
  * Each row exposes an explicit "Open details" button rather than making the
  * whole `<tr>` a synthetic button — nested real buttons (the id copy
@@ -61,6 +62,7 @@ export function AuditLogRows({ entries, onRowSelectAction }: AuditLogRowsProps) 
                                     </span>
                                     <AuditIdentityLabel
                                         id={entry.resource_id}
+                                        displayName={entry.resource_display_name ?? null}
                                         emptyLabel="—"
                                         copyLabel="resource ID"
                                     />
@@ -69,6 +71,7 @@ export function AuditLogRows({ entries, onRowSelectAction }: AuditLogRowsProps) 
                             <td className="px-6 py-4">
                                 <AuditIdentityLabel
                                     id={entry.user_id}
+                                    displayName={entry.actor_display_name ?? null}
                                     emptyLabel="System"
                                     copyLabel="actor ID"
                                 />
