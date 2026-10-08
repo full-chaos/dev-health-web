@@ -176,12 +176,12 @@ describe("Security repository page in the shared app shell", () => {
         expect(screen.getByTestId("alert-queue")).toBeInTheDocument();
     });
 
-    it("falls back to the repository id, never blank, when no alert row carries the name", async () => {
+    it("falls back to the word Repository, never blank or the id, when no alert row carries the name", async () => {
         nav.pathname = "/security/repos/test-repo-id";
         graphqlFetchMock.mockRejectedValue(new Error("no data"));
         await renderRepoPage();
 
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("test-repo-id");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Repository");
     });
 
     it("has a scope bar with the repository control locked to the route", async () => {

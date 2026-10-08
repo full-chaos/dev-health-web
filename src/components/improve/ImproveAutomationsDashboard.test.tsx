@@ -279,7 +279,7 @@ describe("ImproveAutomationsDashboard", () => {
         expect(pill.querySelector("svg")).not.toBeNull();
     });
 
-    it("shows a short token and Unresolved for an id without a name, the full id in the tooltip", () => {
+    it("shows Unresolved for an id without a name, the full id in the tooltip", () => {
         hook.mockReturnValue(
             result({
                 opportunities: [item(), item({ opportunityId: "o2", entityId: "repo-web" })],
@@ -288,7 +288,7 @@ describe("ImproveAutomationsDashboard", () => {
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
 
         const rows = screen.getAllByTestId("improve-automations-row");
-        expect(rows[0]).toHaveTextContent("#3f2a9c1e · Unresolved");
+        expect(rows[0]).toHaveTextContent("Unresolved");
         const raw = within(rows[0]).getByText(/Unresolved/);
         expect(raw).toHaveAttribute("title", "3f2a9c1e-1111-4222-8333-444455556666");
         expect(rows[0]).not.toHaveTextContent("3f2a9c1e-1111-4222-8333-444455556666");

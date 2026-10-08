@@ -57,7 +57,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     const drivers = (explain?.drivers ?? []).slice(0, 5);
     const contributors = (explain?.contributors ?? []).slice(0, 5);
     // Render-safe association labels (A7): prefer the server-resolved display
-    // name; genuinely-unresolved ids degrade to a stable short token + badge.
+    // name; genuinely-unresolved ids read "Unresolved".
     const driverChartLabels = resolveEntityLabels(
         drivers.map((d) => d.id),
         (_id, i) => ({
@@ -66,8 +66,8 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         }),
     );
 
-    // Contributors kept their short id token when the name is not resolved ("#8dc7d5fc",
-    // as the old rows' entity label showed it), so unresolved rows stay apart; never a raw id.
+    // Unresolved contributors are numbered ("Unresolved 1", "Unresolved 2") so the chart rows
+    // stay apart; never an id.
     const contributorResolved = resolveEntityLabels(
         contributors.map((c) => c.id),
         (_id, i) => ({
@@ -76,8 +76,10 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         }),
     );
     const contributorChartLabels = {
-        labels: contributorResolved.results.map((r) =>
-            r.resolved || !r.short ? r.label : `${r.short} · Unresolved`,
+        labels: contributorResolved.results.map((r, i) =>
+            r.resolved
+                ? r.label
+                : `${r.label} ${contributorResolved.results.slice(0, i + 1).filter((x) => !x.resolved).length}`,
         ),
         titles: contributorResolved.titles,
     };

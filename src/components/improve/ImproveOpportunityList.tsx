@@ -44,13 +44,13 @@ function SeverityBadge({ severity }: { severity: string }) {
     );
 }
 
-/** The name when the page has one; otherwise the short token with "Unresolved" (full id in the tooltip). */
+/** The name when the page has one; otherwise "Unresolved" (full id in the tooltip). */
 function EntityCell({ item }: { item: ImproveOpportunity }) {
-    const entity = resolveEntityLabel(item.entityId, { unresolvedFallback: "Unresolved" });
+    const entity = resolveEntityLabel(item.entityId);
     return (
         <span title={entity.title}>
             <span className="text-(--ink-muted)">{item.entityType} </span>
-            {entity.resolved ? entity.label : `${entity.short ?? entity.label} · Unresolved`}
+            {entity.label}
         </span>
     );
 }
@@ -114,10 +114,8 @@ function ThresholdCell({ item }: { item: ImproveOpportunity }) {
 /** The row's served fields in the shared drawer: the detection, then each evidence reference. */
 function RowEvidenceButton({ item }: { item: ImproveOpportunity }) {
     const evidence = useEvidenceDrawer();
-    const entity = resolveEntityLabel(item.entityId, { unresolvedFallback: "Unresolved" });
-    const entityText = `${item.entityType} ${
-        entity.resolved ? entity.label : `${entity.short ?? entity.label} · Unresolved`
-    }`;
+    const entity = resolveEntityLabel(item.entityId);
+    const entityText = `${item.entityType} ${entity.label}`;
     return (
         <Button
             variant="ghost"

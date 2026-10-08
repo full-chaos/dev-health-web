@@ -85,7 +85,7 @@ describe("AIAutomationsDashboard", () => {
         expect(items[0]).toHaveTextContent("repeat work");
         // The fixture serves no repository name: the line says so and shows no part of the id.
         expect(within(items[0]).getByTestId("ai-opportunity-scope")).toHaveTextContent(
-            "Repository: Not reported",
+            "Repository: Unknown",
         );
         expect(items[0]).not.toHaveTextContent("web-app");
         expect(screen.queryByText("Candidate 6")).not.toBeInTheDocument();

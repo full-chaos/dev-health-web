@@ -4,14 +4,14 @@ import { ScopeBarFrame } from "@/components/shell/ScopeBarFrame";
 
 /**
  * Scope bar of the repository page: the repository is fixed by the route, so
- * its control is locked and shows the repository name (the id when no name is
- * known; never blank). Reset has nothing to reset here.
+ * its control is locked and shows the repository name ("Repository" when no
+ * name is known; the id stays in the tooltip). Reset has nothing to reset here.
  */
 export function SecurityRepoScopeBar({ repoId, name }: { repoId: string; name?: string }) {
-    const label = name || repoId;
+    const label = name || "Repository";
 
     return (
-        <div title={name ? `Repository id: ${repoId}` : undefined}>
+        <div title={`Repository id: ${repoId}`}>
             <ScopeBarFrame
                 view="security-repo"
                 repos={{

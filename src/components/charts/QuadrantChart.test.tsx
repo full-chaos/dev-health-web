@@ -301,7 +301,7 @@ describe("QuadrantChart", () => {
         expect(() => props.onEvents.click(null)).not.toThrow();
     });
 
-    it("degrades a raw UUID entity_label to a stable short token in the tooltip (A7)", () => {
+    it("degrades a raw UUID entity_label to Unresolved in the tooltip (A7)", () => {
         const UUID = "550e8400-e29b-41d4-a716-446655440000";
         const option = buildQuadrantOption({
             data: {
@@ -333,7 +333,7 @@ describe("QuadrantChart", () => {
             data: { point: { entity_id: UUID, entity_label: UUID, x: 1, y: 2 } },
         });
 
-        expect(html).toContain("#550e8400");
+        expect(html).toContain("Unresolved");
         expect(html).not.toContain(UUID);
     });
 

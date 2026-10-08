@@ -387,6 +387,6 @@ describe("InvestigationThreads long-form drawer", () => {
         const drawer = await openLongForm();
         const section = drawer.getByTestId("long-form-notable-shifts");
         expect(section.textContent ?? "").not.toContain(uuid);
-        expect(section).toHaveTextContent("Risk rose for #3f2504e0.");
+        expect(section).toHaveTextContent("Risk rose for an unresolved item.");
     });
 });

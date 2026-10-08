@@ -82,16 +82,16 @@ describe("AIOpportunityList", () => {
             workGraphDrilldowns: [{ rootType: "pr", rootId: "r#1", label: `PR ${UUID}` }],
         };
 
-        it("shows the short token in the title, rationale and chip, and the full id only in the tooltip", () => {
+        it("shows a plain phrase in the title, rationale and chip, and the full id only in the tooltip", () => {
             render(<AIOpportunityList detectorReady recommendations={[withIds]} />);
             const list = document.body;
             expect(list.textContent).not.toContain(UUID);
-            const title = screen.getByText("Mechanical migration toil in #920f9442");
+            const title = screen.getByText("Mechanical migration toil in an unresolved item");
             expect(title).toHaveAttribute("title", `Mechanical migration toil in ${UUID}`);
             expect(
-                screen.getByText("Repeated edits in #920f9442 match one pattern."),
+                screen.getByText("Repeated edits in an unresolved item match one pattern."),
             ).toHaveAttribute("title", `Repeated edits in ${UUID} match one pattern.`);
-            const chip = screen.getByRole("button", { name: /Work Graph: PR #920f9442/ });
+            const chip = screen.getByRole("button", { name: /Work Graph: PR an unresolved item/ });
             expect(chip).toHaveAttribute("title", `PR ${UUID}`);
         });
 
@@ -102,9 +102,11 @@ describe("AIOpportunityList", () => {
                 data: undefined,
             });
             render(<AIOpportunityList detectorReady recommendations={[withIds]} />);
-            await userEvent.click(screen.getByRole("button", { name: /Work Graph: PR #920f9442/ }));
+            await userEvent.click(
+                screen.getByRole("button", { name: /Work Graph: PR an unresolved item/ }),
+            );
             expect(
-                screen.getByText(/Loading Work Graph evidence for PR #920f9442/),
+                screen.getByText(/Loading Work Graph evidence for PR an unresolved item/),
             ).toBeInTheDocument();
             expect(document.body.textContent).not.toContain(UUID);
         });
@@ -120,7 +122,7 @@ describe("AIOpportunityList", () => {
     });
 
     // CHAOS-8114: the API serves the repository and team names of an opportunity. A name that is not
-    // served reads "Not reported"; the id is never drawn as a name.
+    // served reads "Unknown"; the id is never drawn as a name.
     describe("repository and team names", () => {
         const scope = () => screen.getByTestId("ai-opportunity-scope").textContent;
 
@@ -156,7 +158,7 @@ describe("AIOpportunityList", () => {
         });
 
         it.each([null, undefined, "", "   "])(
-            "reads 'Not reported' for a repository name that is %j, never the id",
+            "reads 'Unknown' for a repository name that is %j, never the id",
             (repoName) => {
                 render(
                     <AIOpportunityList
@@ -164,13 +166,13 @@ describe("AIOpportunityList", () => {
                         recommendations={[{ ...recommendation, repoName, teamName: "Platform" }]}
                     />,
                 );
-                expect(scope()).toBe("HIGH REVIEW LOAD · Repository: Not reported · Platform");
+                expect(scope()).toBe("HIGH REVIEW LOAD · Repository: Unknown · Platform");
                 expect(scope()).not.toContain("repo-1");
             },
         );
 
         it.each([null, undefined, "", "   "])(
-            "reads 'Not reported' for a team name that is %j, never the id",
+            "reads 'Unknown' for a team name that is %j, never the id",
             (teamName) => {
                 render(
                     <AIOpportunityList
@@ -178,7 +180,7 @@ describe("AIOpportunityList", () => {
                         recommendations={[{ ...recommendation, repoName: "acme/alpha", teamName }]}
                     />,
                 );
-                expect(scope()).toBe("HIGH REVIEW LOAD · acme/alpha · Team: Not reported");
+                expect(scope()).toBe("HIGH REVIEW LOAD · acme/alpha · Team: Unknown");
                 expect(scope()).not.toContain("team-platform");
             },
         );

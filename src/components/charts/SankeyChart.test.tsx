@@ -159,7 +159,7 @@ describe("SankeyChart", () => {
         expect(onItemClick).not.toHaveBeenCalled();
     });
 
-    it("degrades a raw UUID node name to a stable short token (A7)", () => {
+    it("degrades a raw UUID node name to Unresolved (A7)", () => {
         const UUID = "550e8400-e29b-41d4-a716-446655440000";
         render(<SankeyChart nodes={[{ name: UUID }]} links={[]} />);
 
@@ -170,7 +170,7 @@ describe("SankeyChart", () => {
         };
 
         const label = props.option.series[0].label.formatter({ name: UUID });
-        expect(label).toBe("#550e8400");
+        expect(label).toBe("Unresolved");
         expect(label).not.toContain(UUID);
     });
 
@@ -185,7 +185,7 @@ describe("SankeyChart", () => {
 
         props.onEvents?.click({ dataType: "node", data: { name: UUID } });
         expect(onItemClick).toHaveBeenCalledWith(
-            expect.objectContaining({ type: "node", name: "#550e8400" }),
+            expect.objectContaining({ type: "node", name: "Unresolved" }),
         );
     });
 });

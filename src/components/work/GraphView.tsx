@@ -1190,7 +1190,6 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                                         ) : (
                                             <EntityLabel
                                                 fallback="Unresolved"
-                                                showUnresolvedBadge={false}
                                                 className="italic text-(--ink-muted)"
                                                 data-testid="artifact-entity"
                                             />

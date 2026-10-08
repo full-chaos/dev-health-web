@@ -201,7 +201,7 @@ describe("CockpitSummary primary-signal hero", () => {
         );
         const hero = screen.getByTestId("cockpit-summary");
         expect(hero.textContent ?? "").not.toContain(HASH32);
-        expect(hero).toHaveTextContent("#a1b2c3d4");
+        expect(hero).toHaveTextContent("an unresolved item");
     });
 
     it("scrubs a UUID embedded in the served title (CHAOS-2064)", () => {
@@ -215,7 +215,7 @@ describe("CockpitSummary primary-signal hero", () => {
         );
         const hero = screen.getByTestId("cockpit-summary");
         expect(hero.textContent ?? "").not.toContain(UUID);
-        expect(hero).toHaveTextContent("Compounding risk appears high for #3f2504e0");
+        expect(hero).toHaveTextContent("Compounding risk appears high for an unresolved item");
     });
 
     it("shows the server-resolved scope name in the drawer, not its id", async () => {

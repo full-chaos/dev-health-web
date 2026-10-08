@@ -29,28 +29,27 @@ describe("resolveEntityLabel", () => {
         expect(result.resolved).toBe(true);
     });
 
-    it("NEVER renders a bare UUID — degrades to a stable short label + tooltip", () => {
+    it("NEVER renders an ID — the label says Unresolved, the id is the tooltip", () => {
         const result = resolveEntityLabel(UUID);
-        expect(result.label).not.toBe(UUID);
-        expect(result.label).toBe("#550e8400");
+        expect(result.label).toBe("Unresolved");
         expect(result.title).toBe(UUID);
         expect(result.resolved).toBe(false);
     });
 
     it("degrades a 32-char hex id the same way", () => {
         const result = resolveEntityLabel(HEX32);
-        expect(result.label).toBe("#550e8400");
+        expect(result.label).toBe("Unresolved");
         expect(result.title).toBe(HEX32);
         expect(result.resolved).toBe(false);
     });
 
-    it("is stable: the same UUID always degrades to the same short label", () => {
+    it("is stable: the same UUID always degrades to the same label", () => {
         expect(resolveEntityLabel(UUID).label).toBe(resolveEntityLabel(UUID).label);
     });
 
-    it("degrades a prefixed UUID while preserving the entity prefix", () => {
+    it("degrades a prefixed UUID without printing the prefix or the id", () => {
         const result = resolveEntityLabel(`repo:${UUID}`);
-        expect(result.label).toBe("repo·550e8400");
+        expect(result.label).toBe("Unresolved");
         expect(result.title).toBe(`repo:${UUID}`);
         expect(result.resolved).toBe(false);
     });
@@ -84,14 +83,13 @@ describe("resolveEntityLabel", () => {
         expect(resolveEntityLabel(undefined, { fallback: "No repo" }).label).toBe("No repo");
     });
 
-    it("throws in development when UUID-like ids have no display name or explicit unresolved fallback", () => {
+    it("honours an explicit unresolved fallback and never throws in development", () => {
         vi.stubEnv("NODE_ENV", "development");
-        expect(() => resolveEntityLabel(UUID)).toThrow(/unresolved id/u);
-        expect(resolveEntityLabel(UUID, { unresolvedFallback: "Unresolved" })).toEqual({
-            label: "Unresolved",
+        expect(resolveEntityLabel(UUID).label).toBe("Unresolved");
+        expect(resolveEntityLabel(UUID, { unresolvedFallback: "No name" })).toEqual({
+            label: "No name",
             title: UUID,
             resolved: false,
-            short: "#550e8400",
         });
     });
 });
@@ -99,7 +97,7 @@ describe("resolveEntityLabel", () => {
 describe("resolveEntityLabels", () => {
     it("returns column-aligned labels and titles for chart axes", () => {
         const { labels, titles } = resolveEntityLabels(["frontend-web", UUID, "repo:web-app"]);
-        expect(labels).toEqual(["frontend-web", "#550e8400", "web-app"]);
+        expect(labels).toEqual(["frontend-web", "Unresolved", "web-app"]);
         expect(titles).toEqual(["frontend-web", UUID, "repo:web-app"]);
         // No raw UUID survives as a primary label.
         expect(labels).not.toContain(UUID);
@@ -115,38 +113,30 @@ describe("resolveEntityLabels", () => {
         expect(labels[1]).toBe("backend-api");
     });
 
-    it("throws in development for a bare UUID id, but degrades when unresolvedFallback is passed (CHAOS-2078 chart-axis caller contract)", () => {
+    it("degrades a bare UUID to Unresolved and never throws in development", () => {
         vi.stubEnv("NODE_ENV", "development");
-        // Bare batch call (no options) is the latent full-page-crash path: the
-        // dev-only tripwire throws so a real-data UUID can never silently ship.
-        // Unit tests run with NODE_ENV=test, which is exactly why this regression
-        // went uncaught until it hit the dev server against real data.
-        expect(() => resolveEntityLabels([UUID])).toThrow(/unresolved id/u);
-        // Chart-axis callers (/metrics, /testops/coverage, /quality, people
-        // metrics, incident correlation) MUST opt into graceful degradation so a
-        // raw UUID renders as "Unresolved" instead of crashing the route.
-        const { labels, titles } = resolveEntityLabels([UUID, "repo:web-app"], {
-            unresolvedFallback: "Unresolved",
-        });
+        const { labels, titles } = resolveEntityLabels([UUID, "repo:web-app"]);
         expect(labels).toEqual(["Unresolved", "web-app"]);
         expect(titles).toEqual([UUID, "repo:web-app"]);
     });
 });
 
 describe("scrubIdentifiers", () => {
-    it("replaces a UUID embedded in narrative prose with a stable short token", () => {
+    it("replaces a UUID embedded in narrative prose with a plain phrase", () => {
         const { text, changed } = scrubIdentifiers(
             `Compounding risk appears elevated for ${UUID} across ${UUID}`,
         );
         expect(changed).toBe(true);
-        expect(text).toBe("Compounding risk appears elevated for #550e8400 across #550e8400");
+        expect(text).toBe(
+            "Compounding risk appears elevated for an unresolved item across an unresolved item",
+        );
         expect(text).not.toContain(UUID);
     });
 
     it("replaces an embedded 32-char hex id", () => {
         const { text, changed } = scrubIdentifiers(`risk in ${HEX32} today`);
         expect(changed).toBe(true);
-        expect(text).toBe("risk in #550e8400 today");
+        expect(text).toBe("risk in an unresolved item today");
     });
 
     it("leaves clean prose untouched", () => {
@@ -170,18 +160,16 @@ describe("chartEntityLabel", () => {
         expect(chartEntityLabel("repo:web-app")).toBe("web-app");
     });
 
-    it("NEVER returns a bare UUID — degrades to a stable short token", () => {
-        const label = chartEntityLabel(UUID);
-        expect(label).toBe("#550e8400");
-        expect(label).not.toBe(UUID);
+    it("NEVER returns an ID — degrades to Unresolved", () => {
+        expect(chartEntityLabel(UUID)).toBe("Unresolved");
     });
 
-    it("degrades a prefixed UUID while preserving the entity prefix", () => {
-        expect(chartEntityLabel(`repo:${UUID}`)).toBe("repo\u00b7550e8400");
+    it("degrades a prefixed UUID without printing the prefix or the id", () => {
+        expect(chartEntityLabel(`repo:${UUID}`)).toBe("Unresolved");
     });
 
     it("degrades a 32-char hex id", () => {
-        expect(chartEntityLabel(HEX32)).toBe("#550e8400");
+        expect(chartEntityLabel(HEX32)).toBe("Unresolved");
     });
 
     it("honours an explicit name when one resolves", () => {
@@ -196,6 +184,6 @@ describe("chartEntityLabel", () => {
     it("never throws in development for an unresolved id", () => {
         vi.stubEnv("NODE_ENV", "development");
         expect(() => chartEntityLabel(UUID)).not.toThrow();
-        expect(chartEntityLabel(UUID)).toBe("#550e8400");
+        expect(chartEntityLabel(UUID)).toBe("Unresolved");
     });
 });
