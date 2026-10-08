@@ -179,6 +179,15 @@ const normalizeHomeEvidence = (
     };
 };
 
+const bandCountsText = (stats: InvestmentResponse["evidence_quality_stats"]): string | null => {
+    const bands = Object.entries(stats?.band_counts ?? {}).filter(
+        ([, count]) => typeof count === "number" && Number.isFinite(count),
+    );
+    return bands.length > 0
+        ? bands.map(([band, count]) => `${humanizeKey(band)} ${formatNumber(count)}`).join(" · ")
+        : null;
+};
+
 const normalizeInvestmentEvidence = (
     result: InvestmentResponse,
     title: string,
@@ -201,8 +210,12 @@ const normalizeInvestmentEvidence = (
         evidence,
         // The Investment response serves no action, so the drawer shows none.
         actions: [],
-        // The Investment response serves no source name and no quality word for this block.
-        provenance: { partial: evidence.length === 0 },
+        // The Investment response serves no source name. Its quality is the band counts exactly as
+        // served ("High 12 · Moderate 3"), in the served order; no band is derived or ranked.
+        provenance: {
+            quality: bandCountsText(result.evidence_quality_stats),
+            partial: evidence.length === 0,
+        },
     };
 };
 

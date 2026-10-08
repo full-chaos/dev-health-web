@@ -263,6 +263,43 @@ describe("drawer values are served or the row is not drawn", () => {
     );
 });
 
+describe("investment data quality is the served band counts", () => {
+    // The real served shape of evidence_quality_stats (ops investment/response.go).
+    const stats = (over: Record<string, unknown>) => ({
+        ...INVESTMENT,
+        evidence_quality_stats: {
+            mean: 0.71,
+            stddev: 0.12,
+            total: 16,
+            band_counts: { high: 12, moderate: 3, low: 1, very_low: 0, unknown: 0 },
+            quality_drivers: [],
+            ...over,
+        },
+    });
+
+    it("draws the Data quality row from band_counts, raw and in the served order", async () => {
+        drawFetched("/api/v1/investment?range_days=90", stats({}));
+        await loaded();
+        expect(fact("Data quality")).toHaveTextContent(
+            "High 12 · Moderate 3 · Low 1 · Very Low 0 · Unknown 0",
+        );
+    });
+
+    it.each([
+        ["no band counts served", { band_counts: undefined }],
+        ["an empty band_counts", { band_counts: {} }],
+        ["no stats at all", { __no_stats: true }],
+    ])("draws no Data quality row with %s", async (_name, over) => {
+        const payload =
+            "__no_stats" in over
+                ? { ...INVESTMENT, evidence_quality_stats: undefined }
+                : stats(over);
+        drawFetched("/api/v1/investment?range_days=90", payload);
+        await loaded();
+        noFact("Data quality");
+    });
+});
+
 describe("drawer body as the approved prototype", () => {
     it("has no CONTEXT card, no shift chip and no web-built sentence", async () => {
         mockGetExplainData.mockResolvedValue(EXPLAIN);
