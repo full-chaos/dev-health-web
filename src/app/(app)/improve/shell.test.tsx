@@ -168,7 +168,7 @@ describe("Improve overview in the shared app shell", () => {
             ]);
         expect(rows).toEqual([
             ["Opportunities", "4 open · 4 evidence-linked"],
-            ["Automations", "Not reported"],
+            ["Automations", "Unknown"],
         ]);
     });
 

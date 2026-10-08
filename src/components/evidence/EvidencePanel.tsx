@@ -32,7 +32,6 @@ import Link from "next/link";
 type EvidenceProvenance = {
     last_sync?: string | null;
     source?: string | null;
-    identity_confidence?: number | null;
     quality?: string | null;
     partial?: boolean;
 };
@@ -71,7 +70,6 @@ type EvidencePanelResult = Partial<EvidencePanelData> & {
     contributors?: Contributor[];
     last_sync?: string | null;
     source?: string | null;
-    identity_confidence?: number | null;
 };
 
 const formatPercent = (value?: number | null) =>
@@ -425,7 +423,6 @@ export function EvidencePanel({
                         const provenance: EvidenceProvenance = result.provenance || {
                             last_sync: result.last_sync ?? null,
                             source: result.source ?? null,
-                            identity_confidence: result.identity_confidence ?? null,
                             quality: null,
                             partial: evidence.length === 0,
                         };
@@ -632,7 +629,6 @@ function EvidenceFacts({
                 source={provenance?.source}
                 quality={provenance?.quality}
                 lastSync={provenance?.last_sync}
-                identityConfidence={provenance?.identity_confidence}
                 artifactCount={artifactCount}
             />
             {provenance?.partial && (

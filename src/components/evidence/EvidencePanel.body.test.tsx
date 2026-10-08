@@ -150,6 +150,13 @@ const drawFetched = (apiUrl: string, payload: unknown) => {
     );
 };
 
+const noFact = (label: string) =>
+    expect(
+        screen
+            .queryAllByTestId("evidence-fact")
+            .some((row) => row.querySelector("dt")?.textContent === label),
+    ).toBe(false);
+
 const loaded = () =>
     waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
 
@@ -161,15 +168,16 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe("drawer values are served or read 'Not reported'", () => {
+describe("drawer values are served or the row is not drawn", () => {
     it("an explain payload with no provenance block: no made source and no made quality", async () => {
         mockGetExplainData.mockResolvedValue(EXPLAIN);
         drawMetric();
         await loaded();
 
         for (const label of ["Source", "Data quality", "Last sync", "Identity confidence"]) {
-            expect(fact(label)).toHaveTextContent(/^Not reported$/);
+            noFact(label);
         }
+        expect(screen.getByRole("dialog")).not.toHaveTextContent("Not reported");
         const dialog = screen.getByRole("dialog");
         expect(dialog).not.toHaveTextContent(/metrics API/i);
         expect(dialog).not.toHaveTextContent(/moderate|partial data quality/i);
@@ -186,15 +194,15 @@ describe("drawer values are served or read 'Not reported'", () => {
         drawMetric();
         await loaded();
         expect(fact("Source")).toHaveTextContent("served-source");
-        expect(fact("Identity confidence")).toHaveTextContent("50%");
-        expect(fact("Data quality")).toHaveTextContent(/^Not reported$/);
-        expect(fact("Last sync")).toHaveTextContent(/^Not reported$/);
+        noFact("Identity confidence");
+        noFact("Data quality");
+        noFact("Last sync");
     });
 
     it("the Home payload: served confidence level and served last successful sync, no source name", async () => {
         drawFetched("/api/v1/home?range_days=90", HOME);
         await loaded();
-        expect(fact("Source")).toHaveTextContent(/^Not reported$/);
+        noFact("Source");
         expect(screen.getByRole("dialog")).not.toHaveTextContent(/home API/i);
         expect(fact("Data quality")).toHaveTextContent("High");
         // The last successful sync, not the ingest time (both are on the same day).
@@ -223,7 +231,7 @@ describe("drawer values are served or read 'Not reported'", () => {
         );
     });
 
-    it("the Home payload with no successful sync and no confidence: both rows read Not reported", async () => {
+    it("the Home payload with no successful sync and no confidence: neither row is drawn", async () => {
         drawFetched("/api/v1/home?range_days=90", {
             ...HOME,
             freshness: { ...HOME.freshness, latest_successful_sync_at: null },
@@ -231,8 +239,8 @@ describe("drawer values are served or read 'Not reported'", () => {
         });
         await loaded();
         // An ingest time is not a sync; a missing level is not graded "partial".
-        expect(fact("Last sync")).toHaveTextContent(/^Not reported$/);
-        expect(fact("Data quality")).toHaveTextContent(/^Not reported$/);
+        noFact("Last sync");
+        noFact("Data quality");
     });
 
     it.each([
@@ -248,8 +256,8 @@ describe("drawer values are served or read 'Not reported'", () => {
         async (_name, url, payload, literal) => {
             drawFetched(url, payload);
             await loaded();
-            expect(fact("Source")).toHaveTextContent(/^Not reported$/);
-            expect(fact("Data quality")).toHaveTextContent(/^Not reported$/);
+            noFact("Source");
+            noFact("Data quality");
             expect(screen.getByRole("dialog")).not.toHaveTextContent(literal);
         },
     );

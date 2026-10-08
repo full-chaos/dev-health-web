@@ -108,7 +108,7 @@ describe("dashboard freshness", () => {
 
             render(await Home({ searchParams: Promise.resolve({}) }));
 
-            expect(lastSyncRow()).toHaveTextContent("Not reported");
+            expect(lastSyncRow()).toHaveTextContent("Unknown");
             expect(lastSyncRow()).toHaveAttribute("data-reported", "false");
             expect(screen.queryByText(/2026-07-12T00:07:00Z/)).toBeNull();
         },
@@ -163,11 +163,11 @@ describe("dashboard freshness", () => {
             return row;
         };
 
-        expect(fact("Repositories covered")).toHaveTextContent("Not reported");
+        expect(fact("Repositories covered")).toHaveTextContent("Unknown");
         expect(fact("Repositories covered")).toHaveAttribute("data-reported", "false");
         expect(fact("PRs linked to issues")).toHaveTextContent("0%");
         expect(fact("PRs linked to issues")).toHaveAttribute("data-reported", "true");
-        expect(fact("Issues with cycle states")).toHaveTextContent("Not reported");
+        expect(fact("Issues with cycle states")).toHaveTextContent("Unknown");
         expect(fact("Issues with cycle states")).toHaveAttribute("data-reported", "false");
     });
 });

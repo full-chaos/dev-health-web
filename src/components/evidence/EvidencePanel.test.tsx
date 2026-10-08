@@ -84,16 +84,16 @@ describe("EvidencePanel", () => {
             within(screen.getByTestId("evidence-facts"))
                 .getAllByTestId("evidence-fact")
                 .map((row) => row.querySelector("dt")?.textContent),
-        ).toEqual(["Source", "Data quality", "Last sync", "Identity confidence", "Artifacts"]);
+        ).toEqual(["Source", "Data quality", "Last sync", "Artifacts"]);
         expect(fact("Source")).toHaveTextContent("workGraphEdges");
         expect(fact("Data quality")).toHaveTextContent("High");
         expect(fact("Last sync")).toHaveTextContent(formatTimestamp("2026-05-20T00:00:00Z"));
-        expect(fact("Identity confidence")).toHaveTextContent("92%");
+        expect(screen.queryByText("Identity confidence")).toBeNull();
         expect(fact("Artifacts")).toHaveTextContent("1 artifact");
         expect(screen.getByText("Shorten review queue")).toBeInTheDocument();
     });
 
-    it("shows 'Not reported' for a field the API did not serve, never a made value", async () => {
+    it("draws no row for a field the API did not serve, never a made value", async () => {
         mockGetExplainData.mockResolvedValue({
             metric: "cycle_time",
             label: "Cycle Time",
@@ -116,12 +116,9 @@ describe("EvidencePanel", () => {
 
         await waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
         for (const label of ["Source", "Data quality", "Last sync", "Identity confidence"]) {
-            expect(fact(label)).toHaveTextContent(/^Not reported$/);
-            expect(fact(label).closest("[data-testid='evidence-fact']")).toHaveAttribute(
-                "data-reported",
-                "false",
-            );
+            expect(screen.queryByText(label)).toBeNull();
         }
+        expect(screen.getByTestId("evidence-facts")).not.toHaveTextContent("Not reported");
         // An empty artifact list is a partial-data state, not a zero.
         expect(fact("Artifacts")).toHaveTextContent(/^None returned$/);
         expect(screen.getByTestId("evidence-facts")).not.toHaveTextContent(/\b0\b/);

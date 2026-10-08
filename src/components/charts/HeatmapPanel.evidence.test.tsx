@@ -134,10 +134,7 @@ describe("HeatmapPanel evidence drawer", () => {
         const drawer = screen.getByRole("dialog");
         expect(await within(drawer).findByText("Unable to load this view")).toBeInTheDocument();
         expect(within(drawer).queryByText(/No artifacts linked to this cell/)).toBeNull();
-        // Nothing was served: one line, not five empty rows, and no "None returned".
-        expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
-            "Provenance is not reported for this item.",
-        );
+        // Nothing was served: no provenance rows (the error card says the read failed), and no "None returned".
         expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
         expect(within(drawer).queryByText("None returned")).toBeNull();
     });
@@ -150,7 +147,6 @@ describe("HeatmapPanel evidence drawer", () => {
         const drawer = screen.getByRole("dialog");
         expect(within(drawer).getByText("Loading evidence...")).toBeInTheDocument();
         expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
-        expect(within(drawer).queryByTestId("evidence-provenance-not-reported")).toBeNull();
         // The cell value is served with the grid and shows at once.
         expect(fact(drawer, "Value")).toHaveTextContent(/^9 risk$/);
     });
@@ -169,7 +165,7 @@ describe("HeatmapPanel evidence drawer", () => {
         ).toBeInTheDocument();
     });
 
-    it("starts the cell drawer with the five provenance rows: only the artifact count is served", async () => {
+    it("starts the cell drawer with the one served provenance row: the artifact count", async () => {
         vi.mocked(getHeatmap).mockResolvedValue(
             cellResponse([{ path: "src/billing/invoice.ts", value: 4 }]),
         );
@@ -184,13 +180,8 @@ describe("HeatmapPanel evidence drawer", () => {
                 row.querySelector("dt")?.textContent,
                 row.querySelector("dd")?.textContent,
             ]);
-        expect(rows).toEqual([
-            ["Source", "Not reported"],
-            ["Data quality", "Not reported"],
-            ["Last sync", "Not reported"],
-            ["Identity confidence", "Not reported"],
-            ["Artifacts", "1 artifact"],
-        ]);
+        expect(rows).toEqual([["Artifacts", "1 artifact"]]);
+        expect(within(drawer).queryByText("Not reported")).toBeNull();
     });
 
     it("shows the served provider of the cell's rows as the Source row: distinct, sorted, joined", async () => {
