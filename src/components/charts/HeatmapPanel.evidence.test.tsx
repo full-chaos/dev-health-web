@@ -184,6 +184,23 @@ describe("HeatmapPanel evidence drawer", () => {
         expect(within(drawer).queryByText("Not reported")).toBeNull();
     });
 
+    it("shows the served provider of the cell's rows as the Source row: distinct, sorted, joined", async () => {
+        vi.mocked(getHeatmap).mockResolvedValue(
+            cellResponse([
+                { repo_id: "r1", repo_name: "acme/a", number: 1, title: "A", source: "gitlab" },
+                { repo_id: "r2", repo_name: "acme/b", number: 2, title: "B", source: "github" },
+                { repo_id: "r3", repo_name: "acme/c", number: 3, title: "C", source: "github" },
+                { repo_id: "r4", repo_name: "acme/d", number: 4, title: "D", source: null },
+            ]),
+        );
+        render(panel());
+        await userEvent.click(screen.getByRole("button", { name: "cell billing Tue" }));
+        const drawer = screen.getByRole("dialog");
+        await within(drawer).findByText("A #1");
+
+        expect(fact(drawer, "Source")).toHaveTextContent(/^github, gitlab$/);
+    });
+
     it("Escape closes the drawer and focus returns to the chart region (a cell is a mark on the canvas)", async () => {
         vi.mocked(getHeatmap).mockResolvedValue(cellResponse([]));
         render(panel());
