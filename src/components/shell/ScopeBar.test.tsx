@@ -270,10 +270,10 @@ describe("ScopeBar — Filters button and active filters", () => {
         renderBar();
 
         const bar = within(screen.getByTestId("scope-bar"));
-        expect(bar.getByText("ana@example.com")).toBeInTheDocument();
+        expect(bar.getByText("Ana Silva")).toBeInTheDocument();
         expect(bar.getByText("feature")).toBeInTheDocument();
 
-        // Two developers are active: the first pill is "ana@example.com".
+        // Two developers are active: the first pill is "Ana Silva".
         await user.click(bar.getAllByRole("button", { name: "Remove Dev filter" })[0]);
 
         expect(scopeBarUrl.lastFilter().who.developers).toEqual(["bo@example.com"]);
@@ -289,7 +289,7 @@ describe("ScopeBar — Filters button and active filters", () => {
         for (const gone of ["reviewer", "pr", "issue", "bug", "review", "Blocked"]) {
             expect(bar.queryByText(gone), gone).toBeNull();
         }
-        expect(bar.getByText("ana@example.com")).toBeInTheDocument();
+        expect(bar.getByText("Ana Silva")).toBeInTheDocument();
     });
 });
 
@@ -411,7 +411,7 @@ describe("ScopeBar — People view", () => {
         render(<ScopeBarClient {...PEOPLE} />);
 
         await user.click(within(row()).getByRole("button", { name: /^Developer/ }));
-        await user.click(screen.getByRole("checkbox", { name: "ana@example.com" }));
+        await user.click(screen.getByRole("checkbox", { name: "Ana Silva" }));
 
         expect(scopeBarUrl.lastFilter().who.developers).toEqual(["ana@example.com"]);
         // The choice is visible as a pill, and it can be cleared there.
@@ -721,7 +721,7 @@ describe("ScopeBar — the AI view: first load as the two old bars had it", () =
         renderBar();
 
         const bar = within(screen.getByTestId("scope-bar"));
-        expect(bar.getByText("ana@example.com")).toBeInTheDocument();
+        expect(bar.getByText("Ana Silva")).toBeInTheDocument();
         expect(bar.queryByText("bug")).toBeNull();
         expect(screen.getByRole("button", { name: "Filters, 3 active" })).toBeInTheDocument();
     });
@@ -842,7 +842,7 @@ describe("ScopeBar — each view offers, shows and counts only the filters its r
         render(<ScopeBar view="investment" />);
 
         const bar = within(screen.getByTestId("scope-bar"));
-        expect(bar.getByText("ana@example.com")).toBeInTheDocument();
+        expect(bar.getByText("Ana Silva")).toBeInTheDocument();
         expect(bar.getByText("feature")).toBeInTheDocument();
         // Never read, even here: roles, flow stage, blocked, issue type, artifacts.
         for (const text of ["reviewer", "bug", "review", "Blocked", "pr", "issue"]) {

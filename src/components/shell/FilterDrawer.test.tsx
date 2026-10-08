@@ -153,14 +153,14 @@ describe("Filter drawer — a modal dialog from the md breakpoint up", () => {
         await user.keyboard("{Enter}");
         await user.tab();
         await user.tab();
-        expect(screen.getByRole("checkbox", { name: "ana@example.com" })).toHaveFocus();
+        expect(screen.getByRole("checkbox", { name: "Ana Silva" })).toHaveFocus();
         await user.keyboard(" ");
 
         expect(scopeBarUrl.lastFilter().who.developers).toEqual(["ana@example.com"]);
 
         // Escape closes the open menu first; focus stays inside the drawer.
         await user.keyboard("{Escape}");
-        expect(screen.queryByRole("checkbox", { name: "ana@example.com" })).toBeNull();
+        expect(screen.queryByRole("checkbox", { name: "Ana Silva" })).toBeNull();
         const stillOpen = screen.getByRole("dialog", { name: "Filters" });
         expect(stillOpen).toContainElement(document.activeElement as HTMLElement);
         // A second Escape closes the drawer.

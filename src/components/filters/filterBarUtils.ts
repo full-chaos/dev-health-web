@@ -11,6 +11,10 @@ export type FilterOptions = {
     teams: string[];
     /** Served team id -> display name. A team with no name is absent. */
     team_names: Record<string, string>;
+    /** Served repository id -> name. A repository with no name is absent. */
+    repo_names: Record<string, string>;
+    /** Served developer email -> display name. A developer with no name is absent. */
+    developer_names: Record<string, string>;
     repos: string[];
     services: string[];
     developers: string[];
@@ -20,6 +24,8 @@ export type FilterOptions = {
 export const EMPTY_FILTER_OPTIONS: FilterOptions = {
     teams: [],
     team_names: {},
+    repo_names: {},
+    developer_names: {},
     repos: [],
     services: [],
     developers: [],
@@ -59,12 +65,14 @@ export function teamMenuLabels(
     ids: string[],
     teamNames: Record<string, string>,
     selected: string[],
+    /** A value with no served name that is itself a readable name (a repository name the filter keeps). */
+    isName: (value: string) => boolean = () => false,
 ) {
     const labelById = new Map<string, string>();
     const idByLabel = new Map<string, string>();
     const seen = new Map<string, number>();
     for (const id of new Set([...ids, ...selected])) {
-        const base = teamNames[id]?.trim() || UNRESOLVED_TEAM_LABEL;
+        const base = teamNames[id]?.trim() || (isName(id) ? id : UNRESOLVED_TEAM_LABEL);
         const n = (seen.get(base) ?? 0) + 1;
         seen.set(base, n);
         const label = n > 1 ? `${base} (${n})` : base;
@@ -74,6 +82,7 @@ export function teamMenuLabels(
     return {
         all: ids.map((id) => labelById.get(id) as string),
         selected: selected.map((id) => labelById.get(id) as string),
+        labelOf: (id: string) => labelById.get(id) ?? UNRESOLVED_TEAM_LABEL,
         toIds: (labels: string[]) => labels.map((label) => idByLabel.get(label) ?? label),
     };
 }

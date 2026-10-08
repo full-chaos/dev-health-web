@@ -3,6 +3,9 @@ import type { UnreadFilter } from "../filterBarConfig";
 
 type ActiveFilterPillsProps = {
     developers: string[];
+    /** The text of a developer or repository value: its served name, never the value itself. */
+    developerLabel: (value: string) => string;
+    repoLabel: (value: string) => string;
     onClearDeveloper: (value: string) => void;
     onClearRepo: (value: string) => void;
     onClearWorkCategory: (value: string) => void;
@@ -14,6 +17,8 @@ type ActiveFilterPillsProps = {
 
 export function ActiveFilterPills({
     developers,
+    developerLabel,
+    repoLabel,
     onClearDeveloper,
     onClearRepo,
     onClearWorkCategory,
@@ -27,7 +32,7 @@ export function ActiveFilterPills({
                 <FilterPill
                     key={`repo-${repo}`}
                     label="Repo"
-                    value={repo}
+                    value={repoLabel(repo)}
                     onClear={() => onClearRepo(repo)}
                 />
             ))}
@@ -35,7 +40,7 @@ export function ActiveFilterPills({
                 <FilterPill
                     key={`dev-${dev}`}
                     label="Dev"
-                    value={dev}
+                    value={developerLabel(dev)}
                     onClear={() => onClearDeveloper(dev)}
                 />
             ))}

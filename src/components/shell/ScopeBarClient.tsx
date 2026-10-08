@@ -4,6 +4,7 @@ import { ListFilter } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 
 import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
+import { containsIdToken } from "@/lib/labels/idToken";
 import { formatSelection, teamMenuLabels, toggleValue } from "@/components/filters/filterBarUtils";
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
@@ -140,19 +141,26 @@ export function ScopeBarClient({
 
     // The page filters with a list of options. They are in the drawer; a view
     // with no drawer (People) keeps them in the row, where its filter bar had them.
+    const developerLabels = teamMenuLabels(options.developers, options.developer_names, developers);
+    const repoLabels = teamMenuLabels(
+        options.repos,
+        options.repo_names,
+        repos,
+        (value) => !containsIdToken(value),
+    );
     const pageFilterMenus = (
         <>
             {visibility.developer && isFilterRead(visibility, "developers") ? (
                 <QuickFilterMenu
-                    active={developers}
+                    active={developerLabels.selected}
                     emptyLabel="All"
-                    items={options.developers}
+                    items={developerLabels.all}
                     label="Developer"
                     menuKey="developer"
                     onChange={(next) =>
                         updateFilters({
                             ...filters,
-                            who: { ...filters.who, developers: next },
+                            who: { ...filters.who, developers: developerLabels.toIds(next) },
                         })
                     }
                     openMenu={openMenu}
@@ -210,16 +218,16 @@ export function ScopeBarClient({
                 />,
                 <QuickFilterMenu
                     key="repo"
-                    active={repos}
+                    active={repoLabels.selected}
                     emptyLabel="All"
-                    items={options.repos}
+                    items={repoLabels.all}
                     label="Repo"
                     menuKey="repo"
-                    onChange={selectRepos}
+                    onChange={(next) => selectRepos(repoLabels.toIds(next))}
                     openMenu={openMenu}
                     setOpenMenu={setOpenMenu}
                     toggleValue={toggleValue}
-                    value={formatSelection(repos, "All")}
+                    value={formatSelection(repoLabels.selected, "All")}
                 />,
                 <div key="window" className="flex items-center gap-2">
                     <span id="scope-bar-window-label" className={LABEL_CLASS}>
@@ -311,6 +319,8 @@ export function ScopeBarClient({
                         <div className="mt-3">
                             <ActiveFilterPills
                                 developers={developers}
+                                developerLabel={developerLabels.labelOf}
+                                repoLabel={repoLabels.labelOf}
                                 unread={visibility.unreadFilters}
                                 onClearDeveloper={(value) =>
                                     updateFilters({

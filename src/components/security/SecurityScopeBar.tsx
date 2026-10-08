@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { useFilterOptions } from "@/components/filters/useFilterOptions";
 import { ScopeBarFrame, type ScopeBarRepoOption } from "@/components/shell/ScopeBarFrame";
 import { useSecurityOverview } from "@/lib/graphql/hooks/useSecurity";
 import {
@@ -46,14 +47,24 @@ export function SecurityScopeBar({ encodedFilter }: { encodedFilter?: string }) 
 
     const optionsFilter = useMemo(() => ({ ...filter, repoIds: undefined }), [filter]);
     const { data } = useSecurityOverview(optionsFilter);
-    const options: ScopeBarRepoOption[] = useMemo(
-        () =>
-            (data?.securityOverview?.topRepos ?? []).map((repo) => ({
+    const { repo_names: repoNames } = useFilterOptions();
+    const selectedIds = filter.repoIds;
+    // A selected repository that has no alerts is not in `topRepos`: its served name comes
+    // from the filter options; with none it reads "Unresolved" in the frame.
+    const options: ScopeBarRepoOption[] = useMemo(() => {
+        const listed: ScopeBarRepoOption[] = (data?.securityOverview?.topRepos ?? []).map(
+            (repo) => ({
                 id: repo.repoId,
                 label: repo.repoName,
-            })),
-        [data],
-    );
+            }),
+        );
+        const known = new Set(listed.map((option) => option.id));
+        for (const id of selectedIds ?? []) {
+            const name = repoNames[id]?.trim();
+            if (name && !known.has(id)) listed.push({ id, label: name });
+        }
+        return listed;
+    }, [data, repoNames, selectedIds]);
 
     return (
         <ScopeBarFrame

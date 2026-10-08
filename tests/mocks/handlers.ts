@@ -2545,6 +2545,11 @@ export const handlers = [
                 "metrics-owner@example.com",
                 "bot@users.noreply.github.com",
             ],
+            developer_names: {
+                "alex.harper@example.com": "Alex Harper",
+                "jordan.lee@example.com": "Jordan Lee",
+            },
+            repo_names: {},
             work_category: ["feature", "maintenance", "support"],
             issue_type: ["bug", "story", "task"],
             flow_stage: ["review", "build", "deploy"],
@@ -2940,8 +2945,40 @@ export const handlers = [
         }),
     ),
 
-    http.get("*/api/v1/people/:id/drilldown/:type", () =>
-        HttpResponse.json({ items: [], cursor: null }),
+    http.get("*/api/v1/people/:id/drilldown/:type", ({ params }) =>
+        HttpResponse.json({
+            items:
+                params.type === "prs"
+                    ? [
+                          {
+                              repo_id: "0b1f6a52-6f0b-4f4e-9d0a-1c2d3e4f5a61",
+                              repo_name: "dev-health-web",
+                              number: 101,
+                              title: "Show names on the scope bar",
+                              created_at: "2026-09-02T10:00:00Z",
+                              merged_at: "2026-09-04T10:00:00Z",
+                          },
+                          {
+                              repo_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                              number: 102,
+                              title: "Repository with no served name",
+                              created_at: "2026-09-05T10:00:00Z",
+                              merged_at: null,
+                          },
+                      ]
+                    : [
+                          {
+                              work_item_id: "5b0c7c0e-3f0a-4a53-9a0e-2d6f6f4c9a11",
+                              title: "Slow build on main",
+                              repo_names: ["dev-health-web", "dev-health-ops"],
+                              provider: "jira",
+                              status: "done",
+                              started_at: "2026-09-01T10:00:00Z",
+                              completed_at: "2026-09-03T10:00:00Z",
+                          },
+                      ],
+            cursor: null,
+        }),
     ),
 
     // ---- Explain ----

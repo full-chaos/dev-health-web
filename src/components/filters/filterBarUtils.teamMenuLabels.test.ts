@@ -9,4 +9,15 @@ describe("teamMenuLabels", () => {
         expect(l.selected).toEqual(["Payments", "Unresolved (3)"]);
         expect(l.toIds(["Payments", "Unresolved"])).toEqual(["a", "b"]);
     });
+
+    it("keeps a plain value as its own label when the caller says it is a name, and offers labelOf", () => {
+        const id = "0b1f6a52-6f0b-4f4e-9d0a-1c2d3e4f5a61";
+        const l = teamMenuLabels(["org/web", id], { [id]: "org/api" }, ["org/web"], (v) =>
+            v.includes("/"),
+        );
+        expect(l.all).toEqual(["org/web", "org/api"]);
+        expect(l.labelOf(id)).toBe("org/api");
+        expect(l.labelOf("org/web")).toBe("org/web");
+        expect(l.labelOf("unknown")).toBe("Unresolved");
+    });
 });

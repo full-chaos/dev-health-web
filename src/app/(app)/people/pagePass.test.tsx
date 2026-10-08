@@ -150,7 +150,7 @@ describe("PersonEvidenceTable (P3): typed columns from API fields; invented data
         expect(container.textContent).not.toContain("{");
     });
 
-    it("issues: Item, Provider, State, Opened, Closed; a missing field is a dash", () => {
+    it("issues: Item, Repositories, Provider, State, Opened, Closed; a missing field is a dash", () => {
         const { container } = render(
             <PersonEvidenceTable
                 type="issues"
@@ -168,6 +168,7 @@ describe("PersonEvidenceTable (P3): typed columns from API fields; invented data
         );
         expect(Array.from(container.querySelectorAll("th")).map((th) => th.textContent)).toEqual([
             "Item",
+            "Repositories",
             "Provider",
             "State",
             "Opened",
@@ -177,7 +178,7 @@ describe("PersonEvidenceTable (P3): typed columns from API fields; invented data
         expect(row.getByText("jira")).toBeInTheDocument();
         expect(row.getByText("done")).toBeInTheDocument();
         expect(row.getByText("2026-06-02")).toBeInTheDocument();
-        expect(row.getByText("—")).toBeInTheDocument();
+        expect(row.getAllByText("—")).toHaveLength(2);
     });
 
     it("the item links to the record's own url, else to the fallback", () => {

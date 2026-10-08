@@ -30,6 +30,8 @@ export function useFilterOptions(): FilterOptions {
                 setOptions({
                     teams: payload.teams ?? [],
                     team_names: payload.team_names ?? {},
+                    repo_names: payload.repo_names ?? {},
+                    developer_names: payload.developer_names ?? {},
                     repos: payload.repos ?? [],
                     services: payload.services ?? [],
                     developers: payload.developers ?? [],
