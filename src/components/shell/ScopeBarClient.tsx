@@ -4,7 +4,7 @@ import { ListFilter } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 
 import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
-import { formatSelection, toggleValue } from "@/components/filters/filterBarUtils";
+import { formatSelection, teamMenuLabels, toggleValue } from "@/components/filters/filterBarUtils";
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
@@ -182,6 +182,8 @@ export function ScopeBarClient({
         </>
     );
 
+    const teamLabels = teamMenuLabels(options.teams, options.team_names, teamIds);
+
     return (
         <ScopeBarCard
             barRef={barRef}
@@ -195,16 +197,16 @@ export function ScopeBarClient({
             controls={[
                 <QuickFilterMenu
                     key="team"
-                    active={teamIds}
+                    active={teamLabels.selected}
                     emptyLabel="All Teams"
-                    items={options.teams}
+                    items={teamLabels.all}
                     label="Team"
                     menuKey="team"
-                    onChange={selectTeams}
+                    onChange={(next) => selectTeams(teamLabels.toIds(next))}
                     openMenu={openMenu}
                     setOpenMenu={setOpenMenu}
                     toggleValue={toggleValue}
-                    value={formatSelection(teamIds, "All")}
+                    value={formatSelection(teamLabels.selected, "All")}
                 />,
                 <QuickFilterMenu
                     key="repo"
