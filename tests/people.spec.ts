@@ -38,6 +38,10 @@ test("people search opens individual and metric evidence", async ({ page }) => {
     await gotoLinkHref(page, prsLink);
     await expect(main.getByRole("heading", { name: "Evidence" })).toBeVisible();
     await expect(main.getByRole("table")).toBeVisible();
+    const table = main.getByTestId("person-evidence-table");
+    await expect(table.getByText("dev-health-web")).toBeVisible();
+    await expect(table.getByText("Unresolved")).toBeVisible();
+    await expect(table).not.toContainText("0b1f6a52-6f0b-4f4e-9d0a-1c2d3e4f5a61");
 });
 
 test("individual pages avoid comparative language", async ({ page }) => {

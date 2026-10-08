@@ -23,6 +23,10 @@ vi.mock("next/navigation", () => ({
     usePathname: () => "/security",
     useSearchParams: () => new URLSearchParams(search),
 }));
+const filterOptions = vi.hoisted(() => ({ repo_names: {} as Record<string, string> }));
+vi.mock("@/components/filters/useFilterOptions", () => ({
+    useFilterOptions: () => ({ ...filterOptions }),
+}));
 vi.mock("@/lib/graphql/hooks/useSecurity", () => ({
     useSecurityOverview: (filter: unknown) => {
         overview.calls.push(filter);
@@ -47,6 +51,7 @@ function lastFilter() {
 beforeEach(() => {
     router.replace.mockClear();
     overview.calls = [];
+    filterOptions.repo_names = {};
     search = `f=${encodeSecurityFilter(defaultSecurityFilter())}&role=em`;
 });
 
@@ -106,5 +111,26 @@ describe("SecurityScopeBar", () => {
         await userEvent.click(screen.getByRole("button", { name: "Reset" }));
 
         expect(lastFilter()).toEqual(defaultSecurityFilter());
+    });
+
+    it("names a selected repository that has no alerts from the served repo_names, else Unresolved", () => {
+        const OFF_LIST = "9d4c2c3e-6a56-4b0e-8c1b-3f5a7e9b1d22";
+        const NO_NAME = "1e2d3c4b-5a69-4788-9a0b-c1d2e3f4a5b6";
+        filterOptions.repo_names = { [OFF_LIST]: "org/legacy" };
+        const f = encodeSecurityFilter({ ...defaultSecurityFilter(), repoIds: [OFF_LIST] });
+        const { container, rerender } = render(<SecurityScopeBar encodedFilter={f} />);
+        expect(container.textContent).toContain("org/legacy");
+        expect(container.textContent).not.toContain(OFF_LIST);
+
+        rerender(
+            <SecurityScopeBar
+                encodedFilter={encodeSecurityFilter({
+                    ...defaultSecurityFilter(),
+                    repoIds: [NO_NAME],
+                })}
+            />,
+        );
+        expect(container.textContent).toContain("Unresolved");
+        expect(container.textContent).not.toContain(NO_NAME);
     });
 });

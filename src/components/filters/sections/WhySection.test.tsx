@@ -74,6 +74,8 @@ describe("ActiveFilterPills (CHAOS-7744, CHAOS-7799)", () => {
     const pills = (unread?: Array<"developers" | "workCategory">) => (
         <ActiveFilterPills
             developers={["ana@example.com"]}
+            developerLabel={(value) => value}
+            repoLabel={(value) => value}
             onClearDeveloper={vi.fn()}
             onClearRepo={vi.fn()}
             onClearWorkCategory={vi.fn()}
