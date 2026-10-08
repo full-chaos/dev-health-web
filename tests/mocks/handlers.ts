@@ -1371,6 +1371,25 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         return HttpResponse.json({ data: { home: homeRestToGraphQL(homeRestFixture()) } });
     }
 
+    if (query.includes("query Hotspots(")) {
+        return HttpResponse.json({
+            data: {
+                hotspots: {
+                    rows: [],
+                    repos: [
+                        {
+                            repoId: "repo-ops",
+                            repoName: "full-chaos/dev-health-ops",
+                            topFilePath: "internal/queryapi/server/query_route.go",
+                            topRiskScore: 3.42,
+                            evidenceUrl: "/code?file=internal/queryapi/server/query_route.go",
+                        },
+                    ],
+                },
+            },
+        });
+    }
+
     if (query.includes("BusFactor")) {
         return HttpResponse.json({
             data: {
