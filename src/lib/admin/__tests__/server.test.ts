@@ -10,6 +10,7 @@ import { mockAuth } from "@/test/mocks/auth";
 import {
     listUsers,
     listPlatformUsers,
+    createPlatformUser,
     createCredential,
     deleteCredential,
     listCredentials,
@@ -671,6 +672,46 @@ describe("admin/server user list actions", () => {
         const headers = options?.headers as Record<string, string>;
         expect(headers.Authorization).toBe("Bearer test-token");
         expect(headers["X-Org-Id"]).toBeUndefined();
+        fetchSpy.mockRestore();
+    });
+});
+
+describe("createPlatformUser (CHAOS-8967)", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+    });
+
+    it("refuses a non-superuser session without calling the backend", async () => {
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: false } });
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify({}), { status: 201 }));
+
+        const result = await createPlatformUser({ email: "new@example.com" });
+
+        expect(result.error).toBeDefined();
+        expect(result.data).toBeUndefined();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        fetchSpy.mockRestore();
+    });
+
+    it("creates for a superuser session with no org header", async () => {
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: true } });
+        const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+            new Response(JSON.stringify({ id: "u-2", email: "new@example.com" }), {
+                status: 201,
+            }),
+        );
+
+        const result = await createPlatformUser({ email: "new@example.com" });
+
+        expect(result.error).toBeUndefined();
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+        expect(url).toContain("/api/v1/admin/users");
+        expect(options?.method).toBe("POST");
+        expect((options?.headers as Record<string, string>)["X-Org-Id"]).toBeUndefined();
         fetchSpy.mockRestore();
     });
 });

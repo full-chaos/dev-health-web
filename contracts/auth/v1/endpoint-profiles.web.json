@@ -7101,6 +7101,61 @@
             }
         },
         {
+            "id": "server_action:src/lib/admin/server/users.ts#createPlatformUser",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/users.ts",
+                "line": 65
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "requireSuperuserToken() (src/lib/admin/server/_shared.ts:27-36) throws AdminApiError(401) with no session and AdminApiError(403) unless session.user.is_superuser; only then is POST /api/v1/admin/users sent, without X-Org-Id (platform user, no org membership). Ops re-checks the caller independently.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 27,
+                    "line_end": 36
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 250-266, gated by isPublicPath at 96-102) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 250,
+                        "line_end": 266
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "unknown",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "unknown",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "gaps": [
+                "Superuser check at src/lib/admin/server/users.ts:67 (CHAOS-8967, defense in depth); ops remains the authority on the request body."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
             "id": "server_action:src/lib/admin/server/users.ts#createUser",
             "surface_kind": "server_action",
             "method": null,
