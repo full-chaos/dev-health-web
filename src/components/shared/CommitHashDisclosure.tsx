@@ -1,31 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 type CommitHashDisclosureProps = {
     readonly hash: string;
 };
 
-/** Renders "Commit" — the hash is never shown; it is only the copy-to-clipboard value. */
 export function CommitHashDisclosure({ hash }: CommitHashDisclosureProps) {
-    const [copied, setCopied] = useState(false);
-
-    const copy = () => {
-        void navigator.clipboard?.writeText(hash).then(
-            () => setCopied(true),
-            () => setCopied(false),
-        );
-    };
+    const [isExpanded, setIsExpanded] = useState(false);
+    const fullHashId = useId();
 
     return (
         <span className="inline-block max-w-full text-foreground">
             <button
+                aria-controls={fullHashId}
+                aria-expanded={isExpanded}
                 className="cursor-pointer underline decoration-dotted underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
-                onClick={copy}
+                onClick={() => setIsExpanded((expanded) => !expanded)}
                 type="button"
             >
-                {copied ? "Commit copied" : "Commit"}
+                <span aria-hidden="true">{hash.slice(0, 8)}</span>
+                <span className="sr-only">Full commit hash: {hash}. Activate to reveal.</span>
             </button>
+            {isExpanded ? (
+                <code className="mt-2 block break-all text-xs text-(--ink-muted)" id={fullHashId}>
+                    {hash}
+                </code>
+            ) : null}
         </span>
     );
 }

@@ -186,10 +186,9 @@ describe.each(IDS)("unresolved surfaces never show a raw id (%s)", (id) => {
 });
 
 describe("other id-free guards", () => {
-    it("commit disclosure renders the word, never the hash", () => {
+    it("a commit hash is not an id: its disclosure still shows the hash", () => {
         const { container } = render(<CommitHashDisclosure hash={HASH} />);
-        expectNoIdTokens(container);
-        expect(container.textContent).toBe("Commit");
+        expect(container.textContent).toContain(HASH.slice(0, 8));
     });
 
     it("entityHeading falls back to the type word for ids", () => {

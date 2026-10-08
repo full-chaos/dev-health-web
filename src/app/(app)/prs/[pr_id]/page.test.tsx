@@ -146,8 +146,11 @@ describe("PrDetailPage", () => {
         expect(screen.getByRole("heading", { name: "Wire PR detail" })).toBeInTheDocument();
         expect(screen.getByText("full-chaos/dev-health-web · #42")).toBeInTheDocument();
         expect(screen.getByText("reviewer-login")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Commit" })).toBeInTheDocument();
-        expect(document.body.textContent).not.toContain("abcdef1234567890");
+        expect(
+            screen.getByRole("button", {
+                name: "Full commit hash: abcdef1234567890. Activate to reveal.",
+            }),
+        ).toBeInTheDocument();
         expect(getPrDetailViaGraphQLMock).toHaveBeenCalledWith({ orgId: "org-1", id: prId });
         expect(getAIWorkflowDrilldownViaGraphQLMock).toHaveBeenCalledWith({
             orgId: "org-1",
@@ -158,7 +161,7 @@ describe("PrDetailPage", () => {
         expect(getWorkUnitInvestmentDistributionMock).not.toHaveBeenCalled();
     });
 
-    it("keeps a long commit readable while exposing its hash out of the page", async () => {
+    it("keeps a long commit readable while exposing its complete hash accessibly", async () => {
         const fullHash = "a".repeat(64);
         getPrDetailViaGraphQLMock.mockResolvedValue({
             ...samplePr,
@@ -167,8 +170,10 @@ describe("PrDetailPage", () => {
 
         await renderPage();
 
-        const disclosure = screen.getByRole("button", { name: "Commit" });
-        expect(document.body.textContent).not.toContain("aaaaaaaa");
+        const disclosure = screen.getByRole("button", {
+            name: `Full commit hash: ${fullHash}. Activate to reveal.`,
+        });
+        expect(disclosure).toHaveTextContent("aaaaaaaa");
         expect(disclosure.closest("li")).toHaveClass("break-words");
     });
 
@@ -231,8 +236,7 @@ describe("PrDetailPage", () => {
         const evidence = screen.getByRole("heading", { name: "Commits" }).closest("div");
         expect(evidence).not.toBeNull();
         if (evidence === null) throw new Error("Expected commits evidence panel");
-        expect(within(evidence).getByText("Unresolved")).toBeInTheDocument();
-        expect(evidence.textContent).not.toContain("abcdef1234567890");
+        expect(within(evidence).getByText("abcdef1234567890")).toBeInTheDocument();
     });
 
     it("renders a distinct error state when the related-entities fetch fails, not 'No data'", async () => {
