@@ -438,12 +438,22 @@ function HeatmapCellEvidence({
         [state],
     );
 
+    // The served provider of the cell's rows: distinct `source` values, sorted, joined. None served = no value.
+    const source = useMemo(() => {
+        if (state.status !== "loaded") return undefined;
+        const names = new Set(
+            state.evidence.map((item) => asText(item.source)).filter((name) => name !== null),
+        );
+        return names.size > 0 ? [...names].sort().join(", ") : undefined;
+    }, [state]);
+
     return (
         <div data-testid="heatmap-cell-evidence" className="space-y-4">
             {/* The heatmap query serves only the artifact list for a cell: the Artifacts row shows once
                 it is loaded, and nothing shows while the request runs or after it failed. */}
             {state.status === "loading" ? null : (
                 <EvidenceProvenanceFacts
+                    source={source}
                     artifactCount={state.status === "loaded" ? artifacts.length : undefined}
                 />
             )}
