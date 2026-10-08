@@ -176,7 +176,7 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
                 height={320}
             />
             <p data-testid="completion-range-note" className="mt-2 text-xs text-(--text-muted)">
-                Monte Carlo forecast: each step is the share of the{" "}
+                Monte Carlo forecast: each point is the share of the{" "}
                 {runs === null ? "" : `${formatNumber(runs)} `}simulation runs in which {allItems}{" "}
                 {wasOrWere} done by that day.
             </p>
