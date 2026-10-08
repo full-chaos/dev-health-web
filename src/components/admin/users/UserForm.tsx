@@ -39,7 +39,7 @@ export function UserForm({
             onCancelAction={onCancel}
             isLoading={isLoading}
             submitLabel={isLoading ? "Saving..." : isEdit ? "Save Changes" : CTA_LABELS.addUser}
-            className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
+            className="max-w-2xl space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
             contentClassName="grid gap-6 md:grid-cols-2"
             actionsClassName="flex justify-end gap-3 pt-4"
         >
