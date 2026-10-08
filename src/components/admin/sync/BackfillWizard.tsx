@@ -13,6 +13,7 @@ import type {
 } from "@/lib/admin/types";
 import { DATASET_LABELS } from "./config-form/constants";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 
 const EXPENSIVE_RANGE_THRESHOLD_DAYS = 180;
 const ESTIMATED_CHUNK_DAYS = 7;
@@ -854,13 +855,14 @@ export function BackfillWizard({
                                                     Sources:{" "}
                                                     {window.source_ids?.length
                                                         ? window.source_ids
-                                                              .map(
-                                                                  (id) =>
+                                                              .map((id) =>
+                                                                  nameOrUnresolved(
                                                                       sources.find(
                                                                           (source) =>
                                                                               source.source_id ===
                                                                               id,
-                                                                      )?.source_name ?? id,
+                                                                      )?.source_name,
+                                                                  ),
                                                               )
                                                               .join(", ")
                                                         : "All enabled sources"}

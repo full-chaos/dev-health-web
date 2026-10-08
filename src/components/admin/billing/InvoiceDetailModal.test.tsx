@@ -70,8 +70,9 @@ describe("InvoiceDetailModal", () => {
         render(<InvoiceDetailModal invoice={makeInvoice()} isOpen onClose={vi.fn()} />);
 
         expect(screen.getByRole("heading", { name: /invoice details/i })).toBeInTheDocument();
-        expect(screen.getByText("in_ABC")).toBeInTheDocument();
-        expect(screen.getByText("cus_ABC")).toBeInTheDocument();
+        expect(screen.queryByText("in_ABC")).toBeNull();
+        expect(screen.queryByText("cus_ABC")).toBeNull();
+        expect(screen.queryByText("price_abc")).toBeNull();
         expect(screen.getByText("open")).toBeInTheDocument();
         expect(screen.getByText("Team subscription")).toBeInTheDocument();
         expect(screen.getAllByText("$100.00").length).toBeGreaterThanOrEqual(1);

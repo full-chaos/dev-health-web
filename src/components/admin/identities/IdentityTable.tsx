@@ -7,6 +7,7 @@ import { ProviderBadge } from "./ProviderBadge";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 
 export type Identity = {
     canonical_id: string;
@@ -66,15 +67,15 @@ export function IdentityTable({ identities, teamNames = {}, onDeleteAction }: Id
     const columns: DataTableColumn<Identity>[] = [
         {
             key: "canonical",
-            header: "Canonical ID",
+            header: "Identity",
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 font-medium text-foreground",
             render: (identity) => (
                 <Link
                     href={`/org/admin/identities/${identity.canonical_id}/edit`}
-                    className="font-mono text-xs hover:underline"
+                    className="text-sm hover:underline"
                 >
-                    {identity.canonical_id}
+                    {identity.display_name?.trim() || identity.email?.trim() || UNRESOLVED}
                 </Link>
             ),
         },

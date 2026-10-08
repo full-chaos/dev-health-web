@@ -75,13 +75,13 @@ describe("ImpersonationBanner", () => {
         );
     });
 
-    it("falls back to the impersonated user id when the email is unknown", () => {
+    it("never shows the impersonated user id when the email is unknown", () => {
         mockSessionUser = {
             ...mockSessionUser,
             impersonated_email: undefined,
         };
         renderWithToaster(<ImpersonationBanner />);
-        expect(screen.getByText(/viewing as/i).textContent).toContain("target-1");
+        expect(screen.getByText(/viewing as/i).textContent).not.toContain("target-1");
     });
 
     it("forces a session re-poll, broadcasts, and navigates on successful stop", async () => {

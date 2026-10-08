@@ -981,7 +981,6 @@ export function SyncRunDetailLive({
                                 <thead className="bg-(--card-bg)">
                                     <tr>
                                         {[
-                                            "Unit",
                                             "Source",
                                             "Dataset",
                                             "Since",
@@ -1010,9 +1009,6 @@ export function SyncRunDetailLive({
                                         );
                                         return (
                                             <tr key={unit.id}>
-                                                <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
-                                                    {unit.id.slice(0, 8)}
-                                                </td>
                                                 <td className="px-4 py-3 text-sm text-foreground">
                                                     {sourceLabel(unit.source_id)}
                                                 </td>

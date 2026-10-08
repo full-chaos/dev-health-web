@@ -5,6 +5,7 @@ import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/Base
 import { TokenInput } from "@/components/shared/TokenInput";
 import { ReviewSummary, type ReviewSummaryRow } from "@/components/shared/ReviewSummary";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 
 type TeamFormProps = {
     initialData?: Team;
@@ -50,7 +51,7 @@ export function TeamForm({
     };
 
     const reviewRows: ReviewSummaryRow[] = [
-        { label: "Team ID", value: formData.team_id || "—" },
+        { label: "Team name", value: formData.name || UNRESOLVED },
         {
             label: "Repository patterns",
             value:

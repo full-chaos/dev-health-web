@@ -5,7 +5,6 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { rotateCustomerPushToken, revokeCustomerPushToken } from "@/lib/admin/server";
 import { TokenRevealPanel } from "./TokenRevealPanel";
-import { TruncatedId } from "./TruncatedId";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     deriveTokenStatus,
@@ -113,9 +112,6 @@ function TokenRow({ token, examplesHref }: { token: CustomerPushToken; examplesH
                     Last used: {formatTimestamp(token.last_used_at)} · Created:{" "}
                     {formatTimestamp(token.created_at)}
                 </p>
-                <div className="mt-1.5">
-                    <TruncatedId value={token.id} label="Token ID" readOnly />
-                </div>
             </div>
             <div className="flex items-center gap-2">
                 <button

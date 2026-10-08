@@ -81,7 +81,11 @@ export function ImpersonationBanner() {
             live={false}
             emphasis="strong"
             className="relative z-[100] w-full rounded-none border-x-0 border-t-0"
-            title={`Viewing as ${session.user.impersonated_email || session.user.impersonated_user_id}`}
+            title={
+                session.user.impersonated_email
+                    ? `Viewing as ${session.user.impersonated_email}`
+                    : "Viewing as another user"
+            }
             action={
                 <button
                     type="button"

@@ -64,7 +64,7 @@ export default async function SyncRunDetailPage({ params }: PageProps) {
                 {backToArea("config")}
             </Link>
 
-            <AdminHeader title="Sync run" description={`Run ${runId.slice(0, 8)}`} />
+            <AdminHeader title="Sync run" description="Run details" />
 
             <SyncRunDetailLive
                 // Force remount on run navigation (CHAOS-2794): App Router can

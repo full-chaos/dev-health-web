@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ConnectionStatus } from "@/components/admin/integrations/ConnectionStatus";
-import { TruncatedId } from "./TruncatedId";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { CustomerPushSource } from "@/lib/admin/types";
 
@@ -69,9 +68,6 @@ export function CustomerPushSourceList({
                                         />
                                     </div>
                                     <p className="text-sm text-(--ink-muted)">{source.instance}</p>
-                                </div>
-                                <div className="mt-4">
-                                    <TruncatedId value={source.id} label="Source ID" readOnly />
                                 </div>
                             </Link>
                         );

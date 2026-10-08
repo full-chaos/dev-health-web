@@ -5,7 +5,6 @@ import { useCallback, useRef, useState } from "react";
 import { getCustomerPushBatch } from "@/lib/admin/server";
 import { CustomerPushStatusBadge } from "./CustomerPushStatusBadge";
 import { RejectedRecordsTable } from "./RejectedRecordsTable";
-import { TruncatedId } from "./TruncatedId";
 import { RefreshControl } from "@/components/admin/RefreshControl";
 import {
     classifyProducer,
@@ -130,7 +129,6 @@ export function CustomerPushBatchDetailLive({
                                 </dd>
                             </div>
                         </dl>
-                        <TruncatedId value={batch.ingestion_id} label="Ingestion ID" />
                     </div>
                 </div>
             </div>

@@ -515,10 +515,8 @@ describe("SyncRunDetailLive", () => {
         // Each unit's status renders as a badge label inside the table.
         expect(screen.getAllByText("success").length).toBeGreaterThan(0);
 
-        // Short unit id prefix is rendered (mono cell), proving table rows exist.
-        expect(screen.getAllByText("sample-u").length).toBe(
-            SAMPLE_SYNC_RUN_UNIT_SUMMARY.units.length,
-        );
+        // The unit id is never printed.
+        expect(screen.queryAllByText("sample-u")).toHaveLength(0);
     });
 
     it("renders every returned unit without a client-side table cap", () => {
@@ -546,7 +544,7 @@ describe("SyncRunDetailLive", () => {
         );
 
         const table = screen.getByRole("table");
-        expect(within(table).getAllByText(/^bulk-\d{3}$/)).toHaveLength(units.length);
+        expect(within(table).getAllByRole("row")).toHaveLength(units.length + 1);
         expect(screen.getByText(/Units \(201\)/)).toBeInTheDocument();
         expect(screen.queryByText(/Showing first/)).not.toBeInTheDocument();
     });

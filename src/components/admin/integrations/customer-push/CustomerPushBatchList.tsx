@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CustomerPushStatusBadge } from "./CustomerPushStatusBadge";
-import { TruncatedId } from "./TruncatedId";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     classifyProducer,
@@ -121,11 +120,9 @@ export function CustomerPushBatchList({
                                         href={`/org/admin/integrations/${provider}/customer-push/${sourceId}/batches/${batch.ingestion_id}`}
                                         className="inline-flex rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-2)"
                                     >
-                                        <TruncatedId
-                                            value={batch.ingestion_id}
-                                            label="Ingestion ID"
-                                            readOnly
-                                        />
+                                        <span className="text-sm text-foreground">
+                                            {formatTimestamp(batch.created_at)}
+                                        </span>
                                     </Link>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-(--ink-muted)">

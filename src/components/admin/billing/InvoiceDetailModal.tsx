@@ -2,6 +2,7 @@
 
 import type { InvoiceRecord } from "@/lib/billing/actions";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { invoiceLabel } from "./invoiceLabel";
 
 type InvoiceDetailModalProps = {
     invoice: InvoiceRecord | null;
@@ -33,7 +34,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                         <h3 className="font-(--font-display) text-xl text-foreground">
                             Invoice Details
                         </h3>
-                        <p className="text-sm text-(--ink-muted)">{invoice.stripe_invoice_id}</p>
+                        <p className="text-sm text-(--ink-muted)">{invoiceLabel(invoice)}</p>
                     </div>
                     <button
                         type="button"
@@ -44,7 +45,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                     </button>
                 </div>
 
-                <div className="grid gap-4 border-b border-(--card-stroke) bg-(--card-80) px-6 py-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 border-b border-(--card-stroke) bg-(--card-80) px-6 py-4 text-sm sm:grid-cols-3">
                     <div>
                         <p className="text-(--ink-muted)">Status</p>
                         <p className="font-medium text-foreground">{invoice.status}</p>
@@ -61,10 +62,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                             {formatMoney(invoice.amount_paid, invoice.currency)}
                         </p>
                     </div>
-                    <div>
-                        <p className="text-(--ink-muted)">Customer</p>
-                        <p className="font-medium text-foreground">{invoice.stripe_customer_id}</p>
-                    </div>
                 </div>
 
                 <div className="max-h-[50vh] overflow-auto p-6">
@@ -73,7 +70,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                             <tr>
                                 <th className="px-3 py-2 font-medium">Description</th>
                                 <th className="px-3 py-2 font-medium">Qty</th>
-                                <th className="px-3 py-2 font-medium">Price ID</th>
                                 <th className="px-3 py-2 font-medium text-right">Amount</th>
                             </tr>
                         </thead>
@@ -86,9 +82,6 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                                     <td className="px-3 py-3 text-(--ink-muted)">
                                         {line.quantity}
                                     </td>
-                                    <td className="px-3 py-3 text-(--ink-muted)">
-                                        {line.stripe_price_id ?? "-"}
-                                    </td>
                                     <td className="px-3 py-3 text-right font-medium text-foreground">
                                         {formatMoney(line.amount, invoice.currency)}
                                     </td>
@@ -97,7 +90,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                             {invoice.line_items.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={4}
+                                        colSpan={3}
                                         className="px-3 py-6 text-center text-(--ink-muted)"
                                     >
                                         No line items found.
