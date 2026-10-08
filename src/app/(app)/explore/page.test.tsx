@@ -80,6 +80,7 @@ const blockedIssues = vi.hoisted(() => ({
                 provider: "linear",
                 status: "blocked" as const,
                 team_id: "team-ops",
+                team_name: "Operations",
                 cycle_time_hours: null,
                 lead_time_hours: null,
                 started_at: null,
@@ -90,6 +91,7 @@ const blockedIssues = vi.hoisted(() => ({
                 provider: "github",
                 status: "blocked" as const,
                 team_id: null,
+                team_name: null,
                 cycle_time_hours: null,
                 lead_time_hours: null,
                 started_at: null,
@@ -497,6 +499,7 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
                     provider: "linear",
                     status: "blocked",
                     team_id: "team-ops",
+                    team_name: "Operations",
                     cycle_time_hours: null,
                     lead_time_hours: null,
                     started_at: null,
@@ -507,6 +510,7 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
                     provider: "github",
                     status: "blocked",
                     team_id: null,
+                    team_name: null,
                     cycle_time_hours: null,
                     lead_time_hours: null,
                     started_at: null,
@@ -555,11 +559,51 @@ describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototyp
         );
         const items = screen.getAllByTestId("blocked-work-item");
         expect(items.map((item) => item.textContent)).toEqual([
-            "linear:CHAOS-8106linearblockedteam-ops",
-            "github:full-chaos/dev-health#8106githubblockedNot reported",
+            "linear:CHAOS-8106linearblockedOperations",
+            "github:full-chaos/dev-health#8106githubblockedUnresolved",
         ]);
         expect(screen.queryByText(/cycle time/i)).toBeNull();
         expect(screen.queryByText(/duration/i)).toBeNull();
+    });
+
+    it("shows the served team name, else Unresolved, and keeps the team key out of the cell text for every provider", async () => {
+        const row = (provider: string, team_id: string | null, team_name: string | null) => ({
+            work_item_id: `${provider}:X-1`,
+            provider,
+            status: "blocked" as const,
+            team_id,
+            team_name,
+            cycle_time_hours: null,
+            lead_time_hours: null,
+            started_at: null,
+            completed_at: null,
+        });
+        blockedIssues.value = {
+            items: [
+                row("jira", "OPS", "Operations"),
+                row("github", "gh:platform", "Platform"),
+                row("gitlab", "gl:group/api", "API"),
+                row("linear", "ENG", null),
+            ],
+            count: 4,
+        };
+        await renderExplore({ metric: "blocked_work" });
+        const cells = screen
+            .getAllByTestId("blocked-work-item")
+            .map((item) => item.querySelectorAll("td")[3]);
+        expect(cells.map((cell) => cell.textContent)).toEqual([
+            "Operations",
+            "Platform",
+            "API",
+            "Unresolved",
+        ]);
+        expect(cells.map((cell) => cell.getAttribute("title"))).toEqual([
+            "OPS",
+            "gh:platform",
+            "gl:group/api",
+            "ENG",
+        ]);
+        expect(screen.queryByText("Not reported", { selector: "td" })).toBeNull();
     });
 
     it("uses the count measured before the endpoint limit and does not call the result complete", async () => {

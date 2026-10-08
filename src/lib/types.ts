@@ -280,6 +280,8 @@ export type BlockedWorkIssue = {
     provider: string;
     status: "blocked";
     team_id: string | null;
+    /** The team's served display name; null or absent when the API holds none. */
+    team_name?: string | null;
     cycle_time_hours: null;
     lead_time_hours: null;
     started_at: null;
