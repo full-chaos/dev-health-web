@@ -186,7 +186,12 @@ run_quality() {
 
 run_unit() {
   echo "==> pnpm exec vitest run --coverage"
-  pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov
+  # On GitHub runners keep a copy of the output for the CHAOS-8789 parse diagnostics step.
+  if [[ -n "${RUNNER_TEMP:-}" ]]; then
+    pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov 2>&1 | tee "${RUNNER_TEMP}/unit.log"
+  else
+    pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov
+  fi
 }
 
 # CHAOS-3273 Wave 0: guardrail G-1's web-side CI gate

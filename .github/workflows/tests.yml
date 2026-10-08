@@ -274,11 +274,9 @@ jobs:
                   WEB_CREDENTIAL_CLASSES_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.schema.json
               run: bash ci/run_tests.sh auth-profiles-gate
             - run: bash ci/run_tests.sh quality
-            # CHAOS-8789: diagnostic only. Splits lint output into changed-path
-            # findings and unchanged baseline in the job summary. The quality
-            # step above stays the gate; this step fails only on a lint error
-            # on a changed path.
             - name: Lint baseline diagnostics (CHAOS-8789)
+              # Diagnostic only: splits lint output into changed-path findings
+              # and unchanged baseline. The quality step stays the gate.
               if: ${{ !cancelled() }}
               env:
                   BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
@@ -314,16 +312,14 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - name: Unit tests
-              run: |
-                  set -o pipefail
-                  bash ci/run_tests.sh unit 2>&1 | tee "$RUNNER_TEMP/unit.log"
-            # CHAOS-8789: diagnostic only, never fails the job.
+            - run: bash ci/run_tests.sh unit
             - name: Rolldown parse baseline diagnostics (CHAOS-8789)
+              # Diagnostic only, never fails the job. Reads the log that
+              # run_unit tees to $RUNNER_TEMP/unit.log.
               if: ${{ !cancelled() }}
               env:
                   BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
-              run: node scripts/ci-baseline-diagnostics.mjs parse "$RUNNER_TEMP/unit.log"
+              run: node scripts/ci-baseline-diagnostics.mjs parse "${{ runner.temp }}/unit.log"
             - name: Upload coverage lcov
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
