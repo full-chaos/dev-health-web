@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { getRefunds, type RefundRecord } from "@/lib/billing/actions";
+import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 
 type RefundListResponse = {
@@ -65,7 +66,7 @@ export function RefundList({ initialData, initialOrgFilter = "" }: RefundListPro
                 key: "org",
                 header: "Org",
                 className: "px-4 py-3 text-xs text-(--ink-muted)",
-                render: (refund) => refund.org_id,
+                render: (refund) => nameOrUnresolved(refund.org_name),
             },
             {
                 key: "invoice",

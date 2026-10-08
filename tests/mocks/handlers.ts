@@ -602,6 +602,7 @@ const FLAME_RESPONSES: Record<string, Parameters<typeof HttpResponse.json>[0]> =
 const SAMPLE_INVOICE = {
     id: "inv-e2e-1",
     org_id: "org-e2e",
+    org_name: "Acme Corp",
     subscription_id: "sub-e2e-1",
     stripe_invoice_id: "in_e2e_001",
     stripe_customer_id: "cus_e2e_001",
