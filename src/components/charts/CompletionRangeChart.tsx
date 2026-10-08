@@ -34,6 +34,11 @@ type CompletionRangeChartProps = {
     dayLabel: (day: number) => string;
     /** The tooltip lines under the day's heading, for one served point. */
     tooltipLines: (point: RangePoint) => string[];
+    /**
+     * How the line runs between two served points. `step` (default): a day nobody finished on keeps
+     * the share of the day before. `curve`: a monotone curve through the served points.
+     */
+    interpolation?: "step" | "curve";
     height?: number | string;
     className?: string;
     style?: CSSProperties;
@@ -51,8 +56,9 @@ const GRID_RIGHT = 24;
  * The "Completion range" curve of a capacity forecast (CHAOS-8477): the chance that the work is
  * done by each day, as the API serves it. One point per served bin of the Monte Carlo
  * distribution, at the served day and the served cumulative share. Between two served days the
- * line is a monotone curve through the served points (CHAOS-8833): it never rises above or falls
- * below the neighbouring points. The markers are the
+ * line is a step by default: a day nobody finished on keeps the share of the day before. With
+ * `interpolation="curve"` it is a monotone curve through the served points that never rises above
+ * or falls below the neighbouring points (CHAOS-8833). The markers are the
  * forecast's own P50 / P85 / P95 days and the band is the span from P50 to P95.
  *
  * The marker labels sit above the plot (CHAOS-8614). Labels with room share one row, as the
@@ -67,6 +73,7 @@ export function CompletionRangeChart({
     chanceAxisName,
     dayLabel,
     tooltipLines,
+    interpolation = "step",
     height = 320,
     className,
     style,
@@ -183,9 +190,11 @@ export function CompletionRangeChart({
                 {
                     name: "Chance done",
                     type: "line",
-                    // A monotone curve through the served points: it never overshoots a point.
-                    smooth: true,
-                    smoothMonotone: "x",
+                    // The served points as they are: a step between them (default), or a monotone
+                    // curve that never overshoots a point.
+                    ...(interpolation === "curve"
+                        ? { smooth: true, smoothMonotone: "x" as const }
+                        : { step: "end" as const }),
                     data: points.map((point): [number, number] => [point.day, point.share]),
                     symbol: "circle",
                     symbolSize: 7,
@@ -267,6 +276,7 @@ export function CompletionRangeChart({
         chanceAxisName,
         chartTheme,
         dayLabel,
+        interpolation,
         markers,
         planningRange,
         points,
