@@ -11,8 +11,8 @@ import type { AiOpportunity, AiWorkGraphDrilldownRef } from "@/lib/graphql/__gen
 import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
 
 /**
- * A served text read as a name (design A5, AD-3): a full UUID inside it is shown as the
- * short token (`#920f9442`), and the full original text is the tooltip. Text with no id is untouched
+ * A served text read as a name (design A5, AD-3): a full UUID inside it is shown as
+ * "an unresolved item", and the full original text is the tooltip. Text with no id is untouched
  * and has no tooltip. No name is made up here.
  */
 /** The served name, or what is missing: "Repository: Not reported". Never an id. */

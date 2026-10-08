@@ -63,7 +63,7 @@ export default async function RepoSecurityPage({ params, searchParams }: RepoSec
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8">
             <PageHeader
-                title={name ?? repoId}
+                title={name ?? "Repository"}
                 subtitle="Security alerts scoped to this repository."
                 back={{ href: "/security", area: "Security" }}
             />

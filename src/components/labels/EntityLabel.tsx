@@ -14,8 +14,8 @@ import {
  *   1. server-resolved display name (`displayName`) — preferred
  *   2. an explicit client `name` / `nameMap` hit
  *   3. a repo/name slug or path segment (e.g. `org/web-app` → `web-app`)
- *   4. a provider key with prefix (e.g. `repo:…` → `repo·a1b2c3d4`)
- *   5. a shortened, stable id token + an explicit "Unresolved" badge
+ *   4. otherwise the label reads "Unresolved" and the id moves to the tooltip
+ *      (an ID is never the visible label)
  *
  * Reuse this everywhere an entity is surfaced so every cockpit, chart, and list
  * degrades identically. Pure + hook-free, so it is safe in both Server and
@@ -41,14 +41,9 @@ type EntityLabelProps = {
     /** Label used when `id` is empty / missing. Defaults to `"Unknown"`. */
     fallback?: string;
     variant?: "entity" | "text";
-    /** Show the explicit "Unresolved" badge on degraded labels. Defaults to true. */
-    showUnresolvedBadge?: boolean;
     className?: string;
     "data-testid"?: string;
 };
-
-const BADGE_CLASS =
-    "rounded-full border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)";
 
 export function EntityLabel({
     id,
@@ -57,7 +52,6 @@ export function EntityLabel({
     nameMap,
     fallback,
     variant = "entity",
-    showUnresolvedBadge = true,
     className,
     "data-testid": testId,
 }: EntityLabelProps) {
@@ -80,9 +74,6 @@ export function EntityLabel({
         return (
             <span className={className} title={raw} data-testid={testId} data-resolved="false">
                 {scrubbed.text}
-                {showUnresolvedBadge ? (
-                    <span className={`ml-1.5 align-middle ${BADGE_CLASS}`}>Unresolved</span>
-                ) : null}
             </span>
         );
     }
@@ -91,9 +82,6 @@ export function EntityLabel({
         name: resolvedName,
         nameMap,
         fallback,
-        // Opt into the canonical guardrail: degraded ids carry an explicit
-        // "Unresolved" affordance rather than leaking a bare UUID.
-        unresolvedFallback: "Unresolved",
     });
 
     if (resolved.resolved) {
@@ -109,8 +97,7 @@ export function EntityLabel({
         );
     }
 
-    // Degraded: render the stable short token + an explicit Unresolved badge.
-    const shortToken = resolved.short ?? resolved.label;
+    // Degraded: the label says "Unresolved"; the id stays in the tooltip.
     return (
         <span
             className={className}
@@ -118,10 +105,7 @@ export function EntityLabel({
             data-testid={testId}
             data-resolved="false"
         >
-            <span className="font-mono">{shortToken}</span>
-            {showUnresolvedBadge ? (
-                <span className={`ml-1.5 align-middle ${BADGE_CLASS}`}>Unresolved</span>
-            ) : null}
+            {resolved.label}
         </span>
     );
 }

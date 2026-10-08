@@ -94,9 +94,7 @@ type ResolvedArtifact = {
  */
 /**
  * Resolve an entity id to a render-safe { label, title }. A degraded UUID/hash
- * id falls back to a stable short token (e.g. "#a1b2c3d4") — opting into the
- * `unresolvedFallback` contract so the dev-only unresolved-id assertion does not
- * throw during render (which crashed the heatmap evidence list on cell click).
+ * id with no served name shows the plain type word (or "Unresolved"); the id stays in the tooltip.
  */
 function entityArtifactLabel(
     id: string | null | undefined,
@@ -136,7 +134,7 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
     if (commit) {
         return {
             type: "Commit",
-            label: explicitName ?? commit.slice(0, 8),
+            label: explicitName ?? "Commit",
             title: commit,
             timestamp,
             value,

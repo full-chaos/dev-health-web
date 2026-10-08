@@ -173,7 +173,7 @@ describe("Quality page — shared metric strip and sections", () => {
         expect(screen.queryByTestId("horizontal-bar-chart")).toBeNull();
     });
 
-    it("keeps unresolved contributors apart by their short id token, never a raw id", async () => {
+    it("keeps unresolved contributors apart by number, never a raw id", async () => {
         mockExplain.mockResolvedValue({
             ...explain,
             contributors: [
@@ -185,10 +185,7 @@ describe("Quality page — shared metric strip and sections", () => {
         const rows = within(screen.getByTestId("contributor-meter-rows")).getAllByTestId(
             "meter-row",
         );
-        expect(rows.map((r) => r.textContent)).toEqual([
-            "#8dc7d5fc · Unresolved1%",
-            "#5ba1b2cd · Unresolved2%",
-        ]);
+        expect(rows.map((r) => r.textContent)).toEqual(["Unresolved 11%", "Unresolved 22%"]);
         expect(rows[0]).not.toHaveTextContent("8dc7d5fc-1111");
     });
 

@@ -3,9 +3,9 @@
  *
  * Resolves repo / org / team / service / user / file identifiers — UUIDs,
  * prefixed ids like `repo:web-app`, and path-like ids like `org/web-app` —
- * into human-readable labels. When a real name cannot be resolved, it
- * degrades gracefully to a *stable* short label plus a full-identifier
- * tooltip (`title`). It NEVER returns a bare UUID as the primary label.
+ * into human-readable labels. When a real name cannot be resolved, the label
+ * says "Unresolved" and the full identifier moves to the tooltip (`title`).
+ * It NEVER returns an ID (UUID, UUID prefix, short token, hash) as the label.
  *
  * Shared across charts and lists so every surface renders entities the
  * same way. Prefer passing an explicit `name` (e.g. `repoName` carried on
@@ -15,7 +15,7 @@
 
 /** Result of resolving a single entity identifier. */
 export interface EntityLabel {
-    /** Render-safe display label. Never a bare UUID. */
+    /** Render-safe display label. Never an ID token. */
     label: string;
     /** Full identifier for tooltip / `title` attribute (traceability). */
     title: string;
@@ -26,13 +26,6 @@ export interface EntityLabel {
      * which is the signal that a tooltip should be surfaced.
      */
     resolved: boolean;
-    /**
-     * Deterministic short identifier token (e.g. `#a1b2c3d4` or `repo·a1b2c3d4`)
-     * present ONLY for degraded UUID/hash-like ids. Lets callers render the A7
-     * "shortened ID + explicit Unresolved badge" form even when `label` was
-     * overridden via `unresolvedFallback`. Undefined for resolved labels.
-     */
-    short?: string;
 }
 
 /** Options controlling how a single identifier is resolved. */
@@ -43,6 +36,7 @@ export interface ResolveEntityLabelOptions {
     nameMap?: Record<string, string>;
     /** Label used when `id` is empty / missing. Defaults to `"Unknown"`. */
     fallback?: string;
+    /** Label used when `id` is an ID with no name. Defaults to `"Unresolved"`. */
     unresolvedFallback?: string;
 }
 
@@ -70,19 +64,6 @@ function isUuidLike(s: string): boolean {
     return UUID_RE.test(s) || HEX32_RE.test(s);
 }
 
-/** First 8 hex chars of a UUID — stable, deterministic, human-distinguishable. */
-function shortUuid(s: string): string {
-    return s.replace(/-/g, "").slice(0, 8);
-}
-
-function assertUnresolvedFallback(id: string, fallback?: string): void {
-    if (process.env.NODE_ENV !== "development") return;
-    if (fallback === "Unresolved") return;
-    throw new Error(
-        `EntityLabel received unresolved id '${id}' without displayName/nameMap or unresolvedFallback: "Unresolved".`,
-    );
-}
-
 /**
  * Resolve a single entity identifier into a render-safe label.
  *
@@ -91,7 +72,7 @@ function assertUnresolvedFallback(id: string, fallback?: string): void {
  *   2. Explicit `name`     → resolved (preferred).
  *   3. `nameMap[id]` hit   → resolved.
  *   4. Strip known prefix, take last path segment.
- *   5. UUID-like segment   → degrade to stable short label + tooltip.
+ *   5. UUID-like segment   → "Unresolved" label + id in the tooltip.
  *   6. Readable slug       → use as-is (human-readable).
  */
 export function resolveEntityLabel(
@@ -119,19 +100,13 @@ export function resolveEntityLabel(
 
     // 4. Strip a known entity prefix (repo:, org:, …) and take the last
     //    path segment for path-like ids.
-    const { prefix, rest } = stripPrefix(raw);
+    const { rest } = stripPrefix(raw);
     const segment = lastSegment(rest);
 
-    // 5. UUID (with or without prefix / path) → degrade to a stable short
-    //    label, keeping the full id available as a tooltip. Never bare UUID.
+    // 5. UUID (with or without prefix / path) → the label says so; the full id
+    //    stays in the tooltip. An ID is never the label.
     if (isUuidLike(segment)) {
-        assertUnresolvedFallback(raw, unresolvedFallback);
-        const shortHex = shortUuid(segment);
-        const short = prefix ? `${prefix}·${shortHex}` : `#${shortHex}`;
-        if (unresolvedFallback) {
-            return { label: unresolvedFallback, title: raw, resolved: false, short };
-        }
-        return { label: short, title: raw, resolved: false, short };
+        return { label: unresolvedFallback ?? "Unresolved", title: raw, resolved: false };
     }
 
     // 6. Human-readable slug / segment.
@@ -139,7 +114,7 @@ export function resolveEntityLabel(
         return { label: segment, title: raw, resolved: true };
     }
 
-    // Absolute fallback — never a bare UUID.
+    // Absolute fallback — never an ID.
     return { label: fallback, title: raw, resolved: false };
 }
 
@@ -169,35 +144,28 @@ export function resolveEntityLabels(
 /**
  * Resolve a single identifier for a NON-React surface — ECharts tooltip /
  * axis / node label strings, where the JSX `EntityLabel` component cannot be
- * used. Returns a confident human label when one resolves, otherwise the
- * stable short token (e.g. `#a1b2c3d4` or `repo·a1b2c3d4`). It NEVER returns a
- * bare UUID / hash, so chart labels degrade identically to cards and tables.
- *
- * Use this anywhere a chart formatter needs a render-safe string for an entity
- * identifier (repo / team / person / service / artifact).
+ * used. Returns a human label when one resolves, otherwise "Unresolved". It
+ * NEVER returns an ID, so chart labels degrade identically to cards and tables.
  */
 export function chartEntityLabel(
     id: string | null | undefined,
     options: ResolveEntityLabelOptions = {},
 ): string {
-    const resolved = resolveEntityLabel(id, {
-        unresolvedFallback: "Unresolved",
-        ...options,
-    });
-    return resolved.resolved ? resolved.label : (resolved.short ?? resolved.label);
+    return resolveEntityLabel(id, options).label;
 }
 
 // Embedded-identifier scrubbing (CHAOS-2064). Backend-built narrative strings
 // (cockpit headlines, signal titles) can interpolate an *unresolved* scope id
 // directly into prose, e.g. "Compounding risk appears elevated for <uuid>".
-// `scrubIdentifiers` replaces each embedded UUID / 32-char hex token with a
-// stable short token (`#a1b2c3d4`) so a raw id never renders inside narrative.
+// `scrubIdentifiers` replaces each embedded UUID / 32-char hex token with
+// "an unresolved item" so an ID never renders inside narrative.
+const UNRESOLVED_ITEM = "an unresolved item";
 const EMBEDDED_UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 const EMBEDDED_HEX32_RE = /\b[0-9a-f]{32}\b/gi;
 
 /**
  * Replace embedded UUID / long-hash tokens inside a narrative string with
- * stable short tokens. Returns the scrubbed text and whether anything changed.
+ * "an unresolved item". Returns the scrubbed text and whether anything changed.
  * Resolved prose with no id tokens is returned untouched (`changed: false`).
  */
 export function scrubIdentifiers(text: string | null | undefined): {
@@ -207,13 +175,13 @@ export function scrubIdentifiers(text: string | null | undefined): {
     const raw = typeof text === "string" ? text : "";
     if (!raw) return { text: raw, changed: false };
     let changed = false;
-    let out = raw.replace(EMBEDDED_UUID_RE, (m) => {
+    let out = raw.replace(EMBEDDED_UUID_RE, () => {
         changed = true;
-        return `#${m.replace(/-/g, "").slice(0, 8)}`;
+        return UNRESOLVED_ITEM;
     });
-    out = out.replace(EMBEDDED_HEX32_RE, (m) => {
+    out = out.replace(EMBEDDED_HEX32_RE, () => {
         changed = true;
-        return `#${m.slice(0, 8)}`;
+        return UNRESOLVED_ITEM;
     });
     return { text: out, changed };
 }
