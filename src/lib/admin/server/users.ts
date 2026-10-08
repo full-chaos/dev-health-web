@@ -3,7 +3,7 @@
 import { adminApi } from "../api";
 import type { ActionResult } from "@/lib/result";
 import type { User, UserCreate, UserUpdate } from "../types";
-import { getSessionContext, getToken, withErrorHandling } from "./_shared";
+import { getSessionContext, getToken, requireSuperuserToken, withErrorHandling } from "./_shared";
 
 export async function listUsers(query?: string): Promise<ActionResult<User[]>> {
     return withErrorHandling(async () => {
@@ -64,7 +64,7 @@ export async function setUserPassword(
  */
 export async function createPlatformUser(data: UserCreate): Promise<ActionResult<User>> {
     return withErrorHandling(async () => {
-        const token = await getToken();
+        const token = await requireSuperuserToken();
         return adminApi.users.create(data, token, undefined);
     });
 }
