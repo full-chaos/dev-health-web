@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { EditIdentityFormWrapper } from "./EditIdentityFormWrapper";
 import { getIdentity, listTeams } from "@/lib/admin/server";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 
 export default async function EditIdentityPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -24,7 +25,7 @@ export default async function EditIdentityPage({ params }: { params: Promise<{ i
         <div>
             <AdminHeader
                 title="Edit Identity"
-                description={`Edit configuration for ${identity.display_name || identity.canonical_id}`}
+                description={`Edit configuration for ${identity.display_name || identity.email || UNRESOLVED}`}
             />
             <EditIdentityFormWrapper identity={identity} teams={teams} />
         </div>

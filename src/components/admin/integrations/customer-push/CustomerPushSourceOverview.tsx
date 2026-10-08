@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ConnectionStatus } from "@/components/admin/integrations/ConnectionStatus";
-import { TruncatedId } from "./TruncatedId";
 import type { CustomerPushSource } from "@/lib/admin/types";
 
 type CustomerPushSourceOverviewProps = {
@@ -78,9 +77,6 @@ export function CustomerPushSourceOverview({ provider, source }: CustomerPushSou
                         <ConnectionStatus
                             status={source.enabled ? "connected" : "not_configured"}
                         />
-                    </div>
-                    <div className="mt-3">
-                        <TruncatedId value={source.id} label="Source ID" />
                     </div>
                 </div>
             </div>

@@ -226,7 +226,6 @@ export function ImportTeamsDialog() {
                                                     />
                                                 </th>
                                                 <th className="p-3 font-medium">Team</th>
-                                                <th className="p-3 font-medium">ID</th>
                                                 <th className="p-3 font-medium">Associations</th>
                                             </tr>
                                         </thead>
@@ -261,9 +260,6 @@ export function ImportTeamsDialog() {
                                                                 {team.description}
                                                             </div>
                                                         )}
-                                                    </td>
-                                                    <td className="p-3 text-(--ink-muted) font-mono text-xs">
-                                                        {team.provider_team_id}
                                                     </td>
                                                     <td className="p-3 text-(--ink-muted)">
                                                         {Object.entries(team.associations).map(

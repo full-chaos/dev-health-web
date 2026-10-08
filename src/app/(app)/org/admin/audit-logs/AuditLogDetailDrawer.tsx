@@ -6,7 +6,6 @@ import { formatDateTimeUTC } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { AuditIdentityLabel } from "./AuditIdentityLabel";
 import { AuditStatusBadge } from "./AuditStatusBadge";
-import { CopyIdButton } from "./CopyIdButton";
 import { PayloadFieldList } from "./PayloadFieldList";
 
 type AuditLogDetailDrawerProps = {
@@ -87,7 +86,6 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                             emptyLabel="System"
                             copyLabel="actor ID"
                             layout="inline"
-                            showFullId
                         />
                     </DetailRow>
                     <DetailRow label="Resource">
@@ -101,7 +99,6 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                                 emptyLabel="—"
                                 copyLabel="resource ID"
                                 layout="inline"
-                                showFullId
                             />
                         </div>
                     </DetailRow>
@@ -113,12 +110,6 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                             <span className="text-(--negative)">{entry.error_message}</span>
                         </DetailRow>
                     )}
-                    <DetailRow label="Entry ID">
-                        <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-(--ink-muted)">{entry.id}</span>
-                            <CopyIdButton value={entry.id} label="audit entry ID" />
-                        </div>
-                    </DetailRow>
 
                     <PayloadFieldList
                         title="Changes"

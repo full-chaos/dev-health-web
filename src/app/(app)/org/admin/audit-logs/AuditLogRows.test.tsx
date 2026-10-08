@@ -60,7 +60,7 @@ describe("AuditLogRows", () => {
         expect(screen.getAllByText("Unresolved")).toHaveLength(2);
     });
 
-    it("renders served actor and resource names alongside their ids", () => {
+    it("renders served actor and resource names and never their ids", () => {
         const actorId = "550e8400-e29b-41d4-a716-446655440000";
         const resourceId = "660e8400-e29b-41d4-a716-446655440111";
         render(
@@ -81,11 +81,11 @@ describe("AuditLogRows", () => {
         expect(screen.getByText("Audit Resource")).toBeInTheDocument();
         expect(screen.queryByText(actorId)).not.toBeInTheDocument();
         expect(screen.queryByText(resourceId)).not.toBeInTheDocument();
-        expect(screen.getByText("Audit Actor")).toHaveAttribute("title", actorId);
-        expect(screen.getByText("Audit Resource")).toHaveAttribute("title", resourceId);
+        expect(screen.getByText("Audit Actor")).not.toHaveAttribute("title");
+        expect(screen.getByText("Audit Resource")).not.toHaveAttribute("title");
         expect(screen.getByRole("button", { name: /copy actor id/i })).toHaveAttribute(
             "title",
-            `Copy actor ID: ${actorId}`,
+            "Copy actor ID",
         );
     });
 

@@ -133,7 +133,7 @@ describe("OrgAuditLogPage", () => {
         expect(screen.queryByText(/could not be loaded/u)).toBeNull();
     });
 
-    it("renders served names and ids in the row and detail drawer", async () => {
+    it("renders served names, never ids, in the row and detail drawer", async () => {
         const RES = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
         const ACT = "550e8400-e29b-41d4-a716-446655440000";
         mockListAuditLogs.mockResolvedValue(
@@ -156,13 +156,14 @@ describe("OrgAuditLogPage", () => {
         expect(row).not.toHaveTextContent(ACT);
         expect(within(row).getByRole("button", { name: /copy resource id/i })).toHaveAttribute(
             "title",
-            `Copy resource ID: ${RES}`,
+            "Copy resource ID",
         );
 
         await user.click(within(row).getByRole("button", { name: /open details/i }));
         const drawer = await screen.findByTestId("audit-log-detail-drawer");
-        expect(drawer).toHaveTextContent(RES);
-        expect(drawer).toHaveTextContent(ACT);
+        expect(drawer).toHaveTextContent("Audit Actor");
+        expect(drawer).not.toHaveTextContent(RES);
+        expect(drawer).not.toHaveTextContent(ACT);
     });
 
     it("shows Unresolved and no id text when a backend row has null or absent name keys", async () => {

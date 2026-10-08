@@ -11,8 +11,6 @@ type AuditIdentityLabelProps = {
     copyLabel: string;
     /** "stacked" for compact table cells, "inline" for the wider detail drawer. */
     layout?: "stacked" | "inline";
-    /** Print the full served id as a second item. On in the detail drawer only. */
-    showFullId?: boolean;
 };
 
 /**
@@ -20,7 +18,7 @@ type AuditIdentityLabelProps = {
  *
  * Shows the served `*_display_name` when it is a non-blank string. A null, blank or absent name
  * shows the "Unresolved" badge only: never an id, a piece of one, or a name derived from another
- * field. The id stays available in the tooltip and the Copy action, and in the drawer's full-id item.
+ * field. The id is never printed or put in a tooltip; it stays only as the Copy action's payload.
  */
 export function AuditIdentityLabel({
     id,
@@ -28,7 +26,6 @@ export function AuditIdentityLabel({
     emptyLabel,
     copyLabel,
     layout = "stacked",
-    showFullId = false,
 }: AuditIdentityLabelProps) {
     const name = displayName?.trim();
     if (!id) {
@@ -41,22 +38,18 @@ export function AuditIdentityLabel({
     return (
         <div className={containerClass}>
             {name ? (
-                <span className="text-xs font-medium" title={id} data-resolved="true">
+                <span className="text-xs font-medium" data-resolved="true">
                     {name}
                 </span>
             ) : (
                 <span
                     className="rounded-full border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)"
-                    title={id}
                     data-resolved="false"
                 >
                     Unresolved
                 </span>
             )}
             <div className="flex items-center gap-1.5">
-                {showFullId ? (
-                    <span className="font-mono text-xs text-(--ink-muted)">{id}</span>
-                ) : null}
                 <CopyIdButton value={id} label={copyLabel} />
             </div>
         </div>

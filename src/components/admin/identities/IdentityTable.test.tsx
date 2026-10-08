@@ -44,8 +44,8 @@ describe("IdentityTable", () => {
 
         await user.type(screen.getByPlaceholderText("Search identities"), "octoalice");
 
-        expect(screen.getByRole("link", { name: "alice-smith" })).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: "bo-brown" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Alice Smith" })).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Bo Brown" })).not.toBeInTheDocument();
     });
 
     it("shows a search-specific empty state when no identity matches", async () => {
@@ -70,7 +70,7 @@ describe("IdentityTable", () => {
         expect(screen.getByText("1 of 2 identities")).toBeInTheDocument();
     });
 
-    it("shows the canonical id in mono, the name in semibold and an em dash for none", () => {
+    it("links the display name (else email, else Unresolved), never the canonical id", () => {
         render(
             <IdentityTable
                 identities={[
@@ -86,9 +86,9 @@ describe("IdentityTable", () => {
             />,
         );
 
-        expect(screen.getByRole("link", { name: "alice-smith" }).className).toContain("font-mono");
-        expect(screen.getByText("Alice Smith").className).toContain("font-semibold");
-        const row = screen.getByRole("link", { name: "no-name" }).closest("tr")!;
+        expect(screen.queryByText("alice-smith")).toBeNull();
+        expect(screen.queryByText("no-name")).toBeNull();
+        const row = screen.getAllByRole("link", { name: "Unresolved" })[0].closest("tr")!;
         expect(within(row).getAllByText("—")).toHaveLength(2);
     });
 
@@ -123,7 +123,7 @@ describe("IdentityTable", () => {
 
         await user.type(screen.getByPlaceholderText("Search identities"), "Platform Core");
 
-        expect(screen.getByRole("link", { name: "alice-smith" })).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: "bo-brown" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Alice Smith" })).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Bo Brown" })).not.toBeInTheDocument();
     });
 });

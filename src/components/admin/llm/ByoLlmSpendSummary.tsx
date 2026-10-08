@@ -257,14 +257,12 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
                             </tr>
                         </thead>
                         <tbody>
-                            {summary.runs.map((run) => (
+                            {summary.runs.map((run, index) => (
                                 <tr
                                     key={run.run_id}
                                     className="border-b border-(--card-stroke)/60 last:border-0"
                                 >
-                                    <td className="px-3 py-3 font-mono text-xs" title={run.run_id}>
-                                        {run.run_id.slice(0, 8)}
-                                    </td>
+                                    <td className="px-3 py-3 text-xs">Run {index + 1}</td>
                                     <td className="px-3 py-3">{run.model ?? "—"}</td>
                                     <td className="px-3 py-3 text-right">
                                         {formatNumber(run.calls)}

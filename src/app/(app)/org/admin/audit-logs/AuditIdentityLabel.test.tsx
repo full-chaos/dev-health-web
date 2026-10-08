@@ -56,23 +56,9 @@ describe("AuditIdentityLabel", () => {
         );
         expect(container.textContent).not.toContain(UUID);
         const copy = screen.getByRole("button", { name: /copy actor id/i });
-        expect(copy).toHaveAttribute("title", `Copy actor ID: ${UUID}`);
+        expect(copy).toHaveAttribute("title", "Copy actor ID");
         expect(copy.textContent).toBe("");
         expect(copy.querySelector("svg")).not.toBeNull();
-    });
-
-    it("keeps the full id as a second line when asked (the detail drawer)", () => {
-        render(
-            <AuditIdentityLabel
-                id={UUID}
-                displayName={null}
-                emptyLabel="System"
-                copyLabel="actor ID"
-                showFullId
-            />,
-        );
-        expect(screen.getByText(UUID)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /copy actor id/i })).toBeInTheDocument();
     });
 
     it("keeps the Copy icon on the same row as the label in the stacked cell (design: inline)", () => {
@@ -107,12 +93,11 @@ describe("AuditIdentityLabel", () => {
                 displayName="Audit Actor"
                 emptyLabel="System"
                 copyLabel="actor ID"
-                showFullId
             />,
         );
 
         expect(screen.getByText("Audit Actor")).toBeInTheDocument();
-        expect(screen.getByText(UUID)).toBeInTheDocument();
+        expect(screen.queryByText(UUID)).not.toBeInTheDocument();
         expect(screen.queryByText("Unresolved")).not.toBeInTheDocument();
     });
 });

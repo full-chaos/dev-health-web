@@ -241,7 +241,7 @@ describe("ByoLlmSpendSummary", () => {
         });
         renderPanel();
 
-        await screen.findByText("run-1");
+        await screen.findByText("Run 1");
         expect(screen.getByText("gpt-4o")).toBeInTheDocument();
         expect(screen.getByText("42")).toBeInTheDocument();
         expect(screen.getByText("12,345")).toBeInTheDocument();
@@ -250,7 +250,7 @@ describe("ByoLlmSpendSummary", () => {
         expect(screen.getByText("low_confidence ×1")).toBeInTheDocument();
 
         // Second row: no model, no failures.
-        expect(screen.getByText("run-2")).toBeInTheDocument();
+        expect(screen.getByText("Run 2")).toBeInTheDocument();
         expect(screen.getAllByText("—").length).toBeGreaterThan(0);
         expect(screen.getByText("None")).toBeInTheDocument();
 

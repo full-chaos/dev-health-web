@@ -50,7 +50,7 @@ describe("AuditLogDetailDrawer", () => {
         expect(screen.getAllByText("Unresolved")).toHaveLength(2);
     });
 
-    it("renders served names with the actor and resource ids in the detail drawer", () => {
+    it("renders served names and never the actor or resource ids in the detail drawer", () => {
         const actorId = "550e8400-e29b-41d4-a716-446655440000";
         const resourceId = "660e8400-e29b-41d4-a716-446655440111";
         render(
@@ -68,8 +68,8 @@ describe("AuditLogDetailDrawer", () => {
 
         expect(screen.getByText("Audit Actor")).toBeInTheDocument();
         expect(screen.getByText("Audit Resource")).toBeInTheDocument();
-        expect(screen.getByText(actorId)).toBeInTheDocument();
-        expect(screen.getByText(resourceId)).toBeInTheDocument();
+        expect(screen.queryByText(actorId)).not.toBeInTheDocument();
+        expect(screen.queryByText(resourceId)).not.toBeInTheDocument();
     });
 
     it("renders Changes and Request details as typed, labeled fields — never a raw JSON dump", () => {
@@ -97,9 +97,9 @@ describe("AuditLogDetailDrawer", () => {
         ).toBeInTheDocument();
     });
 
-    it("offers a copy affordance for the audit entry's own id", () => {
+    it("shows no Entry ID row", () => {
         render(<AuditLogDetailDrawer entry={makeEntry()} isOpen={true} onCloseAction={vi.fn()} />);
-        expect(screen.getByRole("button", { name: /copy audit entry id/i })).toBeInTheDocument();
+        expect(screen.queryByText("Entry ID")).not.toBeInTheDocument();
     });
 
     it("calls onCloseAction when the close button is clicked", async () => {

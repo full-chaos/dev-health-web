@@ -13,6 +13,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { InvoiceDetailModal } from "./InvoiceDetailModal";
 import { VoidConfirmDialog } from "./VoidConfirmDialog";
+import { invoiceLabel } from "./invoiceLabel";
 
 type InvoiceListProps = {
     initialData: InvoiceListResponse;
@@ -136,10 +137,7 @@ export function InvoiceList({
                 header: "Invoice",
                 className: "px-4 py-3",
                 render: (invoice) => (
-                    <>
-                        <p className="font-medium text-foreground">{invoice.stripe_invoice_id}</p>
-                        <p className="text-xs text-(--ink-muted)">{invoice.stripe_customer_id}</p>
-                    </>
+                    <p className="font-medium text-foreground">{invoiceLabel(invoice)}</p>
                 ),
             },
             {
@@ -263,7 +261,7 @@ export function InvoiceList({
             />
             <VoidConfirmDialog
                 isOpen={voidingInvoice !== null}
-                invoiceLabel={voidingInvoice?.stripe_invoice_id ?? ""}
+                invoiceLabel={voidingInvoice ? invoiceLabel(voidingInvoice) : ""}
                 isPending={isPending}
                 onCancel={() => setVoidingInvoice(null)}
                 onConfirm={handleVoidConfirm}
