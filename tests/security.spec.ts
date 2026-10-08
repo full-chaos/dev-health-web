@@ -41,7 +41,7 @@ test("security repo evidence page renders with locked pill", async ({ page }) =>
     await page.goto("/security/repos/test-repo-id");
 
     // Should see the repo heading
-    await expect(page.getByRole("heading", { name: "test-repo-id" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Repository" })).toBeVisible({
         timeout: 15000,
     });
 
@@ -50,9 +50,10 @@ test("security repo evidence page renders with locked pill", async ({ page }) =>
         timeout: 10000,
     });
 
-    // Locked pill should contain the repoId
+    // With no served name the pill says "Repository"; the id is its tooltip.
     const pill = page.getByTestId("locked-repo-pill");
-    await expect(pill).toContainText("test-repo-id");
+    await expect(pill).toContainText("Repository");
+    await expect(pill).toHaveAttribute("title", "Repository id: test-repo-id");
 });
 
 test("security in primary nav links to /security", async ({ page }) => {
