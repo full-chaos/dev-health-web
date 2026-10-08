@@ -19,18 +19,6 @@ export async function listPlatformUsers(query?: string): Promise<ActionResult<Us
     });
 }
 
-/**
- * Platform-level create: no X-Org-Id, so the backend creates a platform user
- * with no org membership (an org-scoped superuser create would join the
- * superuser's own org).
- */
-export async function createPlatformUser(data: UserCreate): Promise<ActionResult<User>> {
-    return withErrorHandling(async () => {
-        const token = await getToken();
-        return adminApi.users.create(data, token, undefined);
-    });
-}
-
 export async function getUser(userId: string): Promise<ActionResult<User>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
@@ -66,5 +54,17 @@ export async function setUserPassword(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.users.setPassword(userId, password, token, orgId);
+    });
+}
+
+/**
+ * Platform-level create: no X-Org-Id, so the backend creates a platform user
+ * with no org membership (an org-scoped superuser create would join the
+ * superuser's own org).
+ */
+export async function createPlatformUser(data: UserCreate): Promise<ActionResult<User>> {
+    return withErrorHandling(async () => {
+        const token = await getToken();
+        return adminApi.users.create(data, token, undefined);
     });
 }
