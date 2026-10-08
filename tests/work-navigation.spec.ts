@@ -118,6 +118,29 @@ test.describe("Diagnose navigation", () => {
         }
     });
 
+    test("legacy Work deep links: the redirect is an HTTP 307, not a streamed client redirect", async ({
+        request,
+    }) => {
+        // A route segment loading.tsx makes Next stream a 200 shell and deliver redirect() as
+        // a client-side meta redirect, so the URL changes only after the target compiles.
+        const response = await request.get(`/work?tab=capacity&f=${filterWith30d}`, {
+            maxRedirects: 0,
+        });
+        expect(response.status()).toBe(307);
+        expect(response.headers()["location"]).toMatch(/\/plan\/capacity(?:[?#].*)?$/);
+    });
+
+    test("legacy Work deep links: a slow redirect target still lands on the target URL", async ({
+        page,
+    }) => {
+        await page.route(/\/plan\/capacity/, async (route) => {
+            await new Promise((resolve) => setTimeout(resolve, 6000));
+            await route.continue();
+        });
+        await page.goto(`/work?tab=capacity&f=${filterWith30d}`);
+        await expect(page).toHaveURL(/\/plan\/capacity(?:[?#].*)?$/);
+    });
+
     test("legacy Work deep links: bare work view redirects to Work Graph instead of overview", async ({
         page,
     }) => {
