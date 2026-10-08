@@ -63,21 +63,21 @@ const fact = (label: string) => {
 
 // The "Evidence & context" card of Home (CHAOS-8063): approved prototype `app.js:100`.
 describe("EvidenceContextCard", () => {
-    it("has the approved title, description and the four fact rows in order", () => {
+    it("has the approved title, description and the three fact rows in order (no Identity confidence row)", () => {
         render(<EvidenceContextCard home={makeHome()} />);
         expect(screen.getByRole("heading", { name: "Evidence & context" })).toBeInTheDocument();
         expect(screen.getByText("Keep uncertainty beside the claim.")).toBeInTheDocument();
         const labels = screen
             .getAllByTestId("evidence-fact")
             .map((row) => row.querySelector("dt")?.textContent);
-        expect(labels).toEqual(["Source", "Signal quality", "Last sync", "Identity confidence"]);
+        expect(labels).toEqual(["Source", "Signal quality", "Last sync"]);
     });
 
-    it("reads Not reported for Source and Identity confidence: the Home API does not serve them", () => {
+    it("reads Not reported for Source: the Home API does not serve it", () => {
         render(<EvidenceContextCard home={makeHome()} />);
-        for (const label of ["Source", "Identity confidence"]) {
+        for (const label of ["Source"]) {
             expect(fact(label)).toHaveAttribute("data-reported", "false");
-            expect(fact(label)).toHaveTextContent("Not reported");
+            expect(fact(label)).toHaveTextContent("Unknown");
         }
     });
 
@@ -102,7 +102,7 @@ describe("EvidenceContextCard", () => {
 
     it("Signal quality reads Not reported when no signal is served", () => {
         render(<EvidenceContextCard home={makeHome({ signals: [] })} />);
-        expect(fact("Signal quality")).toHaveTextContent("Not reported");
+        expect(fact("Signal quality")).toHaveTextContent("Unknown");
         expect(screen.queryByTestId("evidence-context-quality")).toBeNull();
     });
 
@@ -134,7 +134,7 @@ describe("EvidenceContextCard", () => {
             />,
         );
         expect(fact("Last sync")).toHaveAttribute("data-reported", "false");
-        expect(fact("Last sync").querySelector("dd")?.textContent).toBe("Not reported");
+        expect(fact("Last sync").querySelector("dd")?.textContent).toBe("Unknown");
     });
 
     it("holds the approved sentence and the served caveats in the inset", () => {
@@ -166,7 +166,7 @@ describe("EvidenceContextCard", () => {
 
         render(<EvidenceContextCard home={null} />);
         const rows = screen.getAllByTestId("evidence-fact");
-        expect(rows).toHaveLength(4);
+        expect(rows).toHaveLength(3);
         for (const row of rows) expect(row).toHaveAttribute("data-reported", "false");
     });
 });

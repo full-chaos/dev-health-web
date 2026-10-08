@@ -278,7 +278,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
             "ThemeFeature Delivery",
             "Effort60 delivery units",
             "Share of the mix60%",
-            "Average evidence qualityNot reported",
+            "Average evidence qualityUnknown",
         ]);
     });
 
@@ -629,8 +629,8 @@ describe("Investment Confidence (prototype view 10)", () => {
                 .map((r) => r.textContent),
         ).toEqual([
             "Team coverage68%",
-            // Not produced by the backend: "Not reported", never 0%.
-            "Repo coverageNot reported",
+            // Not produced by the backend: "Unknown", never 0%.
+            "Repo coverageUnknown",
             "Unassigned ownershipnone detected",
         ]);
         expect(gaps).toHaveTextContent(

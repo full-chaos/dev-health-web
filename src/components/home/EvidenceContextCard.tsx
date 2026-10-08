@@ -30,7 +30,6 @@ const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1
  *   `confidenceFromEvidence`), so it is the evidence quality of the signal.
  * - Last sync: `freshness.latest_successful_sync_at`. No fallback to the last ingest time: an
  *   ingest is not a completed sync.
- * - Identity confidence: not served on the Home response (CHAOS-8102).
  *
  * The inset holds the approved sentence, then the served `data_confidence.caveats`.
  */
@@ -69,7 +68,6 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
                         ) : undefined
                     }
                 />
-                <EvidenceFact label="Identity confidence" />
             </EvidenceFactList>
             <Inset data-testid="evidence-context-note" className="text-xs text-(--ink-muted)">
                 <p>{EVIDENCE_CONTEXT_NOTE}</p>

@@ -50,7 +50,7 @@ describe("PageFactsEvidenceAction", () => {
             "evidence-fact",
         );
         expect(row).toHaveAttribute("data-reported", "false");
-        expect(row).toHaveTextContent("Not reported");
+        expect(row).toHaveTextContent("Unknown");
         await waitFor(() => expect(screen.getAllByRole("dialog").length).toBeGreaterThan(0));
     });
 });

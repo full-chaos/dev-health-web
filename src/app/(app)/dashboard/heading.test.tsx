@@ -207,7 +207,7 @@ describe("Home page header", () => {
         await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
         // Every served number, zero included (zero is a served value, not a missing one).
         expect(drawerRows()).toEqual([
-            ["Coverage", "Not reported"],
+            ["Coverage", "Unknown"],
             ["Last ingested", formatTimestamp("2026-07-12T00:07:00Z")],
             ["Repositories covered", "100%"],
             ["PRs linked to issues", "0%"],
@@ -232,11 +232,11 @@ describe("Home page header", () => {
             await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
 
             expect(drawerRows()).toEqual([
-                ["Coverage", "Not reported"],
-                ["Last ingested", "Not reported"],
-                ["Repositories covered", "Not reported"],
-                ["PRs linked to issues", "Not reported"],
-                ["Issues with cycle states", "Not reported"],
+                ["Coverage", "Unknown"],
+                ["Last ingested", "Unknown"],
+                ["Repositories covered", "Unknown"],
+                ["PRs linked to issues", "Unknown"],
+                ["Issues with cycle states", "Unknown"],
             ]);
         },
     );
@@ -307,6 +307,6 @@ describe("Home page header", () => {
             within(
                 within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
             ).getAllByTestId("evidence-fact")[0],
-        ).toHaveTextContent("CoverageNot reported");
+        ).toHaveTextContent("CoverageUnknown");
     });
 });

@@ -143,7 +143,7 @@ describe("AI overview cards", () => {
         expect(text.indexOf("Review Load")).toBeLessThan(text.indexOf("Impact"));
         expect(text.indexOf("Impact")).toBeLessThan(text.indexOf("Governance Risk"));
         expect(text.indexOf("Governance Risk")).toBeLessThan(text.indexOf("Automations"));
-        expect(within(facts).getByText("Not reported")).toBeInTheDocument();
+        expect(within(facts).getByText("Unknown")).toBeInTheDocument();
     });
 
     it("emphasizes the most severe severity-bearing card, once", async () => {

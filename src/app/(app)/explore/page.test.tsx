@@ -284,7 +284,7 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         const rows = within(screen.getByTestId("explore-context"))
             .getAllByTestId("evidence-fact")
             .map((row) => row.textContent);
-        expect(rows[1]).toBe("OrganizationNot reported");
+        expect(rows[1]).toBe("OrganizationUnknown");
     });
 
     it("an old URL that carries the removed filters shows rows only for the filters a query reads (CHAOS-7799)", async () => {

@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import {
-    EvidenceFact,
-    EvidenceFactList,
-    EvidenceProvenanceFacts,
-} from "@/components/evidence/EvidenceFacts";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { useActiveRole } from "@/lib/lensContext.client";
 import { getRoleConfig } from "@/lib/roleContext";
@@ -136,9 +132,6 @@ export function InvestigationPanel({ point, data, filters, title }: Investigatio
     return (
         <div data-testid="investigation-panel" className="text-xs">
             <div className="space-y-6">
-                {/* The quadrant query serves no source, quality, sync time, identity confidence
-                    or artifact list for a point: one line says so, in place of five empty rows. */}
-                <EvidenceProvenanceFacts whenEmpty="line" />
                 {/* The point as the chart draws it: the two raw axis values and its window. */}
                 <EvidenceFactList aria-label="Point" testId="evidence-subject-facts">
                     <EvidenceFact

@@ -31,11 +31,7 @@ import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/ch
 import { HotspotColumnTreemap } from "@/components/complexity/HotspotColumnTreemap";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import {
-    EvidenceFact,
-    EvidenceFactList,
-    EvidenceProvenanceFacts,
-} from "@/components/evidence/EvidenceFacts";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { Button } from "@/components/shared/Button";
@@ -370,9 +366,6 @@ function EvidenceCell({ row }: { row: HotspotRow }) {
 function HotspotEvidence({ row }: { row: HotspotRow }) {
     return (
         <div className="space-y-4">
-            {/* The hotspots query serves no source, quality, sync time, identity confidence or
-                artifact list for a file row: one line says so, in place of five empty rows. */}
-            <EvidenceProvenanceFacts whenEmpty="line" />
             <EvidenceFactList aria-label="File" testId="evidence-subject-facts">
                 <EvidenceFact
                     label="File"

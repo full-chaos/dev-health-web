@@ -326,7 +326,7 @@ describe("TestOps Overview page — approved layout", () => {
             "Failure Rate3%",
             "P95 Duration9.8m",
             "Flake Rate0%",
-            "Line CoverageNot reported",
+            "Line CoverageUnknown",
         ]);
         expect(facts[4]).toHaveAttribute("data-reported", "false");
         // The full definitions (no longer on the tiles) are in the drawer.

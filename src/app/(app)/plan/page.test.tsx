@@ -257,7 +257,7 @@ describe("Plan overview — View evidence", () => {
             ]);
         expect(rows).toContainEqual(["Open items", "51"]);
         expect(rows).toContainEqual(["P50 forecast", "1 week"]);
-        expect(rows).toContainEqual(["P75 forecast", "Not reported"]);
+        expect(rows).toContainEqual(["P75 forecast", "Unknown"]);
         expect(rows).toContainEqual(["Rolling throughput · 4w", "12 items/week"]);
         expect(rows).toContainEqual(["WIP congestion", "0.69× · Normal"]);
     });
@@ -277,7 +277,7 @@ describe("Plan overview — View evidence", () => {
         };
         expect(await history({ insufficientHistory: false })).toBe("Sufficient");
         expect(await history({ insufficientHistory: true })).toBe("Insufficient");
-        expect(await history({ insufficientHistory: undefined })).toBe("Not reported");
+        expect(await history({ insufficientHistory: undefined })).toBe("Unknown");
     });
 
     it("has no View evidence action when there is no forecast", async () => {
