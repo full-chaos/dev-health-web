@@ -122,7 +122,7 @@ describe("AIOpportunityList", () => {
     });
 
     // CHAOS-8114: the API serves the repository and team names of an opportunity. A name that is not
-    // served reads "Not reported"; the id is never drawn as a name.
+    // served reads "Unknown"; the id is never drawn as a name.
     describe("repository and team names", () => {
         const scope = () => screen.getByTestId("ai-opportunity-scope").textContent;
 
@@ -158,7 +158,7 @@ describe("AIOpportunityList", () => {
         });
 
         it.each([null, undefined, "", "   "])(
-            "reads 'Not reported' for a repository name that is %j, never the id",
+            "reads 'Unknown' for a repository name that is %j, never the id",
             (repoName) => {
                 render(
                     <AIOpportunityList
@@ -166,13 +166,13 @@ describe("AIOpportunityList", () => {
                         recommendations={[{ ...recommendation, repoName, teamName: "Platform" }]}
                     />,
                 );
-                expect(scope()).toBe("HIGH REVIEW LOAD · Repository: Not reported · Platform");
+                expect(scope()).toBe("HIGH REVIEW LOAD · Repository: Unknown · Platform");
                 expect(scope()).not.toContain("repo-1");
             },
         );
 
         it.each([null, undefined, "", "   "])(
-            "reads 'Not reported' for a team name that is %j, never the id",
+            "reads 'Unknown' for a team name that is %j, never the id",
             (teamName) => {
                 render(
                     <AIOpportunityList
@@ -180,7 +180,7 @@ describe("AIOpportunityList", () => {
                         recommendations={[{ ...recommendation, repoName: "acme/alpha", teamName }]}
                     />,
                 );
-                expect(scope()).toBe("HIGH REVIEW LOAD · acme/alpha · Team: Not reported");
+                expect(scope()).toBe("HIGH REVIEW LOAD · acme/alpha · Team: Unknown");
                 expect(scope()).not.toContain("team-platform");
             },
         );

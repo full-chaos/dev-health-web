@@ -47,7 +47,7 @@ describe("Automations look (CHAOS-7772)", () => {
         expect(chip.className).toContain("border-(--card-stroke)");
     });
 
-    it("never prints raw repo or team ids: with no served name the line reads 'Not reported', with no id token and no badge", () => {
+    it("never prints raw repo or team ids: with no served name the line reads 'Unknown', with no id token and no badge", () => {
         mockOpps.mockReturnValue({
             fetching: false,
             error: undefined,
@@ -78,7 +78,7 @@ describe("Automations look (CHAOS-7772)", () => {
         expect(item).not.toHaveTextContent("66666666");
         expect(item).not.toHaveTextContent("Unresolved");
         expect(within(item).getByTestId("ai-opportunity-scope")).toHaveTextContent(
-            "repeat work · Repository: Not reported · Team: Not reported",
+            "repeat work · Repository: Unknown · Team: Unknown",
         );
     });
 });

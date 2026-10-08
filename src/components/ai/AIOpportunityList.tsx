@@ -4,7 +4,7 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
-import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
+import { UNKNOWN } from "@/components/evidence/EvidenceFacts";
 import { edgeTypeWords } from "@/lib/ai/edgeLabels";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import type { AiOpportunity, AiWorkGraphDrilldownRef } from "@/lib/graphql/__generated__/types";
@@ -15,9 +15,9 @@ import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
  * "an unresolved item", and the full original text is the tooltip. Text with no id is untouched
  * and has no tooltip. No name is made up here.
  */
-/** The served name, or what is missing: "Repository: Not reported". Never an id. */
+/** The served name, or what is missing: "Repository: Unknown". Never an id. */
 const servedName = (what: string, name: string | null | undefined): string =>
-    name?.trim() || `${what}: ${NOT_REPORTED}`;
+    name?.trim() || `${what}: ${UNKNOWN}`;
 
 function readable(text: string): { text: string; title?: string } {
     const scrubbed = scrubIdentifiers(text);
@@ -143,7 +143,7 @@ export function AIOpportunityList({
                             </span>
                         </div>
                         {/* The served names of the row's repository and team (CHAOS-8114). A name
-                            that is not served reads "Not reported"; an id is never drawn as a name.
+                            that is not served reads "Unknown"; an id is never drawn as a name.
                             Capitals are for the kind only: a served name keeps its case. */}
                         <p
                             className="mt-2 text-label-caps text-(--ink-muted)"
