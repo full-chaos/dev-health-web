@@ -39,6 +39,31 @@ describe("resolvePackageManagerCommand", () => {
         });
     });
 
+    it.each([
+        ["ELF", [0x7f, 0x45, 0x4c, 0x46]],
+        ["Mach-O 64-bit", [0xcf, 0xfa, 0xed, 0xfe]],
+    ])("runs the sibling dist/pnpm.mjs for a native %s pnpm executable", (_name, magic) => {
+        const entrypoint = temporaryPath("pnpm");
+        writeFileSync(entrypoint, Buffer.from([...magic, 0, 0, 0, 0]));
+        const script = path.join(path.dirname(entrypoint), "dist", "pnpm.mjs");
+        mkdirSync(path.dirname(script));
+        writeFileSync(script, "");
+
+        expect(resolvePackageManagerCommand({ npmExecPath: entrypoint })).toEqual({
+            command: process.execPath,
+            args: [script],
+        });
+    });
+
+    it("rejects a native pnpm executable that has no readable dist/pnpm.mjs", () => {
+        const entrypoint = temporaryPath("pnpm");
+        writeFileSync(entrypoint, Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0, 0, 0, 0]));
+
+        expect(() => resolvePackageManagerCommand({ npmExecPath: entrypoint })).toThrow(
+            "cannot read its JavaScript entrypoint",
+        );
+    });
+
     it("accepts a readable symlink entrypoint", (context) => {
         const target = temporaryPath("pnpm-target.mjs");
         const entrypoint = temporaryPath("pnpm.mjs");
