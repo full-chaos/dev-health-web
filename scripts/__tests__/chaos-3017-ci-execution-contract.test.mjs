@@ -263,6 +263,22 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             }
         });
 
+        it("keeps the fixture main root when a paired ops root is in the ambient environment", () => {
+            const parity = path.join(ROOT, "dev-health-ops-parity");
+            const main = path.join(ROOT, "dev-health-ops-main");
+            const ambient = process.env.WIRE_PARITY_OPS_ROOT;
+            process.env.WIRE_PARITY_OPS_ROOT = parity;
+            try {
+                expect(wireParityCommand({})).toBe(`graphql:wire-parity:check --ops-root ${main}`);
+                expect(wireParityCommand({ WIRE_PARITY_OPS_ROOT: parity })).toBe(
+                    `graphql:wire-parity:check --ops-root ${parity}`,
+                );
+            } finally {
+                if (ambient === undefined) delete process.env.WIRE_PARITY_OPS_ROOT;
+                else process.env.WIRE_PARITY_OPS_ROOT = ambient;
+            }
+        });
+
         // Executes the workflow's own resolve step with a stub `git` whose
         // `ls-remote` exits with the given status, so the branch-lookup
         // decision is observed, not read.

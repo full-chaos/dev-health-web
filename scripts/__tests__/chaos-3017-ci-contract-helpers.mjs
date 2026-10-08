@@ -45,6 +45,9 @@ export function recordHarnessPackageCommands(args, { failScript, environment = {
     const artifactRoot = `test-results/chaos-3017-contract-${process.pid}`;
     try {
         const result = runHarness(args, {
+            // The fixture contract names the main root; an ambient paired-ops root (set by a
+            // paired gate run) must not replace it. Tests pass WIRE_PARITY_OPS_ROOT explicitly.
+            WIRE_PARITY_OPS_ROOT: "",
             WIRE_PARITY_OPS_MAIN_ROOT: path.join(ROOT, "dev-health-ops-main"),
             CI_CONTRACT_COMMAND_LOG: commandLog,
             CI_CONTRACT_FAIL_SCRIPT: failScript ?? "",
