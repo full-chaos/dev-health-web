@@ -4,6 +4,7 @@ import { FileText } from "lucide-react";
 
 import {
     useEvidenceDrawer,
+    useRegisterPageEvidence,
     type EvidenceSubject,
 } from "@/components/evidence/EvidenceDrawerProvider";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -25,6 +26,8 @@ type PageHeaderEvidenceActionProps = {
  */
 export function PageHeaderEvidenceAction({ subject }: PageHeaderEvidenceActionProps) {
     const evidence = useEvidenceDrawer();
+    // The top bar "Sources" entry opens the same page subject.
+    useRegisterPageEvidence(subject);
 
     return (
         <button

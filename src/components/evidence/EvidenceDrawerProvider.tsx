@@ -5,8 +5,10 @@ import {
     useCallback,
     useContext,
     useMemo,
+    useEffect,
     useRef,
     useState,
+    useSyncExternalStore,
     type ReactNode,
     type RefObject,
 } from "react";
@@ -77,6 +79,35 @@ export type EvidenceDrawerApi = {
 
 const EvidenceDrawerContext = createContext<EvidenceDrawerApi | null>(null);
 
+/**
+ * The evidence subject of the page as a whole. The page header action registers it while it is
+ * mounted; the top bar "Sources" entry opens it. No registered subject: the entry is not shown.
+ */
+type PageEvidenceStore = {
+    subscribe: (listener: () => void) => () => void;
+    get: () => EvidenceSubject | null;
+    set: (subject: EvidenceSubject | null) => void;
+};
+
+const createPageEvidenceStore = (): PageEvidenceStore => {
+    let subject: EvidenceSubject | null = null;
+    const listeners = new Set<() => void>();
+    return {
+        subscribe: (listener) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        get: () => subject,
+        set: (next) => {
+            if (next === subject) return;
+            subject = next;
+            listeners.forEach((listener) => listener());
+        },
+    };
+};
+
+const PageEvidenceContext = createContext<PageEvidenceStore | null>(null);
+
 type OpenState = { subject: EvidenceSubject; path: string | null; id: number };
 
 const hasContent = (subject: EvidenceSubject): subject is EvidenceContentSubject =>
@@ -123,37 +154,40 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
         setState(null);
     }, []);
     const api = useMemo(() => ({ open, close }), [open, close]);
+    const [pageStore] = useState(createPageEvidenceStore);
 
     const subject = state?.subject ?? null;
 
     return (
         <EvidenceDrawerContext.Provider value={api}>
-            {children}
-            {state === null || subject === null ? null : hasContent(subject) ? (
-                // The key gives each open a fresh body (no state of the subject before it).
-                <EvidenceDrawerShell
-                    key={state.id}
-                    subject={subject.title}
-                    onCloseAction={close}
-                    footer={subject.footer}
-                    returnFocusRef={subject.returnFocusRef}
-                >
-                    {subject.content}
-                </EvidenceDrawerShell>
-            ) : (
-                <EvidencePanel
-                    key={state.id}
-                    isOpen
-                    onCloseAction={close}
-                    title={subject.title}
-                    apiUrl={subject.apiUrl}
-                    metric={subject.metric}
-                    filters={subject.filters}
-                    role={subject.role}
-                    origin={subject.origin}
-                    intro={subject.intro}
-                />
-            )}
+            <PageEvidenceContext.Provider value={pageStore}>
+                {children}
+                {state === null || subject === null ? null : hasContent(subject) ? (
+                    // The key gives each open a fresh body (no state of the subject before it).
+                    <EvidenceDrawerShell
+                        key={state.id}
+                        subject={subject.title}
+                        onCloseAction={close}
+                        footer={subject.footer}
+                        returnFocusRef={subject.returnFocusRef}
+                    >
+                        {subject.content}
+                    </EvidenceDrawerShell>
+                ) : (
+                    <EvidencePanel
+                        key={state.id}
+                        isOpen
+                        onCloseAction={close}
+                        title={subject.title}
+                        apiUrl={subject.apiUrl}
+                        metric={subject.metric}
+                        filters={subject.filters}
+                        role={subject.role}
+                        origin={subject.origin}
+                        intro={subject.intro}
+                    />
+                )}
+            </PageEvidenceContext.Provider>
         </EvidenceDrawerContext.Provider>
     );
 }
@@ -169,3 +203,26 @@ export function useEvidenceDrawer(): EvidenceDrawerApi {
     }
     return api;
 }
+
+/**
+ * Registers the evidence subject of the current page (the page header action calls it). The
+ * subject is removed when the page unmounts, so a navigation never leaves the previous page's
+ * subject behind. Outside the provider it does nothing.
+ */
+export function useRegisterPageEvidence(subject: EvidenceSubject): void {
+    const store = useContext(PageEvidenceContext);
+    useEffect(() => {
+        if (!store) return;
+        store.set(subject);
+        return () => store.set(null);
+    }, [store, subject]);
+}
+
+/** The registered page subject, or null when the page has none. Null outside the provider. */
+export function usePageEvidenceSubject(): EvidenceSubject | null {
+    const store = useContext(PageEvidenceContext);
+    return useSyncExternalStore(store?.subscribe ?? noopSubscribe, store?.get ?? getNull, getNull);
+}
+
+const noopSubscribe = () => () => {};
+const getNull = () => null;

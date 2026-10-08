@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
+import { PageHeaderEvidenceAction } from "./PageHeaderEvidenceAction";
 
 import { ShellTopBar } from "./ShellTopBar";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -214,5 +218,55 @@ describe("ShellTopBar — no data-freshness chip (CHAOS-8432)", () => {
 
         expect(screen.queryByTestId("shell-status-chip")).toBeNull();
         expect(container).not.toHaveTextContent("Data through");
+    });
+});
+
+describe("ShellTopBar — Sources entry opens the page evidence", () => {
+    const pageSubject = {
+        title: "Home",
+        content: <p>Served page facts</p>,
+    };
+
+    it("opens the Evidence drawer for the subject the page registered", async () => {
+        render(
+            <>
+                <ShellTopBar />
+                <PageHeaderEvidenceAction subject={pageSubject} />
+            </>,
+            { wrapper: EvidenceDrawerProvider },
+        );
+
+        await userEvent.click(screen.getByRole("button", { name: "Sources" }));
+
+        const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
+        expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent("Home");
+        expect(within(drawer).getByText("Served page facts")).toBeInTheDocument();
+    });
+
+    it("is not shown on a page that registered no evidence", () => {
+        render(<ShellTopBar />, { wrapper: EvidenceDrawerProvider });
+
+        expect(screen.queryByTestId("top-bar-sources")).toBeNull();
+    });
+
+    it("goes away when the page unmounts", () => {
+        const { rerender } = render(
+            <>
+                <ShellTopBar />
+                <PageHeaderEvidenceAction subject={pageSubject} />
+            </>,
+            { wrapper: EvidenceDrawerProvider },
+        );
+        expect(screen.getByTestId("top-bar-sources")).toBeInTheDocument();
+
+        rerender(<ShellTopBar />);
+
+        expect(screen.queryByTestId("top-bar-sources")).toBeNull();
+    });
+
+    it("is not shown outside the evidence provider", () => {
+        render(<ShellTopBar />);
+
+        expect(screen.queryByTestId("top-bar-sources")).toBeNull();
     });
 });
