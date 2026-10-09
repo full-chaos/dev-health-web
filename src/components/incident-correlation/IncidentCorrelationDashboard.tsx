@@ -28,6 +28,7 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { buttonClassName } from "@/components/shared/Button";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { useShellOrganization } from "@/components/shell/ShellContext";
@@ -436,9 +437,7 @@ export function IncidentCorrelationDashboard({
                                 key={m.metric}
                                 label={m.label}
                                 href={buildExploreUrl({ metric: m.metric, filters, role })}
-                                value={m.value}
-                                unit={m.unit}
-                                delta={m.delta_pct}
+                                {...metricCardProps(m)}
                                 spark={m.spark}
                             />
                         ))}

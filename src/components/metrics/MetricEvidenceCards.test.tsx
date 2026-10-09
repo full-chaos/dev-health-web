@@ -72,7 +72,7 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
     });
 
-    it("shows a missing value as muted 'Not reported' (MetricCard's contract), not as zero", () => {
+    it("shows a missing value as 'Not reported', not as zero", () => {
         render(
             <MetricEvidenceCards
                 metrics={["cycle_time"]}
@@ -81,7 +81,7 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
                 placeholderDeltas
             />,
         );
-        expect(screen.getAllByText("Not reported")[0]).toHaveClass("text-(--ink-muted)");
+        expect(screen.getByText("Not reported")).toBeInTheDocument();
         expect(screen.queryByText("0")).not.toBeInTheDocument();
     });
 });
@@ -182,16 +182,16 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(within(valueOf("NoSpark")).queryByTestId("metric-unit")).toBeNull();
     });
 
-    it("shows a muted 'Not reported' for the value and 'No prior period' for the delta when deltas are placeholders", () => {
+    it("shows a muted 'Not reported' for the value and no change line when deltas are placeholders", () => {
         renderFour(true);
         expect(screen.getAllByText("Not reported")).toHaveLength(4);
-        expect(screen.getAllByText("No prior period")).toHaveLength(4);
+        expect(screen.queryByText("No prior period")).toBeNull();
         expect(screen.queryByText(/0%/)).toBeNull();
         expect(screen.queryByText("10")).toBeNull();
         expect(screen.queryAllByTestId("metric-unit")).toHaveLength(0);
     });
 
-    it("shows 'Not reported' as the value and 'No prior period' (not 0) for a metric that has no data row", () => {
+    it("shows 'Not reported' as the value and no change line (not 0) for a metric that has no data row", () => {
         render(
             <MetricEvidenceCards
                 metrics={["ghost"]}
@@ -204,7 +204,7 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.getByText("Ghost")).toBeInTheDocument();
         expect(screen.queryByText("ghost")).toBeNull();
         expect(screen.getAllByText("Not reported")).toHaveLength(1);
-        expect(screen.getByText("No prior period")).toBeInTheDocument();
+        expect(screen.queryByText("No prior period")).toBeNull();
         expect(screen.queryByText(/0%/)).toBeNull();
     });
 
@@ -215,7 +215,7 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.getAllByTestId("sparkline")).toHaveLength(3);
     });
 
-    it("says what the delta compares: 'vs previous window' after a served delta, nothing after 'No prior period'", () => {
+    it("says what the delta compares: 'vs previous window' after a served delta, nothing for placeholders", () => {
         renderFour();
         const meta = (label: string) =>
             (screen.getByText(label).closest("article") as HTMLElement).textContent ?? "";
@@ -223,7 +223,7 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.getAllByText("vs previous window")).toHaveLength(4);
         cleanup();
         renderFour(true);
-        expect(screen.getAllByText("No prior period")).toHaveLength(4);
+        expect(screen.queryByText("No prior period")).toBeNull();
         expect(screen.queryByText("vs previous window")).toBeNull();
     });
 
@@ -239,7 +239,7 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.getByText("Blocked Work")).toBeInTheDocument();
         expect(screen.queryByText("blocked_work")).toBeNull();
         expect(screen.getByText("Not reported")).toBeInTheDocument();
-        expect(screen.getByText("No prior period")).toBeInTheDocument();
+        expect(screen.queryByText("No prior period")).toBeNull();
     });
 
     it("has one Open evidence target per tile: a button that opens the shared drawer (no second link to Explore)", async () => {
@@ -296,5 +296,44 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         );
         expect(screen.queryByTestId("sparkline")).toBeNull();
         expect(screen.getByText("No trend yet")).toBeInTheDocument();
+    });
+});
+
+describe("MetricEvidenceCards served no-data flags (CHAOS-9042)", () => {
+    const one = (flags: { has_data?: boolean; has_prior_data?: boolean }, over = {}) =>
+        render(
+            <MetricEvidenceCards
+                metrics={["cycle_time"]}
+                deltas={[{ ...row("cycle_time", "Cycle Time", 0, "days", 0), ...flags, ...over }]}
+                filters={filters}
+                placeholderDeltas={false}
+            />,
+        );
+
+    it("has_data false: 'No data for this window', no 0, no 'No change', no previous-window caption", () => {
+        one({ has_data: false });
+        const tile = screen.getByRole("article");
+        expect(screen.getByTestId("metric-value")).toHaveTextContent(/^No data for this window$/);
+        expect(tile.textContent).not.toMatch(/0/);
+        expect(screen.queryByTestId("metric-delta")).toBeNull();
+        expect(screen.queryByText("vs previous window")).toBeNull();
+        expect(screen.queryByTestId("sparkline")).toBeNull();
+    });
+
+    it("has_prior_data false: the value, 'No prior period', never '0%' or 'No change'", () => {
+        one({ has_prior_data: false }, { value: 1.4, delta_pct: 0 });
+        expect(screen.getByTestId("metric-value")).toHaveTextContent("1.4");
+        expect(screen.getByText("No prior period")).toBeInTheDocument();
+        expect(screen.queryByTestId("metric-delta")).toBeNull();
+        expect(screen.queryByText(/0%/)).toBeNull();
+        expect(screen.queryByText("No change")).toBeNull();
+        expect(screen.queryByText("vs previous window")).toBeNull();
+    });
+
+    it("a measured 0 with data in both windows is still drawn as 0 with its change", () => {
+        one({ has_data: true, has_prior_data: true });
+        expect(screen.getByTestId("metric-value")).toHaveTextContent(/^0\s*days$/);
+        expect(screen.getByTestId("metric-delta")).toBeInTheDocument();
+        expect(screen.getByText("vs previous window")).toBeInTheDocument();
     });
 });

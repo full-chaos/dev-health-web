@@ -214,3 +214,59 @@ describe("Quality page — shared metric strip and sections", () => {
         expect(within(tile).getByTestId("metric-value")).not.toHaveTextContent("0");
     });
 });
+
+describe("Quality page — the served no-data flags (CHAOS-9042)", () => {
+    const withFlags = (flags: { has_data?: boolean; has_prior_data?: boolean }, over = {}) => ({
+        deltas: [
+            { ...delta("change_failure_rate", "Change Failure Rate", 0), ...flags, ...over },
+            delta("ci_success", "CI Success Rate", 91),
+            delta("pr_rework_ratio", "PR Rework Ratio", 12),
+        ],
+    });
+    const tileOf = (metric: string) => screen.getByTestId(`quality-tile-${metric}`);
+
+    it("has_data false: says there is no data for the window and draws no 0, no change", async () => {
+        mockHome.mockResolvedValue(withFlags({ has_data: false }, { delta_pct: 0 }));
+        await renderPage();
+        const tile = tileOf("change_failure_rate");
+        expect(within(tile).getByTestId("metric-value")).toHaveTextContent(
+            /^No data for this window$/,
+        );
+        expect(tile.textContent).not.toMatch(/0/);
+        expect(within(tile).queryByTestId("metric-delta")).toBeNull();
+        expect(within(tile).queryByText("No change")).toBeNull();
+        // The other tiles keep their measured values.
+        expect(within(tileOf("ci_success")).getByTestId("metric-value")).toHaveTextContent("91 %");
+    });
+
+    it("has_prior_data false: draws the value and 'No prior period', never 0% or 'No change'", async () => {
+        mockHome.mockResolvedValue(
+            withFlags({ has_prior_data: false }, { value: 3, delta_pct: 0 }),
+        );
+        await renderPage();
+        const tile = tileOf("change_failure_rate");
+        expect(within(tile).getByTestId("metric-value")).toHaveTextContent("3 %");
+        expect(within(tile).getByText("No prior period")).toBeInTheDocument();
+        expect(within(tile).queryByTestId("metric-delta")).toBeNull();
+        expect(tile.textContent).not.toMatch(/0%/);
+        expect(tile.textContent).not.toMatch(/No change/);
+    });
+
+    it("a measured 0 with data in both windows is still drawn as 0", async () => {
+        mockHome.mockResolvedValue(
+            withFlags({ has_data: true, has_prior_data: true }, { value: 0, delta_pct: 0 }),
+        );
+        await renderPage();
+        const tile = tileOf("change_failure_rate");
+        expect(within(tile).getByTestId("metric-value")).toHaveTextContent("0 %");
+        expect(within(tile).getByTestId("metric-delta")).toBeInTheDocument();
+    });
+
+    it("a metric with no served row is 'Not reported', not the catalog placeholder 0", async () => {
+        mockHome.mockResolvedValue({ deltas: [delta("ci_success", "CI Success Rate", 91)] });
+        await renderPage();
+        const tile = tileOf("change_failure_rate");
+        expect(within(tile).getByTestId("metric-value")).toHaveTextContent(/^Not reported$/);
+        expect(within(tile).queryByTestId("metric-delta")).toBeNull();
+    });
+});

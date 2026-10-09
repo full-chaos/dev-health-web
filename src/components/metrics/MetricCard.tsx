@@ -9,7 +9,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricParts } from "@/lib/formatters";
 import type { SparkPoint } from "@/lib/types";
 
-type MetricCardProps = {
+export type MetricCardProps = {
     label: string;
     /**
      * Drill-down destination. The whole tile is then one link (an overlay), named
