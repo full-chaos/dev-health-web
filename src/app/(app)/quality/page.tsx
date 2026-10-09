@@ -12,7 +12,6 @@ import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { getMetricLabel } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 
