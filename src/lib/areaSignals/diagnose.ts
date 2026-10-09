@@ -51,6 +51,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 
+import { homeDeltaReading, type HomeDeltaReading } from "./homeDelta";
 import { deriveState } from "./deriveState";
 import type { SeverityThresholds } from "./deriveState";
 import { markFailedSignals } from "./failedRead";
@@ -124,6 +125,19 @@ function buildSignal(
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
+/**
+ * A Home-metric card: the RETURNED severity with the delta value, or the no-data state when the
+ * window has no data (the served 0 is a placeholder, not a measurement) or no severity was served.
+ */
+function homeMetricResolution(
+    signal: { severity: AreaSignalState } | undefined,
+    delta: HomeDeltaReading | undefined,
+    format: (value: number) => string,
+) {
+    if (!signal || (delta && !delta.hasData)) return UNAVAILABLE;
+    return { state: signal.severity, value: delta ? format(delta.value) : "" };
+}
+
 /** The order the resolver pushes the cards in (kept in step with the pushes below). */
 const DIAGNOSE_CARD_ORDER = [
     "flow",
@@ -140,15 +154,6 @@ const VALID_SEVERITIES = new Set(["critical", "high", "medium", "low"]);
 function normalizeReturnedSeverity(severity: string | undefined): AreaSignalState {
     const s = severity?.trim().toLowerCase() ?? "";
     return VALID_SEVERITIES.has(s) ? (s as AreaSignalState) : "neutral";
-}
-
-/** Find a home `deltas[]` entry by its backend metric key. */
-function homeDeltaValue(
-    deltas: { metric: string; value: number; unit: string }[] | undefined,
-    metric: string,
-): { value: number; unit: string } | undefined {
-    const delta = deltas?.find((d) => d.metric === metric);
-    return delta ? { value: delta.value, unit: delta.unit } : undefined;
 }
 
 /** Find a home `signals[]` entry by its backend metric key. */
@@ -365,30 +370,20 @@ export async function getDiagnoseSignals(
     // Home REST deltas[metric=deploy_freq] value; RETURNED severity from
     // signals[metric=deploy_freq].severity.
     const deploySignal = homeSignalByMetric(homeData?.signals, "deploy_freq");
-    const deployDelta = homeDeltaValue(homeData?.deltas, "deploy_freq");
+    const deployDelta = homeDeltaReading(homeData?.deltas, "deploy_freq");
     push(
         "flow",
-        deploySignal
-            ? {
-                  state: deploySignal.severity,
-                  value: deployDelta ? formatNumber(deployDelta.value) : "",
-              }
-            : UNAVAILABLE,
+        homeMetricResolution(deploySignal, deployDelta, (v) => formatNumber(v)),
     );
 
     // ── Code (/code) ──────────────────────────────────────────────────────────
     // Home REST deltas[metric=churn] value; RETURNED severity from
     // signals[metric=churn].severity.
     const churnSignal = homeSignalByMetric(homeData?.signals, "churn");
-    const churnDelta = homeDeltaValue(homeData?.deltas, "churn");
+    const churnDelta = homeDeltaReading(homeData?.deltas, "churn");
     push(
         "code",
-        churnSignal
-            ? {
-                  state: churnSignal.severity,
-                  value: churnDelta ? formatNumber(churnDelta.value) : "",
-              }
-            : UNAVAILABLE,
+        homeMetricResolution(churnSignal, churnDelta, (v) => formatNumber(v)),
     );
 
     // ── Landscape (/landscape) ────────────────────────────────────────────────
@@ -476,15 +471,10 @@ export async function getDiagnoseSignals(
     // Home REST deltas[metric=wip_saturation] value; RETURNED severity from
     // signals[metric=wip_saturation].severity.
     const wipSignal = homeSignalByMetric(homeData?.signals, "wip_saturation");
-    const wipDelta = homeDeltaValue(homeData?.deltas, "wip_saturation");
+    const wipDelta = homeDeltaReading(homeData?.deltas, "wip_saturation");
     push(
         "bottleneck",
-        wipSignal
-            ? {
-                  state: wipSignal.severity,
-                  value: wipDelta ? `${formatNumber(wipDelta.value)}%` : "",
-              }
-            : UNAVAILABLE,
+        homeMetricResolution(wipSignal, wipDelta, (v) => `${formatNumber(v)}%`),
     );
 
     // A card whose backing read FAILED says so; an empty read keeps the empty state (CHAOS-8168).

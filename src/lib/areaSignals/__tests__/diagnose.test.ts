@@ -27,6 +27,7 @@ import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers"
 import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
+import { areaOverviewLayout } from "../overviewLayout";
 import { getDiagnoseSignals } from "../diagnose";
 import type { AreaSignal } from "../types";
 
@@ -262,6 +263,74 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
 
             expect(signals.flow).toMatchObject({ state: "neutral", value: "8" });
+        });
+    });
+
+    describe("a served no-data window is unavailable, not a measured 0 (CHAOS-9056)", () => {
+        const METRICS = [
+            ["flow", "deploy_freq", "deploys"],
+            ["code", "churn", "loc"],
+            ["bottleneck", "wip_saturation", "%"],
+        ] as const;
+        const home = (flags: { has_data?: boolean; has_prior_data?: boolean }, value = 0) =>
+            ({
+                deltas: METRICS.map(([, metric, unit]) => ({
+                    metric,
+                    label: metric,
+                    value,
+                    unit,
+                    delta_pct: 0,
+                    spark: [],
+                    ...flags,
+                })),
+                signals: METRICS.map(([, metric]) => ({
+                    id: metric,
+                    title: metric,
+                    metric,
+                    current_value: "0",
+                    direction: "flat",
+                    severity: "critical",
+                    confidence: "medium",
+                    affected_scope: "org",
+                    evidence_count: 0,
+                    why_it_matters: "",
+                    recommended_action: "",
+                    category: "delivery",
+                })),
+            }) as never;
+
+        it("has_data false: Flow, Code and Bottlenecks carry no value and no severity", async () => {
+            mockGetHomeData.mockResolvedValue(home({ has_data: false }));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            for (const [id] of METRICS) {
+                expect(signals[id]).toMatchObject({ state: "unavailable", value: "" });
+            }
+        });
+
+        it("a no-data card never becomes the hero", async () => {
+            mockGetHomeData.mockResolvedValue(home({ has_data: false }));
+            const signals = await getDiagnoseSignals(defaultMetricFilter);
+            const layout = areaOverviewLayout(signals, []);
+            for (const [id] of METRICS) expect(layout.hero?.id).not.toBe(id);
+            expect(layout.unavailable.map((x) => x.id)).toEqual(
+                expect.arrayContaining(METRICS.map(([id]) => id)),
+            );
+        });
+
+        it("a measured 0 with has_data true, or with no flag, still shows 0", async () => {
+            for (const flags of [{ has_data: true, has_prior_data: true }, {}]) {
+                mockGetHomeData.mockResolvedValue(home(flags));
+                const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+                expect(signals.flow).toMatchObject({ state: "critical", value: "0" });
+                expect(signals.code).toMatchObject({ state: "critical", value: "0" });
+                expect(signals.bottleneck).toMatchObject({ state: "critical", value: "0%" });
+            }
+        });
+
+        it("has_prior_data false: the measured value still shows", async () => {
+            mockGetHomeData.mockResolvedValue(home({ has_prior_data: false }, 5));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.flow).toMatchObject({ state: "critical", value: "5" });
         });
     });
 

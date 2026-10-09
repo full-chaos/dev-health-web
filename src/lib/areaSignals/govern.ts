@@ -21,7 +21,6 @@ import { auth } from "@/lib/auth";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
-import { metricDisplay } from "@/lib/metrics/metricDisplay";
 import { SECURITY_KPI_LABELS } from "@/lib/security/kpiLabels";
 import { COMPOUNDING_RISK_QUERY, SECURITY_OVERVIEW_QUERY } from "@/lib/graphql/queries";
 import type {
@@ -33,6 +32,7 @@ import {
     SAMPLE_GOVERN_COMPOUNDING_RISK,
     SAMPLE_GOVERN_SECURITY_OVERVIEW,
 } from "./govern-sample-data";
+import { homeDeltaReading, type HomeDeltaReading } from "./homeDelta";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
 import { fetchCoverageMetrics, fetchRiskMetrics, fetchTestOpsData } from "@/lib/testops/fetchers";
 import type { AnalyticsRequestInput, TimeseriesResult } from "@/lib/graphql/schemas/analytics";
@@ -93,26 +93,13 @@ function homeSignalByMetric(
     return signals?.find((s) => s.metric === metric);
 }
 
-/** Find a home `deltas[]` value by its backend metric key. */
-function homeDeltaValue(
-    deltas:
-        | Pick<MetricDelta, "metric" | "value" | "unit" | "has_data" | "has_prior_data">[]
-        | undefined,
-    metric: string,
-): { value: number; unit: string; hasData: boolean } | undefined {
-    const delta = deltas?.find((d) => d.metric === metric);
-    return delta
-        ? { value: delta.value, unit: delta.unit, hasData: metricDisplay(delta).hasData }
-        : undefined;
-}
-
 /**
  * The Quality / Incident Correlation card from the home change-failure-rate signal. A served row
  * whose window has no data is "unavailable" (the card's no-data state), never the 0 placeholder.
  */
 function changeFailureResolution(
     signal: CockpitSignal | undefined,
-    delta: { value: number; hasData: boolean } | undefined,
+    delta: HomeDeltaReading | undefined,
 ) {
     if (!signal || (delta && !delta.hasData)) return UNAVAILABLE;
     return {
@@ -376,7 +363,7 @@ export async function getGovernSignals(
 
     // Quality — home REST signals[change_failure_rate].severity (RETURNED).
     const qualitySignal = homeSignalByMetric(homeData?.signals, "change_failure_rate");
-    const qualityDelta = homeDeltaValue(homeData?.deltas, "change_failure_rate");
+    const qualityDelta = homeDeltaReading(homeData?.deltas, "change_failure_rate");
     push("quality", changeFailureResolution(qualitySignal, qualityDelta));
 
     // ── Cluster: Risk ─────────────────────────────────────────────────────────────
