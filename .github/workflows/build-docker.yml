@@ -128,6 +128,7 @@ jobs:
                   platforms: ${{ matrix.platform }}
                   build-args: |
                       BACKEND_URL=${{ secrets.BACKEND_URL || 'http://127.0.0.1:8000' }}
+                      NODE_IMAGE=ghcr.io/full-chaos/dev-health-web/node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
                   tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
                   outputs: ${{ steps.meta.outputs.should_push == 'true' && 'type=image,push-by-digest=true,name-canonical=true,push=true' || format('type=oci,dest=/tmp/docker-image-{0}.tar', strategy.job-index) }}
                   cache-from: type=gha

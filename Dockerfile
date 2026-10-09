@@ -1,7 +1,8 @@
-# Base image comes from the ghcr.io mirror, not Docker Hub (CHAOS-9065): Docker Hub rate-limits
-# anonymous CI pulls. The digest is the upstream node:25-alpine manifest digest; the mirror copies
-# by digest (.github/workflows/mirror-ci-images.yml), so the shipped base is unchanged.
-ARG NODE_IMAGE=ghcr.io/full-chaos/dev-health-web/node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
+# Base image: upstream node:25-alpine (multi-arch index digest), buildable by anyone without a
+# registry login. CI overrides NODE_IMAGE with the ghcr.io mirror of the SAME digest
+# (build-docker.yml build-args; .github/workflows/mirror-ci-images.yml copies by digest), because
+# Docker Hub rate-limits anonymous CI pulls (CHAOS-9065). Same digest on both paths.
+ARG NODE_IMAGE=node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
 
 FROM ${NODE_IMAGE} AS deps
 WORKDIR /app
