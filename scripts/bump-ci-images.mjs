@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * CI image pins (CHAOS-9070). `ci/ci-images.json` is the ONE source of truth for the digests of the
- * images web CI mirrors to ghcr.io (node, traefik, moby/buildkit). Workflows read it through
+ * images web CI mirrors to ghcr.io (node, traefik; buildkit is the ops-owned org mirror, pinned in build-docker.yml). Workflows read it through
  * `--ref`; the Dockerfile ARG default cannot read a file, so `--write` edits both together and
  * `scripts/__tests__/ci-image-pins.test.mjs` fails when they disagree.
  *
@@ -128,7 +128,7 @@ export async function main(argv, io = { log: console.log, err: console.error }, 
         const [, name, kind] = argv;
         const fn = { mirror: mirrorRef, source: sourceRef, upstream: upstreamRef }[kind];
         if (!pins.images[name] || !fn) {
-            io.err("usage: --ref <node|traefik|buildkit> <mirror|source|upstream>");
+            io.err("usage: --ref <node|traefik> <mirror|source|upstream>");
             return 2;
         }
         io.log(fn(pins, name));

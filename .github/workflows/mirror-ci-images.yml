@@ -1,6 +1,6 @@
 # Mirror the Docker Hub images web CI needs to ghcr.io/full-chaos/dev-health-web/ (CHAOS-9065).
 #
-# WHY: web CI pulled node, traefik and moby/buildkit from Docker Hub without a login and hit the
+# WHY: web CI pulled node and traefik from Docker Hub (buildkit now comes from the ops org mirror) without a login and hit the
 # anonymous pull rate limit (429). Consumers now pull from this mirror with GITHUB_TOKEN.
 #
 # DIGESTS ARE PRESERVED: `docker buildx imagetools create` copies the manifest list verbatim, so the
@@ -62,7 +62,7 @@ jobs:
                   set -euo pipefail
                   {
                     echo 'IMAGES<<EOF_IMAGES'
-                    for name in node traefik buildkit; do
+                    for name in node traefik; do
                       echo "$(node scripts/bump-ci-images.mjs --ref "${name}" source) $(node scripts/bump-ci-images.mjs --ref "${name}" mirror)"
                     done
                     echo 'EOF_IMAGES'

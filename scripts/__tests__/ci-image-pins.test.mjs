@@ -1,6 +1,6 @@
 /**
- * CHAOS-9070: ci/ci-images.json is the ONE source of truth for the digests of node, traefik and
- * moby/buildkit. This fails when a place disagrees with it:
+ * CHAOS-9070: ci/ci-images.json is the ONE source of truth for the digests of node and traefik.
+ * Ops-owned refs (the org buildkit mirror) are pinned in build-docker.yml and allowed by name below. This fails when a place disagrees with it:
  *  - the Dockerfile `ARG NODE_IMAGE=` default (the only other literal, it cannot read a file);
  *  - any workflow that carries one of the digests as a literal instead of reading the file;
  *  - a consumer that stops reading the file or the mirror job that stops triggering on it.
@@ -18,12 +18,16 @@ const read = (...p) => readFileSync(path.join(ROOT, ...p), "utf8");
 const WORKFLOWS = path.join(ROOT, ".github", "workflows");
 const workflowFiles = readdirSync(WORKFLOWS).filter((f) => /\.ya?ml$/.test(f));
 
+// Owned by ops (org-wide public mirror); pinned by digest, NOT bumped by the web script.
+const OPS_OWNED_BUILDKIT =
+    "ghcr.io/full-chaos/moby/buildkit:buildx-stable-1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea";
+
 const pins = parsePins(read("ci", "ci-images.json"));
 const digests = Object.values(pins.images).map((i) => i.digest);
 
 describe("CI image pins agree (ci/ci-images.json is the source)", () => {
-    it("has the three mirrored images", () => {
-        expect(Object.keys(pins.images).sort()).toEqual(["buildkit", "node", "traefik"]);
+    it("has the web-owned mirrored images (buildkit is ops-owned)", () => {
+        expect(Object.keys(pins.images).sort()).toEqual(["node", "traefik"]);
     });
 
     it("the Dockerfile NODE_IMAGE default is the pinned upstream ref", () => {
@@ -50,15 +54,18 @@ describe("CI image pins agree (ci/ci-images.json is the source)", () => {
         expect(text).not.toMatch(/mirror\.gcr\.io\/\S+@sha256/);
     });
 
-    it("build-docker reads the node and buildkit mirror refs from the file, in both jobs", () => {
+    it("build-docker reads the node mirror ref from the file", () => {
         const text = readFileSync(path.join(WORKFLOWS, "build-docker.yml"), "utf8");
-        expect(text.match(/--ref buildkit mirror/g)).toHaveLength(2);
-        expect(
-            text.match(/driver-opts: image=\$\{\{ steps\.pins\.outputs\.buildkit \}\}/g),
-        ).toHaveLength(2);
         expect(text).toContain("--ref node mirror");
         expect(text).toContain("NODE_IMAGE=${{ steps.pins.outputs.node }}");
         expect(text).toContain("'ci/ci-images.json'");
+    });
+
+    it("build-docker pins the ops-owned org buildkit mirror, in both jobs, and the web copy is unused", () => {
+        const text = readFileSync(path.join(WORKFLOWS, "build-docker.yml"), "utf8");
+        expect(text.split(`driver-opts: image=${OPS_OWNED_BUILDKIT}`).length - 1).toBe(2);
+        expect(text.match(/driver-opts: image=/g)).toHaveLength(2);
+        expect(text).not.toContain("dev-health-web/moby/buildkit");
     });
 
     it("live-e2e reads the traefik mirror ref from the file", () => {
