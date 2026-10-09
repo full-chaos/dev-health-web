@@ -5,6 +5,37 @@ import type { MetricDelta } from "@/lib/types";
 /** The tile text for a metric whose window holds no data (the Home monitoring wording). */
 export const NO_DATA_FOR_WINDOW = "No data for this window";
 
+/** The reason texts for a rate that is not measured (ruled wording, one place for every surface). */
+export const NO_INCIDENT_DATA = "No incident data for this window";
+export const NO_DEPLOYMENTS = "No deployments in this window";
+export const NOT_MEASURED_YET = "Not measured yet";
+
+const NOT_MEASURED_STATE_TEXT: Readonly<Record<string, string>> = {
+    unknown_no_incident_evidence: NO_INCIDENT_DATA,
+    not_applicable_no_deployments: NO_DEPLOYMENTS,
+};
+
+/** Revert rate is served on every surface but is not measured anywhere yet. */
+export const REVERT_RATE_KEY = "revert_rate";
+
+/** A served rate state that means the rate has no value: the served number is a 0 placeholder. */
+export function isNotMeasuredState(rateState: string | null | undefined): boolean {
+    return typeof rateState === "string" && Object.hasOwn(NOT_MEASURED_STATE_TEXT, rateState);
+}
+
+/**
+ * The one mapping from a served state to the text of a tile or row with no value. Revert rate
+ * says "Not measured yet"; a known state says its reason; a null, absent or unknown future state
+ * says "No data for this window" (the raw state string is never printed).
+ */
+export function noDataText(metric?: string | null, rateState?: string | null): string {
+    if (metric === REVERT_RATE_KEY) return NOT_MEASURED_YET;
+    if (typeof rateState === "string" && Object.hasOwn(NOT_MEASURED_STATE_TEXT, rateState)) {
+        return NOT_MEASURED_STATE_TEXT[rateState];
+    }
+    return NO_DATA_FOR_WINDOW;
+}
+
 export type MetricDisplayState =
     /** No row was served for the metric. */
     | "missing"
@@ -21,7 +52,8 @@ export type MetricDisplay = {
     comparable: boolean;
 };
 
-type ServedMetric = Pick<MetricDelta, "has_data" | "has_prior_data">;
+type ServedMetric = Pick<MetricDelta, "has_data" | "has_prior_data"> &
+    Partial<Pick<MetricDelta, "rate_state">>;
 
 /**
  * The one rule for a served metric (the operating review tile's rule): a flag that is absent
@@ -32,7 +64,8 @@ export function metricDisplay(metric: ServedMetric | null | undefined): MetricDi
     if (!metric) {
         return { state: "missing", hasData: false, hasPriorData: false, comparable: false };
     }
-    const hasData = metric.has_data !== false;
+    // A not-measured state is a producer fact of its own: no value, whatever the flag says.
+    const hasData = metric.has_data !== false && !isNotMeasuredState(metric.rate_state);
     const hasPriorData = metric.has_prior_data !== false;
     return {
         state: hasData ? "measured" : "no-data",
@@ -49,7 +82,8 @@ export function metricDisplay(metric: ServedMetric | null | undefined): MetricDi
  */
 export function metricCardProps(
     metric:
-        | Pick<MetricDelta, "value" | "unit" | "delta_pct" | "has_data" | "has_prior_data">
+        | (Pick<MetricDelta, "value" | "unit" | "delta_pct" | "has_data" | "has_prior_data"> &
+              Partial<Pick<MetricDelta, "metric" | "rate_state">>)
         | null
         | undefined,
 ): Pick<
@@ -62,7 +96,7 @@ export function metricCardProps(
     }
     if (display.state === "no-data") {
         return {
-            valueText: NO_DATA_FOR_WINDOW,
+            valueText: noDataText(metric.metric, metric.rate_state),
             valueIsMessage: true,
             deltaSlot: <></>,
             hideTrend: true,

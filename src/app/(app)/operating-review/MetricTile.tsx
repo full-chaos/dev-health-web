@@ -1,6 +1,7 @@
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { formatMetricValue as fmtMetric } from "@/lib/formatters";
 import type { OperatingReviewMetric } from "@/lib/graphql/types";
+import { metricDisplay, noDataText } from "@/lib/metrics/metricDisplay";
 import { STATUS_PILL, type StatusPillTone } from "@/lib/statusPill";
 
 /**
@@ -18,9 +19,6 @@ export const TINT = {
     worsened: statusTint("negative"),
     changed: statusTint("info"),
 } as const;
-
-/** The empty state of a week with no stored value. */
-const NO_DATA = "No data for this window";
 
 /** The note on a metric whose value is the whole organization's while a team is selected. */
 export const WHOLE_ORGANIZATION = "Whole organization";
@@ -57,7 +55,11 @@ export function MetricTile({
     teamSelected?: boolean;
 }) {
     // The served flags (CHAOS-8115). An answer with no flag (an API before it) counts as data.
-    const hasData = metric.hasData !== false;
+    // A served rateState that is not "measured" counts as no value, whatever the flag says.
+    const hasData = metricDisplay({
+        has_data: metric.hasData,
+        rate_state: metric.rateState,
+    }).hasData;
     const hasPriorData = metric.delta.hasPriorData !== false;
     // The served change and status compare two stored values only when both weeks have one.
     const comparable = hasData && hasPriorData;
@@ -67,7 +69,7 @@ export function MetricTile({
             label={metric.label}
             // With no stored value the served number is a 0 placeholder: never drawn as 0.
             value={hasData ? metric.value : undefined}
-            valueText={hasData ? undefined : NO_DATA}
+            valueText={hasData ? undefined : noDataText(metric.key, metric.rateState)}
             valueIsMessage={!hasData}
             unit={hasData ? metric.unit : undefined}
             caption={
