@@ -35,6 +35,16 @@ export type ByoLlmSpendSummaryProps = {
 
 const spendLogger = logger.child({ component: "ByoLlmSpendSummary" });
 
+// Id of the monthly budget input in ByoLlmSettings; the Setup Budget action focuses it.
+const BUDGET_FIELD_ID = "byo-budget-usd";
+
+function focusBudgetField() {
+    const field = document.getElementById(BUDGET_FIELD_ID);
+    if (!field) return;
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.focus({ preventScroll: true });
+}
+
 const PANEL_TITLE = "AI / LLM Spend Summary (BYO-LLM)";
 const PANEL_DESCRIPTION =
     "Per-run LLM call volume, token usage, and model for the latest runs in the last 30 days.";
@@ -71,26 +81,11 @@ function FailureBadges({ failuresByClass }: { failuresByClass: Record<string, nu
 }
 
 /** One spend tile: the served amount in dollars, or "Not reported" when the budget does not serve it. */
-function SpendTile({
-    label,
-    micro,
-    unsetText,
-}: {
-    label: string;
-    micro: number | null | undefined;
-    /** Shown when the amount is null because the organization has not set one (a served state). */
-    unsetText?: string;
-}) {
+function SpendTile({ label, micro }: { label: string; micro: number | null | undefined }) {
     return (
         <MetricCard
             label={label}
-            valueText={micro == null ? unsetText : formatMicroUsd(micro)}
-            // "Not set" is drawn in the same muted ink as "Not reported": it is a state, not an amount.
-            className={
-                micro == null && unsetText
-                    ? "[&_[data-testid=metric-value]]:text-(--ink-muted)"
-                    : undefined
-            }
+            valueText={micro == null ? undefined : formatMicroUsd(micro)}
             deltaSlot={<></>}
             hideTrend
         />
@@ -169,18 +164,30 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
         };
     }, [loadBudgetAction]);
 
-    const tiles = budget ? (
+    const tiles = !budget ? null : budget.reason === "budget_not_configured" ? (
+        <DataState
+            variant="no-data-connected"
+            compact
+            title="No monthly budget set"
+            description="Set a monthly budget to see used and remaining spend here."
+            data-testid="byo-llm-budget-empty"
+            action={
+                <button
+                    type="button"
+                    onClick={focusBudgetField}
+                    className="rounded-full bg-(--accent) px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-(--accent)/90"
+                >
+                    {CTA_LABELS.setupBudget}
+                </button>
+            }
+        />
+    ) : (
         <MetricStrip columns={3} data-testid="byo-llm-spend-tiles" className="mb-4">
             <SpendTile label="Used or reserved" micro={budget.used_micro_usd} />
-            <SpendTile
-                label="Monthly limit"
-                micro={budget.limit_micro_usd}
-                // No limit configured is a served state ("budget_not_configured"), not a missing value.
-                unsetText={budget.reason === "budget_not_configured" ? "Not set" : undefined}
-            />
+            <SpendTile label="Monthly limit" micro={budget.limit_micro_usd} />
             <SpendTile label="Remaining" micro={budget.remaining_micro_usd} />
         </MetricStrip>
-    ) : null;
+    );
 
     let body: ReactNode;
 
