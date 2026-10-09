@@ -68,6 +68,7 @@ export function MetricTile({
             // With no stored value the served number is a 0 placeholder: never drawn as 0.
             value={hasData ? metric.value : undefined}
             valueText={hasData ? undefined : NO_DATA}
+            valueIsMessage={!hasData}
             unit={hasData ? metric.unit : undefined}
             caption={
                 teamSelected && metric.scope === "ORGANIZATION" ? WHOLE_ORGANIZATION : undefined

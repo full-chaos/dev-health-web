@@ -21,6 +21,7 @@ import { auth } from "@/lib/auth";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
+import { metricDisplay } from "@/lib/metrics/metricDisplay";
 import { SECURITY_KPI_LABELS } from "@/lib/security/kpiLabels";
 import { COMPOUNDING_RISK_QUERY, SECURITY_OVERVIEW_QUERY } from "@/lib/graphql/queries";
 import type {
@@ -38,7 +39,7 @@ import type { AnalyticsRequestInput, TimeseriesResult } from "@/lib/graphql/sche
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
-import type { CockpitSignal } from "@/lib/types";
+import type { CockpitSignal, MetricDelta } from "@/lib/types";
 import type { TestOpsData } from "@/lib/testops/types";
 
 import {
@@ -94,11 +95,30 @@ function homeSignalByMetric(
 
 /** Find a home `deltas[]` value by its backend metric key. */
 function homeDeltaValue(
-    deltas: { metric: string; value: number; unit: string }[] | undefined,
+    deltas:
+        | Pick<MetricDelta, "metric" | "value" | "unit" | "has_data" | "has_prior_data">[]
+        | undefined,
     metric: string,
-): { value: number; unit: string } | undefined {
+): { value: number; unit: string; hasData: boolean } | undefined {
     const delta = deltas?.find((d) => d.metric === metric);
-    return delta ? { value: delta.value, unit: delta.unit } : undefined;
+    return delta
+        ? { value: delta.value, unit: delta.unit, hasData: metricDisplay(delta).hasData }
+        : undefined;
+}
+
+/**
+ * The Quality / Incident Correlation card from the home change-failure-rate signal. A served row
+ * whose window has no data is "unavailable" (the card's no-data state), never the 0 placeholder.
+ */
+function changeFailureResolution(
+    signal: CockpitSignal | undefined,
+    delta: { value: number; hasData: boolean } | undefined,
+) {
+    if (!signal || (delta && !delta.hasData)) return UNAVAILABLE;
+    return {
+        state: signal.severity,
+        value: delta ? formatPercent(delta.value) : signal.current_value,
+    };
 }
 
 /**
@@ -357,17 +377,7 @@ export async function getGovernSignals(
     // Quality — home REST signals[change_failure_rate].severity (RETURNED).
     const qualitySignal = homeSignalByMetric(homeData?.signals, "change_failure_rate");
     const qualityDelta = homeDeltaValue(homeData?.deltas, "change_failure_rate");
-    push(
-        "quality",
-        qualitySignal
-            ? {
-                  state: qualitySignal.severity,
-                  value: qualityDelta
-                      ? formatPercent(qualityDelta.value)
-                      : qualitySignal.current_value,
-              }
-            : UNAVAILABLE,
-    );
+    push("quality", changeFailureResolution(qualitySignal, qualityDelta));
 
     // ── Cluster: Risk ─────────────────────────────────────────────────────────────
 
@@ -436,17 +446,7 @@ export async function getGovernSignals(
 
     // Incident Correlation — home REST signals[change_failure_rate].severity (RETURNED).
     // Same backend metric as Quality; the two surfaces frame it differently.
-    push(
-        "incident-correlation",
-        qualitySignal
-            ? {
-                  state: qualitySignal.severity,
-                  value: qualityDelta
-                      ? formatPercent(qualityDelta.value)
-                      : qualitySignal.current_value,
-              }
-            : UNAVAILABLE,
-    );
+    push("incident-correlation", changeFailureResolution(qualitySignal, qualityDelta));
 
     // Feature Flags — fetchFeatureFlagsData summary (RETURNED severity). A normal Risk card.
     const ffSummary = featureFlags?.summary;

@@ -12,7 +12,6 @@ import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 
@@ -20,9 +19,9 @@ type QualityPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
+// A metric with no served row stays `null`: it is never filled with a catalog placeholder of 0.
 const getMetric = (deltas: MetricDelta[], metric: string) =>
-    deltas.find((item) => item.metric === metric) ??
-    FALLBACK_DELTAS.find((item) => item.metric === metric);
+    deltas.find((item) => item.metric === metric) ?? null;
 
 export default async function QualityPage({ searchParams }: QualityPageProps) {
     const params = (await searchParams) ?? {};
@@ -46,8 +45,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         return <ServiceUnavailable landmark={false} />;
     }
 
-    const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
-    const placeholderDeltas = !home?.deltas?.length;
+    const deltas = home?.deltas ?? [];
 
     const changeFailureMetric = getMetric(deltas, "change_failure_rate");
     const ciMetric = getMetric(deltas, "ci_success");
@@ -113,27 +111,21 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                     {
                         metric: "change_failure_rate",
                         label: changeFailureMetric?.label ?? "Change Failure Rate",
-                        value: placeholderDeltas ? undefined : changeFailureMetric?.value,
-                        unit: changeFailureMetric?.unit,
-                        delta: placeholderDeltas ? undefined : changeFailureMetric?.delta_pct,
+                        row: changeFailureMetric,
                         spark: changeFailureMetric?.spark,
                         description: "Change failure rate",
                     },
                     {
                         metric: "ci_success",
                         label: ciMetric?.label ?? "CI Success Rate",
-                        value: placeholderDeltas ? undefined : ciMetric?.value,
-                        unit: ciMetric?.unit,
-                        delta: placeholderDeltas ? undefined : ciMetric?.delta_pct,
+                        row: ciMetric,
                         spark: ciMetric?.spark,
                         description: "Pipeline success",
                     },
                     {
                         metric: "pr_rework_ratio",
                         label: reworkMetric?.label ?? "PR Rework Ratio",
-                        value: placeholderDeltas ? undefined : reworkMetric?.value,
-                        unit: reworkMetric?.unit,
-                        delta: placeholderDeltas ? undefined : reworkMetric?.delta_pct,
+                        row: reworkMetric,
                         spark: reworkMetric?.spark,
                         description: "PRs requiring rework",
                     },

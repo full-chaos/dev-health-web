@@ -105,3 +105,27 @@ describe("MetricCard sparkline with null (missing) points", () => {
         expect(screen.queryByText("No trend yet")).not.toBeInTheDocument();
     });
 });
+
+describe("MetricCard state message vs value (CHAOS-9042)", () => {
+    it("draws a state message in the empty-state title style, not the large value font", () => {
+        render(<MetricCard label="CFR" valueText="No data for this window" valueIsMessage />);
+        const el = screen.getByTestId("metric-value");
+        expect(el).toHaveAttribute("data-value-kind", "message");
+        expect(el).toHaveClass("text-h3", "font-semibold");
+        expect(el.className).not.toContain("text-[1.75rem]");
+    });
+
+    it("keeps a real formatted valueText and a number in the large value font", () => {
+        render(<MetricCard label="Spend" valueText="$1,234" />);
+        const text = screen.getByTestId("metric-value");
+        expect(text).toHaveAttribute("data-value-kind", "value");
+        expect(text.className).toContain("text-[1.75rem]");
+    });
+
+    it("keeps a measured 0 in the large value font", () => {
+        render(<MetricCard label="CFR" value={0} unit="%" />);
+        const el = screen.getByTestId("metric-value");
+        expect(el).toHaveAttribute("data-value-kind", "value");
+        expect(el.className).toContain("text-[1.75rem]");
+    });
+});

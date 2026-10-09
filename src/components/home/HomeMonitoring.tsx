@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { SegmentedControl } from "@/components/shared/SegmentedControl";
@@ -16,6 +15,7 @@ import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
+import { metricCardProps, metricDisplay } from "@/lib/metrics/metricDisplay";
 import type { HomeResponse } from "@/lib/types";
 
 export type MonitoringView = TabIdOf<"metrics">;
@@ -152,45 +152,25 @@ export function HomeMonitoring({
                     <MetricStrip data-testid="monitoring-tiles">
                         {metrics.map((metric) => {
                             const delta = deltas.find((item) => item.metric === metric);
-                            if (!delta) {
-                                return (
-                                    <MetricCard
-                                        key={metric}
-                                        testId={`monitoring-tile-${metric}`}
-                                        label={getMetricLabel(metric)}
-                                        valueText={NOT_REPORTED}
-                                        // No change and no trend for a metric that was not served.
-                                        deltaSlot={<></>}
-                                        hideTrend
-                                    />
-                                );
-                            }
-                            if (delta.has_data === false) {
-                                return (
-                                    <MetricCard
-                                        key={metric}
-                                        testId={`monitoring-tile-${metric}`}
-                                        label={delta.label}
-                                        valueText="No data for this window"
-                                        deltaSlot={<></>}
-                                        hideTrend
-                                    />
-                                );
-                            }
+                            const display = metricDisplay(delta);
                             return (
                                 <MetricCard
                                     key={metric}
                                     testId={`monitoring-tile-${metric}`}
-                                    label={delta.label}
-                                    href={buildExploreUrl({ metric, filters, role: activeRole })}
-                                    value={delta.value}
-                                    unit={delta.unit}
-                                    delta={
-                                        delta.has_prior_data === false ? undefined : delta.delta_pct
-                                    }
-                                    inverseGood={metricInverseGood(metric)}
-                                    spark={delta.spark}
-                                    caption={MONITORING_TILE_NOTE}
+                                    label={delta?.label ?? getMetricLabel(metric)}
+                                    {...metricCardProps(delta)}
+                                    {...(display.state === "measured" && delta
+                                        ? {
+                                              href: buildExploreUrl({
+                                                  metric,
+                                                  filters,
+                                                  role: activeRole,
+                                              }),
+                                              inverseGood: metricInverseGood(metric),
+                                              spark: delta.spark,
+                                              caption: MONITORING_TILE_NOTE,
+                                          }
+                                        : {})}
                                 />
                             );
                         })}

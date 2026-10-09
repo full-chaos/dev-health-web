@@ -527,3 +527,58 @@ describe("getGovernSignals — org scope comes from the session (CHAOS-8272)", (
         expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });
+
+describe("getGovernSignals — a served no-data window is unavailable, not a 0% (CHAOS-9042)", () => {
+    const home = (flags: { has_data?: boolean; has_prior_data?: boolean }, value = 0) => ({
+        deltas: [
+            {
+                metric: "change_failure_rate",
+                label: "CFR",
+                value,
+                unit: "%",
+                delta_pct: 0,
+                spark: [],
+                ...flags,
+            },
+        ],
+        signals: [
+            {
+                id: "cfr",
+                title: "Change failure rate",
+                metric: "change_failure_rate",
+                current_value: "0%",
+                direction: "flat",
+                severity: "low",
+                confidence: "medium",
+                affected_scope: "org",
+                evidence_count: 0,
+                why_it_matters: "",
+                recommended_action: "",
+                category: "delivery",
+            },
+        ],
+    });
+
+    it("has_data false: Quality and Incident Correlation are unavailable with no value", async () => {
+        mockGetHomeData.mockResolvedValue(home({ has_data: false }) as never);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        for (const id of ["quality", "incident-correlation"]) {
+            expect(signals[id]).toMatchObject({ state: "unavailable", value: "" });
+        }
+    });
+
+    it("has_prior_data false: the measured value still shows (the prior window only gates a change)", async () => {
+        mockGetHomeData.mockResolvedValue(home({ has_prior_data: false }, 7) as never);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.quality).toMatchObject({ state: "low", value: "7%" });
+    });
+
+    it("a measured 0 with data is still shown as 0%", async () => {
+        mockGetHomeData.mockResolvedValue(
+            home({ has_data: true, has_prior_data: true }, 0) as never,
+        );
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.quality).toMatchObject({ state: "low", value: "0%" });
+        expect(signals["incident-correlation"]).toMatchObject({ state: "low", value: "0%" });
+    });
+});

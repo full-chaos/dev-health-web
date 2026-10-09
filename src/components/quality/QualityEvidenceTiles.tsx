@@ -4,17 +4,16 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { SparkPoint } from "@/lib/types";
+import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import type { MetricDelta, SparkPoint } from "@/lib/types";
 
 /** One Quality tile: the served metric delta row, as the page always read it. */
 export type QualityTile = {
     /** Metric key of the explain endpoint (the drawer loads its evidence). */
     metric: string;
     label: string;
-    /** `undefined` when not served (placeholder rows): the tile shows "--", never 0. */
-    value?: number;
-    unit?: string;
-    delta?: number;
+    /** The served delta row. `null` when no row was served: the tile says so, never 0. */
+    row: MetricDelta | null;
     spark?: SparkPoint[];
     /** The short line the tile carried as its caption ("Pipeline success", …). */
     description: string;
@@ -39,9 +38,7 @@ export function QualityEvidenceTiles({ tiles, filters, role }: QualityEvidenceTi
                 <MetricCard
                     key={tile.metric}
                     label={tile.label}
-                    value={tile.value}
-                    unit={tile.unit}
-                    delta={tile.delta}
+                    {...metricCardProps(tile.row)}
                     spark={tile.spark}
                     description={tile.description}
                     onOpenEvidence={() =>
