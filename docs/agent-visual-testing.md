@@ -155,25 +155,21 @@ playwright_take_screenshot((filename = "chaos-<NNNN>-<short-slug>-after.png"), (
 
 **For net-new UI:** just `*-after.png`.
 
-**Save location:** put screenshots at the repo root (`/Users/chris/projects/full-chaos/dev-health/`). They are gitignored at the repo level by convention but uploaded to the PR + Linear issue.
+**Save location:** write screenshots to a scratch directory outside the repo (or to a path that git ignores) so they are never committed. Each file is uploaded to the PR and the Linear issue in step 7.
 
 ---
 
 ## 7. Attach to PR and Linear issue (both — non-negotiable)
 
+Attach to the GitHub PR with `gh --attach` (gh 2.102.0 documents it as `--attach file  Attach an image or video file, in '<file>#<image alt text>' format`). The file is uploaded and appended to the PR body; without `#<alt text>` the filename is the alt text. `gh pr create`, `gh pr comment` and `gh issue comment` take the same flag.
+
 ```bash
-# Attach to the GitHub PR via gh CLI
-gh pr edit <PR-number> --body "$(gh pr view <PR-number> --json body -q .body)
-
-![After](./chaos-<NNNN>-<slug>-after.png)
-"
-
-# Attach to the linked Linear issue
-cd /Users/chris/projects/full-chaos/dev-health
-linear-cli i comment CHAOS-<NNNN> \
-  -b "Screenshot attached" \
-  --attach ./chaos-<NNNN>-<slug>-after.png
+gh pr edit <PR-number> --attach './chaos-<NNNN>-<slug>-after.png#<alt text>'
 ```
+
+Repeat the flag for more files: `--attach ./before.png --attach ./after.png`.
+
+Attach to the linked Linear issue with the Linear MCP tools (not a CLI): upload each file with `prepare_attachment_upload` and `create_attachment_from_upload`, then add a comment with `save_comment`.
 
 If the change has a before/after pair, attach both. If you have a `SCREENSHOT-WAIVER:` line in the PR body (purely backend/type-level changes with no rendered output), state the waiver reason and skip this step.
 
