@@ -1,9 +1,9 @@
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
 import { OrgEditForm } from "@/components/superadmin/OrgEditForm";
+import { OrgMembersManager } from "@/components/superadmin/OrgMembersManager";
 import { OrgDeleteSection } from "@/components/superadmin/OrgDeleteSection";
 import { getOrganization, listOrgMembers } from "@/lib/admin/server";
 
@@ -40,51 +40,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                         Error loading members. {READ_FAILED_MESSAGE}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto rounded-lg border border-(--card-stroke)">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-(--card-70) text-(--ink-muted)">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">User</th>
-                                    <th className="px-4 py-3 font-medium">Role</th>
-                                    <th className="px-4 py-3 font-medium">Joined</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-(--card-stroke)">
-                                {members?.map((member) => (
-                                    <tr key={member.id}>
-                                        <td className="px-4 py-3">
-                                            <span>{nameOrUnresolved(member.user_name)}</span>
-                                            {member.user_email ? (
-                                                <span className="block text-xs text-(--ink-muted)">
-                                                    {member.user_email}
-                                                </span>
-                                            ) : null}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="inline-flex items-center rounded-full bg-(--accent)/10 px-2 py-0.5 text-xs font-medium text-(--accent-text)">
-                                                {member.role}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-(--ink-muted)">
-                                            {member.joined_at
-                                                ? new Date(member.joined_at).toLocaleDateString()
-                                                : "-"}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {members?.length === 0 && (
-                                    <tr>
-                                        <td
-                                            colSpan={3}
-                                            className="px-4 py-8 text-center text-(--ink-muted)"
-                                        >
-                                            No members found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    <OrgMembersManager orgId={org.id} members={members ?? []} />
                 )}
             </SettingsSection>
 
