@@ -3715,6 +3715,13 @@ export const handlers = [
         return HttpResponse.json(created);
     }),
 
+    http.delete("*/api/v1/admin/teams/:teamId", ({ params }) => {
+        const index = MOCK_TEAMS.findIndex((team) => team.team_id === params.teamId);
+        if (index === -1) return HttpResponse.json({ detail: "Team not found" }, { status: 404 });
+        MOCK_TEAMS.splice(index, 1);
+        return HttpResponse.json({ deleted: true });
+    }),
+
     http.get("*/api/v1/admin/teams/pending-changes", () =>
         HttpResponse.json({ changes: [], total: 0 }),
     ),
