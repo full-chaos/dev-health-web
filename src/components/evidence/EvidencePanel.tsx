@@ -24,6 +24,7 @@ import { buttonClassName } from "@/components/shared/Button";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { STATUS_PILL } from "@/lib/statusPill";
+import { metricDisplay, noDataText, REVERT_RATE_KEY } from "@/lib/metrics/metricDisplay";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
 import { formatDelta, formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
@@ -50,6 +51,13 @@ type EvidencePanelData = {
     unit?: string;
     /** Served by the explain endpoint; shown as the "Change" row. */
     delta_pct?: number;
+    /** Explicit producer facts of the explain endpoint; absent on an API before them (read as data). */
+    has_data?: boolean;
+    has_prior_data?: boolean;
+    /** Why a change failure rate has a value or not. Absent or null: no state served. */
+    rate_state?: string | null;
+    /** How the incident link behind the rate is known: native, explicit_text or heuristic. */
+    link_tier?: string | null;
     /** A summary the API served. The web builds none. */
     summary?: string;
     why_it_matters?: string;
@@ -70,6 +78,16 @@ type EvidencePanelResult = Partial<EvidencePanelData> & {
     contributors?: Contributor[];
     last_sync?: string | null;
     source?: string | null;
+};
+
+/**
+ * How the incident link behind a rate is known, in plain words. Only the three served tiers are
+ * named; a lower tier is never called native, and an unknown tier string is not drawn.
+ */
+const LINK_TIER_TEXT: Readonly<Record<string, string>> = {
+    native: "Native link",
+    explicit_text: "Named in text, not a native link",
+    heuristic: "Inferred by heuristic, not a native link",
 };
 
 const formatPercent = (value?: number | null) =>
@@ -536,9 +554,14 @@ export function EvidencePanel({
                             artifactCount={data.evidence?.length ?? 0}
                         />
                         <EvidenceMetricFacts
+                            metric={data.metric ?? metric}
                             value={data.value}
                             unit={data.unit}
                             deltaPct={data.delta_pct}
+                            hasData={data.has_data}
+                            hasPriorData={data.has_prior_data}
+                            rateState={data.rate_state}
+                            linkTier={data.link_tier}
                         />
                         {data.why_it_matters ? (
                             <div data-testid="evidence-why">
@@ -605,16 +628,46 @@ function drawnEvidence(
  * neither number gets no block (no row reads a made value).
  */
 function EvidenceMetricFacts({
+    metric,
     value,
     unit,
     deltaPct,
+    hasData,
+    hasPriorData,
+    rateState,
+    linkTier,
 }: {
+    metric?: string;
     value?: number;
     unit?: string;
     deltaPct?: number;
+    hasData?: boolean;
+    hasPriorData?: boolean;
+    rateState?: string | null;
+    linkTier?: string | null;
 }) {
+    // A flag that is absent counts as data. With no value the served 0 is a placeholder: the row
+    // says why (never "Value 0 %") and the change is not drawn. A measured 0 stays a 0.
+    const display = metricDisplay({
+        has_data: hasData,
+        has_prior_data: hasPriorData,
+        rate_state: rateState,
+    });
+    const isRevertRate = metric === REVERT_RATE_KEY;
+    const measured = display.hasData && !isRevertRate;
     const hasValue = typeof value === "number" && Number.isFinite(value);
     const hasDelta = typeof deltaPct === "number" && Number.isFinite(deltaPct);
+    const tier =
+        measured && linkTier && Object.hasOwn(LINK_TIER_TEXT, linkTier)
+            ? LINK_TIER_TEXT[linkTier]
+            : undefined;
+    if (!measured && (hasValue || hasDelta || hasData === false || rateState || isRevertRate)) {
+        return (
+            <EvidenceFactList aria-label="Value and change" testId="evidence-metric-facts">
+                <EvidenceFact label="Value" value={noDataText(metric, rateState)} />
+            </EvidenceFactList>
+        );
+    }
     if (!hasValue && !hasDelta) return null;
 
     return (
@@ -623,7 +676,11 @@ function EvidenceMetricFacts({
                 label="Value"
                 value={hasValue ? `${formatNumber(value)}${unit ? ` ${unit}` : ""}` : undefined}
             />
-            <EvidenceFact label="Change" value={hasDelta ? formatDelta(deltaPct) : undefined} />
+            <EvidenceFact
+                label="Change"
+                value={hasDelta && display.comparable ? formatDelta(deltaPct) : undefined}
+            />
+            {tier ? <EvidenceFact label="Incident link" value={tier} /> : null}
         </EvidenceFactList>
     );
 }

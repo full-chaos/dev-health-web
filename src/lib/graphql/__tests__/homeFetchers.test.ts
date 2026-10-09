@@ -479,3 +479,22 @@ describe("getHomeDataViaGraphQL", () => {
         });
     });
 });
+
+describe("toHomeResponse rateState (CHAOS-9043)", () => {
+    const withDelta = (extra: object) => ({
+        ...graphqlFixture,
+        deltas: [{ ...graphqlFixture.deltas[0], ...extra }],
+    });
+
+    it("carries a served rateState to rate_state", () => {
+        const out = toHomeResponse(withDelta({ rateState: "unknown_no_incident_evidence" }));
+        expect(out.deltas[0].rate_state).toBe("unknown_no_incident_evidence");
+    });
+
+    it("leaves rate_state out when none is served (null or absent), as before", () => {
+        expect("rate_state" in toHomeResponse(withDelta({ rateState: null })).deltas[0]).toBe(
+            false,
+        );
+        expect("rate_state" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
+    });
+});
