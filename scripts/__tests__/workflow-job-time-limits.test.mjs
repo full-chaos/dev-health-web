@@ -58,6 +58,7 @@ describe("workflow job time limits (CHAOS-8530)", () => {
         "deploy-demo.yml": ["build", "deploy"],
         "package.yml": ["package"],
         "mirror-ci-images.yml": ["mirror"],
+        "check-ci-image-digests.yml": ["check"],
     };
 
     it("knows exactly the jobs of every workflow (a new job needs a limit decision)", () => {

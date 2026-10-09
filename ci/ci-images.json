@@ -1,0 +1,24 @@
+{
+    "mirrorPrefix": "ghcr.io/full-chaos/dev-health-web",
+    "sourceRegistry": "mirror.gcr.io",
+    "images": {
+        "node": {
+            "repo": "library/node",
+            "dest": "node",
+            "tag": "25-alpine",
+            "digest": "sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4"
+        },
+        "traefik": {
+            "repo": "library/traefik",
+            "dest": "traefik",
+            "tag": "v3.1",
+            "digest": "sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56"
+        },
+        "buildkit": {
+            "repo": "moby/buildkit",
+            "dest": "moby/buildkit",
+            "tag": "buildx-stable-1",
+            "digest": "sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea"
+        }
+    }
+}

@@ -340,6 +340,8 @@ jobs:
               # ops deletes the ledger (dev-health-ops #3761). The generator reads the first input
               # that exists and fails when none exists.
               run: |
+                  bash .github/scripts/wait-for-ci-images.sh traefik
+                  traefik_image="$(node scripts/bump-ci-images.mjs --ref traefik mirror)"
                   mkdir -p /tmp/traefik-dynamic
                   node ci/generate-live-e2e-plane-router.mjs \
                     dev-health-ops/contracts/ingress/v1/planes.json \
@@ -351,7 +353,7 @@ jobs:
 
                   docker run -d --name live-e2e-traefik --network host \
                     -v /tmp/traefik-dynamic:/etc/traefik/dynamic:ro \
-                    ghcr.io/full-chaos/dev-health-web/traefik:v3.1@sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56 \
+                    "${traefik_image}" \
                     --providers.file.directory=/etc/traefik/dynamic \
                     --providers.file.watch=false \
                     --entrypoints.web.address=:8099 \
