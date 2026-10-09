@@ -26,12 +26,13 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
     const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const { data: mixData, loading: mixLoading } = useInvestmentMix({ filters });
+    const { data: mixData, loading: mixLoading, error: mixError } = useInvestmentMix({ filters });
     const investmentMix = useMemo(
         () => (mixData ? normalizeInvestmentMix(mixData) : null),
         [mixData],
     );
     const isMixLoading = mixLoading;
+    const mixFailed = Boolean(mixError);
 
     const [mixExplanation, setMixExplanation] = useState<MixExplanationState>({
         data: null,
@@ -50,7 +51,11 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
 
     const baselineFilters = useMemo(() => getBaselineFilters(filters), [filters]);
 
-    const { data: currentFlow, loading: currentFlowLoading } = useInvestmentFlow({
+    const {
+        data: currentFlow,
+        loading: currentFlowLoading,
+        error: currentFlowError,
+    } = useInvestmentFlow({
         filters,
         flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
         theme: selectedThemeKey,
@@ -67,6 +72,9 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
     const teamCategoryFlow = currentFlow;
     const baselineSankeyFlow = baselineFlowData;
     const isCategoryFlowLoading = currentFlowLoading || baselineFlowLoading;
+    // Only the current flow's failure is a failure state; a failed comparison flow stays
+    // null, so the current flow draws without its delta.
+    const categoryFlowFailed = Boolean(currentFlowError);
 
     const {
         data: repoFlowData,
@@ -241,6 +249,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
         isLoading,
         investmentMix,
         isMixLoading,
+        mixFailed,
         mixExplanation,
         focusTheme,
         setFocusTheme,
@@ -257,6 +266,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
         teamCategoryFlow,
         baselineSankeyFlow,
         isCategoryFlowLoading,
+        categoryFlowFailed,
         repoTeamFlow,
         isRepoTeamLoading,
         repoTeamFlowFailed,

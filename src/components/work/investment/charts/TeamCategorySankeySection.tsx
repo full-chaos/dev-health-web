@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { SankeyChart } from "@/components/charts/SankeyChart";
+import { DataState } from "@/components/ui/DataState";
 import {
     COVERAGE_UNAVAILABLE_REASON,
     isUnassignedLabel,
@@ -47,6 +48,8 @@ export type TeamCategorySankeySectionProps = {
     teamCategoryFlow: SankeyResponse | null | undefined;
     baselineSankeyFlow: SankeyResponse | null | undefined;
     isCategoryFlowLoading: boolean;
+    /** The current team-category flow query failed: draw the failure state, never a flow beside it. */
+    categoryFlowFailed?: boolean;
     prepareSankeyFlow: PrepareSankeyFlow;
     buildSankeyTooltipFormatter: BuildSankeyTooltipFormatter;
     resolveSubcategoryIdFromLabel: (label: string) => string | null;
@@ -69,6 +72,7 @@ export function TeamCategorySankeySection({
     teamCategoryFlow,
     baselineSankeyFlow,
     isCategoryFlowLoading,
+    categoryFlowFailed = false,
     prepareSankeyFlow,
     buildSankeyTooltipFormatter,
     resolveSubcategoryIdFromLabel,
@@ -343,6 +347,13 @@ export function TeamCategorySankeySection({
             <div className="mt-0">
                 {isSankeyLoading ? (
                     <p className="text-sm text-(--ink-muted)">Loading allocation data...</p>
+                ) : categoryFlowFailed ? (
+                    <DataState
+                        variant="detector-unavailable"
+                        compact
+                        title="Team-to-category allocation unavailable"
+                        description="The team-to-category flow could not be loaded for this scope and window."
+                    />
                 ) : !sankeyFlow || !sankeyFlow.links.length ? (
                     <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
                         {coverageUnavailable

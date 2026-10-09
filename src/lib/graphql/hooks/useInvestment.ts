@@ -114,7 +114,8 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
     });
 
     const data = useMemo<InvestmentResponse | null>(() => {
-        if (!result.data?.analytics) return null;
+        // A failed read is never adapted: urql can keep stale data beside an error.
+        if (result.error || !result.data?.analytics) return null;
 
         const themeBreakdown = result.data.analytics.breakdowns.find(
             (b) => b.dimension.toLowerCase() === "theme",
@@ -157,7 +158,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
                   }
                 : undefined,
         };
-    }, [result.data]);
+    }, [result.data, result.error]);
 
     return {
         data,
@@ -248,13 +249,14 @@ export function useInvestmentEvidenceQualityGroups(
     });
 
     const groups = useMemo<InvestmentEvidenceQualityGroup[]>(() => {
+        if (result.error) return [];
         return (result.data?.analytics.evidenceQualityByGroup ?? []).map((group) => ({
             key: group.key,
             label: group.label ?? null,
             mean: group.mean ?? null,
             total: group.total,
         }));
-    }, [result.data]);
+    }, [result.data, result.error]);
 
     return {
         groups,
@@ -325,9 +327,10 @@ export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestm
     });
 
     const data = useMemo<SankeyResponse | null>(() => {
-        if (!result.data?.analytics?.sankey) return null;
+        // A failed read is never adapted: urql can keep stale data beside an error.
+        if (result.error || !result.data?.analytics?.sankey) return null;
         return adaptSankeyResult(result.data.analytics.sankey, "investment");
-    }, [result.data]);
+    }, [result.data, result.error]);
 
     return {
         data,
@@ -384,9 +387,10 @@ export function useInvestmentRepoTeamFlow(
     });
 
     const data = useMemo<SankeyResponse | null>(() => {
-        if (!result.data?.analytics?.sankey) return null;
+        // A failed read is never adapted: urql can keep stale data beside an error.
+        if (result.error || !result.data?.analytics?.sankey) return null;
         return adaptSankeyResult(result.data.analytics.sankey, "investment");
-    }, [result.data]);
+    }, [result.data, result.error]);
 
     return {
         data,

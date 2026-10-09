@@ -57,7 +57,7 @@ const COLORS = new Map([
     ["risk", "var(--chart-color-3)"],
 ]);
 
-function Harness() {
+function Harness({ mixFailed }: { mixFailed?: boolean } = {}) {
     const [focusTheme, setFocusTheme] = useState<string | null>(null);
     const [focusSubcategory, setFocusSubcategory] = useState<string | null>(null);
     return (
@@ -66,6 +66,7 @@ function Harness() {
             investmentMix={mix as never}
             isLoading={false}
             isMixLoading={false}
+            mixFailed={mixFailed}
             workUnits={[]}
             effortUnit="work units"
             focusTheme={focusTheme}
@@ -127,5 +128,24 @@ describe("Investment mix, Sunburst state", () => {
         const first = within(rows[0]).getByRole("button");
         fireEvent.click(first);
         expect(within(rows[0]).getByRole("button")).toHaveAttribute("aria-pressed", "true");
+    });
+});
+
+describe("Investment mix, failed read", () => {
+    it("draws the failure state and no chart or rows when the mix query failed (even with a mix held)", () => {
+        render(<Harness mixFailed />);
+        showSunburst();
+        expect(screen.getByText("Investment mix unavailable")).toBeInTheDocument();
+        expect(
+            screen.getByText("The investment mix could not be loaded for this scope and window."),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("sunburst-chart")).not.toBeInTheDocument();
+    });
+
+    it("draws the chart and no failure state when the read succeeded", () => {
+        render(<Harness />);
+        showSunburst();
+        expect(screen.getByTestId("sunburst-chart")).toBeInTheDocument();
+        expect(screen.queryByText("Investment mix unavailable")).not.toBeInTheDocument();
     });
 });

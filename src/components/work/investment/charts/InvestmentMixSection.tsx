@@ -1,5 +1,6 @@
 "use client";
 
+import { DataState } from "@/components/ui/DataState";
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
@@ -41,6 +42,8 @@ type InvestmentMixSectionProps = {
     investmentMix: InvestmentMix | null;
     isLoading: boolean;
     isMixLoading: boolean;
+    /** The mix query failed: draw the failure state, never a mix beside it. */
+    mixFailed?: boolean;
     workUnits: WorkUnitInvestment[];
     effortUnit: string;
     focusTheme: string | null;
@@ -58,6 +61,7 @@ export function InvestmentMixSection({
     investmentMix,
     isLoading,
     isMixLoading,
+    mixFailed = false,
     workUnits,
     effortUnit,
     focusTheme,
@@ -325,6 +329,13 @@ export function InvestmentMixSection({
                     )
                 ) : isMixLoading ? (
                     <p className="text-sm text-(--ink-muted)">Loading investment mix...</p>
+                ) : mixFailed ? (
+                    <DataState
+                        variant="detector-unavailable"
+                        compact
+                        title="Investment mix unavailable"
+                        description="The investment mix could not be loaded for this scope and window."
+                    />
                 ) : !investmentMix || mixThemes.length === 0 ? (
                     <p className="text-sm text-(--ink-muted)">No investment mix available.</p>
                 ) : (
