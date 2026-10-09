@@ -7,6 +7,7 @@
  * card open the one shared evidence drawer.
  */
 
+import { metricDisplay } from "@/lib/metrics/metricDisplay";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { DataNote } from "@/components/charts/DataNote";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
@@ -105,7 +106,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
     const pageFacts: PageFact[] = BOTTLENECK_TILES.map(({ metric }) => {
         const row = deltas.find((item) => item.metric === metric);
         const parts =
-            !placeholderDeltas && row?.value !== undefined
+            !placeholderDeltas && metricDisplay(row).hasData && row?.value !== undefined
                 ? formatMetricParts(row.value, row.unit ?? "")
                 : null;
         return {
