@@ -178,6 +178,18 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         });
     });
 
+    it("a no-data row is never the worsened metric, even with a nonzero change (CHAOS-9056)", async () => {
+        mockGetHomeData.mockResolvedValue(
+            homeWithDeltas([
+                { ...delta("Throughput", -40), has_data: false },
+                { ...delta("Churn", 12), has_prior_data: false },
+                delta("Cycle Time", 8, "cycle_time"),
+            ] as never),
+        );
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-top-signal"]).toMatchObject({ label: "Reduce Cycle Time" });
+    });
+
     it("maps delta magnitude onto the severity ladder", async () => {
         const cases: Array<[number, string]> = [
             [30, "critical"],

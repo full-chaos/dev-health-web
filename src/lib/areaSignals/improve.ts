@@ -68,6 +68,7 @@ import { markFailedSignals } from "./failedRead";
 import type { AreaSignal, AreaSignalState } from "./types";
 import { sortBySeverity } from "./sort";
 import { getMetricPolarity } from "@/lib/metrics/catalog";
+import { metricDisplay } from "@/lib/metrics/metricDisplay";
 
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
@@ -92,7 +93,9 @@ function severityForDelta(deltaPct: number): Exclude<AreaSignalState, "neutral" 
 
 /** The single worst worsened metric (largest absolute delta in the wrong direction), or undefined when none worsened. */
 function worstWorsenedDelta(deltas: MetricDelta[] | undefined): MetricDelta | undefined {
+    // A change needs data in both windows; a no-data row is a 0 placeholder, never a worsened metric.
     const worsened = (deltas ?? []).filter((d) => {
+        if (!metricDisplay(d).comparable) return false;
         const polarity = getMetricPolarity(d.metric);
         if (!polarity) {
             logger.warn({ metric: d.metric }, "Unknown metric polarity, excluding from top signal");
