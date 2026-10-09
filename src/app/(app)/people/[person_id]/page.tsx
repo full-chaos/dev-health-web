@@ -4,7 +4,7 @@ import { DonutChart } from "@/components/charts/DonutChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { PersonRangeBar } from "@/components/people/PersonRangeBar";
-import { MetricCard } from "@/components/metrics/MetricCard";
+import { PersonMetricCard } from "@/components/people/PersonMetricCard";
 import { checkApiHealth } from "@/lib/api/system";
 import { getPersonSummary } from "@/lib/api/people";
 import { getQuadrant } from "@/lib/api/visuals";
@@ -17,8 +17,6 @@ import { getMetricLabel, getMetricUnit } from "@/lib/metrics/catalog";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
 import type { MetricDelta, PersonCollaborationStat } from "@/lib/types";
 import { Notice } from "@/components/ui/Notice";
-import { NeutralDelta } from "@/components/people/NeutralDelta";
-import { isChangedFromZero, tileDelta } from "@/components/shared/MetricDelta";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { PageHeader } from "@/components/shell/PageHeader";
 
@@ -172,34 +170,15 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
 
             <section className="grid gap-4 md:grid-cols-3">
                 {deltas.map((delta) => (
-                    <MetricCard
+                    <PersonMetricCard
                         key={delta.metric}
-                        label={delta.label}
+                        delta={delta}
+                        placeholder={placeholderDeltas}
                         href={withRangeParams(
                             `/people/${personId}/metrics/${delta.metric}`,
                             range_days,
                             compare_days,
                         )}
-                        value={placeholderDeltas ? undefined : delta.value}
-                        unit={delta.unit}
-                        deltaSlot={
-                            <NeutralDelta
-                                value={
-                                    placeholderDeltas
-                                        ? undefined
-                                        : isChangedFromZero(delta)
-                                          ? null
-                                          : (tileDelta(delta) ?? undefined)
-                                }
-                                changedFromZero={
-                                    isChangedFromZero(delta)
-                                        ? { current: delta.value, unit: delta.unit }
-                                        : undefined
-                                }
-                            />
-                        }
-                        spark={delta.spark}
-                        caption="Open metric"
                     />
                 ))}
             </section>
