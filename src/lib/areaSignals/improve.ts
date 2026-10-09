@@ -258,12 +258,13 @@ export async function getImproveSignals(
             label: `${action} ${worst.label}`,
             href: "/opportunities",
             metricLabel: `${worst.label} shift`,
-            // A change from zero has no percent: it says "+12 from 0" and takes the top severity
-            // (its percent is unbounded, so it meets every threshold).
+            // A change from zero has no percent: it says "+12 from 0" and carries NO severity
+            // (a severity comes from evidence, not from an undefined percent): the neutral,
+            // non-severity state. The row keeps its rank as the worst worsened metric.
             value: fromZero
                 ? changedFromZeroLabel(worst.value, worst.unit)
                 : `${sign}${formatNumber(percent, { maximumFractionDigits: 0 })}%`,
-            state: fromZero ? "critical" : severityForDelta(Math.abs(percent)),
+            state: fromZero ? "neutral" : severityForDelta(Math.abs(percent)),
             direction: isHigherBetter ? "down" : "up",
         });
     }

@@ -138,7 +138,7 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         spark: [],
     });
 
-    it("a worsened change from zero outranks any percent, says the change, takes the top severity", async () => {
+    it("a worsened change from zero outranks any percent, says the change, carries no severity (neutral)", async () => {
         mockGetHomeData.mockResolvedValue({
             deltas: [delta("Churn", 60), fromZero("Churn LOC", 12, "churn_loc")],
         } as never);
@@ -146,10 +146,16 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         expect(signals["improve-top-signal"]).toMatchObject({
             label: "Reduce Churn LOC",
             value: "+12 LOC from 0",
-            state: "critical",
+            state: "neutral",
             direction: "up",
         });
         expect(signals["improve-top-signal"].value).not.toMatch(/%|NaN|null/);
+    });
+
+    it("a normal +300% row keeps its severity; a change from zero is not one", async () => {
+        mockGetHomeData.mockResolvedValue({ deltas: [delta("Churn", 300)] } as never);
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-top-signal"]).toMatchObject({ value: "+300%", state: "critical" });
     });
 
     it("a change from zero in the GOOD direction is not worsened; a served 0 and a no-prior row are not either", async () => {
