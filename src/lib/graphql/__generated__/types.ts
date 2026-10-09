@@ -1289,6 +1289,8 @@ export type MetricDelta = {
   hasPriorData: Scalars['Boolean']['output'];
   label: Scalars['String']['output'];
   metric: Scalars['String']['output'];
+  /** Why change failure rate has a value or not (CHAOS-8981): measured (the value may be 0), unknown_no_incident_evidence (deployments, and no incident tied to the scope in the window) or not_applicable_no_deployments. Null when the window holds no stored counts, and for every other metric. */
+  rateState?: Maybe<Scalars['String']['output']>;
   spark: Array<SparkPoint>;
   unit: Scalars['String']['output'];
   value: Scalars['Float']['output'];
@@ -1390,6 +1392,8 @@ export type OperatingReviewMetric = {
   hasData: Scalars['Boolean']['output'];
   key: Scalars['String']['output'];
   label: Scalars['String']['output'];
+  /** Why change failure rate has a value or not (CHAOS-8981): measured (the value may be 0), unknown_no_incident_evidence (deployments, and no incident tied to the organization in the week) or not_applicable_no_deployments. Null when the week holds no stored counts, and for every other metric. */
+  rateState?: Maybe<Scalars['String']['output']>;
   /** Whether the request's team selection narrows this metric (CHAOS-8516). */
   scope: OperatingReviewMetricScope;
   unit: Scalars['String']['output'];
