@@ -49,15 +49,15 @@ beforeEach(async () => {
 });
 
 describe("scope-bar team picker labels", () => {
-    it("shows the served name, Unresolved for a team with no name, never the id", async () => {
+    it("lists the served name and no row for a team with no name, never the id", async () => {
         const user = userEvent.setup();
         const { container } = render(<ScopeBarClient {...HOME} />);
 
         await user.click(screen.getByRole("button", { name: /team/i }));
 
         expect(screen.getByLabelText("Payments")).toBeTruthy();
-        expect(screen.getByLabelText("Unresolved")).toBeTruthy();
-        expect(screen.getByLabelText("Unresolved (2)")).toBeTruthy();
+        expect(screen.queryByLabelText(/^Unresolved/)).toBeNull();
+        expect(container.textContent).not.toMatch(/Unresolved/);
         expect(container.textContent).not.toContain(ID_NAMED);
         expect(container.textContent).not.toContain(ID_UNNAMED);
     });
@@ -108,12 +108,12 @@ describe.each([
         };
     });
 
-    it("lists the served name, Unresolved for an unnamed one, and writes the prefixed id", async () => {
+    it("lists the served name, no row for an unnamed one, and writes the prefixed id", async () => {
         const user = userEvent.setup();
         const { container } = render(<ScopeBarClient {...HOME} />);
 
         await user.click(screen.getByRole("button", { name: /team/i }));
-        expect(screen.getByLabelText("Unresolved")).toBeTruthy();
+        expect(screen.queryByLabelText(/^Unresolved/)).toBeNull();
         expect(container.textContent).not.toContain(id);
         await user.click(screen.getByLabelText("Platform"));
 
@@ -155,5 +155,66 @@ describe("useFilterOptions", () => {
         const { result } = renderHook(() => actual.useFilterOptions());
 
         await waitFor(() => expect(result.current.team_names).toEqual({ [ID_NAMED]: "Payments" }));
+    });
+});
+
+const urlWithTeams = (ids: string[]) =>
+    `f=${btoa(
+        JSON.stringify({
+            how: {},
+            scope: { ids, level: "team" },
+            time: { compare_days: 14, range_days: 14 },
+            what: {},
+            who: {},
+            why: {},
+        }),
+    )
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "")}`;
+
+describe("scope-bar team menu with unnamed ids and unassigned (CHAOS-9028)", () => {
+    beforeEach(() => {
+        optionsMock.value = {
+            ...optionsMock.value,
+            teams: [ID_UNNAMED, ID_NAMED, "unassigned", ID_UNNAMED_TOO],
+        };
+    });
+
+    it("lists named teams then the unassigned label last, and no Unresolved row", async () => {
+        const user = userEvent.setup();
+        const { container } = render(<ScopeBarClient {...HOME} />);
+
+        await user.click(screen.getByRole("button", { name: /team/i }));
+
+        const rows = screen.getAllByRole("checkbox").map((c) => c.parentElement?.textContent);
+        expect(rows).toEqual(["All Teams", "Payments", "Unassigned team"]);
+        expect(container.textContent).not.toMatch(/Unresolved/);
+        expect(container.textContent).not.toContain(ID_UNNAMED);
+    });
+
+    it("shows one Unresolved state for an old link with two unnamed ids, no number, no id", () => {
+        scopeBarUrl.reset(urlWithTeams([ID_UNNAMED, ID_UNNAMED_TOO]));
+        const { container } = render(<ScopeBarClient {...HOME} />);
+
+        expect(container.textContent).toContain("Unresolved");
+        expect(container.textContent).not.toMatch(/Unresolved \(\d+\)/);
+        expect(container.textContent).not.toContain(ID_UNNAMED);
+        expect(container.textContent).not.toContain(ID_UNNAMED_TOO);
+    });
+
+    it("keeps the unnamed ids when a named team is added, and All Teams clears them", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(urlWithTeams([ID_UNNAMED]));
+        render(<ScopeBarClient {...HOME} />);
+
+        await user.click(screen.getByRole("button", { name: /team/i }));
+        await user.click(screen.getByLabelText("Payments"));
+        await waitFor(() =>
+            expect(scopeBarUrl.lastFilter().scope.ids).toEqual([ID_NAMED, ID_UNNAMED]),
+        );
+
+        await user.click(screen.getByLabelText("All Teams"));
+        await waitFor(() => expect(scopeBarUrl.lastFilter().scope.ids).toEqual([]));
     });
 });
