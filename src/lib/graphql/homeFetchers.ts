@@ -89,6 +89,7 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             delta_pct: d.deltaPct,
             has_data: d.hasData,
             has_prior_data: d.hasPriorData,
+            ...(d.rateState ? { rate_state: d.rateState } : {}),
             spark: d.spark.map((p) => ({ ts: p.ts, value: p.value })),
         })),
         rework_theme_allocation: result.reworkThemeAllocation.map((r) => ({

@@ -535,7 +535,8 @@ export interface OperatingReviewInput {
  */
 export type OperatingReviewMetricScope = "TEAM" | "ORGANIZATION";
 
-export type OperatingReviewDeltaStatus = "changed" | "improved" | "worsened" | "unchanged";
+/** "" is served when a side of the comparison has no data (no status is drawn then). */
+export type OperatingReviewDeltaStatus = "changed" | "improved" | "worsened" | "unchanged" | "";
 
 export interface OperatingReviewDelta {
     value: number;
@@ -564,6 +565,8 @@ export interface OperatingReviewMetric {
     hasData?: boolean;
     /** Served per metric; the web keeps no list of keys. Absent in an answer of an API before it. */
     scope?: OperatingReviewMetricScope;
+    /** Why a change failure rate has a value or not; null or absent when none is served. */
+    rateState?: string | null;
     delta: OperatingReviewDelta;
 }
 
@@ -871,6 +874,8 @@ export interface HomeGraphQLDelta {
     hasData: boolean;
     hasPriorData: boolean;
     spark: HomeGraphQLSparkPoint[];
+    /** Why a change failure rate has a value or not; null or absent when none is served. */
+    rateState?: string | null;
 }
 
 export interface HomeGraphQLReworkThemeAllocation {

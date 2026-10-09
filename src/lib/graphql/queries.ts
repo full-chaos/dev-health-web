@@ -447,6 +447,7 @@ query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
         unit
         hasData
         scope
+        rateState
         delta {
           value
           priorValue
@@ -1216,6 +1217,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
         ts
         value
       }
+      rateState
     }
     reworkThemeAllocation {
       theme
