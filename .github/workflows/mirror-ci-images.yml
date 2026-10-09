@@ -7,6 +7,10 @@
 # mirrored ref carries the SAME sha256 as upstream and every consumer pin stays a literal. The verify
 # step fails the run if they ever differ. Same method as the ops repo's mirror-test-images.yml.
 #
+# SOURCES are mirror.gcr.io (Google's pull-through cache of Docker Hub, as ops uses for base images):
+# it serves the digest-pinned content without Docker Hub, so an outage or rate limit there does not
+# block the mirror. The verify step proves the digests equal the Docker Hub ones pinned below.
+#
 # NO setup-buildx and NO Docker Hub login, on purpose: setup-buildx would itself pull
 # moby/buildkit from Docker Hub. `imagetools` needs no builder.
 #
@@ -50,9 +54,9 @@ jobs:
             OWNER: ${{ github.repository_owner }}
             # <upstream ref pinned by digest> <destination path:tag under ghcr.io/<owner>/dev-health-web/>
             IMAGES: |
-                docker.io/library/node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 node:25-alpine
-                docker.io/library/traefik:v3.1@sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56 traefik:v3.1
-                docker.io/moby/buildkit:buildx-stable-1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea moby/buildkit:buildx-stable-1
+                mirror.gcr.io/library/node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 node:25-alpine
+                mirror.gcr.io/library/traefik:v3.1@sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56 traefik:v3.1
+                mirror.gcr.io/moby/buildkit:buildx-stable-1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea moby/buildkit:buildx-stable-1
         steps:
             - name: Log in to GitHub Container Registry
               uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
