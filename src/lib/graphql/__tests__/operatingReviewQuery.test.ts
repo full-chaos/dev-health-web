@@ -25,7 +25,15 @@ describe("OPERATING_REVIEW_QUERY", () => {
     it("asks whether the week holds a stored value for each metric, and for its scope", () => {
         // `scope`: whether the team selection narrows the metric (TEAM) or the value is the whole
         // organization's (ORGANIZATION). The web keeps no list of metric keys.
-        expect(fieldsOf("metrics")).toEqual(["key", "label", "value", "unit", "hasData", "scope"]);
+        expect(fieldsOf("metrics")).toEqual([
+            "key",
+            "label",
+            "value",
+            "unit",
+            "hasData",
+            "scope",
+            "rateState",
+        ]);
     });
 
     it("asks whether the prior week holds a stored value for each delta", () => {

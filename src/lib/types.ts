@@ -31,6 +31,11 @@ export type MetricDelta = {
     has_data?: boolean;
     /** Explicit producer fact. A missing comparison must not render as a -100% change. */
     has_prior_data?: boolean;
+    /**
+     * Why a change failure rate has a value or not (rateState). Null or absent: no state served
+     * (an API before it, or no stored counts). A string this web does not know reads as no state.
+     */
+    rate_state?: string | null;
     spark: SparkPoint[];
 };
 
@@ -220,6 +225,13 @@ export type ExplainResponse = {
     unit: string;
     value: number;
     delta_pct: number;
+    /** Explicit producer facts; absent on an API before them (read as data). */
+    has_data?: boolean;
+    has_prior_data?: boolean;
+    /** Why a change failure rate has a value or not. Absent or null: no state served. */
+    rate_state?: string | null;
+    /** How the incident link behind the rate is known: native, explicit_text or heuristic. */
+    link_tier?: string | null;
     drivers: Contributor[];
     contributors: Contributor[];
     drilldown_links: Record<string, string>;
