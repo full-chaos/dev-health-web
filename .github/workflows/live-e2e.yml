@@ -53,9 +53,19 @@ jobs:
             needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        # Service images and the traefik image come from the ghcr.io mirror.
+        permissions:
+            contents: read
+            packages: read
         services:
             postgres:
-                image: postgres:17
+                image: ghcr.io/full-chaos/postgres:18-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+                # The runner pulls a service image BEFORE the first step, so no
+                # `docker/login-action` step can authenticate it -- GitHub requires
+                # credentials on the declaration itself. GITHUB_TOKEN reads the mirror.
+                credentials:
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
                 env:
                     POSTGRES_USER: postgres
                     POSTGRES_PASSWORD: postgres
@@ -64,14 +74,26 @@ jobs:
                     - 5432:5432
                 options: >-
                     --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-            redis:
-                image: redis:7
+            valkey:
+                image: ghcr.io/full-chaos/valkey/valkey:8-alpine
+                # The runner pulls a service image BEFORE the first step, so no
+                # `docker/login-action` step can authenticate it -- GitHub requires
+                # credentials on the declaration itself. GITHUB_TOKEN reads the mirror.
+                credentials:
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
                 ports:
                     - 6379:6379
                 options: >-
-                    --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+                    --health-cmd "valkey-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
             clickhouse:
-                image: clickhouse/clickhouse-server:25.1
+                image: ghcr.io/full-chaos/clickhouse/clickhouse-server:26.7
+                # The runner pulls a service image BEFORE the first step, so no
+                # `docker/login-action` step can authenticate it -- GitHub requires
+                # credentials on the declaration itself. GITHUB_TOKEN reads the mirror.
+                credentials:
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
                 env:
                     CLICKHOUSE_DB: default
                     CLICKHOUSE_USER: ch
@@ -295,6 +317,13 @@ jobs:
                   done
               working-directory: dev-health-ops
 
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
             - name: Generate and start live-e2e plane router (traefik)
               # CHAOS-7001: the piece that actually makes the plane split real. CHAOS-7523: there is no
               # Python api any more; the catch-all ("/") is go-api, as on prod's api host, and /graphql
@@ -322,7 +351,7 @@ jobs:
 
                   docker run -d --name live-e2e-traefik --network host \
                     -v /tmp/traefik-dynamic:/etc/traefik/dynamic:ro \
-                    traefik:v3.1 \
+                    ghcr.io/full-chaos/dev-health-web/traefik:v3.1@sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56 \
                     --providers.file.directory=/etc/traefik/dynamic \
                     --providers.file.watch=false \
                     --entrypoints.web.address=:8099 \

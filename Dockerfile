@@ -1,11 +1,16 @@
-FROM node:25-alpine AS deps
+# Base image comes from the ghcr.io mirror, not Docker Hub (CHAOS-9065): Docker Hub rate-limits
+# anonymous CI pulls. The digest is the upstream node:25-alpine manifest digest; the mirror copies
+# by digest (.github/workflows/mirror-ci-images.yml), so the shipped base is unchanged.
+ARG NODE_IMAGE=ghcr.io/full-chaos/dev-health-web/node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
+
+FROM ${NODE_IMAGE} AS deps
 WORKDIR /app
 RUN npm install -g pnpm@11.15.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 
-FROM node:25-alpine AS dev
+FROM ${NODE_IMAGE} AS dev
 WORKDIR /app
 RUN npm install -g pnpm@11.15.1
 COPY --from=deps /app/node_modules ./node_modules
@@ -14,7 +19,7 @@ COPY patches ./patches
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
-FROM node:25-alpine AS builder
+FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
 RUN npm install -g pnpm@11.15.1
 COPY --from=deps /app/node_modules ./node_modules
@@ -25,7 +30,7 @@ ARG BACKEND_URL=http://127.0.0.1:8000
 ENV BACKEND_URL=${BACKEND_URL}
 RUN pnpm run build
 
-FROM node:25-alpine AS runner
+FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
