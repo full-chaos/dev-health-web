@@ -5,7 +5,12 @@ import { type ReactNode, useRef, useState } from "react";
 
 import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { containsIdToken } from "@/lib/labels/idToken";
-import { formatSelection, teamMenuLabels, toggleValue } from "@/components/filters/filterBarUtils";
+import {
+    formatSelection,
+    teamMenuLabels,
+    teamScopeLabels,
+    toggleValue,
+} from "@/components/filters/filterBarUtils";
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
@@ -190,7 +195,7 @@ export function ScopeBarClient({
         </>
     );
 
-    const teamLabels = teamMenuLabels(options.teams, options.team_names, teamIds);
+    const teamLabels = teamScopeLabels(options.teams, options.team_names, teamIds);
 
     return (
         <ScopeBarCard

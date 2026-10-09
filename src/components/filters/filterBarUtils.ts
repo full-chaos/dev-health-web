@@ -1,4 +1,5 @@
 import type { MetricFilter } from "@/lib/filters/types";
+import { UNASSIGNED_TEAM_LABEL } from "@/lib/investment/transforms";
 
 export const DATE_PRESETS = [
     { label: "7d", days: 7 },
@@ -84,6 +85,43 @@ export function teamMenuLabels(
         selected: selected.map((id) => labelById.get(id) as string),
         labelOf: (id: string) => labelById.get(id) ?? UNRESOLVED_TEAM_LABEL,
         toIds: (labels: string[]) => labels.map((label) => idByLabel.get(label) ?? label),
+    };
+}
+
+/** The served team id for work with no team. It is not a team: it has its own label. */
+export const UNASSIGNED_TEAM_ID = "unassigned";
+
+/**
+ * The team menu and the team state of the scope bar. Only a team with a served name is a row.
+ * `unassigned` is a row with the unassigned-work label, last. Any other id with no served name is
+ * no row; if the filter selects such an id (an old link) the bar shows one "Unresolved" state with
+ * no number, and `toIds` keeps those ids in the filter. Never the id itself.
+ */
+export function teamScopeLabels(
+    ids: string[],
+    teamNames: Record<string, string>,
+    selected: string[],
+) {
+    const isNamed = (id: string) => id !== UNASSIGNED_TEAM_ID && Boolean(teamNames[id]?.trim());
+    const rows = [...new Set(ids)];
+    const listed = [
+        ...rows.filter(isNamed),
+        ...(rows.includes(UNASSIGNED_TEAM_ID) ? [UNASSIGNED_TEAM_ID] : []),
+    ];
+    const selectedListed = selected.filter((id) => isNamed(id) || id === UNASSIGNED_TEAM_ID);
+    const unresolvedIds = selected.filter((id) => !isNamed(id) && id !== UNASSIGNED_TEAM_ID);
+    const names = { ...teamNames, [UNASSIGNED_TEAM_ID]: UNASSIGNED_TEAM_LABEL };
+    const base = teamMenuLabels(listed, names, selectedListed);
+    const unresolved = unresolvedIds.length ? [UNRESOLVED_TEAM_LABEL] : [];
+    return {
+        all: base.all,
+        selected: [...base.selected, ...unresolved],
+        labelOf: (id: string) =>
+            id === UNASSIGNED_TEAM_ID || isNamed(id) ? base.labelOf(id) : UNRESOLVED_TEAM_LABEL,
+        toIds: (labels: string[]) => [
+            ...base.toIds(labels.filter((label) => label !== UNRESOLVED_TEAM_LABEL)),
+            ...(labels.includes(UNRESOLVED_TEAM_LABEL) ? unresolvedIds : []),
+        ],
     };
 }
 

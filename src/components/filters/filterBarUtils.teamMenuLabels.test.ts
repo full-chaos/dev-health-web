@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { teamMenuLabels } from "./filterBarUtils";
+import { teamMenuLabels, teamScopeLabels } from "./filterBarUtils";
 
 describe("teamMenuLabels", () => {
     it("names by served name, Unresolved when missing, and maps labels back to ids", () => {
@@ -52,5 +52,49 @@ describe("teamMenuLabels with bare and provider-prefixed team ids (CHAOS-8939)",
         const l = teamMenuLabels([id], {}, [id]);
         expect(l.all).toEqual(["Unresolved"]);
         expect(l.labelOf(id)).toBe("Unresolved");
+    });
+});
+
+describe("teamScopeLabels (CHAOS-9028)", () => {
+    const names = { a: "Payments", b: "Platform" };
+    const ids = ["x1", "a", "unassigned", "x2", "b", "x3"];
+
+    it("lists named teams, then unassigned last; no unnamed id is a row", () => {
+        const l = teamScopeLabels(ids, names, []);
+        expect(l.all).toEqual(["Payments", "Platform", "Unassigned team"]);
+        expect(l.selected).toEqual([]);
+        expect(l.toIds(["Platform", "Unassigned team"])).toEqual(["b", "unassigned"]);
+    });
+
+    it("shows one unnumbered Unresolved state for one selected unnamed id", () => {
+        const l = teamScopeLabels(ids, names, ["x1", "a"]);
+        expect(l.all).not.toContain("Unresolved");
+        expect(l.selected).toEqual(["Payments", "Unresolved"]);
+        expect(l.labelOf("x1")).toBe("Unresolved");
+    });
+
+    it("shows one Unresolved state, no number, for two selected unnamed ids, and keeps both ids", () => {
+        const l = teamScopeLabels(ids, names, ["x1", "x2"]);
+        expect(l.selected).toEqual(["Unresolved"]);
+        expect(l.toIds(["Unresolved", "Platform"])).toEqual(["b", "x1", "x2"]);
+        expect(l.toIds([])).toEqual([]);
+    });
+
+    it("shows a selected unnamed id that the list does not hold as Unresolved, never the id", () => {
+        const l = teamScopeLabels(["a"], names, ["old-link-id"]);
+        expect(l.selected).toEqual(["Unresolved"]);
+        expect(JSON.stringify([l.all, l.selected])).not.toContain("old-link-id");
+    });
+
+    it("labels unassigned with the unassigned-work label even when a name is served", () => {
+        const l = teamScopeLabels(["unassigned"], { unassigned: "  " }, ["unassigned"]);
+        expect(l.all).toEqual(["Unassigned team"]);
+        expect(l.selected).toEqual(["Unassigned team"]);
+    });
+
+    it("keeps today's numbering for two named teams that share a name", () => {
+        const l = teamScopeLabels(["p", "q"], { p: "Platform", q: "Platform" }, ["q"]);
+        expect(l.all).toEqual(["Platform", "Platform (2)"]);
+        expect(l.selected).toEqual(["Platform (2)"]);
     });
 });
