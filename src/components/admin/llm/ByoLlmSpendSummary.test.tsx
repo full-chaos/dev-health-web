@@ -96,7 +96,44 @@ describe("ByoLlmSpendSummary", () => {
             expect(strip).not.toHaveTextContent("$0.00");
         });
 
-        it("reads Not set for the Monthly limit when the organization has set none (budget_not_configured)", async () => {
+        const notConfigured = (async () =>
+            budget({
+                used_micro_usd: 0,
+                limit_micro_usd: null,
+                remaining_micro_usd: null,
+                reason: "budget_not_configured",
+            })) as never;
+
+        it("shows one Setup Budget empty state, and none of the three tiles, when no budget is configured (CHAOS-9030)", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            render(
+                <ByoLlmSpendSummary loadSpendAction={mockLoad} loadBudgetAction={notConfigured} />,
+            );
+            const empty = await screen.findByTestId("byo-llm-budget-empty");
+            expect(empty).toHaveTextContent("No monthly budget set");
+            expect(screen.getByRole("button", { name: "Setup Budget" })).toBeInTheDocument();
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+            expect(screen.queryByText("Not set")).not.toBeInTheDocument();
+            expect(screen.queryByText("Not reported")).not.toBeInTheDocument();
+        });
+
+        it("Setup Budget moves focus to the monthly budget field of the settings form", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            Element.prototype.scrollIntoView = vi.fn();
+            render(
+                <>
+                    <input id="byo-budget-usd" aria-label="Monthly organization budget (USD)" />
+                    <ByoLlmSpendSummary
+                        loadSpendAction={mockLoad}
+                        loadBudgetAction={notConfigured}
+                    />
+                </>,
+            );
+            await userEvent.click(await screen.findByRole("button", { name: "Setup Budget" }));
+            expect(screen.getByLabelText("Monthly organization budget (USD)")).toHaveFocus();
+        });
+
+        it("keeps the tiles, with Not reported, when a budget is configured (any reason but budget_not_configured)", async () => {
             mockLoad.mockResolvedValue(emptySpend);
             render(
                 <ByoLlmSpendSummary
@@ -104,27 +141,17 @@ describe("ByoLlmSpendSummary", () => {
                     loadBudgetAction={
                         (async () =>
                             budget({
-                                used_micro_usd: 0,
-                                limit_micro_usd: null,
+                                used_micro_usd: null,
                                 remaining_micro_usd: null,
-                                reason: "budget_not_configured",
+                                reason: "usage_unavailable",
                             })) as never
                     }
                 />,
             );
             const strip = await screen.findByTestId("byo-llm-spend-tiles");
-            await waitFor(() => expect(strip).toHaveTextContent("Not set"));
-            expect(strip).toHaveTextContent("$0.00");
-            // Remaining has nothing to remain from: it is not served, so it is not reported.
-            expect(strip.textContent?.match(/Not reported/g)).toHaveLength(1);
-            expect(strip.textContent?.match(/Not set/g)).toHaveLength(1);
-            // "Not set" has the same muted ink as "Not reported".
-            const values = Array.from(strip.querySelectorAll("[data-testid=metric-value]"));
-            const notSet = values.find((v) => v.textContent === "Not set") as HTMLElement;
-            const MUTED = "[&_[data-testid=metric-value]]:text-(--ink-muted)";
-            expect(notSet.closest(`[class*="${MUTED}"]`)).not.toBeNull();
-            const notReported = values.find((v) => v.textContent === "Not reported") as HTMLElement;
-            expect(notReported.className).toContain("text-(--ink-muted)");
+            await waitFor(() => expect(strip).toHaveTextContent("$500.00"));
+            expect(strip.textContent?.match(/Not reported/g)).toHaveLength(2);
+            expect(screen.queryByRole("button", { name: "Setup Budget" })).not.toBeInTheDocument();
         });
 
         it("logs a served failure (an error answer with no data) and leaves the tiles out (CHAOS-8266)", async () => {

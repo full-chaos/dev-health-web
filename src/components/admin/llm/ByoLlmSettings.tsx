@@ -725,6 +725,7 @@ export function ByoLlmSettings({
                     <div className="mt-6 flex flex-wrap gap-2">
                         <button
                             type="button"
+                            id="byo-llm-edit"
                             onClick={handleEdit}
                             className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-(--accent)/60"
                         >

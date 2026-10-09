@@ -8,6 +8,7 @@ vi.mock("next/link", () => ({
 }));
 
 import { ByoLlmSettings, type ByoLlmSettingsProps } from "./ByoLlmSettings";
+import { ByoLlmSpendSummary } from "./ByoLlmSpendSummary";
 
 const mockLoad = vi.fn<ByoLlmSettingsProps["loadSettingsAction"]>();
 const mockLoadBudget = vi.fn<ByoLlmSettingsProps["loadBudgetAction"]>();
@@ -185,6 +186,39 @@ describe("ByoLlmSettings", () => {
         // Read-only summary: no editable form fields until Edit is clicked.
         expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+    });
+
+    it("Setup Budget in the spend summary opens the saved form and focuses the budget field (CHAOS-9030)", async () => {
+        mockLoad.mockResolvedValue({
+            data: { provider: "anthropic", model: "claude-3-5-sonnet", api_key: "sk-1…last" },
+        });
+        Element.prototype.scrollIntoView = vi.fn();
+        renderWithToaster(
+            <>
+                <ByoLlmSettings
+                    loadSettingsAction={mockLoad}
+                    loadBudgetAction={mockLoadBudget}
+                    loadStatusAction={mockLoadStatus}
+                    saveSettingsAction={mockSave}
+                    removeSettingsAction={mockRemove}
+                    runReadinessAction={mockRunReadiness}
+                />
+                <ByoLlmSpendSummary
+                    loadSpendAction={async () => ({
+                        data: { since: "2026-01-01T00:00:00Z", limit: 20, runs: [], legacy: [] },
+                    })}
+                    loadBudgetAction={mockLoadBudget}
+                />
+            </>,
+        );
+        await screen.findByRole("button", { name: "Edit" });
+        expect(
+            screen.queryByLabelText("Monthly organization budget (USD)"),
+        ).not.toBeInTheDocument();
+        await userEvent.click(await screen.findByRole("button", { name: "Setup Budget" }));
+        await waitFor(() =>
+            expect(screen.getByLabelText("Monthly organization budget (USD)")).toHaveFocus(),
+        );
     });
 
     it("shows an Active badge when the status endpoint reports an active configuration", async () => {

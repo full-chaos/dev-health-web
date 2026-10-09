@@ -425,6 +425,8 @@ export const CTA_LABELS = {
     provenance: "Provenance",
     apply: "Apply",
     saveOverride: "Save Override",
+    /** BYO LLM spend summary, no budget configured: go to the monthly budget field (CHAOS-9030). */
+    setupBudget: "Setup Budget",
     manageEntitlements: "Manage Entitlements",
     clearThemeScope: "Clear theme scope",
     exploreContextFabricUseCases: "Explore use cases",
