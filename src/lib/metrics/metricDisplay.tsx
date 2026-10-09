@@ -52,13 +52,21 @@ export function metricCardProps(
         | Pick<MetricDelta, "value" | "unit" | "delta_pct" | "has_data" | "has_prior_data">
         | null
         | undefined,
-): Pick<MetricCardProps, "value" | "valueText" | "unit" | "delta" | "deltaSlot" | "hideTrend"> {
+): Pick<
+    MetricCardProps,
+    "value" | "valueText" | "valueIsMessage" | "unit" | "delta" | "deltaSlot" | "hideTrend"
+> {
     const display = metricDisplay(metric);
     if (!metric || display.state === "missing") {
-        return { valueText: NOT_REPORTED, deltaSlot: <></>, hideTrend: true };
+        return { valueText: NOT_REPORTED, valueIsMessage: true, deltaSlot: <></>, hideTrend: true };
     }
     if (display.state === "no-data") {
-        return { valueText: NO_DATA_FOR_WINDOW, deltaSlot: <></>, hideTrend: true };
+        return {
+            valueText: NO_DATA_FOR_WINDOW,
+            valueIsMessage: true,
+            deltaSlot: <></>,
+            hideTrend: true,
+        };
     }
     return {
         value: metric.value,

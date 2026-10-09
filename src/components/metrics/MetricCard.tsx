@@ -53,6 +53,11 @@ export type MetricCardProps = {
      * value is then the caller's own string, not "Not reported".
      */
     valueText?: string;
+    /**
+     * Opt-in, with `valueText`. The text is a state message ("No data for this window", "Not
+     * reported"), not a value: it is drawn in the empty-state title style, not the large value font.
+     */
+    valueIsMessage?: boolean;
     /** Opt-in. A muted description line after the meta row. */
     description?: string;
     /** Opt-in. No trend at all: no sparkline and no "No trend yet" text. */
@@ -95,6 +100,7 @@ export function MetricCard({
     noTrendLabel = "No trend yet",
     as: Root = "div",
     valueText,
+    valueIsMessage,
     description,
     hideTrend,
     testId,
@@ -108,6 +114,7 @@ export function MetricCard({
     const parts = numericValue !== null ? formatMetricParts(numericValue, unit ?? "") : null;
     const deltaParts = metricDeltaParts(delta, { inverseGood });
     const interactive = Boolean(href || onOpenEvidence);
+    const isMessage = valueIsMessage === true && valueText !== undefined;
 
     // Prototype `.metric-meta`: "<delta> · <note>" as running text; a dot only between two parts.
     const meta: Array<{ key: string; node: ReactNode }> = [];
@@ -189,9 +196,15 @@ export function MetricCard({
             {/* Prototype `.metric-value`: 28px bold, tight tracking, the unit small and muted beside it. */}
             <p
                 data-testid="metric-value"
-                className={`flex items-baseline gap-1.25 text-[1.75rem] leading-[1.1] font-bold tracking-[-0.05rem] ${
-                    hasValue ? "text-foreground" : "text-(--ink-muted)"
-                }`}
+                data-value-kind={isMessage ? "message" : "value"}
+                className={
+                    isMessage
+                        ? // A state message, not a value: the empty-state title style (EmptyState).
+                          "text-h3 font-semibold text-(--ink-muted)"
+                        : `flex items-baseline gap-1.25 text-[1.75rem] leading-[1.1] font-bold tracking-[-0.05rem] ${
+                              hasValue ? "text-foreground" : "text-(--ink-muted)"
+                          }`
+                }
             >
                 {valueText !== undefined ? (
                     valueText

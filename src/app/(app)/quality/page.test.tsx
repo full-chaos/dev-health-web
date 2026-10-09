@@ -232,6 +232,10 @@ describe("Quality page — the served no-data flags (CHAOS-9042)", () => {
         expect(within(tile).getByTestId("metric-value")).toHaveTextContent(
             /^No data for this window$/,
         );
+        expect(within(tile).getByTestId("metric-value")).toHaveAttribute(
+            "data-value-kind",
+            "message",
+        );
         expect(tile.textContent).not.toMatch(/0/);
         expect(within(tile).queryByTestId("metric-delta")).toBeNull();
         expect(within(tile).queryByText("No change")).toBeNull();
@@ -259,6 +263,10 @@ describe("Quality page — the served no-data flags (CHAOS-9042)", () => {
         await renderPage();
         const tile = tileOf("change_failure_rate");
         expect(within(tile).getByTestId("metric-value")).toHaveTextContent("0 %");
+        expect(within(tile).getByTestId("metric-value")).toHaveAttribute(
+            "data-value-kind",
+            "value",
+        );
         expect(within(tile).getByTestId("metric-delta")).toBeInTheDocument();
     });
 

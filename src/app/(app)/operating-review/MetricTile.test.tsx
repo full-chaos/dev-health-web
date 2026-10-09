@@ -48,6 +48,7 @@ describe("Operating Review metric tile", () => {
             />,
         );
         expect(screen.getByTestId("metric-value")).toHaveTextContent(/^0/);
+        expect(screen.getByTestId("metric-value")).toHaveAttribute("data-value-kind", "value");
         expect(text()).not.toContain("No data for this window");
         expect(screen.getByTestId("operating-review-metric-status")).toHaveTextContent("worsened");
     });
@@ -63,6 +64,7 @@ describe("Operating Review metric tile", () => {
             />,
         );
         expect(screen.getByTestId("metric-value")).toHaveTextContent("No data for this window");
+        expect(screen.getByTestId("metric-value")).toHaveAttribute("data-value-kind", "message");
         expect(screen.queryByTestId("operating-review-metric-status")).toBeNull();
         expect(text()).not.toContain("worsened");
         expect(text()).not.toContain("Δ");
