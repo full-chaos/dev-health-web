@@ -28,7 +28,11 @@ const emptyFlow: SankeyResponse = { mode: "investment", nodes: [], links: [] };
 
 const renderSection = (
     flow: SankeyResponse | null,
-    over: { selectedCategory?: string | null } = {},
+    over: {
+        selectedCategory?: string | null;
+        categoryFlowFailed?: boolean;
+        baselineFlow?: SankeyResponse | null;
+    } = {},
 ) =>
     render(
         <TeamCategorySankeySection
@@ -41,8 +45,9 @@ const renderSection = (
             showSubcategories={false}
             effortUnit="work units"
             teamCategoryFlow={flow}
-            baselineSankeyFlow={null}
+            baselineSankeyFlow={over.baselineFlow ?? null}
             isCategoryFlowLoading={false}
+            categoryFlowFailed={over.categoryFlowFailed}
             prepareSankeyFlow={(f) => f}
             buildSankeyTooltipFormatter={() => () => ""}
             resolveSubcategoryIdFromLabel={() => null}
@@ -157,5 +162,54 @@ describe("TeamCategorySankeySection — empty state", () => {
         expect(
             screen.getByText(/Coverage could not be computed for this window/),
         ).toBeInTheDocument();
+    });
+});
+
+describe("TeamCategorySankeySection — a failed read is not a flow and not null coverage", () => {
+    const FAILED_TITLE = "Team-to-category allocation unavailable";
+    const FAILED_TEXT = "The team-to-category flow could not be loaded for this scope and window.";
+
+    it("data: draws the chart and no failure state", () => {
+        renderSection({ ...linkedFlow, coverage: { team: 0.85, repo: 0.72 } });
+        expect(screen.getByTestId("mock-sankey-chart")).toBeInTheDocument();
+        expect(screen.queryByText(FAILED_TITLE)).not.toBeInTheDocument();
+    });
+
+    it("data + error: draws the failure state and no chart beside it", () => {
+        renderSection(
+            { ...linkedFlow, coverage: { team: 0.85, repo: 0.72 } },
+            {
+                categoryFlowFailed: true,
+            },
+        );
+        expect(screen.getByText(FAILED_TITLE)).toBeInTheDocument();
+        expect(screen.getByText(FAILED_TEXT)).toBeInTheDocument();
+        expect(screen.queryByTestId("mock-sankey-chart")).not.toBeInTheDocument();
+    });
+
+    it("error only: draws the failure state, not the null-coverage text or 'no allocation path'", () => {
+        renderSection(null, { categoryFlowFailed: true });
+        expect(screen.getByText(FAILED_TITLE)).toBeInTheDocument();
+        expect(screen.queryByText(/No allocation path/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Coverage could not be computed/)).not.toBeInTheDocument();
+    });
+
+    it("null coverage without an error keeps the existing unavailable text", () => {
+        renderSection(emptyFlow);
+        expect(screen.queryByText(FAILED_TITLE)).not.toBeInTheDocument();
+        expect(
+            screen.getByText(/Coverage could not be computed for this window/),
+        ).toBeInTheDocument();
+    });
+
+    it("a missing baseline (failed comparison) does not blank a current flow that loaded", () => {
+        renderSection(
+            { ...linkedFlow, coverage: { team: 0.85, repo: 0.72 } },
+            {
+                baselineFlow: null,
+            },
+        );
+        expect(screen.getByTestId("mock-sankey-chart")).toBeInTheDocument();
+        expect(screen.queryByText(FAILED_TITLE)).not.toBeInTheDocument();
     });
 });

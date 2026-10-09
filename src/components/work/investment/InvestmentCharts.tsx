@@ -20,6 +20,7 @@ type InvestmentChartsProps = {
     isLoading: boolean;
     investmentMix: ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix> | null;
     isMixLoading: boolean;
+    mixFailed?: boolean;
     focusTheme: string | null;
     focusSubcategory?: string | null;
     setFocusTheme: (value: string | null) => void;
@@ -33,6 +34,7 @@ type InvestmentChartsProps = {
     teamCategoryFlow: SankeyResponse | null | undefined;
     baselineSankeyFlow: SankeyResponse | null | undefined;
     isCategoryFlowLoading: boolean;
+    categoryFlowFailed?: boolean;
     repoTeamFlow: SankeyResponse | null | undefined;
     isRepoTeamLoading: boolean;
     repoTeamFlowFailed: boolean;
@@ -53,6 +55,7 @@ export function InvestmentCharts({
     isLoading,
     investmentMix,
     isMixLoading,
+    mixFailed,
     focusTheme,
     focusSubcategory,
     setFocusTheme,
@@ -64,6 +67,7 @@ export function InvestmentCharts({
     teamCategoryFlow,
     baselineSankeyFlow,
     isCategoryFlowLoading,
+    categoryFlowFailed,
     repoTeamFlow,
     isRepoTeamLoading,
     repoTeamFlowFailed,
@@ -125,6 +129,7 @@ export function InvestmentCharts({
             investmentMix={investmentMix}
             isLoading={isLoading}
             isMixLoading={isMixLoading}
+            mixFailed={mixFailed}
             workUnits={workUnits}
             effortUnit={effortUnit}
             focusTheme={focusTheme}
@@ -175,6 +180,7 @@ export function InvestmentCharts({
                         teamCategoryFlow,
                         baselineSankeyFlow,
                         isCategoryFlowLoading,
+                        categoryFlowFailed,
                         prepareSankeyFlow,
                         buildSankeyTooltipFormatter,
                         resolveSubcategoryIdFromLabel,

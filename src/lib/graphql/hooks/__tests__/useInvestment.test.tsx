@@ -24,7 +24,13 @@ import {
     INVESTMENT_EVIDENCE_QUALITY_QUERY,
     WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
 } from "../../queries";
-import { useInvestmentEvidenceQualityGroups, useWorkItemTeamAttributions } from "../useInvestment";
+import {
+    useInvestmentEvidenceQualityGroups,
+    useInvestmentFlow,
+    useInvestmentMix,
+    useInvestmentRepoTeamFlow,
+    useWorkItemTeamAttributions,
+} from "../useInvestment";
 
 const baseFilters: MetricFilter = {
     scope: { level: "org", ids: [] },
@@ -161,5 +167,83 @@ describe("useInvestmentEvidenceQualityGroups (CHAOS-8745)", () => {
             { key: "feature_delivery", label: "Feature Delivery", mean: 0, total: 4 },
             { key: "quality", label: "Quality", mean: null, total: 2 },
         ]);
+    });
+});
+
+describe("investment hooks surface the query error and never adapt data beside it", () => {
+    const sankeyData = {
+        analytics: {
+            sankey: {
+                nodes: [
+                    { id: "t", label: "Alpha", dimension: "TEAM", value: 1 },
+                    { id: "r", label: "repo-a", dimension: "REPO", value: 1 },
+                ],
+                edges: [{ source: "t", target: "r", value: 1 }],
+                coverage: { teamCoverage: 0.5, repoCoverage: 0.5 },
+            },
+        },
+    };
+    const mixData = {
+        analytics: {
+            breakdowns: [
+                { dimension: "THEME", items: [{ key: "feature_delivery", value: 3 }] },
+                { dimension: "SUBCATEGORY", items: [] },
+            ],
+        },
+    };
+    const err = new Error("coverage query failed");
+    const result = (data: unknown, error?: Error): [MockQueryResult, () => void] => [
+        { data, fetching: false, error },
+        vi.fn(),
+    ];
+
+    type HookCase = readonly [string, () => { data: unknown; error: Error | null }, unknown];
+    const cases: HookCase[] = [
+        ["useInvestmentFlow", () => useInvestmentFlow({ filters: baseFilters }), sankeyData],
+        [
+            "useInvestmentRepoTeamFlow",
+            () => useInvestmentRepoTeamFlow({ filters: baseFilters }),
+            sankeyData,
+        ],
+        ["useInvestmentMix", () => useInvestmentMix({ filters: baseFilters }), mixData],
+    ];
+
+    it.each(cases)("%s: data only -> data, no error", (_name, hook, data) => {
+        mockUseQuery.mockReturnValue(result(data));
+        const { result: r } = renderHook(hook);
+        expect(r.current.data).not.toBeNull();
+        expect(r.current.error).toBeNull();
+    });
+
+    it.each(cases)("%s: data + error -> error, data null", (_name, hook, data) => {
+        mockUseQuery.mockReturnValue(result(data, err));
+        const { result: r } = renderHook(hook);
+        expect(r.current.error).toBe(err);
+        expect(r.current.data).toBeNull();
+    });
+
+    it.each(cases)("%s: error only -> error, data null", (_name, hook) => {
+        mockUseQuery.mockReturnValue(result(undefined, err));
+        const { result: r } = renderHook(hook);
+        expect(r.current.error).toBe(err);
+        expect(r.current.data).toBeNull();
+    });
+
+    it("useInvestmentEvidenceQualityGroups: data + error -> no groups beside the error", () => {
+        mockUseQuery.mockReturnValue(
+            result(
+                {
+                    analytics: {
+                        evidenceQualityByGroup: [{ key: "a", label: "A", mean: 1, total: 2 }],
+                    },
+                },
+                err,
+            ),
+        );
+        const { result: r } = renderHook(() =>
+            useInvestmentEvidenceQualityGroups({ filters: baseFilters, groupBy: "theme" }),
+        );
+        expect(r.current.error).toBe(err);
+        expect(r.current.groups).toEqual([]);
     });
 });
