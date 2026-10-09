@@ -59,6 +59,8 @@ jobs:
                           - 'tsconfig.json'
                           - 'next.config.*'
                           - 'Dockerfile'
+                          - 'ci/ci-images.json'
+                          - '.github/scripts/wait-for-ci-images.sh'
                           - 'docker-compose.yml'
                           - 'compose.dev.yml'
                           - '.dockerignore'
@@ -115,10 +117,18 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
+            # The node pin comes from ci/ci-images.json (CHAOS-9070); buildkit is the org mirror owned by ops, pinned below. On a PR that bumps them the mirror job fills
+            # the mirror at the same time, so wait for it; a missing ref fails, never falls back.
+            - name: Read pinned images and wait for the mirror
+              id: pins
+              run: |
+                  bash .github/scripts/wait-for-ci-images.sh node
+                  echo "node=$(node scripts/bump-ci-images.mjs --ref node mirror)" >> "${GITHUB_OUTPUT}"
+
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
               with:
-                  driver-opts: image=ghcr.io/full-chaos/dev-health-web/moby/buildkit:buildx-stable-1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
+                  driver-opts: image=ghcr.io/full-chaos/moby/buildkit:buildx-stable-1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
 
             - name: Build and push by digest
               id: build
@@ -128,7 +138,7 @@ jobs:
                   platforms: ${{ matrix.platform }}
                   build-args: |
                       BACKEND_URL=${{ secrets.BACKEND_URL || 'http://127.0.0.1:8000' }}
-                      NODE_IMAGE=ghcr.io/full-chaos/dev-health-web/node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
+                      NODE_IMAGE=${{ steps.pins.outputs.node }}
                   tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
                   outputs: ${{ steps.meta.outputs.should_push == 'true' && 'type=image,push-by-digest=true,name-canonical=true,push=true' || format('type=oci,dest=/tmp/docker-image-{0}.tar', strategy.job-index) }}
                   cache-from: type=gha
@@ -184,7 +194,7 @@ jobs:
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
               with:
-                  driver-opts: image=ghcr.io/full-chaos/dev-health-web/moby/buildkit:buildx-stable-1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
+                  driver-opts: image=ghcr.io/full-chaos/moby/buildkit:buildx-stable-1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
 
             - name: Docker meta
               id: meta

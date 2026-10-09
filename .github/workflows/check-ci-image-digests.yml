@@ -1,0 +1,67 @@
+# Report when the CI image digests in ci/ci-images.json fall behind upstream (CHAOS-9070).
+#
+# WHY: the node base of the production web image is pinned by digest (CHAOS-9065), so it no longer
+# takes upstream security patches by itself. This job looks weekly and keeps ONE open issue while a
+# pin is behind. It opens no pull request (that would need a token or an org setting).
+#
+# THE FIX is a normal same-repo PR: `node scripts/bump-ci-images.mjs --write`. The `mirror` job on that
+# PR has a writable token and fills ghcr.io; the consumers wait for it. A dependabot PR cannot do this
+# (read-only token), which is why dependabot is not used for these pins.
+name: Check CI image digests
+
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '41 5 * * 1'
+
+permissions:
+    contents: read
+    issues: write
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        env:
+            GH_TOKEN: ${{ github.token }}
+            ISSUE_TITLE: CI image digests are behind upstream
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - name: Compare pinned digests with upstream
+              id: compare
+              run: |
+                  set +e
+                  node scripts/bump-ci-images.mjs > report.txt
+                  rc=$?
+                  set -e
+                  cat report.txt
+                  echo "rc=${rc}" >> "${GITHUB_OUTPUT}"
+                  # rc 2 = a lookup did not happen: fail loudly, never read it as "current".
+                  if [ "${rc}" -ge 2 ]; then exit "${rc}"; fi
+
+            - name: Open, update or close the tracking issue
+              run: |
+                  set -euo pipefail
+                  rc="${{ steps.compare.outputs.rc }}"
+                  number=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title \
+                    --jq "[.[] | select(.title == \"${ISSUE_TITLE}\")][0].number // empty")
+                  if [ "${rc}" = "1" ]; then
+                    {
+                      echo "Pinned digests in \`ci/ci-images.json\` differ from upstream (\`name current -> upstream\`):"
+                      echo
+                      echo '```'
+                      cat report.txt
+                      echo '```'
+                      echo
+                      echo "Fix: run \`node scripts/bump-ci-images.mjs --write\` on a branch of this repository and open a PR. The \`Mirror CI images\` job on that PR fills the mirror before the image jobs pull."
+                    } > body.md
+                    if [ -n "${number}" ]; then
+                      gh issue edit "${number}" --body-file body.md
+                    else
+                      gh issue create --title "${ISSUE_TITLE}" --body-file body.md
+                    fi
+                  elif [ -n "${number}" ]; then
+                    gh issue comment "${number}" --body "All pinned CI image digests are current again."
+                    gh issue close "${number}"
+                  fi
