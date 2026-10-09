@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { SegmentedControl } from "@/components/shared/SegmentedControl";
