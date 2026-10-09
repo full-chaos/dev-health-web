@@ -38,8 +38,16 @@ describe("ReadTheSignal", () => {
         ).toBeInTheDocument();
     });
 
-    it("a missing delta says the change is unavailable (no 0% claim)", () => {
-        render(<ReadTheSignal label="Throughput" value={50} unit="items" deltaPct={null} />);
+    it("a delta missing for lack of prior data says the change is unavailable (no 0% claim)", () => {
+        render(
+            <ReadTheSignal
+                label="Throughput"
+                value={50}
+                unit="items"
+                deltaPct={null}
+                hasPriorData={false}
+            />,
+        );
         expect(screen.getByTestId("signal-headline")).toHaveTextContent(
             "Throughput: change unavailable",
         );

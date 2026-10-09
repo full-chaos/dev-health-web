@@ -1,3 +1,4 @@
+import { isChangedFromZero } from "@/components/shared/MetricDelta";
 import { applyLensPriority, type LensId } from "@/lib/lensContext";
 import type { MetricDelta } from "@/lib/types";
 
@@ -146,6 +147,25 @@ export const METRIC_CATEGORY_MAP: Record<string, string> = {
 };
 
 /**
+ * Larger change first. A "changed from zero" row (null percent, both windows measured, current
+ * value not 0) has an undefined percent, in the limit infinite: it ranks before every row with a
+ * percent, and two of them by |current value| (the absolute change from 0). A row with a null
+ * percent and no prior data is not a change: it ranks last, as a row with no change.
+ */
+export function compareByChangeMagnitude(a: MetricDelta, b: MetricDelta): number {
+    const rank = (d: MetricDelta) =>
+        isChangedFromZero(d)
+            ? Infinity
+            : typeof d.delta_pct === "number"
+              ? Math.abs(d.delta_pct)
+              : 0;
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra === Infinity && rb === Infinity) return Math.abs(b.value) - Math.abs(a.value);
+    return rb - ra;
+}
+
+/**
  * Sort `deltas` by the given lens's `investigationOrder`.
  *
  * Delegates category ordering to `applyLensPriority` (the single ordering
@@ -156,7 +176,7 @@ export const METRIC_CATEGORY_MAP: Record<string, string> = {
  */
 export function sortDeltasByRole(deltas: MetricDelta[], lensId: string): MetricDelta[] {
     // 1. Pre-sort by magnitude so stable sort preserves within-category ordering.
-    const byMagnitude = [...deltas].sort((a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct));
+    const byMagnitude = [...deltas].sort(compareByChangeMagnitude);
     // 2. Wrap as category-proxy items: applyLensPriority orders by item.id.
     const proxied = byMagnitude.map((delta) => ({
         id: METRIC_CATEGORY_MAP[delta.metric] ?? delta.metric,

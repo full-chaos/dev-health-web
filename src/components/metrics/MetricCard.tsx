@@ -4,7 +4,7 @@ import { LineagePopover } from "@/app/(app)/data-health/_components/LineagePopov
 
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
-import { metricDeltaParts } from "@/components/shared/MetricDelta";
+import { changedFromZeroParts, metricDeltaParts } from "@/components/shared/MetricDelta";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricParts } from "@/lib/formatters";
 import type { SparkPoint } from "@/lib/types";
@@ -19,7 +19,12 @@ export type MetricCardProps = {
     href?: string;
     value?: number;
     unit?: string;
-    delta?: number;
+    /**
+     * The percent change. `undefined` is "no prior period". `null` is "changed from zero" (the
+     * served percent is null: the prior is a measured 0): the tile shows "+12 from 0" from its
+     * `value` and `unit`. Callers pass `null` only with both windows measured.
+     */
+    delta?: number | null;
     /** Shown in the meta line when no delta is available (never a bare "--"). */
     deltaUnavailableLabel?: string;
     /** Lower-is-better metric: an increase is colored as negative (the `MetricDelta` rule). */
@@ -112,7 +117,10 @@ export function MetricCard({
     const hasValue = valueText !== undefined || numericValue !== null;
     // Number and unit apart, from the number and the served unit (never from a display string).
     const parts = numericValue !== null ? formatMetricParts(numericValue, unit ?? "") : null;
-    const deltaParts = metricDeltaParts(delta, { inverseGood });
+    const deltaParts =
+        delta === null
+            ? changedFromZeroParts(numericValue, unit, { inverseGood })
+            : metricDeltaParts(delta, { inverseGood });
     const interactive = Boolean(href || onOpenEvidence);
     const isMessage = valueIsMessage === true && valueText !== undefined;
 

@@ -1,4 +1,5 @@
 import { Section } from "@/components/ui/Section";
+import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/MetricDelta";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 
 type ReadTheSignalProps = {
@@ -6,8 +7,11 @@ type ReadTheSignalProps = {
     label: string;
     value: number | null | undefined;
     unit: string;
-    /** Percent change against the previous window, as persisted. */
+    /** Percent change against the previous window, as persisted. Null: changed from zero. */
     deltaPct: number | null | undefined;
+    /** Served flags; an absent flag counts as data. A null percent is "from zero" only with both. */
+    hasData?: boolean;
+    hasPriorData?: boolean;
 };
 
 /**
@@ -16,7 +20,10 @@ type ReadTheSignalProps = {
  */
 export const signalDirection = (
     deltaPct: number | null | undefined,
+    fromZero?: number,
 ): "up" | "down" | "unchanged" | "unavailable" => {
+    // Changed from zero: the percent is undefined, the change is real; the sign is the value's.
+    if (fromZero !== undefined) return fromZero > 0 ? "up" : "down";
     if (typeof deltaPct !== "number" || !Number.isFinite(deltaPct)) return "unavailable";
     if (formatDelta(deltaPct) === "0%") return "unchanged";
     return deltaPct > 0 ? "up" : "down";
@@ -28,8 +35,21 @@ export const signalDirection = (
  * No AI call, no new data: value and delta come from the same explain payload as the Snapshot card.
  * Neutral ink only: it states what the data shows, it does not judge it.
  */
-export function ReadTheSignal({ label, value, unit, deltaPct }: ReadTheSignalProps) {
-    const direction = signalDirection(deltaPct);
+export function ReadTheSignal({
+    label,
+    value,
+    unit,
+    deltaPct,
+    hasData,
+    hasPriorData,
+}: ReadTheSignalProps) {
+    const fromZero = isChangedFromZero({
+        delta_pct: deltaPct,
+        value,
+        has_data: hasData,
+        has_prior_data: hasPriorData,
+    });
+    const direction = signalDirection(deltaPct, fromZero ? (value as number) : undefined);
     const headline =
         direction === "unavailable"
             ? `${label}: change unavailable`
@@ -45,11 +65,13 @@ export function ReadTheSignal({ label, value, unit, deltaPct }: ReadTheSignalPro
                 {headline}
             </p>
             <p className="mt-3 text-sm text-(--ink-muted)" data-testid="signal-numbers">
-                {hasValue && direction !== "unavailable"
-                    ? `The evidence page shows ${formatMetricValue(value as number, unit)} and a ${formatDelta(deltaPct as number)} change over the selected window.`
-                    : hasValue
-                      ? `The evidence page shows ${formatMetricValue(value as number, unit)}; the change against the previous window is unavailable.`
-                      : "The value for this window is unavailable."}
+                {hasValue && fromZero
+                    ? `The evidence page shows ${formatMetricValue(value as number, unit)}, ${changedFromZeroLabel(value as number, unit)}, over the selected window.`
+                    : hasValue && direction !== "unavailable"
+                      ? `The evidence page shows ${formatMetricValue(value as number, unit)} and a ${formatDelta(deltaPct as number)} change over the selected window.`
+                      : hasValue
+                        ? `The evidence page shows ${formatMetricValue(value as number, unit)}; the change against the previous window is unavailable.`
+                        : "The value for this window is unavailable."}
             </p>
             <div className="mt-4 border-l-2 border-(--card-stroke) pl-3 text-xs leading-relaxed text-(--ink-muted)">
                 <strong className="text-(--ink)">Inspect before interpreting.</strong> Use the

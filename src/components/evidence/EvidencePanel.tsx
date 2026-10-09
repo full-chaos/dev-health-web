@@ -21,6 +21,7 @@ import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buttonClassName } from "@/components/shared/Button";
+import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/MetricDelta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { STATUS_PILL } from "@/lib/statusPill";
@@ -50,7 +51,8 @@ type EvidencePanelData = {
     value?: number;
     unit?: string;
     /** Served by the explain endpoint; shown as the "Change" row. */
-    delta_pct?: number;
+    /** Null: changed from zero (the prior is a measured 0); see `isChangedFromZero`. */
+    delta_pct?: number | null;
     /** Explicit producer facts of the explain endpoint; absent on an API before them (read as data). */
     has_data?: boolean;
     has_prior_data?: boolean;
@@ -427,7 +429,7 @@ export function EvidencePanel({
                                     url: d.evidence_link || "#",
                                     type: "other" as const,
                                     value: `${formatNumber(d.value)}${unit}`,
-                                    valueNote: `(${formatDelta(d.delta_pct)})`,
+                                    valueNote: contributorChange(d, result.unit),
                                 }),
                             );
 
@@ -624,6 +626,16 @@ function drawnEvidence(
 }
 
 /**
+ * The change text of one driver or contributor row: "(+4%)", or "(+12 from 0)" when its percent
+ * is null with both windows measured. A null percent with no prior data says nothing: never "0%".
+ */
+function contributorChange(d: Contributor, unit?: string): string | undefined {
+    if (typeof d.delta_pct === "number") return `(${formatDelta(d.delta_pct)})`;
+    if (isChangedFromZero(d)) return `(${changedFromZeroLabel(d.value, unit)})`;
+    return undefined;
+}
+
+/**
  * The served value and change of a metric payload, as two fact rows. A payload that serves
  * neither number gets no block (no row reads a made value).
  */
@@ -640,7 +652,7 @@ function EvidenceMetricFacts({
     metric?: string;
     value?: number;
     unit?: string;
-    deltaPct?: number;
+    deltaPct?: number | null;
     hasData?: boolean;
     hasPriorData?: boolean;
     rateState?: string | null;
@@ -657,6 +669,13 @@ function EvidenceMetricFacts({
     const measured = display.hasData && !isRevertRate;
     const hasValue = typeof value === "number" && Number.isFinite(value);
     const hasDelta = typeof deltaPct === "number" && Number.isFinite(deltaPct);
+    // State 3: a null percent with both windows measured. The change is the current value from 0.
+    const fromZero = isChangedFromZero({
+        delta_pct: deltaPct,
+        value,
+        has_data: hasData,
+        has_prior_data: hasPriorData,
+    });
     const tier =
         measured && linkTier && Object.hasOwn(LINK_TIER_TEXT, linkTier)
             ? LINK_TIER_TEXT[linkTier]
@@ -668,7 +687,7 @@ function EvidenceMetricFacts({
             </EvidenceFactList>
         );
     }
-    if (!hasValue && !hasDelta) return null;
+    if (!hasValue && !hasDelta && !fromZero) return null;
 
     return (
         <EvidenceFactList aria-label="Value and change" testId="evidence-metric-facts">
@@ -678,7 +697,13 @@ function EvidenceMetricFacts({
             />
             <EvidenceFact
                 label="Change"
-                value={hasDelta && display.comparable ? formatDelta(deltaPct) : undefined}
+                value={
+                    fromZero && display.comparable
+                        ? changedFromZeroLabel(value as number, unit)
+                        : hasDelta && display.comparable
+                          ? formatDelta(deltaPct as number)
+                          : undefined
+                }
             />
             {tier ? <EvidenceFact label="Incident link" value={tier} /> : null}
         </EvidenceFactList>

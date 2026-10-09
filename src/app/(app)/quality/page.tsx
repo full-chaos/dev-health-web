@@ -163,6 +163,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                             testId="association-meter-rows"
                             rows={associationMeterRows(drivers, driverChartLabels, {
                                 signed: true,
+                                unit: explain?.unit,
                             })}
                         />
                     ) : (
