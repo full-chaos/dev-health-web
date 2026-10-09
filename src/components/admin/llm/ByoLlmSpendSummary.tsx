@@ -35,14 +35,22 @@ export type ByoLlmSpendSummaryProps = {
 
 const spendLogger = logger.child({ component: "ByoLlmSpendSummary" });
 
-// Id of the monthly budget input in ByoLlmSettings; the Setup Budget action focuses it.
+// Ids in ByoLlmSettings: the monthly budget input (edit mode only) and the Edit button (view mode).
 const BUDGET_FIELD_ID = "byo-budget-usd";
+const EDIT_BUTTON_ID = "byo-llm-edit";
 
 function focusBudgetField() {
-    const field = document.getElementById(BUDGET_FIELD_ID);
-    if (!field) return;
-    field.scrollIntoView({ behavior: "smooth", block: "center" });
-    field.focus({ preventScroll: true });
+    const reveal = () => {
+        const field = document.getElementById(BUDGET_FIELD_ID);
+        if (!field) return false;
+        field.scrollIntoView({ behavior: "smooth", block: "center" });
+        field.focus({ preventScroll: true });
+        return true;
+    };
+    if (reveal()) return;
+    // View mode has no budget input: open the form first, then focus it once it has rendered.
+    document.getElementById(EDIT_BUTTON_ID)?.click();
+    requestAnimationFrame(() => requestAnimationFrame(reveal));
 }
 
 const PANEL_TITLE = "AI / LLM Spend Summary (BYO-LLM)";
