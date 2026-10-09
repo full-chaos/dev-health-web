@@ -206,7 +206,9 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                     <MeterRows
                         aria-label="WIP associations"
                         testId="wip-association-meter-rows"
-                        rows={associationMeterRows(wipDrivers, wipDriverLabels)}
+                        rows={associationMeterRows(wipDrivers, wipDriverLabels, {
+                            unit: wipExplain?.unit,
+                        })}
                     />
                 ) : (
                     <p className="text-sm text-(--ink-muted)">

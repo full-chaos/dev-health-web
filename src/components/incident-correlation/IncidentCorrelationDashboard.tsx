@@ -16,6 +16,7 @@
  */
 "use client";
 
+import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/MetricDelta";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useMemo } from "react";
@@ -143,7 +144,11 @@ const OPAQUE_LABEL_RE =
     /^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const hasMeaningfulAssociations = (items: Contributor[]) =>
-    items.some((item) => isFiniteNumber(item.delta_pct) && Math.abs(item.delta_pct) > 0);
+    items.some(
+        (item) =>
+            (isFiniteNumber(item.delta_pct) && Math.abs(item.delta_pct) > 0) ||
+            isChangedFromZero(item),
+    );
 
 // ---------------------------------------------------------------------------
 // Pure join / transform helpers (exported for unit testing)
@@ -524,6 +529,7 @@ export function IncidentCorrelationDashboard({
                                     testId="change-failure-associations"
                                     rows={associationMeterRows(topDrivers, driverChartLabels, {
                                         signed: true,
+                                        unit: explainUnit,
                                     })}
                                 />
                             </div>
@@ -563,7 +569,11 @@ export function IncidentCorrelationDashboard({
                                         <span className="text-xs text-(--ink-muted)">
                                             {explainUnit
                                                 ? formatMetricValue(c.value, explainUnit)
-                                                : formatDelta(c.delta_pct)}
+                                                : isChangedFromZero(c)
+                                                  ? changedFromZeroLabel(c.value, explainUnit)
+                                                  : typeof c.delta_pct === "number"
+                                                    ? formatDelta(c.delta_pct)
+                                                    : "No prior period"}
                                         </span>
                                     </div>
                                 ))}

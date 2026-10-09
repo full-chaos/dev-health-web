@@ -18,6 +18,7 @@ import { getRangeParams, withRangeParams } from "@/lib/people/query";
 import type { MetricDelta, PersonCollaborationStat } from "@/lib/types";
 import { Notice } from "@/components/ui/Notice";
 import { NeutralDelta } from "@/components/people/NeutralDelta";
+import { isChangedFromZero, tileDelta } from "@/components/shared/MetricDelta";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { PageHeader } from "@/components/shell/PageHeader";
 
@@ -182,7 +183,20 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                         value={placeholderDeltas ? undefined : delta.value}
                         unit={delta.unit}
                         deltaSlot={
-                            <NeutralDelta value={placeholderDeltas ? undefined : delta.delta_pct} />
+                            <NeutralDelta
+                                value={
+                                    placeholderDeltas
+                                        ? undefined
+                                        : isChangedFromZero(delta)
+                                          ? null
+                                          : (tileDelta(delta) ?? undefined)
+                                }
+                                changedFromZero={
+                                    isChangedFromZero(delta)
+                                        ? { current: delta.value, unit: delta.unit }
+                                        : undefined
+                                }
+                            />
                         }
                         spark={delta.spark}
                         caption="Open metric"

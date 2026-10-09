@@ -1,3 +1,4 @@
+import { tileDelta } from "@/components/shared/MetricDelta";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -396,7 +397,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             label={metricLabel}
                             value={data?.value}
                             unit={data?.unit}
-                            delta={data?.delta_pct}
+                            delta={tileDelta(data)}
                             inverseGood={metricInverseGood(metricFromApi)}
                             caption="vs previous window"
                             hideTrend
@@ -428,7 +429,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             label={metricLabel}
                             value={data?.value}
                             unit={data?.unit}
-                            delta={data?.delta_pct}
+                            delta={tileDelta(data)}
                             inverseGood={metricInverseGood(metricFromApi)}
                             caption="vs previous window"
                             hideTrend
@@ -444,6 +445,8 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             value={data?.value}
                             unit={data?.unit ?? ""}
                             deltaPct={data?.delta_pct}
+                            hasData={data?.has_data}
+                            hasPriorData={data?.has_prior_data}
                         />
                         {contextCard}
                     </div>
@@ -471,6 +474,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                                     testId="association-meter-rows"
                                     rows={associationMeterRows(drivers, undefined, {
                                         signed: true,
+                                        unit: data?.unit,
                                     })}
                                 />
                             ) : (

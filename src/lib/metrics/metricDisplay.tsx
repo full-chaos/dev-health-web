@@ -78,7 +78,8 @@ export function metricDisplay(metric: ServedMetric | null | undefined): MetricDi
 /**
  * The `MetricCard` props that carry the rule, for a served metric row (or none). Spread them
  * first and add the surface's own props after. A change that is not comparable is `undefined`,
- * so the card says "No prior period"; a tile with no value says why and draws no change or trend.
+ * so the card says "No prior period"; a null percent with both windows measured stays `null`
+ * (the card says "+12 from 0"); a tile with no value says why and draws no change or trend.
  */
 export function metricCardProps(
     metric:

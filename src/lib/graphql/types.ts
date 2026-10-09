@@ -870,7 +870,11 @@ export interface HomeGraphQLDelta {
     label: string;
     value: number;
     unit: string;
-    deltaPct: number;
+    /**
+     * The generated type still says `Float!`; the server sends null where the percent is undefined
+     * (prior measured 0, current not 0). Widened here, at the web's own boundary type.
+     */
+    deltaPct: number | null;
     hasData: boolean;
     hasPriorData: boolean;
     spark: HomeGraphQLSparkPoint[];

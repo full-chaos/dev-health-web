@@ -126,6 +126,50 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         });
     });
 
+    // CHAOS-9069: a null percent with both windows measured is a real change from zero.
+    const fromZero = (label: string, value: number, metric: string) => ({
+        metric,
+        label,
+        value,
+        unit: "loc",
+        delta_pct: null,
+        has_data: true,
+        has_prior_data: true,
+        spark: [],
+    });
+
+    it("a worsened change from zero outranks any percent, says the change, carries no severity (neutral)", async () => {
+        mockGetHomeData.mockResolvedValue({
+            deltas: [delta("Churn", 60), fromZero("Churn LOC", 12, "churn_loc")],
+        } as never);
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-top-signal"]).toMatchObject({
+            label: "Reduce Churn LOC",
+            value: "+12 LOC from 0",
+            state: "neutral",
+            direction: "up",
+        });
+        expect(signals["improve-top-signal"].value).not.toMatch(/%|NaN|null/);
+    });
+
+    it("a normal +300% row keeps its severity; a change from zero is not one", async () => {
+        mockGetHomeData.mockResolvedValue({ deltas: [delta("Churn", 300)] } as never);
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-top-signal"]).toMatchObject({ value: "+300%", state: "critical" });
+    });
+
+    it("a change from zero in the GOOD direction is not worsened; a served 0 and a no-prior row are not either", async () => {
+        mockGetHomeData.mockResolvedValue({
+            deltas: [
+                fromZero("Deploy Freq", 3, "deploy_freq"), // higher is better, up: good
+                delta("Churn", 0),
+                { ...fromZero("Churn LOC", 9, "churn_loc"), has_prior_data: false },
+            ],
+        } as never);
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-top-signal"]).toBeUndefined();
+    });
+
     it("NEVER promotes a metric with unknown polarity to the hero (fails closed)", async () => {
         // A metric key absent from the catalog must be excluded from hero
         // promotion entirely — never assumed lower-is-better.

@@ -196,6 +196,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                             testId="association-meter-rows"
                             rows={associationMeterRows(drivers, driverChartLabels, {
                                 signed: true,
+                                unit: highlight?.unit,
                             })}
                         />
                     ) : (

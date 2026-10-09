@@ -26,7 +26,11 @@ export type MetricDelta = {
     label: string;
     value: number;
     unit: string;
-    delta_pct: number;
+    /**
+     * Percent change. Null when it is undefined: the prior is a measured 0 and the current value
+     * is not ("changed from zero"; both flags true). Never read a null as 0.
+     */
+    delta_pct: number | null;
     /** Explicit producer fact. A numeric zero remains valid only when this is true. */
     has_data?: boolean;
     /** Explicit producer fact. A missing comparison must not render as a -100% change. */
@@ -199,7 +203,11 @@ export type Contributor = {
     id: string;
     label: string;
     value: number;
-    delta_pct: number;
+    /** Null: changed from zero (see `MetricDelta.delta_pct`). */
+    delta_pct: number | null;
+    /** Explicit producer facts; absent on an API before them (read as data). */
+    has_data?: boolean;
+    has_prior_data?: boolean;
     evidence_link: string;
     /**
      * Server-resolved human display name (CHAOS-2089, Framework A7). Preferred
@@ -224,7 +232,8 @@ export type ExplainResponse = {
     label: string;
     unit: string;
     value: number;
-    delta_pct: number;
+    /** Null: changed from zero (see `MetricDelta.delta_pct`). */
+    delta_pct: number | null;
     /** Explicit producer facts; absent on an API before them (read as data). */
     has_data?: boolean;
     has_prior_data?: boolean;

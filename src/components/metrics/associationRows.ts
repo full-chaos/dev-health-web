@@ -1,5 +1,6 @@
 import type { MeterRow } from "@/components/ui/MeterRows";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/MetricDelta";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import type { Contributor } from "@/lib/types";
 
@@ -35,14 +36,32 @@ const labelAt = (labels: Labels | undefined, index: number, row: Contributor) =>
 export function associationMeterRows(
     drivers: Contributor[],
     labels?: Labels,
-    options: { signed?: boolean } = {},
+    options: { signed?: boolean; unit?: string } = {},
 ): MeterRow[] {
-    return drivers.map((driver, index) => ({
-        key: driver.id,
-        ...labelAt(labels, index, driver),
-        value: options.signed ? driver.delta_pct : Math.abs(driver.delta_pct),
-        display: signedPercent(driver.delta_pct),
-    }));
+    // A percent has no scale for a change from zero (it is unbounded): its bar fills the track
+    // (the largest served percent of the rows), and its text says the absolute change.
+    const finite = drivers
+        .map((d) => d.delta_pct)
+        .filter((p): p is number => typeof p === "number" && Number.isFinite(p));
+    const fullTrack = Math.max(100, ...finite.map(Math.abs));
+    return drivers.map((driver, index) => {
+        const base = { key: driver.id, ...labelAt(labels, index, driver) };
+        if (isChangedFromZero(driver)) {
+            const sign = driver.value < 0 ? -1 : 1;
+            return {
+                ...base,
+                value: options.signed ? sign * fullTrack : fullTrack,
+                display: changedFromZeroLabel(driver.value, options.unit),
+            };
+        }
+        // A null percent that is not state 3 (no prior data, or no value) is not reported.
+        if (driver.delta_pct === null) return { ...base, value: null, display: undefined };
+        return {
+            ...base,
+            value: options.signed ? driver.delta_pct : Math.abs(driver.delta_pct),
+            display: signedPercent(driver.delta_pct),
+        };
+    });
 }
 
 /** "Primary contributors" as meter rows: the served values, each with the served unit. */

@@ -242,7 +242,7 @@ describe("HomeMonitoring tiles", () => {
             expect(within(el).getByTestId("metric-value")).toHaveTextContent(
                 `${parts.value} ${parts.unit}`,
             );
-            expect(el).toHaveTextContent(`${Math.abs(served.delta_pct)}%`);
+            expect(el).toHaveTextContent(`${Math.abs(served.delta_pct as number)}%`);
             expect(el).toHaveTextContent(MONITORING_TILE_NOTE);
             // The served spark points reach the tile's trend slot.
             expect(within(el).getByTestId("sparkline")).toBeInTheDocument();

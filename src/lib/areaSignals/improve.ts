@@ -67,7 +67,8 @@ async function resolveOrgId(): Promise<string | undefined> {
 import { markFailedSignals } from "./failedRead";
 import type { AreaSignal, AreaSignalState } from "./types";
 import { sortBySeverity } from "./sort";
-import { getMetricPolarity } from "@/lib/metrics/catalog";
+import { compareByChangeMagnitude, getMetricPolarity } from "@/lib/metrics/catalog";
+import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/MetricDelta";
 import { metricDisplay } from "@/lib/metrics/metricDisplay";
 
 /** The unavailable (honest-empty) resolution — no fabricated value. */
@@ -101,10 +102,14 @@ function worstWorsenedDelta(deltas: MetricDelta[] | undefined): MetricDelta | un
             logger.warn({ metric: d.metric }, "Unknown metric polarity, excluding from top signal");
             return false;
         }
-        return polarity === "higherIsBetter" ? d.delta_pct < 0 : d.delta_pct > 0;
+        // Changed from zero (null percent): the direction is the sign of the change, the current value.
+        const change = isChangedFromZero(d) ? d.value : d.delta_pct;
+        if (typeof change !== "number") return false;
+        return polarity === "higherIsBetter" ? change < 0 : change > 0;
     });
     if (worsened.length === 0) return undefined;
-    return [...worsened].sort((a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct))[0];
+    // A change from zero has an undefined percent (infinite): it outranks every percent.
+    return [...worsened].sort(compareByChangeMagnitude)[0];
 }
 
 /**
@@ -245,14 +250,21 @@ export async function getImproveSignals(
         const polarity = getMetricPolarity(worst.metric);
         const isHigherBetter = polarity === "higherIsBetter";
         const action = isHigherBetter ? "Recover" : "Reduce";
-        const sign = worst.delta_pct > 0 ? "+" : "";
+        const fromZero = isChangedFromZero(worst);
+        const percent = worst.delta_pct ?? 0;
+        const sign = percent > 0 ? "+" : "";
         signals.push({
             id: TOP_SIGNAL_ID,
             label: `${action} ${worst.label}`,
             href: "/opportunities",
             metricLabel: `${worst.label} shift`,
-            value: `${sign}${formatNumber(worst.delta_pct, { maximumFractionDigits: 0 })}%`,
-            state: severityForDelta(Math.abs(worst.delta_pct)),
+            // A change from zero has no percent: it says "+12 from 0" and carries NO severity
+            // (a severity comes from evidence, not from an undefined percent): the neutral,
+            // non-severity state. The row keeps its rank as the worst worsened metric.
+            value: fromZero
+                ? changedFromZeroLabel(worst.value, worst.unit)
+                : `${sign}${formatNumber(percent, { maximumFractionDigits: 0 })}%`,
+            state: fromZero ? "neutral" : severityForDelta(Math.abs(percent)),
             direction: isHigherBetter ? "down" : "up",
         });
     }
