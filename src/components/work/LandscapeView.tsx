@@ -7,6 +7,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import type { MetricDelta, QuadrantResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -55,9 +56,7 @@ export function LandscapeView({
                         filters,
                         role: activeRole,
                     })}
-                    value={placeholderDeltas ? undefined : wipMetric?.value}
-                    unit={wipMetric?.unit}
-                    delta={placeholderDeltas ? undefined : wipMetric?.delta_pct}
+                    {...metricCardProps(placeholderDeltas ? null : wipMetric)}
                     spark={wipMetric?.spark}
                     caption="WIP saturation"
                 />
@@ -68,9 +67,7 @@ export function LandscapeView({
                         filters,
                         role: activeRole,
                     })}
-                    value={placeholderDeltas ? undefined : getMetric("blocked_work")?.value}
-                    unit={getMetric("blocked_work")?.unit}
-                    delta={placeholderDeltas ? undefined : getMetric("blocked_work")?.delta_pct}
+                    {...metricCardProps(placeholderDeltas ? null : getMetric("blocked_work"))}
                     spark={getMetric("blocked_work")?.spark}
                     caption="Blocked work"
                 />
@@ -81,9 +78,7 @@ export function LandscapeView({
                         filters,
                         role: activeRole,
                     })}
-                    value={placeholderDeltas ? undefined : getMetric("throughput")?.value}
-                    unit={getMetric("throughput")?.unit}
-                    delta={placeholderDeltas ? undefined : getMetric("throughput")?.delta_pct}
+                    {...metricCardProps(placeholderDeltas ? null : getMetric("throughput"))}
                     spark={getMetric("throughput")?.spark}
                     caption="Delivery volume"
                 />

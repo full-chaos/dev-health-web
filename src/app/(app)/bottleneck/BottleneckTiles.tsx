@@ -4,6 +4,7 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import type { MetricFilter } from "@/lib/filters/types";
+import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 
@@ -43,9 +44,7 @@ export function BottleneckTiles({
                         as="article"
                         testId={`bottleneck-tile-${metric}`}
                         label={label}
-                        value={placeholderDeltas ? undefined : row?.value}
-                        unit={row?.unit}
-                        delta={placeholderDeltas ? undefined : row?.delta_pct}
+                        {...metricCardProps(placeholderDeltas ? null : row)}
                         inverseGood={metricInverseGood(metric)}
                         spark={row?.spark}
                         caption={caption}

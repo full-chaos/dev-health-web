@@ -26,6 +26,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
+import { metricCardProps, metricDisplay } from "@/lib/metrics/metricDisplay";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -150,7 +151,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     }));
 
     const churnText =
-        placeholderDeltas || churnMetric?.value === undefined
+        placeholderDeltas || !metricDisplay(churnMetric).hasData || churnMetric?.value === undefined
             ? undefined
             : formatMetricValue(churnMetric.value, churnMetric.unit ?? "");
     const pageFacts: PageFact[] = [
@@ -185,9 +186,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 <MetricCard
                     label={churnMetric?.label ?? "Code Churn"}
                     href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
-                    value={placeholderDeltas ? undefined : churnMetric?.value}
-                    unit={churnMetric?.unit}
-                    delta={placeholderDeltas ? undefined : churnMetric?.delta_pct}
+                    {...metricCardProps(placeholderDeltas ? null : churnMetric)}
                     spark={churnMetric?.spark}
                     caption="Churn over the active window"
                 />
