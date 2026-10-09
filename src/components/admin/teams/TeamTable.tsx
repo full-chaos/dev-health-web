@@ -5,6 +5,8 @@ import Link from "next/link";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { isCustomTeam } from "./customTeam";
+import { TeamDeleteControl } from "./TeamDeleteControl";
 
 export type Team = {
     team_id: string;
@@ -16,7 +18,6 @@ export type Team = {
 
 type TeamTableProps = {
     teams: Team[];
-    onDeleteAction?: (teamId: string) => void;
 };
 
 function includesSearch(value: string | null | undefined, query: string): boolean {
@@ -38,7 +39,7 @@ function teamMatchesSearch(team: Team, query: string): boolean {
     );
 }
 
-export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
+export function TeamTable({ teams }: TeamTableProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const filteredTeams = useMemo(
         () => teams.filter((team) => teamMatchesSearch(team, searchQuery)),
@@ -118,14 +119,8 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
                     >
                         {CTA_LABELS.edit}
                     </Link>
-                    {onDeleteAction && (
-                        <button
-                            type="button"
-                            onClick={() => onDeleteAction(team.team_id)}
-                            className="text-(--negative) hover:underline"
-                        >
-                            {CTA_LABELS.delete}
-                        </button>
+                    {isCustomTeam(team.team_id) && (
+                        <TeamDeleteControl teamId={team.team_id} teamName={team.name} />
                     )}
                 </div>
             ),

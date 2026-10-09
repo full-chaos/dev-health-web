@@ -20,6 +20,14 @@ vi.mock("next/link", () => ({
     ),
 }));
 
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ refresh: vi.fn() }),
+}));
+
+vi.mock("@/lib/admin/server", () => ({
+    deleteTeam: vi.fn(),
+}));
+
 const teams: Team[] = [
     {
         team_id: "platform",
@@ -38,6 +46,21 @@ const teams: Team[] = [
 ];
 
 describe("TeamTable", () => {
+    it("offers delete for a manually created team only", () => {
+        render(
+            <TeamTable
+                teams={[
+                    { ...teams[0], team_id: "custom:abc", name: "Night Owls" },
+                    { ...teams[1], team_id: "gh:acme/growth" },
+                ]}
+            />,
+        );
+
+        expect(screen.getByRole("button", { name: "Delete Night Owls" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Delete Growth" })).not.toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: /^Delete / })).toHaveLength(1);
+    });
+
     it("filters rows by team metadata typed into table search", async () => {
         const user = userEvent.setup();
         render(<TeamTable teams={teams} />);
