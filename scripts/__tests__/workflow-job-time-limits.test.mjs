@@ -57,6 +57,7 @@ describe("workflow job time limits (CHAOS-8530)", () => {
         "governance-src-test-policy.yml": ["enforce-src-test-policy"],
         "deploy-demo.yml": ["build", "deploy"],
         "package.yml": ["package"],
+        "mirror-ci-images.yml": ["mirror"],
     };
 
     it("knows exactly the jobs of every workflow (a new job needs a limit decision)", () => {

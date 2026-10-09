@@ -117,18 +117,18 @@ describe("live-e2e backend raises the registration limit", () => {
     });
 });
 
-describe("live-e2e backend keeps the Redis service", () => {
-    it("declares a healthy Redis service on the job", () => {
+describe("live-e2e backend keeps the Valkey service", () => {
+    it("declares a healthy Valkey service on the job, pulled from the ghcr.io mirror", () => {
         // Given: the live-e2e workflow source.
         const source = readFileSync(WORKFLOW_PATH, "utf8");
 
-        // When: the Redis service mapping is selected from the live-e2e job.
+        // When: the Valkey service mapping is selected from the live-e2e job.
         const liveE2eJob = jobBlock(source, "live-e2e");
-        const redis = liveE2eJob === null ? null : serviceBlock(liveE2eJob, "redis");
+        const redis = liveE2eJob === null ? null : serviceBlock(liveE2eJob, "valkey");
 
-        // Then: GitHub Actions can start and health-check the Redis endpoint.
-        expect(serviceValue(redis, "image")).toBe("redis:7");
+        // Then: GitHub Actions can start and health-check the Valkey endpoint.
+        expect(serviceValue(redis, "image")).toBe("ghcr.io/full-chaos/valkey/valkey:8-alpine");
         expect(hasPortMapping(redis, 6379)).toBe(true);
-        expect(healthCommand(redis)).toBe("redis-cli ping");
+        expect(healthCommand(redis)).toBe("valkey-cli ping");
     });
 });
