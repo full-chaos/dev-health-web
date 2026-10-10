@@ -1,6 +1,6 @@
 "use client";
 
-import { tileDelta } from "@/components/shared/MetricDelta";
+import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { MetricCard } from "@/components/metrics/MetricCard";
@@ -253,9 +253,7 @@ export function ConfidencePanel({
                             filters,
                             role: activeRole,
                         })}
-                        value={reworkMetric.value}
-                        unit={reworkMetric.unit}
-                        delta={tileDelta(reworkMetric)}
+                        {...metricCardProps(reworkMetric)}
                         spark={reworkMetric.spark}
                         caption="PRs requiring rework"
                     />

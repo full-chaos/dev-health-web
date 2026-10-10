@@ -108,6 +108,48 @@ describe("explain panel rate state", () => {
         expect(facts).not.toHaveTextContent("0 %");
     });
 
+    it.each([
+        ["unknown_no_review_evidence", "No review data for this window"],
+        ["not_applicable_no_rework_signal", "Rework is not measurable for this provider"],
+        ["not_applicable_no_merged_pull_requests", "No merged pull requests in this window"],
+    ])("pr_rework_ratio %s says why, no 0 %%", async (state, text) => {
+        const facts = await drawn(
+            explain({
+                metric: "pr_rework_ratio",
+                has_data: false,
+                has_prior_data: true,
+                rate_state: state,
+            }),
+            "pr_rework_ratio",
+        );
+        expect(facts).toHaveTextContent(text);
+        expect(facts).not.toHaveTextContent("0 %");
+    });
+
+    it("pr_rework_ratio measured 0 draws 0 as a value", async () => {
+        const facts = await drawn(
+            explain({
+                metric: "pr_rework_ratio",
+                value: 0,
+                has_data: true,
+                has_prior_data: true,
+                rate_state: "measured",
+            }),
+            "pr_rework_ratio",
+        );
+        expect(facts).toHaveTextContent("0 %");
+        expect(facts).not.toHaveTextContent("No ");
+    });
+
+    it("pr_rework_ratio unknown future state says No data for this window", async () => {
+        const facts = await drawn(
+            explain({ metric: "pr_rework_ratio", has_data: false, rate_state: "something_new" }),
+            "pr_rework_ratio",
+        );
+        expect(facts).toHaveTextContent("No data for this window");
+        expect(facts).not.toHaveTextContent("something_new");
+    });
+
     it("null state with no data says No data for this window", async () => {
         const facts = await drawn(explain({ has_data: false, rate_state: null }));
         expect(facts).toHaveTextContent("No data for this window");
