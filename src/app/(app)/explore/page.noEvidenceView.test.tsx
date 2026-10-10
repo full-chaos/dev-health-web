@@ -39,6 +39,26 @@ vi.mock("@/lib/api/filterOptions", () => ({
 import Explore from "./page";
 
 const TEXT = "No evidence view for this metric yet.";
+const CARDS = [
+    "explore-metric-tile",
+    "explore-signal-row",
+    "association-cards",
+    "evidence-shortcuts",
+];
+const expectNoCards = () => {
+    for (const id of CARDS) expect(screen.queryByTestId(id)).toBeNull();
+    expect(screen.queryByText("Read the signal")).toBeNull();
+    expect(screen.queryByText("Likely associations")).toBeNull();
+    expect(screen.queryByText("Primary contributors")).toBeNull();
+    expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
+    expect(screen.getByTestId("explore-context")).toBeInTheDocument();
+    expect(screen.getByTestId("explore-return")).toBeInTheDocument();
+};
+const expectAllCards = () => {
+    for (const id of CARDS) expect(screen.getByTestId(id)).toBeInTheDocument();
+    expect(screen.getByText("Read the signal")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View evidence" })).toBeInTheDocument();
+};
 const renderMetric = async (metric: string) =>
     render(await Explore({ searchParams: Promise.resolve({ metric }) }));
 
@@ -60,19 +80,21 @@ describe("/explore, metric with no explain view (CHAOS-9153)", () => {
         };
         await renderMetric("nope_metric");
         expect(screen.getByTestId("explore-no-evidence-view")).toHaveTextContent(TEXT);
+        expectNoCards();
     });
 
     it.each([400, 404, 422])("says so when the route answers %i", async (status) => {
         post.failure = new Error(apiErrorMessage(status));
         await renderMetric("nope_metric");
         expect(screen.getByTestId("explore-no-evidence-view")).toHaveTextContent(TEXT);
+        expectNoCards();
     });
 
     it("a 5xx keeps the failure state: no such text", async () => {
         post.failure = new Error(apiErrorMessage(503));
         await renderMetric("cycle_time");
         expect(screen.queryByText(TEXT)).toBeNull();
-        expect(screen.getByTestId("explore-metric-tile")).toBeInTheDocument();
+        expectAllCards();
     });
 
     it("an answer for the metric with no rows keeps the no-data state: no such text", async () => {
@@ -88,6 +110,7 @@ describe("/explore, metric with no explain view (CHAOS-9153)", () => {
         };
         await renderMetric("cycle_time");
         expect(screen.queryByText(TEXT)).toBeNull();
+        expectAllCards();
         expect(
             screen.getByText("Association detail will appear once data is ingested."),
         ).toBeInTheDocument();

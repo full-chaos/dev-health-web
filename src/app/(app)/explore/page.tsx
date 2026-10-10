@@ -405,7 +405,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                         ? "Evidence table for the selected metric."
                         : "Evidence detail for the selected metric."
                 }
-                actions={<PageHeaderEvidenceAction subject={evidenceSubject} />}
+                actions={
+                    noEvidenceView ? undefined : (
+                        <PageHeaderEvidenceAction subject={evidenceSubject} />
+                    )
+                }
             />
 
             <ScopeBar view="explore" />
@@ -441,12 +445,15 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             ) : view === "explain" ? (
                 <>
                     {/* Static guidance, not a status update: no live region. */}
-                    <Notice variant="info" live={false} data-testid="explore-notice">
-                        <strong className="font-semibold text-foreground">
-                            Metric evidence is a full destination as well as a contextual drawer.
-                        </strong>{" "}
-                        Keep the metric, scope, and source together.
-                    </Notice>
+                    {!noEvidenceView && (
+                        <Notice variant="info" live={false} data-testid="explore-notice">
+                            <strong className="font-semibold text-foreground">
+                                Metric evidence is a full destination as well as a contextual
+                                drawer.
+                            </strong>{" "}
+                            Keep the metric, scope, and source together.
+                        </Notice>
+                    )}
 
                     {noEvidenceView && (
                         <Notice variant="info" live={false} data-testid="explore-no-evidence-view">
@@ -454,102 +461,111 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                         </Notice>
                     )}
 
-                    {/* One tile (prototype `metrics([...], 1)`): the served value and change. */}
-                    <MetricStrip data-testid="explore-metric-tile">
-                        <MetricCard
-                            label={metricLabel}
-                            // The served flags decide the value and the change text (shared rule):
-                            // a no-data window shows its text, never the served 0 placeholder.
-                            {...(data ? metricCardProps(data) : {})}
-                            polarity={getMetricPolarity(metricFromApi)}
-                            caption={withRepoScopeNote(
-                                "vs previous window",
-                                metricFromApi,
-                                filters,
-                            )}
-                            hideTrend
-                        />
-                    </MetricStrip>
-
-                    <div
-                        data-testid="explore-signal-row"
-                        className="grid gap-4.5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
-                    >
-                        <ReadTheSignal
-                            label={metricLabel}
-                            value={data?.value}
-                            unit={data?.unit ?? ""}
-                            deltaPct={data?.delta_pct}
-                            hasData={data?.has_data}
-                            hasPriorData={data?.has_prior_data}
-                        />
-                        {contextCard}
-                    </div>
-
-                    <div data-testid="association-cards" className="grid gap-4.5 lg:grid-cols-2">
-                        <Section
-                            title="Likely associations"
-                            description="Selected-window associations"
-                            action={
-                                <MetricEvidenceButton
-                                    subject={{
-                                        title: metricLabel,
-                                        metric: metricFromApi,
+                    {noEvidenceView ? (
+                        contextCard
+                    ) : (
+                        <>
+                            {/* One tile (prototype `metrics([...], 1)`): the served value and change. */}
+                            <MetricStrip data-testid="explore-metric-tile">
+                                <MetricCard
+                                    label={metricLabel}
+                                    // The served flags decide the value and the change text (shared rule):
+                                    // a no-data window shows its text, never the served 0 placeholder.
+                                    {...(data ? metricCardProps(data) : {})}
+                                    polarity={getMetricPolarity(metricFromApi)}
+                                    caption={withRepoScopeNote(
+                                        "vs previous window",
+                                        metricFromApi,
                                         filters,
-                                        role: activeRole,
-                                    }}
-                                    section="Likely associations"
+                                    )}
+                                    hideTrend
                                 />
-                            }
-                        >
-                            {drivers.length ? (
-                                <MeterRows
-                                    signed
-                                    aria-label="Likely associations"
-                                    testId="association-meter-rows"
-                                    rows={associationMeterRows(drivers, undefined, {
-                                        signed: true,
-                                        unit: data?.unit,
-                                    })}
+                            </MetricStrip>
+
+                            <div
+                                data-testid="explore-signal-row"
+                                className="grid gap-4.5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
+                            >
+                                <ReadTheSignal
+                                    label={metricLabel}
+                                    value={data?.value}
+                                    unit={data?.unit ?? ""}
+                                    deltaPct={data?.delta_pct}
+                                    hasData={data?.has_data}
+                                    hasPriorData={data?.has_prior_data}
                                 />
-                            ) : (
-                                <p className="text-sm text-(--ink-muted)">
-                                    Association detail will appear once data is ingested.
-                                </p>
-                            )}
-                            <DataNote>
-                                Association values are percent change in the selected window; no
-                                causal conclusion is added.
-                            </DataNote>
-                        </Section>
-                        <Section
-                            title="Primary contributors"
-                            description="Where the impact concentrates in this window."
-                            action={
-                                <MetricEvidenceButton
-                                    subject={{
-                                        title: metricLabel,
-                                        metric: metricFromApi,
-                                        filters,
-                                        role: activeRole,
-                                    }}
-                                    section="Primary contributors"
-                                />
-                            }
-                        >
-                            {contributors.length ? (
-                                <MeterRows
-                                    aria-label="Primary contributors"
-                                    testId="contributor-meter-rows"
-                                    rows={contributorMeterRows(contributors, data?.unit)}
-                                />
-                            ) : (
-                                <p className="text-sm text-(--ink-muted)">
-                                    Contributor detail will appear once data is ingested.
-                                </p>
-                            )}
-                        </Section>
-                    </div>
+                                {contextCard}
+                            </div>
+
+                            <div
+                                data-testid="association-cards"
+                                className="grid gap-4.5 lg:grid-cols-2"
+                            >
+                                <Section
+                                    title="Likely associations"
+                                    description="Selected-window associations"
+                                    action={
+                                        <MetricEvidenceButton
+                                            subject={{
+                                                title: metricLabel,
+                                                metric: metricFromApi,
+                                                filters,
+                                                role: activeRole,
+                                            }}
+                                            section="Likely associations"
+                                        />
+                                    }
+                                >
+                                    {drivers.length ? (
+                                        <MeterRows
+                                            signed
+                                            aria-label="Likely associations"
+                                            testId="association-meter-rows"
+                                            rows={associationMeterRows(drivers, undefined, {
+                                                signed: true,
+                                                unit: data?.unit,
+                                            })}
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-(--ink-muted)">
+                                            Association detail will appear once data is ingested.
+                                        </p>
+                                    )}
+                                    <DataNote>
+                                        Association values are percent change in the selected
+                                        window; no causal conclusion is added.
+                                    </DataNote>
+                                </Section>
+                                <Section
+                                    title="Primary contributors"
+                                    description="Where the impact concentrates in this window."
+                                    action={
+                                        <MetricEvidenceButton
+                                            subject={{
+                                                title: metricLabel,
+                                                metric: metricFromApi,
+                                                filters,
+                                                role: activeRole,
+                                            }}
+                                            section="Primary contributors"
+                                        />
+                                    }
+                                >
+                                    {contributors.length ? (
+                                        <MeterRows
+                                            aria-label="Primary contributors"
+                                            testId="contributor-meter-rows"
+                                            rows={contributorMeterRows(contributors, data?.unit)}
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-(--ink-muted)">
+                                            Contributor detail will appear once data is ingested.
+                                        </p>
+                                    )}
+                                </Section>
+                            </div>
+                        </>
+                    )}
                 </>
             ) : (
                 contextCard
@@ -704,7 +720,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             )}
 
             {/* Not drawn in the prototype, and the drawer does not list these links: kept, last. */}
-            {view === "explain" && (
+            {view === "explain" && !noEvidenceView && (
                 <Section
                     data-testid="evidence-shortcuts"
                     title="Evidence shortcuts"
