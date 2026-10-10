@@ -90,6 +90,7 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             has_data: d.hasData,
             has_prior_data: d.hasPriorData,
             ...(d.rateState ? { rate_state: d.rateState } : {}),
+            ...(d.rateCoverage !== undefined ? { rate_coverage: d.rateCoverage } : {}),
             spark: d.spark.map((p) => ({ ts: p.ts, value: p.value })),
         })),
         rework_theme_allocation: result.reworkThemeAllocation.map((r) => ({

@@ -40,6 +40,11 @@ export type MetricDelta = {
      * (an API before it, or no stored counts). A string this web does not know reads as no state.
      */
     rate_state?: string | null;
+    /**
+     * Coverage of the rate: a 0..1 fraction, not a percent. Null: none served (no merged pull
+     * request or no stored counts). Absent: the REST answer, or an API before it. 0 is a value.
+     */
+    rate_coverage?: number | null;
     spark: SparkPoint[];
 };
 

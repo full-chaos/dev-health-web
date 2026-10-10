@@ -880,6 +880,8 @@ export interface HomeGraphQLDelta {
     spark: HomeGraphQLSparkPoint[];
     /** Why a change failure rate has a value or not; null or absent when none is served. */
     rateState?: string | null;
+    /** Coverage of the rate, a 0..1 fraction (not a percent); null or absent when none is served. */
+    rateCoverage?: number | null;
 }
 
 export interface HomeGraphQLReworkThemeAllocation {
