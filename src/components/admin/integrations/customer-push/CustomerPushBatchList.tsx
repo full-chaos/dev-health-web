@@ -10,6 +10,7 @@ import {
     type ProducerBucket,
 } from "@/lib/customer-push/producer";
 import type { CustomerPushBatchSummary } from "@/lib/admin/types";
+import { appPath } from "@/lib/navigation/appPath";
 
 type CustomerPushBatchListProps = {
     provider: string;
@@ -117,7 +118,15 @@ export function CustomerPushBatchList({
                             <tr key={batch.ingestion_id} className="hover:bg-(--card-70)">
                                 <td className="px-4 py-3">
                                     <Link
-                                        href={`/org/admin/integrations/${provider}/customer-push/${sourceId}/batches/${batch.ingestion_id}`}
+                                        href={appPath(
+                                            "/org/admin/integrations/[provider]/customer-push/[source_id]/batches/[ingestion_id]",
+                                            {
+                                                provider,
+                                                source_id: sourceId,
+                                                ingestion_id: batch.ingestion_id,
+                                            },
+                                        )}
+                                        prefetch={false}
                                         className="inline-flex rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-2)"
                                     >
                                         <span className="text-sm text-foreground">

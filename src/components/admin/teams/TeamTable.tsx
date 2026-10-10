@@ -7,6 +7,7 @@ import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isCustomTeam } from "./customTeam";
 import { TeamDeleteControl } from "./TeamDeleteControl";
+import { appPath } from "@/lib/navigation/appPath";
 
 export type Team = {
     team_id: string;
@@ -52,7 +53,11 @@ export function TeamTable({ teams }: TeamTableProps) {
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 font-medium text-foreground",
             render: (team) => (
-                <Link href={`/org/admin/teams/${team.team_id}/edit`} className="hover:underline">
+                <Link
+                    href={appPath("/org/admin/teams/[id]/edit", { id: team.team_id })}
+                    prefetch={false}
+                    className="hover:underline"
+                >
                     {team.name}
                 </Link>
             ),
@@ -114,7 +119,8 @@ export function TeamTable({ teams }: TeamTableProps) {
             render: (team) => (
                 <div className="flex justify-end gap-3">
                     <Link
-                        href={`/org/admin/teams/${team.team_id}/edit`}
+                        href={appPath("/org/admin/teams/[id]/edit", { id: team.team_id })}
+                        prefetch={false}
                         className="text-(--accent-2) hover:underline"
                     >
                         {CTA_LABELS.edit}

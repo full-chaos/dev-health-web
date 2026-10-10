@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { DataTable } from "@/components/shared/DataTable";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { broadcastImpersonationEvent, openImpersonationWindow } from "@/lib/impersonation-events";
+import { appPath } from "@/lib/navigation/appPath";
 
 type UserTableProps = {
     users: User[];
@@ -70,7 +71,11 @@ export function UserTable({ users }: UserTableProps) {
                     headerClassName: "px-6 py-4 font-medium",
                     className: "px-6 py-4 font-medium text-foreground",
                     render: (user) => (
-                        <Link href={`/superadmin/users/${user.id}`} className="hover:underline">
+                        <Link
+                            href={appPath("/superadmin/users/[id]", { id: user.id })}
+                            prefetch={false}
+                            className="hover:underline"
+                        >
                             <div className="font-medium">{user.full_name || "No Name"}</div>
                             <div className="text-xs text-(--ink-muted)">{user.email}</div>
                         </Link>
@@ -156,7 +161,8 @@ export function UserTable({ users }: UserTableProps) {
                                 </button>
                             )}
                             <Link
-                                href={`/superadmin/users/${user.id}`}
+                                href={appPath("/superadmin/users/[id]", { id: user.id })}
+                                prefetch={false}
                                 className="text-(--accent-2) hover:underline"
                             >
                                 {CTA_LABELS.edit}

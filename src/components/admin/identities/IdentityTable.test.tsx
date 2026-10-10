@@ -126,4 +126,32 @@ describe("IdentityTable", () => {
         expect(screen.getByRole("link", { name: "Alice Smith" })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: "Bo Brown" })).not.toBeInTheDocument();
     });
+    // CHAOS-9105: the identity id and each team id are encoded in the row links.
+    it("encodes the identity id and the team ids in the row links", () => {
+        render(
+            <IdentityTable
+                identities={[
+                    {
+                        canonical_id: "person+ops@example.com",
+                        display_name: "Ops Person",
+                        email: "person+ops@example.com",
+                        team_ids: ["jira:8012df0c-1a2b-4c3d-9e4f-000000000001", "R&D"],
+                        provider_identities: {},
+                    },
+                ]}
+            />,
+        );
+
+        const row = screen.getByRole("row", { name: /Ops Person/u });
+        const hrefs = within(row)
+            .getAllByRole("link")
+            .map((link) => link.getAttribute("href"));
+
+        expect(hrefs).toEqual([
+            "/org/admin/identities/person%2Bops%40example.com/edit",
+            "/org/admin/teams/jira%3A8012df0c-1a2b-4c3d-9e4f-000000000001/edit",
+            "/org/admin/teams/R%26D/edit",
+            "/org/admin/identities/person%2Bops%40example.com/edit",
+        ]);
+    });
 });

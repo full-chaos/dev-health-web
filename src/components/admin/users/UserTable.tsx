@@ -9,6 +9,7 @@ import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatDateUTC } from "@/lib/formatters";
+import { appPath } from "@/lib/navigation/appPath";
 
 export type { User };
 
@@ -61,7 +62,11 @@ export function UserTable({ users }: UserTableProps) {
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 font-medium text-foreground",
             render: (user) => (
-                <Link href={`/org/admin/users/${user.id}`} className="hover:underline">
+                <Link
+                    href={appPath("/org/admin/users/[id]", { id: user.id })}
+                    prefetch={false}
+                    className="hover:underline"
+                >
                     {user.full_name || user.username || "N/A"}
                 </Link>
             ),
@@ -108,7 +113,8 @@ export function UserTable({ users }: UserTableProps) {
             className: "px-6 py-4 text-right",
             render: (user) => (
                 <Link
-                    href={`/org/admin/users/${user.id}/edit`}
+                    href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
+                    prefetch={false}
                     className="text-(--accent-2) hover:underline"
                 >
                     {CTA_LABELS.edit}

@@ -118,4 +118,27 @@ describe("TeamTable", () => {
         const coreRow = screen.getByRole("link", { name: "Core" }).closest("tr")!;
         expect(within(coreRow).getAllByText("—").length).toBeGreaterThanOrEqual(2);
     });
+    // CHAOS-9105: a raw id in the href made the router prefetch the same edit route without end.
+    it.each([
+        [
+            "jira:8012df0c-1a2b-4c3d-9e4f-000000000001",
+            "jira%3A8012df0c-1a2b-4c3d-9e4f-000000000001",
+        ],
+        ["custom:alpha", "custom%3Aalpha"],
+        ["R&D", "R%26D"],
+        ["a/b", "a%2Fb"],
+        ["50%", "50%25"],
+    ])("encodes the team id %j in both edit links of the row", (teamId, encoded) => {
+        render(<TeamTable teams={[{ ...teams[0], team_id: teamId, name: "Special" }]} />);
+
+        const row = screen.getByRole("row", { name: /Special/u });
+        const hrefs = within(row)
+            .getAllByRole("link")
+            .map((link) => link.getAttribute("href"));
+
+        expect(hrefs).toEqual([
+            `/org/admin/teams/${encoded}/edit`,
+            `/org/admin/teams/${encoded}/edit`,
+        ]);
+    });
 });

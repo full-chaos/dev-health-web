@@ -150,6 +150,7 @@ function ConfigTableRow({
                 <div className={row.kind === "child" ? "pl-7" : undefined}>
                     <Link
                         href={syncConfigHref(row.config.id)}
+                        prefetch={false}
                         className="font-medium text-foreground hover:underline"
                     >
                         {row.config.name}
@@ -188,6 +189,7 @@ function ConfigTableRow({
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
                             href={syncConfigHref(row.config.id)}
+                            prefetch={false}
                             aria-label={`Manage ${row.config.name}`}
                             className={buttonClassName("secondary", "sm")}
                         >
