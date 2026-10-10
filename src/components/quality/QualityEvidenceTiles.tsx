@@ -4,6 +4,7 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import type { MetricFilter } from "@/lib/filters/types";
+import { withReworkCoverageNote } from "@/lib/metrics/coverageNote";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import type { MetricDelta, SparkPoint } from "@/lib/types";
 
@@ -40,6 +41,7 @@ export function QualityEvidenceTiles({ tiles, filters, role }: QualityEvidenceTi
                     label={tile.label}
                     {...metricCardProps(tile.row)}
                     spark={tile.spark}
+                    caption={withReworkCoverageNote(undefined, tile.row)}
                     description={tile.description}
                     onOpenEvidence={() =>
                         evidence.open({ title: tile.label, metric: tile.metric, filters, role })

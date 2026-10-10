@@ -1,5 +1,6 @@
 "use client";
 
+import { withReworkCoverageNote } from "@/lib/metrics/coverageNote";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
@@ -255,7 +256,7 @@ export function ConfidencePanel({
                         })}
                         {...metricCardProps(reworkMetric)}
                         spark={reworkMetric.spark}
-                        caption="PRs requiring rework"
+                        caption={withReworkCoverageNote("PRs requiring rework", reworkMetric)}
                     />
                 ) : (
                     <MetricCard
