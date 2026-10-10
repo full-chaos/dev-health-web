@@ -554,3 +554,52 @@ describe("toHomeResponse rateCoverage (CHAOS-9141)", () => {
         expect("rate_coverage" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
     });
 });
+
+describe("toHomeResponse repository link fields", () => {
+    const withDelta = (extra: object) => ({
+        ...graphqlFixture,
+        deltas: [{ ...graphqlFixture.deltas[0], ...extra }],
+    });
+
+    it("maps the four fields to the snake_case shape", () => {
+        const d = toHomeResponse(
+            withDelta({
+                repoLinkState: "linked",
+                repoLinkBasis: { native: 3, explicitText: 2, heuristic: 1 },
+                repoLinkMultiRepoItems: 4,
+                repoLinkCoverage: { linkedItems: 6, itemsInWindow: 10 },
+            }),
+        ).deltas[0];
+        expect(d.repo_link_state).toBe("linked");
+        expect(d.repo_link_basis).toEqual({ native: 3, explicit_text: 2, heuristic: 1 });
+        expect(d.repo_link_multi_repo_items).toBe(4);
+        expect(d.repo_link_coverage).toEqual({ linked_items: 6, items_in_window: 10 });
+    });
+
+    it("keeps null as null and 0 as 0", () => {
+        const d = toHomeResponse(
+            withDelta({
+                repoLinkState: null,
+                repoLinkBasis: null,
+                repoLinkMultiRepoItems: 0,
+                repoLinkCoverage: { linkedItems: 0, itemsInWindow: 0 },
+            }),
+        ).deltas[0];
+        expect(d.repo_link_state).toBeNull();
+        expect(d.repo_link_basis).toBeNull();
+        expect(d.repo_link_multi_repo_items).toBe(0);
+        expect(d.repo_link_coverage).toEqual({ linked_items: 0, items_in_window: 0 });
+    });
+
+    it("leaves the keys out when the answer has none (absent)", () => {
+        const d = toHomeResponse(graphqlFixture).deltas[0];
+        for (const k of [
+            "repo_link_state",
+            "repo_link_basis",
+            "repo_link_multi_repo_items",
+            "repo_link_coverage",
+        ]) {
+            expect(k in d).toBe(false);
+        }
+    });
+});

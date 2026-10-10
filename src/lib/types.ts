@@ -46,6 +46,21 @@ export type MetricDelta = {
      * false); false = the value is NOT narrowed by the repository. Undefined: an older backend.
      */
     repo_filter_applied?: boolean | null;
+    /** Served repository link state; null: none served. Absent: an older backend. */
+    repo_link_state?: string | null;
+    /** Items per link tier; null: none served. Absent: an older backend. */
+    repo_link_basis?: {
+        native?: number | null;
+        explicit_text?: number | null;
+        heuristic?: number | null;
+    } | null;
+    /** Items that link to more than one repository; null: none served. Absent: an older backend. */
+    repo_link_multi_repo_items?: number | null;
+    /** Linked items and items in the window; null: none served. Absent: an older backend. */
+    repo_link_coverage?: {
+        linked_items?: number | null;
+        items_in_window?: number | null;
+    } | null;
     /**
      * Coverage of the rate: a 0..1 fraction, not a percent. Null: none served (no merged pull
      * request or no stored counts). Absent: the REST answer, or an API before it. 0 is a value.
