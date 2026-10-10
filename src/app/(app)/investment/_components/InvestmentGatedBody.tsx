@@ -13,6 +13,8 @@ type InvestmentGatedBodyProps = {
     activeTab?: InvestmentTab;
     reworkMetric?: MetricDelta;
     reworkThemeAllocation?: ReworkThemeAllocation[];
+    /** The Home read that serves the rework values FAILED (no answer): the tile says so. */
+    reworkReadFailed?: boolean;
 };
 
 /**

@@ -9,6 +9,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
+import { ReadFailedState } from "@/components/ui/ReadFailedState";
 import type { HomeResponse } from "@/lib/types";
 
 type HomeLongFormProps = {
@@ -60,6 +61,15 @@ const EMPTY =
 export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
     const evidence = useEvidenceDrawer();
     const open = (title: string, apiUrl?: string) => evidence.open({ title, apiUrl, filters });
+
+    // A FAILED Home read (`null`): one failed-read state, not four "pending" sections (CHAOS-9189).
+    if (home === null) {
+        return (
+            <div data-testid="home-long-form">
+                <ReadFailedState compact headingLevel={4} data-testid="long-form-read-failed" />
+            </div>
+        );
+    }
 
     // A blank sentence (empty, null, whitespace) is not a shift: it draws no button.
     const sentences = (home?.summary ?? []).filter((sentence) => sentence.text?.trim());

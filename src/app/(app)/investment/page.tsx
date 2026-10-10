@@ -131,6 +131,8 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                     activeTab={activeTab}
                     reworkMetric={reworkMetric}
                     reworkThemeAllocation={reworkThemeAllocation}
+                    // `null` is a FAILED Home read: the rework tile says so (CHAOS-9189).
+                    reworkReadFailed={home === null}
                 />
             </UpgradeGate>
         </div>

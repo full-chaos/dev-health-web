@@ -3,7 +3,7 @@
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
-import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { metricCardProps, readFailedCardProps } from "@/lib/metrics/metricDisplay";
 import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
 import { withRepoLinkNote } from "@/lib/metrics/repoLinkNote";
 import { withRepoScopeNote } from "@/lib/metrics/repoScope";
@@ -16,6 +16,8 @@ type MetricEvidenceCardsProps = {
     filters: MetricFilter;
     activeRole?: string;
     placeholderDeltas: boolean;
+    /** The page's Home read FAILED (no answer): each tile says so, never "Not reported". */
+    readFailed?: boolean;
 };
 
 const getMetric = (deltas: MetricDelta[], metric: string) =>
@@ -27,6 +29,7 @@ export function MetricEvidenceCards({
     filters,
     activeRole,
     placeholderDeltas,
+    readFailed = false,
 }: MetricEvidenceCardsProps) {
     const evidence = useEvidenceDrawer();
 
@@ -39,7 +42,9 @@ export function MetricEvidenceCards({
                 // A metric with no served row keeps its catalog name; a raw key is never shown.
                 const label = data?.label ?? getMetricLabel(metric);
                 // Placeholder rows are not served rows: the tile says "Not reported", never 0.
-                const card = metricCardProps(placeholderDeltas ? null : data);
+                const card = readFailed
+                    ? readFailedCardProps()
+                    : metricCardProps(placeholderDeltas ? null : data);
 
                 return (
                     <MetricCard
@@ -47,12 +52,14 @@ export function MetricEvidenceCards({
                         as="article"
                         label={label}
                         {...card}
-                        spark={data?.spark}
+                        spark={readFailed ? undefined : data?.spark}
                         // A change is drawn only when both windows have data; else "No prior period", never 0.
                         // The served delta compares the window with the previous window of the same length.
                         caption={withRepoLinkNote(
                             withRepoScopeNote(
-                                card.delta !== undefined ? "vs previous window" : undefined,
+                                "delta" in card && card.delta !== undefined
+                                    ? "vs previous window"
+                                    : undefined,
                                 metric,
                                 filters,
                                 data,

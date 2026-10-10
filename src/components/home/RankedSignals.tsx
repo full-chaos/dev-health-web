@@ -14,6 +14,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { reworkCoverageNote } from "@/lib/metrics/coverageNote";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { noDataText } from "@/lib/metrics/metricDisplay";
 import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
@@ -28,6 +29,8 @@ export type RankedSignalsProps = {
     deltas?: MetricDelta[];
     /** Active scope and window, sent with the evidence request. */
     filters: MetricFilter;
+    /** The Home read FAILED (no answer): the table says so, never "No signals". */
+    readFailed?: boolean;
 };
 
 /** Table footer (approved prototype `table(..., foot)`, `app.js:100`, without the capture wording). */
@@ -61,7 +64,12 @@ export const RANKED_SIGNALS_FIRST_ROWS = 5;
  * Each row's "Evidence" opens the shared evidence drawer for that signal, with the signal's
  * served "why it matters" and "recommended action" first.
  */
-export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsProps) {
+export function RankedSignals({
+    signals,
+    deltas = [],
+    filters,
+    readFailed = false,
+}: RankedSignalsProps) {
     const evidence = useEvidenceDrawer();
     const [showAll, setShowAll] = useState(false);
     const rows = signals.slice(1).filter((signal) => isMetricSignal(signal, deltas));
@@ -164,7 +172,11 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
 
     return (
         <Section title="Ranked signals" data-testid="ranked-signals">
-            {rows.length === 0 ? (
+            {readFailed ? (
+                <p data-testid="ranked-signals-failed" className="text-sm text-(--ink-muted)">
+                    {READ_FAILED_MESSAGE}
+                </p>
+            ) : rows.length === 0 ? (
                 <p data-testid="ranked-signals-empty" className="text-sm text-(--ink-muted)">
                     {noRowsLine}
                 </p>

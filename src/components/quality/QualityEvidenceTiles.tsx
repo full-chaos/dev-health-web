@@ -5,7 +5,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withReworkCoverageNote } from "@/lib/metrics/coverageNote";
-import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { metricCardProps, readFailedCardProps } from "@/lib/metrics/metricDisplay";
 import type { MetricDelta, SparkPoint } from "@/lib/types";
 
 /** One Quality tile: the served metric delta row, as the page always read it. */
@@ -24,6 +24,8 @@ type QualityEvidenceTilesProps = {
     tiles: QualityTile[];
     filters: MetricFilter;
     role?: string;
+    /** The page's Home read FAILED (no answer): each tile says so, never "Not reported". */
+    readFailed?: boolean;
 };
 
 /**
@@ -31,7 +33,12 @@ type QualityEvidenceTilesProps = {
  * "Open evidence" action opens the ONE shared evidence drawer for the metric, and the drawer
  * footer links to Explore with the scope and role (the path the whole-card link used to take).
  */
-export function QualityEvidenceTiles({ tiles, filters, role }: QualityEvidenceTilesProps) {
+export function QualityEvidenceTiles({
+    tiles,
+    filters,
+    role,
+    readFailed = false,
+}: QualityEvidenceTilesProps) {
     const evidence = useEvidenceDrawer();
     return (
         <MetricStrip data-testid="quality-tiles">
@@ -39,7 +46,7 @@ export function QualityEvidenceTiles({ tiles, filters, role }: QualityEvidenceTi
                 <MetricCard
                     key={tile.metric}
                     label={tile.label}
-                    {...metricCardProps(tile.row)}
+                    {...(readFailed ? readFailedCardProps() : metricCardProps(tile.row))}
                     spark={tile.spark}
                     caption={withReworkCoverageNote(undefined, tile.row)}
                     description={tile.description}

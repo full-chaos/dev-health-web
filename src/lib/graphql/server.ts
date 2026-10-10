@@ -214,7 +214,9 @@ export async function graphqlFetch<T>(
         // A mutation that hit its deadline: the server may have applied it. Rethrow the deadline
         // error itself so the caller's failure path (failureFromError) shows the approved text.
         if (isWriteDeadlineError(result.error.networkError)) throw result.error.networkError;
-        throw new Error(graphQlErrorMessage(result.error.message));
+        // The urql error is the `cause`, so a caller can read the HTTP status and the error class
+        // for its own log line. The message is the same as before.
+        throw new Error(graphQlErrorMessage(result.error.message), { cause: result.error });
     }
 
     if (!result.data) {

@@ -73,7 +73,14 @@ beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
     vi.mocked(checkApiHealth).mockResolvedValue({ ok: true, data: null });
     vi.mocked(getSetupStatus).mockResolvedValue({ error: "not needed" });
-    vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(null as never);
+    // An EMPTY answer. (`null` would be a FAILED read: the drawer then draws the failed-read state.)
+    vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
+        freshness: { last_ingested_at: null, sources: {}, coverage: null },
+        deltas: [],
+        summary: [],
+        tiles: {},
+        events: [],
+    } as never);
 });
 
 describe("Investigation threads block on Home (CHAOS-8064)", () => {

@@ -15,6 +15,8 @@ import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLink
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { HomeResponse } from "@/lib/types";
 
+import { ReadFailedState } from "@/components/ui/ReadFailedState";
+
 import { CockpitEmptyState } from "./CockpitEmptyState";
 import { SignalEvidenceIntro } from "./SignalEvidenceIntro";
 
@@ -37,6 +39,15 @@ type CockpitSummaryProps = {
 export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     const evidence = useEvidenceDrawer();
 
+    // `null` is a FAILED Home read (no answer): never "No data", never "no findings" (CHAOS-9189).
+    if (home === null) {
+        return (
+            <section data-testid="cockpit-summary" aria-label="Primary signal">
+                <ReadFailedState data-testid="cockpit-read-failed" />
+            </section>
+        );
+    }
+
     if (home?.health_state?.status === "no_data") {
         return (
             <section data-testid="cockpit-summary" aria-label="Primary signal">
@@ -48,8 +59,8 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     const topSignal = home?.signals?.[0];
 
     if (!topSignal) {
-        // No health state served (home absent, or no `health_state`) is a no-data state, never
-        // "Enabled but no findings": only a served state may say that (CHAOS-9154).
+        // An ANSWER with no `health_state` is a no-data state, never "Enabled but no findings":
+        // only a served state may say that (CHAOS-9154).
         if (!home?.health_state) {
             return (
                 <section data-testid="cockpit-summary" aria-label="Primary signal">
