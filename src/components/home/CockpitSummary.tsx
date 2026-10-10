@@ -10,6 +10,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { isRiskSignal } from "@/lib/cockpit/signalKinds";
 import { coverageNote, reworkCoverageNote } from "@/lib/metrics/coverageNote";
+import { filterEmptyReasonText } from "@/lib/metrics/filterEmptyReason";
 import { noDataText } from "@/lib/metrics/metricDisplay";
 import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
@@ -48,7 +49,21 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
         );
     }
 
+    // The served reason a repository filter matched nothing: drawn once, here, in the empty
+    // state. An unknown value or null draws the plain no-data state (CHAOS-9193).
+    const reasonText = filterEmptyReasonText(home.filter_empty_reason);
+    const reasonEmpty = reasonText ? (
+        <section data-testid="cockpit-summary" aria-label="Primary signal">
+            <CockpitEmptyState
+                variant="no-data-window"
+                description={reasonText}
+                data-testid="cockpit-filter-empty-reason"
+            />
+        </section>
+    ) : null;
+
     if (home?.health_state?.status === "no_data") {
+        if (reasonEmpty) return reasonEmpty;
         return (
             <section data-testid="cockpit-summary" aria-label="Primary signal">
                 <CockpitEmptyState variant="no-data-window" data-testid="cockpit-no-data" />
@@ -59,6 +74,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     const topSignal = home?.signals?.[0];
 
     if (!topSignal) {
+        if (reasonEmpty) return reasonEmpty;
         // An ANSWER with no `health_state` is a no-data state, never "Enabled but no findings":
         // only a served state may say that (CHAOS-9154).
         if (!home?.health_state) {
