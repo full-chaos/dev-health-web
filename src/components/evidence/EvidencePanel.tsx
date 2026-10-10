@@ -140,10 +140,12 @@ const normalizeHomeEvidence = (
     const coverageSummary = coverage
         ? `Repository coverage ${formatPercent(coverage.repos_covered_pct)}, linked PR coverage ${formatPercent(coverage.prs_linked_to_issues_pct)}, cycle-state coverage ${formatPercent(coverage.issues_with_cycle_states_pct)}.`
         : "";
-    const summaryText = result.summary.map((sentence) => sentence.text).join(" ");
+    // A blank sentence (empty, null, whitespace) is neither summary text nor an evidence row.
+    const sentences = result.summary.filter((sentence) => sentence.text?.trim());
+    const summaryText = sentences.map((sentence) => sentence.text).join(" ");
     const constraint = result.constraint;
     const evidence: EvidenceItem[] = [
-        ...result.summary.map((sentence) => ({
+        ...sentences.map((sentence) => ({
             id: sentence.id,
             title: sentence.text,
             url: sentence.evidence_link,
