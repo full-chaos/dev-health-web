@@ -110,3 +110,43 @@ describe("CodePage churn tile — no data", () => {
         expect(within(strip).getAllByTestId("metric-delta")).toHaveLength(1);
     });
 });
+
+// CHAOS-9154: a served bus factor row with 0 samples is a no-data state, not the fact "0".
+describe("CodePage File-change samples tile (CHAOS-9154)", () => {
+    const busFactor = (evidenceSampleCount: number) => ({
+        orgId: "org-1",
+        scope: {},
+        value: evidenceSampleCount > 0 ? 2 : 0,
+        evidenceSampleCount,
+        topMaintainers: [],
+        repos: [],
+    });
+
+    async function renderSamples(count: number) {
+        checkApiHealthMock.mockResolvedValue({ ok: true });
+        getHomeDataMock.mockResolvedValue({ deltas: [] });
+        getExplainDataMock.mockResolvedValue({ contributors: [], unit: "loc" });
+        getHeatmapMock.mockResolvedValue(null);
+        getQuadrantMock.mockResolvedValue(null);
+        getBusFactorDataMock.mockResolvedValue(busFactor(count));
+        getRepoTopHotspotsMock.mockResolvedValue([]);
+        const ui = await CodePage({ searchParams: Promise.resolve({}) });
+        render(ui as React.ReactElement);
+        // Tiles in order: churn, File-change samples, Bus factor.
+        return within(screen.getByTestId("code-tiles"));
+    }
+
+    it("0 samples: 'No data for this window', no 0", async () => {
+        const tile = await renderSamples(0);
+        const value = tile.getAllByTestId("metric-value")[1];
+        expect(value).toHaveTextContent("No data for this window");
+        expect(value).toHaveAttribute("data-value-kind", "message");
+    });
+
+    it("samples above 0: the number is drawn as a value", async () => {
+        const tile = await renderSamples(3773);
+        const value = tile.getAllByTestId("metric-value")[1];
+        expect(value).toHaveTextContent("3,773");
+        expect(value).toHaveAttribute("data-value-kind", "value");
+    });
+});

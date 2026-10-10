@@ -184,9 +184,41 @@ describe("CockpitSummary primary-signal hero", () => {
         expect(screen.queryByRole("button")).toBeNull();
     });
 
-    it("renders the same safe state when home is null", () => {
+    it("draws the no-data state, not 'Enabled but no findings', when home is null (CHAOS-9154)", () => {
         render(<CockpitSummary home={null} filters={filters} />);
-        expect(screen.getByTestId("cockpit-top-change-empty")).toBeInTheDocument();
+        expect(screen.getByTestId("cockpit-no-data")).toHaveTextContent("No data for this window.");
+        expect(screen.queryByTestId("cockpit-top-change-empty")).toBeNull();
+        expect(screen.queryByText("Enabled but no findings")).toBeNull();
+    });
+
+    it("draws the no-data state when no health state is served (CHAOS-9154)", () => {
+        render(
+            <CockpitSummary
+                home={makeHome({ health_state: undefined, signals: [] })}
+                filters={filters}
+            />,
+        );
+        expect(screen.getByTestId("cockpit-no-data")).toHaveAttribute(
+            "data-variant",
+            "no-data-window",
+        );
+        expect(screen.queryByText("Enabled but no findings")).toBeNull();
+    });
+
+    it("keeps 'Enabled but no findings' when a served state says healthy and no signal (CHAOS-9154)", () => {
+        render(
+            <CockpitSummary
+                home={makeHome({
+                    health_state: { status: "healthy", headline: "Healthy", summary: "Steady." },
+                    signals: [],
+                })}
+                filters={filters}
+            />,
+        );
+        expect(screen.getByTestId("cockpit-top-change-empty")).toHaveTextContent(
+            "Enabled but no findings",
+        );
+        expect(screen.queryByTestId("cockpit-no-data")).toBeNull();
     });
 
     const UUID = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
