@@ -1101,6 +1101,8 @@ export type HomeResult = {
   dataConfidence: HomeDataConfidence;
   deltas: Array<MetricDelta>;
   events: Array<EventItem>;
+  /** Why the repositories the request names (a repo-level scope's ids, or what.repos) matched nothing, one value for the whole answer (CHAOS-9098). repository_not_in_team: every named repository exists and none is held by the selected teams. repository_not_found: a named repository resolved to nothing and no named repository matched. Null when the request names no repository and whenever something matched: also when only part of the named repositories is in the team or resolves (the value covers the part that matched), and when the scope resolved and the window has no rows. Filters AND and never widen. */
+  filterEmptyReason?: Maybe<Scalars['String']['output']>;
   freshness: Freshness;
   healthState: HealthState;
   limitingFactor: HomeLimitingFactor;
