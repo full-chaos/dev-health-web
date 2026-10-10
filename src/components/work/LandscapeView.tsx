@@ -8,6 +8,7 @@ import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { withRepoLinkNote } from "@/lib/metrics/repoLinkNote";
 import { withRepoScopeNote } from "@/lib/metrics/repoScope";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import type { MetricDelta, QuadrantResponse } from "@/lib/types";
@@ -59,10 +60,8 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : wipMetric)}
                     spark={wipMetric?.spark}
-                    caption={withRepoScopeNote(
-                        "WIP saturation",
-                        "wip_saturation",
-                        filters,
+                    caption={withRepoLinkNote(
+                        withRepoScopeNote("WIP saturation", "wip_saturation", filters, wipMetric),
                         wipMetric,
                     )}
                 />
@@ -75,10 +74,13 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : getMetric("blocked_work"))}
                     spark={getMetric("blocked_work")?.spark}
-                    caption={withRepoScopeNote(
-                        "Blocked work",
-                        "blocked_work",
-                        filters,
+                    caption={withRepoLinkNote(
+                        withRepoScopeNote(
+                            "Blocked work",
+                            "blocked_work",
+                            filters,
+                            getMetric("blocked_work"),
+                        ),
                         getMetric("blocked_work"),
                     )}
                 />
@@ -91,10 +93,13 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : getMetric("throughput"))}
                     spark={getMetric("throughput")?.spark}
-                    caption={withRepoScopeNote(
-                        "Delivery volume",
-                        "throughput",
-                        filters,
+                    caption={withRepoLinkNote(
+                        withRepoScopeNote(
+                            "Delivery volume",
+                            "throughput",
+                            filters,
+                            getMetric("throughput"),
+                        ),
                         getMetric("throughput"),
                     )}
                 />

@@ -13,6 +13,7 @@ import { signalMetricLabel } from "@/lib/cockpit/signalLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
+import { repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { CockpitSignal, MetricDelta } from "@/lib/types";
 
@@ -66,6 +67,9 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
     const shownRows = showAll ? rows : rows.slice(0, RANKED_SIGNALS_FIRST_ROWS);
     const noRowsLine = signals.length === 0 ? RANKED_SIGNALS_NONE : RANKED_SIGNALS_NO_OTHER;
 
+    const linkNoteOf = (signal: CockpitSignal) =>
+        repoLinkTileNote(deltas.find((delta) => delta.metric === signal.metric));
+
     const columns: DataTableColumn<CockpitSignal>[] = [
         {
             key: "signal",
@@ -81,6 +85,15 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
                             className="block text-xs text-(--ink-muted)"
                         >
                             {NOT_FILTERED_BY_REPOSITORY}
+                        </span>
+                    ) : null}
+                    {/* CHAOS-9120: the link basis or state of a repository-scoped work-item metric. */}
+                    {linkNoteOf(signal) ? (
+                        <span
+                            data-testid="signal-repo-link-note"
+                            className="block text-xs text-(--ink-muted)"
+                        >
+                            {linkNoteOf(signal)}
                         </span>
                     ) : null}
                 </>

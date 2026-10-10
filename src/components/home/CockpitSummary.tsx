@@ -10,6 +10,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { isRiskSignal } from "@/lib/cockpit/signalKinds";
 import { coverageNote } from "@/lib/metrics/coverageNote";
+import { repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { HomeResponse } from "@/lib/types";
 
@@ -65,6 +66,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     // A raw identifier inside the served sentence is shortened, as the page did before.
     const title = scrubIdentifiers(topSignal.title).text;
     const compareDays = filters.time.compare_days;
+    const repoLinkNote = repoLinkTileNote(home?.deltas?.find((d) => d.metric === topSignal.metric));
     const hasPrior = topSignal.prior_value != null && topSignal.prior_value !== "";
 
     return (
@@ -80,7 +82,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                         isRepoUnscopedMetric(topSignal.metric, filters, topSignal)
                             ? ` · ${NOT_FILTERED_BY_REPOSITORY}`
                             : ""
-                    }${
+                    }${repoLinkNote ? ` · ${repoLinkNote}` : ""}${
                         isRiskSignal(topSignal) && coverageNote(topSignal.coverage)
                             ? ` · ${coverageNote(topSignal.coverage)}`
                             : ""

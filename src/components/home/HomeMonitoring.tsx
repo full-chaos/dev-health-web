@@ -16,6 +16,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { getMetricLabel } from "@/lib/metrics/catalog";
 import { metricCardProps, metricDisplay } from "@/lib/metrics/metricDisplay";
+import { withRepoLinkNote } from "@/lib/metrics/repoLinkNote";
 import { withRepoScopeNote } from "@/lib/metrics/repoScope";
 import type { HomeResponse } from "@/lib/types";
 
@@ -168,14 +169,17 @@ export function HomeMonitoring({
                                                   role: activeRole,
                                               }),
                                               spark: delta.spark,
-                                              caption: withRepoScopeNote(
-                                                  MONITORING_TILE_NOTE,
-                                                  metric,
-                                                  filters,
+                                              caption: withRepoLinkNote(
+                                                  withRepoScopeNote(
+                                                      MONITORING_TILE_NOTE,
+                                                      metric,
+                                                      filters,
+                                                      delta,
+                                                  ),
                                                   delta,
                                               ),
                                           }
-                                        : {})}
+                                        : { caption: withRepoLinkNote(undefined, delta) })}
                                 />
                             );
                         })}
