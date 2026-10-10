@@ -105,6 +105,8 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
             <ScopeBar view="quality" />
 
             <QualityEvidenceTiles
+                // `null` is a FAILED Home read: the tiles say so (CHAOS-9189).
+                readFailed={home === null}
                 filters={filters}
                 role={activeRole}
                 tiles={[

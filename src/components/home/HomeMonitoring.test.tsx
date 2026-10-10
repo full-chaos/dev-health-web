@@ -344,13 +344,20 @@ describe("HomeMonitoring tiles", () => {
         expect(
             screen.getByTestId("home-monitoring").querySelector("[data-variant]"),
         ).toHaveAttribute("data-variant", "detector-enabled-no-findings");
-        withSources.unmount();
-
-        draw(null);
-        expect(
-            screen.getByTestId("home-monitoring").querySelector("[data-variant]"),
-        ).toHaveAttribute("data-variant", "no-data-connected");
         // The toggle stays in every state.
+        expect(segments()).toHaveLength(3);
+        withSources.unmount();
+    });
+
+    // `null` is a FAILED Home read. It is not "No data connected": no source question is answered.
+    it("a FAILED read (home null): the failed-read state, never 'no data connected' or 'no findings' (CHAOS-9189)", () => {
+        draw(null);
+        const state = screen.getByTestId("monitoring-read-failed");
+        expect(state).toHaveAttribute("data-variant", "error");
+        expect(state).toHaveTextContent("Could not be read");
+        expect(screen.queryByText("No data connected")).toBeNull();
+        expect(screen.queryByText("Enabled but no findings")).toBeNull();
+        expect(screen.queryByTestId("monitoring-tiles")).toBeNull();
         expect(segments()).toHaveLength(3);
     });
 });

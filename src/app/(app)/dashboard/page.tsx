@@ -174,6 +174,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                         signals={home?.signals ?? []}
                         deltas={home?.deltas}
                         filters={filters}
+                        readFailed={home === null}
                     />
                     <EvidenceContextCard home={home} />
                 </div>

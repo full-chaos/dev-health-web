@@ -126,6 +126,8 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
             <IncidentCorrelationDashboard
                 orgId={orgId}
                 deltas={home?.deltas ?? []}
+                // `null` is a FAILED Home read: the DORA tiles say so (CHAOS-9189).
+                homeReadFailed={home === null}
                 drivers={explain?.drivers ?? []}
                 contributors={explain?.contributors ?? []}
                 explainUnit={explain?.unit}

@@ -3,6 +3,7 @@ import type { MetricCardProps } from "@/components/metrics/MetricCard";
 import { isChangedFromZero, type DeltaFacts } from "@/components/shared/MetricDelta";
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { getMetricPolarity } from "@/lib/metrics/catalog";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { MetricDelta } from "@/lib/types";
 
 /** The tile text for a metric whose window holds no data (the Home monitoring wording). */
@@ -166,5 +167,22 @@ export function metricCardProps(
         delta: display.comparable ? metric.delta_pct : undefined,
         // The change's tone follows the metric's catalog direction; an unknown metric is neutral.
         polarity: metric.metric ? getMetricPolarity(metric.metric) : undefined,
+    };
+}
+
+/**
+ * The `MetricCard` props of a tile whose READ FAILED (no answer at all): the failed-read text, no
+ * change and no trend. It is not "Not reported" (an answer without this row) and not "No data for
+ * this window" (an answer whose window is empty). Spread it in place of `metricCardProps`.
+ */
+export function readFailedCardProps(): Pick<
+    MetricCardProps,
+    "valueText" | "valueIsMessage" | "deltaSlot" | "hideTrend"
+> {
+    return {
+        valueText: READ_FAILED_MESSAGE,
+        valueIsMessage: true,
+        deltaSlot: <></>,
+        hideTrend: true,
     };
 }

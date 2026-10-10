@@ -30,6 +30,7 @@ import { formatMetricParts } from "@/lib/formatters";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 import { FALLBACK_DELTAS, getMetricLabel } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
@@ -99,6 +100,8 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
 
     const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
     const placeholderDeltas = !home?.deltas?.length;
+    // `null` is a FAILED Home read: the tiles and the page facts say so (CHAOS-9189).
+    const homeReadFailed = home === null;
     // The way back to this page (scope and role kept): the drawer footer and "Return to
     // investigation" on the metric evidence page lead here.
     const pagePath = withFilterParam("/bottleneck", filters, activeRole);
@@ -113,11 +116,13 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
         return {
             label: row?.label ?? getMetricLabel(metric),
             // As the tile shows it: the number, then the unit ("298%", "0.3 hours").
-            value: parts
-                ? parts.unit === "%"
-                    ? `${parts.value}%`
-                    : [parts.value, parts.unit].filter(Boolean).join(" ")
-                : undefined,
+            value: homeReadFailed
+                ? READ_FAILED_MESSAGE
+                : parts
+                  ? parts.unit === "%"
+                      ? `${parts.value}%`
+                      : [parts.value, parts.unit].filter(Boolean).join(" ")
+                  : undefined,
         };
     });
 
@@ -142,6 +147,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
             <BottleneckTiles
                 deltas={deltas}
                 placeholderDeltas={placeholderDeltas}
+                readFailed={homeReadFailed}
                 filters={filters}
                 role={activeRole}
                 origin={pagePath}

@@ -11,6 +11,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { HomeResponse } from "@/lib/types";
 
 import { HomeLongForm } from "./HomeLongForm";
@@ -48,10 +49,13 @@ export const THREADS_DESCRIPTION =
 export function InvestigationThreads({ home, filters, activeRole }: InvestigationThreadsProps) {
     const evidence = useEvidenceDrawer();
 
+    // A FAILED Home read (`null`) says so; "will appear once data is ingested" needs an answer.
     const limitingClaim =
-        home?.limiting_factor?.claim ??
-        home?.constraint?.claim ??
-        "Evidence will appear once data is ingested.";
+        home === null
+            ? READ_FAILED_MESSAGE
+            : (home.limiting_factor?.claim ??
+              home.constraint?.claim ??
+              "Evidence will appear once data is ingested.");
 
     const linkRows = [
         {
@@ -71,7 +75,10 @@ export function InvestigationThreads({ home, filters, activeRole }: Investigatio
             title: "Compounding risk",
             // The served risk signals as text. With none served: the destination's own
             // description (navigation areas), and no number.
-            summary: riskSignalsLine(home?.signals) ?? COMPOUNDING_RISK_PLAIN_LINE,
+            summary:
+                home === null
+                    ? READ_FAILED_MESSAGE
+                    : (riskSignalsLine(home.signals) ?? COMPOUNDING_RISK_PLAIN_LINE),
             href: withFilterParam("/risk/compounding", filters, activeRole),
         },
     ];

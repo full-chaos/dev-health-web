@@ -4,7 +4,7 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import type { MetricFilter } from "@/lib/filters/types";
-import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { metricCardProps, readFailedCardProps } from "@/lib/metrics/metricDisplay";
 import { withRepoLinkNote } from "@/lib/metrics/repoLinkNote";
 import { withRepoScopeNote } from "@/lib/metrics/repoScope";
 import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
@@ -16,6 +16,8 @@ type BottleneckTilesProps = {
     deltas: MetricDelta[];
     /** True when the home payload had no rows: values and changes are not served. */
     placeholderDeltas: boolean;
+    /** The page's Home read FAILED (no answer): each tile says so, never "Not reported". */
+    readFailed?: boolean;
     filters: MetricFilter;
     role?: string;
     /** The way back to this page, for the drawer footer and "Return to investigation". */
@@ -30,6 +32,7 @@ type BottleneckTilesProps = {
 export function BottleneckTiles({
     deltas,
     placeholderDeltas,
+    readFailed = false,
     filters,
     role,
     origin,
@@ -46,7 +49,9 @@ export function BottleneckTiles({
                         as="article"
                         testId={`bottleneck-tile-${metric}`}
                         label={label}
-                        {...metricCardProps(placeholderDeltas ? null : row)}
+                        {...(readFailed
+                            ? readFailedCardProps()
+                            : metricCardProps(placeholderDeltas ? null : row))}
                         polarity={getMetricPolarity(metric)}
                         spark={row?.spark}
                         caption={withRepoLinkNote(

@@ -25,8 +25,14 @@ import { getQuadrant } from "@/lib/api/visuals";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
-import { metricCardProps, metricDisplay, noDataText } from "@/lib/metrics/metricDisplay";
+import {
+    metricCardProps,
+    metricDisplay,
+    noDataText,
+    readFailedCardProps,
+} from "@/lib/metrics/metricDisplay";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { MetricDelta } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -151,10 +157,15 @@ export default async function CodePage({ searchParams }: CodePageProps) {
         },
     }));
 
-    const churnText =
-        placeholderDeltas || !metricDisplay(churnMetric).hasData || churnMetric?.value === undefined
-            ? undefined
-            : formatMetricValue(churnMetric.value, churnMetric.unit ?? "");
+    // `null` is a FAILED Home read: the churn tile and its page fact say so (CHAOS-9189).
+    const homeReadFailed = home === null;
+    const churnText = homeReadFailed
+        ? READ_FAILED_MESSAGE
+        : placeholderDeltas ||
+            !metricDisplay(churnMetric).hasData ||
+            churnMetric?.value === undefined
+          ? undefined
+          : formatMetricValue(churnMetric.value, churnMetric.unit ?? "");
     const pageFacts: PageFact[] = [
         { label: churnMetric?.label ?? "Code Churn", value: churnText },
         {
@@ -188,8 +199,10 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 <MetricCard
                     label={churnMetric?.label ?? "Code Churn"}
                     href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
-                    {...metricCardProps(placeholderDeltas ? null : churnMetric)}
-                    spark={churnMetric?.spark}
+                    {...(homeReadFailed
+                        ? readFailedCardProps()
+                        : metricCardProps(placeholderDeltas ? null : churnMetric))}
+                    spark={homeReadFailed ? undefined : churnMetric?.spark}
                     caption="Churn over the active window"
                 />
                 {/* No data is "Not reported", never 0: samples need a bus-factor result; the bus

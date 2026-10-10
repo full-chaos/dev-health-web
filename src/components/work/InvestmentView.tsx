@@ -35,6 +35,8 @@ type InvestmentViewProps = {
     reworkMetric?: MetricDelta;
     /** Per-theme rework breakdown from home; absent/empty → honest empty. */
     reworkThemeAllocation?: ReworkThemeAllocation[];
+    /** The Home read that serves the rework values FAILED (no answer): the tile says so. */
+    reworkReadFailed?: boolean;
 };
 
 // ── Sub-sections (render helpers) ────────────────────────────────────────────
@@ -123,6 +125,7 @@ export function InvestmentView({
     activeTab = "overview",
     reworkMetric,
     reworkThemeAllocation,
+    reworkReadFailed,
 }: InvestmentViewProps) {
     const data = useInvestmentData({ filters, activeTab });
 
@@ -479,6 +482,7 @@ export function InvestmentView({
                 isCategoryFlowLoading={data.isCategoryFlowLoading}
                 reworkMetric={reworkMetric}
                 reworkThemeAllocation={reworkThemeAllocation}
+                reworkReadFailed={reworkReadFailed}
             />
         );
     }

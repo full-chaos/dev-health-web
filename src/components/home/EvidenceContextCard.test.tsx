@@ -180,14 +180,35 @@ describe("EvidenceContextCard", () => {
         );
     });
 
-    it("has no caveat list when the API served none, and every row reads Not reported with no payload", () => {
+    it("has no caveat list when the API served none, and every row reads Not reported with an empty answer", () => {
         const { unmount } = render(<EvidenceContextCard home={makeHome()} />);
         expect(screen.queryByTestId("data-confidence-caveats")).toBeNull();
         unmount();
 
-        render(<EvidenceContextCard home={null} />);
+        // An EMPTY answer: no provider, no signal, no completed sync.
+        render(
+            <EvidenceContextCard
+                home={makeHome({
+                    signals: [],
+                    freshness: {
+                        ...makeHome().freshness,
+                        sources: {},
+                        latest_successful_sync_at: null,
+                    },
+                })}
+            />,
+        );
         const rows = screen.getAllByTestId("evidence-fact");
         expect(rows).toHaveLength(2);
         for (const row of rows) expect(row).toHaveAttribute("data-reported", "false");
+    });
+
+    // `null` is a FAILED Home read: the facts say so, never "Not reported" (CHAOS-9189).
+    it("a FAILED read (home null): every fact reads 'Could not be read', never 'Not reported'", () => {
+        render(<EvidenceContextCard home={null} />);
+        const rows = screen.getAllByTestId("evidence-fact");
+        expect(rows).toHaveLength(3);
+        for (const row of rows) expect(row).toHaveTextContent("Could not be read");
+        expect(screen.queryByText("Not reported")).toBeNull();
     });
 });
