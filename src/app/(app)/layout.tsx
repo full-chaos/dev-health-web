@@ -12,15 +12,22 @@ import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
 import { requireSession } from "@/lib/auth";
 import { GraphQLProvider } from "@/lib/graphql/provider";
+import { boundedRead, withDeadline } from "@/lib/serverDeadline";
 
 export default async function AppLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const session = await requireSession();
+    // Both awaits run before any page streams, so each is bounded (CHAOS-9114). A session read
+    // that hits its deadline throws a TimeoutError (the error boundary draws; the user is NOT
+    // treated as logged out). Entitlements that hit it fall back to the existing "not valid" path.
+    const session = await withDeadline(requireSession(), {
+        kind: "auth",
+        op: "step layout session",
+    });
     const entitlementResult = session.user.org_id
-        ? await getOrgEntitlements(session.user.org_id)
+        ? await boundedRead(getOrgEntitlements(session.user.org_id), "step layout entitlements")
         : undefined;
     const entitlements = entitlementResult?.data;
     const hasValidEntitlements = entitlements?.is_valid === true;

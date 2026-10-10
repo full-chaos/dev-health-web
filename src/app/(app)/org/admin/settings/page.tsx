@@ -4,11 +4,12 @@ import { BillingSettings } from "@/components/admin/settings/BillingSettings";
 import { SecuritySettings } from "@/components/admin/settings/SecuritySettings";
 import { DangerZone } from "@/components/admin/settings/DangerZone";
 import { getCurrentOrg } from "@/lib/admin/server";
+import { boundedRead } from "@/lib/serverDeadline";
 import { DataState } from "@/components/ui/DataState";
 import { RetryButton } from "@/components/ui/RetryButton";
 
 export default async function OrganizationSettingsPage() {
-    const result = await getCurrentOrg();
+    const result = await boundedRead(getCurrentOrg(), "step current org");
     const org = result.data;
 
     return (

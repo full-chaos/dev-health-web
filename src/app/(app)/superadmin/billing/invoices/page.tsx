@@ -3,6 +3,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { InvoiceList } from "@/components/admin/billing/InvoiceList";
 import { requireSuperuser } from "@/lib/auth";
 import { getInvoices } from "@/lib/billing/actions";
+import { boundedRead } from "@/lib/serverDeadline";
 import { Notice } from "@/components/ui/Notice";
 
 type InvoicesPageSearchParams = Promise<{ org_id?: string | string[] }>;
@@ -23,7 +24,7 @@ export default async function AdminInvoicesPage({
     const resolvedSearchParams = await searchParams;
     const orgId = firstValue(resolvedSearchParams.org_id);
 
-    const result = await getInvoices(20, 0, undefined, orgId);
+    const result = await boundedRead(getInvoices(20, 0, undefined, orgId), "step billing invoices");
     const invoiceData = result.data ?? { items: [], total: 0, limit: 20, offset: 0 };
 
     return (

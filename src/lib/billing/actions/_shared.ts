@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { AuthErrors, ValidationErrors, requestFailedMessage } from "@/lib/constants/errors";
 import type { ActionResult } from "@/lib/result";
+import { deadlineFetch } from "@/lib/serverDeadline";
 
 // Validates that an ID only contains safe characters (alphanumeric, hyphens, underscores)
 const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/;
@@ -79,7 +80,9 @@ export async function withErrorHandling<T>(fn: () => Promise<T>): Promise<Action
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     const headers = await getAuthHeadersOrThrow();
-    const response = await fetch(`${getBackendUrl()}${path}`, {
+    const response = await deadlineFetch(
+        (init?.method ?? "GET").toUpperCase() === "GET" ? "read" : "write",
+    )(`${getBackendUrl()}${path}`, {
         ...init,
         headers: {
             ...headers,

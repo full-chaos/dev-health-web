@@ -49,9 +49,87 @@ import {
 import { registerUrql } from "@urql/next/rsc";
 import { ValidationErrors, graphQlErrorMessage } from "@/lib/constants/errors";
 import { resolveOrigin } from "@/lib/origin";
+import { fetchWithDeadline, withDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 
 const GRAPHQL_PATH = "/graphql";
+
+/**
+ * True when the document has a `mutation` or `subscription` operation at its top level. Comments
+ * and strings are skipped; braces, parentheses and brackets are counted so a field or an argument
+ * named `mutation` is not an operation.
+ */
+export function hasWriteOperation(document: string): boolean {
+    let depth = 0;
+    let i = 0;
+    while (i < document.length) {
+        const ch = document[i];
+        if (ch === "#") {
+            while (i < document.length && document[i] !== "\n") i += 1;
+        } else if (ch === '"') {
+            if (document.startsWith('"""', i)) {
+                const end = document.indexOf('"""', i + 3);
+                i = end === -1 ? document.length : end + 3;
+            } else {
+                i += 1;
+                while (i < document.length && document[i] !== '"' && document[i] !== "\n") {
+                    i += document[i] === "\\" ? 2 : 1;
+                }
+                i += 1;
+            }
+        } else if (ch === "{" || ch === "(" || ch === "[") {
+            depth += 1;
+            i += 1;
+        } else if (ch === "}" || ch === ")" || ch === "]") {
+            depth -= 1;
+            i += 1;
+        } else if (/[A-Za-z_]/.test(ch)) {
+            let j = i;
+            while (j < document.length && /[A-Za-z0-9_]/.test(document[j])) j += 1;
+            const word = document.slice(i, j);
+            if (depth === 0 && (word === "mutation" || word === "subscription")) return true;
+            i = j;
+        } else {
+            i += 1;
+        }
+    }
+    return false;
+}
+
+/**
+ * Deadline class and log label of one GraphQL request (CHAOS-9114). A document is a `write` (never
+ * bounded: the server may have applied it) only when it has a mutation or subscription operation,
+ * or when its text cannot be read; every other document is a `read`. Only the operation kind and
+ * name are read from the request: never the variables.
+ */
+function classifyGraphql(
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+): { kind: ServerFetchKind; op: string } {
+    let operationName = "anonymous";
+    let isWrite = true;
+    try {
+        if ((init?.method ?? "GET").toUpperCase() === "GET") {
+            // urql sends a short query as a GET (`?query=...&operationName=...`); a GET cannot
+            // carry a mutation.
+            const url = new URL(String(input instanceof Request ? input.url : input));
+            operationName = url.searchParams.get("operationName") ?? operationName;
+            isWrite = false;
+        } else if (typeof init?.body === "string") {
+            const body = JSON.parse(init.body) as { query?: unknown; operationName?: unknown };
+            if (typeof body.operationName === "string") operationName = body.operationName;
+            isWrite = typeof body.query !== "string" || hasWriteOperation(body.query);
+        }
+    } catch {
+        isWrite = true;
+    }
+    return isWrite
+        ? { kind: "write", op: `graphql ${operationName}` }
+        : { kind: "read", op: `graphql query ${operationName}` };
+}
+
+const deadlineGraphqlFetch: typeof fetch = (input, init) =>
+    fetchWithDeadline(input, init, classifyGraphql(input, init));
 
 function makeServerClient(): Client {
     const url = new URL(GRAPHQL_PATH, resolveOrigin());
@@ -60,6 +138,7 @@ function makeServerClient(): Client {
         url: url.toString(),
         exchanges: [timingExchange, errorExchange, cacheExchange, fetchExchange],
         requestPolicy: "cache-first",
+        fetch: deadlineGraphqlFetch,
     });
 }
 
@@ -105,8 +184,10 @@ export async function graphqlFetch<T>(
     // Auth must be awaited here because urql's client-level fetchOptions is
     // sync-only. Per-operation injection keeps the token fresh and scoped.
     try {
-        const { auth } = await import("@/lib/auth");
-        const session = await auth();
+        const session = await withDeadline(
+            import("@/lib/auth").then(({ auth }) => auth()),
+            { kind: "auth", op: "step auth headers" },
+        );
         if (session?.access_token) {
             headers["Authorization"] = `Bearer ${session.access_token}`;
         }
@@ -163,8 +244,10 @@ export async function graphqlFetchForHydration<T>(
     if (options.orgId) headers["X-Org-Id"] = options.orgId;
 
     try {
-        const { auth } = await import("@/lib/auth");
-        const session = await auth();
+        const session = await withDeadline(
+            import("@/lib/auth").then(({ auth }) => auth()),
+            { kind: "auth", op: "step auth headers" },
+        );
         if (session?.access_token) {
             headers["Authorization"] = `Bearer ${session.access_token}`;
         }
@@ -176,6 +259,7 @@ export async function graphqlFetchForHydration<T>(
         url: url.toString(),
         exchanges: [timingExchange, errorExchange, cacheExchange, ssr, fetchExchange],
         requestPolicy: "cache-first",
+        fetch: deadlineGraphqlFetch,
     });
 
     const operationContext =

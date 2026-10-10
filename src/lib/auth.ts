@@ -11,6 +11,7 @@ import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
 import { processMemo } from "@/lib/processMemo";
+import { deadlineFetch } from "@/lib/serverDeadline";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 
 const authLogger = logger.child({ module: "auth" });
@@ -59,6 +60,12 @@ interface ImpersonationStatusSnapshot {
     impersonated_email?: string;
     impersonated_org_id?: string;
 }
+// A status call that failed or hit its deadline is not repeated for this long (CHAOS-9114): the
+// proxy and the render both read it on every request, so a stuck backend would cost each request
+// the full wait.
+const IMPERSONATION_FAILURE_BACKOFF_MS = 30_000;
+const impersonationStatusFailedUntil = processMemo<number>("impersonationStatusFailedUntil");
+
 // One Map per process, not per bundle (CHAOS-8466).
 const impersonationStatusMemo = processMemo<{ at: number; status: ImpersonationStatusSnapshot }>(
     "impersonationStatusMemo",
@@ -93,7 +100,7 @@ const nextAuth = NextAuth({
 
                 const backendUrl = getBackendUrl();
                 try {
-                    const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
+                    const res = await deadlineFetch("write")(`${backendUrl}/api/v1/auth/login`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -196,14 +203,17 @@ const nextAuth = NextAuth({
             if (account && account.provider !== "credentials" && account.access_token) {
                 try {
                     const backendUrl = getBackendUrl();
-                    const res = await fetch(`${backendUrl}/api/v1/auth/social-login`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            provider: account.provider,
-                            provider_access_token: account.access_token,
-                        }),
-                    });
+                    const res = await deadlineFetch("write")(
+                        `${backendUrl}/api/v1/auth/social-login`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                provider: account.provider,
+                                provider_access_token: account.access_token,
+                            }),
+                        },
+                    );
 
                     if (res.ok) {
                         const data = await res.json();
@@ -273,7 +283,7 @@ const nextAuth = NextAuth({
             if (tokenExpired && token.refresh_token) {
                 try {
                     const backendUrl = getBackendUrl();
-                    const res = await fetch(`${backendUrl}/api/v1/auth/refresh`, {
+                    const res = await deadlineFetch("write")(`${backendUrl}/api/v1/auth/refresh`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ refresh_token: token.refresh_token }),
@@ -393,10 +403,15 @@ const nextAuth = NextAuth({
                     token.impersonated_user_id = memoized.status.impersonated_user_id;
                     token.impersonated_email = memoized.status.impersonated_email;
                     token.impersonated_org_id = memoized.status.impersonated_org_id;
+                } else if (
+                    trigger !== "update" &&
+                    now < (impersonationStatusFailedUntil.get(memoKey) ?? 0)
+                ) {
+                    // Failed a moment ago: keep the existing state, do not wait again.
                 } else {
                     try {
                         const backendUrl = getBackendUrl();
-                        const statusRes = await fetch(
+                        const statusRes = await deadlineFetch("auth")(
                             `${backendUrl}/api/v1/admin/impersonate/status`,
                             {
                                 method: "GET",
@@ -425,8 +440,12 @@ const nextAuth = NextAuth({
                             impersonationStatusMemo.set(memoKey, { at: now, status });
                         }
                     } catch {
-                        // Network error — keep existing impersonation state and
-                        // don't memo the failure (next read retries).
+                        // Network error or deadline: keep the existing impersonation state and
+                        // do not retry for 30 s (the next reads would each wait the full time).
+                        impersonationStatusFailedUntil.set(
+                            memoKey,
+                            Date.now() + IMPERSONATION_FAILURE_BACKOFF_MS,
+                        );
                     }
                 }
             }

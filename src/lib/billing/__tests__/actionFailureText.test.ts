@@ -11,7 +11,9 @@ const HOSTILE =
 const answer = (status: number) =>
     vi
         .spyOn(global, "fetch")
-        .mockResolvedValue(new Response(JSON.stringify({ detail: HOSTILE }), { status }));
+        .mockImplementation(
+            async () => new Response(JSON.stringify({ detail: HOSTILE }), { status }),
+        );
 
 describe("billing server actions: failure text (CHAOS-8436)", () => {
     beforeEach(() => {

@@ -21,6 +21,7 @@ import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
 import { getCurrentOrg } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
+import { boundedRead } from "@/lib/serverDeadline";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { getBlockedWorkIssues, getDrilldown } from "@/lib/api/investment";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -236,7 +237,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     const [health, rawResult, orgResult] = await Promise.all([
         checkApiHealth(),
         dataPromise,
-        getCurrentOrg().catch(() => ({ data: undefined })),
+        boundedRead(getCurrentOrg(), "step current org").catch(() => ({ data: undefined })),
     ]);
     const orgName = orgResult?.data?.name || undefined;
 

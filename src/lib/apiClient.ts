@@ -1,6 +1,7 @@
 import { resolveOrigin } from "@/lib/origin";
 import { isServer } from "@/lib/env";
 import { ApiErrors, apiErrorMessage } from "@/lib/constants/errors";
+import { fetchWithDeadline, withDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
 
 /**
  * Generate a unique request ID for distributed tracing.
@@ -22,6 +23,11 @@ export type ApiFetchInit = RequestInit & {
     next?: {
         revalidate?: number;
     };
+    /**
+     * Server-side deadline class (CHAOS-9114). Default: GET/HEAD are reads, any other method is
+     * a write and is never aborted. A POST that only QUERIES (explain, home) opts in with "read".
+     */
+    deadline?: "read" | "health";
 };
 
 const buildUrl = (path: string, params?: ApiQueryParams) => {
@@ -40,8 +46,12 @@ const buildUrl = (path: string, params?: ApiQueryParams) => {
 async function getServerAuthHeaders(): Promise<Record<string, string>> {
     if (!isServer) return {};
     try {
-        const { auth } = await import("@/lib/auth");
-        const session = await auth();
+        // Bounded (CHAOS-9114): the session read is a wait before any request is sent. On the
+        // deadline the call goes without a token and the backend answers 401 (its boundary).
+        const session = await withDeadline(
+            import("@/lib/auth").then(({ auth }) => auth()),
+            { kind: "auth", op: "step auth headers" },
+        );
         if (session?.access_token) {
             return { Authorization: `Bearer ${session.access_token}` };
         }
@@ -68,8 +78,9 @@ const request = async (
     const requestId =
         existingHeaders["X-Request-ID"] ?? existingHeaders["x-request-id"] ?? generateRequestId();
 
+    const { deadline, ...fetchInit } = init ?? {};
     const mergedInit: ApiFetchInit = {
-        ...init,
+        ...fetchInit,
         headers: {
             ...authHeaders,
             ...existingHeaders,
@@ -88,7 +99,9 @@ const request = async (
         }
     }
 
-    const promise = fetch(url, mergedInit);
+    const methodIsRead = method === "GET" || method === "HEAD";
+    const kind: ServerFetchKind = deadline ?? (methodIsRead ? "read" : "write");
+    const promise = fetchWithDeadline(url, mergedInit, { kind });
     if (!canDedupe) {
         return promise;
     }

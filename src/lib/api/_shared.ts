@@ -22,5 +22,7 @@ export const postJson = async <T>(
     revalidate = 60,
     params?: Record<string, string | number>,
 ) => {
-    return apiClient.postJson<T>(path, body, { next: { revalidate } }, params);
+    // Every caller posts filters to a query endpoint (home, explain, investment, work units):
+    // a read, so it gets the read deadline (CHAOS-9114).
+    return apiClient.postJson<T>(path, body, { next: { revalidate }, deadline: "read" }, params);
 };
