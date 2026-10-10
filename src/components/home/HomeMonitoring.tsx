@@ -172,6 +172,7 @@ export function HomeMonitoring({
                                                   MONITORING_TILE_NOTE,
                                                   metric,
                                                   filters,
+                                                  delta,
                                               ),
                                           }
                                         : {})}

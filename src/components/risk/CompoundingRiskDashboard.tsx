@@ -22,6 +22,7 @@ import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
 import { Section } from "@/components/ui/Section";
+import { coverageNote } from "@/lib/metrics/coverageNote";
 import { STATUS_PILL, type StatusPillTone } from "@/lib/statusPill";
 
 import { BreakoutSegment } from "./BreakoutSegment";
@@ -79,6 +80,8 @@ export type CompoundingRiskRowView = {
     scopeId: string;
     scopeLabel: string;
     score: number | null;
+    /** Share (0..1) of the input weight present in the score; null when the score is null. */
+    coverage?: number | null;
     severity: CompoundingRiskSeverity;
     components: CompoundingRiskComponentsView;
     weights: CompoundingRiskWeightsView;
@@ -130,6 +133,24 @@ function selectHeadlineRow(rows: CompoundingRiskRowView[]): CompoundingRiskRowVi
     if (rows.length === 0) return null;
     const scored = rows.find((r) => r.score !== null);
     return scored ?? rows[0];
+}
+
+/** "Based on N% of inputs" under a score; nothing when coverage is null. Never changes the severity colour. */
+function CoverageNote({
+    coverage,
+    testId,
+    className = "block text-xs text-(--ink-muted)",
+}: {
+    coverage: number | null | undefined;
+    testId: string;
+    className?: string;
+}) {
+    const note = coverageNote(coverage);
+    return note ? (
+        <span data-testid={testId} className={className}>
+            {note}
+        </span>
+    ) : null;
 }
 
 function SeverityChip({ severity }: { severity: CompoundingRiskSeverity }) {
@@ -322,6 +343,10 @@ function ScopeTable({
                                 </td>
                                 <td className="px-5 py-3 text-right tabular-nums">
                                     {fmtScore(row.score)}
+                                    <CoverageNote
+                                        coverage={row.score === null ? null : row.coverage}
+                                        testId="row-coverage-note"
+                                    />
                                 </td>
                                 <td className="px-5 py-3">
                                     <SeverityChip severity={row.severity} />
@@ -487,6 +512,11 @@ export function CompoundingRiskDashboard({
                                     </p>
                                     <SeverityChip severity={headline.severity} />
                                 </div>
+                                <CoverageNote
+                                    coverage={headline.score === null ? null : headline.coverage}
+                                    testId="headline-coverage-note"
+                                    className="mt-1 block text-sm text-(--ink-muted)"
+                                />
                                 <p className="mt-2 text-sm text-(--ink-muted)">
                                     {headline.scopeLabel}
                                 </p>

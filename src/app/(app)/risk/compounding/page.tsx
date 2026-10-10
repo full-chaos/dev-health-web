@@ -42,6 +42,7 @@ type CompoundingRiskQueryResponse = {
             scopeId: string;
             scopeLabel: string;
             score: number | null;
+            coverage?: number | null;
             severity: Uppercase<CompoundingRiskSeverity>;
             computedAt: string;
             components: CompoundingRiskRowView["components"];
@@ -103,6 +104,7 @@ async function fetchCompoundingRisk(
             scopeId: row.scopeId,
             scopeLabel: row.scopeLabel,
             score: row.score,
+            coverage: row.coverage ?? null,
             severity: normalizeSeverity(row.severity),
             components: row.components,
             weights: row.weights,
