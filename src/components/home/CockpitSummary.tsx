@@ -8,6 +8,7 @@ import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
+import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { HomeResponse } from "@/lib/types";
 
 import { CockpitEmptyState } from "./CockpitEmptyState";
@@ -64,7 +65,11 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     // Not drawn: the hero's action is the evidence button below.
                     href: "/explore",
                     // The comparison window the page asked for (a request parameter).
-                    metricLabel: `vs previous ${compareDays} ${compareDays === 1 ? "day" : "days"}`,
+                    metricLabel: `vs previous ${compareDays} ${compareDays === 1 ? "day" : "days"}${
+                        isRepoUnscopedMetric(topSignal.metric, filters)
+                            ? ` · ${NOT_FILTERED_BY_REPOSITORY}`
+                            : ""
+                    }`,
                     // The change exactly as served. No value node when the API served none.
                     value: topSignal.delta ?? "",
                     driver: hasPrior

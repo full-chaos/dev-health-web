@@ -9,6 +9,7 @@ import { MeterRows } from "@/components/ui/MeterRows";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
 import { EvidenceFact, EvidenceFactList, NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { withRepoScopeNote } from "@/lib/metrics/repoScope";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { ReadTheSignal } from "@/components/metrics/ReadTheSignal";
@@ -399,7 +400,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             unit={data?.unit}
                             delta={tileDelta(data)}
                             polarity={getMetricPolarity(metricFromApi)}
-                            caption="vs previous window"
+                            caption={withRepoScopeNote(
+                                "vs previous window",
+                                metricFromApi,
+                                filters,
+                            )}
                             hideTrend
                         />
                     </MetricStrip>
@@ -431,7 +436,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             unit={data?.unit}
                             delta={tileDelta(data)}
                             polarity={getMetricPolarity(metricFromApi)}
-                            caption="vs previous window"
+                            caption={withRepoScopeNote(
+                                "vs previous window",
+                                metricFromApi,
+                                filters,
+                            )}
                             hideTrend
                         />
                     </MetricStrip>

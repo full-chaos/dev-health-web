@@ -5,6 +5,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import type { MetricFilter } from "@/lib/filters/types";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { withRepoScopeNote } from "@/lib/metrics/repoScope";
 import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 
@@ -47,7 +48,7 @@ export function BottleneckTiles({
                         {...metricCardProps(placeholderDeltas ? null : row)}
                         polarity={getMetricPolarity(metric)}
                         spark={row?.spark}
-                        caption={caption}
+                        caption={withRepoScopeNote(caption, metric, filters)}
                         onOpenEvidence={() =>
                             evidence.open({ title: label, metric, filters, role, origin })
                         }
