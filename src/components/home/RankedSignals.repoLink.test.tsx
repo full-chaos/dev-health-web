@@ -106,3 +106,33 @@ describe("Home ranked signals no-value link states (CHAOS-9120)", () => {
         expect(screen.getByTestId("signal-current")).toHaveTextContent("1 days");
     });
 });
+
+describe("Home ranked signals with both note kinds (CHAOS-9120 + CHAOS-9076)", () => {
+    it("shows the link note on a work-item row and the coverage note on the rework row", () => {
+        render(
+            <RankedSignals
+                signals={[
+                    signal("review_latency", "Review Latency"),
+                    signal("cycle_time", "Cycle Time"),
+                    signal("pr_rework_ratio", "PR Rework Ratio"),
+                ]}
+                deltas={[
+                    delta("review_latency", {}),
+                    delta("cycle_time", {
+                        repo_link_state: "linked",
+                        repo_link_basis: { native: 56, explicit_text: 7, heuristic: 32 },
+                    }),
+                    delta("pr_rework_ratio", {
+                        rate_state: "measured",
+                        rate_coverage: 0.07,
+                    }),
+                ]}
+                filters={filters}
+            />,
+        );
+        expect(screen.getByTestId("signal-repo-link-note")).toHaveTextContent("56 native");
+        expect(screen.getByTestId("signal-coverage-note")).toHaveTextContent(
+            "Based on 7% of merged pull requests",
+        );
+    });
+});

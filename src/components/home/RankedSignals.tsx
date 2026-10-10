@@ -13,6 +13,7 @@ import { signalMetricLabel } from "@/lib/cockpit/signalLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
+import { reworkCoverageNote } from "@/lib/metrics/coverageNote";
 import { noDataText } from "@/lib/metrics/metricDisplay";
 import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
@@ -77,6 +78,9 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
         return delta && isRepoLinkNoValueState(delta.repo_link_state) ? delta : null;
     };
 
+    const coverageNoteOf = (signal: CockpitSignal) =>
+        reworkCoverageNote(deltas.find((delta) => delta.metric === signal.metric));
+
     const columns: DataTableColumn<CockpitSignal>[] = [
         {
             key: "signal",
@@ -101,6 +105,15 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
                             className="block text-xs text-(--ink-muted)"
                         >
                             {linkNoteOf(signal)}
+                        </span>
+                    ) : null}
+                    {/* CHAOS-9076: the served coverage of the rework ratio, read from its delta row. */}
+                    {coverageNoteOf(signal) ? (
+                        <span
+                            data-testid="signal-coverage-note"
+                            className="block text-xs text-(--ink-muted)"
+                        >
+                            {coverageNoteOf(signal)}
                         </span>
                     ) : null}
                 </>

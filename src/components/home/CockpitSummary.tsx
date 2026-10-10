@@ -9,7 +9,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { isRiskSignal } from "@/lib/cockpit/signalKinds";
-import { coverageNote } from "@/lib/metrics/coverageNote";
+import { coverageNote, reworkCoverageNote } from "@/lib/metrics/coverageNote";
 import { noDataText } from "@/lib/metrics/metricDisplay";
 import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
@@ -71,6 +71,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     const repoLinkNote = repoLinkTileNote(topDelta);
     // A no-value link state draws no data in the hero, never the signal's value (CHAOS-9120).
     const noValue = isRepoLinkNoValueState(topDelta?.repo_link_state);
+    const reworkNote = reworkCoverageNote(topDelta);
     const hasPrior = topSignal.prior_value != null && topSignal.prior_value !== "";
 
     return (
@@ -86,7 +87,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                         isRepoUnscopedMetric(topSignal.metric, filters, topSignal)
                             ? ` · ${NOT_FILTERED_BY_REPOSITORY}`
                             : ""
-                    }${repoLinkNote ? ` · ${repoLinkNote}` : ""}${
+                    }${reworkNote ? ` · ${reworkNote}` : ""}${repoLinkNote ? ` · ${repoLinkNote}` : ""}${
                         isRiskSignal(topSignal) && coverageNote(topSignal.coverage)
                             ? ` · ${coverageNote(topSignal.coverage)}`
                             : ""
