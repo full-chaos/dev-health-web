@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { ExplainResponse, HomeResponse, OpportunitiesResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
+import { explainAnswerIsForOtherMetric, isExplainClientError } from "@/lib/metrics/explainAnswer";
 import { normalizeFilters, postJson } from "./_shared";
 
 /**
@@ -16,14 +17,30 @@ export const getHomeData = cache(async function getHomeData(filters: MetricFilte
     });
 });
 
-export async function getExplainData(params: { metric: string; filters: MetricFilter }) {
+/**
+ * The explain answer for `params.metric`, or `null` when there is none to draw (CHAOS-9137):
+ * the answer is for another metric (see `explainAnswerIsForOtherMetric`), or the route refused
+ * the metric with a client error (400/404/422). Every caller already draws its "no explain
+ * data" state for `null`; any other failure still throws.
+ */
+export async function getExplainData(params: {
+    metric: string;
+    filters: MetricFilter;
+}): Promise<ExplainResponse | null> {
     const normalized = normalizeFilters(params.filters);
-    return postJson<ExplainResponse>(
-        "/api/v1/explain",
-        { metric: params.metric, filters: normalized },
-        60,
-        { metric: params.metric, f: encodeFilterParam(normalized) },
-    );
+    let answer: ExplainResponse;
+    try {
+        answer = await postJson<ExplainResponse>(
+            "/api/v1/explain",
+            { metric: params.metric, filters: normalized },
+            60,
+            { metric: params.metric, f: encodeFilterParam(normalized) },
+        );
+    } catch (err) {
+        if (isExplainClientError(err)) return null;
+        throw err;
+    }
+    return explainAnswerIsForOtherMetric(params.metric, answer) ? null : answer;
 }
 
 /**
