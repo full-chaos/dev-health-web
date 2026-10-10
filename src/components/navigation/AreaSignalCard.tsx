@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DataState } from "@/components/ui/DataState";
+import { ReadFailedState } from "@/components/ui/ReadFailedState";
 import {
     AREA_STATE_LABEL,
     AREA_STATE_PILL,
@@ -67,10 +68,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                 {signal.failed ? (
                     // The read failed (a timeout or an error): not an empty window. One plain sentence;
                     // the backend text is in the log only (CHAOS-8168).
-                    <DataState
-                        variant="error"
-                        title="Could not be read"
-                        message="The data for this view could not be read. Try again in a moment."
+                    <ReadFailedState
                         className="mt-3"
                         compact
                         headingLevel={4}

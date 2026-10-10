@@ -1,6 +1,7 @@
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { Section } from "@/components/ui/Section";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { STATUS_PILL } from "@/lib/statusPill";
 import type { ConfidenceLevel, HomeResponse } from "@/lib/types";
 import { Inset } from "@/components/ui/Inset";
@@ -42,6 +43,8 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
         .sort()
         .join(", ");
     const caveats = home?.data_confidence?.caveats ?? [];
+    // A FAILED Home read (`null`) is not "Not reported": each fact of the answer says so.
+    const readFailed = home === null;
 
     return (
         <Section
@@ -50,11 +53,17 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
             data-testid="evidence-context-card"
         >
             <EvidenceFactList aria-label="Evidence and context" testId="evidence-context-facts">
-                {source ? <EvidenceFact label="Source" value={source} /> : null}
+                {readFailed ? (
+                    <EvidenceFact label="Source" value={READ_FAILED_MESSAGE} />
+                ) : source ? (
+                    <EvidenceFact label="Source" value={source} />
+                ) : null}
                 <EvidenceFact
                     label="Signal quality"
                     value={
-                        quality ? (
+                        readFailed ? (
+                            READ_FAILED_MESSAGE
+                        ) : quality ? (
                             <span
                                 data-testid="evidence-context-quality"
                                 className={`rounded-full px-2 py-0.5 font-medium ${QUALITY_TONE[quality] ?? STATUS_PILL.muted}`}
@@ -67,7 +76,9 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
                 <EvidenceFact
                     label="Last sync"
                     value={
-                        lastSync ? (
+                        readFailed ? (
+                            READ_FAILED_MESSAGE
+                        ) : lastSync ? (
                             // An unparseable value is shown as served, not replaced.
                             <ClientTimestamp value={lastSync} fallback={lastSync} />
                         ) : undefined

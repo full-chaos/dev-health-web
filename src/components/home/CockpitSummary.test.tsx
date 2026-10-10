@@ -184,11 +184,19 @@ describe("CockpitSummary primary-signal hero", () => {
         expect(screen.queryByRole("button")).toBeNull();
     });
 
-    it("draws the no-data state, not 'Enabled but no findings', when home is null (CHAOS-9154)", () => {
+    // `home === null` is a FAILED Home read (no answer). It is not an empty window: the hero draws
+    // the failed-read state, never "No data" and never "Enabled but no findings" (CHAOS-9189).
+    it("draws the failed-read state when home is null: not 'No data', not 'Enabled but no findings'", () => {
         render(<CockpitSummary home={null} filters={filters} />);
-        expect(screen.getByTestId("cockpit-no-data")).toHaveTextContent("No data for this window.");
+        const state = screen.getByTestId("cockpit-read-failed");
+        expect(state).toHaveAttribute("data-variant", "error");
+        expect(state).toHaveTextContent("Could not be read");
+        expect(screen.queryByTestId("cockpit-no-data")).toBeNull();
         expect(screen.queryByTestId("cockpit-top-change-empty")).toBeNull();
+        expect(screen.queryByText("No data")).toBeNull();
+        expect(screen.queryByText("No data for this window.")).toBeNull();
         expect(screen.queryByText("Enabled but no findings")).toBeNull();
+        expect(screen.queryByRole("button")).toBeNull();
     });
 
     it("draws the no-data state when no health state is served (CHAOS-9154)", () => {

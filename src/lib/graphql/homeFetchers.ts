@@ -27,6 +27,8 @@ import type {
 import { HOME_QUERY } from "./queries";
 import { translateMetricFilterToGraphQL, getOrgId } from "./investmentFetchers";
 import { graphqlFetch } from "./urqlClient";
+import { logger } from "@/lib/logger";
+import { isServerDeadlineError } from "@/lib/serverDeadline";
 import type { HomeGraphQLResult, HomeQueryResponse } from "./types";
 import type { FilterInput, HomeWindowInput } from "./__generated__/types";
 
@@ -227,6 +229,53 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
     };
 }
 
+/** The class of a failed Home read, for the log line. Never the error text. */
+export type HomeReadFailureClass = "deadline" | "http" | "network" | "graphql" | "shape" | "error";
+
+/**
+ * What the log line says of a failed Home read: the class and, when the server answered, the HTTP
+ * status. Read from the urql error that `graphqlFetch` keeps as the `cause`. No message, no
+ * variable, no id: the served error text can hold names.
+ */
+export function classifyHomeReadFailure(error: unknown): {
+    error_class: HomeReadFailureClass;
+    status?: number;
+} {
+    const cause =
+        typeof error === "object" && error !== null && "cause" in error
+            ? (error.cause as {
+                  networkError?: unknown;
+                  graphQLErrors?: unknown[];
+                  response?: { status?: unknown };
+              } | null)
+            : null;
+    const rawStatus = cause?.response?.status;
+    const status = typeof rawStatus === "number" ? rawStatus : undefined;
+    if (isServerDeadlineError(error) || isServerDeadlineError(cause?.networkError)) {
+        return { error_class: "deadline" };
+    }
+    if (status !== undefined && (status < 200 || status >= 300)) {
+        return { error_class: "http", status };
+    }
+    if (cause?.networkError) return { error_class: "network", ...(status ? { status } : {}) };
+    if (cause?.graphQLErrors?.length) {
+        return { error_class: "graphql", ...(status ? { status } : {}) };
+    }
+    // The answer had no usable `home` (a 200 with `home: null`, or no data).
+    if (error instanceof TypeError || (error instanceof Error && !cause)) {
+        return { error_class: "shape" };
+    }
+    return { error_class: "error" };
+}
+
+/** ONE structured line per failed Home read (CHAOS-9189): operation, class, status, elapsed. */
+function logHomeReadFailure(error: unknown, elapsedMs: number): void {
+    logger.error(
+        { operation: "home", ...classifyHomeReadFailure(error), elapsed_ms: elapsedMs },
+        "Home read failed",
+    );
+}
+
 /**
  * Per-request memoized GraphQL home data fetch — drop-in replacement for
  * `getHomeData` (src/lib/api/home.ts). Same signature, same React.cache()
@@ -250,11 +299,19 @@ export const getHomeDataViaGraphQL = cache(async function getHomeDataViaGraphQL(
     const orgId = getOrgId(filters, contextOrgId);
     const variables = toHomeVariables(filters);
 
-    const response = await graphqlFetch<HomeQueryResponse>(
-        HOME_QUERY,
-        { orgId, ...variables },
-        { orgId },
-    );
-
-    return toHomeResponse(response.home);
+    // A FAILED read THROWS (a GraphQL error, an HTTP error, a deadline, a 200 without `home`); an
+    // EMPTY answer is a value with empty lists. A caller that turns the throw into `null` must
+    // read `null` as "failed", never as "no data" (CHAOS-9189).
+    const started = Date.now();
+    try {
+        const response = await graphqlFetch<HomeQueryResponse>(
+            HOME_QUERY,
+            { orgId, ...variables },
+            { orgId },
+        );
+        return toHomeResponse(response.home);
+    } catch (error) {
+        logHomeReadFailure(error, Date.now() - started);
+        throw error;
+    }
 });

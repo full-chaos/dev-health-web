@@ -150,6 +150,8 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 filters={filters}
                 activeRole={activeRole}
                 placeholderDeltas={placeholderDeltas}
+                // `null` is a FAILED Home read: the tiles say so (CHAOS-9189).
+                readFailed={home === null}
             />
 
             <QuadrantPanel

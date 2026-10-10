@@ -29,7 +29,13 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { metricCardProps, noDataText, readDelta } from "@/lib/metrics/metricDisplay";
+import { getMetricLabel } from "@/lib/metrics/catalog";
+import {
+    metricCardProps,
+    noDataText,
+    readDelta,
+    readFailedCardProps,
+} from "@/lib/metrics/metricDisplay";
 import { buttonClassName } from "@/components/shared/Button";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { useShellOrganization } from "@/components/shell/ShellContext";
@@ -108,6 +114,8 @@ export type IncidentCorrelationDashboardProps = {
     /** The organization id. Not shown: the empty state names the organization, never its raw id. */
     orgId: string;
     deltas: MetricDelta[];
+    /** The Home read that serves `deltas` FAILED (no answer): the DORA tiles say so. */
+    homeReadFailed?: boolean;
     drivers: Contributor[];
     contributors: Contributor[];
     explainUnit?: string;
@@ -346,6 +354,7 @@ export function buildSankeyData(
 
 export function IncidentCorrelationDashboard({
     deltas,
+    homeReadFailed = false,
     drivers,
     contributors,
     explainUnit,
@@ -404,7 +413,8 @@ export function IncidentCorrelationDashboard({
     const topContributors = contributors.slice(0, 5);
     const hasExplainData = topDrivers.length > 0 || topContributors.length > 0;
     const hasEdgeData = incidentRows.length > 0;
-    const hasAnyData = doraMetrics.length > 0 || hasExplainData || hasEdgeData;
+    // A failed Home read is not an empty window: the "no evidence" panel needs an answer.
+    const hasAnyData = homeReadFailed || doraMetrics.length > 0 || hasExplainData || hasEdgeData;
 
     // ---------------------------------------------------------------------------
     // Empty state (mirrors CompoundingRiskDashboard voice)
@@ -447,7 +457,22 @@ export function IncidentCorrelationDashboard({
     return (
         <div className="flex flex-col gap-8" data-testid="incident-correlation-dashboard">
             {/* ── DORA KPI tiles ─────────────────────────────────────────────────── */}
-            {doraMetrics.length > 0 && (
+            {homeReadFailed ? (
+                // The tiles' read FAILED: each DORA tile says so, by its catalog name (CHAOS-9189).
+                <section aria-label="DORA metrics" data-testid="dora-read-failed">
+                    <h2 className="mb-4 font-(--font-display) text-xl">DORA Metrics</h2>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {DORA_METRIC_KEYS.map((key) => (
+                            <MetricCard
+                                key={key}
+                                label={getMetricLabel(key)}
+                                {...readFailedCardProps()}
+                            />
+                        ))}
+                    </div>
+                </section>
+            ) : null}
+            {!homeReadFailed && doraMetrics.length > 0 && (
                 <section aria-label="DORA metrics">
                     <h2 className="mb-4 font-(--font-display) text-xl">DORA Metrics</h2>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

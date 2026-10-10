@@ -1,7 +1,7 @@
 "use client";
 
 import { withReworkCoverageNote } from "@/lib/metrics/coverageNote";
-import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { metricCardProps, readFailedCardProps } from "@/lib/metrics/metricDisplay";
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { MetricCard } from "@/components/metrics/MetricCard";
@@ -46,6 +46,8 @@ type ConfidencePanelProps = {
     reworkMetric?: MetricDelta;
     /** Per-theme rework breakdown from home; absent/empty → honest empty. */
     reworkThemeAllocation?: ReworkThemeAllocation[];
+    /** The Home read that serves the rework values FAILED (no answer): the tile says so. */
+    reworkReadFailed?: boolean;
 };
 
 export const CONFIDENCE_TONE: Record<string, string> = {
@@ -171,6 +173,7 @@ export function ConfidencePanel({
     isCategoryFlowLoading,
     reworkMetric,
     reworkThemeAllocation = [],
+    reworkReadFailed = false,
 }: ConfidencePanelProps) {
     const confidence =
         mixExplanation.data?.confidence ??
@@ -245,7 +248,13 @@ export function ConfidencePanel({
                         )
                     }
                 />
-                {reworkMetric ? (
+                {reworkReadFailed ? (
+                    <MetricCard
+                        testId="confidence-tile-rework"
+                        label="PR Rework Ratio"
+                        {...readFailedCardProps()}
+                    />
+                ) : reworkMetric ? (
                     <MetricCard
                         testId="confidence-tile-rework"
                         label="PR Rework Ratio"

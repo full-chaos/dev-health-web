@@ -8,6 +8,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { SegmentedControl } from "@/components/shared/SegmentedControl";
 import { DataState } from "@/components/ui/DataState";
+import { ReadFailedState } from "@/components/ui/ReadFailedState";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { TabIdOf } from "@/lib/navigation/tabs";
@@ -145,7 +146,10 @@ export function HomeMonitoring({
             </div>
 
             <div className="mt-4">
-                {deltas.length === 0 ? (
+                {home === null ? (
+                    // A FAILED Home read: not "No data connected", not "no findings" (CHAOS-9189).
+                    <ReadFailedState headingLevel={3} data-testid="monitoring-read-failed" />
+                ) : deltas.length === 0 ? (
                     <DataState
                         variant={hasSources ? "detector-enabled-no-findings" : "no-data-connected"}
                     />

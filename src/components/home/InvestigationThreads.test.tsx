@@ -85,6 +85,15 @@ const HOME = {
     ],
 } as unknown as HomeResponse;
 
+/** An EMPTY answer: the read worked and served nothing. (`null` is a FAILED read, CHAOS-9189.) */
+const EMPTY_HOME = {
+    freshness: { last_ingested_at: null, sources: {}, coverage: null },
+    deltas: [],
+    summary: [],
+    tiles: {},
+    events: [],
+} as unknown as HomeResponse;
+
 const draw = (home: HomeResponse | null = HOME, role = "em") =>
     render(<InvestigationThreads home={home} filters={filters} activeRole={role} />);
 
@@ -214,8 +223,17 @@ describe("InvestigationThreads rows", () => {
             "Review queues are the constraint.",
         );
         second.unmount();
+        const third = draw(EMPTY_HOME);
+        expect(screen.getByTestId("thread-row-recent-events")).toHaveTextContent(
+            "Evidence will appear once data is ingested.",
+        );
+        third.unmount();
+        // A FAILED read (`null`) is not "will appear": the line says the read failed (CHAOS-9189).
         draw(null);
         expect(screen.getByTestId("thread-row-recent-events")).toHaveTextContent(
+            "Could not be read",
+        );
+        expect(screen.getByTestId("thread-row-recent-events")).not.toHaveTextContent(
             "Evidence will appear once data is ingested.",
         );
     });
@@ -293,8 +311,17 @@ describe("InvestigationThreads long-form drawer", () => {
         expect(screen.getByTestId("evidence-subject")).toHaveTextContent("Understand");
     });
 
-    it("Investigation threads: the pending texts when there is no constraint data", async () => {
+    it("a FAILED read (home null): the drawer draws the failed-read state, not four pending sections (CHAOS-9189)", async () => {
         draw(null);
+        const drawer = await openLongForm();
+        expect(drawer.getByTestId("long-form-read-failed")).toHaveTextContent("Could not be read");
+        expect(drawer.queryByText("Constraint pending")).toBeNull();
+        expect(drawer.queryByText("Limiting factor pending.")).toBeNull();
+        expect(drawer.queryByText("Evidence will appear once data is ingested.")).toBeNull();
+    });
+
+    it("Investigation threads: the pending texts when there is no constraint data", async () => {
+        draw(EMPTY_HOME);
         const drawer = await openLongForm();
         const focus = drawer.getByRole("link", { name: /Focus thread/ });
         expect(focus).toHaveTextContent("Constraint pending");
@@ -356,7 +383,7 @@ describe("InvestigationThreads long-form drawer", () => {
         ).toBeInTheDocument();
         first.unmount();
 
-        draw(null);
+        draw(EMPTY_HOME);
         drawer = await openLongForm();
         expect(
             within(drawer.getByTestId("long-form-limiting-factor")).getByText(
