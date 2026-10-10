@@ -11,6 +11,7 @@ const read = (p: string) =>
 const SEARCH = read("app/(app)/people/page.tsx");
 const PERSON = read("app/(app)/people/[person_id]/page.tsx");
 const METRIC = read("app/(app)/people/[person_id]/metrics/[metric]/page.tsx");
+const CARD = read("components/people/PersonMetricCard.tsx");
 const SEARCH_UI = read("components/people/PeopleSearch.tsx");
 
 describe("People page pass (CHAOS-7762)", () => {
@@ -55,12 +56,12 @@ describe("People page pass (CHAOS-7762)", () => {
                 new RegExp(`const PERSON_METRIC_KEYS = \\[[^\\]]*"${metric}"`, "u"),
             );
             expect(PERSON).toContain("`/people/${personId}/metrics/${delta.metric}`");
-            expect(PERSON).toContain('caption="Open metric"');
+            expect(CARD).toContain('caption: "Open metric"');
         },
     );
 
     it("P4: the tile delta is the neutral component, not the good / bad MetricDelta", () => {
-        expect(PERSON).toContain("<NeutralDelta value=");
+        expect(CARD).toContain("<NeutralDelta");
         expect(PERSON).not.toContain("delta={placeholderDeltas");
     });
 

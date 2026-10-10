@@ -12,6 +12,10 @@ const read = (p: string) =>
 
 const SEARCH = read("people/page.tsx");
 const PERSON = read("people/[person_id]/page.tsx");
+const CARD = readFileSync(
+    join(process.cwd(), "src/components/people/PersonMetricCard.tsx"),
+    "utf8",
+);
 const METRIC = read("people/[person_id]/metrics/[metric]/page.tsx");
 
 describe("People search page strings (pin)", () => {
@@ -32,7 +36,6 @@ describe("Person page strings (pin)", () => {
         "Select a metric to investigate.",
         "Inactive",
         "Data service unavailable. Metrics will refresh once the API is back.",
-        'caption="Open metric"',
         'title="Churn × Throughput landscape"',
         'description="Operating mode for the selected window in individual scope."',
         'emptyState="Quadrant landscape unavailable."',
@@ -55,6 +58,10 @@ describe("Person page strings (pin)", () => {
         "identityCoverage < 70",
     ])("keeps %s", (text) => {
         expect(PERSON).toContain(text);
+    });
+
+    it('keeps caption "Open metric" on the tile', () => {
+        expect(CARD).toContain('caption: "Open metric"');
     });
 
     it("links every tile to the metric page of that metric", () => {
