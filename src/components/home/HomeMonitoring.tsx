@@ -14,7 +14,7 @@ import type { TabIdOf } from "@/lib/navigation/tabs";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
+import { getMetricLabel } from "@/lib/metrics/catalog";
 import { metricCardProps, metricDisplay } from "@/lib/metrics/metricDisplay";
 import type { HomeResponse } from "@/lib/types";
 
@@ -166,7 +166,6 @@ export function HomeMonitoring({
                                                   filters,
                                                   role: activeRole,
                                               }),
-                                              inverseGood: metricInverseGood(metric),
                                               spark: delta.spark,
                                               caption: MONITORING_TILE_NOTE,
                                           }

@@ -7,6 +7,7 @@ import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { changedFromZeroParts, metricDeltaParts } from "@/components/shared/MetricDelta";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricParts } from "@/lib/formatters";
+import type { MetricPolarity } from "@/lib/metrics/catalog";
 import type { SparkPoint } from "@/lib/types";
 
 export type MetricCardProps = {
@@ -27,7 +28,12 @@ export type MetricCardProps = {
     delta?: number | null;
     /** Shown in the meta line when no delta is available (never a bare "--"). */
     deltaUnavailableLabel?: string;
-    /** Lower-is-better metric: an increase is colored as negative (the `MetricDelta` rule). */
+    /**
+     * The metric's direction from the catalog. A fall of a lower-is-better metric is good. Without
+     * a direction (and without `inverseGood`) the change is drawn neutral, never good or bad by sign.
+     */
+    polarity?: MetricPolarity;
+    /** A bare direction for a metric outside the catalog: `true` is lower-is-better. */
     inverseGood?: boolean;
     spark?: SparkPoint[];
     /** The note of the meta line, after the delta: "<delta> · <caption>". */
@@ -93,6 +99,7 @@ export function MetricCard({
     unit,
     delta,
     deltaUnavailableLabel = "No prior period",
+    polarity,
     inverseGood,
     spark,
     caption,
@@ -119,8 +126,8 @@ export function MetricCard({
     const parts = numericValue !== null ? formatMetricParts(numericValue, unit ?? "") : null;
     const deltaParts =
         delta === null
-            ? changedFromZeroParts(numericValue, unit, { inverseGood })
-            : metricDeltaParts(delta, { inverseGood });
+            ? changedFromZeroParts(numericValue, unit, { polarity, inverseGood })
+            : metricDeltaParts(delta, { polarity, inverseGood });
     const interactive = Boolean(href || onOpenEvidence);
     const isMessage = valueIsMessage === true && valueText !== undefined;
 

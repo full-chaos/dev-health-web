@@ -130,10 +130,10 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.queryByTestId("metric-strip-filler")).toBeNull();
     });
 
-    it("shows the delta as a signed number with MetricDelta's tone and no arrow (a metric with no polarity reads as higher-is-better)", () => {
+    it("shows the delta as a signed number with MetricDelta's tone and no arrow (a metric with no polarity is neutral: the sign does not decide the tone)", () => {
         renderFour();
-        expect(screen.getByText("+12%")).toHaveClass("text-(--positive)");
-        expect(screen.getByText("-7%")).toHaveClass("text-(--accent-negative)");
+        expect(screen.getByText("+12%")).toHaveClass("text-(--ink-muted)");
+        expect(screen.getByText("-7%")).toHaveClass("text-(--ink-muted)");
         expect(screen.getByText("0%")).toHaveClass("text-(--ink-muted)");
         expect(screen.queryByText(/[↑↓]/)).toBeNull();
     });

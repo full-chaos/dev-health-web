@@ -14,14 +14,14 @@ describe("MetricDelta", () => {
     });
 
     it("renders a positive percent delta with positive tone", () => {
-        render(<MetricDelta value={12} />);
+        render(<MetricDelta value={12} polarity="higherIsBetter" />);
 
         const delta = screen.getByText("↑ +12%");
         expect(delta).toHaveClass("text-(--positive)");
     });
 
     it("renders a negative percent delta with negative tone", () => {
-        render(<MetricDelta value={-8} />);
+        render(<MetricDelta value={-8} polarity="higherIsBetter" />);
 
         const delta = screen.getByText("↓ -8%");
         expect(delta).toHaveClass("text-(--accent-negative)");
@@ -42,7 +42,7 @@ describe("MetricDelta", () => {
     });
 
     it("renders a number-format delta without a percent sign", () => {
-        render(<MetricDelta value={5} format="number" />);
+        render(<MetricDelta value={5} format="number" polarity="higherIsBetter" />);
 
         const delta = screen.getByText("↑ +5");
         expect(delta).toHaveClass("text-(--positive)");
@@ -76,13 +76,13 @@ describe("metricDeltaParts (the delta rule, for surfaces that draw the delta the
     });
 
     it("gives the signed text, the glyph and the polarity of a rise and of a fall", () => {
-        expect(metricDeltaParts(12)).toEqual({
+        expect(metricDeltaParts(12, { polarity: "higherIsBetter" })).toEqual({
             label: "+12%",
             glyph: "↑",
             toneClass: "text-(--positive)",
             polarity: "good",
         });
-        expect(metricDeltaParts(-8)).toEqual({
+        expect(metricDeltaParts(-8, { polarity: "higherIsBetter" })).toEqual({
             label: "-8%",
             glyph: "↓",
             toneClass: "text-(--accent-negative)",

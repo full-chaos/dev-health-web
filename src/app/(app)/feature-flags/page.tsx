@@ -10,7 +10,7 @@ import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags/fetchers";
-import { FF_MEASURES } from "@/lib/feature-flags/constants";
+import { FF_MEASURES, ffPolarity } from "@/lib/feature-flags/constants";
 import { getServerEnv } from "@/lib/config";
 import { fetchFlagPage } from "./actions";
 import { fetchOrNull } from "@/lib/fetchOrNull";
@@ -87,6 +87,7 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                     value={summary.activeFlags}
                     unit=""
                     delta={summary.activeFlagsDelta}
+                    polarity={ffPolarity(FF_MEASURES.ACTIVE_FLAGS)}
                     spark={summary.activeFlagsSpark}
                     caption={FF_MEASURES.ACTIVE_FLAGS.description}
                 />
@@ -115,6 +116,7 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                     value={summary.coverageRatio ?? undefined}
                     unit="%"
                     delta={summary.coverageRatioDelta}
+                    polarity={ffPolarity(FF_MEASURES.COVERAGE_RATIO)}
                     spark={summary.coverageRatioSpark}
                     caption={FF_MEASURES.COVERAGE_RATIO.description}
                 />

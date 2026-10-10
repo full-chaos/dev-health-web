@@ -200,10 +200,3 @@ export const getMetricLabel = (metric: string) => {
 export const getMetricUnit = (metric: string) => metricMetaByKey.get(metric)?.unit ?? "";
 export const getMetricPolarity = (metric: string): MetricPolarity | undefined =>
     metricMetaByKey.get(metric)?.polarity;
-
-/**
- * Whether a rise in this metric is bad (`MetricDelta`'s `inverseGood`). A metric with no catalog
- * polarity reads as higher-is-better; the Metrics page test pins that every tab metric has one.
- */
-export const metricInverseGood = (metric: string): boolean =>
-    getMetricPolarity(metric) === "lowerIsBetter";

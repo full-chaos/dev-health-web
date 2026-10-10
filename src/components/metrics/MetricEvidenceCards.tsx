@@ -4,7 +4,7 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
-import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
+import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
 
@@ -49,7 +49,7 @@ export function MetricEvidenceCards({
                         // A change is drawn only when both windows have data; else "No prior period", never 0.
                         // The served delta compares the window with the previous window of the same length.
                         caption={card.delta !== undefined ? "vs previous window" : undefined}
-                        inverseGood={metricInverseGood(metric)}
+                        polarity={getMetricPolarity(metric)}
                         // One evidence path per tile: the button opens the shared drawer, and
                         // the drawer footer links to Explore for the metric (with the role).
                         onOpenEvidence={() =>

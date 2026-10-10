@@ -1,4 +1,5 @@
 import { formatDelta, formatMetricParts, formatNumber } from "@/lib/formatters";
+import type { MetricPolarity } from "@/lib/metrics/catalog";
 
 type MetricDeltaFormat = "percent" | "number";
 
@@ -11,6 +12,9 @@ type MetricDeltaProps = {
     changedFromZero?: { current: number; unit?: string | null };
     format?: MetricDeltaFormat;
     unavailableLabel?: string;
+    /** The metric's direction. Absent (and no `inverseGood`): the change is drawn neutral. */
+    polarity?: MetricPolarity;
+    /** A bare direction: `true` is lower-is-better, `false` is higher-is-better. `polarity` wins. */
     inverseGood?: boolean;
     precision?: number;
     className?: string;
@@ -45,14 +49,27 @@ const formatSignedPercentDelta = (value: number, rounded: number, precision: num
     return `${formatSignedNumberDelta(rounded, precision)}%`;
 };
 
-const toneFor = (rounded: number, inverseGood: boolean) => {
-    if (rounded === 0) {
+export type DeltaDirection = { polarity?: MetricPolarity; inverseGood?: boolean };
+
+/**
+ * The one tone rule. A tone is a judgement, so it needs a known direction: `polarity` (from the
+ * metric catalog) or a bare `inverseGood`. With neither, the change is neutral, never good or bad
+ * by its sign. A change that rounds to 0 is muted for every direction.
+ */
+const toneFor = (rounded: number, { polarity, inverseGood }: DeltaDirection) => {
+    const lowerIsBetter =
+        polarity !== undefined
+            ? polarity === "lowerIsBetter"
+            : inverseGood === undefined
+              ? undefined
+              : inverseGood;
+    if (rounded === 0 || lowerIsBetter === undefined) {
         return MUTED_TONE;
     }
     if (rounded > 0) {
-        return inverseGood ? NEGATIVE_TONE : POSITIVE_TONE;
+        return lowerIsBetter ? NEGATIVE_TONE : POSITIVE_TONE;
     }
-    return inverseGood ? POSITIVE_TONE : NEGATIVE_TONE;
+    return lowerIsBetter ? POSITIVE_TONE : NEGATIVE_TONE;
 };
 
 export type MetricDeltaParts = {
@@ -63,7 +80,7 @@ export type MetricDeltaParts = {
     /** Tone class of the polarity: positive, negative or muted (no change). */
     toneClass: string;
     /**
-     * `good` / `bad` after `inverseGood`; `flat` when the change rounds to 0 at the precision:
+     * `good` / `bad` after the direction; `flat` when the change rounds to 0 at the precision:
      * too small to call better or worse, so muted (its value is still shown).
      */
     polarity: "good" | "bad" | "flat";
@@ -76,15 +93,15 @@ export type MetricDeltaParts = {
  */
 export function metricDeltaParts(
     value: number | null | undefined,
-    options: { format?: MetricDeltaFormat; inverseGood?: boolean; precision?: number } = {},
+    options: DeltaDirection & { format?: MetricDeltaFormat; precision?: number } = {},
 ): MetricDeltaParts | null {
-    const { format = "percent", inverseGood = false, precision = 0 } = options;
+    const { format = "percent", precision = 0 } = options;
     if (value === null || value === undefined || !Number.isFinite(value)) {
         return null;
     }
     const safePrecision = clampPrecision(precision);
     const rounded = roundToPrecision(value, safePrecision);
-    const toneClass = toneFor(rounded, inverseGood);
+    const toneClass = toneFor(rounded, options);
     return {
         label:
             format === "percent"
@@ -141,10 +158,10 @@ export function changedFromZeroLabel(value: number, unit: string | null | undefi
 export function changedFromZeroParts(
     value: number | null | undefined,
     unit: string | null | undefined,
-    options: { inverseGood?: boolean } = {},
+    options: DeltaDirection = {},
 ): MetricDeltaParts | null {
     if (typeof value !== "number" || !Number.isFinite(value) || value === 0) return null;
-    const toneClass = toneFor(value, options.inverseGood ?? false);
+    const toneClass = toneFor(value, options);
     return {
         label: changedFromZeroLabel(value, unit),
         glyph: value > 0 ? "↑" : "↓",
@@ -171,15 +188,19 @@ export function MetricDelta({
     changedFromZero,
     format = "percent",
     unavailableLabel = "No prior period",
-    inverseGood = false,
+    polarity,
+    inverseGood,
     precision = 0,
     className,
     leadingDot = true,
 }: MetricDeltaProps) {
     const parts =
         value === null && changedFromZero
-            ? changedFromZeroParts(changedFromZero.current, changedFromZero.unit, { inverseGood })
-            : metricDeltaParts(value, { format, inverseGood, precision });
+            ? changedFromZeroParts(changedFromZero.current, changedFromZero.unit, {
+                  polarity,
+                  inverseGood,
+              })
+            : metricDeltaParts(value, { format, polarity, inverseGood, precision });
 
     if (parts === null) {
         return (
