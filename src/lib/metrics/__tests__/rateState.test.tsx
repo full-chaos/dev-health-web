@@ -12,6 +12,9 @@ import {
     NO_DATA_FOR_WINDOW,
     NO_DEPLOYMENTS,
     NO_INCIDENT_DATA,
+    NO_MERGED_PULL_REQUESTS,
+    NO_REVIEW_DATA,
+    NO_REWORK_SIGNAL,
     noDataText,
 } from "../metricDisplay";
 
@@ -32,6 +35,8 @@ const filters: MetricFilter = {
 
 type Case = {
     name: string;
+    /** Metric key of the served row; change failure rate unless a case says otherwise. */
+    metric?: string;
     hasData?: boolean;
     state?: string | null;
     value: number;
@@ -63,6 +68,48 @@ const CASES: Case[] = [
         state: "not_applicable_no_deployments",
         value: 0,
         message: NO_DEPLOYMENTS,
+    },
+    // CHAOS-9074: why the PR rework ratio has no value.
+    {
+        name: "rework: measured 0",
+        metric: "pr_rework_ratio",
+        hasData: true,
+        state: "measured",
+        value: 0,
+        message: null,
+        drawn: /^0/,
+    },
+    {
+        name: "rework: unknown_no_review_evidence",
+        metric: "pr_rework_ratio",
+        hasData: false,
+        state: "unknown_no_review_evidence",
+        value: 0,
+        message: NO_REVIEW_DATA,
+    },
+    {
+        name: "rework: not_applicable_no_rework_signal",
+        metric: "pr_rework_ratio",
+        hasData: false,
+        state: "not_applicable_no_rework_signal",
+        value: 0,
+        message: NO_REWORK_SIGNAL,
+    },
+    {
+        name: "rework: not_applicable_no_merged_pull_requests",
+        metric: "pr_rework_ratio",
+        hasData: false,
+        state: "not_applicable_no_merged_pull_requests",
+        value: 0,
+        message: NO_MERGED_PULL_REQUESTS,
+    },
+    {
+        name: "rework: unknown future state",
+        metric: "pr_rework_ratio",
+        hasData: false,
+        state: "something_new",
+        value: 0,
+        message: NO_DATA_FOR_WINDOW,
     },
     {
         name: "null state, no data",
@@ -103,6 +150,16 @@ describe("noDataText: the one mapping", () => {
         expect(noDataText("change_failure_rate", "not_applicable_no_deployments")).toBe(
             "No deployments in this window",
         );
+        expect(noDataText("pr_rework_ratio", "unknown_no_review_evidence")).toBe(
+            "No review data for this window",
+        );
+        expect(noDataText("pr_rework_ratio", "not_applicable_no_rework_signal")).toBe(
+            "Rework is not measurable for this provider",
+        );
+        expect(noDataText("pr_rework_ratio", "not_applicable_no_merged_pull_requests")).toBe(
+            "No merged pull requests in this window",
+        );
+        expect(noDataText("pr_rework_ratio", "something_new")).toBe("No data for this window");
         expect(noDataText("change_failure_rate", null)).toBe("No data for this window");
         expect(noDataText("change_failure_rate", undefined)).toBe("No data for this window");
         expect(noDataText("change_failure_rate", "something_new")).toBe("No data for this window");
@@ -114,8 +171,8 @@ describe("noDataText: the one mapping", () => {
 
 describe("operating review tile", () => {
     const metric = (c: Case): OperatingReviewMetric => ({
-        key: "change_failure_rate",
-        label: "Change failure rate",
+        key: c.metric ?? "change_failure_rate",
+        label: "Metric",
         value: c.value,
         unit: "ratio",
         ...(c.hasData === undefined ? {} : { hasData: c.hasData }),
@@ -188,7 +245,7 @@ describe("operating review tile", () => {
 describe("Home card", () => {
     const row = (c: Case): MetricDelta => ({
         metric: "change_failure_rate",
-        label: "Change Failure Rate",
+        label: "Metric",
         value: c.value,
         unit: "%",
         delta_pct: 0,
@@ -196,7 +253,8 @@ describe("Home card", () => {
         ...(c.state === undefined ? {} : { rate_state: c.state }),
         spark: [],
     });
-    it.each(CASES)("$name", (c) => {
+    // The Home monitoring groups do not hold the PR rework ratio: those cases are not drawn here.
+    it.each(CASES.filter((c) => !c.metric))("$name", (c) => {
         const home = {
             freshness: { last_ingested_at: null, sources: {}, coverage: {} },
             deltas: [row(c)],

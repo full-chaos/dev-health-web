@@ -8,11 +8,18 @@ export const NO_DATA_FOR_WINDOW = "No data for this window";
 /** The reason texts for a rate that is not measured (ruled wording, one place for every surface). */
 export const NO_INCIDENT_DATA = "No incident data for this window";
 export const NO_DEPLOYMENTS = "No deployments in this window";
+export const NO_REVIEW_DATA = "No review data for this window";
+export const NO_REWORK_SIGNAL = "Rework is not measurable for this provider";
+export const NO_MERGED_PULL_REQUESTS = "No merged pull requests in this window";
 export const NOT_MEASURED_YET = "Not measured yet";
 
 const NOT_MEASURED_STATE_TEXT: Readonly<Record<string, string>> = {
     unknown_no_incident_evidence: NO_INCIDENT_DATA,
     not_applicable_no_deployments: NO_DEPLOYMENTS,
+    // The PR rework ratio's states (CHAOS-9074). State names are distinct, so one map serves both.
+    unknown_no_review_evidence: NO_REVIEW_DATA,
+    not_applicable_no_rework_signal: NO_REWORK_SIGNAL,
+    not_applicable_no_merged_pull_requests: NO_MERGED_PULL_REQUESTS,
 };
 
 /** Revert rate is served on every surface but is not measured anywhere yet. */
