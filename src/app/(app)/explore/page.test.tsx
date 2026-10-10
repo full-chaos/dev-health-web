@@ -42,6 +42,13 @@ vi.mock("@/components/charts/HorizontalBarChart", () => ({
         return <div data-testid="bar-chart" />;
     },
 }));
+vi.mock("@/lib/api/filterOptions", () => ({
+    fetchFilterNames: async () => ({
+        teams: { alpha: "Alpha" },
+        repos: { "org/api": "org/api" },
+        developers: { "ana@example.com": "Ana" },
+    }),
+}));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: async () => ({ ok: true }) }));
 
 const explain = vi.hoisted(() => ({
@@ -307,8 +314,8 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
             .getAllByTestId("evidence-fact")
             .map((row) => row.textContent);
         for (const row of [
-            "Scopeteam: alpha",
-            "Developersana@example.com",
+            "Scopeteam: Alpha",
+            "DevelopersAna",
             "Repositoriesorg/api",
             "Work typefeature",
             "Window30 days",
