@@ -25,6 +25,8 @@ import { boundedRead } from "@/lib/serverDeadline";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { getBlockedWorkIssues, getDrilldown } from "@/lib/api/investment";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { fetchFilterNames } from "@/lib/api/filterOptions";
+import { developerNames, repoNames, scopeNames } from "@/lib/filters/scopeNames";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
@@ -269,8 +271,17 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
               : view === "home"
                 ? "Home summary"
                 : "Metric explanation";
+    // Names, never ids: the same names as the scope bar (CHAOS-9145).
+    const hasNamedIds =
+        filters.scope.ids.length > 0 ||
+        (filters.what.repos?.length ?? 0) > 0 ||
+        (filters.who.developers?.length ?? 0) > 0;
+    const filterNames = hasNamedIds
+        ? await fetchFilterNames()
+        : { teams: {}, repos: {}, developers: {} };
+    const scopeNameList = scopeNames(filters.scope.level, filters.scope.ids, filterNames);
     const scopeDetail = filters.scope.ids.length
-        ? filters.scope.ids.join(", ")
+        ? scopeNameList.join(", ")
         : `all ${filters.scope.level}s`;
     const categoryParam = Array.isArray(params.category) ? params.category[0] : params.category;
     const streamParam = Array.isArray(params.stream) ? params.stream[0] : params.stream;
@@ -286,11 +297,15 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         {
             label: "Scope",
             value: filters.scope.ids.length
-                ? `${filters.scope.level}: ${filters.scope.ids.join(", ")}`
+                ? `${filters.scope.level}: ${scopeNameList.join(", ")}`
                 : filters.scope.level,
         },
-        developers.length ? { label: "Developers", value: developers.join(", ") } : null,
-        repos.length ? { label: "Repositories", value: repos.join(", ") } : null,
+        developers.length
+            ? { label: "Developers", value: developerNames(developers, filterNames).join(", ") }
+            : null,
+        repos.length
+            ? { label: "Repositories", value: repoNames(repos, filterNames).join(", ") }
+            : null,
         workCategory.length ? { label: "Work type", value: workCategory.join(", ") } : null,
         categoryParam ? { label: "Category", value: categoryParam } : null,
         streamParam ? { label: "Stream", value: streamParam } : null,
