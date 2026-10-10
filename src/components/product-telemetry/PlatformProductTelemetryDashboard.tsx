@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { appPath } from "@/lib/navigation/appPath";
 
 import { ProductTelemetryDashboard } from "@/components/product-telemetry/ProductTelemetryDashboard";
 import type { ProductTelemetryPlatformDashboardData } from "@/lib/graphql/productTelemetryFetchers";
@@ -46,7 +47,7 @@ function TopOrgsTable({
     // hashes are listed but cannot be drilled into without a real id.
     const drilldownHref = (org: ProductTelemetryPlatformDashboardData["topOrgs"][number]) =>
         org.orgId
-            ? `/superadmin/product-telemetry/${org.orgId}?startDate=${startDate}&endDate=${endDate}`
+            ? `${appPath("/superadmin/product-telemetry/[orgId]", { orgId: org.orgId })}?startDate=${startDate}&endDate=${endDate}`
             : null;
 
     return (
@@ -70,6 +71,7 @@ function TopOrgsTable({
                                     {href ? (
                                         <Link
                                             href={href}
+                                            prefetch={false}
                                             className="font-medium text-foreground underline-offset-4 hover:underline"
                                         >
                                             {label}

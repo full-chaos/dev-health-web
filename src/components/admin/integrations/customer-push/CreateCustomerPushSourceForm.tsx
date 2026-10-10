@@ -6,6 +6,7 @@ import { createCustomerPushSource } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { CustomerPushSystem } from "@/lib/admin/types";
 import { Notice } from "@/components/ui/Notice";
+import { appPath } from "@/lib/navigation/appPath";
 
 type CreateCustomerPushSourceFormProps = {
     provider: string;
@@ -96,7 +97,12 @@ export function CreateCustomerPushSourceForm({
             }
 
             if (result.data) {
-                router.push(`/org/admin/integrations/${provider}/customer-push/${result.data.id}`);
+                router.push(
+                    appPath("/org/admin/integrations/[provider]/customer-push/[source_id]", {
+                        provider,
+                        source_id: result.data.id,
+                    }),
+                );
             }
         });
     };

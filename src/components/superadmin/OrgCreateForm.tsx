@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createOrganization } from "@/lib/admin/server";
+import { appPath } from "@/lib/navigation/appPath";
 
 export function OrgCreateForm() {
     const router = useRouter();
@@ -45,7 +46,7 @@ export function OrgCreateForm() {
             toast.error(result.error);
         } else {
             toast.success("Organization created successfully");
-            router.push(`/superadmin/orgs/${result.data?.id}`);
+            router.push(appPath("/superadmin/orgs/[id]", { id: String(result.data?.id) }));
         }
     }
 

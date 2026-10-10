@@ -22,6 +22,7 @@ import {
     HEADINGS,
     PAGE_SIZE,
 } from "./SyncJobHistory.helpers";
+import { appPath } from "@/lib/navigation/appPath";
 
 interface SyncJobHistoryProps {
     jobs: SyncJob[];
@@ -118,7 +119,12 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                 <tbody className="divide-y divide-(--card-stroke)">
                     {visibleJobs.map((job) => {
                         const runId = getRunId(job);
-                        const href = runId ? `/org/admin/sync/${configId}/runs/${runId}` : null;
+                        const href = runId
+                            ? appPath("/org/admin/sync/[configId]/runs/[runId]", {
+                                  configId,
+                                  runId,
+                              })
+                            : null;
                         const formattedRunStarted = formatDateTimeUTC(job.started_at);
                         const runStartedLabel =
                             formattedRunStarted === "—" ? "unknown time" : formattedRunStarted;
@@ -178,6 +184,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                     {href ? (
                                         <Link
                                             href={href}
+                                            prefetch={false}
                                             aria-label={`View run details for sync run started ${runStartedLabel}`}
                                             className="text-(--accent-2) hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-2)"
                                         >

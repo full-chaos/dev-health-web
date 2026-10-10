@@ -1,6 +1,7 @@
 import { tileDelta } from "@/components/shared/MetricDelta";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { appPath } from "@/lib/navigation/appPath";
 
 import { DataNote } from "@/components/charts/DataNote";
 import { BlockedWorkEvidence, BlockedWorkItemsTable } from "./BlockedWorkEvidence";
@@ -561,11 +562,15 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                                     const prFlameHref =
                                         typeof item.repo_id === "string" &&
                                         typeof item.number === "number"
-                                            ? `/prs/${item.repo_id}:${item.number}`
+                                            ? appPath("/prs/[pr_id]", {
+                                                  pr_id: `${item.repo_id}:${item.number}`,
+                                              })
                                             : null;
                                     const issueFlameHref =
                                         typeof item.work_item_id === "string"
-                                            ? `/issues/${item.work_item_id}`
+                                            ? appPath("/issues/[issue_id]", {
+                                                  issue_id: item.work_item_id,
+                                              })
                                             : null;
                                     const flameHref = prFlameHref ?? issueFlameHref;
                                     const details = getEvidenceDetails(item);
@@ -605,6 +610,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                                                     {flameHref ? (
                                                         <Link
                                                             href={flameHref}
+                                                            prefetch={false}
                                                             className="inline-flex items-center rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                                                         >
                                                             {CTA_LABELS.openArtifact}

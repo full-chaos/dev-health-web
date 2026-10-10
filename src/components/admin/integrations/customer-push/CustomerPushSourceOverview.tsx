@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ConnectionStatus } from "@/components/admin/integrations/ConnectionStatus";
 import type { CustomerPushSource } from "@/lib/admin/types";
+import { appPath } from "@/lib/navigation/appPath";
 
 type CustomerPushSourceOverviewProps = {
     provider: string;
@@ -31,7 +32,10 @@ const LINK_CARDS = [
 ] as const;
 
 export function CustomerPushSourceOverview({ provider, source }: CustomerPushSourceOverviewProps) {
-    const basePath = `/org/admin/integrations/${provider}/customer-push/${source.id}`;
+    const basePath = appPath("/org/admin/integrations/[provider]/customer-push/[source_id]", {
+        provider,
+        source_id: source.id,
+    });
     const displayName = source.display_name || source.instance;
 
     return (
