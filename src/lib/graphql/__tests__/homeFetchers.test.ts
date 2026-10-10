@@ -498,3 +498,34 @@ describe("toHomeResponse rateState (CHAOS-9043)", () => {
         expect("rate_state" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
     });
 });
+
+describe("toHomeResponse coverage and repoFilterApplied (CHAOS-9078)", () => {
+    const withDelta = (extra: object) => ({
+        ...graphqlFixture,
+        deltas: [{ ...graphqlFixture.deltas[0], ...extra }],
+    });
+    const withSignal = (extra: object) => ({
+        ...graphqlFixture,
+        signals: [{ ...graphqlFixture.signals[0], ...extra }],
+    });
+
+    it("carries the served flag on a delta, null and false included", () => {
+        expect(toHomeResponse(withDelta({ repoFilterApplied: false })).deltas[0]).toMatchObject({
+            repo_filter_applied: false,
+        });
+        expect(toHomeResponse(withDelta({ repoFilterApplied: null })).deltas[0]).toMatchObject({
+            repo_filter_applied: null,
+        });
+    });
+
+    it("leaves the flag out when it is not served (older backend)", () => {
+        expect("repo_filter_applied" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
+        expect("repo_filter_applied" in toHomeResponse(graphqlFixture).signals![0]).toBe(false);
+    });
+
+    it("carries a served signal coverage and flag", () => {
+        const out = toHomeResponse(withSignal({ coverage: 0.6, repoFilterApplied: null }));
+        expect(out.signals![0]).toMatchObject({ coverage: 0.6, repo_filter_applied: null });
+        expect(toHomeResponse(withSignal({ coverage: null })).signals![0].coverage).toBeNull();
+    });
+});

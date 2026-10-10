@@ -40,6 +40,12 @@ export type MetricDelta = {
      * (an API before it, or no stored counts). A string this web does not know reads as no state.
      */
     rate_state?: string | null;
+    /**
+     * Served by the backend (CHAOS-9093): null = the request names no repository; true = the
+     * repository filter reached this metric (also when it matched nothing: then `has_data` is
+     * false); false = the value is NOT narrowed by the repository. Undefined: an older backend.
+     */
+    repo_filter_applied?: boolean | null;
     spark: SparkPoint[];
 };
 
@@ -134,6 +140,10 @@ export type CockpitSignal = {
     recommended_action: string;
     evidence_ref?: string | null;
     category: SignalCategory;
+    /** Share (0..1) of the score's input weight that was present; null when no score (CHAOS-6545). */
+    coverage?: number | null;
+    /** Same meaning as `MetricDelta.repo_filter_applied`; null on a signal that is not from a metric. */
+    repo_filter_applied?: boolean | null;
     attribution?: SignalAttribution | null;
 };
 

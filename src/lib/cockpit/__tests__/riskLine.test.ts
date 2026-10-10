@@ -61,4 +61,27 @@ describe("riskSignalsLine", () => {
         expect(riskSignalsLine(null)).toBeNull();
         expect(riskSignalsLine(undefined)).toBeNull();
     });
+
+    it("names the served coverage next to each score, at any coverage", () => {
+        expect(riskSignalsLine([{ ...risk("0.42"), coverage: 0.6 }])).toBe(
+            "Risk signal: 0.42 (Based on 60% of inputs), with low confidence.",
+        );
+        expect(riskSignalsLine([{ ...risk("0.42"), coverage: 1 }])).toBe(
+            "Risk signal: 0.42 (Based on 100% of inputs), with low confidence.",
+        );
+    });
+
+    it("adds no note when coverage is null or not served", () => {
+        expect(riskSignalsLine([{ ...risk("0.42"), coverage: null }])).toBe(
+            "Risk signal: 0.42, with low confidence.",
+        );
+    });
+
+    it("joins the confidence word and the coverage note in one bracket", () => {
+        expect(
+            riskSignalsLine([{ ...risk("0.42", "low"), coverage: 0.6 }, risk("0.5", "medium")]),
+        ).toBe(
+            "Risk signals: 0.42 (low confidence; Based on 60% of inputs) and 0.5 (medium confidence).",
+        );
+    });
 });

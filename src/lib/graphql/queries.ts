@@ -163,6 +163,7 @@ query CompoundingRisk(
       scopeId
       scopeLabel
       score
+      coverage
       severity
       computedAt
       components {
@@ -1218,6 +1219,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
         value
       }
       rateState
+      repoFilterApplied
     }
     reworkThemeAllocation {
       theme
@@ -1281,6 +1283,8 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
         id
         displayName
       }
+      coverage
+      repoFilterApplied
       attribution {
         items
         sources {

@@ -35,3 +35,6 @@ public
 
 # Generated GraphQL schema (regenerated from dev-health-ops via codegen)
 src/lib/graphql/schema.graphql
+
+# Backend-registered GraphQL texts: byte equality is the contract (CHAOS-9078)
+src/lib/graphql/__tests__/fixtures/wire

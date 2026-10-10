@@ -53,6 +53,7 @@ export function MetricEvidenceCards({
                             card.delta !== undefined ? "vs previous window" : undefined,
                             metric,
                             filters,
+                            data,
                         )}
                         polarity={getMetricPolarity(metric)}
                         // One evidence path per tile: the button opens the shared drawer, and

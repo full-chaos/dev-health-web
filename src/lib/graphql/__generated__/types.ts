@@ -770,6 +770,13 @@ export type CompoundingRiskPoint = {
   __typename?: 'CompoundingRiskPoint';
   components: CompoundingRiskComponents;
   computedAt: Scalars['DateTime']['output'];
+  /**
+   * The share of the score's weight that was present: the weights of the inputs
+   * that had data over the sum of all four weights, in [0, 1]. The score is the
+   * weighted mean over the present inputs, so a coverage below 1 says it was
+   * computed from fewer than four inputs. Null when no weight is stored.
+   */
+  coverage?: Maybe<Scalars['Float']['output']>;
   day: Scalars['Date']['output'];
   scope: CompoundingRiskScope;
   scopeEntity: CompoundingRiskScopeEntity;
@@ -1120,6 +1127,8 @@ export type HomeSignal = {
   attribution?: Maybe<SignalAttribution>;
   category: Scalars['String']['output'];
   confidence: Scalars['String']['output'];
+  /** For a compounding-risk signal: the share of the score's weight that was present, from 0 to 1 (the score is the weighted mean over the inputs that had data). Null on every other signal. */
+  coverage?: Maybe<Scalars['Float']['output']>;
   currentValue: Scalars['String']['output'];
   delta?: Maybe<Scalars['String']['output']>;
   direction: Scalars['String']['output'];
@@ -1131,6 +1140,8 @@ export type HomeSignal = {
   priorValue?: Maybe<Scalars['String']['output']>;
   /** The action the builder recommends, verbatim -- deterministic output of home.BuildResponse, not an LLM suggestion and not re-ranked here. */
   recommendedAction: Scalars['String']['output'];
+  /** Whether the request's repository filter (a repo-level scope, or what.repos) narrows the metric this signal is built from: the field of the same name on MetricDelta (false only for a team-keyed metric). Null when the request names no repository, and on a signal that does not come from a metric (risk, recommendation). */
+  repoFilterApplied?: Maybe<Scalars['Boolean']['output']>;
   /** Null when the signal is not scoped to one entity (e.g. an org-wide signal). */
   scopeEntity?: Maybe<ScopeEntityRef>;
   severity: Scalars['String']['output'];
@@ -1292,6 +1303,8 @@ export type MetricDelta = {
   metric: Scalars['String']['output'];
   /** Why change failure rate has a value or not (CHAOS-8981): measured (the value may be 0), unknown_no_incident_evidence (deployments, and no incident tied to the scope in the window) or not_applicable_no_deployments. Null when the window holds no stored counts, and for every other metric. */
   rateState?: Maybe<Scalars['String']['output']>;
+  /** Whether the request's repository filter (a repo-level scope, or what.repos) narrows this metric. Null when the request names no repository. True for a repository-keyed metric: the filter was applied, and when the named repositories resolve to nothing the metric has no data (hasData false). False only for a team-keyed metric (cycle_time, throughput, wip_saturation, blocked_work: their tables have no repo_id column, so the repository condition is not applied and the value is not narrowed) (CHAOS-9093). */
+  repoFilterApplied?: Maybe<Scalars['Boolean']['output']>;
   spark: Array<SparkPoint>;
   unit: Scalars['String']['output'];
   value: Scalars['Float']['output'];

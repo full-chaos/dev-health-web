@@ -880,6 +880,8 @@ export interface HomeGraphQLDelta {
     spark: HomeGraphQLSparkPoint[];
     /** Why a change failure rate has a value or not; null or absent when none is served. */
     rateState?: string | null;
+    /** Served repository-filter flag (null: no repository named). Absent: an older API. */
+    repoFilterApplied?: boolean | null;
 }
 
 export interface HomeGraphQLReworkThemeAllocation {
@@ -974,6 +976,10 @@ export interface HomeGraphQLSignal {
     evidenceRef: string | null;
     category: string;
     scopeEntity: HomeGraphQLScopeEntity | null;
+    /** Served coverage (0..1) of the score's inputs; null when no score. Absent: an older API. */
+    coverage?: number | null;
+    /** Served repository-filter flag. Absent: an older API. */
+    repoFilterApplied?: boolean | null;
     attribution: HomeGraphQLSignalAttribution | null;
 }
 

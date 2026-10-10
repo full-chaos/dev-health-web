@@ -158,3 +158,76 @@ describe("repository filter note on team-scoped metrics (CHAOS-9089)", () => {
         );
     });
 });
+
+describe("served repository-filter flag and coverage (CHAOS-9078)", () => {
+    const withFlag = (d: MetricDelta, flag: boolean | null | undefined): MetricDelta =>
+        flag === undefined ? d : { ...d, repo_filter_applied: flag };
+    const monitoring = (deltas: MetricDelta[], filters: MetricFilter) => {
+        const h = { ...home([]), deltas } as HomeResponse;
+        render(
+            <HomeMonitoring
+                home={h}
+                filters={filters}
+                activeRole="em"
+                lensId="em"
+                initialView="flow"
+            />,
+        );
+    };
+
+    it("flag false: the note, also on a key outside the fallback set", () => {
+        monitoring([withFlag(delta("review_latency", "Review Latency"), false)], oneRepo);
+        expect(screen.getByTestId("monitoring-tile-review_latency")).toHaveTextContent(
+            NOT_FILTERED_BY_REPOSITORY,
+        );
+    });
+
+    it("flag true or null: no note, also on one of the four fallback keys", () => {
+        monitoring([withFlag(delta("cycle_time", "Cycle Time"), true)], oneRepo);
+        expect(screen.getByTestId("monitoring-tile-cycle_time")).not.toHaveTextContent(
+            NOT_FILTERED_BY_REPOSITORY,
+        );
+    });
+
+    it("flag undefined: the fallback set decides (older backend)", () => {
+        monitoring([withFlag(delta("cycle_time", "Cycle Time"), undefined)], oneRepo);
+        expect(screen.getByTestId("monitoring-tile-cycle_time")).toHaveTextContent(
+            NOT_FILTERED_BY_REPOSITORY,
+        );
+    });
+
+    it("flag true with no data: the normal no-data text, no note", () => {
+        const empty: MetricDelta = {
+            ...delta("cycle_time", "Cycle Time"),
+            value: 0,
+            has_data: false,
+            repo_filter_applied: true,
+        };
+        monitoring([empty], oneRepo);
+        const tile = screen.getByTestId("monitoring-tile-cycle_time");
+        expect(tile).toHaveTextContent("No data for this window");
+        expect(tile).not.toHaveTextContent(NOT_FILTERED_BY_REPOSITORY);
+    });
+
+    it("ranked signal row follows its own served flag", () => {
+        const signals = [
+            signal("deploy_freq", "Deploy Frequency"),
+            { ...signal("throughput", "Throughput"), repo_filter_applied: true },
+            { ...signal("review_latency", "Review Latency"), repo_filter_applied: false },
+        ];
+        render(<RankedSignals signals={signals} deltas={DELTAS} filters={oneRepo} />);
+        const rows = screen.getAllByTestId("signal-row");
+        expect(rows[0]).not.toHaveTextContent(NOT_FILTERED_BY_REPOSITORY);
+        expect(rows[1]).toHaveTextContent(NOT_FILTERED_BY_REPOSITORY);
+    });
+
+    it("hero: a risk signal names its coverage and keeps its severity", () => {
+        const risk = {
+            ...signal("compounding_risk", "Compounding risk"),
+            coverage: 0.6,
+            severity: "high" as const,
+        };
+        render(<CockpitSummary home={home([risk])} filters={noRepo} />);
+        expect(screen.getByTestId("cockpit-summary")).toHaveTextContent("Based on 60% of inputs");
+    });
+});
