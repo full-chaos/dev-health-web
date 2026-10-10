@@ -94,6 +94,31 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             ...(d.repoFilterApplied !== undefined
                 ? { repo_filter_applied: d.repoFilterApplied }
                 : {}),
+            ...(d.repoLinkState !== undefined ? { repo_link_state: d.repoLinkState } : {}),
+            ...(d.repoLinkBasis !== undefined
+                ? {
+                      repo_link_basis: d.repoLinkBasis
+                          ? {
+                                native: d.repoLinkBasis.native,
+                                explicit_text: d.repoLinkBasis.explicitText,
+                                heuristic: d.repoLinkBasis.heuristic,
+                            }
+                          : null,
+                  }
+                : {}),
+            ...(d.repoLinkMultiRepoItems !== undefined
+                ? { repo_link_multi_repo_items: d.repoLinkMultiRepoItems }
+                : {}),
+            ...(d.repoLinkCoverage !== undefined
+                ? {
+                      repo_link_coverage: d.repoLinkCoverage
+                          ? {
+                                linked_items: d.repoLinkCoverage.linkedItems,
+                                items_in_window: d.repoLinkCoverage.itemsInWindow,
+                            }
+                          : null,
+                  }
+                : {}),
             spark: d.spark.map((p) => ({ ts: p.ts, value: p.value })),
         })),
         rework_theme_allocation: result.reworkThemeAllocation.map((r) => ({
