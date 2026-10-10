@@ -21,6 +21,39 @@ app.use((req, _res, next) => {
 app.get("/__test/backend-requests", (_req, res) => {
     res.json({ count: backendRequestCount });
 });
+// CHAOS-9166: every backend read the web made, as operation + variables, to count identical ones.
+type BackendLogEntry = { method: string; path: string; operation: string; variables: string };
+let backendLog: BackendLogEntry[] = [];
+app.use((req, _res, next) => {
+    if (req.path.startsWith("/__test/") || req.path === "/health") {
+        next();
+        return;
+    }
+    let operation = req.path;
+    let variables = "";
+    if (req.path.startsWith("/graphql")) {
+        const body =
+            req.method === "GET"
+                ? (req.query as Record<string, unknown>)
+                : (req.body as Record<string, unknown> | undefined);
+        const name = typeof body?.operationName === "string" ? body.operationName : "anonymous";
+        operation = `graphql ${name}`;
+        const raw = body?.variables;
+        variables = typeof raw === "string" ? raw : JSON.stringify(raw ?? {});
+    } else {
+        variables = JSON.stringify(req.query);
+        if (req.body && Object.keys(req.body).length > 0) variables += JSON.stringify(req.body);
+    }
+    backendLog.push({ method: req.method, path: req.path, operation, variables });
+    next();
+});
+app.get("/__test/backend-log", (_req, res) => {
+    res.json(backendLog);
+});
+app.post("/__test/backend-log/reset", (_req, res) => {
+    backendLog = [];
+    res.status(204).end();
+});
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
