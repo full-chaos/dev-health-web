@@ -4,6 +4,89 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+export type CompoundingRiskFilterInput = {
+  breakout?: CompoundingRiskScope;
+  day?: string | null | undefined;
+  repoIds?: Array<string> | null | undefined;
+  teamIds?: Array<string> | null | undefined;
+  trendDays?: number;
+};
+
+export type CompoundingRiskScope =
+  | 'REPO'
+  | 'TEAM';
+
+export type CompoundingRiskSeverity =
+  | 'ELEVATED'
+  | 'HIGH'
+  | 'LOW'
+  | 'UNKNOWN';
+
+export type FilterInput = {
+  how?: HowFilterInput | null | undefined;
+  scope?: ScopeFilterInput | null | undefined;
+  what?: WhatFilterInput | null | undefined;
+  who?: WhoFilterInput | null | undefined;
+  why?: WhyFilterInput | null | undefined;
+};
+
+/** Time window of the `home` query, the same members as `filters.time` of the REST home endpoint (range_days, compare_days, start_date, end_date). An unset member takes the REST default: 14, 14, no explicit dates. */
+export type HomeWindowInput = {
+  compareDays?: number | null | undefined;
+  endDate?: string | null | undefined;
+  rangeDays?: number | null | undefined;
+  startDate?: string | null | undefined;
+};
+
+export type HowFilterInput = {
+  flowStage?: Array<string> | null | undefined;
+};
+
+export type ScopeFilterInput = {
+  ids?: Array<string>;
+  level?: ScopeLevelInput;
+};
+
+export type ScopeLevelInput =
+  | 'DEVELOPER'
+  | 'ORG'
+  | 'REPO'
+  | 'SERVICE'
+  | 'TEAM';
+
+export type TeamAttributionConfidence =
+  | 'HIGH'
+  | 'LOW'
+  | 'MANUAL'
+  | 'MEDIUM'
+  | 'NONE';
+
+export type TeamAttributionSource =
+  | 'ASSIGNEE_MEMBERSHIP'
+  | 'AUTHOR_MEMBERSHIP'
+  | 'ISSUE_PROJECT'
+  | 'LINKED_ISSUE'
+  | 'MANUAL_FALLBACK'
+  | 'NATIVE_TEAM'
+  | 'PROJECT_OWNERSHIP'
+  | 'REPO_OWNERSHIP'
+  | 'UNASSIGNED';
+
+export type WhatFilterInput = {
+  repos?: Array<string> | null | undefined;
+  services?: Array<string> | null | undefined;
+};
+
+export type WhoFilterInput = {
+  developers?: Array<string> | null | undefined;
+  roles?: Array<string> | null | undefined;
+};
+
+export type WhyFilterInput = {
+  issueType?: Array<string> | null | undefined;
+  workCategory?: Array<string> | null | undefined;
+};
+
 export type GetConnectorsDataHealthQueryVariables = Exact<{
   teamId: string | number;
 }>;
@@ -31,6 +114,23 @@ export type GetMappingCoverageHealthQueryVariables = Exact<{
 
 
 export type GetMappingCoverageHealthQuery = { dataHealth: { mappingCoverage: { deployments: { totalRepos: number, coveredRepos: number, coveragePct: number }, workItems: { totalRepos: number, coveredRepos: number, coveragePct: number } } } };
+
+export type CompoundingRiskQueryVariables = Exact<{
+  orgId: string;
+  filter?: CompoundingRiskFilterInput | null | undefined;
+}>;
+
+
+export type CompoundingRiskQuery = { compoundingRisk: { __typename: 'CompoundingRiskResult', orgId: string, breakout: CompoundingRiskScope, generatedAt: string, rows: Array<{ __typename: 'CompoundingRiskPoint', day: string, scope: CompoundingRiskScope, scopeId: string, scopeLabel: string, score: number | null, coverage: number | null, severity: CompoundingRiskSeverity, computedAt: string, components: { __typename: 'CompoundingRiskComponents', churnNorm: number | null, complexityNorm: number | null, ownershipNorm: number | null, reviewNorm: number | null, reworkChurn: number | null, complexityDelta: number | null, ownershipGini: number | null, singleOwnerRatio: number | null, reviewLatencyP90h: number | null }, weights: { __typename: 'CompoundingRiskWeights', churn: number, complexity: number, ownership: number, review: number }, thresholds: { __typename: 'CompoundingRiskThresholds', elevated: number, high: number } }>, trend: Array<{ __typename: 'CompoundingRiskTrendPoint', day: string, score: number | null, severity: CompoundingRiskSeverity }> } };
+
+export type HomeQueryVariables = Exact<{
+  orgId: string;
+  filters?: FilterInput | null | undefined;
+  window?: HomeWindowInput | null | undefined;
+}>;
+
+
+export type HomeQuery = { home: { __typename: 'HomeResult', freshness: { __typename: 'Freshness', lastIngestedAt: string | null, latestSuccessfulSyncAt: string | null, sources: Array<{ __typename: 'HomeFreshnessSource', provider: string, status: string }>, coverage: { __typename: 'Coverage', reposCoveredPct: number | null, prsLinkedToIssuesPct: number | null, issuesWithCycleStatesPct: number | null } | null }, deltas: Array<{ __typename: 'MetricDelta', metric: string, label: string, value: number, unit: string, deltaPct: number | null, hasData: boolean, hasPriorData: boolean, rateState: string | null, repoFilterApplied: boolean | null, spark: Array<{ __typename: 'SparkPoint', ts: string, value: number }> }>, reworkThemeAllocation: Array<{ __typename: 'ReworkThemeAllocation', theme: string, label: string, allocation: number, allocationPct: number, prsMerged: number, churnLoc: number }>, summary: Array<{ __typename: 'SummarySentence', id: string, text: string, evidenceLink: string }>, tiles: Array<{ __typename: 'HomeTileEntry', key: string, value: { __typename: 'HomeTile', title: string, subtitle: string, link: string } }>, constraint: { __typename: 'ConstraintCard', title: string, claim: string, experiments: Array<string>, evidence: Array<{ __typename: 'ConstraintEvidence', label: string, link: string }> } | null, events: Array<{ __typename: 'EventItem', ts: string, type: string, text: string, link: string }>, healthState: { __typename: 'HealthState', status: string, headline: string, summary: string, asOf: string | null }, signals: Array<{ __typename: 'HomeSignal', id: string, title: string, metric: string, currentValue: string, priorValue: string | null, delta: string | null, direction: string, severity: string, confidence: string, affectedScope: string, evidenceCount: number, whyItMatters: string, recommendedAction: string, evidenceRef: string | null, category: string, coverage: number | null, repoFilterApplied: boolean | null, scopeEntity: { __typename: 'ScopeEntityRef', id: string, displayName: string } | null, attribution: { __typename: 'SignalAttribution', items: number, sources: Array<{ __typename: 'SignalAttributionSourceCount', source: TeamAttributionSource, items: number, share: number }>, confidence: Array<{ __typename: 'SignalAttributionConfidenceCount', confidence: TeamAttributionConfidence, items: number, share: number }> } | null }>, limitingFactor: { __typename: 'HomeLimitingFactor', claim: string, whyItMatters: string, recommendedAction: string, confidence: string, evidenceRef: string | null }, dataConfidence: { __typename: 'HomeDataConfidence', level: string, coveragePct: number | null, connectedSources: Array<string>, missingSources: Array<string>, caveats: Array<string> }, scopeDataConfidence: { __typename: 'HomeScopeDataConfidence', level: string, coveragePct: number | null, lastIngestedAt: string | null, caveats: Array<string> } } };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -127,3 +227,208 @@ export const GetMappingCoverageHealthDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<GetMappingCoverageHealthQuery, GetMappingCoverageHealthQueryVariables>;
+export const CompoundingRiskDocument = new TypedDocumentString(`
+    query CompoundingRisk($orgId: String!, $filter: CompoundingRiskFilterInput = null) {
+  compoundingRisk(orgId: $orgId, filter: $filter) {
+    orgId
+    breakout
+    generatedAt
+    rows {
+      day
+      scope
+      scopeId
+      scopeLabel
+      score
+      coverage
+      severity
+      computedAt
+      components {
+        churnNorm
+        complexityNorm
+        ownershipNorm
+        reviewNorm
+        reworkChurn
+        complexityDelta
+        ownershipGini
+        singleOwnerRatio
+        reviewLatencyP90h
+        __typename
+      }
+      weights {
+        churn
+        complexity
+        ownership
+        review
+        __typename
+      }
+      thresholds {
+        elevated
+        high
+        __typename
+      }
+      __typename
+    }
+    trend {
+      day
+      score
+      severity
+      __typename
+    }
+    __typename
+  }
+}
+    `) as unknown as TypedDocumentString<CompoundingRiskQuery, CompoundingRiskQueryVariables>;
+export const HomeDocument = new TypedDocumentString(`
+    query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
+  home(orgId: $orgId, filters: $filters, window: $window) {
+    freshness {
+      lastIngestedAt
+      latestSuccessfulSyncAt
+      sources {
+        provider
+        status
+        __typename
+      }
+      coverage {
+        reposCoveredPct
+        prsLinkedToIssuesPct
+        issuesWithCycleStatesPct
+        __typename
+      }
+      __typename
+    }
+    deltas {
+      metric
+      label
+      value
+      unit
+      deltaPct
+      hasData
+      hasPriorData
+      spark {
+        ts
+        value
+        __typename
+      }
+      rateState
+      repoFilterApplied
+      __typename
+    }
+    reworkThemeAllocation {
+      theme
+      label
+      allocation
+      allocationPct
+      prsMerged
+      churnLoc
+      __typename
+    }
+    summary {
+      id
+      text
+      evidenceLink
+      __typename
+    }
+    tiles {
+      key
+      value {
+        title
+        subtitle
+        link
+        __typename
+      }
+      __typename
+    }
+    constraint {
+      title
+      claim
+      evidence {
+        label
+        link
+        __typename
+      }
+      experiments
+      __typename
+    }
+    events {
+      ts
+      type
+      text
+      link
+      __typename
+    }
+    healthState {
+      status
+      headline
+      summary
+      asOf
+      __typename
+    }
+    signals {
+      id
+      title
+      metric
+      currentValue
+      priorValue
+      delta
+      direction
+      severity
+      confidence
+      affectedScope
+      evidenceCount
+      whyItMatters
+      recommendedAction
+      evidenceRef
+      category
+      scopeEntity {
+        id
+        displayName
+        __typename
+      }
+      coverage
+      repoFilterApplied
+      attribution {
+        items
+        sources {
+          source
+          items
+          share
+          __typename
+        }
+        confidence {
+          confidence
+          items
+          share
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    limitingFactor {
+      claim
+      whyItMatters
+      recommendedAction
+      confidence
+      evidenceRef
+      __typename
+    }
+    dataConfidence {
+      level
+      coveragePct
+      connectedSources
+      missingSources
+      caveats
+      __typename
+    }
+    scopeDataConfidence {
+      level
+      coveragePct
+      lastIngestedAt
+      caveats
+      __typename
+    }
+    __typename
+  }
+}
+    `) as unknown as TypedDocumentString<HomeQuery, HomeQueryVariables>;
