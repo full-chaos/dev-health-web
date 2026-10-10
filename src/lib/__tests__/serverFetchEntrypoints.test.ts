@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { stallingFetch, track } from "@/test/stallFetch";
+import { headersThenStalledBody, stallingFetch, track } from "@/test/stallFetch";
 
 // CHAOS-9103: a server-side fetch that is accepted and never answered must settle at its
 // deadline. Real timers, deadlines shrunk through the env override, so every test asserts
@@ -28,6 +28,10 @@ const ENV = [
 ] as const;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Poll until every tracked promise settled (up to 3 s): robust on a loaded host. */
+const allSettled = async (...states: Array<{ settled: boolean }>) => {
+    for (let i = 0; i < 300 && !states.every((s) => s.settled); i += 1) await sleep(10);
+};
 const deadlineLines = () =>
     warn.mock.calls.filter(([, msg]) => msg === "server fetch deadline exceeded");
 
@@ -127,5 +131,72 @@ describe("writes are not aborted", () => {
         await sleep(600);
         expect(state.settled).toBe(false);
         expect(deadlineLines()).toHaveLength(0);
+    });
+});
+
+describe("shared in-flight GET map (apiClient): a stalled owner releases every waiter", () => {
+    // A longer deadline than the other tests: the waiters must join the owner before it ends,
+    // also on a loaded host.
+    beforeEach(() => {
+        process.env.SERVER_FETCH_DEADLINE_READ_MS = "300";
+    });
+
+    it("two parallel identical unauthenticated GETs both settle at the deadline; a third call starts a NEW fetch", async () => {
+        const fetchMock = stallingFetch();
+        vi.stubGlobal("fetch", fetchMock);
+        const a = track(apiClient.getJson("/api/v1/shared-read"));
+        const b = track(apiClient.getJson("/api/v1/shared-read"));
+        await sleep(10);
+        expect(vi.mocked(fetchMock)).toHaveBeenCalledTimes(1); // joined the owner
+        await allSettled(a, b);
+        expect(a.settled).toBe(true);
+        expect(b.settled).toBe(true);
+        expect(deadlineLines()).toHaveLength(1); // once per stalled owner, not per waiter
+
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response('{"ok":true}', { status: 200 })),
+        );
+        expect(await apiClient.getJson("/api/v1/shared-read")).toEqual({ ok: true });
+        expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(1); // entry gone: a NEW fetch
+    });
+
+    it("headers arrive, body never ends: both waiters settle (no tee stall), entry evicted", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (_i: RequestInfo | URL, init?: RequestInit) =>
+                headersThenStalledBody(init),
+            ),
+        );
+        const a = track(apiClient.getJson("/api/v1/shared-body"));
+        const b = track(apiClient.getJson("/api/v1/shared-body"));
+        await allSettled(a, b);
+        expect(a.settled).toBe(true);
+        expect(b.settled).toBe(true);
+        expect(deadlineLines()).toHaveLength(1);
+    });
+
+    it("fresh-process shape: the FIRST call stalls, requests keep arriving, all settle within the deadline, the next call succeeds", async () => {
+        let calls = 0;
+        vi.stubGlobal(
+            "fetch",
+            vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+                calls += 1;
+                if (calls === 1) return stallingFetch()(input, init);
+                return Promise.resolve(new Response('{"ok":true}', { status: 200 }));
+            }),
+        );
+        const waiters = [];
+        const started = Date.now();
+        for (let i = 0; i < 8; i += 1) {
+            waiters.push(track(apiClient.getJson("/api/v1/first-call")));
+            await sleep(3);
+        }
+        await allSettled(...waiters);
+        expect(waiters.every((w) => w.settled)).toBe(true);
+        expect(Date.now() - started).toBeLessThan(2_000);
+        expect(calls).toBe(1);
+        expect(await apiClient.getJson("/api/v1/first-call")).toEqual({ ok: true });
+        expect(calls).toBe(2);
     });
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { stallingFetch, track } from "@/test/stallFetch";
+import { headersThenStalledBody, stallingFetch, track } from "@/test/stallFetch";
 
 const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));
 vi.mock("@/lib/logger", () => ({
@@ -62,7 +62,8 @@ describe("fetchWithDeadline", () => {
         const response = new Response("{}", { status: 200 });
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
         const result = await fetchWithDeadline("http://api.test/x", undefined, { kind: "read" });
-        expect(result).toBe(response);
+        expect(result.status).toBe(200);
+        expect(await result.text()).toBe("{}");
         expect(warn).not.toHaveBeenCalled();
     });
 
@@ -132,5 +133,56 @@ describe("fetchWithDeadline", () => {
         expect(
             warn.mock.calls.filter(([, m]) => m === "server fetch deadline exceeded"),
         ).toHaveLength(0);
+    });
+
+    it("headers arrive and the body never ends: rejects at the deadline and logs (whole exchange)", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (_i: RequestInfo | URL, init?: RequestInit) =>
+                headersThenStalledBody(init),
+            ),
+        );
+        const state = track(
+            fetchWithDeadline("http://api.test/api/v1/home", undefined, { kind: "read" }),
+        );
+        await vi.advanceTimersByTimeAsync(SERVER_FETCH_DEADLINES.read - 1);
+        expect(state.settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(2);
+        expect(state.settled).toBe(true);
+        expect((state.error as Error).name).toBe("TimeoutError");
+        const lines = warn.mock.calls.filter(([, msg]) => msg === "server fetch deadline exceeded");
+        expect(lines).toHaveLength(1);
+        expect(lines[0][0]).toMatchObject({ op: "GET /api/v1/home", outcome: "deadline" });
+    });
+
+    it("a healthy response comes back fully read: status, headers, any number of reads or clones", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async () =>
+                    new Response('{"a":1}', {
+                        status: 201,
+                        statusText: "Created",
+                        headers: { "x-k": "v" },
+                    }),
+            ),
+        );
+        const response = await fetchWithDeadline("http://api.test/x", undefined, { kind: "read" });
+        expect(response.status).toBe(201);
+        expect(response.statusText).toBe("Created");
+        expect(response.headers.get("x-k")).toBe("v");
+        const copy = response.clone();
+        expect(await response.json()).toEqual({ a: 1 });
+        expect(await copy.text()).toBe('{"a":1}');
+    });
+
+    it("a null-body status (204) is returned without a body", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(null, { status: 204 })),
+        );
+        const response = await fetchWithDeadline("http://api.test/x", undefined, { kind: "read" });
+        expect(response.status).toBe(204);
+        expect(await response.text()).toBe("");
     });
 });

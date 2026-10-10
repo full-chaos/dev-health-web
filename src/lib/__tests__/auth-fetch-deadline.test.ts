@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { stallingFetch, track } from "@/test/stallFetch";
+import { headersThenStalledBody, stallingFetch, track } from "@/test/stallFetch";
 
 // CHAOS-9103: the auth jwt callback runs on the FIRST request of a session (validate, refresh)
 // and in the app layout. A backend call that is accepted and never answered must not hold the
@@ -45,8 +45,9 @@ vi.mock("@/lib/logger", () => {
     return { logger: l };
 });
 
+import type { JWT } from "next-auth/jwt";
 import "@/lib/auth";
-import { resetValidationMemoForTests } from "@/lib/authValidationMemo";
+import { applyBackendValidationMemo, resetValidationMemoForTests } from "@/lib/authValidationMemo";
 
 type Token = Record<string, unknown>;
 type JwtCallback = (params: { token: Token; user?: unknown; account?: unknown }) => Promise<Token>;
@@ -115,5 +116,44 @@ describe("auth jwt callback with a backend that never answers", () => {
         expect(state.settled).toBe(true);
         expect(deadlineLines()[0][0]).toMatchObject({ op: "POST /api/v1/auth/refresh" });
         expect((state.value as Token).refresh_token).toBe("refresh");
+    });
+
+    it("stalled validate: EVERY waiter settles at the deadline, one log line, memo cleared, a later request starts a NEW validate", async () => {
+        const fetchMock = stallingFetch();
+        vi.stubGlobal("fetch", fetchMock);
+        const now = Date.now();
+        const waiters = Array.from({ length: 6 }, () =>
+            track(applyBackendValidationMemo({ id: "u", access_token: "access" }, now)),
+        );
+        await sleep(600);
+        expect(waiters.every((w) => w.settled)).toBe(true);
+        expect(vi.mocked(fetchMock)).toHaveBeenCalledTimes(1); // one owner, five waiters
+        expect(deadlineLines()).toHaveLength(1); // once per stalled owner
+        expect(deadlineLines()[0][0]).toMatchObject({ op: "POST /api/v1/auth/validate" });
+
+        // The entry is no longer in flight: past the backoff the next request validates again.
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(JSON.stringify({ valid: true }), { status: 200 })),
+        );
+        const token = { id: "u", access_token: "access" } as JWT;
+        await applyBackendValidationMemo(token, now + 60 * 60 * 1000);
+        expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(1);
+        expect(token.error).toBeUndefined();
+    });
+
+    it("validate answers with headers and a body that never ends: settles at the deadline", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (_i: RequestInfo | URL, init?: RequestInit) =>
+                headersThenStalledBody(init),
+            ),
+        );
+        const state = track(
+            applyBackendValidationMemo({ id: "u", access_token: "access" }, Date.now()),
+        );
+        await sleep(600);
+        expect(state.settled).toBe(true);
+        expect(deadlineLines()).toHaveLength(1);
     });
 });

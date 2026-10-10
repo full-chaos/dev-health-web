@@ -31,3 +31,19 @@ export function track<T>(promise: Promise<T>) {
     );
     return state;
 }
+
+/**
+ * A response whose HEADERS arrive and whose BODY never ends. The body stream errors only when
+ * the fetch signal fires, like the body of a real fetch.
+ */
+export function headersThenStalledBody(init?: RequestInit, status = 200): Response {
+    const signal = init?.signal;
+    const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+            const fail = () => controller.error(signal?.reason);
+            if (signal?.aborted) fail();
+            else signal?.addEventListener("abort", fail, { once: true });
+        },
+    });
+    return new Response(body, { status, headers: { "content-type": "application/json" } });
+}

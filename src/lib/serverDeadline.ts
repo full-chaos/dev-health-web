@@ -5,7 +5,8 @@
  * (or the layout's `await`) never settles and the streamed document stays open. This wrapper
  * is the single place that bounds it.
  *
- * - READ kinds (`read`, `health`, `auth`, `entitlements`) get an abort at the deadline. The
+ * - READ kinds (`read`, `health`, `auth`, `entitlements`) get an abort at the deadline that
+ *   covers the whole exchange, headers AND body (the body is buffered here). The
  *   fetch rejects with a `TimeoutError`; every caller already has a failure path for a rejected
  *   fetch (`fetchOrNull`, `checkApiHealth`, the auth transient branch, `withErrorHandling`).
  * - `write` is never aborted: the server may have applied the change, and "failed" would be a
@@ -72,6 +73,14 @@ function statusClass(status: number): string {
     return status >= 200 && status < 300 ? "ok" : `${Math.floor(status / 100)}xx`;
 }
 
+const NULL_BODY_STATUS = new Set([101, 204, 205, 304]);
+
+async function buffered(response: Response): Promise<Response> {
+    const { status, statusText, headers } = response;
+    const body = NULL_BODY_STATUS.has(status) ? null : await response.arrayBuffer();
+    return new Response(body, { status, statusText, headers });
+}
+
 export async function fetchWithDeadline(
     input: RequestInfo | URL,
     init: RequestInit | undefined,
@@ -104,7 +113,13 @@ export async function fetchWithDeadline(
     }
 
     try {
-        const response = await fetch(input, signal === init?.signal ? init : { ...init, signal });
+        const raw = await fetch(input, signal === init?.signal ? init : { ...init, signal });
+        // The deadline covers the WHOLE exchange: the body is read here, under the same timer
+        // (an abort errors a stalled body read). The caller gets a plain buffered Response, so
+        // it can read or clone it with no stream behind it (no tee stall in a shared in-flight
+        // map). `write` keeps the raw response.
+        const response =
+            deadlineMs === undefined || !(raw instanceof Response) ? raw : await buffered(raw);
         const elapsed = Date.now() - started;
         if (elapsed > slowMs) {
             logger.warn(
