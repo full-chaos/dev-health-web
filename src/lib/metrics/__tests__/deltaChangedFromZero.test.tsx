@@ -10,10 +10,9 @@ import {
     changedFromZeroParts,
     isChangedFromZero,
     MetricDelta,
-    tileDelta,
 } from "@/components/shared/MetricDelta";
 import { sortDeltasByRole } from "@/lib/metrics/catalog";
-import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { metricCardProps, readDelta } from "@/lib/metrics/metricDisplay";
 import type { Contributor, MetricDelta as Row } from "@/lib/types";
 
 // CHAOS-9069: a null percent with both windows measured is "changed from zero". The three
@@ -43,9 +42,18 @@ describe("shared rule", () => {
         expect(isChangedFromZero(row({ has_prior_data: false }))).toBe(false);
         expect(isChangedFromZero(row({ has_data: false }))).toBe(false);
         expect(isChangedFromZero(row({ value: 0 }))).toBe(false);
-        expect(tileDelta(row({}))).toBeNull();
-        expect(tileDelta(row({ has_prior_data: false }))).toBeUndefined();
-        expect(tileDelta(row({ delta_pct: 0 }))).toBe(0);
+        expect(readDelta(row({}))).toEqual({ kind: "from-zero", value: 5 });
+        expect(readDelta(row({ has_prior_data: false }))).toEqual({ kind: "no-prior" });
+        expect(readDelta(row({ has_data: false }))).toEqual({ kind: "no-data" });
+        // today's wire: a 0 on a side with no data is a placeholder, never a measured 0%
+        expect(readDelta(row({ delta_pct: 0, has_data: false }))).toEqual({ kind: "no-data" });
+        expect(readDelta(row({ delta_pct: 0, has_prior_data: false }))).toEqual({
+            kind: "no-prior",
+        });
+        expect(readDelta(row({ delta_pct: 0 }))).toEqual({ kind: "percent", percent: 0 });
+        expect(readDelta(row({ rate_state: "unknown_no_incident_evidence" }))).toEqual({
+            kind: "no-data",
+        });
     });
 
     it("words the absolute change with 'from 0' and no percent sign", () => {
@@ -159,14 +167,15 @@ describe("association rows", () => {
         expect(a.value).toBe(100);
         expect(b.display).toBe("+40%");
     });
-    it("a served 0 is 0%, and a null percent without prior data is not reported", () => {
+    it("a served 0 is 0%, and a null percent without prior data says no prior period", () => {
         const [z, n] = associationMeterRows(
             [drv({ delta_pct: 0 }), drv({ id: "n", has_prior_data: false })],
             undefined,
             { signed: true },
         );
         expect(z.display).toBe("0%");
-        expect(n.value).toBeNull();
+        expect(n.display).toBe("No prior period");
+        expect(n.value).toBe(0);
     });
 });
 

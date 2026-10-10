@@ -8,6 +8,7 @@
  * routes the already-persisted setup lifecycle to the right prompt.
  */
 import { CTA_LABELS } from "@/lib/design/cta";
+import { appPath } from "@/lib/navigation/appPath";
 
 import type { SetupStatus } from "./types";
 
@@ -35,7 +36,9 @@ export function connectGitHubHref(returnTo: string = FIRST_RUN_SYNC_PATH): strin
  * new-config wizard — never the generic credential page.
  */
 export function repoSelectionHref(syncConfigId: string | null): string {
-    return syncConfigId ? `/org/admin/sync/${syncConfigId}/edit` : SYNC_CONFIG_NEW_PATH;
+    return syncConfigId
+        ? appPath("/org/admin/sync/[configId]/edit", { configId: syncConfigId })
+        : SYNC_CONFIG_NEW_PATH;
 }
 
 /**

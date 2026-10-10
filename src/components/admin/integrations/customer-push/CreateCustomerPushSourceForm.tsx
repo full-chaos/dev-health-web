@@ -96,7 +96,9 @@ export function CreateCustomerPushSourceForm({
             }
 
             if (result.data) {
-                router.push(`/org/admin/integrations/${provider}/customer-push/${result.data.id}`);
+                router.push(
+                    `/org/admin/integrations/${provider}/customer-push/${encodeURIComponent(result.data.id)}`,
+                );
             }
         });
     };

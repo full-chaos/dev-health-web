@@ -836,9 +836,12 @@ const MOCK_REPOSITORY_SELECTIONS = new Map<string, { owner: string; repos: strin
 ]);
 const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
+const MOCK_PEOPLE: (typeof SAMPLE_PEOPLE)[number][] = [];
 
 /** One row of the `/__test/admin-rows` control endpoint (CHAOS-9105). */
 export type MockAdminRowSeed = {
+    /** People of `GET /api/v1/people` (CHAOS-9117); empty or absent = the sample people. */
+    people?: { person_id: string; display_name: string }[];
     teams?: { team_id: string; name: string }[];
     identities?: { canonical_id: string; display_name: string; team_ids?: string[] }[];
 };
@@ -849,6 +852,16 @@ export type MockAdminRowSeed = {
  * after: `{ teams: [], identities: [] }`.
  */
 export function setMockAdminRows(seed: MockAdminRowSeed): void {
+    MOCK_PEOPLE.splice(
+        0,
+        MOCK_PEOPLE.length,
+        ...(seed.people ?? []).map((person) => ({
+            person_id: person.person_id,
+            display_name: person.display_name,
+            identities: [{ provider: "github", handle: person.display_name.toLowerCase() }],
+            active: true,
+        })),
+    );
     MOCK_TEAMS.splice(
         0,
         MOCK_TEAMS.length,
@@ -2927,13 +2940,14 @@ export const handlers = [
     http.get("*/api/v1/people", ({ request }) => {
         const url = new URL(request.url);
         const q = (url.searchParams.get("q") ?? "").toLowerCase();
+        const everyone = MOCK_PEOPLE.length > 0 ? MOCK_PEOPLE : SAMPLE_PEOPLE;
         const results = q
-            ? SAMPLE_PEOPLE.filter(
+            ? everyone.filter(
                   (p) =>
                       p.display_name.toLowerCase().includes(q) ||
                       p.identities.some((i) => i.handle.toLowerCase().includes(q)),
               )
-            : SAMPLE_PEOPLE;
+            : everyone;
         return HttpResponse.json(results);
     }),
 

@@ -4,6 +4,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getUser } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { DeleteUserButton } from "./DeleteUserButton";
+import { appPath } from "@/lib/navigation/appPath";
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -28,7 +29,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 description={`Manage settings for ${user.email}`}
             >
                 <Link
-                    href={`/org/admin/users/${user.id}/edit`}
+                    href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
                     className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-stroke)"
                 >
                     {CTA_LABELS.editUser}
@@ -104,7 +105,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                         <h3 className="mb-4 text-lg font-medium">Quick Actions</h3>
                         <div className="space-y-3">
                             <Link
-                                href={`/org/admin/users/${user.id}/edit`}
+                                href={appPath("/org/admin/users/[id]/edit", { id: user.id })}
                                 className="block w-full rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground text-left"
                             >
                                 {CTA_LABELS.editProfile}

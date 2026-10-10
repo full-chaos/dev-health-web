@@ -3,6 +3,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { RefundList } from "@/components/admin/billing/RefundList";
 import { requireSuperuser } from "@/lib/auth";
 import { getRefunds } from "@/lib/billing/actions";
+import { boundedRead } from "@/lib/serverDeadline";
 import { Notice } from "@/components/ui/Notice";
 
 type RefundsPageSearchParams = Promise<{ org_id?: string | string[] }>;
@@ -23,7 +24,10 @@ export default async function SuperadminRefundsPage({
     const resolvedSearchParams = await searchParams;
     const orgId = firstValue(resolvedSearchParams.org_id);
 
-    const result = await getRefunds({ limit: 20, offset: 0 }, orgId);
+    const result = await boundedRead(
+        getRefunds({ limit: 20, offset: 0 }, orgId),
+        "step billing refunds",
+    );
     const initialData = result.data ?? { items: [], total: 0, limit: 20, offset: 0 };
 
     return (

@@ -4,6 +4,7 @@ import { actionFailureMessage } from "@/lib/actionFailure";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { appPath } from "@/lib/navigation/appPath";
 
 import { Copy, Pencil, Play, Sparkles, Trash2 } from "lucide-react";
 
@@ -376,7 +377,7 @@ export default function SingleReportPage() {
                 sourceReportId: id,
                 newName: cloneName || undefined,
             });
-            router.push(`/reports/${cloned.id}`);
+            router.push(appPath("/reports/[id]", { id: cloned.id }));
         } catch (err) {
             setError(actionFailureMessage(err, "cloneSavedReport"));
             setIsCloning(false);

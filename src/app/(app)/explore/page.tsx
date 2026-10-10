@@ -1,9 +1,10 @@
-import { tileDelta } from "@/components/shared/MetricDelta";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { appPath } from "@/lib/navigation/appPath";
 
 import { DataNote } from "@/components/charts/DataNote";
 import { BlockedWorkEvidence, BlockedWorkItemsTable } from "./BlockedWorkEvidence";
+import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
@@ -20,6 +21,7 @@ import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
 import { getCurrentOrg } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
+import { boundedRead } from "@/lib/serverDeadline";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { getBlockedWorkIssues, getDrilldown } from "@/lib/api/investment";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -235,7 +237,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     const [health, rawResult, orgResult] = await Promise.all([
         checkApiHealth(),
         dataPromise,
-        getCurrentOrg().catch(() => ({ data: undefined })),
+        boundedRead(getCurrentOrg(), "step current org").catch(() => ({ data: undefined })),
     ]);
     const orgName = orgResult?.data?.name || undefined;
 
@@ -396,9 +398,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     <MetricStrip data-testid="explore-metric-tile">
                         <MetricCard
                             label={metricLabel}
-                            value={data?.value}
-                            unit={data?.unit}
-                            delta={tileDelta(data)}
+                            // The served flags decide the value and the change text (shared rule):
+                            // a no-data window shows its text, never the served 0 placeholder.
+                            {...(data ? metricCardProps(data) : {})}
                             polarity={getMetricPolarity(metricFromApi)}
                             caption={withRepoScopeNote(
                                 "vs previous window",
@@ -432,9 +434,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     <MetricStrip data-testid="explore-metric-tile">
                         <MetricCard
                             label={metricLabel}
-                            value={data?.value}
-                            unit={data?.unit}
-                            delta={tileDelta(data)}
+                            // The served flags decide the value and the change text (shared rule):
+                            // a no-data window shows its text, never the served 0 placeholder.
+                            {...(data ? metricCardProps(data) : {})}
                             polarity={getMetricPolarity(metricFromApi)}
                             caption={withRepoScopeNote(
                                 "vs previous window",
@@ -561,11 +563,15 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                                     const prFlameHref =
                                         typeof item.repo_id === "string" &&
                                         typeof item.number === "number"
-                                            ? `/prs/${item.repo_id}:${item.number}`
+                                            ? appPath("/prs/[pr_id]", {
+                                                  pr_id: `${item.repo_id}:${item.number}`,
+                                              })
                                             : null;
                                     const issueFlameHref =
                                         typeof item.work_item_id === "string"
-                                            ? `/issues/${item.work_item_id}`
+                                            ? appPath("/issues/[issue_id]", {
+                                                  issue_id: item.work_item_id,
+                                              })
                                             : null;
                                     const flameHref = prFlameHref ?? issueFlameHref;
                                     const details = getEvidenceDetails(item);
@@ -605,6 +611,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                                                     {flameHref ? (
                                                         <Link
                                                             href={flameHref}
+                                                            prefetch={false}
                                                             className="inline-flex items-center rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                                                         >
                                                             {CTA_LABELS.openArtifact}

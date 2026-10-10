@@ -4,6 +4,7 @@ import { getBackendUrl } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
 import { backToArea, CTA_LABELS } from "@/lib/design/cta";
 import { Notice } from "@/components/ui/Notice";
+import { deadlineFetch } from "@/lib/serverDeadline";
 
 type SearchParams = Promise<{ token?: string }>;
 
@@ -17,7 +18,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
     if (token) {
         try {
             const backendUrl = getBackendUrl();
-            const res = await fetch(
+            const res = await deadlineFetch("write", "GET /api/v1/auth/verify")(
                 `${backendUrl}/api/v1/auth/verify?token=${encodeURIComponent(token)}`,
                 { cache: "no-store" },
             );

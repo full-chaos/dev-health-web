@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { appPath } from "@/lib/navigation/appPath";
 
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
@@ -67,10 +68,10 @@ const evidenceLink = (item: Record<string, unknown>): string | null => {
     const workItemId = asText(item.work_item_id);
 
     if (repoId && number !== null) {
-        return `/prs/${repoId}:${number}`;
+        return appPath("/prs/[pr_id]", { pr_id: `${repoId}:${number}` });
     }
     if (workItemId) {
-        return `/issues/${workItemId}`;
+        return appPath("/issues/[issue_id]", { issue_id: workItemId });
     }
     return null;
 };
@@ -375,6 +376,7 @@ function HeatmapArtifactList({ artifacts }: { artifacts: ResolvedArtifact[] }) {
                     <Link
                         key={artifactKey}
                         href={artifact.link}
+                        prefetch={false}
                         className="block rounded-2xl border border-(--card-stroke) bg-card px-3 py-2 transition-colors hover:border-(--accent)/40"
                     >
                         {body}

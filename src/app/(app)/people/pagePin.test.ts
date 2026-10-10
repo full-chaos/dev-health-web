@@ -65,7 +65,8 @@ describe("Person page strings (pin)", () => {
     });
 
     it("links every tile to the metric page of that metric", () => {
-        expect(PERSON).toContain("`/people/${personId}/metrics/${delta.metric}`");
+        expect(PERSON).toContain("person_id: decodedPersonId");
+        expect(PERSON).toContain("metric: delta.metric");
     });
 });
 

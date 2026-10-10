@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
+import { isServerDeadlineError, withDeadline } from "@/lib/serverDeadline";
 
 const log = logger.child({ module: "proxy" });
 
@@ -275,6 +276,35 @@ export async function proxy(request: NextRequest) {
     return response;
 }
 
+/**
+ * `auth()` runs on every request, before any render, so its wait is bounded (CHAOS-9114). On the
+ * deadline the user is NOT logged out and NOT sent to sign in: the answer is a 503 with
+ * `Retry-After: 2` and a short plain body, for a document, an RSC / prefetch and an action request alike.
+ */
+type ProxySession = Awaited<ReturnType<typeof auth>>;
+async function boundedProxyAuth(): Promise<{ session: ProxySession } | null> {
+    try {
+        return { session: await withDeadline(auth(), { kind: "auth", op: "proxy auth" }) };
+    } catch (error) {
+        if (isServerDeadlineError(error)) return null;
+        throw error;
+    }
+}
+
+function authUnavailable(nonce: string, csp: string): NextResponse {
+    const response = new NextResponse("Service temporarily unavailable. Try again.", {
+        status: 503,
+        headers: {
+            "Retry-After": "2",
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "private, no-store",
+        },
+    });
+    response.headers.set("x-nonce", nonce);
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
+}
+
 async function handleRequest(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
@@ -290,7 +320,9 @@ async function handleRequest(request: NextRequest) {
     }
 
     if (pathname === "/") {
-        const session = await auth();
+        const bounded = await boundedProxyAuth();
+        if (!bounded) return authUnavailable(nonce, csp);
+        const session = bounded.session;
         if (session && session.access_token) {
             // Superadmins without an org belong in the admin panel, not the dashboard
             const target =
@@ -314,7 +346,9 @@ async function handleRequest(request: NextRequest) {
     let isSuperuser = false;
 
     if (!isPublicPath(pathname)) {
-        const session = await auth();
+        const bounded = await boundedProxyAuth();
+        if (!bounded) return authUnavailable(nonce, csp);
+        const session = bounded.session;
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
             signInUrl.searchParams.set(
