@@ -13,6 +13,7 @@ import { signalMetricLabel } from "@/lib/cockpit/signalLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
+import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { CockpitSignal, MetricDelta } from "@/lib/types";
 
 import { SignalEvidenceIntro } from "./SignalEvidenceIntro";
@@ -70,9 +71,19 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             key: "signal",
             header: "Signal",
             render: (signal) => (
-                <span data-testid="signal-label" className="font-medium text-foreground">
-                    {scrubIdentifiers(signalMetricLabel(signal, deltas)).text}
-                </span>
+                <>
+                    <span data-testid="signal-label" className="font-medium text-foreground">
+                        {scrubIdentifiers(signalMetricLabel(signal, deltas)).text}
+                    </span>
+                    {isRepoUnscopedMetric(signal.metric, filters) ? (
+                        <span
+                            data-testid="signal-repo-note"
+                            className="block text-xs text-(--ink-muted)"
+                        >
+                            {NOT_FILTERED_BY_REPOSITORY}
+                        </span>
+                    ) : null}
+                </>
             ),
         },
         {

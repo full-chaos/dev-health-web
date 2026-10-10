@@ -8,6 +8,7 @@ import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { withRepoScopeNote } from "@/lib/metrics/repoScope";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import type { MetricDelta, QuadrantResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -58,7 +59,7 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : wipMetric)}
                     spark={wipMetric?.spark}
-                    caption="WIP saturation"
+                    caption={withRepoScopeNote("WIP saturation", "wip_saturation", filters)}
                 />
                 <MetricCard
                     label={getMetric("blocked_work")?.label ?? "Blocked"}
@@ -69,7 +70,7 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : getMetric("blocked_work"))}
                     spark={getMetric("blocked_work")?.spark}
-                    caption="Blocked work"
+                    caption={withRepoScopeNote("Blocked work", "blocked_work", filters)}
                 />
                 <MetricCard
                     label={getMetric("throughput")?.label ?? "Throughput"}
@@ -80,7 +81,7 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : getMetric("throughput"))}
                     spark={getMetric("throughput")?.spark}
-                    caption="Delivery volume"
+                    caption={withRepoScopeNote("Delivery volume", "throughput", filters)}
                 />
             </section>
 
