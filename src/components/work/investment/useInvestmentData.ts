@@ -13,20 +13,61 @@ import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { WorkUnitExplanation, WorkUnitInvestment } from "@/lib/types";
 import { TOP_N_REPOS, normalizeThemeKey } from "@/lib/investment";
-import type { MixExplanationState } from "./types";
+import type { InvestmentTab, MixExplanationState } from "./types";
 
 type UseInvestmentDataArgs = {
     filters: MetricFilter;
+    /** The tab on screen: a GraphQL read runs only for a tab that draws its data (CHAOS-9166). */
+    activeTab?: InvestmentTab;
 };
 
-export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
+/** The GraphQL reads of the Investment view. */
+type InvestmentRead = "mix" | "flow" | "baselineFlow" | "repoTeamFlow";
+
+/**
+ * The reads each tab draws (consumers: `InvestmentView.tsx` tab branches).
+ *  - overview:   mix (`InvestmentMixSection`, `ClassificationTable`); the coverage line of
+ *                `ReadWithContextCard` reads `teamCategoryFlow` + `repoTeamFlow`. Nothing reads
+ *                the baseline flow.
+ *  - allocation: the three flows (`TeamCategorySankeySection` with its baseline delta,
+ *                `RepoTeamSankeySection`, `AllocationCoverage`). No mix.
+ *  - evidence:   none (work units, evidence quality and attributions have their own reads).
+ *  - confidence: mix (`evidence_quality_stats`), plus the two flows for the coverage cards.
+ */
+export const INVESTMENT_TAB_READS: Record<InvestmentTab, readonly InvestmentRead[]> = {
+    overview: ["mix", "flow", "repoTeamFlow"],
+    allocation: ["flow", "baselineFlow", "repoTeamFlow"],
+    evidence: [],
+    confidence: ["mix", "flow", "repoTeamFlow"],
+};
+
+export function useInvestmentData({ filters, activeTab = "overview" }: UseInvestmentDataArgs) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const { data: mixData, loading: mixLoading, error: mixError } = useInvestmentMix({ filters });
+    // A read starts when a tab that draws it is first shown, and stays on for the same filters, so
+    // going back to a tab does not ask the backend again.
+    const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
+    const [started, setStarted] = useState<{ key: string; reads: readonly InvestmentRead[] }>({
+        key: filtersKey,
+        reads: INVESTMENT_TAB_READS[activeTab],
+    });
+    const needed = INVESTMENT_TAB_READS[activeTab];
+    const known = started.key === filtersKey ? started.reads : [];
+    if (started.key !== filtersKey || needed.some((read) => !known.includes(read))) {
+        setStarted({ key: filtersKey, reads: Array.from(new Set([...known, ...needed])) });
+    }
+    const runs = (read: InvestmentRead) =>
+        needed.includes(read) || (started.key === filtersKey && started.reads.includes(read));
+
+    const {
+        data: mixData,
+        loading: mixLoading,
+        error: mixError,
+    } = useInvestmentMix({ filters, pause: !runs("mix") });
     const investmentMix = useMemo(
         () => (mixData ? normalizeInvestmentMix(mixData) : null),
         [mixData],
@@ -60,6 +101,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
         flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
         theme: selectedThemeKey,
         topNRepos: TOP_N_REPOS,
+        pause: !runs("flow"),
     });
 
     const { data: baselineFlowData, loading: baselineFlowLoading } = useInvestmentFlow({
@@ -67,6 +109,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
         flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
         theme: selectedThemeKey,
         topNRepos: TOP_N_REPOS,
+        pause: !runs("baselineFlow"),
     });
 
     const teamCategoryFlow = currentFlow;
@@ -80,7 +123,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
         data: repoFlowData,
         loading: repoFlowLoading,
         error: repoFlowError,
-    } = useInvestmentRepoTeamFlow({ filters });
+    } = useInvestmentRepoTeamFlow({ filters, pause: !runs("repoTeamFlow") });
 
     const repoTeamFlow = repoFlowData;
     const isRepoTeamLoading = repoFlowLoading;
