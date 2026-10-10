@@ -22,7 +22,7 @@ import { Section } from "@/components/ui/Section";
 import { getCurrentOrg } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
 import { boundedRead } from "@/lib/serverDeadline";
-import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getExplainOutcome, getHomeData } from "@/lib/api/home";
 import { getBlockedWorkIssues, getDrilldown } from "@/lib/api/investment";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchFilterNames } from "@/lib/api/filterOptions";
@@ -177,7 +177,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     const isBlockedWork = endpoint === "/api/v1/explain" && metricFromApi === "blocked_work";
 
     // Build the view-specific data promise so it runs in parallel with the health check.
-    type ExplainResult = Awaited<ReturnType<typeof getExplainData>> | null;
+    type ExplainResult = Awaited<ReturnType<typeof getExplainOutcome>> | null;
     type DrilldownResult = Awaited<ReturnType<typeof getDrilldown>> | null;
     type BlockedWorkIssuesResult = Awaited<ReturnType<typeof getBlockedWorkIssues>> | null;
     type BlockedWorkEvidenceResult = {
@@ -221,13 +221,13 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         dataPromise = isBlockedWork
             ? Promise.all([
                   fetchOrNull(
-                      getExplainData({ metric: metricFromApi, filters }),
+                      getExplainOutcome({ metric: metricFromApi, filters }),
                       `explore/explain-${metricFromApi}`,
                   ),
                   fetchOrNull(getBlockedWorkIssues(filters), "explore/blocked-work-items"),
               ]).then(([explain, issues]) => ({ explain, issues }))
             : fetchOrNull(
-                  getExplainData({ metric: metricFromApi, filters }),
+                  getExplainOutcome({ metric: metricFromApi, filters }),
                   `explore/explain-${metricFromApi}`,
               );
     } else {
@@ -248,12 +248,15 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     }
 
     const blockedWorkEvidence = isBlockedWork ? (rawResult as BlockedWorkEvidenceResult) : null;
-    const data =
+    const explainOutcome =
         view === "explain"
             ? isBlockedWork
                 ? (blockedWorkEvidence?.explain ?? null)
                 : (rawResult as ExplainResult)
             : null;
+    const data = explainOutcome?.data ?? null;
+    // The metric has no explain view (not a failure, not an empty window): say so.
+    const noEvidenceView = explainOutcome?.noView === true;
     const drilldown = view === "drilldown" ? (rawResult as DrilldownResult) : null;
     const blockedIssues = isBlockedWork
         ? (blockedWorkEvidence?.issues ?? null)
@@ -444,6 +447,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                         </strong>{" "}
                         Keep the metric, scope, and source together.
                     </Notice>
+
+                    {noEvidenceView && (
+                        <Notice variant="info" live={false} data-testid="explore-no-evidence-view">
+                            No evidence view for this metric yet.
+                        </Notice>
+                    )}
 
                     {/* One tile (prototype `metrics([...], 1)`): the served value and change. */}
                     <MetricStrip data-testid="explore-metric-tile">
