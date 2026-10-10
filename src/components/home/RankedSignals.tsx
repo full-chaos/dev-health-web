@@ -14,6 +14,8 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { reworkCoverageNote } from "@/lib/metrics/coverageNote";
+import { noDataText } from "@/lib/metrics/metricDisplay";
+import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { CockpitSignal, MetricDelta } from "@/lib/types";
 
@@ -67,6 +69,15 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
     const shownRows = showAll ? rows : rows.slice(0, RANKED_SIGNALS_FIRST_ROWS);
     const noRowsLine = signals.length === 0 ? RANKED_SIGNALS_NONE : RANKED_SIGNALS_NO_OTHER;
 
+    const linkNoteOf = (signal: CockpitSignal) =>
+        repoLinkTileNote(deltas.find((delta) => delta.metric === signal.metric));
+
+    // A row whose metric serves a no-value link state draws no data, never a value (CHAOS-9120).
+    const noValueOf = (signal: CockpitSignal) => {
+        const delta = deltas.find((d) => d.metric === signal.metric);
+        return delta && isRepoLinkNoValueState(delta.repo_link_state) ? delta : null;
+    };
+
     const coverageNoteOf = (signal: CockpitSignal) =>
         reworkCoverageNote(deltas.find((delta) => delta.metric === signal.metric));
 
@@ -87,6 +98,15 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
                             {NOT_FILTERED_BY_REPOSITORY}
                         </span>
                     ) : null}
+                    {/* CHAOS-9120: the link basis or state of a repository-scoped work-item metric. */}
+                    {linkNoteOf(signal) ? (
+                        <span
+                            data-testid="signal-repo-link-note"
+                            className="block text-xs text-(--ink-muted)"
+                        >
+                            {linkNoteOf(signal)}
+                        </span>
+                    ) : null}
                     {/* CHAOS-9076: the served coverage of the rework ratio, read from its delta row. */}
                     {coverageNoteOf(signal) ? (
                         <span
@@ -103,7 +123,11 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             key: "current",
             header: "Current",
             className: "whitespace-nowrap px-3 py-3.25 tabular-nums",
-            render: (signal) => <span data-testid="signal-current">{signal.current_value}</span>,
+            render: (signal) => (
+                <span data-testid="signal-current">
+                    {noValueOf(signal) ? noDataText(signal.metric) : signal.current_value}
+                </span>
+            ),
         },
         {
             key: "previous",
@@ -111,7 +135,9 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             className: "whitespace-nowrap px-3 py-3.25 tabular-nums",
             render: (signal) => (
                 <span data-testid="signal-previous">
-                    {signal.prior_value != null && signal.prior_value !== "" ? (
+                    {!noValueOf(signal) &&
+                    signal.prior_value != null &&
+                    signal.prior_value !== "" ? (
                         signal.prior_value
                     ) : (
                         <span className="text-(--ink-muted)">{NOT_REPORTED}</span>
@@ -125,7 +151,7 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             className: "whitespace-nowrap px-3 py-3.25 tabular-nums",
             render: (signal) => (
                 <span data-testid="signal-delta" data-direction={signal.direction}>
-                    {signal.delta ? (
+                    {!noValueOf(signal) && signal.delta ? (
                         // The served string carries its own sign (approved table: plain text).
                         signal.delta
                     ) : (

@@ -10,6 +10,8 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { isRiskSignal } from "@/lib/cockpit/signalKinds";
 import { coverageNote, reworkCoverageNote } from "@/lib/metrics/coverageNote";
+import { noDataText } from "@/lib/metrics/metricDisplay";
+import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { HomeResponse } from "@/lib/types";
 
@@ -65,7 +67,11 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     // A raw identifier inside the served sentence is shortened, as the page did before.
     const title = scrubIdentifiers(topSignal.title).text;
     const compareDays = filters.time.compare_days;
-    const reworkNote = reworkCoverageNote(home?.deltas?.find((d) => d.metric === topSignal.metric));
+    const topDelta = home?.deltas?.find((d) => d.metric === topSignal.metric);
+    const repoLinkNote = repoLinkTileNote(topDelta);
+    // A no-value link state draws no data in the hero, never the signal's value (CHAOS-9120).
+    const noValue = isRepoLinkNoValueState(topDelta?.repo_link_state);
+    const reworkNote = reworkCoverageNote(topDelta);
     const hasPrior = topSignal.prior_value != null && topSignal.prior_value !== "";
 
     return (
@@ -81,16 +87,18 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                         isRepoUnscopedMetric(topSignal.metric, filters, topSignal)
                             ? ` · ${NOT_FILTERED_BY_REPOSITORY}`
                             : ""
-                    }${reworkNote ? ` · ${reworkNote}` : ""}${
+                    }${reworkNote ? ` · ${reworkNote}` : ""}${repoLinkNote ? ` · ${repoLinkNote}` : ""}${
                         isRiskSignal(topSignal) && coverageNote(topSignal.coverage)
                             ? ` · ${coverageNote(topSignal.coverage)}`
                             : ""
                     }`,
                     // The change exactly as served. No value node when the API served none.
-                    value: topSignal.delta ?? "",
-                    driver: hasPrior
-                        ? `${topSignal.current_value} from ${topSignal.prior_value}`
-                        : topSignal.current_value,
+                    value: noValue ? "" : (topSignal.delta ?? ""),
+                    driver: noValue
+                        ? noDataText(topSignal.metric)
+                        : hasPrior
+                          ? `${topSignal.current_value} from ${topSignal.prior_value}`
+                          : topSignal.current_value,
                     state: topSignal.severity,
                 }}
                 filters={filters}

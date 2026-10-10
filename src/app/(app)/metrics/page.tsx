@@ -5,6 +5,7 @@ import { ArrowRight, Info } from "lucide-react";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
+import { RepoLinkPageNote } from "@/components/shared/RepoLinkPageNote";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
 import { buttonClassName } from "@/components/shared/Button";
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
@@ -151,6 +152,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 activeRole={activeRole}
                 placeholderDeltas={placeholderDeltas}
             />
+            {placeholderDeltas ? null : <RepoLinkPageNote rows={deltas} />}
 
             <QuadrantPanel
                 title={activeTab.quadrant.title}

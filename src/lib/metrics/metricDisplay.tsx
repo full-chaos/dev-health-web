@@ -1,3 +1,4 @@
+import { isRepoLinkNoValueState } from "@/lib/metrics/repoLinkNote";
 import type { MetricCardProps } from "@/components/metrics/MetricCard";
 import { isChangedFromZero, type DeltaFacts } from "@/components/shared/MetricDelta";
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
@@ -62,7 +63,7 @@ export type MetricDisplay = {
 };
 
 type ServedMetric = Pick<MetricDelta, "has_data" | "has_prior_data"> &
-    Partial<Pick<MetricDelta, "rate_state">>;
+    Partial<Pick<MetricDelta, "rate_state" | "repo_link_state">>;
 
 /**
  * The one rule for a served metric (the operating review tile's rule): a flag that is absent
@@ -74,7 +75,12 @@ export function metricDisplay(metric: ServedMetric | null | undefined): MetricDi
         return { state: "missing", hasData: false, hasPriorData: false, comparable: false };
     }
     // A not-measured state is a producer fact of its own: no value, whatever the flag says.
-    const hasData = metric.has_data !== false && !isNotMeasuredState(metric.rate_state);
+    // A repository link state without a value is a producer fact too (CHAOS-9120): no value, even
+    // if the flag says data.
+    const hasData =
+        metric.has_data !== false &&
+        !isNotMeasuredState(metric.rate_state) &&
+        !isRepoLinkNoValueState(metric.repo_link_state);
     const hasPriorData = metric.has_prior_data !== false;
     return {
         state: hasData ? "measured" : "no-data",
@@ -128,7 +134,7 @@ export function readDelta(
 export function metricCardProps(
     metric:
         | (Pick<MetricDelta, "value" | "unit" | "delta_pct" | "has_data" | "has_prior_data"> &
-              Partial<Pick<MetricDelta, "metric" | "rate_state">>)
+              Partial<Pick<MetricDelta, "metric" | "rate_state" | "repo_link_state">>)
         | null
         | undefined,
 ): Pick<

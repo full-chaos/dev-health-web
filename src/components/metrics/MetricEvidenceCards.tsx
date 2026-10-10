@@ -5,6 +5,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
+import { withRepoLinkNote } from "@/lib/metrics/repoLinkNote";
 import { withRepoScopeNote } from "@/lib/metrics/repoScope";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
@@ -49,10 +50,13 @@ export function MetricEvidenceCards({
                         spark={data?.spark}
                         // A change is drawn only when both windows have data; else "No prior period", never 0.
                         // The served delta compares the window with the previous window of the same length.
-                        caption={withRepoScopeNote(
-                            card.delta !== undefined ? "vs previous window" : undefined,
-                            metric,
-                            filters,
+                        caption={withRepoLinkNote(
+                            withRepoScopeNote(
+                                card.delta !== undefined ? "vs previous window" : undefined,
+                                metric,
+                                filters,
+                                data,
+                            ),
                             data,
                         )}
                         polarity={getMetricPolarity(metric)}
