@@ -213,12 +213,12 @@ describe("CodePage", () => {
             expect(screen.getByTestId("tile-Bus factor")).toHaveAttribute("data-value", "none");
         });
 
-        it("keeps a real zero sample count but not a bus factor without samples", async () => {
+        it("draws no value, not 0, for a served row with 0 samples, and no bus factor (CHAOS-9154)", async () => {
             setup({ ...base, value: 0, evidenceSampleCount: 0 });
             await renderPage();
             expect(screen.getByTestId("tile-File-change samples")).toHaveAttribute(
                 "data-value",
-                "0",
+                "none",
             );
             expect(screen.getByTestId("tile-Bus factor")).toHaveAttribute("data-value", "none");
         });

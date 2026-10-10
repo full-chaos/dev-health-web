@@ -25,7 +25,7 @@ import { getQuadrant } from "@/lib/api/visuals";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
-import { metricCardProps, metricDisplay } from "@/lib/metrics/metricDisplay";
+import { metricCardProps, metricDisplay, noDataText } from "@/lib/metrics/metricDisplay";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -88,6 +88,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     // The churn entry the API served (no fallback): its daily series is the Churn trend.
     const servedChurn = home?.deltas?.find((item) => item.metric === "churn");
     const hasBusFactorEvidence = (busFactor?.evidenceSampleCount ?? 0) > 0;
+    const hasSamples = (busFactor?.evidenceSampleCount ?? 0) > 0;
     const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
     const riskyRepos = (busFactor?.repos ?? [])
         .toSorted(
@@ -158,7 +159,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
         { label: churnMetric?.label ?? "Code Churn", value: churnText },
         {
             label: "File-change samples",
-            value: busFactor ? formatNumber(busFactor.evidenceSampleCount) : undefined,
+            // A served 0 samples is a no-data state, not a fact (CHAOS-9154).
+            value: hasSamples ? formatNumber(busFactor?.evidenceSampleCount ?? 0) : undefined,
         },
         { label: "Bus factor", value: hasBusFactorEvidence ? String(busFactor?.value) : undefined },
         ...ownershipRows.map((row) => ({ label: row.label, value: row.display })),
@@ -191,10 +193,19 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     caption="Churn over the active window"
                 />
                 {/* No data is "Not reported", never 0: samples need a bus-factor result; the bus
-                    factor itself needs blame evidence (a value without samples is not a result). */}
+                    factor itself needs blame evidence (a value without samples is not a result).
+                    A served row with 0 samples is a no-data state too, drawn as the churn tile
+                    draws it (CHAOS-9154). */}
                 <MetricCard
                     label="File-change samples"
-                    value={busFactor ? busFactor.evidenceSampleCount : undefined}
+                    {...(busFactor && !hasSamples
+                        ? {
+                              valueText: noDataText(),
+                              valueIsMessage: true,
+                              deltaSlot: <></>,
+                              hideTrend: true,
+                          }
+                        : { value: busFactor ? busFactor.evidenceSampleCount : undefined })}
                     caption="Git blame aggregation"
                 />
                 <MetricCard

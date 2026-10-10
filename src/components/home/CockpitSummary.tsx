@@ -46,6 +46,15 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     const topSignal = home?.signals?.[0];
 
     if (!topSignal) {
+        // No health state served (home absent, or no `health_state`) is a no-data state, never
+        // "Enabled but no findings": only a served state may say that (CHAOS-9154).
+        if (!home?.health_state) {
+            return (
+                <section data-testid="cockpit-summary" aria-label="Primary signal">
+                    <CockpitEmptyState variant="no-data-window" data-testid="cockpit-no-data" />
+                </section>
+            );
+        }
         return (
             <section data-testid="cockpit-summary" aria-label="Primary signal">
                 <CockpitEmptyState variant="no-findings" data-testid="cockpit-top-change-empty" />
