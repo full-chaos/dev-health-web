@@ -46,6 +46,11 @@ export type MetricDelta = {
      * false); false = the value is NOT narrowed by the repository. Undefined: an older backend.
      */
     repo_filter_applied?: boolean | null;
+    /**
+     * Coverage of the rate: a 0..1 fraction, not a percent. Null: none served (no merged pull
+     * request or no stored counts). Absent: the REST answer, or an API before it. 0 is a value.
+     */
+    rate_coverage?: number | null;
     spark: SparkPoint[];
 };
 

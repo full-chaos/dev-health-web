@@ -1304,6 +1304,8 @@ export type MetricDelta = {
   hasPriorData: Scalars['Boolean']['output'];
   label: Scalars['String']['output'];
   metric: Scalars['String']['output'];
+  /** The coverage of the pull request rework ratio (CHAOS-9072), from 0 to 1, not a percent: the merged pull requests of the window that have review data from a provider that stores a changes-requested review, divided by all merged pull requests of the window that have stored counts. 0 when rateState is unknown_no_review_evidence or not_applicable_no_rework_signal. Null when the window has no merged pull request, when it holds no stored counts, and for every other metric. */
+  rateCoverage?: Maybe<Scalars['Float']['output']>;
   /** Why change failure rate has a value or not (CHAOS-8981): measured (the value may be 0), unknown_no_incident_evidence (deployments, and no incident tied to the scope in the window) or not_applicable_no_deployments. Null when the window holds no stored counts, and for every other metric. */
   rateState?: Maybe<Scalars['String']['output']>;
   /** Whether the request's repository filter (a repo-level scope, or what.repos) narrows this metric. Null when the request names no repository. True for a repository-keyed metric: the filter was applied, and when the named repositories resolve to nothing the metric has no data (hasData false). False only for a team-keyed metric (cycle_time, throughput, wip_saturation, blocked_work: their tables have no repo_id column, so the repository condition is not applied and the value is not narrowed) (CHAOS-9093). */

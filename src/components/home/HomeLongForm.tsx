@@ -61,6 +61,9 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
     const evidence = useEvidenceDrawer();
     const open = (title: string, apiUrl?: string) => evidence.open({ title, apiUrl, filters });
 
+    // A blank sentence (empty, null, whitespace) is not a shift: it draws no button.
+    const sentences = (home?.summary ?? []).filter((sentence) => sentence.text?.trim());
+
     const limitingClaim =
         home?.limiting_factor?.claim ??
         home?.constraint?.claim ??
@@ -76,7 +79,7 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
                     Short shifts from the selected window.
                 </p>
                 <div className="mt-3 space-y-2">
-                    {(home?.summary ?? []).map((sentence, idx) => (
+                    {sentences.map((sentence, idx) => (
                         <button
                             type="button"
                             key={sentence.id ?? sentence.text ?? idx}
@@ -86,7 +89,7 @@ export function HomeLongForm({ home, filters, activeRole }: HomeLongFormProps) {
                             {scrubIdentifiers(sentence.text).text}
                         </button>
                     ))}
-                    {!home?.summary?.length && (
+                    {sentences.length === 0 && (
                         <p className={EMPTY}>Summary will appear once data is ingested.</p>
                     )}
                 </div>

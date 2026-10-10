@@ -18,9 +18,13 @@ import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceA
 import { Notice } from "@/components/ui/Notice";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
-const getMetric = (deltas: MetricDelta[], metric: string) =>
-    deltas.find((item) => item.metric === metric) ??
-    FALLBACK_DELTAS.find((item) => item.metric === metric);
+// A metric the answer does not serve is a no-data row (flags false), never the 0 placeholder.
+const getMetric = (deltas: MetricDelta[], metric: string): MetricDelta | undefined => {
+    const served = deltas.find((item) => item.metric === metric);
+    if (served) return served;
+    const placeholder = FALLBACK_DELTAS.find((item) => item.metric === metric);
+    return placeholder && { ...placeholder, has_data: false, has_prior_data: false };
+};
 
 /** The page subtitle of each tab (approved prototype, views 5 to 10). */
 const TAB_SUBTITLE: Record<InvestmentTab, string> = {

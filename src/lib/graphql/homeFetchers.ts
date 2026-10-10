@@ -90,6 +90,7 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             has_data: d.hasData,
             has_prior_data: d.hasPriorData,
             ...(d.rateState ? { rate_state: d.rateState } : {}),
+            ...(d.rateCoverage !== undefined ? { rate_coverage: d.rateCoverage } : {}),
             ...(d.repoFilterApplied !== undefined
                 ? { repo_filter_applied: d.repoFilterApplied }
                 : {}),

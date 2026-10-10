@@ -124,7 +124,7 @@ type ZoneLegendItem = {
 export function QuadrantPanel({
     title,
     description,
-    data,
+    data: servedData,
     filters,
     relatedLinks,
     emptyState = "Quadrant data unavailable.",
@@ -135,6 +135,8 @@ export function QuadrantPanel({
     actionsInHead = false,
     alwaysShowOverlayToggle = false,
 }: QuadrantPanelProps) {
+    // An answer with no axes cannot be drawn: it takes the empty state.
+    const data = servedData?.axes?.x && servedData.axes.y ? servedData : null;
     const overlayHintId = useId();
     const scopeType = filters.scope.level === "developer" ? "person" : filters.scope.level;
     const isPersonScope = scopeType === "person";
