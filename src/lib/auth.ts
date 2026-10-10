@@ -60,13 +60,13 @@ interface ImpersonationStatusSnapshot {
     impersonated_email?: string;
     impersonated_org_id?: string;
 }
-// One Map per process, not per bundle (CHAOS-8466).
 // A status call that failed or hit its deadline is not repeated for this long (CHAOS-9114): the
 // proxy and the render both read it on every request, so a stuck backend would cost each request
 // the full wait.
 const IMPERSONATION_FAILURE_BACKOFF_MS = 30_000;
 const impersonationStatusFailedUntil = processMemo<number>("impersonationStatusFailedUntil");
 
+// One Map per process, not per bundle (CHAOS-8466).
 const impersonationStatusMemo = processMemo<{ at: number; status: ImpersonationStatusSnapshot }>(
     "impersonationStatusMemo",
 );

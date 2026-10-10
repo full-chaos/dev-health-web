@@ -11,15 +11,16 @@
  *   const data = await fetchOrNull(getHomeData(filters), "home-data");
  */
 import { logger } from "@/lib/logger";
-import { withDeadline } from "@/lib/serverDeadline";
+import { sanitizePath, withDeadline } from "@/lib/serverDeadline";
 
 export async function fetchOrNull<T>(promise: Promise<T>, label: string): Promise<T | null> {
     try {
         // OUTER deadline (CHAOS-9114): the step is bounded whatever it waits on, and the line
         // names it by `label`. A deadline is a failure like any other: null.
-        return await withDeadline(promise, { kind: "read", op: `step ${label}` });
+        return await withDeadline(promise, { kind: "read", op: `step ${sanitizePath(label)}` });
     } catch (err: unknown) {
-        logger.warn({ err, label }, `fetchOrNull: ${label} failed, returning null`);
+        const step = sanitizePath(label); // a label can hold an id: no id in a log line
+        logger.warn({ err, label: step }, `fetchOrNull: ${step} failed, returning null`);
         return null;
     }
 }

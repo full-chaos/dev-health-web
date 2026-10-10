@@ -47,6 +47,7 @@ vi.mock("@/lib/logger", () => {
 
 import type { JWT } from "next-auth/jwt";
 import "@/lib/auth";
+import Credentials from "next-auth/providers/credentials";
 import { overrideDeadlinesForTests } from "@/lib/serverDeadline";
 import { applyBackendValidationMemo, resetValidationMemoForTests } from "@/lib/authValidationMemo";
 
@@ -205,5 +206,33 @@ describe("auth jwt callback with a backend that never answers", () => {
         await sleep(600);
         expect(state.settled).toBe(true);
         expect(deadlineLines()).toHaveLength(1);
+    });
+
+    it("login is a write: a stalled login is NOT bounded (no deadline, no abort)", async () => {
+        vi.stubGlobal("fetch", stallingFetch());
+        const configs = vi
+            .mocked(Credentials)
+            .mock.calls.map((c) => c[0] as { authorize?: unknown });
+        const authorize = configs.find((c) => typeof c.authorize === "function")?.authorize as (
+            credentials: Record<string, string>,
+        ) => Promise<unknown>;
+        expect(authorize).toBeTypeOf("function");
+        const state = track(authorize({ email: "a@b.test", password: "x" }));
+        await sleep(400);
+        expect(state.settled).toBe(false);
+        expect(deadlineLines()).toHaveLength(0);
+    });
+
+    it("social login is a write: a stalled call is NOT bounded", async () => {
+        vi.stubGlobal("fetch", stallingFetch());
+        const state = track(
+            jwt()({
+                token: {},
+                account: { provider: "github", access_token: "provider-token" },
+            }),
+        );
+        await sleep(400);
+        expect(state.settled).toBe(false);
+        expect(deadlineLines()).toHaveLength(0);
     });
 });

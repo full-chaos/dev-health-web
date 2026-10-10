@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { headersThenStalledBody, stallingFetch, track } from "@/test/stallFetch";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 
 const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));
 vi.mock("@/lib/logger", () => ({
@@ -294,5 +295,95 @@ describe("withDeadline (outer layer)", () => {
             SERVER_FETCH_DEADLINES.read + SERVER_FETCH_DEADLINES.outerMargin + 1,
         );
         expect(state.value).toEqual({ error: "Could not be read" });
+    });
+});
+
+describe("ids never reach an op", () => {
+    it.each([
+        ["/api/v1/people/jsmith/summary", "/api/v1/people/:id/summary"],
+        ["/api/v1/teams/team-payments", "/api/v1/teams/:id"],
+        ["/api/v1/repos/acme%2Fweb/files", "/api/v1/repos/:id/files"],
+        ["/api/v1/x/a%40b.co", "/api/v1/x/:id"],
+        ["/api/v1/x/jira%3A7f3c", "/api/v1/x/:id"],
+        ["/api/v1/quadrant", "/api/v1/quadrant"],
+    ])("sanitizePath %s", (path, expected) => {
+        expect(sanitizePath(path)).toBe(expected);
+    });
+
+    it("the step label of fetchOrNull is sanitized (a person id in a label)", async () => {
+        const state = track(
+            fetchOrNull(new Promise(() => {}), "people/jira%3A7f3c9a2e-1111/summary"),
+        );
+        await vi.advanceTimersByTimeAsync(
+            SERVER_FETCH_DEADLINES.read + SERVER_FETCH_DEADLINES.outerMargin + 1,
+        );
+        expect(state.settled).toBe(true);
+        const line = deadlineLines()[0][0] as { op: string };
+        expect(line.op).toBe("step people/:id/summary");
+        expect(JSON.stringify(warn.mock.calls)).not.toContain("7f3c9a2e");
+    });
+});
+
+describe("a read that loses the race is cancelled", () => {
+    const trickle = (state: { cancelled: boolean }) => {
+        let timer: ReturnType<typeof setInterval> | undefined;
+        return new ReadableStream<Uint8Array>({
+            start(controller) {
+                timer = setInterval(() => controller.enqueue(new Uint8Array([1])), 50);
+            },
+            cancel() {
+                state.cancelled = true;
+                clearInterval(timer);
+            },
+        });
+    };
+
+    it("a body that trickles bytes: the body read is cancelled at the deadline", async () => {
+        const probe = { cancelled: false };
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(trickle(probe), { status: 200 })),
+        );
+        const state = track(fetchWithDeadline("http://api.test/x", undefined, { kind: "read" }));
+        await vi.advanceTimersByTimeAsync(SERVER_FETCH_DEADLINES.read - 100);
+        expect(state.settled).toBe(false);
+        expect(probe.cancelled).toBe(false);
+        await vi.advanceTimersByTimeAsync(200);
+        expect(state.settled).toBe(true);
+        expect(probe.cancelled).toBe(true);
+    });
+
+    it("headers that arrive AFTER the deadline: the late body is cancelled, not read", async () => {
+        const probe = { cancelled: false };
+        let release: (r: Response) => void = () => {};
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise<Response>((resolve) => (release = resolve))),
+        );
+        const state = track(fetchWithDeadline("http://api.test/x", undefined, { kind: "read" }));
+        await vi.advanceTimersByTimeAsync(SERVER_FETCH_DEADLINES.read + 1);
+        expect(state.settled).toBe(true);
+        release(new Response(trickle(probe), { status: 200 }));
+        await flush();
+        expect(probe.cancelled).toBe(true);
+    });
+});
+
+describe("env clamp, lower bound", () => {
+    it("999 ms is ignored (default), 1000 ms is accepted", async () => {
+        vi.stubGlobal("fetch", stallingFetch());
+        vi.stubEnv("SERVER_FETCH_DEADLINE_READ_MS", "999");
+        const ignored = track(fetchWithDeadline("http://api.test/x", undefined, { kind: "read" }));
+        await vi.advanceTimersByTimeAsync(1_500);
+        expect(ignored.settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(SERVER_FETCH_DEADLINES.read);
+        expect(ignored.settled).toBe(true);
+
+        warn.mockReset();
+        vi.stubEnv("SERVER_FETCH_DEADLINE_READ_MS", "1000");
+        const accepted = track(fetchWithDeadline("http://api.test/x", undefined, { kind: "read" }));
+        await vi.advanceTimersByTimeAsync(1_001);
+        expect(accepted.settled).toBe(true);
+        expect(deadlineLines()[0][0]).toMatchObject({ deadline_ms: 1_000 });
     });
 });

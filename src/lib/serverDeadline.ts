@@ -145,16 +145,41 @@ export function withDeadline<T>(promise: Promise<T>, options: DeadlineOptions): 
     });
 }
 
-/** `/api/v1/people/<uuid>/summary` -> `/api/v1/people/:id/summary`: no id in a log line. */
+// A segment right after one of these is an id by POSITION, whatever its shape (`jsmith`,
+// `team-payments`, `acme%2Fweb`): static children (`orgs/me`) are blurred too, on purpose.
+const RESOURCE_SEGMENTS = new Set([
+    "people",
+    "person",
+    "teams",
+    "team",
+    "users",
+    "user",
+    "repos",
+    "repositories",
+    "orgs",
+    "organizations",
+    "identities",
+    "members",
+    "deployments",
+    "projects",
+    "issues",
+    "pull-requests",
+    "incidents",
+    "work-units",
+    "sync-configs",
+    "retention-policies",
+]);
+
+/** `/api/v1/people/<id>/summary` -> `/api/v1/people/:id/summary`: no id in a log line. */
 export function sanitizePath(pathname: string): string {
-    return pathname
-        .split("/")
-        .map((segment) =>
+    const segments = pathname.split("/");
+    return segments
+        .map((segment, index) =>
+            RESOURCE_SEGMENTS.has((segments[index - 1] ?? "").toLowerCase()) ||
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) ||
             /^\d+$/.test(segment) ||
             segment.length >= 20 ||
-            segment.includes(":") ||
-            segment.includes("%3A") ||
+            /[:@]|%3A|%40|%2F/i.test(segment) ||
             /^[0-9a-f]{12,}$/i.test(segment)
                 ? ":id"
                 : segment,
@@ -182,10 +207,48 @@ function statusClass(status: number): string {
 
 const NULL_BODY_STATUS = new Set([101, 204, 205, 304]);
 
-async function buffered(raw: Response): Promise<Response> {
+/** A read that may lose the race: it is cancelled so its socket does not stay open. */
+interface Orphan {
+    lost: boolean;
+    cancel?: () => void;
+}
+
+async function buffered(raw: Response, orphan: Orphan): Promise<Response> {
     if (!(raw instanceof Response)) return raw;
     const { status, statusText, headers } = raw;
-    const body = NULL_BODY_STATUS.has(status) ? null : await raw.arrayBuffer();
+    if (NULL_BODY_STATUS.has(status) || !raw.body) {
+        return new Response(null, { status, statusText, headers });
+    }
+    const reader = raw.body.getReader();
+    const cancel = () =>
+        reader
+            .cancel()
+            .catch((error: unknown) =>
+                logger.warn(
+                    { err: error instanceof Error ? error.name : "error" },
+                    "server fetch orphan body cancel failed",
+                ),
+            );
+    if (orphan.lost) {
+        // The headers came after the deadline: nobody waits for this body.
+        await cancel();
+        throw new DOMException("server fetch lost the race", "AbortError");
+    }
+    orphan.cancel = () => void cancel();
+    const chunks: Uint8Array[] = [];
+    let length = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        length += value.byteLength;
+    }
+    const body = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) {
+        body.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
     return new Response(body, { status, statusText, headers });
 }
 
@@ -212,9 +275,20 @@ export async function fetchWithDeadline(
         if (options.kind === "write") {
             response = await fetch(input, init);
         } else {
-            const work = fetch(input, init).then(buffered);
+            const orphan: Orphan = { lost: false };
+            const work = fetch(input, init).then((raw) => buffered(raw, orphan));
             work.catch(() => undefined); // an orphan that fails later is not an unhandled rejection
-            response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
+            try {
+                response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
+            } catch (error) {
+                if (isServerDeadlineError(error)) {
+                    // Lost the race: close the body read (the header wait cannot be cancelled
+                    // without a signal, and a late body is cancelled when its headers arrive).
+                    orphan.lost = true;
+                    orphan.cancel?.();
+                }
+                throw error;
+            }
         }
         const elapsed = Date.now() - started;
         if (elapsed > slowMs) {
