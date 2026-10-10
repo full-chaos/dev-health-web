@@ -17,7 +17,9 @@ function generateRequestId(): string {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export type ApiQueryParams = Record<string, string | number | boolean | null | undefined>;
+export type ApiQueryValue = string | number | boolean | null | undefined;
+/** A list value is sent as a repeated query key (`k=a&k=b`); an empty list sends nothing. */
+export type ApiQueryParams = Record<string, ApiQueryValue | readonly string[]>;
 
 export type ApiFetchInit = RequestInit & {
     next?: {
@@ -34,6 +36,12 @@ const buildUrl = (path: string, params?: ApiQueryParams) => {
     const url = new URL(path, resolveOrigin());
     if (params) {
         Object.entries(params).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+                value.forEach((item) => {
+                    if (item !== "") url.searchParams.append(key, item);
+                });
+                return;
+            }
             if (value === "" || value === undefined || value === null) {
                 return;
             }

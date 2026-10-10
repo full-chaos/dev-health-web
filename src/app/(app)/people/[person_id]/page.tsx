@@ -106,6 +106,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
             scope_id: personId,
             range_days,
             bucket: "week",
+            filters: quadrantFilters,
         }),
         `people/${personId}/quadrant`,
     );

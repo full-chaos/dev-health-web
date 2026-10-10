@@ -88,6 +88,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 bucket: "week",
                 start_date: filters.time.start_date,
                 end_date: filters.time.end_date,
+                filters,
             }),
             "metrics/quadrant",
         ),

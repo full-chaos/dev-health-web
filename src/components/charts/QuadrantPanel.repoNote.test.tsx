@@ -76,4 +76,46 @@ describe("QuadrantPanel repository note", () => {
         draw(what);
         expect(screen.queryByTestId("repo-scope-note")).toBeNull();
     });
+
+    // CHAOS-9097: the served flag decides; the repository-in-filter rule holds only with the keys absent.
+    it.each([
+        ["true (narrowed)", { repo_filter_applied: true, filter_empty_reason: null }, false],
+        [
+            "null (nothing selected)",
+            { repo_filter_applied: null, filter_empty_reason: null },
+            false,
+        ],
+        ["false (cannot narrow)", { repo_filter_applied: false, filter_empty_reason: null }, true],
+        ["keys absent (older ops)", {}, true],
+    ])("with a repository selected and the flag %s", (_n, keys, note) => {
+        draw({ repos: ["r1"] }, { ...data, ...keys });
+        expect(screen.queryByTestId("repo-scope-note") !== null).toBe(note);
+    });
+
+    it("shows the note for a served false even with no repository in the filter", () => {
+        draw({}, { ...data, repo_filter_applied: false });
+        expect(screen.getByTestId("repo-scope-note")).toBeInTheDocument();
+    });
+
+    it.each([
+        ["repository_not_in_team", "The selected repository is not owned by the selected team."],
+        ["repository_not_found", "The selected repository was not found."],
+    ])("the empty state says why: %s", (reason, text) => {
+        draw(
+            { repos: ["r1"] },
+            { ...data, points: [], repo_filter_applied: true, filter_empty_reason: reason },
+        );
+        expect(screen.getByTestId("quadrant-empty")).toHaveTextContent(text);
+        expect(screen.queryByTestId("repo-scope-note")).toBeNull();
+    });
+
+    it("an empty answer with no reason keeps the page empty text", () => {
+        draw(
+            { repos: ["r1"] },
+            { ...data, points: [], repo_filter_applied: true, filter_empty_reason: null },
+        );
+        expect(screen.getByTestId("quadrant-empty")).toHaveTextContent(
+            "Quadrant data unavailable.",
+        );
+    });
 });

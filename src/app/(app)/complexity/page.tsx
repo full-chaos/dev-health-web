@@ -37,7 +37,7 @@ import {
     type ComplexityScopeInput,
 } from "@/lib/complexity/filters";
 import type { HotspotHeatmapProps } from "@/components/complexity/ComplexityDashboard";
-import type { HeatmapResponse } from "@/lib/types";
+import type { HeatmapResponse, MetricFilter } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
@@ -133,11 +133,12 @@ async function fetchHotspots(
  */
 async function fetchHotspotHeatmap(
     request: HotspotHeatmapRequest,
+    filters: MetricFilter,
     hasSessionOrg: boolean,
 ): Promise<{ state: HotspotHeatmapState; data: HeatmapResponse | null }> {
     if (!hasSessionOrg) return { state: "unavailable", data: null };
     try {
-        const data = await getHeatmap(request);
+        const data = await getHeatmap({ ...request, filters });
         return { state: data ? "ok" : "unavailable", data: data ?? null };
     } catch (err) {
         console.warn("hotspot heatmap read failed", err);
@@ -221,7 +222,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
         fetchComplexityTimeseries(orgId, sinceUtc, untilUtc, scopeInput),
         fetchHotspots(orgId, sinceUtc, untilUtc, scopeInput),
         onHotspots
-            ? fetchHotspotHeatmap(heatmapRequest, hasSessionOrg)
+            ? fetchHotspotHeatmap(heatmapRequest, filters, hasSessionOrg)
             : Promise.resolve(undefined),
         onHotspots ? fetchHotspotSummary(filters, hasSessionOrg) : Promise.resolve(undefined),
     ]);

@@ -65,3 +65,26 @@ export const withRepoScopeNote = (
     isRepoUnscopedMetric(metric, filters, served)
         ? [caption, NOT_FILTERED_BY_REPOSITORY].filter(Boolean).join(" · ")
         : caption;
+
+/**
+ * The note on a quadrant or heatmap. The SERVED `repo_filter_applied` decides: `false` = note;
+ * `true` (narrowed) and `null` (nothing selected) = none. Only when the key is ABSENT (an ops
+ * without CHAOS-9159) does the old rule hold: a repository named in the filter = note.
+ */
+export const showChartRepoNote = (
+    filters: MetricFilter | undefined,
+    served?: RepoFilterServed | null,
+): boolean => {
+    if (served && served.repo_filter_applied !== undefined) {
+        return served.repo_filter_applied === false;
+    }
+    return filters ? hasSelectedRepos(filters) : false;
+};
+
+/** Query params the quadrant and heatmap routes take beside the scope: repeatable lists. */
+export const repoFilterParams = (
+    filters?: MetricFilter,
+): { team_ids: string[]; repo_ids: string[] } => ({
+    team_ids: filters && filters.scope.level === "team" ? filters.scope.ids : [],
+    repo_ids: filters?.what.repos ?? [],
+});

@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
 
-import { REPO_UNSCOPED_METRICS, isRepoUnscopedMetric, withRepoScopeNote } from "../repoScope";
+import {
+    REPO_UNSCOPED_METRICS,
+    isRepoUnscopedMetric,
+    repoFilterParams,
+    showChartRepoNote,
+    withRepoScopeNote,
+} from "../repoScope";
 
 const withRepo: MetricFilter = {
     ...defaultMetricFilter,
@@ -84,5 +90,41 @@ describe("isRepoUnscopedMetric with the served flag (CHAOS-9078)", () => {
         expect(
             withRepoScopeNote("cap", "cycle_time", withRepo, { repo_filter_applied: false }),
         ).toBe("cap · Not filtered by repository");
+    });
+});
+
+describe("showChartRepoNote (CHAOS-9097)", () => {
+    it.each([
+        [{ repo_filter_applied: true }, false],
+        [{ repo_filter_applied: null }, false],
+        [{ repo_filter_applied: false }, true],
+        [{}, true], // keys absent (older ops): a repository in the filter = note
+        [null, true],
+    ])("repository in the filter, served %j -> note %s", (served, note) => {
+        expect(showChartRepoNote(withRepo, served)).toBe(note);
+    });
+
+    it("follows a served false even with no repository in the filter", () => {
+        expect(showChartRepoNote(defaultMetricFilter, { repo_filter_applied: false })).toBe(true);
+    });
+
+    it("keys absent and no repository: no note", () => {
+        expect(showChartRepoNote(defaultMetricFilter, {})).toBe(false);
+        expect(showChartRepoNote(undefined, undefined)).toBe(false);
+    });
+});
+
+describe("repoFilterParams", () => {
+    it("sends team scope ids as team_ids and what.repos as repo_ids", () => {
+        const f: MetricFilter = {
+            ...withRepo,
+            scope: { level: "team", ids: ["t1", "t2"] },
+            what: { repos: ["r1"] },
+        };
+        expect(repoFilterParams(f)).toEqual({ team_ids: ["t1", "t2"], repo_ids: ["r1"] });
+    });
+    it("sends no team_ids for a non-team scope, and nothing without a filter", () => {
+        expect(repoFilterParams(withRepo).team_ids).toEqual([]);
+        expect(repoFilterParams(undefined)).toEqual({ team_ids: [], repo_ids: [] });
     });
 });

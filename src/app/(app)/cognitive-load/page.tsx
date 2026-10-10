@@ -146,6 +146,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 range_days: filters.time.range_days,
                 start_date: filters.time.start_date,
                 end_date: filters.time.end_date,
+                filters,
             });
         } catch {
             // Leave null — HeatmapView renders its own "unavailable" empty state.

@@ -16,7 +16,8 @@ import { ErrorCard } from "@/components/ui/ErrorCard";
 import { getHeatmap } from "@/lib/api/visuals";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { RepoScopeNote } from "@/components/shared/RepoScopeNote";
-import { hasSelectedRepos } from "@/lib/metrics/repoScope";
+import { filterEmptyReasonText } from "@/lib/metrics/filterEmptyReason";
+import { showChartRepoNote } from "@/lib/metrics/repoScope";
 import type { HeatmapCell, HeatmapResponse, MetricFilter } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 
@@ -211,11 +212,18 @@ export function HeatmapPanel({
         (cell: HeatmapCell) => {
             evidenceDrawer.open({
                 title: `${cell.y} · ${cell.x}`,
-                content: <HeatmapCellEvidence request={request} cell={cell} unit={unit} />,
+                content: (
+                    <HeatmapCellEvidence
+                        request={request}
+                        cell={cell}
+                        unit={unit}
+                        filters={filters}
+                    />
+                ),
                 returnFocusRef: chartRegionRef,
             });
         },
-        [evidenceDrawer, request, unit],
+        [evidenceDrawer, request, unit, filters],
     );
 
     // A heatmap with no spread across its cells renders as a single flat colour,
@@ -240,7 +248,7 @@ export function HeatmapPanel({
     if (!data || !data.legend || !data.axes?.x?.length || !data.axes?.y?.length) {
         return (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
-                {emptyState}
+                {filterEmptyReasonText(data?.filter_empty_reason) ?? emptyState}
             </div>
         );
     }
@@ -248,7 +256,7 @@ export function HeatmapPanel({
     const headerNote = defaultSummary ? "Top hotspots" : null;
     const showArtifacts = artifacts.length > 0;
 
-    const repoNote = <RepoScopeNote show={filters ? hasSelectedRepos(filters) : false} />;
+    const repoNote = <RepoScopeNote show={showChartRepoNote(filters, data)} />;
 
     return (
         <div className={embedded ? "" : "rounded-3xl border border-(--card-stroke) bg-card p-5"}>
@@ -417,16 +425,18 @@ function HeatmapCellEvidence({
     request,
     cell,
     unit,
+    filters,
 }: {
     request: HeatmapRequest;
     cell: HeatmapCell;
     unit?: string;
+    filters?: MetricFilter;
 }) {
     const [state, setState] = useState<CellEvidenceState>({ status: "loading" });
 
     useEffect(() => {
         let live = true;
-        getHeatmap({ ...request, x: cell.x, y: cell.y, limit: 50 })
+        getHeatmap({ ...request, x: cell.x, y: cell.y, limit: 50, filters })
             .then((response) => {
                 if (live) setState({ status: "loaded", evidence: response.evidence ?? [] });
             })
@@ -436,7 +446,7 @@ function HeatmapCellEvidence({
         return () => {
             live = false;
         };
-    }, [request, cell]);
+    }, [request, cell, filters]);
 
     const artifacts = useMemo(
         () =>
