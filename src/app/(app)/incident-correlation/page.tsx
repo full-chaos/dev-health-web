@@ -20,12 +20,12 @@ import { IncidentCorrelationDashboard } from "@/components/incident-correlation/
 import type { WorkGraphEdge } from "@/components/incident-correlation/IncidentCorrelationDashboard";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { requireSession } from "@/lib/auth";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { WORK_GRAPH_EDGES_QUERY } from "@/lib/graphql/queries";
@@ -89,7 +89,7 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { pageFilters: false });
 
     const orgId = session.user?.org_id ?? "demo-org";
 

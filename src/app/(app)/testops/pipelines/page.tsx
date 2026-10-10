@@ -5,6 +5,7 @@ import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FailurePatternsCard } from "@/components/testops/FailurePatternsCard";
 import { InvestigateTestOps } from "@/components/testops/InvestigateTestOps";
@@ -12,7 +13,6 @@ import { PipelineRateTrendChart } from "@/components/testops/PipelineRateTrendCh
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { buildFailurePatternsModel } from "@/lib/testops/failure-patterns";
 import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateTrend";
@@ -32,7 +32,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "testops" });
 
     const env = getServerEnv();
     const isTestMode =

@@ -4,11 +4,11 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags/fetchers";
 import { FF_MEASURES, ffPolarity } from "@/lib/feature-flags/constants";
 import { getServerEnv } from "@/lib/config";
@@ -23,7 +23,10 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, {
+        view: "feature-flags",
+        pageFilters: false,
+    });
 
     const env = getServerEnv();
     const isTestMode =

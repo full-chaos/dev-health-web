@@ -18,6 +18,19 @@ export const scopeBarUrl = {
         scopeBarUrl.pathname = "/dashboard";
         scopeBarUrl.search = search;
         scopeBarUrl.replace.mockClear();
+        scopeBarUrl.historyWrite.mockClear();
+    },
+    /**
+     * The default `f` is written with the history API, not `router.replace`: no server render
+     * (CHAOS-9130). The spy lets the test see the URL it calls through, so the URL in jsdom follows.
+     */
+    historyWrite: vi.spyOn(window.history, "replaceState"),
+    /** Params of the last URL the bar wrote with the history API (the default `f`). */
+    lastDefaultParams(): URLSearchParams {
+        const calls = scopeBarUrl.historyWrite.mock.calls;
+        if (calls.length === 0) throw new Error("the bar did not write a default URL");
+        const href = String(calls[calls.length - 1][2]);
+        return new URLSearchParams(href.slice(href.indexOf("?") + 1));
     },
     /** Params of the last URL the bar wrote. */
     lastParams(): URLSearchParams {

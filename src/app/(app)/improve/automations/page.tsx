@@ -2,10 +2,10 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { AutomationsEvidenceAction } from "@/components/improve/AutomationsEvidenceAction";
 import { ImproveAutomationsDashboard } from "@/components/improve/ImproveAutomationsDashboard";
 import { checkApiHealth } from "@/lib/api/system";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type ImproveAutomationsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -17,7 +17,7 @@ export default async function ImproveAutomationsPage({
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "opportunities" });
     const health = await checkApiHealth();
 
     if (!health.ok) {

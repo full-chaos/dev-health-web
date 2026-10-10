@@ -118,8 +118,9 @@ describe("Home scope bar", () => {
     it("adds the default `f` to the URL and keeps the other params", async () => {
         await renderCockpit();
 
-        await waitFor(() => expect(scopeBarUrl.replace).toHaveBeenCalled());
-        expect(scopeBarUrl.lastParams().has("f")).toBe(true);
-        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+        await waitFor(() => expect(scopeBarUrl.historyWrite).toHaveBeenCalled());
+        expect(scopeBarUrl.lastDefaultParams().has("f")).toBe(true);
+        expect(scopeBarUrl.lastDefaultParams().get("role")).toBe("em");
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
     });
 });

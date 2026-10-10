@@ -97,7 +97,9 @@ describe("/explore names the scope (CHAOS-9145)", () => {
 
     it("no ids: the sentence is unchanged and no names are read", async () => {
         postJson.mockResolvedValue(answer);
-        render(await Explore({ searchParams: Promise.resolve({ metric: "cycle_time" }) }));
+        // An organization scope with no ids is in `f`: a URL with no `f` reads the default (team) scope.
+        const f = encodeFilter({ ...defaultMetricFilter, scope: { level: "org", ids: [] } });
+        render(await Explore({ searchParams: Promise.resolve({ metric: "cycle_time", f }) }));
         expect(document.body.textContent).toContain("for all orgs over the last");
         expect(getJson).not.toHaveBeenCalled();
     });

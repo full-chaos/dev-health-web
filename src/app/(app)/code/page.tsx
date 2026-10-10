@@ -22,7 +22,6 @@ import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrant } from "@/lib/api/visuals";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
@@ -31,6 +30,7 @@ import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type CodePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -46,7 +46,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "code" });
     const scopeId = filters.scope.ids[0] ?? "";
     const quadrantScope: "org" | "team" | "repo" | "developer" =
         filters.scope.level === "developer"

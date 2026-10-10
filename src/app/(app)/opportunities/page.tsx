@@ -5,11 +5,11 @@ import { DataState } from "@/components/ui/DataState";
 import { RetryButton } from "@/components/ui/RetryButton";
 import { checkApiHealth } from "@/lib/api/system";
 import { getOpportunities } from "@/lib/api/home";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { getServerEnv } from "@/lib/config";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type OpportunitiesPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -21,7 +21,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "opportunities" });
 
     const env = getServerEnv();
     const isTestMode =

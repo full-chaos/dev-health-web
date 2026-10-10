@@ -136,8 +136,10 @@ describe("ScopeBar — each action writes the same `f` the old bars wrote", () =
         scopeBarUrl.reset("role=em");
         renderBar();
 
-        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
-        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+        expect(scopeBarUrl.lastDefaultParams().get("f")).toBe(DEFAULT_F);
+        expect(scopeBarUrl.lastDefaultParams().get("role")).toBe("em");
+        // CHAOS-9130: a navigation would make a second server render of the page.
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
     });
 
     it("writes nothing on load when the URL has `f`", () => {
@@ -570,8 +572,9 @@ describe("ScopeBar — a view with page filters keeps the team lock", () => {
         scopeBarUrl.reset("role=em");
         render(<ScopeBar view="home" />);
 
-        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
-        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+        expect(scopeBarUrl.lastDefaultParams().get("f")).toBe(DEFAULT_F);
+        expect(scopeBarUrl.lastDefaultParams().get("role")).toBe("em");
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
     });
 
     it("the Home view: reset writes the default `f`", async () => {
@@ -680,8 +683,9 @@ describe("ScopeBar — the AI view: first load as the two old bars had it", () =
         scopeBarUrl.reset("role=em");
         render(<ScopeBar view="ai" />);
 
-        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
-        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+        expect(scopeBarUrl.lastDefaultParams().get("f")).toBe(DEFAULT_F);
+        expect(scopeBarUrl.lastDefaultParams().get("role")).toBe("em");
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
     });
 
     it("keeps the team scope lock: an organization click ends at the team level", async () => {
@@ -834,7 +838,7 @@ describe("ScopeBar — each view offers, shows and counts only the filters its r
 
         expect(screen.queryByRole("button", { name: "Filters" })).toBeNull();
         // The default `f` is still written: hiding controls does not change the view's page filters.
-        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
+        expect(scopeBarUrl.lastDefaultParams().get("f")).toBe(DEFAULT_F);
     });
 
     it("investment keeps developers and work category: the investment queries apply them", () => {

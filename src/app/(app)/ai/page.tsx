@@ -3,10 +3,10 @@ import { AreaHubEvidenceAction } from "@/components/navigation/areaHubEvidence";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { checkApiHealth } from "@/lib/api/system";
 import { getAreaSignals } from "@/lib/areaSignals";
 import { getServerEnv } from "@/lib/config";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 
 type AIWorkflowsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -22,7 +22,7 @@ export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageP
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "ai" });
 
     const env = getServerEnv();
     const isTestMode =
