@@ -221,6 +221,9 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             last_ingested_at: result.scopeDataConfidence.lastIngestedAt,
             caveats: result.scopeDataConfidence.caveats,
         },
+        ...(result.filterEmptyReason !== undefined
+            ? { filter_empty_reason: result.filterEmptyReason }
+            : {}),
     };
 }
 

@@ -225,6 +225,8 @@ export type HomeResponse = {
     limiting_factor?: LimitingFactor;
     data_confidence?: DataConfidence;
     scope_data_confidence?: ScopeDataConfidence;
+    /** Why the named repositories matched nothing (e.g. repository_not_in_team, repository_not_found); null: none. Absent: an older backend. Unknown values pass through. */
+    filter_empty_reason?: string | null;
     /** Rework distribution by investment theme (CHAOS-2163). Optional for back-compat. */
     rework_theme_allocation?: ReworkThemeAllocation[];
 };

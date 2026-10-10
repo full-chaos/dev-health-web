@@ -1041,6 +1041,8 @@ export interface HomeGraphQLResult {
     limitingFactor: HomeGraphQLLimitingFactor;
     dataConfidence: HomeGraphQLDataConfidence;
     scopeDataConfidence: HomeGraphQLScopeDataConfidence;
+    /** Why the named repositories matched nothing; null: none. Absent: an older API. */
+    filterEmptyReason?: string | null;
 }
 
 export interface HomeQueryResponse {
