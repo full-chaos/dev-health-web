@@ -343,3 +343,58 @@ describe("CockpitSummary rework coverage note (CHAOS-9076)", () => {
         expect(screen.getByTestId("cockpit-summary").textContent).not.toMatch(/Based on/);
     });
 });
+
+// CHAOS-9193: three empty states stay distinct: failed read, plain empty, empty with a served reason.
+describe("CockpitSummary filter-empty reason", () => {
+    const emptyHome = (reason?: string | null) =>
+        makeHome({
+            signals: [],
+            health_state: { status: "no_data", headline: "", summary: "" },
+            ...(reason === undefined ? {} : { filter_empty_reason: reason }),
+        });
+
+    it.each([
+        ["repository_not_in_team", "The selected repository is not owned by the selected team."],
+        ["repository_not_found", "The selected repository was not found."],
+    ])("draws the text once for %s", (reason, text) => {
+        render(<CockpitSummary home={emptyHome(reason)} filters={filters} />);
+        const hero = within(screen.getByTestId("cockpit-summary"));
+        expect(hero.getByTestId("cockpit-filter-empty-reason")).toHaveTextContent(text);
+        expect(screen.getAllByText(text)).toHaveLength(1);
+        expect(hero.queryByText("No data for this window.")).toBeNull();
+        expect(hero.queryByTestId("cockpit-read-failed")).toBeNull();
+    });
+
+    it.each([undefined, null, "some_future_value"])(
+        "draws the plain no-data state for reason %s",
+        (reason) => {
+            render(<CockpitSummary home={emptyHome(reason)} filters={filters} />);
+            expect(screen.getByTestId("cockpit-no-data")).toHaveTextContent(
+                "No data for this window.",
+            );
+            expect(screen.queryByTestId("cockpit-filter-empty-reason")).toBeNull();
+        },
+    );
+
+    it("keeps the failed read distinct from a reason", () => {
+        render(<CockpitSummary home={null} filters={filters} />);
+        expect(screen.getByTestId("cockpit-read-failed")).toBeInTheDocument();
+        expect(screen.queryByTestId("cockpit-filter-empty-reason")).toBeNull();
+    });
+
+    it("draws the reason when there are no signals and no served health state", () => {
+        render(
+            <CockpitSummary
+                home={makeHome({
+                    signals: [],
+                    health_state: undefined,
+                    filter_empty_reason: "repository_not_found",
+                })}
+                filters={filters}
+            />,
+        );
+        expect(screen.getByTestId("cockpit-filter-empty-reason")).toHaveTextContent(
+            "The selected repository was not found.",
+        );
+    });
+});
