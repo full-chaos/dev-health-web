@@ -5,7 +5,6 @@ import type { MetricFilter } from "@/lib/filters/types";
 
 import {
     REPO_UNSCOPED_METRICS,
-    filterEmptyReasonText,
     isRepoUnscopedMetric,
     repoFilterParams,
     showChartRepoNote,
@@ -112,23 +111,6 @@ describe("showChartRepoNote (CHAOS-9097)", () => {
     it("keys absent and no repository: no note", () => {
         expect(showChartRepoNote(defaultMetricFilter, {})).toBe(false);
         expect(showChartRepoNote(undefined, undefined)).toBe(false);
-    });
-});
-
-describe("filterEmptyReasonText", () => {
-    it("maps the two served reasons to the approved texts", () => {
-        expect(filterEmptyReasonText({ filter_empty_reason: "repository_not_in_team" })).toBe(
-            "The selected repository is not owned by the selected team.",
-        );
-        expect(filterEmptyReasonText({ filter_empty_reason: "repository_not_found" })).toBe(
-            "The selected repository was not found.",
-        );
-    });
-    it("is null for none, null, absent or an unknown reason", () => {
-        expect(filterEmptyReasonText({ filter_empty_reason: null })).toBeNull();
-        expect(filterEmptyReasonText({})).toBeNull();
-        expect(filterEmptyReasonText(null)).toBeNull();
-        expect(filterEmptyReasonText({ filter_empty_reason: "other" })).toBeNull();
     });
 });
 

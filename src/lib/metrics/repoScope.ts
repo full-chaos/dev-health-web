@@ -66,18 +66,6 @@ export const withRepoScopeNote = (
         ? [caption, NOT_FILTERED_BY_REPOSITORY].filter(Boolean).join(" · ")
         : caption;
 
-/** The empty-state texts for a served `filter_empty_reason` (approved wording). */
-export const FILTER_EMPTY_REASON_TEXT: Record<string, string> = {
-    repository_not_in_team: "The selected repository is not owned by the selected team.",
-    repository_not_found: "The selected repository was not found.",
-};
-
-/** The text for a served empty reason, or null (no reason, or a reason this web does not know). */
-export const filterEmptyReasonText = (
-    served?: { filter_empty_reason?: string | null } | null,
-): string | null =>
-    (served?.filter_empty_reason && FILTER_EMPTY_REASON_TEXT[served.filter_empty_reason]) || null;
-
 /**
  * The note on a quadrant or heatmap. The SERVED `repo_filter_applied` decides: `false` = note;
  * `true` (narrowed) and `null` (nothing selected) = none. Only when the key is ABSENT (an ops

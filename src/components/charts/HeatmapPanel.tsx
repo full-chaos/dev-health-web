@@ -16,7 +16,8 @@ import { ErrorCard } from "@/components/ui/ErrorCard";
 import { getHeatmap } from "@/lib/api/visuals";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { RepoScopeNote } from "@/components/shared/RepoScopeNote";
-import { filterEmptyReasonText, showChartRepoNote } from "@/lib/metrics/repoScope";
+import { filterEmptyReasonText } from "@/lib/metrics/filterEmptyReason";
+import { showChartRepoNote } from "@/lib/metrics/repoScope";
 import type { HeatmapCell, HeatmapResponse, MetricFilter } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 
@@ -247,7 +248,7 @@ export function HeatmapPanel({
     if (!data || !data.legend || !data.axes?.x?.length || !data.axes?.y?.length) {
         return (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
-                {filterEmptyReasonText(data) ?? emptyState}
+                {filterEmptyReasonText(data?.filter_empty_reason) ?? emptyState}
             </div>
         );
     }

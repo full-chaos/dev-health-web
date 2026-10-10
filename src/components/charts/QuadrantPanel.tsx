@@ -18,7 +18,8 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { buttonClassName } from "@/components/shared/Button";
 import type { MetricFilter } from "@/lib/filters/types";
 import { RepoScopeNote } from "@/components/shared/RepoScopeNote";
-import { filterEmptyReasonText, showChartRepoNote } from "@/lib/metrics/repoScope";
+import { filterEmptyReasonText } from "@/lib/metrics/filterEmptyReason";
+import { showChartRepoNote } from "@/lib/metrics/repoScope";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
 import { useChartTheme, useChartTokens } from "./chartTheme";
@@ -357,7 +358,7 @@ export function QuadrantPanel({
                     data-testid="quadrant-empty"
                     className="mt-4.25 rounded-(--radius-md) border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)"
                 >
-                    {filterEmptyReasonText(servedData) ?? emptyState}
+                    {filterEmptyReasonText(servedData?.filter_empty_reason) ?? emptyState}
                 </div>
             </div>
         );
