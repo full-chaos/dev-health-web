@@ -55,7 +55,8 @@ describe("People page pass (CHAOS-7762)", () => {
             expect(PERSON).toMatch(
                 new RegExp(`const PERSON_METRIC_KEYS = \\[[^\\]]*"${metric}"`, "u"),
             );
-            expect(PERSON).toContain("`/people/${personId}/metrics/${delta.metric}`");
+            expect(PERSON).toContain("person_id: decodedPersonId");
+            expect(PERSON).toContain("metric: delta.metric");
             expect(CARD).toContain('caption: "Open metric"');
         },
     );

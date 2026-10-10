@@ -24,7 +24,10 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
         return <ServiceUnavailable landmark={false} />;
     }
 
-    const { issue_id: issueId } = await params;
+    const { issue_id: encodedIssueId } = await params;
+    // The router gives the segment encoded; a query value and a GraphQL variable are not decoded
+    // by the backend (CHAOS-9117). Same as prs/[pr_id].
+    const issueId = decodeURIComponent(encodedIssueId);
     const session = await requireSession();
     const orgId = session.user.org_id;
     // No org on the session: ask for nothing (never an empty or made-up org).

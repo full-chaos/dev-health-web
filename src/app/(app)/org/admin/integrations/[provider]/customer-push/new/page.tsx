@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { appPath } from "@/lib/navigation/appPath";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { BackLink } from "@/components/shared/BackLink";
@@ -48,10 +47,7 @@ export default async function NewCustomerPushSourcePage({
 
     return (
         <div className="space-y-6">
-            <BackLink
-                href={appPath("/org/admin/integrations/[provider]", { provider })}
-                area="Integrations"
-            />
+            <BackLink href={`/org/admin/integrations/${provider}`} area="Integrations" />
 
             <AdminHeader
                 title={`Create ${providerName} customer-push source`}

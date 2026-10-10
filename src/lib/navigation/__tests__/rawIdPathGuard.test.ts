@@ -13,6 +13,15 @@ import { describe, expect, it } from "vitest";
  * Not checked: `/api/` paths and `revalidatePath(` (server paths, not links), test files, and
  * query-string values (they do not loop).
  *
+ * Limits (the guard does not see these; review them by hand):
+ * - a template that does not start with `/` (`${basePath}/x`, `new URL(`people/${id}`, origin)`);
+ * - `[...].join("/")` and `"/people/[id]".replace("[id]", id)`;
+ * - an app path behind an `/api/` prefix;
+ * - a double encode: `/people/${encodeURIComponent(params.person_id)}` is accepted, but a route
+ *   param is already encoded (see PARAM below);
+ * - a path built in one place and used as an href in another (the guard reads the builder).
+ * It does see string concatenation: `"/people/" + id` (a quoted path that ends in `/`, then `+`).
+ *
  * To allow a template, add an entry to ALLOWED with a written reason. An entry that matches no
  * template fails the test, so the list cannot go stale.
  */
@@ -33,6 +42,9 @@ const fromParam = (file: string, template: string): Allowed => ({
     reason: PARAM,
 });
 const CP = "app/(app)/org/admin/integrations/[provider]/customer-push/[source_id]";
+
+const PROVIDER =
+    "`provider` is the route param of the customer-push pages (or a prop given from it): a slug checked against the provider list. appPath() would encode it twice.";
 
 const ALLOWED: Allowed[] = [
     {
@@ -103,11 +115,33 @@ const ALLOWED: Allowed[] = [
         "/people/${personId}/metrics/${metric}",
     ),
     fromParam("app/(app)/people/[person_id]/metrics/[metric]/page.tsx", "/people/${personId}"),
-    fromParam(
-        "app/(app)/people/[person_id]/page.tsx",
-        "/people/${personId}/metrics/${delta.metric}",
-    ),
-    fromParam("app/(app)/people/[person_id]/page.tsx", "/people/${personId}/metrics/${metric}"),
+    {
+        file: "app/(app)/org/admin/integrations/[provider]/customer-push/new/page.tsx",
+        template: "/org/admin/integrations/${provider}",
+        reason: PROVIDER,
+    },
+    {
+        file: `${CP}/page.tsx`,
+        template: "/org/admin/integrations/${provider}",
+        reason: PROVIDER,
+    },
+    {
+        file: "components/admin/integrations/customer-push/ModeCards.tsx",
+        template: "/org/admin/integrations/${provider}/customer-push/new",
+        reason: PROVIDER,
+    },
+    {
+        file: "components/admin/integrations/customer-push/CustomerPushSourceOverview.tsx",
+        template:
+            "/org/admin/integrations/${provider}/customer-push/${encodeURIComponent(source.id)}",
+        reason: PROVIDER,
+    },
+    {
+        file: "components/admin/integrations/customer-push/CreateCustomerPushSourceForm.tsx",
+        template:
+            "/org/admin/integrations/${provider}/customer-push/${encodeURIComponent(result.data.id)}",
+        reason: PROVIDER,
+    },
 ];
 
 function sourceFiles(dir: string): string[] {
@@ -162,6 +196,10 @@ export function rawPathTemplates(source: string): string[] {
         );
         if (raw.length > 0) hits.push(template);
     }
+    // String concatenation: a quoted path that ends in `/`, then `+`.
+    for (const match of source.matchAll(/(["'])(\/[^"'\n]*\/)\1\s*\+/gu)) {
+        if (!match[2].startsWith("/api/")) hits.push(`concat ${match[2]} +`);
+    }
     return hits;
 }
 
@@ -173,6 +211,12 @@ describe("raw ids in app-route paths (CHAOS-9117)", () => {
         expect(rawPathTemplates("fetch(`/api/v1/teams/${id}`);")).toEqual([]);
         expect(rawPathTemplates("revalidatePath(`/org/admin/sync/${id}`);")).toEqual([]);
         expect(rawPathTemplates("const a = `${base}/x`;")).toEqual([]);
+        expect(rawPathTemplates('const a = "/people/" + id;')).toEqual(["concat /people/ +"]);
+        expect(rawPathTemplates("const a = '/prs/' + repoId + ':' + n;")).toEqual([
+            "concat /prs/ +",
+        ]);
+        expect(rawPathTemplates('const a = "/explore?q=" + q;')).toEqual([]);
+        expect(rawPathTemplates('fetch("/api/v1/x/" + id);')).toEqual([]);
         expect(rawPathTemplates("const a = `/x/${a}/${encodeURIComponent(b)}/${c}`;")).toEqual([
             "/x/${a}/${encodeURIComponent(b)}/${c}",
         ]);

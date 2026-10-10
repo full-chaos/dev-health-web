@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { appPath } from "@/lib/navigation/appPath";
 
 type ModeCardsProps = {
     provider: string;
@@ -27,7 +26,7 @@ export function ModeCards({
 }: ModeCardsProps) {
     const customerPushHref =
         customerPushSourceCount === 0
-            ? appPath("/org/admin/integrations/[provider]/customer-push/new", { provider })
+            ? `/org/admin/integrations/${provider}/customer-push/new`
             : "#customer-push-sources";
 
     return (
