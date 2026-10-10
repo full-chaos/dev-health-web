@@ -24,6 +24,24 @@ test.describe("Operating Review", () => {
         await expect(page.getByRole("heading", { name: "Recommendations" })).toBeVisible();
     });
 
+    test("names the five investment themes in the investment section", async ({ page }) => {
+        await page.goto("/operating-review?week=2026-05-18");
+
+        const investment = page.locator("#investment");
+        await expect(
+            investment.getByText("Effort allocation across the five investment themes."),
+        ).toBeVisible();
+        for (const label of [
+            "Feature delivery",
+            "Operational / support",
+            "Maintenance / tech debt",
+            "Quality / reliability",
+            "Risk / security",
+        ]) {
+            await expect(investment).toContainText(label);
+        }
+    });
+
     test("renders branded AI Workflow Intelligence section with safe follow-up links", async ({
         page,
     }) => {
