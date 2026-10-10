@@ -1282,7 +1282,8 @@ export type MeasureInput =
 
 export type MetricDelta = {
   __typename?: 'MetricDelta';
-  deltaPct: Scalars['Float']['output'];
+  /** Percent change between the windows. 0 when a window has no stored value (see hasData / hasPriorData); null when the prior value is a measured 0 and the current value is not, because a percent change against zero is undefined (CHAOS-9063). */
+  deltaPct?: Maybe<Scalars['Float']['output']>;
   /** Whether the current window has one or more stored source rows. A stored zero has this field set to true. */
   hasData: Scalars['Boolean']['output'];
   /** Whether the comparison window has one or more stored source rows. */
