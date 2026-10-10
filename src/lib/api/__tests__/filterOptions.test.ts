@@ -4,7 +4,7 @@ const getJson = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/apiClient", () => ({ apiClient: { getJson } }));
 vi.mock("@/lib/logger", () => ({ logger: { warn: vi.fn() } }));
 
-import { fetchTeamNames } from "../filterOptions";
+import { fetchFilterNames, fetchTeamNames } from "../filterOptions";
 
 describe("fetchTeamNames", () => {
     beforeEach(() => {
@@ -25,5 +25,25 @@ describe("fetchTeamNames", () => {
     it("is empty when the read fails", async () => {
         getJson.mockRejectedValue(new Error("down"));
         await expect(fetchTeamNames()).resolves.toEqual({});
+    });
+});
+
+describe("fetchFilterNames", () => {
+    beforeEach(() => {
+        getJson.mockReset();
+    });
+
+    it("returns the three served name maps, empty when absent", async () => {
+        getJson.mockResolvedValue({ team_names: { T: "Platform" }, repo_names: { R: "api" } });
+        await expect(fetchFilterNames()).resolves.toEqual({
+            teams: { T: "Platform" },
+            repos: { R: "api" },
+            developers: {},
+        });
+    });
+
+    it("is empty when the read fails", async () => {
+        getJson.mockRejectedValue(new Error("down"));
+        await expect(fetchFilterNames()).resolves.toEqual({ teams: {}, repos: {}, developers: {} });
     });
 });
