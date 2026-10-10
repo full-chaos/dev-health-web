@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { metricDisplay } from "@/lib/metrics/metricDisplay";
 import {
+    isRepoLinkNoValueState,
     repoLinkCoverageNote,
     repoLinkMultiRepoNote,
     repoLinkPageNotes,
@@ -103,5 +105,27 @@ describe("withRepoLinkNote", () => {
         );
         expect(withRepoLinkNote(undefined, linked)).toMatch(/^From issues/);
         expect(withRepoLinkNote("x", { metric: "cycle_time" })).toBe("x");
+    });
+});
+
+describe("no-value states (contradiction guard)", () => {
+    it.each(["no_links", "timed_out", "too_large"])(
+        "%s is no data even with has_data true",
+        (state) => {
+            expect(isRepoLinkNoValueState(state)).toBe(true);
+            expect(
+                metricDisplay({ has_data: true, has_prior_data: true, repo_link_state: state })
+                    .state,
+            ).toBe("no-data");
+        },
+    );
+    it("linked, null and unknown keep data", () => {
+        for (const state of ["linked", null, undefined, "future"]) {
+            expect(isRepoLinkNoValueState(state)).toBe(false);
+            expect(
+                metricDisplay({ has_data: true, has_prior_data: true, repo_link_state: state })
+                    .state,
+            ).toBe("measured");
+        }
     });
 });

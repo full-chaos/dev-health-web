@@ -84,3 +84,25 @@ describe("Home ranked signals repository link note (CHAOS-9120)", () => {
         expect(screen.queryByTestId("signal-repo-link-note")).toBeNull();
     });
 });
+
+describe("Home ranked signals no-value link states (CHAOS-9120)", () => {
+    it.each(["no_links", "timed_out", "too_large"])(
+        "state %s draws no data, never the value, even when has_data says data",
+        (state) => {
+            draw({ has_data: true, repo_link_state: state });
+            const row = screen.getAllByTestId("signal-row")[0];
+            expect(screen.getByTestId("signal-current")).toHaveTextContent(
+                "No data for this window",
+            );
+            expect(row.textContent).not.toContain("1 days");
+            expect(row.textContent).not.toContain("+0%");
+        },
+    );
+    it("linked keeps the served values", () => {
+        draw({
+            repo_link_state: "linked",
+            repo_link_basis: { native: 1, explicit_text: 2, heuristic: 3 },
+        });
+        expect(screen.getByTestId("signal-current")).toHaveTextContent("1 days");
+    });
+});

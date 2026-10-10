@@ -13,7 +13,8 @@ import { signalMetricLabel } from "@/lib/cockpit/signalLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
-import { repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
+import { noDataText } from "@/lib/metrics/metricDisplay";
+import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { CockpitSignal, MetricDelta } from "@/lib/types";
 
@@ -70,6 +71,12 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
     const linkNoteOf = (signal: CockpitSignal) =>
         repoLinkTileNote(deltas.find((delta) => delta.metric === signal.metric));
 
+    // A row whose metric serves a no-value link state draws no data, never a value (CHAOS-9120).
+    const noValueOf = (signal: CockpitSignal) => {
+        const delta = deltas.find((d) => d.metric === signal.metric);
+        return delta && isRepoLinkNoValueState(delta.repo_link_state) ? delta : null;
+    };
+
     const columns: DataTableColumn<CockpitSignal>[] = [
         {
             key: "signal",
@@ -103,7 +110,11 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             key: "current",
             header: "Current",
             className: "whitespace-nowrap px-3 py-3.25 tabular-nums",
-            render: (signal) => <span data-testid="signal-current">{signal.current_value}</span>,
+            render: (signal) => (
+                <span data-testid="signal-current">
+                    {noValueOf(signal) ? noDataText(signal.metric) : signal.current_value}
+                </span>
+            ),
         },
         {
             key: "previous",
@@ -111,7 +122,9 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             className: "whitespace-nowrap px-3 py-3.25 tabular-nums",
             render: (signal) => (
                 <span data-testid="signal-previous">
-                    {signal.prior_value != null && signal.prior_value !== "" ? (
+                    {!noValueOf(signal) &&
+                    signal.prior_value != null &&
+                    signal.prior_value !== "" ? (
                         signal.prior_value
                     ) : (
                         <span className="text-(--ink-muted)">{NOT_REPORTED}</span>
@@ -125,7 +138,7 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             className: "whitespace-nowrap px-3 py-3.25 tabular-nums",
             render: (signal) => (
                 <span data-testid="signal-delta" data-direction={signal.direction}>
-                    {signal.delta ? (
+                    {!noValueOf(signal) && signal.delta ? (
                         // The served string carries its own sign (approved table: plain text).
                         signal.delta
                     ) : (

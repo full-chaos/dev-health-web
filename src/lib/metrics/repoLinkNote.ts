@@ -19,6 +19,13 @@ const n = (value: number): string => integerFormatter.format(value);
 const count = (value: number | null | undefined): number | null =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 
+/**
+ * A state that serves no value (CHAOS-9094: has_data false, value 0). A row that arrives with one
+ * of these states is drawn as no data even if its has_data says otherwise: never the value.
+ */
+export const isRepoLinkNoValueState = (state: string | null | undefined): boolean =>
+    state === "no_links" || state === "timed_out" || state === "too_large";
+
 /** Text 2: the state "no_links". */
 export const REPO_LINK_NO_LINKS =
     "No issue is linked to this repository's pull requests in this window.";
