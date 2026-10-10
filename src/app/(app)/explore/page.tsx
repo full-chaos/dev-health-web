@@ -24,7 +24,6 @@ import { checkApiHealth } from "@/lib/api/system";
 import { boundedRead } from "@/lib/serverDeadline";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { getBlockedWorkIssues, getDrilldown } from "@/lib/api/investment";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchFilterNames } from "@/lib/api/filterOptions";
 import { developerNames, repoNames, scopeNames } from "@/lib/filters/scopeNames";
 import { fetchOrNull } from "@/lib/fetchOrNull";
@@ -37,6 +36,7 @@ import { metricEvidenceLeaf } from "@/lib/navigation/evidenceTrail";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 const getItemTitle = (item: Record<string, unknown>, index: number) => {
     const title =
@@ -160,7 +160,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     // scheme, no backslash or control character). Anything else falls back to the Flow tab.
     const servedOrigin = safeReturnTo(originParam);
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "explore" });
 
     const metric = (params.metric as string) ?? "cycle_time";
     const apiParam = (Array.isArray(params.api) ? params.api[0] : params.api) ?? "";

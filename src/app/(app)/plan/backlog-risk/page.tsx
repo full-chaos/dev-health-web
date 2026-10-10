@@ -2,7 +2,6 @@ import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type { ThroughputForecast } from "@/lib/graphql/types";
 import { logger } from "@/lib/logger";
@@ -12,6 +11,7 @@ import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidence
 import { ForecastContent, ForecastErrorState, NoForecastState, backlogFacts } from "./_components";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type BacklogRiskPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -26,7 +26,7 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
     const encodedFilter = firstParam(params.f);
     const originParam = firstParam(params.origin);
     const workScopeId = firstParam(params.scope);
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { pageFilters: false });
     const teamIds =
         filters.scope.level === "team" && filters.scope.ids.length > 0 ? filters.scope.ids : null;
 

@@ -4,13 +4,13 @@ import { QualityEvidenceTiles } from "@/components/quality/QualityEvidenceTiles"
 import { ReworkThemeBars } from "@/components/quality/ReworkThemeBars";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import type { MetricDelta } from "@/lib/types";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
@@ -29,7 +29,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "quality" });
 
     // Run health check in parallel with all data fetches to eliminate the waterfall.
     const [health, home, explain] = await Promise.all([

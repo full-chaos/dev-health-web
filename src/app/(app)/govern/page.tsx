@@ -4,11 +4,11 @@ import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidence
 import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getGovernSignals } from "@/lib/areaSignals";
 import { getServerEnv } from "@/lib/config";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 
 import { governEvidenceFacts } from "./governEvidenceFacts";
@@ -22,7 +22,7 @@ export default async function GovernPage({ searchParams }: GovernPageProps) {
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { pageFilters: false });
 
     const env = getServerEnv();
     const isTestMode =

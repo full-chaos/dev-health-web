@@ -8,7 +8,6 @@ import { InsufficientHistoryNotice } from "@/components/capacity/InsufficientHis
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
@@ -25,6 +24,7 @@ import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { withFilterParam } from "@/lib/filters/url";
 import { STATUS_PILL } from "@/lib/statusPill";
@@ -185,7 +185,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
     const originParam = firstParam(params.origin);
     const roleParam = firstParam(params.role);
     const workScopeId = firstParam(params.scope);
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "capacity-planning" });
     const teamIds =
         filters.scope.level === "team" && filters.scope.ids.length > 0 ? filters.scope.ids : null;
 

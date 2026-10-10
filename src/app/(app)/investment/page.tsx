@@ -5,7 +5,6 @@ import { checkApiHealth } from "@/lib/api/system";
 import { boundedRead } from "@/lib/serverDeadline";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { InvestmentGatedBody } from "./_components/InvestmentGatedBody";
 import type { InvestmentTab } from "@/components/work/investment/types";
@@ -17,6 +16,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { Notice } from "@/components/ui/Notice";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 // A metric the answer does not serve is a no-data row (flags false), never the 0 placeholder.
 const getMetric = (deltas: MetricDelta[], metric: string): MetricDelta | undefined => {
@@ -51,7 +51,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         ? (tabParam as InvestmentTab)
         : "overview";
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "investment" });
 
     const [health, orgResult, home] = await Promise.all([
         checkApiHealth(),

@@ -6,12 +6,12 @@ import { CapacityView } from "@/components/work/CapacityView";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { getCapacityForecastForHydration } from "@/lib/graphql/capacityHydration";
 import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type PlanCapacityPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -43,7 +43,7 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "capacity-planning" });
 
     const graphqlEnabled = runtimeConfig["useGraphQLAnalytics"]();
     let hydrationOrgId: string | undefined;

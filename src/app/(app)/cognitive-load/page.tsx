@@ -2,7 +2,6 @@ import { readFailureMessage } from "@/lib/readFailure";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { HeatmapView } from "@/components/work/HeatmapView";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { requireSession } from "@/lib/auth";
 import { withFilterParam } from "@/lib/filters/url";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
@@ -28,6 +27,7 @@ import {
 } from "@/components/evidence/PageFactsEvidenceAction";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type CognitiveLoadPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -83,7 +83,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
     const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     const activeTab = typeof tabParam === "string" ? tabParam : "overview";
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "cognitive-load" });
     const scopeId = filters.scope.ids[0] ?? "";
     const tabSet = getTabSet("cognitive-load");
     const tabs: ViewSetItem[] = tabSet.tabs.map((tab) => ({

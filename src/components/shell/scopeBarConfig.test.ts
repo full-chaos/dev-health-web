@@ -6,7 +6,10 @@ import {
     resolveVisibility,
 } from "@/components/filters/filterBarConfig";
 
-import { resolveScopeBarConfig } from "./scopeBarConfig";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { encodeFilterParam } from "@/lib/filters/encode";
+
+import { filtersFromPageParams, resolveScopeBarConfig } from "./scopeBarConfig";
 
 const ALL_VIEWS: FilterBarView[] = [
     "people",
@@ -265,5 +268,38 @@ describe("maskUnreadControls — only the controls a reader uses are offered (CH
             developer: false,
             workType: false,
         });
+    });
+});
+
+describe("filtersFromPageParams (CHAOS-9130)", () => {
+    it("reads the default filter the bar writes when the URL has no `f`", () => {
+        expect(filtersFromPageParams(undefined, {}, { view: "code" })).toEqual(defaultMetricFilter);
+        // The write of the default drops a legacy parameter in the final view: the server agrees.
+        expect(filtersFromPageParams(undefined, { scope_type: "repo" }, { view: "code" })).toEqual(
+            defaultMetricFilter,
+        );
+    });
+
+    it("reads `f` when the URL has it", () => {
+        const encoded = encodeFilterParam({
+            ...defaultMetricFilter,
+            scope: { level: "repo", ids: ["a"] },
+        });
+        expect(filtersFromPageParams(encoded, {}, { view: "code" }).scope).toEqual({
+            level: "repo",
+            ids: ["a"],
+        });
+    });
+
+    it("keeps the legacy parameters for a bar that writes no default `f`", () => {
+        const filters = filtersFromPageParams(
+            undefined,
+            { scope_type: "repo", scope_id: "a" },
+            { pageFilters: false },
+        );
+        expect(filters.scope).toEqual({ level: "repo", ids: ["a"] });
+        expect(filtersFromPageParams(undefined, {}, { pageFilters: false }).scope.level).toBe(
+            "org",
+        );
     });
 });

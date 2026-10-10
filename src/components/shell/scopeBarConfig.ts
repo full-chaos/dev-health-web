@@ -5,6 +5,8 @@ import {
     resolveScopeLock,
     resolveVisibility,
 } from "@/components/filters/filterBarConfig";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
 
 export type ScopeBarConfig = {
@@ -51,4 +53,26 @@ export function resolveScopeBarConfig(
         resolvedScopeLock: hasPageFilters ? resolveScopeLock(view) : null,
         writeDefaultFilter: hasPageFilters,
     };
+}
+
+/**
+ * The filter a page reads on the server from its search parameters (CHAOS-9130).
+ *
+ * With no `f`, the bar of a page that writes the default `f` writes `defaultMetricFilter` into the
+ * URL with the history API, and that write makes no second server render. (Before, the write was
+ * `router.replace`: a second render read the written `f`, so the final view was the default and
+ * any legacy filter parameter was dropped.) The first render has to read that same default, or the
+ * page would show data for another scope than the URL names. A page whose bar writes no default
+ * `f` keeps reading the legacy parameters.
+ */
+export function filtersFromPageParams(
+    encodedFilter: string | undefined,
+    params: Record<string, string | string[] | undefined>,
+    bar: { view?: FilterBarView; tab?: string; pageFilters?: boolean } = {},
+): MetricFilter {
+    if (encodedFilter) return decodeFilter(encodedFilter);
+    if (!resolveScopeBarConfig(bar.view, bar.tab, bar.pageFilters).writeDefaultFilter) {
+        return filterFromQueryParams(params);
+    }
+    return defaultMetricFilter;
 }

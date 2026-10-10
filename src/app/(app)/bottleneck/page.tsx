@@ -25,7 +25,6 @@ import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { formatMetricParts } from "@/lib/formatters";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
@@ -33,6 +32,7 @@ import { FALLBACK_DELTAS, getMetricLabel } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { BottleneckTiles } from "./BottleneckTiles";
 import { BOTTLENECK_TILES } from "./tiles";
 
@@ -49,7 +49,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "work" });
 
     const scopeId = filters.scope.ids[0] ?? "";
     const quadrantScope: "org" | "team" | "repo" | "developer" =
