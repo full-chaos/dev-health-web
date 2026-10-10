@@ -294,3 +294,44 @@ describe("CockpitSummary hero look", () => {
         },
     );
 });
+
+describe("CockpitSummary rework coverage note (CHAOS-9076)", () => {
+    const reworkSignal: CockpitSignal = {
+        ...topSignal,
+        id: "metric:pr_rework_ratio",
+        title: "PR Rework Ratio appears up",
+        metric: "pr_rework_ratio",
+    };
+    const reworkDelta = (coverage: number | null) => ({
+        metric: "pr_rework_ratio",
+        label: "PR Rework Ratio",
+        value: 20,
+        unit: "%",
+        delta_pct: 0,
+        has_data: true,
+        has_prior_data: true,
+        rate_state: "measured",
+        rate_coverage: coverage,
+        spark: [],
+    });
+
+    it("names the coverage in the hero at 0.07 and not at 1", () => {
+        const { unmount } = render(
+            <CockpitSummary
+                home={makeHome({ signals: [reworkSignal], deltas: [reworkDelta(0.07)] })}
+                filters={filters}
+            />,
+        );
+        expect(screen.getByTestId("cockpit-summary")).toHaveTextContent(
+            "Based on 7% of merged pull requests",
+        );
+        unmount();
+        render(
+            <CockpitSummary
+                home={makeHome({ signals: [reworkSignal], deltas: [reworkDelta(1)] })}
+                filters={filters}
+            />,
+        );
+        expect(screen.getByTestId("cockpit-summary").textContent).not.toMatch(/Based on/);
+    });
+});
