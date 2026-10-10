@@ -589,6 +589,18 @@ export type HeatmapCell = {
     value: number;
 };
 
+/** Why a filtered answer is empty (CHAOS-9159); null = not empty because of the filter. */
+export type FilterEmptyReason = "repository_not_in_team" | "repository_not_found";
+
+/**
+ * What the quadrant and heatmap routes report about the repository filter. Both keys can be null
+ * (nothing selected) and are ABSENT on an ops without CHAOS-9159.
+ */
+export type RepoFilterServedKeys = {
+    repo_filter_applied?: boolean | null;
+    filter_empty_reason?: FilterEmptyReason | null;
+};
+
 export type HeatmapLegend = {
     unit: string;
     scale: "linear" | "log";
@@ -599,7 +611,7 @@ export type HeatmapResponse = {
     cells: HeatmapCell[];
     legend: HeatmapLegend;
     evidence?: Array<Record<string, unknown>>;
-};
+} & RepoFilterServedKeys;
 
 export type FlameFrame = {
     id: string;
@@ -655,7 +667,7 @@ export type QuadrantResponse = {
     axes: { x: QuadrantAxis; y: QuadrantAxis };
     points: QuadrantPoint[];
     annotations: QuadrantAnnotation[];
-};
+} & RepoFilterServedKeys;
 
 // Aggregated flame graph types (hierarchical tree format)
 

@@ -64,4 +64,62 @@ describe("HeatmapPanel repository note", () => {
         draw(what);
         expect(screen.queryByTestId("repo-scope-note")).toBeNull();
     });
+
+    // CHAOS-9097: the served flag decides; the repository-in-filter rule holds only with the keys absent.
+    const drawServed = (keys: object, cells = data.cells, embedded = false) =>
+        render(
+            <HeatmapPanel
+                title="T"
+                description="d"
+                request={request}
+                initialData={{ ...data, cells, ...keys } as never}
+                embedded={embedded}
+                filters={{ ...baseFilters, what: { repos: ["r1"] } }}
+            />,
+        );
+
+    it.each([
+        ["true (narrowed)", { repo_filter_applied: true, filter_empty_reason: null }, false],
+        [
+            "null (nothing selected)",
+            { repo_filter_applied: null, filter_empty_reason: null },
+            false,
+        ],
+        ["false (cannot narrow)", { repo_filter_applied: false, filter_empty_reason: null }, true],
+        ["keys absent (older ops)", {}, true],
+    ])("with a repository selected and the flag %s", (_n, keys, note) => {
+        drawServed(keys);
+        expect(screen.queryByTestId("repo-scope-note") !== null).toBe(note);
+    });
+
+    it("shows the note for a served false when embedded", () => {
+        drawServed({ repo_filter_applied: false }, data.cells, true);
+        expect(screen.getByTestId("repo-scope-note")).toBeInTheDocument();
+    });
+
+    it.each([
+        ["repository_not_in_team", "The selected repository is not owned by the selected team."],
+        ["repository_not_found", "The selected repository was not found."],
+    ])("the empty state says why: %s", (reason, text) => {
+        render(
+            <HeatmapPanel
+                title="T"
+                description="d"
+                request={request}
+                initialData={
+                    {
+                        axes: { x: [], y: [] },
+                        cells: [],
+                        legend: { unit: "risk", scale: "linear" },
+                        repo_filter_applied: true,
+                        filter_empty_reason: reason,
+                    } as never
+                }
+                emptyState="Heatmap data unavailable."
+                filters={{ ...baseFilters, what: { repos: ["r1"] } }}
+            />,
+        );
+        expect(screen.getByText(text)).toBeInTheDocument();
+        expect(screen.queryByText("Heatmap data unavailable.")).toBeNull();
+    });
 });

@@ -94,6 +94,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
             scope_type: "person",
             scope_id: personId,
             range_days,
+            filters,
         }),
         `people/${personId}/active-hours-heatmap`,
     );

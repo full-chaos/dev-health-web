@@ -6,6 +6,8 @@ import type {
     QuadrantResponse,
 } from "@/lib/types";
 import { apiClient } from "@/lib/apiClient";
+import type { MetricFilter } from "@/lib/filters/types";
+import { repoFilterParams } from "@/lib/metrics/repoScope";
 
 export async function getHeatmap(params: {
     type: "temporal_load" | "context_switch" | "risk" | "individual";
@@ -18,6 +20,8 @@ export async function getHeatmap(params: {
     x?: string;
     y?: string;
     limit?: number;
+    /** The page filter: its team scope and `what.repos` go as `team_ids` / `repo_ids`. */
+    filters?: MetricFilter;
 }) {
     const normalizedScopeType = params.scope_type === "developer" ? "person" : params.scope_type;
     const candidates =
@@ -37,6 +41,7 @@ export async function getHeatmap(params: {
             x: params.x ?? "",
             y: params.y ?? "",
             limit: params.limit ?? 50,
+            ...repoFilterParams(params.filters),
         }),
         candidates,
     );
@@ -90,6 +95,8 @@ export async function getQuadrant(params: {
     bucket: "week" | "month";
     start_date?: string;
     end_date?: string;
+    /** The page filter: its team scope and `what.repos` go as `team_ids` / `repo_ids`. */
+    filters?: MetricFilter;
 }) {
     const normalizedScopeType = params.scope_type === "developer" ? "person" : params.scope_type;
     const candidates =
@@ -112,6 +119,7 @@ export async function getQuadrant(params: {
             start_date: params.start_date ?? "",
             end_date: params.end_date ?? "",
             bucket: params.bucket,
+            ...repoFilterParams(params.filters),
         }),
         candidates,
     );

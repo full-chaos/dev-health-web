@@ -31,6 +31,17 @@ describe("apiClient.buildUrl", () => {
     });
 });
 
+describe("apiClient.buildUrl lists", () => {
+    it("sends a list as a repeated key and nothing for an empty list", () => {
+        const url = new URL(
+            apiClient.buildUrl("/api/v1/test", { ids: ["a", "b"], none: [], blank: [""] }),
+        );
+        expect(url.searchParams.getAll("ids")).toEqual(["a", "b"]);
+        expect(url.searchParams.has("none")).toBe(false);
+        expect(url.searchParams.has("blank")).toBe(false);
+    });
+});
+
 describe("apiClient.request", () => {
     it("does not share in-flight responses across authenticated sessions", async () => {
         vi.mocked(auth).mockResolvedValueOnce({
