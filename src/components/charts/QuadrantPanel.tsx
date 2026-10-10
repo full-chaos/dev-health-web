@@ -17,6 +17,8 @@ import { ArrowRight, Info } from "lucide-react";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { buttonClassName } from "@/components/shared/Button";
 import type { MetricFilter } from "@/lib/filters/types";
+import { RepoScopeNote } from "@/components/shared/RepoScopeNote";
+import { hasSelectedRepos } from "@/lib/metrics/repoScope";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
 import { useChartTheme, useChartTokens } from "./chartTheme";
@@ -331,6 +333,7 @@ export function QuadrantPanel({
                 <h2 className="text-h3 font-semibold">{title}</h2>
             )}
             <p className="mt-1 text-xs text-(--ink-muted)">{description}</p>
+            <RepoScopeNote show={hasSelectedRepos(filters)} />
         </div>
     );
     const actionNode = action ? (

@@ -286,6 +286,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                                   state: heatmap.state,
                                   data: heatmap.data,
                                   summary: heatmapSummary,
+                                  filters,
                               }
                             : undefined
                     }

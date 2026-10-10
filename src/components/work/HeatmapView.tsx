@@ -25,6 +25,7 @@ export function HeatmapView({ filters, scopeId, reviewHeatmap }: HeatmapViewProp
                     end_date: filters.time.end_date,
                 }}
                 initialData={reviewHeatmap}
+                filters={filters}
                 emptyState="Review wait heatmap unavailable."
                 evidenceTitle="PR evidence"
             />
