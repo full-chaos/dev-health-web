@@ -884,6 +884,25 @@ export interface HomeGraphQLDelta {
     rateCoverage?: number | null;
     /** Served repository-filter flag (null: no repository named). Absent: an older API. */
     repoFilterApplied?: boolean | null;
+    /** Repository link state of the metric; null or absent when none is served. */
+    repoLinkState?: string | null;
+    /** Items per link tier (native, explicit text, heuristic); null or absent when none is served. */
+    repoLinkBasis?: HomeGraphQLRepoLinkBasis | null;
+    /** Items that link to more than one repository; null or absent when none is served. */
+    repoLinkMultiRepoItems?: number | null;
+    /** Linked items and items in the window; null or absent when none is served. */
+    repoLinkCoverage?: HomeGraphQLRepoLinkCoverage | null;
+}
+
+export interface HomeGraphQLRepoLinkBasis {
+    native?: number | null;
+    explicitText?: number | null;
+    heuristic?: number | null;
+}
+
+export interface HomeGraphQLRepoLinkCoverage {
+    linkedItems?: number | null;
+    itemsInWindow?: number | null;
 }
 
 export interface HomeGraphQLReworkThemeAllocation {

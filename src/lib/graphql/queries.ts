@@ -1221,6 +1221,17 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       rateState
       rateCoverage
       repoFilterApplied
+      repoLinkState
+      repoLinkBasis {
+        native
+        explicitText
+        heuristic
+      }
+      repoLinkMultiRepoItems
+      repoLinkCoverage {
+        linkedItems
+        itemsInWindow
+      }
     }
     reworkThemeAllocation {
       theme
