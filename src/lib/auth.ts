@@ -93,7 +93,7 @@ const nextAuth = NextAuth({
 
                 const backendUrl = getBackendUrl();
                 try {
-                    const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
+                    const res = await deadlineFetch("auth")(`${backendUrl}/api/v1/auth/login`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -196,14 +196,17 @@ const nextAuth = NextAuth({
             if (account && account.provider !== "credentials" && account.access_token) {
                 try {
                     const backendUrl = getBackendUrl();
-                    const res = await fetch(`${backendUrl}/api/v1/auth/social-login`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            provider: account.provider,
-                            provider_access_token: account.access_token,
-                        }),
-                    });
+                    const res = await deadlineFetch("auth")(
+                        `${backendUrl}/api/v1/auth/social-login`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                provider: account.provider,
+                                provider_access_token: account.access_token,
+                            }),
+                        },
+                    );
 
                     if (res.ok) {
                         const data = await res.json();
@@ -273,7 +276,7 @@ const nextAuth = NextAuth({
             if (tokenExpired && token.refresh_token) {
                 try {
                     const backendUrl = getBackendUrl();
-                    const res = await fetch(`${backendUrl}/api/v1/auth/refresh`, {
+                    const res = await deadlineFetch("auth")(`${backendUrl}/api/v1/auth/refresh`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ refresh_token: token.refresh_token }),
@@ -396,7 +399,7 @@ const nextAuth = NextAuth({
                 } else {
                     try {
                         const backendUrl = getBackendUrl();
-                        const statusRes = await fetch(
+                        const statusRes = await deadlineFetch("auth")(
                             `${backendUrl}/api/v1/admin/impersonate/status`,
                             {
                                 method: "GET",
@@ -486,6 +489,7 @@ const nextAuth = NextAuth({
 export const { handlers, signIn, signOut } = nextAuth;
 
 import type { Session } from "next-auth";
+import { deadlineFetch } from "@/lib/serverDeadline";
 
 // Per-request memoized session read. React.cache() dedupes calls within a
 // single RSC render tree so auth()/requireSession()/requireRole()/

@@ -49,9 +49,44 @@ import {
 import { registerUrql } from "@urql/next/rsc";
 import { ValidationErrors, graphQlErrorMessage } from "@/lib/constants/errors";
 import { resolveOrigin } from "@/lib/origin";
+import { fetchWithDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 
 const GRAPHQL_PATH = "/graphql";
+
+/**
+ * Deadline class and log label of one GraphQL request (CHAOS-9103). Queries are reads and get
+ * the abort; a mutation, or a body that cannot be classified, is a write and is never aborted.
+ * Only the operation kind and name are read from the body: never the variables.
+ */
+function classifyGraphql(
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+): { kind: ServerFetchKind; op: string } {
+    let operationName = "anonymous";
+    let isQuery = false;
+    try {
+        if ((init?.method ?? "GET").toUpperCase() === "GET") {
+            // urql sends a short query as a GET (`?query=...&operationName=...`); a GET cannot
+            // carry a mutation.
+            const url = new URL(String(input instanceof Request ? input.url : input));
+            operationName = url.searchParams.get("operationName") ?? operationName;
+            isQuery = true;
+        } else if (typeof init?.body === "string") {
+            const body = JSON.parse(init.body) as { query?: unknown; operationName?: unknown };
+            if (typeof body.operationName === "string") operationName = body.operationName;
+            isQuery = typeof body.query === "string" && /^\s*(query\b|\{)/i.test(body.query);
+        }
+    } catch {
+        isQuery = false;
+    }
+    return isQuery
+        ? { kind: "read", op: `graphql query ${operationName}` }
+        : { kind: "write", op: `graphql ${operationName}` };
+}
+
+const deadlineGraphqlFetch: typeof fetch = (input, init) =>
+    fetchWithDeadline(input, init, classifyGraphql(input, init));
 
 function makeServerClient(): Client {
     const url = new URL(GRAPHQL_PATH, resolveOrigin());
@@ -60,6 +95,7 @@ function makeServerClient(): Client {
         url: url.toString(),
         exchanges: [timingExchange, errorExchange, cacheExchange, fetchExchange],
         requestPolicy: "cache-first",
+        fetch: deadlineGraphqlFetch,
     });
 }
 
@@ -176,6 +212,7 @@ export async function graphqlFetchForHydration<T>(
         url: url.toString(),
         exchanges: [timingExchange, errorExchange, cacheExchange, ssr, fetchExchange],
         requestPolicy: "cache-first",
+        fetch: deadlineGraphqlFetch,
     });
 
     const operationContext =

@@ -2,6 +2,7 @@ import type { JWT } from "next-auth/jwt";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import { getBackendUrl } from "@/lib/origin";
 import { processMemo } from "@/lib/processMemo";
+import { deadlineFetch } from "@/lib/serverDeadline";
 
 const VALIDATION_INTERVAL_MS = 5 * 60 * 1000;
 const VALIDATION_BACKOFF_BASE_MS = 60 * 1000;
@@ -86,7 +87,7 @@ async function validateBackendSession(
 ): Promise<ValidationOutcome> {
     try {
         const backendUrl = getBackendUrl();
-        const res = await fetch(`${backendUrl}/api/v1/auth/validate`, {
+        const res = await deadlineFetch("auth")(`${backendUrl}/api/v1/auth/validate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token: accessToken }),

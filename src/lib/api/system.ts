@@ -5,6 +5,7 @@ export async function checkApiHealth() {
     try {
         const data = await apiClient.getJson<HealthResponse>("/health", undefined, {
             cache: "no-store",
+            deadline: "health",
         });
         return { ok: data.status === "ok", data };
     } catch {

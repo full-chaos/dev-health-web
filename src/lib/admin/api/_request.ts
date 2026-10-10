@@ -1,4 +1,5 @@
 import { getBackendUrl } from "@/lib/origin";
+import { fetchWithDeadline } from "@/lib/serverDeadline";
 
 export class AdminApiError extends Error {
     constructor(
@@ -39,6 +40,10 @@ function formatErrorDetail(raw: unknown): string | undefined {
     return JSON.stringify(raw);
 }
 
+// CHAOS-9103: a GET is a read and gets the deadline; any other method is a write and never
+// aborts (the server may have applied it), it is only logged when slow.
+const isRead = (options: RequestInit): boolean => (options.method ?? "GET").toUpperCase() === "GET";
+
 export async function request<T>(
     path: string,
     options: RequestInit = {},
@@ -61,10 +66,11 @@ export async function request<T>(
         (headers as Record<string, string>)["X-Org-Id"] = orgId;
     }
 
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
+    const response = await fetchWithDeadline(
+        url,
+        { ...options, headers },
+        { kind: isRead(options) ? "read" : "write" },
+    );
 
     if (!response.ok) {
         let detail: string | undefined;
@@ -97,6 +103,7 @@ export async function licensingRequest<T>(
 ): Promise<T> {
     const baseUrl = getBackendUrl();
     const url = `${baseUrl}/api/v1/licensing${path}`;
+    const isEntitlements = path.startsWith("/entitlements/") && isRead(options);
 
     const headers: HeadersInit = {
         "Content-Type": "application/json",
@@ -111,10 +118,13 @@ export async function licensingRequest<T>(
         (headers as Record<string, string>)["X-Org-Id"] = orgId;
     }
 
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
+    const response = await fetchWithDeadline(
+        url,
+        { ...options, headers },
+        isEntitlements
+            ? { kind: "entitlements", op: "GET /api/v1/licensing/entitlements/:org" }
+            : { kind: isRead(options) ? "read" : "write" },
+    );
 
     if (!response.ok) {
         let detail: string | undefined;

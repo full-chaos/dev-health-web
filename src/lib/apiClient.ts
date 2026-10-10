@@ -1,6 +1,7 @@
 import { resolveOrigin } from "@/lib/origin";
 import { isServer } from "@/lib/env";
 import { ApiErrors, apiErrorMessage } from "@/lib/constants/errors";
+import { fetchWithDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
 
 /**
  * Generate a unique request ID for distributed tracing.
@@ -22,6 +23,11 @@ export type ApiFetchInit = RequestInit & {
     next?: {
         revalidate?: number;
     };
+    /**
+     * Server-side deadline class (CHAOS-9103). Default: GET/HEAD are reads, any other method is
+     * a write and is never aborted. A POST that only QUERIES (explain, home) opts in with "read".
+     */
+    deadline?: "read" | "health";
 };
 
 const buildUrl = (path: string, params?: ApiQueryParams) => {
@@ -68,8 +74,9 @@ const request = async (
     const requestId =
         existingHeaders["X-Request-ID"] ?? existingHeaders["x-request-id"] ?? generateRequestId();
 
+    const { deadline, ...fetchInit } = init ?? {};
     const mergedInit: ApiFetchInit = {
-        ...init,
+        ...fetchInit,
         headers: {
             ...authHeaders,
             ...existingHeaders,
@@ -88,7 +95,9 @@ const request = async (
         }
     }
 
-    const promise = fetch(url, mergedInit);
+    const methodIsRead = method === "GET" || method === "HEAD";
+    const kind: ServerFetchKind = deadline ?? (methodIsRead ? "read" : "write");
+    const promise = fetchWithDeadline(url, mergedInit, { kind });
     if (!canDedupe) {
         return promise;
     }
