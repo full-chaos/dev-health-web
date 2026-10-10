@@ -25,7 +25,7 @@ import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/Met
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { STATUS_PILL } from "@/lib/statusPill";
-import { metricDisplay, noDataText, REVERT_RATE_KEY } from "@/lib/metrics/metricDisplay";
+import { metricDisplay, noDataText, readDelta, REVERT_RATE_KEY } from "@/lib/metrics/metricDisplay";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
 import { formatDelta, formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
@@ -428,7 +428,11 @@ export function EvidencePanel({
                                     title: d.display_name || d.label,
                                     url: d.evidence_link || "#",
                                     type: "other" as const,
-                                    value: `${formatNumber(d.value)}${unit}`,
+                                    // A no-data row has no value: its served 0 is a placeholder.
+                                    value:
+                                        readDelta(d).kind === "no-data"
+                                            ? noDataText()
+                                            : `${formatNumber(d.value)}${unit}`,
                                     valueNote: contributorChange(d, result.unit),
                                 }),
                             );
@@ -626,13 +630,24 @@ function drawnEvidence(
 }
 
 /**
- * The change text of one driver or contributor row: "(+4%)", or "(+12 from 0)" when its percent
- * is null with both windows measured. A null percent with no prior data says nothing: never "0%".
+ * The change text of one driver or contributor row (the shared `readDelta` rule): "(+4%)",
+ * "(+12 from 0)" when its percent is null with both windows measured, "(No prior period)" when
+ * the prior side has no data; a row with no data of its own has no change text (its value text
+ * says so). Never "0%" for a placeholder.
  */
 function contributorChange(d: Contributor, unit?: string): string | undefined {
-    if (typeof d.delta_pct === "number") return `(${formatDelta(d.delta_pct)})`;
-    if (isChangedFromZero(d)) return `(${changedFromZeroLabel(d.value, unit)})`;
-    return undefined;
+    const reading = readDelta(d);
+    switch (reading.kind) {
+        case "percent":
+            return `(${formatDelta(reading.percent)})`;
+        case "from-zero":
+            return `(${changedFromZeroLabel(reading.value, unit)})`;
+        case "no-data":
+            // The row's value text already says it (the row has no value of its own).
+            return undefined;
+        case "no-prior":
+            return "(No prior period)";
+    }
 }
 
 /**
@@ -676,6 +691,15 @@ function EvidenceMetricFacts({
         has_data: hasData,
         has_prior_data: hasPriorData,
     });
+    // The one reading of the change (flags first): `readDelta`. Reaching here means the value is
+    // measured, so "no data" cannot occur; a side with no prior reads "No prior period".
+    const change = readDelta({
+        delta_pct: deltaPct,
+        value,
+        has_data: hasData,
+        has_prior_data: hasPriorData,
+        rate_state: rateState,
+    });
     const tier =
         measured && linkTier && Object.hasOwn(LINK_TIER_TEXT, linkTier)
             ? LINK_TIER_TEXT[linkTier]
@@ -698,11 +722,11 @@ function EvidenceMetricFacts({
             <EvidenceFact
                 label="Change"
                 value={
-                    fromZero && display.comparable
-                        ? changedFromZeroLabel(value as number, unit)
-                        : hasDelta && display.comparable
-                          ? formatDelta(deltaPct as number)
-                          : undefined
+                    change.kind === "from-zero"
+                        ? changedFromZeroLabel(change.value, unit)
+                        : change.kind === "percent"
+                          ? formatDelta(change.percent)
+                          : "No prior period"
                 }
             />
             {tier ? <EvidenceFact label="Incident link" value={tier} /> : null}

@@ -1,4 +1,5 @@
 import type { MetricCardProps } from "@/components/metrics/MetricCard";
+import { isChangedFromZero, type DeltaFacts } from "@/components/shared/MetricDelta";
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { getMetricPolarity } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
@@ -81,6 +82,41 @@ export function metricDisplay(metric: ServedMetric | null | undefined): MetricDi
         hasPriorData,
         comparable: hasData && hasPriorData,
     };
+}
+
+/** What a served delta percent means for one metric or row, once the flags are read. */
+export type DeltaReading =
+    /** A measured percent (a served 0 with both windows measured is a real 0%). */
+    | { kind: "percent"; percent: number }
+    /** Null percent, both windows measured, current value not 0: "+N unit from 0". */
+    | { kind: "from-zero"; value: number }
+    /** The current window has no data: the served 0 is a placeholder, never a value. */
+    | { kind: "no-data" }
+    /** The prior window has no data (or no change can be told): "No prior period". */
+    | { kind: "no-prior" };
+
+/**
+ * The one reading of a served delta percent with its flags (CHAOS-9110). A reader never looks at
+ * the percent alone: a flag that is false wins over the percent (a 0 on a no-data side is a
+ * placeholder, today's wire), and a null percent is "from zero" only with both windows measured.
+ * A flag that is absent counts as data.
+ */
+export function readDelta(
+    facts: (DeltaFacts & { rate_state?: string | null }) | null | undefined,
+): DeltaReading {
+    if (!facts) return { kind: "no-prior" };
+    const display = metricDisplay({
+        has_data: facts.has_data,
+        has_prior_data: facts.has_prior_data,
+        rate_state: facts.rate_state,
+    });
+    if (!display.hasData) return { kind: "no-data" };
+    if (!display.hasPriorData) return { kind: "no-prior" };
+    if (isChangedFromZero(facts)) return { kind: "from-zero", value: facts.value as number };
+    if (typeof facts.delta_pct === "number" && Number.isFinite(facts.delta_pct)) {
+        return { kind: "percent", percent: facts.delta_pct };
+    }
+    return { kind: "no-prior" };
 }
 
 /**

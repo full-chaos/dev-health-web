@@ -1,9 +1,9 @@
-import { tileDelta } from "@/components/shared/MetricDelta";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { DataNote } from "@/components/charts/DataNote";
 import { BlockedWorkEvidence, BlockedWorkItemsTable } from "./BlockedWorkEvidence";
+import { metricCardProps } from "@/lib/metrics/metricDisplay";
 import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
@@ -396,9 +396,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     <MetricStrip data-testid="explore-metric-tile">
                         <MetricCard
                             label={metricLabel}
-                            value={data?.value}
-                            unit={data?.unit}
-                            delta={tileDelta(data)}
+                            // The served flags decide the value and the change text (shared rule):
+                            // a no-data window shows its text, never the served 0 placeholder.
+                            {...(data ? metricCardProps(data) : {})}
                             polarity={getMetricPolarity(metricFromApi)}
                             caption={withRepoScopeNote(
                                 "vs previous window",
@@ -432,9 +432,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     <MetricStrip data-testid="explore-metric-tile">
                         <MetricCard
                             label={metricLabel}
-                            value={data?.value}
-                            unit={data?.unit}
-                            delta={tileDelta(data)}
+                            // The served flags decide the value and the change text (shared rule):
+                            // a no-data window shows its text, never the served 0 placeholder.
+                            {...(data ? metricCardProps(data) : {})}
                             polarity={getMetricPolarity(metricFromApi)}
                             caption={withRepoScopeNote(
                                 "vs previous window",
