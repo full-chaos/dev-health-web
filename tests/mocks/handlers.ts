@@ -837,6 +837,73 @@ const MOCK_REPOSITORY_SELECTIONS = new Map<string, { owner: string; repos: strin
 const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
 
+/** One row of the `/__test/admin-rows` control endpoint (CHAOS-9105). */
+export type MockAdminRowSeed = {
+    teams?: { team_id: string; name: string }[];
+    identities?: { canonical_id: string; display_name: string; team_ids?: string[] }[];
+};
+
+/**
+ * Replaces the team and identity lists of the mock (process-global, as the other `/__test`
+ * controls). A spec that lists rows with ids of a given shape sets them here and clears them
+ * after: `{ teams: [], identities: [] }`.
+ */
+export function setMockAdminRows(seed: MockAdminRowSeed): void {
+    MOCK_TEAMS.splice(
+        0,
+        MOCK_TEAMS.length,
+        ...(seed.teams ?? []).map((team): MockTeam => ({
+            id: team.team_id,
+            team_id: team.team_id,
+            name: team.name,
+            source: "github",
+            description: null,
+            repo_patterns: [],
+            project_keys: [],
+            extra_data: {},
+            managed_fields: [],
+            sync_policy: 0,
+            flagged_changes: null,
+            last_drift_sync_at: null,
+            is_active: true,
+            created_at: "2025-01-01T00:00:00Z",
+            updated_at: "2025-01-01T00:00:00Z",
+        })),
+    );
+    MOCK_IDENTITIES.splice(
+        0,
+        MOCK_IDENTITIES.length,
+        ...(seed.identities ?? []).map((identity): MockIdentity => ({
+            id: identity.canonical_id,
+            canonical_id: identity.canonical_id,
+            display_name: identity.display_name,
+            email: null,
+            provider_identities: {},
+            team_ids: identity.team_ids ?? [],
+            is_active: true,
+            created_at: "2025-01-01T00:00:00Z",
+            updated_at: "2025-01-01T00:00:00Z",
+            provider: "github",
+            external_id: `external-${identity.canonical_id}`,
+            user_id: "e2e-user-1",
+        })),
+    );
+}
+
+/**
+ * The id of a path segment as the backend reads it: percent-decoded once. The web sends the
+ * segment as the router gave it (`jira%3A<uuid>`, `a%2Fb`); a value that is not valid
+ * percent-encoding is compared as it is.
+ */
+function decodedPathId(raw: string | readonly string[] | undefined): string {
+    const value = typeof raw === "string" ? raw : (raw?.[0] ?? "");
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+}
+
 // ---- Customer Push (CHAOS-2690/2714) ----
 // Vocabulary (field names, enum values, error shapes) mirrors the real ops
 // backend exactly — verified directly against dev-health-ops's merged
@@ -3738,7 +3805,25 @@ export const handlers = [
         }),
     ),
 
+    // One team by id (the edit page). After `pending-changes` and `discover`: the first match
+    // wins, and those two are fixed paths under the same prefix.
+    http.get("*/api/v1/admin/teams/:teamId", ({ params }) => {
+        const teamId = decodedPathId(params.teamId);
+        const team = MOCK_TEAMS.find((item) => item.team_id === teamId);
+        return team
+            ? HttpResponse.json(team)
+            : HttpResponse.json({ detail: "Team not found" }, { status: 404 });
+    }),
+
     http.get("*/api/v1/admin/identities", () => HttpResponse.json(MOCK_IDENTITIES)),
+
+    http.get("*/api/v1/admin/identities/:identityId", ({ params }) => {
+        const identityId = decodedPathId(params.identityId);
+        const identity = MOCK_IDENTITIES.find((item) => item.canonical_id === identityId);
+        return identity
+            ? HttpResponse.json(identity)
+            : HttpResponse.json({ detail: "Identity not found" }, { status: 404 });
+    }),
 
     http.post("*/api/v1/admin/identities", async ({ request }) => {
         const body = (await request.json()) as Partial<MockIdentity> | null;

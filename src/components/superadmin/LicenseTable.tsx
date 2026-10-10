@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Organization } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { appPath } from "@/lib/navigation/appPath";
 
 type LicenseTableProps = {
     orgs: Organization[];
@@ -35,7 +36,10 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
                         <tr key={org.id} className="hover:bg-(--card-70)/50">
                             <td className="px-6 py-4 font-medium text-foreground">
                                 <Link
-                                    href={`/superadmin/licensing/${org.id}`}
+                                    href={appPath("/superadmin/licensing/[orgId]", {
+                                        orgId: org.id,
+                                    })}
+                                    prefetch={false}
                                     className="hover:underline"
                                 >
                                     {org.name}
@@ -64,7 +68,10 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
                             </td>
                             <td className="px-6 py-4 text-right">
                                 <Link
-                                    href={`/superadmin/licensing/${org.id}`}
+                                    href={appPath("/superadmin/licensing/[orgId]", {
+                                        orgId: org.id,
+                                    })}
+                                    prefetch={false}
                                     className="text-(--accent-2) hover:underline"
                                 >
                                     {CTA_LABELS.manageEntitlements}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Organization } from "@/lib/admin/types";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { appPath } from "@/lib/navigation/appPath";
 
 type OrgTableProps = {
     orgs: Organization[];
@@ -28,7 +29,11 @@ export function OrgTable({ orgs }: OrgTableProps) {
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 font-medium text-foreground",
             render: (org) => (
-                <Link href={`/superadmin/orgs/${org.id}`} className="hover:underline">
+                <Link
+                    href={appPath("/superadmin/orgs/[id]", { id: org.id })}
+                    prefetch={false}
+                    className="hover:underline"
+                >
                     {org.name}
                 </Link>
             ),
@@ -84,7 +89,8 @@ export function OrgTable({ orgs }: OrgTableProps) {
             className: "px-6 py-4 text-right",
             render: (org) => (
                 <Link
-                    href={`/superadmin/orgs/${org.id}`}
+                    href={appPath("/superadmin/orgs/[id]", { id: org.id })}
+                    prefetch={false}
                     className="text-(--accent-2) hover:underline"
                 >
                     {CTA_LABELS.edit}

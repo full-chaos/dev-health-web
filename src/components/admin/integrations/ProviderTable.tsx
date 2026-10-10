@@ -8,6 +8,7 @@ import { ConnectionStatus, type ConnectionStatusType } from "./ConnectionStatus"
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatDateTimeUTC } from "@/lib/formatters";
 import type { Provider } from "@/lib/admin/types";
+import { appPath } from "@/lib/navigation/appPath";
 
 export type ProviderRow = {
     id: Provider;
@@ -82,7 +83,8 @@ const COLUMNS: DataTableColumn<ProviderRow>[] = [
         header: "Actions",
         render: (row) => (
             <Link
-                href={`/org/admin/integrations/${row.id}`}
+                href={appPath("/org/admin/integrations/[provider]", { provider: row.id })}
+                prefetch={false}
                 className={buttonClassName("secondary", "sm")}
             >
                 {CTA_LABELS.manageCredential}
@@ -118,7 +120,10 @@ export function ProviderTable({ providers }: ProviderTableProps) {
                             </div>
                         </div>
                         <Link
-                            href={`/org/admin/integrations/${provider.id}`}
+                            href={appPath("/org/admin/integrations/[provider]", {
+                                provider: provider.id,
+                            })}
+                            prefetch={false}
                             className={`${buttonClassName("secondary", "sm")} mt-3 w-full`}
                         >
                             {CTA_LABELS.manageCredential}

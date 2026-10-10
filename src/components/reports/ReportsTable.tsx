@@ -24,6 +24,7 @@ const COLUMNS: readonly DataTableColumn<SavedReport>[] = [
             <>
                 <Link
                     href={reportHref(report.id)}
+                    prefetch={false}
                     className="font-semibold text-(--accent-2) hover:underline"
                 >
                     {report.name}
@@ -63,6 +64,7 @@ const COLUMNS: readonly DataTableColumn<SavedReport>[] = [
         render: (report) => (
             <Link
                 href={reportHref(report.id)}
+                prefetch={false}
                 aria-label={`Open ${report.name}`}
                 className="inline-flex text-(--accent-2)"
             >

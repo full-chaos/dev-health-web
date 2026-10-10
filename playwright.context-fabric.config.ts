@@ -22,7 +22,9 @@ const GRACEFUL_SHUTDOWN = {
 
 export default defineConfig({
     testDir: "./tests",
-    testMatch: /acr-context-fabric\.production\.spec\.ts/,
+    // The specs that need the PRODUCTION build. `admin-row-links` (CHAOS-9105) counts link
+    // prefetch requests, and a development server does not prefetch.
+    testMatch: /(?:acr-context-fabric|admin-row-links)\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
     outputDir: RESULTS_DIRECTORY,

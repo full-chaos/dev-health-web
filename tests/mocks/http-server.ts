@@ -1,7 +1,7 @@
 import express from "express";
 import { createMiddleware } from "@mswjs/http-middleware";
 import { setEntitlementScenario } from "./entitlementScenario";
-import { handlers } from "./handlers";
+import { handlers, setMockAdminRows, type MockAdminRowSeed } from "./handlers";
 import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
 import { hardenMockServer } from "./serverSockets";
@@ -38,6 +38,17 @@ app.post("/__test/pagerduty", (req, res) => {
 });
 app.get("/__test/pagerduty/observations", (_req, res) => {
     res.json(pagerDutyObservations());
+});
+
+// CHAOS-9105: the team and identity rows of the admin lists, with ids of a shape the spec picks.
+app.post("/__test/admin-rows", (req, res) => {
+    const seed = req.body as MockAdminRowSeed | undefined;
+    if (!seed || (seed.teams && !Array.isArray(seed.teams))) {
+        res.status(400).json({ error: "Expected { teams?: [], identities?: [] }" });
+        return;
+    }
+    setMockAdminRows(seed);
+    res.status(204).end();
 });
 
 app.use("/graphql", (req, res, next) => {

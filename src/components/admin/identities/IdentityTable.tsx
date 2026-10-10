@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { UNRESOLVED } from "@/lib/labels/unresolved";
+import { appPath } from "@/lib/navigation/appPath";
 
 export type Identity = {
     canonical_id: string;
@@ -72,7 +73,10 @@ export function IdentityTable({ identities, teamNames = {}, onDeleteAction }: Id
             className: "px-6 py-4 font-medium text-foreground",
             render: (identity) => (
                 <Link
-                    href={`/org/admin/identities/${identity.canonical_id}/edit`}
+                    href={appPath("/org/admin/identities/[id]/edit", {
+                        id: identity.canonical_id,
+                    })}
+                    prefetch={false}
                     className="text-sm hover:underline"
                 >
                     {identity.display_name?.trim() || identity.email?.trim() || UNRESOLVED}
@@ -105,7 +109,8 @@ export function IdentityTable({ identities, teamNames = {}, onDeleteAction }: Id
                         {teamIds.map((teamId) => (
                             <Link
                                 key={teamId}
-                                href={`/org/admin/teams/${teamId}/edit`}
+                                href={appPath("/org/admin/teams/[id]/edit", { id: teamId })}
+                                prefetch={false}
                                 className="text-(--accent-2) hover:underline"
                             >
                                 <EntityLabel id={teamId} nameMap={teamNames} />
@@ -147,7 +152,10 @@ export function IdentityTable({ identities, teamNames = {}, onDeleteAction }: Id
             render: (identity) => (
                 <div className="flex justify-end gap-3">
                     <Link
-                        href={`/org/admin/identities/${identity.canonical_id}/edit`}
+                        href={appPath("/org/admin/identities/[id]/edit", {
+                            id: identity.canonical_id,
+                        })}
+                        prefetch={false}
                         className="text-(--accent-2) hover:underline"
                     >
                         {CTA_LABELS.edit}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ConnectionStatus } from "@/components/admin/integrations/ConnectionStatus";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { CustomerPushSource } from "@/lib/admin/types";
+import { appPath } from "@/lib/navigation/appPath";
 
 type CustomerPushSourceListProps = {
     provider: string;
@@ -19,7 +20,9 @@ export function CustomerPushSourceList({
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-medium text-(--ink-base)">Customer-push sources</h2>
                 <Link
-                    href={`/org/admin/integrations/${provider}/customer-push/new`}
+                    href={appPath("/org/admin/integrations/[provider]/customer-push/new", {
+                        provider,
+                    })}
                     className="inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-4 py-2 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted)"
                 >
                     {CTA_LABELS.createCustomerPushSource}
@@ -36,7 +39,9 @@ export function CustomerPushSourceList({
                         long-lived credentials.
                     </p>
                     <Link
-                        href={`/org/admin/integrations/${provider}/customer-push/new`}
+                        href={appPath("/org/admin/integrations/[provider]/customer-push/new", {
+                            provider,
+                        })}
                         className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90"
                     >
                         {CTA_LABELS.createCustomerPushSource}
@@ -49,7 +54,11 @@ export function CustomerPushSourceList({
                         return (
                             <Link
                                 key={source.id}
-                                href={`/org/admin/integrations/${provider}/customer-push/${source.id}`}
+                                href={appPath(
+                                    "/org/admin/integrations/[provider]/customer-push/[source_id]",
+                                    { provider, source_id: source.id },
+                                )}
+                                prefetch={false}
                                 className="flex flex-col justify-between rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm transition-shadow hover:shadow-md"
                             >
                                 <div>
