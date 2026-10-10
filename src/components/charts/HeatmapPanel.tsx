@@ -193,7 +193,7 @@ export function HeatmapPanel({
     const evidence = useMemo(() => initialData?.evidence ?? [], [initialData]);
 
     const data = initialData;
-    const unit = data?.legend.unit;
+    const unit = data?.legend?.unit;
     // The team grid and the person grid are both hours by weekdays: one rule for both, the
     // prototype's axes and captions.
     const isWeekHours = request.type === "temporal_load" || request.type === "individual";
@@ -232,7 +232,7 @@ export function HeatmapPanel({
         return <ErrorCard title="Could not be read" compact headingLevel={3} />;
     }
 
-    if (!data || !data.axes?.x?.length || !data.axes?.y?.length) {
+    if (!data || !data.legend || !data.axes?.x?.length || !data.axes?.y?.length) {
         return (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
                 {emptyState}
