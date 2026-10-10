@@ -62,6 +62,7 @@ for (const { tab, f } of CASES) {
                 JSON.stringify(report, null, 2),
             );
         }
+        expect(heavyReads(log), `GraphQL reads of ${label}`).toEqual(NEEDED[tab]);
         const duplicates = rows.filter(([, n]) => n > 1);
         expect(
             duplicates.map(([key, n]) => `${n}x ${key.slice(0, 160)}`),
@@ -69,3 +70,54 @@ for (const { tab, f } of CASES) {
         ).toEqual([]);
     });
 }
+
+// CHAOS-9166: a tab starts only the reads it draws. `InvestmentFull` is the sankey flow: the
+// team-category flow, its prior-window baseline, and the repo-team flow.
+const HEAVY =
+    /^graphql (InvestmentFull|InvestmentBreakdown|InvestmentEvidenceQuality|WorkUnitTeamAttributions)$/;
+const NEEDED: Record<(typeof TABS)[number], Record<string, number>> = {
+    overview: { InvestmentBreakdown: 1, InvestmentFull: 2 },
+    allocation: { InvestmentFull: 3 },
+    evidence: { InvestmentEvidenceQuality: 1, WorkUnitTeamAttributions: 1 },
+    confidence: { InvestmentBreakdown: 1, InvestmentFull: 2 },
+};
+
+function heavyReads(log: Entry[]): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const e of log) {
+        const match = HEAVY.exec(e.operation);
+        if (match) out[match[1]] = (out[match[1]] ?? 0) + 1;
+    }
+    return out;
+}
+
+test("switching tabs starts the reads of the new tab once and never repeats a read", async ({
+    page,
+    request,
+}) => {
+    await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "investment-enabled" } });
+    await request.post(`${MOCK}/__test/backend-log/reset`);
+    await page.goto(`/investment?tab=overview&f=${F_DEFAULT}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    expect(heavyReads(await readLog(request))).toEqual(NEEDED.overview);
+
+    await page.getByRole("tab", { name: "Allocation" }).click();
+    await expect(page.getByTestId("investment-allocation")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    // Allocation adds only the baseline flow: the two flows of Overview are not asked again.
+    expect(heavyReads(await readLog(request))).toEqual({
+        InvestmentBreakdown: 1,
+        InvestmentFull: 3,
+    });
+
+    await page.getByRole("tab", { name: "Overview" }).click();
+    await expect(page.getByTestId("investment-overview")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    expect(heavyReads(await readLog(request))).toEqual({
+        InvestmentBreakdown: 1,
+        InvestmentFull: 3,
+    });
+});

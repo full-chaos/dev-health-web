@@ -124,7 +124,7 @@ export function InvestmentView({
     reworkMetric,
     reworkThemeAllocation,
 }: InvestmentViewProps) {
-    const data = useInvestmentData({ filters });
+    const data = useInvestmentData({ filters, activeTab });
 
     // All derived state is unconditional — data loads identically regardless of tab.
     const effortUnit = useMemo(() => {

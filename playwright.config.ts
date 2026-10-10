@@ -52,6 +52,7 @@ export default defineConfig({
         "onboarding.setup.ts",
         "acr-context-fabric.production.spec.ts",
         "admin-row-links.production.spec.ts",
+        "investment-duplicate-requests.production.spec.ts",
         "admin-customer-push.spec.ts",
         "nav-reachability.spec.ts",
     ],
