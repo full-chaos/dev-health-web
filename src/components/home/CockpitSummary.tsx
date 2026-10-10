@@ -8,6 +8,8 @@ import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
+import { isRiskSignal } from "@/lib/cockpit/signalKinds";
+import { coverageNote } from "@/lib/metrics/coverageNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { HomeResponse } from "@/lib/types";
 
@@ -66,8 +68,12 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     href: "/explore",
                     // The comparison window the page asked for (a request parameter).
                     metricLabel: `vs previous ${compareDays} ${compareDays === 1 ? "day" : "days"}${
-                        isRepoUnscopedMetric(topSignal.metric, filters)
+                        isRepoUnscopedMetric(topSignal.metric, filters, topSignal)
                             ? ` · ${NOT_FILTERED_BY_REPOSITORY}`
+                            : ""
+                    }${
+                        isRiskSignal(topSignal) && coverageNote(topSignal.coverage)
+                            ? ` · ${coverageNote(topSignal.coverage)}`
                             : ""
                     }`,
                     // The change exactly as served. No value node when the API served none.

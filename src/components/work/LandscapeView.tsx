@@ -59,7 +59,12 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : wipMetric)}
                     spark={wipMetric?.spark}
-                    caption={withRepoScopeNote("WIP saturation", "wip_saturation", filters)}
+                    caption={withRepoScopeNote(
+                        "WIP saturation",
+                        "wip_saturation",
+                        filters,
+                        wipMetric,
+                    )}
                 />
                 <MetricCard
                     label={getMetric("blocked_work")?.label ?? "Blocked"}
@@ -70,7 +75,12 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : getMetric("blocked_work"))}
                     spark={getMetric("blocked_work")?.spark}
-                    caption={withRepoScopeNote("Blocked work", "blocked_work", filters)}
+                    caption={withRepoScopeNote(
+                        "Blocked work",
+                        "blocked_work",
+                        filters,
+                        getMetric("blocked_work"),
+                    )}
                 />
                 <MetricCard
                     label={getMetric("throughput")?.label ?? "Throughput"}
@@ -81,7 +91,12 @@ export function LandscapeView({
                     })}
                     {...metricCardProps(placeholderDeltas ? null : getMetric("throughput"))}
                     spark={getMetric("throughput")?.spark}
-                    caption={withRepoScopeNote("Delivery volume", "throughput", filters)}
+                    caption={withRepoScopeNote(
+                        "Delivery volume",
+                        "throughput",
+                        filters,
+                        getMetric("throughput"),
+                    )}
                 />
             </section>
 

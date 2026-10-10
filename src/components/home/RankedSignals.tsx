@@ -75,7 +75,7 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
                     <span data-testid="signal-label" className="font-medium text-foreground">
                         {scrubIdentifiers(signalMetricLabel(signal, deltas)).text}
                     </span>
-                    {isRepoUnscopedMetric(signal.metric, filters) ? (
+                    {isRepoUnscopedMetric(signal.metric, filters, signal) ? (
                         <span
                             data-testid="signal-repo-note"
                             className="block text-xs text-(--ink-muted)"
