@@ -105,8 +105,8 @@ describe("auth jwt callback with a backend that never answers", () => {
         expect(b.settled).toBe(true);
     });
 
-    it("an expired token: refresh is NOT bounded (it changes state) but is logged slow", async () => {
-        overrideDeadlinesForTests({ auth: 40, outerMargin: 60, slow: 30 });
+    it("an expired token: a refresh answered under the deadline is logged slow, no deadline line", async () => {
+        overrideDeadlinesForTests({ auth: 400, outerMargin: 60, slow: 30 });
         vi.stubGlobal(
             "fetch",
             vi.fn(
@@ -135,8 +135,7 @@ describe("auth jwt callback with a backend that never answers", () => {
             expires_at: Date.now() - 1_000,
         };
         const out = await jwt()({ token, account: null });
-        expect(out.access_token).toBe("new-access"); // answered at 150 ms, past the 40 ms auth deadline
-        // the refresh is never bounded (the validate that follows it is, and its line is separate)
+        expect(out.access_token).toBe("new-access"); // answered at 150 ms, under the 400 ms deadline
         expect(
             deadlineLines().filter(([f]) => String((f as { op: string }).op).includes("refresh")),
         ).toHaveLength(0);
@@ -208,7 +207,28 @@ describe("auth jwt callback with a backend that never answers", () => {
         expect(deadlineLines()).toHaveLength(1);
     });
 
-    it("login is a write: a stalled login is NOT bounded (no deadline, no abort)", async () => {
+    it("a refresh that never answers settles at the deadline, logs the line, keeps the refresh token (CHAOS-9112)", async () => {
+        vi.stubGlobal("fetch", stallingFetch());
+        const token: Token = {
+            id: "user-1",
+            access_token: "access",
+            refresh_token: "refresh",
+            expires_at: Date.now() - 1_000,
+        };
+        const state = track(jwt()({ token, account: null }));
+        await sleep(600);
+        expect(state.settled).toBe(true);
+        const out = state.value as Token;
+        expect(out.refresh_token).toBe("refresh"); // a timeout is not a 401: the session stays
+        expect(out.error).toBe("refresh_unavailable");
+        const lines = deadlineLines().filter(
+            ([f]) => (f as { op: string }).op === "POST /api/v1/auth/refresh",
+        );
+        expect(lines).toHaveLength(1);
+        expect(lines[0][0]).toMatchObject({ outcome: "deadline", layer: "inner" });
+    });
+
+    it("a login that never answers settles at the deadline and logs the line (CHAOS-9112)", async () => {
         vi.stubGlobal("fetch", stallingFetch());
         const configs = vi
             .mocked(Credentials)
@@ -219,11 +239,13 @@ describe("auth jwt callback with a backend that never answers", () => {
         expect(authorize).toBeTypeOf("function");
         const state = track(authorize({ email: "a@b.test", password: "x" }));
         await sleep(400);
-        expect(state.settled).toBe(false);
-        expect(deadlineLines()).toHaveLength(0);
+        expect(state.settled).toBe(true);
+        expect(state.value).toBeNull();
+        expect(deadlineLines()).toHaveLength(1);
+        expect(deadlineLines()[0][0]).toMatchObject({ op: "POST /api/v1/auth/login" });
     });
 
-    it("social login is a write: a stalled call is NOT bounded", async () => {
+    it("a social login that never answers settles at the deadline and logs the line (CHAOS-9112)", async () => {
         vi.stubGlobal("fetch", stallingFetch());
         const state = track(
             jwt()({
@@ -232,7 +254,9 @@ describe("auth jwt callback with a backend that never answers", () => {
             }),
         );
         await sleep(400);
-        expect(state.settled).toBe(false);
-        expect(deadlineLines()).toHaveLength(0);
+        expect(state.settled).toBe(true);
+        expect((state.value as Token).error).toBe("social_login_failed");
+        expect(deadlineLines()).toHaveLength(1);
+        expect(deadlineLines()[0][0]).toMatchObject({ op: "POST /api/v1/auth/social-login" });
     });
 });

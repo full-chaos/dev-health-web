@@ -100,7 +100,7 @@ const nextAuth = NextAuth({
 
                 const backendUrl = getBackendUrl();
                 try {
-                    const res = await deadlineFetch("write")(`${backendUrl}/api/v1/auth/login`, {
+                    const res = await deadlineFetch("auth")(`${backendUrl}/api/v1/auth/login`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -203,7 +203,7 @@ const nextAuth = NextAuth({
             if (account && account.provider !== "credentials" && account.access_token) {
                 try {
                     const backendUrl = getBackendUrl();
-                    const res = await deadlineFetch("write")(
+                    const res = await deadlineFetch("auth")(
                         `${backendUrl}/api/v1/auth/social-login`,
                         {
                             method: "POST",
@@ -283,7 +283,7 @@ const nextAuth = NextAuth({
             if (tokenExpired && token.refresh_token) {
                 try {
                     const backendUrl = getBackendUrl();
-                    const res = await deadlineFetch("write")(`${backendUrl}/api/v1/auth/refresh`, {
+                    const res = await deadlineFetch("auth")(`${backendUrl}/api/v1/auth/refresh`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ refresh_token: token.refresh_token }),
