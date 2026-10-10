@@ -34,6 +34,7 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
+import { RepoLinkPageNote } from "@/components/shared/RepoLinkPageNote";
 import { BottleneckTiles } from "./BottleneckTiles";
 import { BOTTLENECK_TILES } from "./tiles";
 
@@ -151,6 +152,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                 role={activeRole}
                 origin={pagePath}
             />
+            {placeholderDeltas ? null : <RepoLinkPageNote rows={deltas} />}
 
             <WipSaturationNotice />
 

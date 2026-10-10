@@ -4,6 +4,7 @@ import { Section } from "@/components/ui/Section";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { STATUS_PILL } from "@/lib/statusPill";
 import type { ConfidenceLevel, HomeResponse } from "@/lib/types";
+import { repoLinkPageNotes } from "@/lib/metrics/repoLinkNote";
 import { Inset } from "@/components/ui/Inset";
 
 /** Approved prototype inset sentence (`app.js:100`). */
@@ -45,6 +46,8 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
     const caveats = home?.data_confidence?.caveats ?? [];
     // A FAILED Home read (`null`) is not "Not reported": each fact of the answer says so.
     const readFailed = home === null;
+    // CHAOS-9120: once per page, the multi-repo note and the organization link coverage.
+    const repoLinkNotes = repoLinkPageNotes(home?.deltas);
 
     return (
         <Section
@@ -87,6 +90,16 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
             </EvidenceFactList>
             <Inset data-testid="evidence-context-note" className="text-xs text-(--ink-muted)">
                 <p>{EVIDENCE_CONTEXT_NOTE}</p>
+                {repoLinkNotes.length > 0 ? (
+                    <ul className="mt-2 space-y-1" data-testid="repo-link-page-note">
+                        {repoLinkNotes.map((note) => (
+                            <li key={note} className="flex gap-2">
+                                <span aria-hidden="true">•</span>
+                                <span>{note}</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : null}
                 {caveats.length > 0 ? (
                     <ul className="mt-2 space-y-1" data-testid="data-confidence-caveats">
                         {caveats.map((caveat) => (

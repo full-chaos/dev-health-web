@@ -1296,6 +1296,29 @@ type HomeRestFixture = ReturnType<typeof homeRestFixture>;
 // Metrics the backend does not narrow by repository (the served `repoFilterApplied` is false).
 const MOCK_REPO_UNSCOPED = new Set(["cycle_time", "throughput", "wip_saturation", "blocked_work"]);
 
+// MOCK_HOME_REPO_LINK=1 (picture runs, with a repository named): the four repository-scoped
+// work-item metrics serve one link state each, as the backend does (CHAOS-9094).
+const MOCK_REPO_LINK_STATES: Record<string, string> = {
+    cycle_time: "linked",
+    throughput: "no_links",
+    wip_saturation: "timed_out",
+    blocked_work: "too_large",
+};
+
+function mockRepoLink(metric: string, repoNamed: boolean) {
+    const state =
+        repoNamed && process.env.MOCK_HOME_REPO_LINK ? MOCK_REPO_LINK_STATES[metric] : undefined;
+    if (!state) return {};
+    const linked = state === "linked";
+    return {
+        ...(linked ? {} : { hasData: false, value: 0 }),
+        repoLinkState: state,
+        repoLinkBasis: linked ? { native: 56, explicitText: 7, heuristic: 32 } : null,
+        repoLinkMultiRepoItems: linked ? 22 : null,
+        repoLinkCoverage: { linkedItems: 6527, itemsInWindow: 10593 },
+    };
+}
+
 function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
     // MOCK_HOME_RISK_COVERAGE (picture runs only): add one compounding-risk signal with this coverage.
     const riskCoverage = Number(process.env.MOCK_HOME_RISK_COVERAGE ?? "");
@@ -1322,6 +1345,27 @@ function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
                   },
               ]
             : [];
+    // Picture runs: one ranked row per link state and one rework row with a coverage note.
+    const linkSignals =
+        repoNamed && process.env.MOCK_HOME_REPO_LINK
+            ? ["cycle_time", "pr_rework_ratio"].map((metric) => ({
+                  id: `metric:${metric}`,
+                  title: `${metric === "cycle_time" ? "Cycle Time" : "PR Rework Ratio"} appears up`,
+                  metric,
+                  current_value: "3 days",
+                  prior_value: "2 days",
+                  delta: "+50%",
+                  direction: "up",
+                  severity: "low",
+                  confidence: "medium",
+                  affected_scope: "meridian/web-app",
+                  evidence_count: 1,
+                  why_it_matters: "Mock row.",
+                  recommended_action: "Review.",
+                  evidence_ref: null,
+                  category: "delivery",
+              }))
+            : [];
     return {
         freshness: {
             lastIngestedAt: rest.freshness.last_ingested_at,
@@ -1332,14 +1376,48 @@ function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
             })),
             coverage: null,
         },
-        deltas: rest.deltas.map((d) => ({
+        deltas: [
+            ...rest.deltas,
+            // Picture runs: the four repository-scoped metrics always have a row to carry a state.
+            ...(repoNamed && process.env.MOCK_HOME_REPO_LINK
+                ? Object.keys(MOCK_REPO_LINK_STATES)
+                      .filter((m) => !rest.deltas.some((d) => d.metric === m))
+                      .map((m) => ({
+                          metric: m,
+                          label: m === "wip_saturation" ? "WIP Saturation" : "Blocked Work",
+                          value: 4,
+                          unit: m === "wip_saturation" ? "items" : "hours",
+                          delta_pct: 0,
+                      }))
+                : []),
+            ...(repoNamed && process.env.MOCK_HOME_REPO_LINK
+                ? [
+                      {
+                          metric: "pr_rework_ratio",
+                          label: "PR Rework Ratio",
+                          value: 20,
+                          unit: "%",
+                          delta_pct: 0,
+                      },
+                  ]
+                : []),
+        ].map((d) => ({
             metric: d.metric,
             label: d.label,
             value: d.value,
             unit: d.unit,
             deltaPct: d.delta_pct,
-            repoFilterApplied: repoNamed ? !MOCK_REPO_UNSCOPED.has(d.metric) : null,
+            repoFilterApplied:
+                repoNamed && !(process.env.MOCK_HOME_REPO_LINK && MOCK_REPO_LINK_STATES[d.metric])
+                    ? !MOCK_REPO_UNSCOPED.has(d.metric)
+                    : repoNamed
+                      ? true
+                      : null,
             spark: [] as { ts: string; value: number | null }[],
+            ...mockRepoLink(d.metric, repoNamed),
+            ...(d.metric === "pr_rework_ratio" && repoNamed && process.env.MOCK_HOME_REPO_LINK
+                ? { rateState: "measured", rateCoverage: 0.07 }
+                : {}),
         })),
         reworkThemeAllocation: rest.rework_theme_allocation.map((r) => ({
             theme: r.theme,
@@ -1363,13 +1441,15 @@ function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
         },
         events: [] as { ts: string; type: string; text: string; link: string }[],
         healthState: { ...rest.health_state, asOf: null },
-        signals: [...rest.signals, ...riskSignals].map((sg) => ({
+        signals: [...rest.signals, ...riskSignals, ...linkSignals].map((sg) => ({
             coverage: (sg as { coverage?: number }).coverage ?? null,
             repoFilterApplied:
                 sg.metric === "compounding_risk"
                     ? null
                     : repoNamed
-                      ? !MOCK_REPO_UNSCOPED.has(sg.metric)
+                      ? process.env.MOCK_HOME_REPO_LINK && MOCK_REPO_LINK_STATES[sg.metric]
+                          ? true
+                          : !MOCK_REPO_UNSCOPED.has(sg.metric)
                       : null,
             id: sg.id,
             title: sg.title,
