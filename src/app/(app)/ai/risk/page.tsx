@@ -8,9 +8,9 @@ import { AITestGapsPanel } from "@/components/ai/AITestGapsPanel";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type AIRiskPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -32,7 +32,7 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
     const view = governanceRiskViewFromParam(viewParam);
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "ai" });
     const aiFilter = metricFilterToAIFilter(filters);
     const health = await checkApiHealth();
 

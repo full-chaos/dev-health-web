@@ -28,7 +28,6 @@ import { requireSession } from "@/lib/auth";
 import { getExplainData } from "@/lib/api/home";
 import { getHeatmap } from "@/lib/api/visuals";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPLEXITY_TIMESERIES_QUERY, HOTSPOTS_QUERY } from "@/lib/graphql/queries";
@@ -41,6 +40,7 @@ import type { HotspotHeatmapProps } from "@/components/complexity/ComplexityDash
 import type { HeatmapResponse } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -190,7 +190,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
     const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     const activeTab = typeof tabParam === "string" ? tabParam : "overview";
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "complexity" });
     const tabSet = getTabSet("complexity");
     const tabs: ViewSetItem[] = tabSet.tabs.map((tab) => ({
         id: tab.id,

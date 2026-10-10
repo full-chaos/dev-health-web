@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import {
     CompoundingRiskDashboard,
     type CompoundingRiskDashboardProps,
@@ -23,7 +24,6 @@ import {
     type CompoundingRiskTrendPointView,
 } from "@/components/risk/CompoundingRiskDashboard";
 import { requireSession } from "@/lib/auth";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPOUNDING_RISK_QUERY } from "@/lib/graphql/queries";
 
@@ -140,7 +140,7 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
     const breakoutParam = Array.isArray(params.breakout) ? params.breakout[0] : params.breakout;
 
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "risk-compounding" });
 
     const isDeveloperScope = filters.scope.level === "developer";
     const breakout = pickBreakoutFromQuery(breakoutParam);

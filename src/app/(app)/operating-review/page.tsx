@@ -10,7 +10,6 @@ import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
 import type { OperatingReview, OperatingReviewInput } from "@/lib/graphql/types";
@@ -20,6 +19,7 @@ import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
 import { MetricTile, TINT, WHOLE_ORGANIZATION } from "./MetricTile";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { Inset } from "@/components/ui/Inset";
 
 /** Discriminated fetch result: distinguishes a real error from a genuine empty payload. */
@@ -48,7 +48,7 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "capacity-planning" });
     const selectedTeamIds = selectedOperatingReviewTeamIds(params.team, filters);
     const weekStart = normalizeWeekStart(singleParam(params.week));
 

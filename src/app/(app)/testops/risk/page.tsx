@@ -5,13 +5,13 @@ import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { Section } from "@/components/ui/Section";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { QuadrantChart } from "@/components/charts/QuadrantChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { getServerEnv } from "@/lib/config";
 import { nameOrUnresolved } from "@/lib/labels/unresolved";
@@ -25,7 +25,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
 
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "testops" });
 
     const env = getServerEnv();
     const isTestMode =

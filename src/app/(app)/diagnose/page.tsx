@@ -4,10 +4,10 @@ import { DiagnoseQuestions } from "./DiagnoseQuestions";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
 import { checkApiHealth } from "@/lib/api/system";
 import { getServerEnv } from "@/lib/config";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 
 type DiagnosePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -20,7 +20,7 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "work" });
     const env = getServerEnv();
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";

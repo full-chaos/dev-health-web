@@ -16,7 +16,6 @@ import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getQuadrant } from "@/lib/api/visuals";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
@@ -27,6 +26,7 @@ import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 
 type MetricsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -52,14 +52,16 @@ function DataNote({ children }: { children: ReactNode }) {
 export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
-
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
     const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     const metricsTabs = getTabSet("metrics");
     const activeTab = METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
+    const filters = filtersFromPageParams(encodedFilter, params, {
+        view: "metrics",
+        tab: activeTab.id,
+    });
 
     const quadrantScope: "org" | "team" | "repo" | "developer" =
         filters.scope.level === "developer"

@@ -11,13 +11,13 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth } from "@/lib/api/system";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getSetupStatus } from "@/lib/admin/server";
 import { SetupBanner } from "@/components/onboarding/SetupBanner";
 import { auth } from "@/lib/auth";
-import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { formatCoveragePct } from "@/lib/cockpit/coverage";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
@@ -40,7 +40,7 @@ type HomePageProps = {
 export default async function Home({ searchParams }: HomePageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = filtersFromPageParams(encodedFilter, params, { view: "home" });
 
     const lensParam = Array.isArray(params.lens) ? params.lens[0] : params.lens;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;

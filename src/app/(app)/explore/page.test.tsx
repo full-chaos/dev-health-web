@@ -9,6 +9,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, userEvent, within } from "@/test/utils";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { encodeFilter } from "@/lib/filters/encode";
 
 const { panelSpy, orgName } = vi.hoisted(() => ({
     panelSpy: vi.fn(),
@@ -264,7 +266,10 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
     });
 
     it("Context: fact rows for the metric, the organization, the window, the scope and the source", async () => {
-        await renderExplore();
+        // An organization scope is in `f`: a URL with no `f` reads the default (team) scope.
+        await renderExplore({
+            f: encodeFilter({ ...defaultMetricFilter, scope: { level: "org", ids: [] } }),
+        });
         const context = screen.getByTestId("explore-context");
         expect(
             within(context).getByText(

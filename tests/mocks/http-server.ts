@@ -9,11 +9,17 @@ import { hardenMockServer } from "./serverSockets";
 const app = express();
 const port = Number(process.env.MOCK_SERVER_PORT ?? 8000);
 let acrRequestCount = 0;
+let backendRequestCount = 0;
 
 app.use(express.json());
 app.use((req, _res, next) => {
     if (req.path.startsWith("/api/v1/agent-context")) acrRequestCount += 1;
+    if (!req.path.startsWith("/__test/") && req.path !== "/health") backendRequestCount += 1;
     next();
+});
+// CHAOS-9130: backend reads the web server made, to count the renders of one first load.
+app.get("/__test/backend-requests", (_req, res) => {
+    res.json({ count: backendRequestCount });
 });
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
