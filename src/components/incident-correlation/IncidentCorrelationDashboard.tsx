@@ -29,7 +29,7 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { metricCardProps } from "@/lib/metrics/metricDisplay";
+import { metricCardProps, noDataText, readDelta } from "@/lib/metrics/metricDisplay";
 import { buttonClassName } from "@/components/shared/Button";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { useShellOrganization } from "@/components/shell/ShellContext";
@@ -142,6 +142,20 @@ type SankeyGroup = (typeof SANKEY_GROUPS)[number]["group"];
 const MAX_LINKS_PER_INCIDENT = 3;
 const OPAQUE_LABEL_RE =
     /^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The right-hand text of a contributor row (the shared `readDelta` rule): a row with no data says
+ * so, never its 0 placeholder; with the explain unit a measured row shows its value; otherwise the
+ * change ("+12 from 0", "+4%") or "No prior period".
+ */
+function contributorText(c: Contributor, explainUnit: string | undefined): string {
+    const reading = readDelta(c);
+    if (reading.kind === "no-data") return noDataText();
+    if (explainUnit) return formatMetricValue(c.value, explainUnit);
+    if (reading.kind === "from-zero") return changedFromZeroLabel(reading.value, explainUnit);
+    if (reading.kind === "percent") return formatDelta(reading.percent);
+    return "No prior period";
+}
 
 const hasMeaningfulAssociations = (items: Contributor[]) =>
     items.some(
@@ -567,13 +581,7 @@ export function IncidentCorrelationDashboard({
                                     >
                                         <EntityLabel id={c.id} displayName={c.display_name} />
                                         <span className="text-xs text-(--ink-muted)">
-                                            {explainUnit
-                                                ? formatMetricValue(c.value, explainUnit)
-                                                : isChangedFromZero(c)
-                                                  ? changedFromZeroLabel(c.value, explainUnit)
-                                                  : typeof c.delta_pct === "number"
-                                                    ? formatDelta(c.delta_pct)
-                                                    : "No prior period"}
+                                            {contributorText(c, explainUnit)}
                                         </span>
                                     </div>
                                 ))}

@@ -1,5 +1,6 @@
 import { Section } from "@/components/ui/Section";
-import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/MetricDelta";
+import { changedFromZeroLabel } from "@/components/shared/MetricDelta";
+import { noDataText, readDelta } from "@/lib/metrics/metricDisplay";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 
 type ReadTheSignalProps = {
@@ -16,7 +17,8 @@ type ReadTheSignalProps = {
 
 /**
  * Headline word from the DISPLAYED delta: "unchanged" only when the Snapshot card's own formatter
- * shows 0%; otherwise the sign of the persisted delta. A missing delta is "unavailable", never 0.
+ * shows 0% for a measured change; otherwise the sign of the served percent. A change that cannot
+ * be told (no data, no prior period) is "unavailable", never 0.
  */
 export const signalDirection = (
     deltaPct: number | null | undefined,
@@ -43,19 +45,27 @@ export function ReadTheSignal({
     hasData,
     hasPriorData,
 }: ReadTheSignalProps) {
-    const fromZero = isChangedFromZero({
+    // The flags decide first (a 0 on a side with no data is a placeholder): see `readDelta`.
+    const reading = readDelta({
         delta_pct: deltaPct,
         value,
         has_data: hasData,
         has_prior_data: hasPriorData,
     });
-    const direction = signalDirection(deltaPct, fromZero ? (value as number) : undefined);
+    const fromZero = reading.kind === "from-zero";
+    const percent = reading.kind === "percent" ? reading.percent : null;
+    const direction = signalDirection(
+        percent,
+        reading.kind === "from-zero" ? reading.value : undefined,
+    );
     const headline =
-        direction === "unavailable"
-            ? `${label}: change unavailable`
-            : direction === "unchanged"
-              ? `${label} appears unchanged`
-              : `${label} appears ${direction}`;
+        reading.kind === "no-data"
+            ? `${label}: ${noDataText()}`
+            : direction === "unavailable"
+              ? `${label}: change unavailable`
+              : direction === "unchanged"
+                ? `${label} appears unchanged`
+                : `${label} appears ${direction}`;
     const hasValue = typeof value === "number" && Number.isFinite(value);
 
     return (
@@ -65,13 +75,15 @@ export function ReadTheSignal({
                 {headline}
             </p>
             <p className="mt-3 text-sm text-(--ink-muted)" data-testid="signal-numbers">
-                {hasValue && fromZero
-                    ? `The evidence page shows ${formatMetricValue(value as number, unit)}, ${changedFromZeroLabel(value as number, unit)}, over the selected window.`
-                    : hasValue && direction !== "unavailable"
-                      ? `The evidence page shows ${formatMetricValue(value as number, unit)} and a ${formatDelta(deltaPct as number)} change over the selected window.`
-                      : hasValue
-                        ? `The evidence page shows ${formatMetricValue(value as number, unit)}; the change against the previous window is unavailable.`
-                        : "The value for this window is unavailable."}
+                {reading.kind === "no-data"
+                    ? noDataText()
+                    : hasValue && fromZero
+                      ? `The evidence page shows ${formatMetricValue(value as number, unit)}, ${changedFromZeroLabel(value as number, unit)}, over the selected window.`
+                      : hasValue && direction !== "unavailable"
+                        ? `The evidence page shows ${formatMetricValue(value as number, unit)} and a ${formatDelta(percent as number)} change over the selected window.`
+                        : hasValue
+                          ? `The evidence page shows ${formatMetricValue(value as number, unit)}; the change against the previous window is unavailable.`
+                          : "The value for this window is unavailable."}
             </p>
             <div className="mt-4 border-l-2 border-(--card-stroke) pl-3 text-xs leading-relaxed text-(--ink-muted)">
                 <strong className="text-(--ink)">Inspect before interpreting.</strong> Use the

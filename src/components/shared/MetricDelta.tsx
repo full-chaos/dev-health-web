@@ -171,18 +171,6 @@ export function changedFromZeroParts(
     };
 }
 
-/**
- * What a delta tile gets as its `delta`: the served percent as is, except that a null percent
- * with no data or no prior data is "no prior period" (undefined), never state 3.
- */
-export function tileDelta(facts: DeltaFacts | null | undefined): number | null | undefined {
-    if (!facts) return undefined;
-    if (facts.delta_pct === null) {
-        return facts.has_data === false || facts.has_prior_data === false ? undefined : null;
-    }
-    return facts.delta_pct;
-}
-
 export function MetricDelta({
     value,
     changedFromZero,

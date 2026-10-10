@@ -1,6 +1,7 @@
 import type { MeterRow } from "@/components/ui/MeterRows";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
-import { changedFromZeroLabel, isChangedFromZero } from "@/components/shared/MetricDelta";
+import { changedFromZeroLabel } from "@/components/shared/MetricDelta";
+import { noDataText, readDelta } from "@/lib/metrics/metricDisplay";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import type { Contributor } from "@/lib/types";
 
@@ -14,6 +15,8 @@ export const signedPercent = (value: number) => {
     const digits = formatNumber(Math.abs(value), { maximumFractionDigits: 1 });
     return `${sign}${value !== 0 && digits === "0" ? "<0.1" : digits}%`;
 };
+
+const NO_PRIOR_PERIOD = "No prior period";
 
 type Labels = { labels: string[]; titles: (string | undefined)[] };
 
@@ -46,20 +49,23 @@ export function associationMeterRows(
     const fullTrack = Math.max(100, ...finite.map(Math.abs));
     return drivers.map((driver, index) => {
         const base = { key: driver.id, ...labelAt(labels, index, driver) };
-        if (isChangedFromZero(driver)) {
-            const sign = driver.value < 0 ? -1 : 1;
+        const reading = readDelta(driver);
+        if (reading.kind === "from-zero") {
+            const sign = reading.value < 0 ? -1 : 1;
             return {
                 ...base,
                 value: options.signed ? sign * fullTrack : fullTrack,
-                display: changedFromZeroLabel(driver.value, options.unit),
+                display: changedFromZeroLabel(reading.value, options.unit),
             };
         }
-        // A null percent that is not state 3 (no prior data, or no value) is not reported.
-        if (driver.delta_pct === null) return { ...base, value: null, display: undefined };
+        // No data or no prior period: the row says so with an empty track (value 0 draws no
+        // fill, and the text is the row's own), never "Not reported" or "0%".
+        if (reading.kind === "no-data") return { ...base, value: 0, display: noDataText() };
+        if (reading.kind === "no-prior") return { ...base, value: 0, display: NO_PRIOR_PERIOD };
         return {
             ...base,
-            value: options.signed ? driver.delta_pct : Math.abs(driver.delta_pct),
-            display: signedPercent(driver.delta_pct),
+            value: options.signed ? reading.percent : Math.abs(reading.percent),
+            display: signedPercent(reading.percent),
         };
     });
 }
