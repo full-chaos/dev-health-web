@@ -1299,7 +1299,7 @@ function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
                       direction: "flat",
                       severity: "medium",
                       confidence: "medium",
-                      affected_scope: "acme/web-app",
+                      affected_scope: "meridian/web-app",
                       evidence_count: 1,
                       why_it_matters: "Several inputs point the same way.",
                       recommended_action: "Review the inputs.",
