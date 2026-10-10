@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { headersThenStalledBody, stallingFetch, track } from "@/test/stallFetch";
 
-// CHAOS-9103: the auth jwt callback runs on the FIRST request of a session (validate, refresh)
+// CHAOS-9114: the auth jwt callback runs on the FIRST request of a session (validate, refresh)
 // and in the app layout. A backend call that is accepted and never answered must not hold the
 // request for ever. The deadline turns it into the existing "kept, retry after backoff" branch.
 

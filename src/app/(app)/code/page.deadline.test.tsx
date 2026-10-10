@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { track } from "@/test/stallFetch";
 
-// CHAOS-9103: /code awaits ONE Promise.all. One call that is accepted and never answered kept
+// CHAOS-9114: /code awaits ONE Promise.all. One call that is accepted and never answered kept
 // the whole document stream open. With a deadline the page settles and the section whose call
 // timed out draws its existing no-data state; the other sections still draw.
 
@@ -62,7 +62,6 @@ describe("/code with one call that never answers", () => {
                 return Promise.resolve(new Response("{}", { status: 404 }));
             }),
         );
-        const started = Date.now();
         const state = track(CodePage({ searchParams: Promise.resolve({}) }));
         for (let i = 0; i < 1_500 && !state.settled; i += 1) await sleep(10);
         expect(state.settled).toBe(true);

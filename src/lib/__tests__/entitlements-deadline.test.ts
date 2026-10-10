@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { stallingFetch, track } from "@/test/stallFetch";
 
-// CHAOS-9103: the app layout awaits getOrgEntitlements before any page streams. A stalled
+// CHAOS-9114: the app layout awaits getOrgEntitlements before any page streams. A stalled
 // entitlements call must settle at its deadline into the existing error result.
 
 const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));

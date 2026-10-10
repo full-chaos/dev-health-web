@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { headersThenStalledBody, stallingFetch, track } from "@/test/stallFetch";
 
-// CHAOS-9103: a server-side fetch that is accepted and never answered must settle at its
+// CHAOS-9114: a server-side fetch that is accepted and never answered must settle at its
 // deadline. Real timers, deadlines shrunk through the env override, so every test asserts
 // the MECHANISM (the deadline log line with its deadline_ms), not only that a promise ended.
 

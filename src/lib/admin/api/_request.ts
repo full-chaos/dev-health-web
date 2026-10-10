@@ -40,7 +40,7 @@ function formatErrorDetail(raw: unknown): string | undefined {
     return JSON.stringify(raw);
 }
 
-// CHAOS-9103: a GET is a read and gets the deadline; any other method is a write and never
+// CHAOS-9114: a GET is a read and gets the deadline; any other method is a write and never
 // aborts (the server may have applied it), it is only logged when slow.
 const isRead = (options: RequestInit): boolean => (options.method ?? "GET").toUpperCase() === "GET";
 

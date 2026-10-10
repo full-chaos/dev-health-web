@@ -24,7 +24,7 @@ export type ApiFetchInit = RequestInit & {
         revalidate?: number;
     };
     /**
-     * Server-side deadline class (CHAOS-9103). Default: GET/HEAD are reads, any other method is
+     * Server-side deadline class (CHAOS-9114). Default: GET/HEAD are reads, any other method is
      * a write and is never aborted. A POST that only QUERIES (explain, home) opts in with "read".
      */
     deadline?: "read" | "health";
