@@ -215,10 +215,14 @@ describe("MetricCard tile as the approved prototype: trend", () => {
 
     it("the end dot takes the bad tone only when the delta is a regression", () => {
         const tone = () => (sparkProps.last as { tone: string }).tone;
-        const a = render(<MetricCard label="L" value={1} delta={5} spark={series} />);
+        const a = render(
+            <MetricCard label="L" value={1} delta={5} inverseGood={false} spark={series} />,
+        );
         expect(tone()).toBe("default");
         a.unmount();
-        const b = render(<MetricCard label="L" value={1} delta={-5} spark={series} />);
+        const b = render(
+            <MetricCard label="L" value={1} delta={-5} inverseGood={false} spark={series} />,
+        );
         expect(tone()).toBe("bad");
         b.unmount();
         const c = render(<MetricCard label="L" value={1} delta={5} inverseGood spark={series} />);

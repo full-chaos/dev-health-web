@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getMetricPolarity, metricInverseGood } from "../catalog";
+import { getMetricPolarity } from "../catalog";
 import { METRIC_TABS } from "../metricTabs";
 
 describe("Metrics page tabs and polarity (CHAOS-7730 guard)", () => {
@@ -20,10 +20,10 @@ describe("Metrics page tabs and polarity (CHAOS-7730 guard)", () => {
             "blocked_work",
             "change_failure_rate",
         ]) {
-            expect(metricInverseGood(metric), metric).toBe(true);
+            expect(getMetricPolarity(metric), metric).toBe("lowerIsBetter");
         }
         for (const metric of ["throughput", "deploy_freq"]) {
-            expect(metricInverseGood(metric), metric).toBe(false);
+            expect(getMetricPolarity(metric), metric).toBe("higherIsBetter");
         }
     });
 

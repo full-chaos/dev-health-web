@@ -1,5 +1,6 @@
 import type { MetricCardProps } from "@/components/metrics/MetricCard";
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
+import { getMetricPolarity } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 
 /** The tile text for a metric whose window holds no data (the Home monitoring wording). */
@@ -96,7 +97,14 @@ export function metricCardProps(
         | undefined,
 ): Pick<
     MetricCardProps,
-    "value" | "valueText" | "valueIsMessage" | "unit" | "delta" | "deltaSlot" | "hideTrend"
+    | "value"
+    | "valueText"
+    | "valueIsMessage"
+    | "unit"
+    | "delta"
+    | "polarity"
+    | "deltaSlot"
+    | "hideTrend"
 > {
     const display = metricDisplay(metric);
     if (!metric || display.state === "missing") {
@@ -114,5 +122,7 @@ export function metricCardProps(
         value: metric.value,
         unit: metric.unit,
         delta: display.comparable ? metric.delta_pct : undefined,
+        // The change's tone follows the metric's catalog direction; an unknown metric is neutral.
+        polarity: metric.metric ? getMetricPolarity(metric.metric) : undefined,
     };
 }

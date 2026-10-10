@@ -1,3 +1,5 @@
+import type { MetricPolarity } from "@/lib/metrics/catalog";
+
 export type MetricStability = "stable" | "provisional" | "rejected";
 
 export type FeatureFlagMeasureDef = {
@@ -133,3 +135,14 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
         stability: "stable",
     },
 };
+
+/**
+ * The direction of a measure for a change tone: `up` is higher-is-better, `down` lower-is-better,
+ * `neutral` has none (the change is drawn without a good or bad tone).
+ */
+export const ffPolarity = (def: FeatureFlagMeasureDef): MetricPolarity | undefined =>
+    def.goodDirection === "up"
+        ? "higherIsBetter"
+        : def.goodDirection === "down"
+          ? "lowerIsBetter"
+          : undefined;

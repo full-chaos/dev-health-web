@@ -169,6 +169,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     }
                     unit="%"
                     delta={riskData.confidence_delta}
+                    polarity="higherIsBetter"
                     spark={riskData.confidence_spark}
                     caption="Overall confidence score for deployments"
                 />
@@ -177,6 +178,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     value={riskData.quality_drag_hours}
                     unit="h"
                     delta={riskData.drag_delta}
+                    polarity="lowerIsBetter"
                     spark={riskData.drag_spark}
                     caption="Hours lost to test/pipeline issues"
                 />
@@ -189,6 +191,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     }
                     unit="%"
                     delta={riskData.stability_delta}
+                    polarity="higherIsBetter"
                     spark={riskData.stability_spark}
                     caption="Stability score across all pipelines"
                 />

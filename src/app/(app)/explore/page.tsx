@@ -26,7 +26,7 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
+import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import { metricEvidenceLeaf } from "@/lib/navigation/evidenceTrail";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
@@ -398,7 +398,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             value={data?.value}
                             unit={data?.unit}
                             delta={tileDelta(data)}
-                            inverseGood={metricInverseGood(metricFromApi)}
+                            polarity={getMetricPolarity(metricFromApi)}
                             caption="vs previous window"
                             hideTrend
                         />
@@ -430,7 +430,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             value={data?.value}
                             unit={data?.unit}
                             delta={tileDelta(data)}
-                            inverseGood={metricInverseGood(metricFromApi)}
+                            polarity={getMetricPolarity(metricFromApi)}
                             caption="vs previous window"
                             hideTrend
                         />

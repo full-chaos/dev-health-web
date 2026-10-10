@@ -198,12 +198,16 @@ export const getMetricLabel = (metric: string) => {
 };
 
 export const getMetricUnit = (metric: string) => metricMetaByKey.get(metric)?.unit ?? "";
-export const getMetricPolarity = (metric: string): MetricPolarity | undefined =>
-    metricMetaByKey.get(metric)?.polarity;
-
 /**
- * Whether a rise in this metric is bad (`MetricDelta`'s `inverseGood`). A metric with no catalog
- * polarity reads as higher-is-better; the Metrics page test pins that every tab metric has one.
+ * Keys that are served but are not a catalog entry (no tile, label or fallback of their own):
+ * only their direction is known. The incident correlation DORA tiles draw them.
  */
-export const metricInverseGood = (metric: string): boolean =>
-    getMetricPolarity(metric) === "lowerIsBetter";
+const POLARITY_ONLY = new Map<string, MetricPolarity>(
+    Object.entries({
+        deployment_frequency: "higherIsBetter",
+        mttr: "lowerIsBetter",
+    }),
+);
+
+export const getMetricPolarity = (metric: string): MetricPolarity | undefined =>
+    metricMetaByKey.get(metric)?.polarity ?? POLARITY_ONLY.get(metric);

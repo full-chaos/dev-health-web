@@ -5,7 +5,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import type { MetricFilter } from "@/lib/filters/types";
 import { metricCardProps } from "@/lib/metrics/metricDisplay";
-import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
+import { getMetricLabel, getMetricPolarity } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 
 import { BOTTLENECK_TILES } from "./tiles";
@@ -23,7 +23,7 @@ type BottleneckTilesProps = {
 /**
  * One joined strip of three tiles. Each tile opens the ONE shared evidence drawer for its metric
  * (P0-9); the drawer footer leads to the metric's evidence page with this page as the way back.
- * Each delta is coloured by the metric's polarity (`metricInverseGood`), as on Flow.
+ * Each delta is coloured by the metric's polarity (`getMetricPolarity`), as on Flow.
  */
 export function BottleneckTiles({
     deltas,
@@ -45,7 +45,7 @@ export function BottleneckTiles({
                         testId={`bottleneck-tile-${metric}`}
                         label={label}
                         {...metricCardProps(placeholderDeltas ? null : row)}
-                        inverseGood={metricInverseGood(metric)}
+                        polarity={getMetricPolarity(metric)}
                         spark={row?.spark}
                         caption={caption}
                         onOpenEvidence={() =>

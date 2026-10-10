@@ -61,7 +61,10 @@ describe("shared rule", () => {
             glyph: "↑",
             polarity: "bad",
         });
-        expect(changedFromZeroParts(5, "loc")).toMatchObject({ glyph: "↑", polarity: "good" });
+        expect(changedFromZeroParts(5, "loc", { inverseGood: false })).toMatchObject({
+            glyph: "↑",
+            polarity: "good",
+        });
         expect(changedFromZeroParts(-5, "loc", { inverseGood: true })).toMatchObject({
             glyph: "↓",
             polarity: "good",
