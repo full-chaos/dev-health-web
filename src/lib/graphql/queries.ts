@@ -1331,6 +1331,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       lastIngestedAt
       caveats
     }
+    filterEmptyReason
   }
 }
 `;
