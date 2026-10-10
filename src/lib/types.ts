@@ -41,6 +41,12 @@ export type MetricDelta = {
      */
     rate_state?: string | null;
     /**
+     * Served by the backend (CHAOS-9093): null = the request names no repository; true = the
+     * repository filter reached this metric (also when it matched nothing: then `has_data` is
+     * false); false = the value is NOT narrowed by the repository. Undefined: an older backend.
+     */
+    repo_filter_applied?: boolean | null;
+    /**
      * Coverage of the rate: a 0..1 fraction, not a percent. Null: none served (no merged pull
      * request or no stored counts). Absent: the REST answer, or an API before it. 0 is a value.
      */
@@ -139,6 +145,10 @@ export type CockpitSignal = {
     recommended_action: string;
     evidence_ref?: string | null;
     category: SignalCategory;
+    /** Share (0..1) of the score's input weight that was present; null when no score (CHAOS-6545). */
+    coverage?: number | null;
+    /** Same meaning as `MetricDelta.repo_filter_applied`; null on a signal that is not from a metric. */
+    repo_filter_applied?: boolean | null;
     attribution?: SignalAttribution | null;
 };
 

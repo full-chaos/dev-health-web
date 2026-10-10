@@ -1293,7 +1293,35 @@ type HomeRestFixture = ReturnType<typeof homeRestFixture>;
 
 // Inverse of toHomeResponse (src/lib/graphql/homeFetchers.ts): REST shape ->
 // GraphQL `home` shape, so the GraphQL mock cannot drift from the REST one.
-function homeRestToGraphQL(rest: HomeRestFixture) {
+// Metrics the backend does not narrow by repository (the served `repoFilterApplied` is false).
+const MOCK_REPO_UNSCOPED = new Set(["cycle_time", "throughput", "wip_saturation", "blocked_work"]);
+
+function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
+    // MOCK_HOME_RISK_COVERAGE (picture runs only): add one compounding-risk signal with this coverage.
+    const riskCoverage = Number(process.env.MOCK_HOME_RISK_COVERAGE ?? "");
+    const riskSignals =
+        process.env.MOCK_HOME_RISK_COVERAGE && Number.isFinite(riskCoverage)
+            ? [
+                  {
+                      id: "risk-mock",
+                      title: "Compounding risk appears elevated",
+                      metric: "compounding_risk",
+                      current_value: "0.52",
+                      prior_value: null,
+                      delta: null,
+                      direction: "flat",
+                      severity: "medium",
+                      confidence: "medium",
+                      affected_scope: "meridian/web-app",
+                      evidence_count: 1,
+                      why_it_matters: "Several inputs point the same way.",
+                      recommended_action: "Review the inputs.",
+                      evidence_ref: null,
+                      category: "risk",
+                      coverage: riskCoverage,
+                  },
+              ]
+            : [];
     return {
         freshness: {
             lastIngestedAt: rest.freshness.last_ingested_at,
@@ -1310,6 +1338,7 @@ function homeRestToGraphQL(rest: HomeRestFixture) {
             value: d.value,
             unit: d.unit,
             deltaPct: d.delta_pct,
+            repoFilterApplied: repoNamed ? !MOCK_REPO_UNSCOPED.has(d.metric) : null,
             spark: [] as { ts: string; value: number | null }[],
         })),
         reworkThemeAllocation: rest.rework_theme_allocation.map((r) => ({
@@ -1334,7 +1363,14 @@ function homeRestToGraphQL(rest: HomeRestFixture) {
         },
         events: [] as { ts: string; type: string; text: string; link: string }[],
         healthState: { ...rest.health_state, asOf: null },
-        signals: rest.signals.map((sg) => ({
+        signals: [...rest.signals, ...riskSignals].map((sg) => ({
+            coverage: (sg as { coverage?: number }).coverage ?? null,
+            repoFilterApplied:
+                sg.metric === "compounding_risk"
+                    ? null
+                    : repoNamed
+                      ? !MOCK_REPO_UNSCOPED.has(sg.metric)
+                      : null,
             id: sg.id,
             title: sg.title,
             metric: sg.metric,
@@ -1499,7 +1535,11 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
     }
 
     if (query.includes("query Home(")) {
-        return HttpResponse.json({ data: { home: homeRestToGraphQL(homeRestFixture()) } });
+        const homeFilters = (variables as { filters?: { what?: { repos?: string[] } } }).filters;
+        const repoNamed = (homeFilters?.what?.repos?.length ?? 0) > 0;
+        return HttpResponse.json({
+            data: { home: homeRestToGraphQL(homeRestFixture(), repoNamed) },
+        });
     }
 
     if (query.includes("query Hotspots(")) {
@@ -1842,6 +1882,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                 scopeId: "repo-a",
                 scopeLabel: "meridian/core-api",
                 score: 0.71,
+                coverage: 0.6,
                 severity: "HIGH",
                 components: baseComponents,
                 weights,
@@ -1854,6 +1895,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                 scopeId: "repo-b",
                 scopeLabel: "meridian/web-app",
                 score: 0.42,
+                coverage: 1,
                 severity: "ELEVATED",
                 components: {
                     ...baseComponents,

@@ -359,4 +359,43 @@ describe("CompoundingRiskDashboard on the shared Section", () => {
         expect(card).toHaveTextContent(/sorted by score · \d+ repo/);
         expect(within(card).getByRole("table")).toBeInTheDocument();
     });
+
+    describe("coverage note (CHAOS-9078)", () => {
+        it("shows 'Based on 60% of inputs' on the headline and the row", () => {
+            renderDashboard({ rows: [makeRow({ coverage: 0.6 })] });
+            expect(screen.getByTestId("headline-coverage-note").textContent).toBe(
+                "Based on 60% of inputs",
+            );
+            expect(screen.getByTestId("row-coverage-note").textContent).toBe(
+                "Based on 60% of inputs",
+            );
+        });
+
+        it("shows the note at coverage 1", () => {
+            renderDashboard({ rows: [makeRow({ coverage: 1 })] });
+            expect(screen.getByTestId("headline-coverage-note").textContent).toBe(
+                "Based on 100% of inputs",
+            );
+        });
+
+        it("shows no note when coverage is null or not served", () => {
+            renderDashboard({ rows: [makeRow({ coverage: null })] });
+            expect(screen.queryByTestId("headline-coverage-note")).toBeNull();
+            expect(screen.queryByTestId("row-coverage-note")).toBeNull();
+        });
+
+        it("keeps the severity colour at coverage 0.2", () => {
+            const full = renderDashboard({ rows: [makeRow({ coverage: 1 })] });
+            const fullChip = screen.getAllByTestId("severity-chip")[0];
+            const fullClass = fullChip.className;
+            full.unmount();
+            renderDashboard({ rows: [makeRow({ coverage: 0.2 })] });
+            const lowChip = screen.getAllByTestId("severity-chip")[0];
+            expect(lowChip.getAttribute("data-severity")).toBe("high");
+            expect(lowChip.className).toBe(fullClass);
+            expect(screen.getByTestId("headline-coverage-note").textContent).toBe(
+                "Based on 20% of inputs",
+            );
+        });
+    });
 });

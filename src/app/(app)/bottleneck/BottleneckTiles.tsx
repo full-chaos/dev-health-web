@@ -48,7 +48,7 @@ export function BottleneckTiles({
                         {...metricCardProps(placeholderDeltas ? null : row)}
                         polarity={getMetricPolarity(metric)}
                         spark={row?.spark}
-                        caption={withRepoScopeNote(caption, metric, filters)}
+                        caption={withRepoScopeNote(caption, metric, filters, row)}
                         onOpenEvidence={() =>
                             evidence.open({ title: label, metric, filters, role, origin })
                         }

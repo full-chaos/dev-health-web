@@ -91,6 +91,9 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             has_prior_data: d.hasPriorData,
             ...(d.rateState ? { rate_state: d.rateState } : {}),
             ...(d.rateCoverage !== undefined ? { rate_coverage: d.rateCoverage } : {}),
+            ...(d.repoFilterApplied !== undefined
+                ? { repo_filter_applied: d.repoFilterApplied }
+                : {}),
             spark: d.spark.map((p) => ({ ts: p.ts, value: p.value })),
         })),
         rework_theme_allocation: result.reworkThemeAllocation.map((r) => ({
@@ -153,6 +156,10 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             recommended_action: s.recommendedAction,
             evidence_ref: s.evidenceRef,
             category: s.category as SignalCategory,
+            ...(s.coverage !== undefined ? { coverage: s.coverage } : {}),
+            ...(s.repoFilterApplied !== undefined
+                ? { repo_filter_applied: s.repoFilterApplied }
+                : {}),
             attribution: s.attribution
                 ? {
                       items: s.attribution.items,
