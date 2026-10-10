@@ -48,7 +48,7 @@ beforeEach(() => {
 });
 
 describe("/explore with an explain answer for another metric (CHAOS-9137)", () => {
-    it("a cycle_time answer to a pr_rework_ratio request draws the no-data state, never cycle_time's label or values", async () => {
+    it("a cycle_time answer to a pr_rework_ratio request draws the no-evidence-view state, never cycle_time's label or values", async () => {
         postJson.mockResolvedValue(cycleTimeAnswerFor("pr_rework_ratio"));
         await renderExplore({ metric: "pr_rework_ratio" });
         expect(postJson.mock.calls[0]?.[1]).toMatchObject({ metric: "pr_rework_ratio" });
@@ -58,21 +58,19 @@ describe("/explore with an explain answer for another metric (CHAOS-9137)", () =
         expect(screen.queryByText("repo-alpha")).toBeNull();
         expect(screen.queryByText("repo-gamma")).toBeNull();
         expect(screen.queryByText(/4\.2/)).toBeNull();
-        expect(
-            screen.getByText("Association detail will appear once data is ingested."),
-        ).toBeInTheDocument();
+        expect(screen.getByText("No evidence view for this metric yet.")).toBeInTheDocument();
+        expect(screen.queryByText("Likely associations")).toBeNull();
     });
 
-    it("a client error (400) for the metric draws the same no-data state, not a page error", async () => {
+    it("a client error (400) for the metric draws the same no-evidence-view state, not a page error", async () => {
         postJson.mockImplementation(async () => {
             throw new Error("API error: 400");
         });
         await renderExplore({ metric: "pr_rework_ratio" });
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("PR Rework Ratio");
         expect(screen.queryByText(/Service unavailable/i)).toBeNull();
-        expect(
-            screen.getByText("Association detail will appear once data is ingested."),
-        ).toBeInTheDocument();
+        expect(screen.getByText("No evidence view for this metric yet.")).toBeInTheDocument();
+        expect(screen.queryByText("Likely associations")).toBeNull();
     });
 
     it("an answer for the requested metric is drawn as before", async () => {

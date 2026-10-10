@@ -22,7 +22,7 @@ vi.mock("@/lib/api/system", () => ({ checkApiHealth: async () => ({ ok: true }) 
 
 const explain = vi.hoisted(() => ({ value: null as Record<string, unknown> | null }));
 vi.mock("@/lib/api/home", () => ({
-    getExplainData: async () => explain.value,
+    getExplainOutcome: async () => ({ data: explain.value, noView: false }),
     getHomeData: async () => null,
 }));
 vi.mock("@/lib/api/investment", () => ({

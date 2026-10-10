@@ -18,15 +18,15 @@ export const getHomeData = cache(async function getHomeData(filters: MetricFilte
 });
 
 /**
- * The explain answer for `params.metric`, or `null` when there is none to draw (CHAOS-9137):
- * the answer is for another metric (see `explainAnswerIsForOtherMetric`), or the route refused
- * the metric with a client error (400/404/422). Every caller already draws its "no explain
- * data" state for `null`; any other failure still throws.
+ * The explain answer for `params.metric` plus WHY there is none to draw. `noView` is true when
+ * the metric has no explain view: the answer is for another metric (see
+ * `explainAnswerIsForOtherMetric`), or the route refused the metric with a client error
+ * (400/404/422). Any other failure still throws.
  */
-export async function getExplainData(params: {
+export async function getExplainOutcome(params: {
     metric: string;
     filters: MetricFilter;
-}): Promise<ExplainResponse | null> {
+}): Promise<{ data: ExplainResponse | null; noView: boolean }> {
     const normalized = normalizeFilters(params.filters);
     let answer: ExplainResponse;
     try {
@@ -37,10 +37,23 @@ export async function getExplainData(params: {
             { metric: params.metric, f: encodeFilterParam(normalized) },
         );
     } catch (err) {
-        if (isExplainClientError(err)) return null;
+        if (isExplainClientError(err)) return { data: null, noView: true };
         throw err;
     }
-    return explainAnswerIsForOtherMetric(params.metric, answer) ? null : answer;
+    return explainAnswerIsForOtherMetric(params.metric, answer)
+        ? { data: null, noView: true }
+        : { data: answer, noView: false };
+}
+
+/**
+ * The explain answer for `params.metric`, or `null` when there is none to draw. Every caller
+ * but Explore draws its "no explain data" state for `null`; any other failure still throws.
+ */
+export async function getExplainData(params: {
+    metric: string;
+    filters: MetricFilter;
+}): Promise<ExplainResponse | null> {
+    return (await getExplainOutcome(params)).data;
 }
 
 /**

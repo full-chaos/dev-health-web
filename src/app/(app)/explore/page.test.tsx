@@ -113,7 +113,7 @@ const blockedIssues = vi.hoisted(() => ({
 }));
 const genericDrilldownRequest = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api/home", () => ({
-    getExplainData: async () => explain.value,
+    getExplainOutcome: async () => ({ data: explain.value, noView: false }),
     getHomeData: async () => null,
 }));
 vi.mock("@/lib/api/investment", () => ({

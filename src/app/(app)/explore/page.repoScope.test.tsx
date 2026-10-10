@@ -21,15 +21,18 @@ vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <div /> }));
 vi.mock("@/components/charts/HorizontalBarChart", () => ({ HorizontalBarChart: () => <div /> }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: async () => ({ ok: true }) }));
 vi.mock("@/lib/api/home", () => ({
-    getExplainData: async (p: { metric: string }) => ({
-        metric: p.metric,
-        label: p.metric,
-        unit: "days",
-        value: 5,
-        delta_pct: 10,
-        drivers: [],
-        contributors: [],
-        drilldown_links: {},
+    getExplainOutcome: async (p: { metric: string }) => ({
+        noView: false,
+        data: {
+            metric: p.metric,
+            label: p.metric,
+            unit: "days",
+            value: 5,
+            delta_pct: 10,
+            drivers: [],
+            contributors: [],
+            drilldown_links: {},
+        },
     }),
     getHomeData: async () => null,
 }));
