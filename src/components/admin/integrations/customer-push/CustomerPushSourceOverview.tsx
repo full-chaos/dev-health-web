@@ -31,7 +31,7 @@ const LINK_CARDS = [
 ] as const;
 
 export function CustomerPushSourceOverview({ provider, source }: CustomerPushSourceOverviewProps) {
-    const basePath = `/org/admin/integrations/${provider}/customer-push/${source.id}`;
+    const basePath = `/org/admin/integrations/${provider}/customer-push/${encodeURIComponent(source.id)}`;
     const displayName = source.display_name || source.instance;
 
     return (

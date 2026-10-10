@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { appPath } from "@/lib/navigation/appPath";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
@@ -241,13 +242,15 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                 )}
                 {displayResults.map((person) => {
                     const isFocus = !focusActive || focusMatches.has(person.person_id);
-                    const href = filters
-                        ? withFilterParam(`/people/${person.person_id}`, filters)
-                        : `/people/${person.person_id}`;
+                    const personPath = appPath("/people/[person_id]", {
+                        person_id: person.person_id,
+                    });
+                    const href = filters ? withFilterParam(personPath, filters) : personPath;
                     return (
                         <Link
                             key={person.person_id}
                             href={href}
+                            prefetch={false}
                             className={`block rounded-(--radius-sm) border border-(--card-stroke) bg-card px-4 py-3 transition hover:-translate-y-1 ${
                                 focusActive && !isFocus ? "opacity-50" : "opacity-100"
                             }`}

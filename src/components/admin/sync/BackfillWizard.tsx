@@ -14,6 +14,7 @@ import type {
 import { DATASET_LABELS } from "./config-form/constants";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { nameOrUnresolved } from "@/lib/labels/unresolved";
+import { appPath } from "@/lib/navigation/appPath";
 
 const EXPENSIVE_RANGE_THRESHOLD_DAYS = 180;
 const ESTIMATED_CHUNK_DAYS = 7;
@@ -1016,7 +1017,10 @@ export function BackfillWizard({
                                             </p>
                                         ) : outcome.syncRunId ? (
                                             <Link
-                                                href={`/org/admin/sync/${configId}/runs/${outcome.syncRunId}`}
+                                                href={appPath(
+                                                    "/org/admin/sync/[configId]/runs/[runId]",
+                                                    { configId, runId: outcome.syncRunId },
+                                                )}
                                                 className="mt-1 inline-block text-(--accent-2) hover:underline"
                                             >
                                                 {CTA_LABELS.viewRun}

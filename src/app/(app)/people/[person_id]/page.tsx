@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
+import { appPath } from "@/lib/navigation/appPath";
 import { PersonRangeBar } from "@/components/people/PersonRangeBar";
 import { PersonMetricCard } from "@/components/people/PersonMetricCard";
 import { checkApiHealth } from "@/lib/api/system";
@@ -82,6 +83,8 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
     const health = await checkApiHealth();
 
     const { person_id: personId } = await params;
+    // `personId` is the route param, still encoded. Links to it are built from the decoded text.
+    const decodedPersonId = decodeURIComponent(personId);
     const rawParams = (await searchParams) ?? {};
     const { range_days, compare_days } = getRangeParams(rawParams);
     const encodedFilter = Array.isArray(rawParams.f) ? rawParams.f[0] : rawParams.f;
@@ -175,7 +178,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                         delta={delta}
                         placeholder={placeholderDeltas}
                         href={withRangeParams(
-                            `/people/${personId}/metrics/${delta.metric}`,
+                            appPath("/people/[person_id]/metrics/[metric]", {
+                                person_id: decodedPersonId,
+                                metric: delta.metric,
+                            }),
                             range_days,
                             compare_days,
                         )}
@@ -207,7 +213,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                 const metric =
                                     getMetricFromEvidenceLink(item.evidence_link) ?? defaultMetric;
                                 const href = withRangeParams(
-                                    `/people/${personId}/metrics/${metric}`,
+                                    appPath("/people/[person_id]/metrics/[metric]", {
+                                        person_id: decodedPersonId,
+                                        metric,
+                                    }),
                                     range_days,
                                     compare_days,
                                 );

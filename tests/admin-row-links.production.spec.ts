@@ -28,12 +28,25 @@ const TEAMS = [...JIRA_IDS, ...SPECIAL_TEAM_IDS].map((team_id, index) => ({
 const IDENTITY = { canonical_id: "person+ops@example.com", display_name: "Ops Person" };
 
 const EDIT_ROUTE = /^\/org\/admin\/(?:teams|identities)\/.+\/edit$/u;
+/** People ids with `:` `@` `+` (CHAOS-9117): the `/people` cards link to `/people/<id>`. */
+const PEOPLE = [...JIRA_IDS, "github:acme/dev-1", "dev+ops@example.com"].map(
+    (person_id, index) => ({
+        person_id,
+        display_name: `Person ${String(index + 1).padStart(2, "0")}`,
+    }),
+);
+const PERSON_ROUTE = /^\/people\/[^/]+$/u;
+
 /** The idle time of the count. On the unchanged code 30 s gave about 3,600 requests. */
 const IDLE_MS = 30_000;
 
 async function seedAdminRows(
     request: APIRequestContext,
-    seed: { teams: typeof TEAMS; identities: (typeof IDENTITY)[] },
+    seed: {
+        teams: typeof TEAMS;
+        identities: (typeof IDENTITY)[];
+        people?: { person_id: string; display_name: string }[];
+    },
 ): Promise<void> {
     const response = await request.post(`${OPS_MOCK_ORIGIN}/__test/admin-rows`, { data: seed });
     expect(response.status()).toBe(204);
@@ -146,5 +159,37 @@ test.describe("admin list row links (production build)", () => {
 
         await expect(page.getByRole("heading", { name: "Edit Identity" })).toBeVisible();
         await expect(page.locator("#canonical_id")).toHaveValue(IDENTITY.canonical_id);
+    });
+
+    test("an idle people list sends no request for the route of a person (CHAOS-9117)", async ({
+        page,
+        request,
+    }) => {
+        test.setTimeout(IDLE_MS + 60_000);
+        await seedAdminRows(request, { teams: [], identities: [], people: PEOPLE });
+        const personRequests: string[] = [];
+        let prefetches = 0;
+        page.on("request", (req) => {
+            if (req.method() !== "GET") return;
+            const { pathname } = new URL(req.url());
+            if (PERSON_ROUTE.test(pathname)) personRequests.push(pathname);
+            if (req.headers()["next-router-prefetch"] === "1") prefetches += 1;
+        });
+
+        await page.goto("/people?q=person");
+        const cards = page.locator('a[href^="/people/"]').filter({ hasText: "Person" });
+        await expect(cards).toHaveCount(PEOPLE.length);
+        // The fifth card is the first that looped before the fix.
+        await expect
+            .soft(cards.nth(4))
+            .toHaveAttribute(
+                "href",
+                new RegExp(`^/people/${encodeURIComponent(PEOPLE[4].person_id)}(?:\\?|$)`, "u"),
+            );
+
+        await page.waitForTimeout(IDLE_MS);
+
+        expect(prefetches).toBeGreaterThan(0);
+        expect(personRequests.length).toBe(0);
     });
 });

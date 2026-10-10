@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { UserForm, UserFormData } from "@/components/admin/users/UserForm";
 import { updateUser } from "@/lib/admin/server";
 import type { User } from "@/lib/admin/types";
+import { appPath } from "@/lib/navigation/appPath";
 
 type EditUserFormWrapperProps = {
     user: User;
@@ -31,12 +32,12 @@ export function EditUserFormWrapper({ user }: EditUserFormWrapperProps) {
             return;
         }
 
-        router.push(`/org/admin/users/${user.id}`);
+        router.push(appPath("/org/admin/users/[id]", { id: user.id }));
         router.refresh();
     };
 
     const handleCancel = () => {
-        router.push(`/org/admin/users/${user.id}`);
+        router.push(appPath("/org/admin/users/[id]", { id: user.id }));
     };
 
     return (
