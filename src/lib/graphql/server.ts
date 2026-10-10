@@ -49,7 +49,12 @@ import {
 import { registerUrql } from "@urql/next/rsc";
 import { ValidationErrors, graphQlErrorMessage } from "@/lib/constants/errors";
 import { resolveOrigin } from "@/lib/origin";
-import { fetchWithDeadline, withDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
+import {
+    fetchWithDeadline,
+    isWriteDeadlineError,
+    withDeadline,
+    type ServerFetchKind,
+} from "@/lib/serverDeadline";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 
 const GRAPHQL_PATH = "/graphql";
@@ -206,6 +211,9 @@ export async function graphqlFetch<T>(
         : await client.query<T>(query, variables, operationContext).toPromise();
 
     if (result.error) {
+        // A mutation that hit its deadline: the server may have applied it. Rethrow the deadline
+        // error itself so the caller's failure path (failureFromError) shows the approved text.
+        if (isWriteDeadlineError(result.error.networkError)) throw result.error.networkError;
         throw new Error(graphQlErrorMessage(result.error.message));
     }
 

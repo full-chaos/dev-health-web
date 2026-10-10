@@ -20,8 +20,10 @@
  *    not a fetch.
  *
  * Kinds: `read`, `health`, `auth` (validate, impersonate-status), `entitlements` are bounded.
- * `write` (a mutation, refresh, login) is NEVER bounded: the server may have applied the change.
- * It is logged when slow, nothing more.
+ * `write` (a mutation) is bounded too (CHAOS-9112), by the same race and the same log line, with
+ * one difference in what the caller does: it is NEVER retried after the deadline (the server may
+ * have applied the change) and the user sees WRITE_TIMED_OUT_MESSAGE. Login, social login and
+ * token refresh use the `auth` deadline; a refresh that hits it keeps its present handling.
  *
  * Deadlines are a BACKSTOP above real p99, not a speed target. Tune them from the lines.
  *
@@ -34,7 +36,7 @@ import { logger } from "@/lib/logger";
 
 export type ServerFetchKind = "read" | "health" | "auth" | "entitlements" | "write";
 
-type DeadlineKind = Exclude<ServerFetchKind, "write">;
+type DeadlineKind = ServerFetchKind;
 type Layer = "inner" | "outer";
 type TableKey = DeadlineKind | "slow" | "outerMargin";
 
@@ -44,6 +46,12 @@ export const SERVER_FETCH_DEADLINES: Readonly<Record<TableKey, number>> = {
     health: 5_000,
     auth: 10_000,
     entitlements: 10_000,
+    /**
+     * A write (mutation, create/save/delete/start-a-job). Above the 20 s read deadline: a write
+     * may touch more rows or start a job. A BACKSTOP just above the slowest expected write, not a
+     * speed target; tune it from the "server fetch deadline exceeded" lines.
+     */
+    write: 30_000,
     /** A call that takes longer than this (ok or failed) is logged as slow. */
     slow: 5_000,
     /** The OUTER layer waits this much longer than the inner deadline of the same kind. */
@@ -55,6 +63,7 @@ const ENV_NAME: Record<DeadlineKind | "slow", string> = {
     health: "SERVER_FETCH_DEADLINE_HEALTH_MS",
     auth: "SERVER_FETCH_DEADLINE_AUTH_MS",
     entitlements: "SERVER_FETCH_DEADLINE_ENTITLEMENTS_MS",
+    write: "SERVER_FETCH_DEADLINE_WRITE_MS",
     slow: "SERVER_FETCH_SLOW_MS",
 };
 
@@ -94,6 +103,11 @@ const deadlineErrors = new WeakSet<object>();
 export function isServerDeadlineError(error: unknown): boolean {
     return typeof error === "object" && error !== null && deadlineErrors.has(error);
 }
+// The subset made by a `write`: the server may have applied the change.
+const writeDeadlineErrors = new WeakSet<object>();
+export function isWriteDeadlineError(error: unknown): boolean {
+    return typeof error === "object" && error !== null && writeDeadlineErrors.has(error);
+}
 
 // Inner deadlines written so far in this process. The outer layer compares it before and after
 // its wait. It is a process-wide count (no per-request context on purpose: it must work in every
@@ -101,11 +115,17 @@ export function isServerDeadlineError(error: unknown): boolean {
 let innerDeadlines = 0;
 
 /**
- * Race `promise` against the deadline of `kind`. A `write` is returned as it is.
+ * The one sentence the user sees when a WRITE hit its deadline (chris, CHAOS-9112). The server may
+ * have applied the change: a write is never retried after the deadline.
+ */
+export const WRITE_TIMED_OUT_MESSAGE = "Timed out; the change may have been applied.";
+
+/**
+ * Race `promise` against the deadline of `kind`.
  * On the timer: reject with a `TimeoutError` and write the "deadline exceeded" line.
  */
 export function withDeadline<T>(promise: Promise<T>, options: DeadlineOptions): Promise<T> {
-    if (options.kind === "write" || typeof window !== "undefined") return promise;
+    if (typeof window !== "undefined") return promise;
     const layer = options.layer ?? "outer";
     const deadlineMs = limitMs(options.kind) + (layer === "outer" ? limitMs("outerMargin") : 0);
     const innerAtStart = innerDeadlines;
@@ -118,6 +138,7 @@ export function withDeadline<T>(promise: Promise<T>, options: DeadlineOptions): 
                 "TimeoutError",
             );
             deadlineErrors.add(error);
+            if (options.kind === "write") writeDeadlineErrors.add(error);
             if (layer === "inner") innerDeadlines += 1;
             logger.warn(
                 {
@@ -272,23 +293,20 @@ export async function fetchWithDeadline(
 
     try {
         let response: Response;
-        if (options.kind === "write") {
-            response = await fetch(input, init);
-        } else {
-            const orphan: Orphan = { lost: false };
-            const work = fetch(input, init).then((raw) => buffered(raw, orphan));
-            work.catch(() => undefined); // an orphan that fails later is not an unhandled rejection
-            try {
-                response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
-            } catch (error) {
-                if (isServerDeadlineError(error)) {
-                    // Lost the race: close the body read (the header wait cannot be cancelled
-                    // without a signal, and a late body is cancelled when its headers arrive).
-                    orphan.lost = true;
-                    orphan.cancel?.();
-                }
-                throw error;
+        const orphan: Orphan = { lost: false };
+        const work = fetch(input, init).then((raw) => buffered(raw, orphan));
+        work.catch(() => undefined); // an orphan that fails later is not an unhandled rejection
+        try {
+            response = await withDeadline(work, { kind: options.kind, op, layer: "inner" });
+        } catch (error) {
+            if (isServerDeadlineError(error)) {
+                // Lost the race: close the body read (the header wait cannot be cancelled
+                // without a signal, and a late body is cancelled when its headers arrive).
+                // A write is NOT retried and NOT aborted: the server may have applied it.
+                orphan.lost = true;
+                orphan.cancel?.();
             }
+            throw error;
         }
         const elapsed = Date.now() - started;
         if (elapsed > slowMs) {

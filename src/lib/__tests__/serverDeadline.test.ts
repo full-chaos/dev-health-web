@@ -13,6 +13,7 @@ import {
     boundedRead,
     fetchWithDeadline,
     isServerDeadlineError,
+    isWriteDeadlineError,
     overrideDeadlinesForTests,
     sanitizePath,
     withDeadline,
@@ -111,15 +112,42 @@ describe("fetchWithDeadline (inner layer)", () => {
         expect(warn).not.toHaveBeenCalled();
     });
 
-    it("does not bound a write, and logs it slow", async () => {
-        let resolveFetch: (r: Response) => void = () => {};
+    it("bounds a write like a read: settles at the write deadline, logs once, never retries (CHAOS-9112)", async () => {
+        const fetchMock = stallingFetch();
+        vi.stubGlobal("fetch", fetchMock);
+        const state = track(
+            fetchWithDeadline(
+                "http://api.test/api/v1/billing/x",
+                { method: "POST" },
+                { kind: "write" },
+            ),
+        );
+        await vi.advanceTimersByTimeAsync(SERVER_FETCH_DEADLINES.write - 1);
+        expect(state.settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(2);
+        expect(state.settled).toBe(true);
+        expect(isServerDeadlineError(state.error)).toBe(true);
+        expect(isWriteDeadlineError(state.error)).toBe(true);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(deadlineLines()).toHaveLength(1);
+        expect(deadlineLines()[0][0]).toMatchObject({
+            op: "POST /api/v1/billing/x",
+            deadline_ms: SERVER_FETCH_DEADLINES.write,
+            outcome: "deadline",
+        });
+    });
+
+    it("a write answered under the deadline is logged slow, no deadline line", async () => {
         vi.stubGlobal(
             "fetch",
             vi.fn(
                 () =>
-                    new Promise<Response>((resolve) => {
-                        resolveFetch = resolve;
-                    }),
+                    new Promise<Response>((resolve) =>
+                        setTimeout(
+                            () => resolve(new Response("{}", { status: 200 })),
+                            SERVER_FETCH_DEADLINES.slow + 100,
+                        ),
+                    ),
             ),
         );
         const state = track(
@@ -129,18 +157,10 @@ describe("fetchWithDeadline (inner layer)", () => {
                 { kind: "write" },
             ),
         );
-        await vi.advanceTimersByTimeAsync(SERVER_FETCH_DEADLINES.read * 3);
-        expect(state.settled).toBe(false);
-        resolveFetch(new Response("{}", { status: 200 }));
-        await flush();
+        await vi.advanceTimersByTimeAsync(SERVER_FETCH_DEADLINES.slow + 200);
         expect(state.settled).toBe(true);
         expect(deadlineLines()).toHaveLength(0);
-        expect(warn).toHaveBeenCalledTimes(1);
         expect(warn.mock.calls[0][1]).toBe("server fetch slow");
-        expect(warn.mock.calls[0][0]).toMatchObject({
-            op: "POST /api/v1/billing/x",
-            outcome: "ok",
-        });
     });
 
     it("logs a read that succeeds after the slow threshold, with the status class", async () => {
@@ -274,11 +294,15 @@ describe("withDeadline (outer layer)", () => {
         expect(outer?.[0]).toMatchObject({ op: "step two", inner_fired: true });
     });
 
-    it("never bounds a write: no timer, the same promise comes back", async () => {
-        const pending = new Promise<string>(() => {});
-        expect(withDeadline(pending, { kind: "write", op: "s" })).toBe(pending);
-        await vi.advanceTimersByTimeAsync(10 * SERVER_FETCH_DEADLINES.read);
-        expect(warn).not.toHaveBeenCalled();
+    it("bounds a write: the same line, marked as a write deadline", async () => {
+        const state = track(
+            withDeadline(new Promise<string>(() => {}), { kind: "write", op: "s" }),
+        );
+        await vi.advanceTimersByTimeAsync(
+            SERVER_FETCH_DEADLINES.write + SERVER_FETCH_DEADLINES.outerMargin + 1,
+        );
+        expect(isWriteDeadlineError(state.error)).toBe(true);
+        expect(deadlineLines()).toHaveLength(1);
     });
 
     it("passes a healthy value and a plain rejection through, with no line", async () => {

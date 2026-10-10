@@ -18,7 +18,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
     if (token) {
         try {
             const backendUrl = getBackendUrl();
-            const res = await deadlineFetch("write", "GET /api/v1/auth/verify")(
+            const res = await deadlineFetch("auth", "GET /api/v1/auth/verify")(
                 `${backendUrl}/api/v1/auth/verify?token=${encodeURIComponent(token)}`,
                 { cache: "no-store" },
             );

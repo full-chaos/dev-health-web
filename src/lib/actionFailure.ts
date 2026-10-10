@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { isWriteDeadlineError, WRITE_TIMED_OUT_MESSAGE } from "@/lib/serverDeadline";
 
 /** The one sentence a failed ACTION (save, delete, toggle, run) shows when no validation text applies. */
 export const ACTION_FAILED_MESSAGE = "The change was not saved. Try again.";
@@ -97,6 +98,10 @@ export function actionFailureMessage(error: unknown, operation: string): string 
  * sentence. Anything else (a network failure, a bug) is logged and shown as the plain sentence.
  */
 export function failureFromError(operation: string, err: unknown): FailureResult {
+    if (isWriteDeadlineError(err)) {
+        // The deadline line is already written by the shared place. A write is not retried.
+        return { error: WRITE_TIMED_OUT_MESSAGE };
+    }
     const e = err as { name?: unknown; status?: unknown; detail?: unknown; method?: unknown };
     const isApi = err instanceof Error && e.name === "AdminApiError";
     const isUserFacing = err instanceof UserFacingActionError;
