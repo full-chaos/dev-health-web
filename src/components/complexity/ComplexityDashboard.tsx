@@ -45,7 +45,7 @@ import { computeKpis, computeRisingAreas } from "./complexityKpis";
 
 export { computeKpis, computeRisingAreas };
 import { formatNumber } from "@/lib/formatters";
-import type { HeatmapResponse } from "@/lib/types";
+import type { HeatmapResponse, MetricFilter } from "@/lib/types";
 
 // Register LineChart for multi-series trend — Grid, Tooltip, Legend already
 // registered globally in echartsInit.ts.
@@ -98,6 +98,8 @@ export type HotspotHeatmapProps = {
     state: "ok" | "unavailable" | "failed";
     data: HeatmapResponse | null;
     summary?: string;
+    /** The page filter: a repository in `what.repos` gets the "Not filtered by repository" note. */
+    filters?: MetricFilter;
 };
 
 export type ComplexityDashboardProps = {
@@ -496,6 +498,7 @@ function HotspotHeatmapSection({ heatmap }: { heatmap: HotspotHeatmapProps }) {
                 title="Hotspot concentration"
                 description="Where churn and ownership load accumulate over time."
                 request={heatmap.request}
+                filters={heatmap.filters}
                 initialData={heatmap.data}
                 emptyState={emptyState}
                 embedded

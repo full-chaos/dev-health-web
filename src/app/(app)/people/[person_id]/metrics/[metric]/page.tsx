@@ -1,3 +1,5 @@
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { decodeFilter } from "@/lib/filters/encode";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -63,6 +65,8 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
     const { person_id: personId, metric } = await params;
     const rawParams = (await searchParams) ?? {};
     const { range_days, compare_days } = getRangeParams(rawParams);
+    const encodedFilter = Array.isArray(rawParams.f) ? rawParams.f[0] : rawParams.f;
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : defaultMetricFilter;
 
     const evidenceParam = Array.isArray(rawParams.evidence)
         ? rawParams.evidence[0]
@@ -271,6 +275,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                         range_days,
                     }}
                     initialData={activeHoursHeatmap}
+                    filters={filters}
                     emptyState="Active hours heatmap unavailable."
                     evidenceTitle="Commit evidence"
                 />

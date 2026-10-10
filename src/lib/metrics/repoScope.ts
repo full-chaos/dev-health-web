@@ -25,6 +25,13 @@ export const hasRepositoryFilter = (filters: MetricFilter): boolean =>
     (filters.what.repos?.length ?? 0) > 0 ||
     (filters.scope.level === "repo" && filters.scope.ids.length > 0);
 
+/**
+ * A repository is named in the filter bar (`what.repos`). A repository that IS the scope is not
+ * this case: the quadrant and heatmap routes take it as `scope_type=repo`, so it reaches the chart.
+ */
+export const hasSelectedRepos = (filters: MetricFilter): boolean =>
+    (filters.what.repos?.length ?? 0) > 0;
+
 /** The served flag of a row (`MetricDelta` or `HomeSignal`): null = no repository named. */
 export type RepoFilterServed = { repo_filter_applied?: boolean | null };
 

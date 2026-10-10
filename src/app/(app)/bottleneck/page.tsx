@@ -179,6 +179,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                     end_date: filters.time.end_date,
                 }}
                 initialData={reviewHeatmap}
+                filters={filters}
                 emptyState="Review wait heatmap will appear once PR data is ingested."
                 evidenceTitle="PR evidence"
             />

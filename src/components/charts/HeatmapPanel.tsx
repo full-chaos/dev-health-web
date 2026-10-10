@@ -15,7 +15,9 @@ import { StatusPill } from "@/components/admin/StatusPill";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { getHeatmap } from "@/lib/api/visuals";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
-import type { HeatmapCell, HeatmapResponse } from "@/lib/types";
+import { RepoScopeNote } from "@/components/shared/RepoScopeNote";
+import { hasSelectedRepos } from "@/lib/metrics/repoScope";
+import type { HeatmapCell, HeatmapResponse, MetricFilter } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 
 import { HeatmapChart } from "./HeatmapChart";
@@ -45,6 +47,8 @@ type HeatmapPanelProps = {
     embedded?: boolean;
     /** The read failed: show the shared error card instead of the empty box. */
     failed?: boolean;
+    /** The page filter: a repository in `what.repos` gets the "Not filtered by repository" note. */
+    filters?: MetricFilter;
 };
 
 const asText = (value: unknown): string | null =>
@@ -187,6 +191,7 @@ export function HeatmapPanel({
     flatStateLabel = "No variance in this window — every cell shares the same value.",
     embedded = false,
     failed = false,
+    filters,
 }: HeatmapPanelProps) {
     const evidenceDrawer = useEvidenceDrawer();
     // The artifacts shown under the chart before any selection (served with the grid).
@@ -243,6 +248,8 @@ export function HeatmapPanel({
     const headerNote = defaultSummary ? "Top hotspots" : null;
     const showArtifacts = artifacts.length > 0;
 
+    const repoNote = <RepoScopeNote show={filters ? hasSelectedRepos(filters) : false} />;
+
     return (
         <div className={embedded ? "" : "rounded-3xl border border-(--card-stroke) bg-card p-5"}>
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -250,6 +257,7 @@ export function HeatmapPanel({
                     <div>
                         <h2 className="font-(--font-display) text-xl">{title}</h2>
                         <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
+                        {repoNote}
                     </div>
                 )}
                 {/* Prototype `pill(unit, 'info')` (app.js:79): the served unit as an info pill. */}
@@ -259,6 +267,7 @@ export function HeatmapPanel({
                     </StatusPill>
                 ) : null}
             </div>
+            {embedded ? repoNote : null}
             <div
                 ref={chartRegionRef}
                 tabIndex={-1}
