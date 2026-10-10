@@ -117,6 +117,7 @@ export default defineConfig({
                 /auth-onboard-legacy\.spec\.ts/,
                 /acr-context-fabric\.production\.spec\.ts/,
                 /admin-row-links\.production\.spec\.ts/,
+                /investment-duplicate-requests\.production\.spec\.ts/,
                 /admin-customer-push\.spec\.ts/,
                 /nav-reachability\.spec\.ts/,
                 /pagerduty-final-qa-p[0-3]\.spec\.ts/,
