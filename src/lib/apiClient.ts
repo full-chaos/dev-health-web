@@ -1,7 +1,7 @@
 import { resolveOrigin } from "@/lib/origin";
 import { isServer } from "@/lib/env";
 import { ApiErrors, apiErrorMessage } from "@/lib/constants/errors";
-import { fetchWithDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
+import { fetchWithDeadline, withDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
 
 /**
  * Generate a unique request ID for distributed tracing.
@@ -46,8 +46,12 @@ const buildUrl = (path: string, params?: ApiQueryParams) => {
 async function getServerAuthHeaders(): Promise<Record<string, string>> {
     if (!isServer) return {};
     try {
-        const { auth } = await import("@/lib/auth");
-        const session = await auth();
+        // Bounded (CHAOS-9114): the session read is a wait before any request is sent. On the
+        // deadline the call goes without a token and the backend answers 401 (its boundary).
+        const session = await withDeadline(
+            import("@/lib/auth").then(({ auth }) => auth()),
+            { kind: "auth", op: "step auth headers" },
+        );
         if (session?.access_token) {
             return { Authorization: `Bearer ${session.access_token}` };
         }

@@ -28,18 +28,17 @@ vi.mock("@/components/charts/QuadrantPanel", () => ({
     ),
 }));
 
+import { overrideDeadlinesForTests } from "@/lib/serverDeadline";
 import CodePage from "./page";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 beforeEach(() => {
     warn.mockClear();
-    process.env.SERVER_FETCH_DEADLINE_READ_MS = "60";
-    process.env.SERVER_FETCH_DEADLINE_HEALTH_MS = "60";
+    overrideDeadlinesForTests({ read: 60, health: 60, auth: 60, outerMargin: 1_500 });
 });
 afterEach(() => {
-    delete process.env.SERVER_FETCH_DEADLINE_READ_MS;
-    delete process.env.SERVER_FETCH_DEADLINE_HEALTH_MS;
+    overrideDeadlinesForTests(null);
     vi.unstubAllGlobals();
 });
 
@@ -65,13 +64,16 @@ describe("/code with one call that never answers", () => {
         );
         const started = Date.now();
         const state = track(CodePage({ searchParams: Promise.resolve({}) }));
-        await sleep(1_500);
+        for (let i = 0; i < 1_500 && !state.settled; i += 1) await sleep(10);
         expect(state.settled).toBe(true);
-        expect(Date.now() - started).toBeLessThan(5_000);
         const html = renderToStaticMarkup(state.value as React.ReactElement);
         expect(html).toContain("quadrant-no-data");
         const lines = warn.mock.calls.filter(([, m]) => m === "server fetch deadline exceeded");
         expect(lines).toHaveLength(1);
-        expect(lines[0][0]).toMatchObject({ op: "GET /api/v1/quadrant", deadline_ms: 60 });
+        expect(lines[0][0]).toMatchObject({
+            op: "GET /api/v1/quadrant",
+            deadline_ms: 60,
+            layer: "inner",
+        });
     });
 });

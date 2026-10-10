@@ -47,6 +47,7 @@ vi.mock("@/lib/logger", () => {
 
 import type { JWT } from "next-auth/jwt";
 import "@/lib/auth";
+import { overrideDeadlinesForTests } from "@/lib/serverDeadline";
 import { applyBackendValidationMemo, resetValidationMemoForTests } from "@/lib/authValidationMemo";
 
 type Token = Record<string, unknown>;
@@ -60,10 +61,10 @@ const deadlineLines = () =>
 beforeEach(() => {
     resetValidationMemoForTests();
     warn.mockClear();
-    process.env.SERVER_FETCH_DEADLINE_AUTH_MS = "40";
+    overrideDeadlinesForTests({ auth: 40, outerMargin: 60, slow: 5_000 });
 });
 afterEach(() => {
-    delete process.env.SERVER_FETCH_DEADLINE_AUTH_MS;
+    overrideDeadlinesForTests(null);
     vi.unstubAllGlobals();
 });
 
@@ -103,19 +104,68 @@ describe("auth jwt callback with a backend that never answers", () => {
         expect(b.settled).toBe(true);
     });
 
-    it("an expired token: refresh settles at the deadline (access token dropped, refresh kept)", async () => {
-        vi.stubGlobal("fetch", stallingFetch());
+    it("an expired token: refresh is NOT bounded (it changes state) but is logged slow", async () => {
+        overrideDeadlinesForTests({ auth: 40, outerMargin: 60, slow: 30 });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                () =>
+                    new Promise<Response>((resolve) =>
+                        setTimeout(
+                            () =>
+                                resolve(
+                                    new Response(
+                                        JSON.stringify({
+                                            access_token: "new-access",
+                                            refresh_token: "new-refresh",
+                                        }),
+                                        { status: 200 },
+                                    ),
+                                ),
+                            150,
+                        ),
+                    ),
+            ),
+        );
         const token: Token = {
             id: "user-1",
             access_token: "access",
             refresh_token: "refresh",
             expires_at: Date.now() - 1_000,
         };
-        const state = track(jwt()({ token, account: null }));
+        const out = await jwt()({ token, account: null });
+        expect(out.access_token).toBe("new-access"); // answered at 150 ms, past the 40 ms auth deadline
+        // the refresh is never bounded (the validate that follows it is, and its line is separate)
+        expect(
+            deadlineLines().filter(([f]) => String((f as { op: string }).op).includes("refresh")),
+        ).toHaveLength(0);
+        const slow = warn.mock.calls.filter(([, m]) => m === "server fetch slow");
+        expect(slow.length).toBeGreaterThanOrEqual(1);
+        expect(slow[0][0]).toMatchObject({ op: "POST /api/v1/auth/refresh", outcome: "ok" });
+    });
+
+    it("a stalled impersonate-status settles at the deadline and is not retried for 30 s", async () => {
+        const fetchMock = stallingFetch();
+        vi.stubGlobal("fetch", fetchMock);
+        const make = (): Token => ({
+            id: "su-1",
+            is_superuser: true,
+            access_token: "access",
+            refresh_token: "refresh",
+            expires_at: Date.now() + 3_600_000,
+            last_validated: Date.now(),
+        });
+        const first = track(jwt()({ token: make(), account: null }));
         await sleep(600);
-        expect(state.settled).toBe(true);
-        expect(deadlineLines()[0][0]).toMatchObject({ op: "POST /api/v1/auth/refresh" });
-        expect((state.value as Token).refresh_token).toBe("refresh");
+        expect(first.settled).toBe(true);
+        expect(deadlineLines()[0][0]).toMatchObject({
+            op: "GET /api/v1/admin/impersonate/status",
+        });
+        const calls = vi.mocked(fetchMock).mock.calls.length;
+        const started = Date.now();
+        await jwt()({ token: make(), account: null });
+        expect(Date.now() - started).toBeLessThan(35); // no second wait
+        expect(vi.mocked(fetchMock).mock.calls.length).toBe(calls);
     });
 
     it("stalled validate: EVERY waiter settles at the deadline, one log line, memo cleared, a later request starts a NEW validate", async () => {

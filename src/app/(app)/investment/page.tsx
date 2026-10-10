@@ -2,6 +2,7 @@ import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
+import { boundedRead } from "@/lib/serverDeadline";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -50,7 +51,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
 
     const [health, orgResult, home] = await Promise.all([
         checkApiHealth(),
-        getCurrentOrg().catch(() => ({ data: undefined })),
+        boundedRead(getCurrentOrg(), "step current org").catch(() => ({ data: undefined })),
         fetchOrNull(getHomeDataViaGraphQL(filters), "investment/home-data"),
     ]);
 

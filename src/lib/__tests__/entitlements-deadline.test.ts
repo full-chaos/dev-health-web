@@ -26,15 +26,16 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
+import { overrideDeadlinesForTests } from "@/lib/serverDeadline";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 beforeEach(() => {
     warn.mockClear();
-    process.env.SERVER_FETCH_DEADLINE_ENTITLEMENTS_MS = "40";
+    overrideDeadlinesForTests({ entitlements: 40, outerMargin: 60 });
 });
 afterEach(() => {
-    delete process.env.SERVER_FETCH_DEADLINE_ENTITLEMENTS_MS;
+    overrideDeadlinesForTests(null);
     vi.unstubAllGlobals();
 });
 

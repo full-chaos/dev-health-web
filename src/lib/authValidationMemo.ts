@@ -2,6 +2,7 @@ import type { JWT } from "next-auth/jwt";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import { getBackendUrl } from "@/lib/origin";
 import { processMemo } from "@/lib/processMemo";
+import { withDeadline } from "@/lib/serverDeadline";
 import { deadlineFetch } from "@/lib/serverDeadline";
 
 const VALIDATION_INTERVAL_MS = 5 * 60 * 1000;
@@ -49,11 +50,13 @@ export async function applyBackendValidationMemo(token: JWT, now: number): Promi
     }
 
     const memoFailures = memoized?.kind === "transient" ? memoized.failures : 0;
-    const promise = validateBackendSession(
-        accessToken,
-        Math.max(validationFailureCount(token), memoFailures) + 1,
-        now,
-    );
+    const failures = Math.max(validationFailureCount(token), memoFailures) + 1;
+    // The memo stores the RACED promise (CHAOS-9114): whatever the validate call waits on, the
+    // entry settles at the outer deadline into the existing transient outcome (session kept).
+    const promise = withDeadline(validateBackendSession(accessToken, failures, now), {
+        kind: "auth",
+        op: "auth validate (memo)",
+    }).catch(() => transientOutcome(failures, now));
     validationMemo.set(memoKey, { kind: "inFlight", promise });
 
     const outcome = await promise;
