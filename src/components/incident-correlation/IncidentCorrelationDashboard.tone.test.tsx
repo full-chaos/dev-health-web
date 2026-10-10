@@ -29,7 +29,6 @@ vi.mock("next/navigation", () => ({
 
 const GOOD = "text-(--positive)";
 const BAD = "text-(--accent-negative)";
-const NEUTRAL = "text-(--ink-muted)";
 
 const filters: MetricFilter = {
     scope: { level: "repo", ids: ["my-repo"] },
@@ -82,16 +81,16 @@ describe("DORA tile change tone follows polarity", () => {
         expect(el).not.toHaveClass(GOOD);
     });
 
-    // The page draws only its DORA keys; these two have no catalog polarity.
+    // The page draws the served DORA keys `deployment_frequency` and `mttr`; the catalog lists
+    // them as polarity-only keys (the home catalog key for the first is `deploy_freq`).
     it.each([
-        ["deployment_frequency", -3],
-        ["deployment_frequency", 3],
-        ["mttr", -3],
-        ["mttr", 3],
-    ])("%s (no catalog polarity) is neutral at %s", (metric, d) => {
+        ["deployment_frequency", 3, GOOD, BAD],
+        ["deployment_frequency", -3, BAD, GOOD],
+        ["mttr", -3, GOOD, BAD],
+        ["mttr", 3, BAD, GOOD],
+    ])("%s at %s takes its direction from the catalog", (metric, d, has, hasNot) => {
         const el = toneOf(metric as string, d as number);
-        expect(el).toHaveClass(NEUTRAL);
-        expect(el).not.toHaveClass(GOOD);
-        expect(el).not.toHaveClass(BAD);
+        expect(el).toHaveClass(has as string);
+        expect(el).not.toHaveClass(hasNot as string);
     });
 });

@@ -198,5 +198,16 @@ export const getMetricLabel = (metric: string) => {
 };
 
 export const getMetricUnit = (metric: string) => metricMetaByKey.get(metric)?.unit ?? "";
+/**
+ * Keys that are served but are not a catalog entry (no tile, label or fallback of their own):
+ * only their direction is known. The incident correlation DORA tiles draw them.
+ */
+const POLARITY_ONLY = new Map<string, MetricPolarity>(
+    Object.entries({
+        deployment_frequency: "higherIsBetter",
+        mttr: "lowerIsBetter",
+    }),
+);
+
 export const getMetricPolarity = (metric: string): MetricPolarity | undefined =>
-    metricMetaByKey.get(metric)?.polarity;
+    metricMetaByKey.get(metric)?.polarity ?? POLARITY_ONLY.get(metric);

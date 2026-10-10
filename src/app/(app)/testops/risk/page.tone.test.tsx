@@ -25,8 +25,8 @@ vi.mock("@/components/charts/QuadrantChart", () => ({
 
 import RiskPage from "./page";
 
-// CHAOS-9077: the three Delivery Risk tiles have no catalog polarity and no TestOps measure
-// definition, so no direction is known for them: their change is drawn in the neutral tone.
+// CHAOS-9077: the three Delivery Risk tiles have no catalog key and no TestOps measure definition;
+// the page states the direction of each at the tile.
 const risk = (delta: number) => ({
     timeseries: [{ date: "2026-09-01", riskScore: 0.2 }],
     quality_drag_breakdown: [],
@@ -42,20 +42,26 @@ const risk = (delta: number) => ({
 describe("Delivery Risk tiles: tone of the change", () => {
     beforeEach(() => vi.clearAllMocks());
 
-    it.each([-4, 4])(
-        "draws a change of %s percent in the neutral tone on every tile",
-        async (delta) => {
+    // Release Confidence and Pipeline Stability: higher is better. Quality Drag (hours lost): lower is better.
+    it.each([
+        [-4, ["bad", "good", "bad"]],
+        [4, ["good", "bad", "good"]],
+    ] as const)(
+        "draws a change of %s percent by the direction of each tile",
+        async (delta, tones) => {
             mockFetchRiskMetrics.mockResolvedValue(risk(delta));
             render(await RiskPage({ searchParams: Promise.resolve({}) }));
-            const tiles = within(screen.getByTestId("delivery-risk-tiles"));
-            const deltas = tiles.getAllByTestId("metric-delta");
+            const deltas = within(screen.getByTestId("delivery-risk-tiles")).getAllByTestId(
+                "metric-delta",
+            );
             expect(deltas).toHaveLength(3);
-            for (const el of deltas) {
-                expect(el).toHaveClass("text-(--ink-muted)");
-                expect(el).not.toHaveClass("text-(--positive)");
-                expect(el).not.toHaveClass("text-(--accent-negative)");
+            const cls = { good: "text-(--positive)", bad: "text-(--accent-negative)" };
+            const other = { good: cls.bad, bad: cls.good };
+            deltas.forEach((el, i) => {
+                expect(el).toHaveClass(cls[tones[i]]);
+                expect(el).not.toHaveClass(other[tones[i]]);
                 expect(el.textContent).toBe(delta > 0 ? "+4%" : "-4%");
-            }
+            });
         },
     );
 });
