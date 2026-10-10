@@ -413,6 +413,8 @@ export const CTA_LABELS = {
     zoomOut: "Zoom out",
     /** Work Graph, layered drawing: back to the width that fits the box. */
     resetZoom: "Reset zoom",
+    /** Work Graph, layered drawing: close the opened large columns back to one group each. */
+    groupLargeColumns: "Group large columns",
     filters: "Filters",
     openAiWorkflows: "Open AI Workflows",
     startWithAiImpact: "Start with AI Impact",
