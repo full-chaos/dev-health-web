@@ -498,3 +498,28 @@ describe("toHomeResponse rateState (CHAOS-9043)", () => {
         expect("rate_state" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
     });
 });
+
+describe("toHomeResponse rateCoverage (CHAOS-9141)", () => {
+    const withDelta = (extra: object) => ({
+        ...graphqlFixture,
+        deltas: [{ ...graphqlFixture.deltas[0], ...extra }],
+    });
+
+    it("keeps a null as null", () => {
+        expect(
+            toHomeResponse(withDelta({ rateCoverage: null })).deltas[0].rate_coverage,
+        ).toBeNull();
+    });
+
+    it("keeps 0 as 0 (a value, not a missing one)", () => {
+        expect(toHomeResponse(withDelta({ rateCoverage: 0 })).deltas[0].rate_coverage).toBe(0);
+    });
+
+    it("keeps 0.6 as 0.6 (a fraction, never a percent)", () => {
+        expect(toHomeResponse(withDelta({ rateCoverage: 0.6 })).deltas[0].rate_coverage).toBe(0.6);
+    });
+
+    it("leaves the key out when the answer has none (absent)", () => {
+        expect("rate_coverage" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
+    });
+});
