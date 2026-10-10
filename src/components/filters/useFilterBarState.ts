@@ -91,9 +91,15 @@ export function useFilterBarState({
             didSetDefaultRef.current = true;
             const params = new URLSearchParams(searchParams.toString());
             params.set("f", encodeFilterParam(defaultMetricFilter));
-            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            // URL only, no server trip (CHAOS-9130): `router.replace` would make a second RSC
+            // render of the same page. Next syncs `useSearchParams` with the history API.
+            window.history.replaceState(
+                window.history.state,
+                "",
+                `${pathname}?${params.toString()}`,
+            );
         }
-    }, [encoded, pathname, router, searchParams, writeDefaultFilter]);
+    }, [encoded, pathname, searchParams, writeDefaultFilter]);
 
     useEffect(() => {
         if (view !== "people") {
