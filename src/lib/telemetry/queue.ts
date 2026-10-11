@@ -9,8 +9,13 @@ type TelemetryQueueOptions = {
     flushIntervalMs: number;
 };
 
+/** Upper bound on buffered events; the oldest are dropped (and counted) past it. */
+export const MAX_QUEUED_EVENTS = 200;
+
 export type TelemetryQueue = {
     enqueue(event: TelemetryEvent): void;
+    /** Count of events lost to a failed send or the buffer cap. */
+    droppedCount(): number;
     flush(): Promise<void>;
     dispose(): void;
 };
@@ -22,6 +27,8 @@ export function createTelemetryQueue({
 }: TelemetryQueueOptions): TelemetryQueue {
     let events: TelemetryEvent[] = [];
     let flushPromise: Promise<void> | null = null;
+    let dropped = 0;
+    let failureLogged = false;
     const timer =
         flushIntervalMs > 0 ? globalThis.setInterval(() => void flush(), flushIntervalMs) : null;
 
@@ -39,10 +46,15 @@ export function createTelemetryQueue({
                 .filter((adapter) => adapter.enabled())
                 .map((adapter) =>
                     adapter.send(batch).catch((err: unknown) => {
-                        logger.debug(
-                            { err, adapter: adapter.name },
-                            "Product telemetry adapter send failed",
-                        );
+                        dropped += batch.length;
+                        // Loud once, then quiet: a dead endpoint must not flood the log.
+                        if (!failureLogged) {
+                            failureLogged = true;
+                            logger.warn(
+                                { err, adapter: adapter.name },
+                                "Product telemetry send failed; events dropped (no retry)",
+                            );
+                        }
                     }),
                 ),
         ).then(() => undefined);
@@ -56,10 +68,15 @@ export function createTelemetryQueue({
     return {
         enqueue(event) {
             events.push(event);
+            if (events.length > MAX_QUEUED_EVENTS) {
+                dropped += events.length - MAX_QUEUED_EVENTS;
+                events = events.slice(-MAX_QUEUED_EVENTS);
+            }
             if (events.length >= maxBatchSize) {
                 void flush();
             }
         },
+        droppedCount: () => dropped,
         flush,
         dispose() {
             if (timer) {

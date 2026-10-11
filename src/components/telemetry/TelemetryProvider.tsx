@@ -4,6 +4,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import { setTelemetryContext, trackTelemetryEvent } from "@/lib/telemetry";
+import { TELEMETRY_INTERACTION_EVENT } from "@/lib/telemetry/interaction";
+import { emitClientError, emitFeatureViewed } from "@/lib/telemetry/emitters";
 import { hashIdentifier } from "@/lib/telemetry/hash";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 
@@ -12,8 +14,6 @@ type TelemetryProviderProps = {
     orgId?: string | null;
     userId?: string | null;
 };
-
-const TELEMETRY_INTERACTION_EVENT = "devhealth:telemetry-interaction";
 
 function anonymousFallbackId(): string {
     return (
@@ -63,6 +63,7 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
             page: routePattern,
             referrerRoutePattern: previousRoutePattern,
         });
+        emitFeatureViewed(routePattern);
         pagesViewedRef.current += 1;
         previousRoutePatternRef.current = routePattern;
     }, [pathname]);
@@ -85,10 +86,17 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
                 endSession();
             }
         };
+        const onWindowError = (event: ErrorEvent) => emitClientError("global", event.error);
+        const onRejection = (event: PromiseRejectionEvent) =>
+            emitClientError("global", event.reason);
+        window.addEventListener("error", onWindowError);
+        window.addEventListener("unhandledrejection", onRejection);
         window.addEventListener(TELEMETRY_INTERACTION_EVENT, recordInteraction);
         window.addEventListener("pagehide", endSession);
         document.addEventListener("visibilitychange", endWhenHidden);
         return () => {
+            window.removeEventListener("error", onWindowError);
+            window.removeEventListener("unhandledrejection", onRejection);
             window.removeEventListener(TELEMETRY_INTERACTION_EVENT, recordInteraction);
             window.removeEventListener("pagehide", endSession);
             document.removeEventListener("visibilitychange", endWhenHidden);

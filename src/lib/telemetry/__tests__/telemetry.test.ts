@@ -188,4 +188,22 @@ describe("product telemetry", () => {
 
         expect(send).not.toHaveBeenCalled();
     });
+
+    it("pings the interaction counter for interaction events only", () => {
+        configureTelemetry({ adapters: [], flushIntervalMs: 0 });
+        envMock.window.dispatchEvent.mockClear();
+        trackTelemetryEvent("page_viewed", {
+            routePattern: "/a",
+            page: "/a",
+            referrerRoutePattern: null,
+        });
+        expect(envMock.window.dispatchEvent).not.toHaveBeenCalled();
+        trackTelemetryEvent("filter_changed", {
+            view: "metrics",
+            filterKey: "repo",
+            valueCount: 1,
+            isCustomDateRange: null,
+        });
+        expect(envMock.window.dispatchEvent).toHaveBeenCalledTimes(1);
+    });
 });
