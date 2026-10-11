@@ -150,7 +150,6 @@ export const isBrowser = !isServer;
 
 export const config = {
     api: {
-        baseUrl: "",
         get docsUrl(): string {
             // Lazy getter to avoid a top-level import cycle with runtimeConfig.
             // The runtimeConfig module itself depends on this file for

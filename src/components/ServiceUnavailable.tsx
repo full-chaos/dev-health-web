@@ -1,24 +1,5 @@
 import Link from "next/link";
-import { config } from "@/lib/config";
 import { CTA_LABELS } from "@/lib/design/cta";
-
-/**
- * The API origin the browser can be told about. Empty or relative values mean
- * the web reaches the API through a same-origin / server-side path: there is
- * nothing true to print, so return null. Only the origin of an absolute
- * http(s) URL is returned (no credentials, path or query).
- */
-export function publicApiOrigin(baseUrl: string | undefined): string | null {
-    const value = (baseUrl ?? "").trim();
-    if (!value) return null;
-    try {
-        const url = new URL(value);
-        if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-        return url.origin;
-    } catch {
-        return null;
-    }
-}
 
 type ServiceUnavailableProps = {
     /**
@@ -29,11 +10,6 @@ type ServiceUnavailableProps = {
 };
 
 export function ServiceUnavailable({ landmark = true }: ServiceUnavailableProps = {}) {
-    const apiOrigin = publicApiOrigin(config.api.baseUrl);
-    const checks = [
-        "Check that the API service is running and that the web server can reach it.",
-        ...(apiOrigin ? [`Check the API address: ${apiOrigin}`] : []),
-    ];
     const Content = landmark ? "main" : "div";
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -41,22 +17,10 @@ export function ServiceUnavailable({ landmark = true }: ServiceUnavailableProps 
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     Full Chaos Dev Health Ops
                 </p>
-                <h1 className="font-(--font-display) text-3xl">Data service unavailable</h1>
+                <h1 className="font-(--font-display) text-3xl">Service unavailable</h1>
                 <p className="text-sm text-(--ink-muted)">
-                    The API status check failed. The API must be available to load this view.
+                    The service is down right now. Please check back soon.
                 </p>
-                {checks.length > 1 ? (
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
-                        <p>Quick checks:</p>
-                        <ul className="mt-2 list-disc space-y-1 pl-4">
-                            {checks.map((check) => (
-                                <li key={check}>{check}</li>
-                            ))}
-                        </ul>
-                    </div>
-                ) : (
-                    <p className="text-sm text-(--ink-muted)">{checks[0]}</p>
-                )}
                 <Link
                     href="/dashboard"
                     className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"

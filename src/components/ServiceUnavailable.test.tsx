@@ -1,9 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@/test/utils";
-import { ServiceUnavailable, publicApiOrigin } from "./ServiceUnavailable";
-
-const mockConfig = vi.hoisted(() => ({ api: { baseUrl: "http://localhost:8000" } }));
-vi.mock("@/lib/config", () => ({ config: mockConfig }));
+import { ServiceUnavailable } from "./ServiceUnavailable";
 
 vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -12,47 +9,19 @@ vi.mock("next/link", () => ({
 }));
 
 describe("ServiceUnavailable", () => {
-    it("renders the error heading", () => {
+    it("renders the generic heading", () => {
         render(<ServiceUnavailable />);
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-            "Data service unavailable",
-        );
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Service unavailable");
     });
 
-    it("shows the API origin for a public absolute URL, without path or credentials", () => {
-        mockConfig.api.baseUrl = "https://user:pw@api.example.com/internal/v1?k=1";
-        render(<ServiceUnavailable />);
-        expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    it("says the service is down, names no specific service and gives no operator checks", () => {
+        const { container } = render(<ServiceUnavailable />);
         expect(
-            screen.getByText("Check the API address: https://api.example.com"),
+            screen.getByText("The service is down right now. Please check back soon."),
         ).toBeInTheDocument();
-        expect(screen.queryByText(/pw|internal|k=1/)).not.toBeInTheDocument();
-    });
-
-    it('draws no "API at" line when the base URL is empty', () => {
-        mockConfig.api.baseUrl = "";
-        render(<ServiceUnavailable />);
-        expect(screen.queryByText(/API address|API at/)).not.toBeInTheDocument();
-        expect(
-            screen.getByText(
-                "Check that the API service is running and that the web server can reach it.",
-            ),
-        ).toBeInTheDocument();
+        expect(container.textContent).not.toMatch(/\bAPI\b|data service|status check/i);
+        expect(screen.queryByText(/quick checks/i)).not.toBeInTheDocument();
         expect(screen.queryByRole("list")).not.toBeInTheDocument();
-    });
-
-    it('draws no "API at" line when the base URL is relative (same-origin)', () => {
-        mockConfig.api.baseUrl = "/api";
-        render(<ServiceUnavailable />);
-        expect(screen.queryByText(/API address|API at/)).not.toBeInTheDocument();
-    });
-
-    it("publicApiOrigin rejects empty, relative and non-http values", () => {
-        expect(publicApiOrigin(undefined)).toBeNull();
-        expect(publicApiOrigin("  ")).toBeNull();
-        expect(publicApiOrigin("/api")).toBeNull();
-        expect(publicApiOrigin("ftp://x.example.com")).toBeNull();
-        expect(publicApiOrigin("http://localhost:8000/x")).toBe("http://localhost:8000");
     });
 
     it("renders a Retry link pointing to /dashboard", () => {

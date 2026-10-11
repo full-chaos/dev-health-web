@@ -87,7 +87,7 @@ describe("Home in the shared app shell", () => {
         const mains = screen.getAllByRole("main");
         expect(mains).toHaveLength(1);
         expect(
-            within(mains[0]).getByRole("heading", { name: "Data service unavailable" }),
+            within(mains[0]).getByRole("heading", { name: "Service unavailable" }),
         ).toBeInTheDocument();
     });
 
