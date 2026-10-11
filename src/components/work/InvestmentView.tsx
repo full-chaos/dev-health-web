@@ -517,7 +517,7 @@ export function InvestmentView({
                 mixExplanation={data.mixExplanation}
                 teamCategoryFlow={data.teamCategoryFlow}
                 repoTeamFlow={data.repoTeamFlow}
-                isCategoryFlowLoading={data.isCategoryFlowLoading}
+                isCategoryFlowLoading={data.isCoverageLoading}
                 reworkMetric={reworkMetric}
                 reworkThemeAllocation={reworkThemeAllocation}
                 reworkReadFailed={reworkReadFailed}
@@ -536,7 +536,7 @@ export function InvestmentView({
                     mixExplainKey={data.mixExplainKey}
                     teamCategoryFlow={data.teamCategoryFlow}
                     repoTeamFlow={data.repoTeamFlow}
-                    isCoverageLoading={data.isCategoryFlowLoading}
+                    isCoverageLoading={data.isCoverageLoading}
                     confidenceHref={withFilterParam(
                         "/investment?tab=confidence",
                         filters,

@@ -13,6 +13,7 @@ import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { WorkUnitExplanation, WorkUnitInvestment } from "@/lib/types";
 import { TOP_N_REPOS, normalizeThemeKey } from "@/lib/investment";
+import { readCoverage } from "./AllocationCoverage";
 import type { InvestmentTab, MixExplanationState } from "./types";
 
 type UseInvestmentDataArgs = {
@@ -27,19 +28,24 @@ type InvestmentRead = "mix" | "flow" | "baselineFlow" | "repoTeamFlow";
 /**
  * The reads each tab draws (consumers: `InvestmentView.tsx` tab branches).
  *  - overview:   mix (`InvestmentMixSection`, `ClassificationTable`); the coverage line of
- *                `ReadWithContextCard` reads `teamCategoryFlow` + `repoTeamFlow`. Nothing reads
- *                the baseline flow.
+ *                `ReadWithContextCard` reads `teamCategoryFlow`, with `repoTeamFlow` only as the
+ *                fallback for a value the first flow lacks (CHAOS-9255: that read starts later,
+ *                see `FALLBACK_READS`). Nothing reads the baseline flow.
  *  - allocation: the three flows (`TeamCategorySankeySection` with its baseline delta,
  *                `RepoTeamSankeySection`, `AllocationCoverage`). No mix.
  *  - evidence:   none (work units, evidence quality and attributions have their own reads).
- *  - confidence: mix (`evidence_quality_stats`), plus the two flows for the coverage cards.
+ *  - confidence: mix (`evidence_quality_stats`), plus the team-category flow for the coverage
+ *                cards (the repository-team flow is the same fallback as on overview).
  */
 export const INVESTMENT_TAB_READS: Record<InvestmentTab, readonly InvestmentRead[]> = {
-    overview: ["mix", "flow", "repoTeamFlow"],
+    overview: ["mix", "flow"],
     allocation: ["flow", "baselineFlow", "repoTeamFlow"],
     evidence: [],
-    confidence: ["mix", "flow", "repoTeamFlow"],
+    confidence: ["mix", "flow"],
 };
+
+/** Tabs that draw coverage only: the repository-team flow is there a fallback, not a first read. */
+const COVERAGE_FALLBACK_TABS: readonly InvestmentTab[] = ["overview", "confidence"];
 
 export function useInvestmentData({ filters, activeTab = "overview" }: UseInvestmentDataArgs) {
     const router = useRouter();
@@ -125,8 +131,37 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         error: repoFlowError,
     } = useInvestmentRepoTeamFlow({ filters, pause: !runs("repoTeamFlow") });
 
+    // Overview and Confidence take coverage from the team-category flow; the repository-team flow
+    // fills a value that flow does not give (`combineCoverage`) and starts only then. A failed
+    // first flow gives no value, so the fallback starts (the rule before this read was deferred).
+    const usesFallback = COVERAGE_FALLBACK_TABS.includes(activeTab) && !runs("repoTeamFlow");
+    const firstFlowSettled =
+        runs("flow") && !currentFlowLoading && (!!currentFlow || !!currentFlowError);
+    if (usesFallback && firstFlowSettled) {
+        const coverage = readCoverage(currentFlow);
+        const complete =
+            coverage.teamCoverage !== null &&
+            coverage.repoCoverage !== null &&
+            coverage.unassignedShare !== null;
+        if (!complete) {
+            setStarted((current) => ({
+                key: current.key,
+                reads: Array.from(new Set([...current.reads, "repoTeamFlow" as const])),
+            }));
+        }
+    }
+
     const repoTeamFlow = repoFlowData;
     const isRepoTeamLoading = repoFlowLoading;
+    // The coverage numbers of Overview and Confidence wait for the fallback read while it can
+    // still change them: the first flow is settled and incomplete, and the fallback has not
+    // answered. Settled values never flip (no "none detected" before the fallback answers).
+    const fallbackPending =
+        COVERAGE_FALLBACK_TABS.includes(activeTab) &&
+        runs("repoTeamFlow") &&
+        !repoFlowData &&
+        !repoFlowError;
+    const isCoverageLoading = isCategoryFlowLoading || fallbackPending;
     const repoTeamFlowFailed = Boolean(repoFlowError);
 
     const includeTextual = true;
@@ -309,6 +344,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         teamCategoryFlow,
         baselineSankeyFlow,
         isCategoryFlowLoading,
+        isCoverageLoading,
         categoryFlowFailed,
         repoTeamFlow,
         isRepoTeamLoading,
