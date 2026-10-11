@@ -433,3 +433,26 @@ describe("AllocationCoverage — coverage the backend did not produce", () => {
         expect(screen.queryByText(/No allocation path/i)).not.toBeInTheDocument();
     });
 });
+
+describe("AllocationCoverage — empty answer vs failed read", () => {
+    const emptyAnswer = { mode: "investment", nodes: [], links: [], coverage: null } as never;
+
+    it("draws no coverage failure text for an empty answer (coverage null, no links)", () => {
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={emptyAnswer}
+                repoTeamFlow={emptyAnswer}
+                isLoading={false}
+            />,
+        );
+        expect(screen.queryByText(/could not be computed/i)).toBeNull();
+        expect(screen.queryByText(/Coverage not available/i)).toBeNull();
+    });
+
+    it("keeps the coverage-unavailable text when the flows are missing (failed read)", () => {
+        render(
+            <AllocationCoverage teamCategoryFlow={null} repoTeamFlow={null} isLoading={false} />,
+        );
+        expect(screen.getByText(/could not be computed/i)).toBeInTheDocument();
+    });
+});

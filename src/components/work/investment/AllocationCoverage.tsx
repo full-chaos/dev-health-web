@@ -214,6 +214,15 @@ export function AllocationCoverage({
         reading.repoCoverage !== null ||
         reading.unassignedShare !== null;
 
+    // An EMPTY answer (the team-category flow was served and has no links) is not a failed
+    // coverage read: the server serves `coverage: null` for an empty set. The flow section
+    // draws the empty state. A missing flow (failed read) is not an empty answer.
+    const answeredEmpty = Boolean(teamCategoryFlow) && teamCategoryFlow?.links.length === 0;
+
+    if (!hasAnySignal && answeredEmpty) {
+        return null;
+    }
+
     if (!hasAnySignal) {
         return (
             <DataState

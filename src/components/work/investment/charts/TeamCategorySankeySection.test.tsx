@@ -140,28 +140,23 @@ describe("TeamCategorySankeySection — empty state", () => {
         expect(screen.getByText(/No allocation path available/)).toBeInTheDocument();
     });
 
-    it("does not claim 'no allocation path' when the coverage read is unavailable", () => {
+    it("draws the empty state, not a coverage text, for an empty flow with null coverage", () => {
         renderSection(emptyFlow);
-        expect(screen.queryByText(/No allocation path/)).not.toBeInTheDocument();
-        expect(
-            screen.getByText(/Coverage could not be computed for this window/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/No allocation path available/)).toBeInTheDocument();
+        expect(screen.queryByText(/could not be computed/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/could not be read/)).not.toBeInTheDocument();
     });
 
-    it("does not claim 'no allocation path' when only one coverage leaf is unavailable", () => {
+    it("draws the empty state when only one coverage leaf is produced", () => {
         renderSection({ ...emptyFlow, coverage: { team: 0.5 } });
-        expect(screen.queryByText(/No allocation path/)).not.toBeInTheDocument();
-        expect(
-            screen.getByText(/Coverage could not be computed for this window/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/No allocation path available/)).toBeInTheDocument();
+        expect(screen.queryByText(/could not be/)).not.toBeInTheDocument();
     });
 
-    it("does not claim 'no allocation path' when no flow resolved (error)", () => {
+    it("draws the empty state when no flow resolved and no failure flag is set", () => {
         renderSection(null);
-        expect(screen.queryByText(/No allocation path/)).not.toBeInTheDocument();
-        expect(
-            screen.getByText(/Coverage could not be computed for this window/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/No allocation path available/)).toBeInTheDocument();
+        expect(screen.queryByText(/could not be/)).not.toBeInTheDocument();
     });
 });
 
@@ -194,12 +189,10 @@ describe("TeamCategorySankeySection — a failed read is not a flow and not null
         expect(screen.queryByText(/Coverage could not be computed/)).not.toBeInTheDocument();
     });
 
-    it("null coverage without an error keeps the existing unavailable text", () => {
+    it("null coverage without an error is an empty answer, not a failure", () => {
         renderSection(emptyFlow);
         expect(screen.queryByText(FAILED_TITLE)).not.toBeInTheDocument();
-        expect(
-            screen.getByText(/Coverage could not be computed for this window/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/No allocation path available/)).toBeInTheDocument();
     });
 
     it("a missing baseline (failed comparison) does not blank a current flow that loaded", () => {
@@ -211,5 +204,31 @@ describe("TeamCategorySankeySection — a failed read is not a flow and not null
         );
         expect(screen.getByTestId("mock-sankey-chart")).toBeInTheDocument();
         expect(screen.queryByText(FAILED_TITLE)).not.toBeInTheDocument();
+    });
+});
+
+describe("TeamCategorySankeySection — failed vs empty vs coverage-null (empty Allocation answer)", () => {
+    // The exact prod shape: a flow with no links, coverage null, no failure flag.
+    const prodEmpty = { mode: "investment", nodes: [], links: [], coverage: null } as never;
+
+    it("draws the empty state, not a failed-read or coverage text, for an empty answer", () => {
+        renderSection(prodEmpty);
+        expect(
+            screen.getByText("No allocation path available for this scope and window."),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/could not be read/i)).toBeNull();
+        expect(screen.queryByText(/could not be computed/i)).toBeNull();
+    });
+
+    it("draws the failed-read state when the read failed", () => {
+        renderSection(null, { categoryFlowFailed: true });
+        expect(screen.getByText("Team-to-category allocation unavailable")).toBeInTheDocument();
+        expect(screen.queryByText(/No allocation path available/)).toBeNull();
+    });
+
+    it("draws the data when links exist and coverage is null", () => {
+        renderSection({ ...linkedFlow, coverage: null } as never);
+        expect(screen.getByTestId("mock-sankey-chart")).toBeInTheDocument();
+        expect(screen.queryByText(/could not be read/i)).toBeNull();
     });
 });
