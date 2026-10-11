@@ -63,14 +63,25 @@ app.post("/__test/backend-log/reset", (_req, res) => {
 });
 // CHAOS-9218: holds the answers of one backend path, so requests of the web server that arrive
 // together are in flight together whatever the speed of the machine. `ms: 0` removes the hold.
+// The hold has a small fixed maximum: a request value never sets a long timer.
+const MAX_RESPONSE_DELAY_MS = 2_000;
 let responseDelay: { path: string; ms: number } | null = null;
 app.post("/__test/response-delay", (req, res) => {
     const body = req.body as { path?: unknown; ms?: unknown } | undefined;
-    if (typeof body?.path !== "string" || typeof body.ms !== "number" || !(body.ms >= 0)) {
-        res.status(400).json({ error: "Expected { path: string, ms: number >= 0 }" });
+    const requested = Number(body?.ms);
+    if (
+        typeof body?.path !== "string" ||
+        !Number.isFinite(requested) ||
+        requested < 0 ||
+        requested > MAX_RESPONSE_DELAY_MS
+    ) {
+        res.status(400).json({
+            error: `Expected { path: string, ms: number from 0 to ${MAX_RESPONSE_DELAY_MS} }`,
+        });
         return;
     }
-    responseDelay = body.ms > 0 ? { path: body.path, ms: body.ms } : null;
+    const ms = Math.min(Math.floor(requested), MAX_RESPONSE_DELAY_MS);
+    responseDelay = ms > 0 ? { path: body.path, ms } : null;
     res.status(204).end();
 });
 app.use((req, _res, next) => {
