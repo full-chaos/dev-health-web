@@ -77,7 +77,15 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         const recordInteraction = () => {
             interactionsRef.current += 1;
         };
+        // One session_ended per visible period: hidden then pagehide (a tab close)
+        // is one hide. Re-armed when the page is visible again or restored from bfcache.
+        let endedThisPeriod = false;
         const endSession = () => {
+            if (endedThisPeriod) {
+                flushTelemetryEventsOnHide();
+                return;
+            }
+            endedThisPeriod = true;
             const startedAt = sessionStartMsRef.current ?? performance.now();
             trackTelemetryEvent("session_ended", {
                 durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
@@ -89,6 +97,13 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         const endWhenHidden = () => {
             if (document.visibilityState === "hidden") {
                 endSession();
+            } else {
+                endedThisPeriod = false;
+            }
+        };
+        const onPageShow = (event: PageTransitionEvent) => {
+            if (event.persisted) {
+                endedThisPeriod = false;
             }
         };
         const onWindowError = (event: ErrorEvent) => emitClientError("global", event.error);
@@ -98,12 +113,14 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         window.addEventListener("unhandledrejection", onRejection);
         window.addEventListener(TELEMETRY_INTERACTION_EVENT, recordInteraction);
         window.addEventListener("pagehide", endSession);
+        window.addEventListener("pageshow", onPageShow);
         document.addEventListener("visibilitychange", endWhenHidden);
         return () => {
             window.removeEventListener("error", onWindowError);
             window.removeEventListener("unhandledrejection", onRejection);
             window.removeEventListener(TELEMETRY_INTERACTION_EVENT, recordInteraction);
             window.removeEventListener("pagehide", endSession);
+            window.removeEventListener("pageshow", onPageShow);
             document.removeEventListener("visibilitychange", endWhenHidden);
         };
     }, []);
