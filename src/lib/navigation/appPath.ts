@@ -31,3 +31,30 @@ export function appPath<Template extends string>(
         return encodeURIComponent(value);
     });
 }
+
+/**
+ * An in-app href with its query in the `URLSearchParams` form (CHAOS-9209).
+ *
+ * `appHref("/code?file=api/server.go")` gives `/code?file=api%2Fserver.go`. Use it for every
+ * in-app href that is not built here: a URL the API served (`evidenceUrl`), or a href with a
+ * value in its query. The path and the hash stay as they are; a href that is not an app path
+ * (`https://...`, `//host`, `#`, `mailto:`) stays as it is.
+ *
+ * Why: a value in a query is data (a file path with `/`, an id with `:`, a name with a space).
+ * The Next.js 16.3.8 router prefetches a link to the page it is on (`/code?file=...` on `/code`)
+ * with a route it builds from the href, and keeps the RAW search of the href. It then reads the
+ * search of the response URL after `searchParams.delete("_rsc")`, which writes the query again
+ * (`/` to `%2F`, `:` to `%3A`, a space to `+`). The two are different, so the router drops the
+ * response with its body not read and not cancelled: the prefetch is lost and the request has
+ * no end in the browser (a page that never comes to "network idle").
+ */
+export function appHref(href: string): string {
+    if (!href.startsWith("/") || href.startsWith("//")) return href;
+    const hashAt = href.indexOf("#");
+    const hash = hashAt === -1 ? "" : href.slice(hashAt);
+    const beforeHash = hashAt === -1 ? href : href.slice(0, hashAt);
+    const queryAt = beforeHash.indexOf("?");
+    if (queryAt === -1) return href;
+    const query = new URLSearchParams(beforeHash.slice(queryAt + 1)).toString();
+    return `${beforeHash.slice(0, queryAt)}${query ? `?${query}` : ""}${hash}`;
+}

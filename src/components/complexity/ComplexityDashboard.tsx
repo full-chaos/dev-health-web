@@ -45,6 +45,7 @@ import { computeKpis, computeRisingAreas } from "./complexityKpis";
 
 export { computeKpis, computeRisingAreas };
 import { formatNumber } from "@/lib/formatters";
+import { appHref } from "@/lib/navigation/appPath";
 import type { HeatmapResponse, MetricFilter } from "@/lib/types";
 
 // Register LineChart for multi-series trend — Grid, Tooltip, Legend already
@@ -339,7 +340,8 @@ function EvidenceCell({ row }: { row: HotspotRow }) {
                         content: <HotspotEvidence row={row} />,
                         footer: (
                             <Link
-                                href={url}
+                                // CHAOS-9209: a served URL goes through appHref.
+                                href={appHref(url)}
                                 data-testid="evidence-link"
                                 onClick={evidence.close}
                                 className="flex w-full items-center justify-center rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 px-4 py-3 text-sm font-medium text-(--info) transition-colors hover:bg-(--accent-2)/20"

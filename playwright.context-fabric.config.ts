@@ -25,8 +25,9 @@ export default defineConfig({
     // The specs that need the PRODUCTION build. `admin-row-links` (CHAOS-9105) counts link
     // prefetch requests, and a development server does not prefetch. `investment-duplicate-requests` (CHAOS-9166)
     // counts the backend reads of one page load, and a development server runs effects twice.
+    // `repo-hotspot-links` (CHAOS-9209) looks for a prefetch request with no end.
     testMatch:
-        /(?:acr-context-fabric|admin-row-links|investment-duplicate-requests)\.production\.spec\.ts/,
+        /(?:acr-context-fabric|admin-row-links|investment-duplicate-requests|repo-hotspot-links)\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
     outputDir: RESULTS_DIRECTORY,

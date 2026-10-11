@@ -21,6 +21,7 @@ import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { appHref } from "@/lib/navigation/appPath";
 import { getQuadrant } from "@/lib/api/visuals";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -303,7 +304,10 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                             <span className="inline-flex max-w-xs items-baseline gap-1">
                                                 {topHotspot.evidenceUrl ? (
                                                     <Link
-                                                        href={topHotspot.evidenceUrl}
+                                                        // CHAOS-9209: a served URL goes through appHref;
+                                                        // one link for each row, so no prefetch.
+                                                        href={appHref(topHotspot.evidenceUrl)}
+                                                        prefetch={false}
                                                         title={topHotspot.topFilePath}
                                                         className="truncate text-(--accent-2) hover:underline"
                                                     >

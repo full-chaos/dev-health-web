@@ -11,6 +11,28 @@ const getQuadrantMock = vi.fn();
 const getBusFactorDataMock = vi.fn();
 const getRepoTopHotspotsMock = vi.fn();
 
+// The real `next/link` does not write `prefetch` to the DOM: show it, so a test can read it.
+vi.mock("next/link", () => ({
+    default: ({
+        href,
+        prefetch,
+        children,
+        ...rest
+    }: {
+        href: string;
+        prefetch?: boolean;
+        children?: React.ReactNode;
+    } & Record<string, unknown>) => (
+        <a
+            href={href}
+            data-prefetch={prefetch === undefined ? "default" : String(prefetch)}
+            {...rest}
+        >
+            {children}
+        </a>
+    ),
+}));
+
 vi.mock("@/components/shell/ScopeBar", () => ({
     ScopeBar: () => <div data-testid="scope-bar" />,
 }));
@@ -281,9 +303,52 @@ describe("CodePage", () => {
             expect(cells[0]).toHaveTextContent("api/server.go (0.82)");
             expect(cells[0]).not.toHaveTextContent(/hotspot files/i);
             const link = within(cells[0]).getByRole("link", { name: "api/server.go" });
-            expect(link).toHaveAttribute("href", "/code?file=api/server.go");
+            // CHAOS-9209: the query is in the URLSearchParams form, never the raw served search.
+            expect(link).toHaveAttribute("href", "/code?file=api%2Fserver.go");
             // org/web has no served row: no value at all, never 0, never "Not reported".
             expect(cells[1]).toBeEmptyDOMElement();
+        });
+
+        it("writes the query of each served hotspot link in the canonical form and turns its prefetch off (CHAOS-9209)", async () => {
+            setup({ ...base, value: 1, evidenceSampleCount: 3773 });
+            getRepoTopHotspotsMock.mockResolvedValue([
+                {
+                    repoId: "r1",
+                    repoName: "org/ops",
+                    topFilePath: "src/app:v2/my file.go",
+                    topRiskScore: 0.5,
+                    evidenceUrl: "/code?file=src/app:v2/my file.go",
+                },
+                {
+                    repoId: "r2",
+                    repoName: "org/web",
+                    topFilePath: "web/index.ts",
+                    topRiskScore: 0.4,
+                    evidenceUrl: "/code?file=web/index.ts",
+                },
+            ]);
+            await renderPage();
+            const links = screen
+                .getAllByTestId("repo-top-hotspot")
+                .map((cell) => within(cell).getByRole("link"));
+            expect(links.map((link) => link.getAttribute("href"))).toEqual([
+                "/code?file=src%2Fapp%3Av2%2Fmy+file.go",
+                "/code?file=web%2Findex.ts",
+            ]);
+            // The router reads the same search back from the response URL: no dropped prefetch.
+            for (const link of links) {
+                const href = link.getAttribute("href") ?? "";
+                const response = new URL(`${href}&_rsc=abc12`, "http://localhost");
+                response.searchParams.delete("_rsc");
+                expect(new URL(href, "http://localhost").search).toBe(response.search);
+            }
+            // One link for each row: a table must not send one request for each row in view.
+            expect(links.map((link) => link.getAttribute("data-prefetch"))).toEqual([
+                "false",
+                "false",
+            ]);
+            // The name on the page is the served path, not the encoded one.
+            expect(links[0]).toHaveTextContent("src/app:v2/my file.go");
         });
 
         it("keeps a served score of 0 as 0.00 and shows no link when the file has no served evidence", async () => {
