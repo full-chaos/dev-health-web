@@ -374,6 +374,8 @@ export const CTA_LABELS = {
     orgAdminSettings: "Org Admin Settings",
     search: "Search",
     createUser: "Create User",
+    createServiceAccount: "Create service account",
+    backToUsers: "Back to Users",
     devHealthHome: "Full Chaos Dev Health home",
     solutions: "Solutions",
     pricing: "Pricing",
