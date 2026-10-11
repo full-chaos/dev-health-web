@@ -1,6 +1,8 @@
 "use server";
 
 import { failureResult } from "@/lib/actionFailure";
+import { AdminApiError } from "@/lib/admin/api";
+import { logger } from "@/lib/logger";
 import type { ActionResult } from "@/lib/result";
 import {
     apiRequest,
@@ -60,7 +62,15 @@ export type SubscriptionListResponse = {
     offset: number;
 };
 
-export async function getSubscription(orgId?: string): Promise<ActionResult<SubscriptionDetails>> {
+/**
+ * The current subscription, or `{ data: null }` when the org has none. The backend answers 404 on
+ * this one read for an org with no subscription: that is an expected state, not a failure, so it
+ * is mapped here (debug log only) and never reaches the generic failure logger. Every other
+ * non-2xx, a timeout and a network error still go through `withErrorHandling` at error level.
+ */
+export async function getSubscription(
+    orgId?: string,
+): Promise<ActionResult<SubscriptionDetails | null>> {
     const orgResult = await resolveOrgId(orgId);
     if (orgResult.error) {
         return orgResult;
@@ -72,7 +82,15 @@ export async function getSubscription(orgId?: string): Promise<ActionResult<Subs
             params.set("org_id", orgResult.data);
         }
         const query = params.size > 0 ? `?${params.toString()}` : "";
-        return apiRequest<SubscriptionDetails>(`/api/v1/billing/subscriptions${query}`);
+        try {
+            return await apiRequest<SubscriptionDetails>(`/api/v1/billing/subscriptions${query}`);
+        } catch (err) {
+            if (err instanceof AdminApiError && err.status === 404) {
+                logger.debug({ operation: "getSubscription" }, "No active subscription");
+                return null;
+            }
+            throw err;
+        }
     });
 }
 

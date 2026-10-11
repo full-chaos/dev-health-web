@@ -5,6 +5,10 @@ vi.mock("@/lib/auth", () => ({
     auth: vi.fn(),
 }));
 
+vi.mock("@/lib/logger", () => ({
+    logger: { error: vi.fn(), debug: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}));
+
 import {
     getSubscription,
     getSubscriptions,
@@ -12,6 +16,7 @@ import {
     getRefunds,
     getInvoices,
 } from "../actions";
+import { logger } from "@/lib/logger";
 import { mockAuth } from "@/test/mocks/auth";
 
 describe("getSubscription", () => {
@@ -50,21 +55,68 @@ describe("getSubscription", () => {
         fetchSpy.mockRestore();
     });
 
-    it("returns error when API returns non-ok", async () => {
+    it("maps a 404 to a no-subscription result and logs no error", async () => {
         mockAuth();
-
+        const errorSpy = vi.mocked(logger.error);
         const fetchSpy = vi
             .spyOn(global, "fetch")
             .mockResolvedValue(
-                new Response(JSON.stringify({ detail: "Not found" }), { status: 404 }),
+                new Response(JSON.stringify({ detail: "No active subscription" }), { status: 404 }),
             );
 
         const result = await getSubscription();
-        expect(result.error).toBeDefined();
-        // A failed read: the plain sentence, never the served text; the status stays for the caller.
+        expect(result).toEqual({ data: null });
+        expect(errorSpy).not.toHaveBeenCalled();
+
+        fetchSpy.mockRestore();
+    });
+
+    it("keeps a 500 as an error with operation and status", async () => {
+        mockAuth();
+        const errorSpy = vi.mocked(logger.error);
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify({ detail: "boom" }), { status: 500 }));
+
+        const result = await getSubscription();
         expect(result.error).toBe("Could not be read");
+        expect(result.status).toBe(500);
+        expect(errorSpy).toHaveBeenCalledWith(
+            expect.objectContaining({ operation: "billingRequest", status: 500 }),
+            "Server call failed",
+        );
+
+        fetchSpy.mockRestore();
+    });
+
+    it("keeps a network error as an error-level line", async () => {
+        mockAuth();
+        const errorSpy = vi.mocked(logger.error);
+        const fetchSpy = vi.spyOn(global, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+
+        const result = await getSubscription();
+        expect(result.error).toBeDefined();
+        expect(errorSpy).toHaveBeenCalledWith(
+            expect.objectContaining({ operation: "billingRequest" }),
+            "Server call failed",
+        );
+
+        fetchSpy.mockRestore();
+    });
+
+    it("still logs a 404 of another billing read at error level", async () => {
+        mockAuth();
+        const errorSpy = vi.mocked(logger.error);
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify({ detail: "x" }), { status: 404 }));
+
+        const result = await getSubscriptions();
         expect(result.status).toBe(404);
-        expect(result.data).toBeUndefined();
+        expect(errorSpy).toHaveBeenCalledWith(
+            expect.objectContaining({ operation: "billingRequest", status: 404 }),
+            "Server call failed",
+        );
 
         fetchSpy.mockRestore();
     });
