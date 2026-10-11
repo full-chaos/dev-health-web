@@ -57,6 +57,7 @@ vi.mock("@/lib/api/code", () => ({
     getRepoTopHotspots: (...args: unknown[]) => getRepoTopHotspotsMock(...args),
 }));
 
+import { resolveServerTree } from "@/test/resolveServerTree";
 import CodePage from "./page";
 
 const GOOD = "text-(--positive)";
@@ -84,7 +85,7 @@ async function renderChurn(delta_pct: number) {
     getQuadrantMock.mockResolvedValue(null);
     getBusFactorDataMock.mockResolvedValue(null);
     getRepoTopHotspotsMock.mockResolvedValue(null);
-    const ui = await CodePage({ searchParams: Promise.resolve({}) });
+    const ui = await resolveServerTree(await CodePage({ searchParams: Promise.resolve({}) }));
     render(ui as React.ReactElement);
     return within(screen.getByTestId("code-tiles")).getByTestId("metric-delta");
 }

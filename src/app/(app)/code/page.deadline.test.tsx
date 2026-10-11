@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resolveServerTree } from "@/test/resolveServerTree";
 import { track } from "@/test/stallFetch";
 
 // CHAOS-9114: /code awaits ONE Promise.all. One call that is accepted and never answered kept
@@ -65,7 +66,9 @@ describe("/code with one call that never answers", () => {
         const state = track(CodePage({ searchParams: Promise.resolve({}) }));
         for (let i = 0; i < 1_500 && !state.settled; i += 1) await sleep(10);
         expect(state.settled).toBe(true);
-        const html = renderToStaticMarkup(state.value as React.ReactElement);
+        const html = renderToStaticMarkup(
+            (await resolveServerTree(state.value)) as React.ReactElement,
+        );
         expect(html).toContain("quadrant-no-data");
         const lines = warn.mock.calls.filter(([, m]) => m === "server fetch deadline exceeded");
         expect(lines).toHaveLength(1);
