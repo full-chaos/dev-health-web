@@ -86,8 +86,45 @@ describe("processMemo", () => {
             'processMemo<ValidationMemoEntry>("authValidationMemo")',
         );
         expect(read("authValidationMemo.ts")).not.toMatch(/validationMemo = new Map/u);
-        expect(read("auth.ts")).toContain('"impersonationStatusMemo"');
-        expect(read("auth.ts")).not.toMatch(/impersonationStatusMemo = new Map/u);
+        // CHAOS-9218: the impersonation status moved from auth.ts to its own module.
+        expect(read("impersonationStatusMemo.ts")).toContain(
+            'processMemo<Entry>("impersonationStatusShared")',
+        );
+        expect(read("impersonationStatusMemo.ts")).not.toMatch(/new Map/u);
+        expect(read("auth.ts")).not.toMatch(/new Map/u);
+    });
+
+    it("a proxy copy and a render copy of the impersonation status make ONE backend read for one user", async () => {
+        // The answer is held, so the two copies have their read in flight at the same time.
+        let answer: (response: Response) => void = () => {};
+        fetchMock.mockImplementation(() => new Promise<Response>((resolve) => (answer = resolve)));
+        vi.resetModules();
+        const proxyCopy = await import("@/lib/impersonationStatusMemo");
+        vi.resetModules();
+        const renderCopy = await import("@/lib/impersonationStatusMemo");
+        expect(renderCopy.readImpersonationStatus).not.toBe(proxyCopy.readImpersonationStatus);
+        proxyCopy.resetImpersonationStatusForTests();
+        const request = { userId: "two-copies", accessToken: "access", force: false, now: 1_000 };
+
+        const fromProxy = proxyCopy.readImpersonationStatus(request);
+        const fromRender = renderCopy.readImpersonationStatus(request);
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        answer(
+            new Response(JSON.stringify({ is_impersonating: true, target_user_id: "target-1" }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            }),
+        );
+
+        expect((await fromProxy)?.impersonated_user_id).toBe("target-1");
+        expect((await fromRender)?.impersonated_user_id).toBe("target-1");
+        // And the kept status of one copy is served by the other.
+        expect(
+            (await renderCopy.readImpersonationStatus({ ...request, now: 2_000 }))
+                ?.is_impersonating,
+        ).toBe(true);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it("key and lifetime are unchanged: two tokens never share an entry; an expired entry is not served", async () => {

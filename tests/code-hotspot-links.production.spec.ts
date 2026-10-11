@@ -6,9 +6,9 @@ import { expect, test, type Request } from "@playwright/test";
  * This file runs only in the production-build suite (`playwright.context-fabric.config.ts`,
  * `pnpm test:e2e:context-fabric`): a development server does not prefetch links.
  *
- * The file name sorts AFTER `investment-duplicate-requests`: that spec counts backend reads and
- * is sensitive to the 3 s server memo of the impersonation status, so the spec that runs before
- * it stays the same as on `main`.
+ * The file name sorts BEFORE `investment-duplicate-requests`, the order in which that spec once
+ * counted five identical reads of the impersonation status. Requests that arrive together now
+ * share one read (CHAOS-9218), so the order of the two files has no effect.
  *
  * What happened on 2026-10-10: a load of `/code` did not come to "network idle" in 45 s. The
  * API serves the link of a hotspot file as `/code?file=<path>` with the path raw (`a/b.go`). The

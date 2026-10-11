@@ -22,7 +22,14 @@ app.get("/__test/backend-requests", (_req, res) => {
     res.json({ count: backendRequestCount });
 });
 // CHAOS-9166: every backend read the web made, as operation + variables, to count identical ones.
-type BackendLogEntry = { method: string; path: string; operation: string; variables: string };
+type BackendLogEntry = {
+    method: string;
+    path: string;
+    operation: string;
+    variables: string;
+    /** When the request arrived (ms since the epoch), to order it against the steps of a spec. */
+    at: number;
+};
 let backendLog: BackendLogEntry[] = [];
 app.use((req, _res, next) => {
     if (req.path.startsWith("/__test/") || req.path === "/health") {
@@ -44,7 +51,7 @@ app.use((req, _res, next) => {
         variables = JSON.stringify(req.query);
         if (req.body && Object.keys(req.body).length > 0) variables += JSON.stringify(req.body);
     }
-    backendLog.push({ method: req.method, path: req.path, operation, variables });
+    backendLog.push({ method: req.method, path: req.path, operation, variables, at: Date.now() });
     next();
 });
 app.get("/__test/backend-log", (_req, res) => {
@@ -53,6 +60,25 @@ app.get("/__test/backend-log", (_req, res) => {
 app.post("/__test/backend-log/reset", (_req, res) => {
     backendLog = [];
     res.status(204).end();
+});
+// CHAOS-9218: holds the answers of one backend path, so requests of the web server that arrive
+// together are in flight together whatever the speed of the machine. `ms: 0` removes the hold.
+let responseDelay: { path: string; ms: number } | null = null;
+app.post("/__test/response-delay", (req, res) => {
+    const body = req.body as { path?: unknown; ms?: unknown } | undefined;
+    if (typeof body?.path !== "string" || typeof body.ms !== "number" || !(body.ms >= 0)) {
+        res.status(400).json({ error: "Expected { path: string, ms: number >= 0 }" });
+        return;
+    }
+    responseDelay = body.ms > 0 ? { path: body.path, ms: body.ms } : null;
+    res.status(204).end();
+});
+app.use((req, _res, next) => {
+    if (responseDelay !== null && req.path === responseDelay.path) {
+        setTimeout(next, responseDelay.ms);
+        return;
+    }
+    next();
 });
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });

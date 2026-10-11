@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
-import { processMemo } from "@/lib/processMemo";
+import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import { deadlineFetch } from "@/lib/serverDeadline";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 
@@ -40,37 +40,6 @@ const authSecret =
     authEnv.AUTH_SECRET ||
     authEnv.NEXTAUTH_SECRET ||
     (authEnv.NODE_ENV === "production" ? undefined : "dev-secret-change-in-production");
-
-/**
- * Per-process micro-memo for the impersonation status poll (CHAOS-2328).
- *
- * The jwt callback runs on every session read — including the proxy, which
- * calls auth() for every protected route — so an unconditional backend fetch
- * per read would fan out badly on superuser traffic. The memo bounds it to
- * one fetch per ~3s per web process. `update()` triggers bypass the memo, so
- * explicit start/stop (which all impersonation components signal via
- * update({ impersonationChanged: true })) is observed with zero delay; the
- * worst-case cross-instance staleness is the memo TTL.
- *
- * Superuser sessions only — the map stays tiny; no eviction needed.
- */
-interface ImpersonationStatusSnapshot {
-    is_impersonating: boolean;
-    impersonated_user_id?: string;
-    impersonated_email?: string;
-    impersonated_org_id?: string;
-}
-// A status call that failed or hit its deadline is not repeated for this long (CHAOS-9114): the
-// proxy and the render both read it on every request, so a stuck backend would cost each request
-// the full wait.
-const IMPERSONATION_FAILURE_BACKOFF_MS = 30_000;
-const impersonationStatusFailedUntil = processMemo<number>("impersonationStatusFailedUntil");
-
-// One Map per process, not per bundle (CHAOS-8466).
-const impersonationStatusMemo = processMemo<{ at: number; status: ImpersonationStatusSnapshot }>(
-    "impersonationStatusMemo",
-);
-const IMPERSONATION_MEMO_TTL_MS = 3_000;
 
 const nextAuth = NextAuth({
     trustHost: true,
@@ -388,65 +357,25 @@ const nextAuth = NextAuth({
             // refresh step so a just-refreshed access token is used — polling
             // before refresh could 401 and silently keep stale impersonation
             // state for this request. The status endpoint reads through a
-            // shared Valkey cache server-side; the per-process memo above
-            // bounds fetch fan-out, and update() triggers bypass it so
-            // explicit start/stop is observed immediately. The update payload
-            // itself is never trusted — only the server response mutates the
-            // token.
+            // shared Valkey cache server-side. `readImpersonationStatus` keeps
+            // the answer for 3 s per user and per process, and callers that
+            // arrive together share one backend read (CHAOS-9218). update()
+            // triggers always read again, so explicit start/stop is observed
+            // immediately. The update payload itself is never trusted — only
+            // the server response mutates the token.
             if (token.is_superuser && token.access_token && !user) {
-                const memoKey = token.id as string;
-                const memoized = impersonationStatusMemo.get(memoKey);
-                const memoFresh =
-                    memoized !== undefined && now - memoized.at < IMPERSONATION_MEMO_TTL_MS;
-                if (memoFresh && trigger !== "update") {
-                    token.is_impersonating = memoized.status.is_impersonating;
-                    token.impersonated_user_id = memoized.status.impersonated_user_id;
-                    token.impersonated_email = memoized.status.impersonated_email;
-                    token.impersonated_org_id = memoized.status.impersonated_org_id;
-                } else if (
-                    trigger !== "update" &&
-                    now < (impersonationStatusFailedUntil.get(memoKey) ?? 0)
-                ) {
-                    // Failed a moment ago: keep the existing state, do not wait again.
-                } else {
-                    try {
-                        const backendUrl = getBackendUrl();
-                        const statusRes = await deadlineFetch("auth")(
-                            `${backendUrl}/api/v1/admin/impersonate/status`,
-                            {
-                                method: "GET",
-                                headers: {
-                                    Authorization: `Bearer ${token.access_token as string}`,
-                                },
-                            },
-                        );
-                        if (statusRes.ok) {
-                            const statusData = (await statusRes.json()) as {
-                                is_impersonating: boolean;
-                                target_user_id?: string | null;
-                                target_email?: string | null;
-                                target_org_id?: string | null;
-                            };
-                            const status: ImpersonationStatusSnapshot = {
-                                is_impersonating: statusData.is_impersonating,
-                                impersonated_user_id: statusData.target_user_id ?? undefined,
-                                impersonated_email: statusData.target_email ?? undefined,
-                                impersonated_org_id: statusData.target_org_id ?? undefined,
-                            };
-                            token.is_impersonating = status.is_impersonating;
-                            token.impersonated_user_id = status.impersonated_user_id;
-                            token.impersonated_email = status.impersonated_email;
-                            token.impersonated_org_id = status.impersonated_org_id;
-                            impersonationStatusMemo.set(memoKey, { at: now, status });
-                        }
-                    } catch {
-                        // Network error or deadline: keep the existing impersonation state and
-                        // do not retry for 30 s (the next reads would each wait the full time).
-                        impersonationStatusFailedUntil.set(
-                            memoKey,
-                            Date.now() + IMPERSONATION_FAILURE_BACKOFF_MS,
-                        );
-                    }
+                const status = await readImpersonationStatus({
+                    userId: token.id,
+                    accessToken: token.access_token as string,
+                    force: trigger === "update",
+                    now,
+                });
+                // `undefined`: the read failed, or failed a moment ago. Keep the existing state.
+                if (status !== undefined) {
+                    token.is_impersonating = status.is_impersonating;
+                    token.impersonated_user_id = status.impersonated_user_id;
+                    token.impersonated_email = status.impersonated_email;
+                    token.impersonated_org_id = status.impersonated_org_id;
                 }
             }
 
@@ -518,6 +447,15 @@ const getServerSession = cache(async (): Promise<Session | null> => {
         return null;
     }
 });
+
+/**
+ * For the actions that start or stop an impersonation: drops the kept impersonation status of
+ * the signed-in user, so the next session read of that user asks the backend again (CHAOS-9218).
+ */
+export async function forgetOwnImpersonationStatus(): Promise<void> {
+    const session = await getServerSession();
+    forgetImpersonationStatus(session?.user?.id);
+}
 
 export async function auth(): Promise<Session | null> {
     const session = await getServerSession();
