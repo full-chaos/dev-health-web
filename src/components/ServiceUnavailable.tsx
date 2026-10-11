@@ -2,6 +2,24 @@ import Link from "next/link";
 import { config } from "@/lib/config";
 import { CTA_LABELS } from "@/lib/design/cta";
 
+/**
+ * The API origin the browser can be told about. Empty or relative values mean
+ * the web reaches the API through a same-origin / server-side path: there is
+ * nothing true to print, so return null. Only the origin of an absolute
+ * http(s) URL is returned (no credentials, path or query).
+ */
+export function publicApiOrigin(baseUrl: string | undefined): string | null {
+    const value = (baseUrl ?? "").trim();
+    if (!value) return null;
+    try {
+        const url = new URL(value);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+        return url.origin;
+    } catch {
+        return null;
+    }
+}
+
 type ServiceUnavailableProps = {
     /**
      * Render the content as the page's `<main>` landmark (default). A page inside
@@ -11,6 +29,7 @@ type ServiceUnavailableProps = {
 };
 
 export function ServiceUnavailable({ landmark = true }: ServiceUnavailableProps = {}) {
+    const apiOrigin = publicApiOrigin(config.api.baseUrl);
     const Content = landmark ? "main" : "div";
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -25,7 +44,8 @@ export function ServiceUnavailable({ landmark = true }: ServiceUnavailableProps 
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
                     <p>Quick checks:</p>
                     <ul className="mt-2 list-disc space-y-1 pl-4">
-                        <li>API at {config.api.baseUrl}</li>
+                        {apiOrigin ? <li>API at {apiOrigin}</li> : null}
+                        <li>The API service is running and reachable from the web server.</li>
                     </ul>
                 </div>
                 <Link
