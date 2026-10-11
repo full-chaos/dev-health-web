@@ -2,9 +2,7 @@ import { useCallback, useMemo } from "react";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { DataState } from "@/components/ui/DataState";
 import {
-    COVERAGE_UNAVAILABLE_REASON,
     isUnassignedLabel,
-    readFlowCoverage,
     stripSankeyPrefix,
     TOP_N_REPOS,
     UNASSIGNED_TEAM_LABEL,
@@ -165,10 +163,6 @@ export function TeamCategorySankeySection({
     }, [sankeyFlow]);
 
     const showBaselineDelta = !selectedCategory && baselineSankeyTotal > 0;
-    // Missing is not zero: a leaf the backend did not produce stays null and
-    // renders as "unavailable"; a produced 0 renders as 0%.
-    const sankeyCoverage = useMemo(() => readFlowCoverage(sankeyFlow), [sankeyFlow]);
-    const coverageUnavailable = sankeyCoverage.team === null || sankeyCoverage.repo === null;
     const handleTeamFocus = useCallback(
         (teamName: string) => {
             if (!teamName || teamName === UNASSIGNED_TEAM_LABEL) {
@@ -356,9 +350,7 @@ export function TeamCategorySankeySection({
                     />
                 ) : !sankeyFlow || !sankeyFlow.links.length ? (
                     <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
-                        {coverageUnavailable
-                            ? `Allocation could not be read for this window. ${COVERAGE_UNAVAILABLE_REASON}.`
-                            : "No allocation path available for this scope and window."}
+                        No allocation path available for this scope and window.
                     </div>
                 ) : (
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
