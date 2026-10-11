@@ -409,9 +409,7 @@ describe("ForecastErrorState", () => {
         expect(notice).toHaveAttribute("data-notice-variant", "danger");
         expect(within(notice).getByText("Backlog risk could not load")).toBeInTheDocument();
         expect(
-            within(notice).getByText(
-                /The forecast request failed\. Retry after the data service recovers/,
-            ),
+            within(notice).getByText(/The forecast could not be read\. Please try again later/),
         ).toBeInTheDocument();
     });
 });

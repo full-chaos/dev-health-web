@@ -178,7 +178,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                     <DataState
                         variant="error"
                         title="Pipeline trend could not be loaded"
-                        message="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
+                        message="Pipeline analytics could not be loaded. Please try again later."
                     />
                 ) : !hasPipelineRateData(rateTrend) ? (
                     <DataState

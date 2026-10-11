@@ -38,6 +38,9 @@ const RULES = [
             { re: /\bLINKED_INCIDENT\b/u, label: "LINKED_INCIDENT" },
             { re: /\bV1 SPARKLINE\b/iu, label: "V1 SPARKLINE" },
             { re: /\bDebug Filters\b/u, label: "Debug Filters" },
+            { re: /\bdata service\b/iu, label: "internal service name in a failure text" },
+            { re: /\bbackend returned\b/iu, label: "internal service name in a failure text" },
+            { re: /\breach the server\b/iu, label: "internal service name in a failure text" },
             { re: /\b(?:DETECTOR|TELEMETRY)_[A-Z0-9_]+\b/u, label: "detector/telemetry token" },
             {
                 re: /\b(?:detector|telemetry)[A-Z][A-Za-z0-9_]*\b/u,
@@ -123,7 +126,9 @@ function isCommentOnly(line, blockState) {
 }
 
 function isLikelyUiLine(line) {
-    return /<\w|>|label\s*:|title\s*:|aria-label|name\s*:|children\s*:/u.test(line);
+    return /<\w|>|label\s*:|title\s*:|aria-label|name\s*:|children\s*:|\b(?:message|reason|description|stateMessage)\s*=/u.test(
+        line,
+    );
 }
 
 function shouldSkipFile(filePath) {

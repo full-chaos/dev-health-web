@@ -167,8 +167,7 @@ describe("CompoundingRiskDashboard", () => {
         // Unified rich empty state — same testid as the all-null branch.
         expect(screen.getByTestId("all-scores-null-state")).toBeInTheDocument();
         expect(screen.getByText(/Scores currently unavailable/)).toBeInTheDocument();
-        expect(screen.getByText(/upstream repository metrics/i)).toBeInTheDocument();
-        expect(screen.getByText(/daily risk rollup/i)).toBeInTheDocument();
+        expect(screen.queryByText(/upstream repository metrics/i)).not.toBeInTheDocument();
         // No specific input list when there are no rows to inspect.
         expect(screen.queryByText(/Missing inputs across all/)).not.toBeInTheDocument();
         // The normal dashboard chrome must NOT render.

@@ -81,7 +81,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
         return (
             <AIMissingDataPanel
                 title="AI risk data is not available"
-                reason="The backend returned data_available=false for the selected scope. Missing risk data is shown explicitly."
+                reason="Not available for the selected scope."
                 needed="AI attribution joined to rework, revert, test-gap, and incident rollups."
             />
         );
