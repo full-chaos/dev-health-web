@@ -12,7 +12,7 @@ import {
     useAIReviewLoad,
     valueDelta,
 } from "@/lib/graphql/hooks/useAIReviewRisk";
-import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
+import { AI_COMPARISON_POLARITY, AIComparisonMetricCard } from "./AIComparisonMetricCard";
 import { Section } from "@/components/ui/Section";
 import { AIEvidenceDrawer } from "./AIEvidenceDrawer";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
@@ -59,6 +59,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
                 <AIComparisonMetricCard
                     title="Pickup latency"
+                    polarity={AI_COMPARISON_POLARITY["Pickup latency"]}
                     value={aiBucket?.pickupLatencyHours}
                     unit="h"
                     delta={valueDelta(
@@ -71,6 +72,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                 />
                 <AIComparisonMetricCard
                     title="Review comments per LOC"
+                    polarity={AI_COMPARISON_POLARITY["Review comments per LOC"]}
                     value={aiBucket?.reviewCommentsPerLoc}
                     precision={3}
                     delta={valueDelta(
@@ -83,6 +85,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                 />
                 <AIComparisonMetricCard
                     title="Change request rate"
+                    polarity={AI_COMPARISON_POLARITY["Change request rate"]}
                     value={aiBucket?.changesRequestedPerPr}
                     delta={valueDelta(
                         aiBucket?.changesRequestedPerPr,
@@ -94,6 +97,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                 />
                 <AIComparisonMetricCard
                     title="Approval friction"
+                    polarity={AI_COMPARISON_POLARITY["Approval friction"]}
                     value={aiFriction}
                     delta={valueDelta(aiFriction, humanFriction)}
                     description="Share of reviews that resulted in requested changes."
@@ -106,6 +110,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
             <div className="grid gap-4 lg:grid-cols-3">
                 <AIComparisonMetricCard
                     title="Push iterations after first review"
+                    polarity={AI_COMPARISON_POLARITY["Push iterations after first review"]}
                     value={aiBucket?.postFirstReviewPushesPerPr}
                     delta={valueDelta(
                         aiBucket?.postFirstReviewPushesPerPr,
@@ -155,6 +160,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                 )}
                 <AIComparisonMetricCard
                     title="Review amplification"
+                    polarity={AI_COMPARISON_POLARITY["Review amplification"]}
                     value={aiBucket?.reviewAmplification}
                     delta={valueDelta(
                         aiBucket?.reviewAmplification,

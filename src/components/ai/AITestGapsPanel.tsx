@@ -6,7 +6,7 @@ import { Notice } from "@/components/ui/Notice";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
 import { findBucketRow, useAIRiskBreakdown } from "@/lib/graphql/hooks/useAIReviewRisk";
-import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
+import { AI_COMPARISON_POLARITY, AIComparisonMetricCard } from "./AIComparisonMetricCard";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 
 type AITestGapsPanelProps = {
@@ -50,6 +50,7 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
             <div className="grid gap-4 lg:grid-cols-3">
                 <AIComparisonMetricCard
                     title="Test gap rate"
+                    polarity={AI_COMPARISON_POLARITY["Test gap rate"]}
                     value={aiBucket?.testGapRate}
                     unit="%"
                     delta={comparison?.delta.testGapRateDelta ?? undefined}

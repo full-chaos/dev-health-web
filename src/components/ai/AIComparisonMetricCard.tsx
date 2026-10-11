@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 
 import { CTA_LABELS } from "@/lib/design/cta";
+import type { MetricPolarity } from "@/lib/metrics/catalog";
 
 type AIComparisonMetricCardProps = {
     title: string;
@@ -11,7 +12,8 @@ type AIComparisonMetricCardProps = {
     delta?: number;
     description: string;
     loading?: boolean;
-    inverseGood?: boolean;
+    /** Required: the metric's direction. `"none"` = no direction defined, drawn neutral. */
+    polarity: CardPolarity;
     precision?: number;
     tooltip?: string;
     onDrilldown?: () => void;
@@ -23,9 +25,31 @@ function formatValue(value: number | null | undefined, unit: string, precision: 
     return `${formatted}${unit ? ` ${unit}` : ""}`;
 }
 
-function deltaTone(delta: number, inverseGood: boolean) {
-    if (delta === 0) return "text-(--ink-muted)";
-    const riskyDirection = inverseGood ? delta < 0 : delta > 0;
+/**
+ * Direction of each metric this card draws. The delta is an AI-vs-human-baseline gap, not a
+ * change over time; the tone only says which side of the baseline the AI bucket sits on.
+ * A metric with no defined direction is `"none"` and is drawn neutral: the web does not call
+ * a change good or bad where no polarity is defined. Direction for the three `"none"` metrics
+ * is an owner's decision (CHAOS-9090). A new metric must add an entry here (it is required).
+ */
+export type CardPolarity = MetricPolarity | "none";
+
+export const AI_COMPARISON_POLARITY = {
+    "Rework rate": "lowerIsBetter",
+    "Revert rate": "lowerIsBetter",
+    "Test gap rate": "lowerIsBetter",
+    "Incident rate": "lowerIsBetter",
+    "Pickup latency": "lowerIsBetter",
+    "Approval friction": "lowerIsBetter",
+    "Push iterations after first review": "lowerIsBetter",
+    "Change request rate": "none",
+    "Review comments per LOC": "none",
+    "Review amplification": "none",
+} as const satisfies Record<string, CardPolarity>;
+
+export function deltaTone(delta: number, polarity: CardPolarity) {
+    if (delta === 0 || polarity === "none") return "text-(--ink-muted)";
+    const riskyDirection = polarity === "lowerIsBetter" ? delta > 0 : delta < 0;
     return riskyDirection ? "text-(--negative)" : "text-(--positive)";
 }
 
@@ -36,7 +60,7 @@ export function AIComparisonMetricCard({
     delta,
     description,
     loading,
-    inverseGood = false,
+    polarity,
     precision = 2,
     tooltip,
     onDrilldown,
@@ -94,7 +118,7 @@ export function AIComparisonMetricCard({
                     {loading ? "—" : formatValue(value, unit, precision)}
                 </p>
                 <p
-                    className={`mt-1 text-sm font-medium ${delta == null ? "text-(--ink-muted)" : deltaTone(delta, inverseGood)}`}
+                    className={`mt-1 text-sm font-medium ${delta == null ? "text-(--ink-muted)" : deltaTone(delta, polarity)}`}
                 >
                     {loading ? "Loading baseline…" : deltaLabel}
                 </p>

@@ -11,6 +11,7 @@ describe("AIComparisonMetricCard", () => {
                 unit="%"
                 delta={0.031}
                 description="AI rework signal"
+                polarity="lowerIsBetter"
             />,
         );
 
@@ -27,6 +28,7 @@ describe("AIComparisonMetricCard", () => {
                 unit="h"
                 delta={1}
                 description="Loading card"
+                polarity="lowerIsBetter"
                 loading
             />,
         );
@@ -43,6 +45,7 @@ describe("AIComparisonMetricCard", () => {
                 value={0.01}
                 unit="%"
                 description="Incident card"
+                polarity="lowerIsBetter"
                 onDrilldown={onDrilldown}
             />,
         );
@@ -58,6 +61,7 @@ describe("AIComparisonMetricCard", () => {
                 title="Review load"
                 value={4}
                 description="Review load card"
+                polarity="lowerIsBetter"
                 tooltip="Calculated from completed reviews"
             />,
         );

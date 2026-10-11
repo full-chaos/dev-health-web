@@ -15,7 +15,7 @@ import {
     useAIGovernanceSummary,
     useAIRiskBreakdown,
 } from "@/lib/graphql/hooks/useAIReviewRisk";
-import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
+import { AI_COMPARISON_POLARITY, AIComparisonMetricCard } from "./AIComparisonMetricCard";
 import { AIEvidenceDrawer } from "./AIEvidenceDrawer";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 import { AIViolationsList } from "./AIViolationsList";
@@ -92,6 +92,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
                 <AIComparisonMetricCard
                     title="Rework rate"
+                    polarity={AI_COMPARISON_POLARITY["Rework rate"]}
                     value={aiBucket?.reworkRate}
                     unit="%"
                     delta={comparison?.delta.reworkRateDelta ?? undefined}
@@ -101,6 +102,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 />
                 <AIComparisonMetricCard
                     title="Revert rate"
+                    polarity={AI_COMPARISON_POLARITY["Revert rate"]}
                     value={aiBucket?.revertRate}
                     unit="%"
                     delta={comparison?.delta.revertRateDelta ?? undefined}
@@ -110,6 +112,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 />
                 <AIComparisonMetricCard
                     title="Test gap rate"
+                    polarity={AI_COMPARISON_POLARITY["Test gap rate"]}
                     value={aiBucket?.testGapRate}
                     unit="%"
                     delta={comparison?.delta.testGapRateDelta ?? undefined}
@@ -119,6 +122,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 />
                 <AIComparisonMetricCard
                     title="Incident rate"
+                    polarity={AI_COMPARISON_POLARITY["Incident rate"]}
                     value={aiBucket?.incidentRate}
                     unit="%"
                     delta={comparison?.delta.incidentRateDelta ?? undefined}
