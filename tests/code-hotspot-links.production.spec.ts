@@ -41,6 +41,9 @@ test.describe("code page hotspot links (production build)", () => {
         await page.goto("/code", { waitUntil: "load" });
         const link = page.getByTestId("repo-top-hotspot").getByRole("link");
         await expect(link).toHaveText(SERVED_FILE);
+        // The repository table is below the first screen: the router prefetches a link when it
+        // comes into view.
+        await link.scrollIntoViewIfNeeded();
         await expect(link).toBeInViewport();
         // Soft: a raw href fails here AND the checks below still run and show their numbers.
         await expect.soft(link).toHaveAttribute("href", CANONICAL_HREF);
