@@ -50,6 +50,7 @@ vi.mock("@/lib/api/code", () => ({
     getRepoTopHotspots: async () => null,
 }));
 
+import { resolveServerTree } from "@/test/resolveServerTree";
 import CodePage from "./page";
 
 const emptyHome = {
@@ -75,7 +76,12 @@ const servedHome = {
     ],
 };
 
-const draw = async () => render(await CodePage({ searchParams: Promise.resolve({}) }));
+const draw = async () =>
+    render(
+        (await resolveServerTree(
+            await CodePage({ searchParams: Promise.resolve({}) }),
+        )) as React.ReactElement,
+    );
 const churnTile = () => within(screen.getByTestId("code-tiles")).getAllByTestId("metric-value")[0];
 const churnFact = async () => {
     await userEvent.click(screen.getByRole("button", { name: "View evidence" }));

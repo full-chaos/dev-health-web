@@ -58,6 +58,7 @@ vi.mock("@/lib/api/code", () => ({
     getRepoTopHotspots: (...args: unknown[]) => getRepoTopHotspotsMock(...args),
 }));
 
+import { resolveServerTree } from "@/test/resolveServerTree";
 import CodePage from "./page";
 
 const churn = (extra: Record<string, unknown>) => ({
@@ -78,7 +79,7 @@ async function renderTile(extra: Record<string, unknown>) {
     getQuadrantMock.mockResolvedValue(null);
     getBusFactorDataMock.mockResolvedValue(null);
     getRepoTopHotspotsMock.mockResolvedValue(null);
-    const ui = await CodePage({ searchParams: Promise.resolve({}) });
+    const ui = await resolveServerTree(await CodePage({ searchParams: Promise.resolve({}) }));
     render(ui as React.ReactElement);
     return within(screen.getByTestId("code-tiles"))
         .getAllByTestId("metric-value")[0]
@@ -130,7 +131,7 @@ describe("CodePage File-change samples tile (CHAOS-9154)", () => {
         getQuadrantMock.mockResolvedValue(null);
         getBusFactorDataMock.mockResolvedValue(busFactor(count));
         getRepoTopHotspotsMock.mockResolvedValue([]);
-        const ui = await CodePage({ searchParams: Promise.resolve({}) });
+        const ui = await resolveServerTree(await CodePage({ searchParams: Promise.resolve({}) }));
         render(ui as React.ReactElement);
         // Tiles in order: churn, File-change samples, Bus factor.
         return within(screen.getByTestId("code-tiles"));
