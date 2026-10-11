@@ -6,6 +6,14 @@ import { listSettingCategories, listSettings } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Notice } from "@/components/ui/Notice";
 
+// The backend answers 403 for these categories on the generic settings read: their own
+// endpoints own them. The list of categories names them, so the page must not ask (CHAOS-9274).
+const DEDICATED_ENDPOINT_CATEGORIES: ReadonlySet<string> = new Set([
+    "llm",
+    "llm_budget",
+    "ask_dev",
+]);
+
 export default async function SettingsPage() {
     const { data: categories, error: categoriesError } = await listSettingCategories();
 
@@ -23,10 +31,12 @@ export default async function SettingsPage() {
         );
     }
 
-    const settingsPromises = (categories || []).map(async (category) => {
-        const { data } = await listSettings(category);
-        return { category, settings: data || [] };
-    });
+    const settingsPromises = (categories || [])
+        .filter((category) => !DEDICATED_ENDPOINT_CATEGORIES.has(category))
+        .map(async (category) => {
+            const { data } = await listSettings(category);
+            return { category, settings: data || [] };
+        });
 
     const allSettings = await Promise.all(settingsPromises);
 
