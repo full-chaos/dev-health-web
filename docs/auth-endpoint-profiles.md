@@ -30,9 +30,7 @@ it rather than duplicating it: read `auth-system.md` first.
 ## Coverage
 
 12 REST surfaces across 8 `route.ts` files under `src/app/api/` (the
-NextAuth catch-all is represented as a single `api_route` row). The Ask Dev
-proxy family (`v1/dev/*`, 7 files, 10 rows) was deleted with its routes
-(CHAOS-6262) and no longer appears in either count.
+NextAuth catch-all is represented as a single `api_route` row).
 
 Two families, by how they reach ops:
 
@@ -202,8 +200,7 @@ key on the action id itself: it changes on every build.
 
 **Discovery.** `ci/discover_web_routes.ts` independently walks every file
 under `src/` whose first non-comment, non-blank line is the `"use server"`
-directive (18 files — `admin/server/ask-dev.ts` and `admin/server/platform.ts`
-deleted with the Ask Dev surface, CHAOS-6262) and emits one `serverActions`
+directive (18 files) and emits one `serverActions`
 record per exported function — `export async function NAME(...)` or the
 async-arrow form, `export type`/`export interface` lines correctly excluded
 since Next.js erases them at compile time and does not require them to be
