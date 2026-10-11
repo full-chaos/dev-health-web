@@ -14,13 +14,19 @@ type Entry = { method: string; path: string; variables: string };
 async function received(request: APIRequestContext) {
     const log = (await (await request.get(`${MOCK}/__test/backend-log`)).json()) as Entry[];
     const posts = log.filter((e) => e.method === "POST" && e.path === PATH);
+    const events = posts.flatMap((p) => {
+        const body = JSON.parse(p.variables.replace(/^\{\}/, "")) as {
+            events?: { name: string; anonymousUserId: string; orgIdHash: string | null }[];
+        };
+        return body.events ?? [];
+    });
     const ids = posts.flatMap((p) => {
         const body = JSON.parse(p.variables.replace(/^\{\}/, "")) as {
             events?: { eventId: string }[];
         };
         return (body.events ?? []).map((ev) => ev.eventId);
     });
-    return { posts: posts.length, ids };
+    return { posts: posts.length, ids, events };
 }
 
 test("events queued before each hard navigation are received, once", async ({ page, request }) => {
@@ -40,4 +46,27 @@ test("events queued before each hard navigation are received, once", async ({ pa
     expect(posts, "send attempts for 5 hard page loads").toBeGreaterThanOrEqual(ROUTES.length);
     expect(ids.length).toBeGreaterThanOrEqual(ROUTES.length * 3);
     expect(new Set(ids).size, "no event is received twice").toBe(ids.length);
+});
+
+test("one page hide stores one session_ended and every event shares one identity", async ({
+    page,
+    request,
+}) => {
+    await request.post(`${MOCK}/__test/entitlements`, { data: { scenario: "investment-enabled" } });
+    await request.post(`${MOCK}/__test/backend-log/reset`);
+
+    await page.goto("/metrics");
+    await page.waitForLoadState("networkidle");
+    // One hide: the page goes hidden, then pagehide.
+    await page.goto("about:blank");
+    await page.waitForTimeout(1000);
+
+    const { events } = await received(request);
+    const names = new Set(events.map((ev) => ev.name));
+    expect(names).toEqual(
+        new Set(["session_started", "page_viewed", "feature_viewed", "session_ended"]),
+    );
+    expect(events.filter((ev) => ev.name === "session_ended")).toHaveLength(1);
+    expect(new Set(events.map((ev) => ev.anonymousUserId)).size, "one anonymous user id").toBe(1);
+    expect(new Set(events.map((ev) => ev.orgIdHash)).size, "one org hash").toBe(1);
 });

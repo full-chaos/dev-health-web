@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import {
@@ -33,6 +33,8 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
     const interactionsRef = useRef(0);
     const sessionStartedRef = useRef(false);
     const previousRoutePatternRef = useRef<string | null>(null);
+    // Events of one page life must carry one identity: hold the mount events until it is set.
+    const [identityReady, setIdentityReady] = useState(false);
     useEffect(() => {
         let cancelled = false;
         async function applyIdentity() {
@@ -42,15 +44,24 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
             ]);
             if (!cancelled) {
                 setTelemetryContext({ anonymousUserId, orgIdHash });
+                setIdentityReady(true);
             }
         }
-        void applyIdentity();
+        applyIdentity().catch(() => {
+            // Hashing failed: go on with the stored fallback identity rather than send nothing.
+            if (!cancelled) {
+                setIdentityReady(true);
+            }
+        });
         return () => {
             cancelled = true;
         };
     }, [orgId, userId]);
 
     useEffect(() => {
+        if (!identityReady) {
+            return;
+        }
         const routePattern = routePatternForPathname(pathname || "/");
         const previousRoutePattern = previousRoutePatternRef.current;
         if (previousRoutePattern === routePattern && sessionStartedRef.current) {
@@ -70,7 +81,7 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         emitFeatureViewed(routePattern);
         pagesViewedRef.current += 1;
         previousRoutePatternRef.current = routePattern;
-    }, [pathname]);
+    }, [pathname, identityReady]);
 
     useEffect(() => {
         sessionStartMsRef.current ??= performance.now();

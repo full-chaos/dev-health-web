@@ -155,6 +155,29 @@ describe("TelemetryProvider", () => {
         expect(telemetryMock.flushTelemetryEventsOnHide).not.toHaveBeenCalled();
     });
 
+    it("sets the hashed identity before the first event of the page life", async () => {
+        render(
+            <TelemetryProvider orgId="org-raw" userId="user-raw">
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        await waitFor(() =>
+            expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+                "session_started",
+                expect.any(Object),
+            ),
+        );
+        const identityCall = telemetryMock.setTelemetryContext.mock.calls.findIndex(
+            ([ctx]) => ctx && "anonymousUserId" in ctx && "orgIdHash" in ctx,
+        );
+        expect(identityCall).toBeGreaterThanOrEqual(0);
+        const identityOrder =
+            telemetryMock.setTelemetryContext.mock.invocationCallOrder[identityCall];
+        for (const order of telemetryMock.trackTelemetryEvent.mock.invocationCallOrder) {
+            expect(order).toBeGreaterThan(identityOrder);
+        }
+    });
+
     describe("session_ended once per visible period", () => {
         const endedCalls = () =>
             telemetryMock.trackTelemetryEvent.mock.calls.filter(
