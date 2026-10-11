@@ -432,7 +432,6 @@ export const CTA_LABELS = {
     exploreContextFabricUseCases: "Explore use cases",
     openContextFabricOverview: "Context Fabric overview",
     seeContextFabricInAction: "See Context Fabric in action",
-    readAskDevGuide: "Read the Ask Dev guide",
     configureAcrMcpSidecar: "Configure the ACR MCP sidecar",
     configureAcrAndMcp: "Configure ACR and MCP",
 } as const;
