@@ -5,14 +5,14 @@ _architecture_; this one is the per-surface inventory Guardrail G-1 requires
 ("a route without a registered profile fails CI and may not ship"). Extends
 it rather than duplicating it: read `auth-system.md` first.
 
-- Machine-readable inventory: [`../../contracts/auth/v1/endpoint-profiles.web.json`](../../contracts/auth/v1/endpoint-profiles.web.json)
+- Machine-readable inventory: [`../contracts/auth/v1/endpoint-profiles.web.json`](../contracts/auth/v1/endpoint-profiles.web.json)
   (157 rows: 12 REST + 145 `server_action`)
-- Discovery script (independent re-derivation): [`../../ci/discover_web_routes.ts`](../../ci/discover_web_routes.ts)
+- Discovery script (independent re-derivation): [`../ci/discover_web_routes.ts`](../ci/discover_web_routes.ts)
 - CI gate (diffs discovery against the inventory; fails on an unowned
   surface, a stale row, a duplicate id, a closed-vocabulary violation,
   anchor drift, a schema violation, an unstated null, or a claimed-protected
-  action whose validator can't be shown to reject): [`../../ci/gate_web_auth_profiles.ts`](../../ci/gate_web_auth_profiles.ts),
-  proven by [`../../ci/__tests__/gate_web_auth_profiles.test.ts`](../../ci/__tests__/gate_web_auth_profiles.test.ts).
+  action whose validator can't be shown to reject): [`../ci/gate_web_auth_profiles.ts`](../ci/gate_web_auth_profiles.ts),
+  proven by [`../ci/__tests__/gate_web_auth_profiles.test.ts`](../ci/__tests__/gate_web_auth_profiles.test.ts).
   Wired into CI as a step of the `quality` job in
   `.github/workflows/tests.yml`, on every pull request; a run with no ops
   contract input (see next bullet) SKIPS the closed-vocabulary checks
