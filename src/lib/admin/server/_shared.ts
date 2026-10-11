@@ -1,5 +1,5 @@
 import { failureFromError } from "@/lib/actionFailure";
-import { auth } from "@/lib/auth";
+import { auth, forgetOwnImpersonationStatus } from "@/lib/auth";
 import { AdminApiError } from "../api";
 import type { ActionResult } from "@/lib/result";
 
@@ -35,11 +35,23 @@ export async function requireSuperuserToken(): Promise<string> {
     return session.access_token;
 }
 
-export async function withErrorHandling<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
+/**
+ * `after: "changes-impersonation"` is for the actions that start or stop an impersonation: when
+ * the call has ended, with a result or with an error (the backend may have applied the change),
+ * the kept impersonation status of the signed-in user is dropped, so the next session read of
+ * that user asks the backend again (CHAOS-9218). It is an argument, not a second helper: the
+ * auth-profile gate anchors the action files by line, so those files get no new import line.
+ */
+export async function withErrorHandling<T>(
+    fn: () => Promise<T>,
+    after?: "changes-impersonation",
+): Promise<ActionResult<T>> {
     try {
         const data = await fn();
         return { data };
     } catch (err) {
         return failureFromError("adminServerCall", err);
+    } finally {
+        if (after === "changes-impersonation") await forgetOwnImpersonationStatus();
     }
 }
