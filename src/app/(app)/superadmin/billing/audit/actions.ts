@@ -89,16 +89,16 @@ export async function getAuditLog(
         }
 
         const session = await auth();
-        const isSuperuser = Boolean(session?.user?.is_superuser);
-        const resolvedOrgId = filters.org_id ?? (isSuperuser ? undefined : session?.user?.org_id);
-        if (!isSuperuser && !resolvedOrgId) {
+        // The backend needs org_id on this list for every caller, a platform admin too
+        // (CHAOS-9275). A list without it answers 422 on every first load. An empty filter value
+        // is dropped below, so only valid parameters go out.
+        const resolvedOrgId = filters.org_id || session?.user?.org_id;
+        if (!resolvedOrgId) {
             return { error: "No organization found" };
         }
 
         const params = new URLSearchParams();
-        if (resolvedOrgId) {
-            params.set("org_id", resolvedOrgId);
-        }
+        params.set("org_id", resolvedOrgId);
         Object.entries(filters).forEach(([key, value]) => {
             if (value !== undefined && value !== null && value !== "" && key !== "org_id") {
                 params.set(key, String(value));
