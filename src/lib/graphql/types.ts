@@ -629,18 +629,8 @@ export interface WorkUnitInvestmentDistribution {
     uncertainty?: string;
 }
 
-export type WorkGraphNodeType =
-    | "ISSUE"
-    | "PR"
-    | "COMMIT"
-    | "FILE"
-    | "RELEASE"
-    | "FEATURE_FLAG"
-    | "AI_WORKFLOW_RUN"
-    | "DIFF"
-    | "REVIEW_OUTCOME"
-    | "DEPLOYMENT"
-    | "INCIDENT";
+import type { WorkGraphNodeType } from "./__generated__/types";
+export type { WorkGraphNodeType };
 
 export type WorkGraphEdgeType =
     // Issue-to-issue relationships

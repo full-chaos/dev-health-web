@@ -130,7 +130,10 @@ describe("node detail dots equal the explorer's node colors", () => {
         expect(explorer).toMatch(/NODE_TYPE_COLOR_SOURCE\[type\]/u);
     });
 
-    it("the 11 dots keep 11 different colors", () => {
-        expect(new Set(types.map((t) => nodeTypeDotClass(t))).size).toBe(types.length);
+    it("the 11 code and delivery types keep 11 different colors", () => {
+        // The theme has 10 series colors and one status color, so the 8 operational and
+        // org types (CHAOS-6990) share colors with them. The 11 older types stay distinct.
+        const older = types.slice(0, 11);
+        expect(new Set(older.map((t) => nodeTypeDotClass(t))).size).toBe(11);
     });
 });

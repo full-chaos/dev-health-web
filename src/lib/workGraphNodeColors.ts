@@ -17,6 +17,14 @@ export const NODE_TYPE_COLOR_SOURCE: Record<WorkGraphNodeType, number | "negativ
     REVIEW_OUTCOME: 7,
     DEPLOYMENT: 2,
     INCIDENT: "negative",
+    OPERATIONAL_SERVICE: 2,
+    OPERATIONAL_ALERT: "negative",
+    INCIDENT_TIMELINE_EVENT: "negative",
+    INCIDENT_RESPONDER: 9,
+    ESCALATION_POLICY: 4,
+    REPOSITORY: 8,
+    USER: 5,
+    TEAM: 3,
 };
 
 // Literal class names, so Tailwind finds them.
