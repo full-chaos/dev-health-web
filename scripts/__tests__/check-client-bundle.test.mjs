@@ -22,20 +22,44 @@ function write(path, text) {
 }
 
 /** A small tree: one server-only source file and a build output with one client and one server file. */
+const ENV_SERVER = [
+    'import "server-only";',
+    "const schema = z.object({",
+    "    PUBLIC_ISH: z.string().optional(),",
+    "    HIDDEN_NAME: z.string().optional(),",
+    "    NEXT_PUBLIC_FLAG: z.string().optional(),",
+    "    THIRD_PARTY_NAME: z.string().optional(),",
+    "});",
+    "",
+].join("\n");
+const ENV_CLIENT = "const schema = z.object({\n    PUBLIC_ISH: z.string().optional(),\n});\n";
+
 function tree({
+    envServer = ENV_SERVER,
+    envClient = ENV_CLIENT,
     source = 'import "server-only";\nexport const path = "/api/private/marker";\n',
     client = 'console.log("public code")',
-    server = 'fetch("/api/private/marker")',
+    server = 'fetch("/api/private/marker");x={HIDDEN_NAME:1,PUBLIC_ISH:2}',
 } = {}) {
     const root = mkdtempSync(join(tmpdir(), "client-bundle-check-"));
     write(join(root, "src/lib/secretLogic.ts"), source);
+    if (envServer !== null) write(join(root, "src/lib/envServer.ts"), envServer);
+    if (envClient !== null) write(join(root, "src/lib/envClient.ts"), envClient);
     if (client !== null) write(join(root, ".next/static/chunks/a.js"), client);
     if (server !== null) write(join(root, ".next/server/chunks/b.js"), server);
     return { root, dist: join(root, ".next") };
 }
 
 const check = (paths, options = {}) =>
-    checkClientBundle({ ...paths, modules: MODULES, secretNames: ["A_SECRET"], ...options });
+    checkClientBundle({
+        ...paths,
+        modules: MODULES,
+        secretNames: ["A_SECRET"],
+        serverEnvFile: "src/lib/envServer.ts",
+        clientEnvFile: "src/lib/envClient.ts",
+        thirdPartyEnvNames: ["THIRD_PARTY_NAME"],
+        ...options,
+    });
 
 describe("client bundle check", () => {
     it("passes when no client file holds a marker or a secret value", () => {
@@ -74,6 +98,49 @@ describe("client bundle check", () => {
             "static/chunks/a.js: client file holds the value of A_SECRET",
         ]);
         expect(result.failures.join("\n")).not.toContain(SECRET);
+    });
+
+    it("fails when a client file holds the NAME of a server environment variable", () => {
+        const result = check(tree({ client: "const k=process.env.HIDDEN_NAME" }));
+
+        expect(result.ok).toBe(false);
+        expect(result.summary).toMatchObject({ envNames: 1, envNameHits: 1 });
+        expect(result.failures).toEqual([
+            "static/chunks/a.js: client file holds the name of server variable HIDDEN_NAME",
+        ]);
+    });
+
+    it("does not flag a name the client-graph reader holds, a public name or a longer word", () => {
+        const result = check(
+            tree({
+                client: 'x=["PUBLIC_ISH","NEXT_PUBLIC_FLAG","THIRD_PARTY_NAME","HIDDEN_NAME_2"]',
+            }),
+        );
+
+        expect(result.failures).toEqual([]);
+    });
+
+    it("fails when a server environment name is not in the server output", () => {
+        const result = check(tree({ server: 'fetch("/api/private/marker")' }));
+
+        expect(result.ok).toBe(false);
+        expect(result.failures.join("\n")).toContain(
+            "HIDDEN_NAME: server environment name is not in the server output",
+        );
+    });
+
+    it("fails when the server schema has no name to look for", () => {
+        const result = check(tree({ envServer: 'import "server-only";\n' }));
+
+        expect(result.ok).toBe(false);
+        expect(result.failures.join("\n")).toContain("no server environment name to look for");
+    });
+
+    it("fails when an env reader file does not exist", () => {
+        const result = check(tree({ envClient: null }));
+
+        expect(result.ok).toBe(false);
+        expect(result.failures.join("\n")).toContain("env reader file does not exist");
     });
 
     it("fails when the build output has no client file", () => {
@@ -178,6 +245,34 @@ describe("the registry of server-only modules", () => {
         expect(source).toMatch(/^import "server-only";$/m);
         expect(entry.markers.length).toBeGreaterThan(0);
         for (const marker of entry.markers) expect(source).toContain(marker);
+    });
+});
+
+describe("the server environment reader", () => {
+    const packageJson = JSON.parse(readFileSync(join(repositoryRoot, "package.json"), "utf8"));
+    const mapping = packageJson.imports?.["#server-env"];
+
+    it("maps to the full reader only under the react-server condition", () => {
+        expect(mapping).toEqual({
+            "react-server": "./src/lib/serverEnv.server.ts",
+            default: "./src/lib/serverEnv.default.ts",
+        });
+    });
+
+    it("the server variant is marked server-only and the config module does not import it directly", () => {
+        const server = readFileSync(join(repositoryRoot, mapping["react-server"]), "utf8");
+        const config = readFileSync(join(repositoryRoot, "src/lib/config.ts"), "utf8");
+
+        expect(server).toMatch(/^import "server-only";$/m);
+        expect(config).not.toMatch(/from\s+["'][^"']*serverEnv\.server/);
+        expect(config).toContain('"#server-env"');
+    });
+
+    it("the default variant holds no secret variable name", () => {
+        const source = readFileSync(join(repositoryRoot, mapping.default), "utf8");
+
+        for (const name of SECRET_ENV_NAMES) expect(source).not.toContain(name);
+        expect(source).not.toMatch(/^\s*import\s+["']server-only["']/m);
     });
 });
 

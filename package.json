@@ -10,6 +10,10 @@
         "#server-session": {
             "react-server": "./src/lib/serverSession.server.ts",
             "default": "./src/lib/serverSession.default.ts"
+        },
+        "#server-env": {
+            "react-server": "./src/lib/serverEnv.server.ts",
+            "default": "./src/lib/serverEnv.default.ts"
         }
     },
     "scripts": {
