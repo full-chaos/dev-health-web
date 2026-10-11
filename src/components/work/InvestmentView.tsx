@@ -8,6 +8,8 @@ import {
     formatEffortUnit,
     formatQuality,
     formatWorkUnitLabel,
+    firstRowPerWorkUnit,
+    workUnitRepositoryLabel,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, ReworkThemeAllocation } from "@/lib/types";
@@ -141,7 +143,35 @@ export function InvestmentView({
 
     // Evidence-block dropdown lists every work unit in the window; the table
     // above it drives grouped navigation.
-    const selectableUnits = data.workUnits;
+    const selectableUnits = useMemo(() => firstRowPerWorkUnit(data.workUnits), [data.workUnits]);
+
+    // The selected unit once: effort is the sum over its rows (one per repository under a
+    // repository scope), contextual evidence is every row's, and each repository is named.
+    const selectedDetail = useMemo(() => {
+        const selectedId = data.selectedUnit?.work_unit_id;
+        if (!data.selectedUnit || !selectedId) return null;
+        const matching = data.workUnits.filter((row) => row.work_unit_id === selectedId);
+        const rows = matching.length > 0 ? matching : [data.selectedUnit];
+        const seen = new Set<string>();
+        const contextual = rows
+            .flatMap((row) => row.evidence?.contextual ?? [])
+            .filter((entry) => {
+                const key = JSON.stringify(entry);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        const repositories = Array.from(
+            new Set(
+                rows.map((row) => workUnitRepositoryLabel(row)).filter((v): v is string => !!v),
+            ),
+        );
+        return {
+            effort: rows.reduce((sum, row) => sum + row.effort.value, 0),
+            contextual,
+            repositories,
+        };
+    }, [data.selectedUnit, data.workUnits]);
 
     // Backend-computed owning team per visible work UNIT (CHAOS-2608 / CS7).
     // Render-only: surfaced as badges in the evidence table; never recomputed
@@ -261,9 +291,17 @@ export function InvestmentView({
                             </div>
                             <div>
                                 <span className="text-(--ink-muted)">Effort:</span>{" "}
-                                {formatNumber(data.selectedUnit.effort.value)}{" "}
+                                {formatNumber(
+                                    selectedDetail?.effort ?? data.selectedUnit.effort.value,
+                                )}{" "}
                                 {formatEffortUnit(data.selectedUnit.effort.metric)}
                             </div>
+                            {selectedDetail && selectedDetail.repositories.length > 1 ? (
+                                <div data-testid="selected-unit-repositories">
+                                    <span className="text-(--ink-muted)">Repositories:</span>{" "}
+                                    {selectedDetail.repositories.join(", ")}
+                                </div>
+                            ) : null}
                             <div>
                                 <span className="text-(--ink-muted)">Evidence quality:</span>{" "}
                                 {data.selectedUnit.evidence_quality.value !== null
@@ -302,12 +340,12 @@ export function InvestmentView({
                             Contextual evidence
                         </p>
                         <div className="mt-3 space-y-2 text-xs">
-                            {(data.selectedUnit.evidence?.contextual ?? []).length === 0 && (
+                            {(selectedDetail?.contextual ?? []).length === 0 && (
                                 <p className="text-(--ink-muted)">
                                     No contextual evidence reported.
                                 </p>
                             )}
-                            {(data.selectedUnit.evidence?.contextual ?? []).map((entry) => (
+                            {(selectedDetail?.contextual ?? []).map((entry) => (
                                 <EvidenceEntryCard
                                     key={`contextual-${JSON.stringify(entry)}`}
                                     entry={entry as Record<string, unknown>}

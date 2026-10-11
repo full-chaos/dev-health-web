@@ -9,6 +9,7 @@ import type { WorkUnitInvestment } from "@/lib/types";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
 import { titleCase as sharedTitleCase } from "@/lib/stringUtils";
+import { UNRESOLVED } from "@/lib/labels/unresolved";
 
 // ============================================================================
 // Work unit list selection
@@ -103,6 +104,62 @@ export const topInvestmentKey = (
     return bestKey;
 };
 
+// ============================================================================
+// Rows per repository (one work unit can come back as several rows)
+// ============================================================================
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The repository a work-unit row is scoped to: the `repo_ids[0]` of its `repo_scope` contextual
+ * entry (a slug, a UUID, or "unassigned"), or null when the row carries none.
+ */
+export const workUnitRepoScope = (unit: Pick<WorkUnitInvestment, "evidence">): string | null => {
+    for (const entry of unit.evidence?.contextual ?? []) {
+        if (entry?.type !== "repo_scope") continue;
+        const ids = entry.repo_ids;
+        if (Array.isArray(ids) && typeof ids[0] === "string" && ids[0]) return ids[0];
+    }
+    return null;
+};
+
+/**
+ * Name for one `repo_scope` value. An id is never a label: a UUID or "unassigned" is "Unresolved".
+ */
+export const repoScopeLabel = (value: string): string =>
+    UUID_RE.test(value) || value === "unassigned" ? UNRESOLVED : value;
+
+/** The repository name of a row, or null when the row has no repository scope. */
+export const workUnitRepositoryLabel = (
+    unit: Pick<WorkUnitInvestment, "evidence">,
+): string | null => {
+    const scope = workUnitRepoScope(unit);
+    return scope === null ? null : repoScopeLabel(scope);
+};
+
+/**
+ * Key of one row: the unit id plus its repository. Under a repository scope one unit is several
+ * rows with the same `work_unit_id`; elsewhere the key is the unit id.
+ */
+export const workUnitRowKey = (unit: Pick<WorkUnitInvestment, "work_unit_id" | "evidence">) =>
+    `${unit.work_unit_id}\u0000${workUnitRepoScope(unit) ?? ""}`;
+
+/** Number of distinct work units among rows (a unit in 2 repositories is 1). */
+export const countDistinctWorkUnits = (rows: ReadonlyArray<{ work_unit_id: string }>): number =>
+    new Set(rows.map((row) => row.work_unit_id)).size;
+
+/** The first row of each work unit, in order. */
+export const firstRowPerWorkUnit = <T extends { work_unit_id: string }>(
+    rows: readonly T[],
+): T[] => {
+    const seen = new Set<string>();
+    return rows.filter((row) => {
+        if (seen.has(row.work_unit_id)) return false;
+        seen.add(row.work_unit_id);
+        return true;
+    });
+};
+
 /** Canonical evidence-quality bands, strongest → weakest, plus unknown. */
 export const EVIDENCE_BAND_ORDER = ["high", "moderate", "low", "very_low", "unknown"] as const;
 
@@ -110,7 +167,7 @@ export type EvidenceBandId = (typeof EVIDENCE_BAND_ORDER)[number];
 
 /**
  * Tally work units into evidence-quality bands. Units with a null/absent band
- * fall into `unknown`, so the counts always sum to `workUnits.length` and the
+ * fall into `unknown`, so the counts always sum to the number of distinct work units and the
  * Confidence encoding never silently drops a unit. Pure + deterministic.
  */
 export const computeEvidenceBandCounts = (
@@ -123,7 +180,7 @@ export const computeEvidenceBandCounts = (
         very_low: 0,
         unknown: 0,
     };
-    for (const unit of workUnits) {
+    for (const unit of firstRowPerWorkUnit(workUnits)) {
         const band = unit.evidence_quality?.band;
         if (band && band in counts) {
             counts[band as EvidenceBandId] += 1;

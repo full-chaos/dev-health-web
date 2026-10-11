@@ -21,6 +21,7 @@ import {
     formatWorkUnitLabel,
     titleCase,
     topInvestmentKey,
+    workUnitRowKey,
 } from "@/lib/investment";
 import type {
     InvestmentConfidence,
@@ -191,6 +192,11 @@ export function ConfidencePanel({
                     (a, b) =>
                         (a.unit.evidence_quality.value ?? 0) - (b.unit.evidence_quality.value ?? 0),
                 )
+                .filter(
+                    (row, index, rows) =>
+                        rows.findIndex((r) => r.unit.work_unit_id === row.unit.work_unit_id) ===
+                        index,
+                )
                 .slice(0, 8),
         [workUnits],
     );
@@ -327,7 +333,7 @@ export function ConfidencePanel({
                                     const band = unit.evidence_quality.band ?? "unknown";
                                     return (
                                         <tr
-                                            key={unit.work_unit_id}
+                                            key={workUnitRowKey(unit)}
                                             data-testid="low-confidence-row"
                                             className="border-t border-(--card-stroke)"
                                         >

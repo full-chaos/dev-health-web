@@ -7,6 +7,7 @@
  * key→value pair with a readable label.
  */
 import { nameOrUnresolved } from "@/lib/labels/unresolved";
+import { repoScopeLabel } from "@/lib/investment/transforms";
 
 /**
  * An evidence quote names its source by the served `source_title`, or "Unresolved". Its `id` is an
@@ -14,6 +15,14 @@ import { nameOrUnresolved } from "@/lib/labels/unresolved";
  * id is a commit hash, which stays.
  */
 function shapeEvidenceEntry(entry: Record<string, unknown>): Array<[string, unknown]> {
+    // A repository scope names its repositories; a UUID or "unassigned" is "Unresolved".
+    if (entry.type === "repo_scope") {
+        return Object.entries(entry).map(([key, value]): [string, unknown] =>
+            key === "repo_ids" && Array.isArray(value)
+                ? [key, value.map((v) => (typeof v === "string" ? repoScopeLabel(v) : v))]
+                : [key, value],
+        );
+    }
     if (entry.type !== "evidence_quote") return Object.entries(entry);
     const isCommit = entry.source === "commit";
     return Object.entries(entry).flatMap(([key, value]): Array<[string, unknown]> => {

@@ -21,7 +21,10 @@ import {
     formatSubcategoryLabel,
     formatWorkUnitLabel,
     formatWorkUnitTypeLabel,
+    countDistinctWorkUnits,
     selectWorkUnitEntries,
+    workUnitRepositoryLabel,
+    workUnitRowKey,
     titleCase,
     type WorkUnitListEntry,
 } from "@/lib/investment";
@@ -139,7 +142,10 @@ function GroupEvidenceBody({
                             : "Not reported"
                     }
                 />
-                <EvidenceFact label="Units" value={String(group.entries.length)} />
+                <EvidenceFact
+                    label="Units"
+                    value={String(countDistinctWorkUnits(group.entries.map((e) => e.unit)))}
+                />
                 <EvidenceFact
                     label="Weighted effort"
                     value={`${formatNumber(group.totalEffort)} ${snapshot.effortUnit}`}
@@ -187,7 +193,9 @@ export function GroupUnitsList({
         <ul className="space-y-2">
             {entries.map((entry) => {
                 const unit = entry.unit;
-                const unitOpen = openUnits.has(unit.work_unit_id);
+                const rowKey = workUnitRowKey(unit);
+                const repositoryLabel = workUnitRepositoryLabel(unit);
+                const unitOpen = openUnits.has(rowKey);
                 const attribution = attributionByWorkUnit?.get(unit.work_unit_id);
                 const textual = unit.evidence?.textual ?? [];
                 const metadata = [
@@ -196,13 +204,13 @@ export function GroupUnitsList({
                 ];
                 return (
                     <li
-                        key={unit.work_unit_id}
+                        key={rowKey}
                         className="rounded-2xl border border-(--card-stroke) bg-(--card-70)"
                     >
                         <button
                             type="button"
                             aria-expanded={unitOpen}
-                            onClick={() => toggleUnit(unit.work_unit_id)}
+                            onClick={() => toggleUnit(rowKey)}
                             className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left"
                         >
                             <span className="flex min-w-0 items-center gap-2">
@@ -218,6 +226,14 @@ export function GroupUnitsList({
                                 {formatWorkUnitTypeLabel(unit) ? (
                                     <span className="shrink-0 rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                         {formatWorkUnitTypeLabel(unit)}
+                                    </span>
+                                ) : null}
+                                {repositoryLabel ? (
+                                    <span
+                                        data-testid="evidence-unit-repository"
+                                        className="shrink-0 rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs text-(--ink-muted)"
+                                    >
+                                        {repositoryLabel}
                                     </span>
                                 ) : null}
                                 {attribution ? (
@@ -480,7 +496,7 @@ export function InvestmentEvidenceTable({
                                             : "Not reported"}
                                     </span>
                                     <span className="text-right text-sm tabular-nums text-(--ink-muted)">
-                                        {group.entries.length}
+                                        {countDistinctWorkUnits(group.entries.map((e) => e.unit))}
                                     </span>
                                     <span className="text-right text-sm tabular-nums text-foreground">
                                         {formatNumber(group.totalEffort)} {effortUnit}
