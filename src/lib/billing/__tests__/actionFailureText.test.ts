@@ -26,7 +26,10 @@ describe("billing server actions: failure text (CHAOS-8436)", () => {
             mockAuth();
             const spy = answer(status);
             expect((await getInvoices()).error).toBe("Could not be read");
-            expect((await getSubscription()).error).toBe("Could not be read");
+            // A 404 on the subscriptions read is "no subscription", not a failed read (CHAOS-9108).
+            const sub = await getSubscription();
+            if (status === 404) expect(sub).toEqual({ data: null });
+            else expect(sub.error).toBe("Could not be read");
             spy.mockRestore();
         }
     });
