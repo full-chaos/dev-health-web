@@ -13,6 +13,8 @@ import { sanitizeTelemetryPayload } from "./telemetry/sanitize";
 import type { TelemetryEvent, TelemetryEventName, TelemetryPayloadByName } from "./telemetry/types";
 
 const DEFAULT_SESSION_ID_KEY = "devhealth-product-telemetry-session-id";
+const SESSION_LAST_ACTIVITY_KEY = "devhealth-product-telemetry-session-last-activity";
+export const TELEMETRY_SESSION_IDLE_MS = 30 * 60 * 1000;
 const DEFAULT_ANONYMOUS_USER_ID_KEY = "devhealth-product-telemetry-anonymous-user-id";
 
 const INTERACTION_EVENT_NAMES: ReadonlySet<TelemetryEventName> = new Set([
@@ -67,17 +69,71 @@ const randomId = () => {
 };
 
 function storedId(key: string): string {
-    const storage = getLocalStorage();
-    if (!storage) {
+    try {
+        const storage = getLocalStorage();
+        if (!storage) {
+            return randomId();
+        }
+        const existing = storage.getItem(key);
+        if (existing) {
+            return existing;
+        }
+        const next = randomId();
+        storage.setItem(key, next);
+        return next;
+    } catch {
         return randomId();
     }
-    const existing = storage.getItem(key);
-    if (existing) {
-        return existing;
+}
+
+// Used only when localStorage is missing or throws; keeps one id per page life.
+let memorySession: { id: string; lastActivity: number } | null = null;
+
+/**
+ * Session id shared by all tabs of a browser. It changes when more than
+ * TELEMETRY_SESSION_IDLE_MS passed since the last queued event; each call
+ * counts as activity.
+ */
+function activeSessionId(now: number): string {
+    let storage: Storage | undefined;
+    try {
+        storage = getLocalStorage();
+    } catch {
+        storage = undefined;
     }
-    const next = randomId();
-    storage.setItem(key, next);
-    return next;
+    let id: string | null = null;
+    let last: number | null = null;
+    let stored = false;
+    if (storage) {
+        try {
+            id = storage.getItem(DEFAULT_SESSION_ID_KEY) || null;
+            const raw = storage.getItem(SESSION_LAST_ACTIVITY_KEY);
+            const parsed = raw === null ? Number.NaN : Number(raw);
+            last = Number.isFinite(parsed) ? parsed : null;
+            stored = true;
+        } catch {
+            stored = false;
+        }
+    }
+    if (!stored) {
+        id = memorySession?.id ?? null;
+        last = memorySession?.lastActivity ?? null;
+    }
+    // A missing last-activity time (id from before this change) counts as active.
+    const idle = id !== null && last !== null && now - last > TELEMETRY_SESSION_IDLE_MS;
+    if (!id || idle) {
+        id = randomId();
+    }
+    memorySession = { id, lastActivity: now };
+    if (storage) {
+        try {
+            storage.setItem(DEFAULT_SESSION_ID_KEY, id);
+            storage.setItem(SESSION_LAST_ACTIVITY_KEY, String(now));
+        } catch {
+            // Keep working with the in-memory copy.
+        }
+    }
+    return id;
 }
 
 function getTelemetryQueue(): TelemetryQueue {
@@ -120,6 +176,7 @@ export function resetTelemetryForTests(): void {
     telemetryQueue = null;
     telemetryContext = {};
     telemetryConfiguration = defaultTelemetryConfiguration;
+    memorySession = null;
 }
 
 export function trackTelemetryEvent<Name extends TelemetryEventName>(
@@ -136,12 +193,13 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         win.dispatchEvent(new Event(TELEMETRY_INTERACTION_EVENT));
     }
 
+    const now = Date.now();
     const event: TelemetryEvent<Name> = {
         name,
         schemaVersion: "2026-05-telemetry-v1",
         eventId: randomId(),
-        ts: new Date().toISOString(),
-        sessionId: telemetryContext.sessionId ?? storedId(DEFAULT_SESSION_ID_KEY),
+        ts: new Date(now).toISOString(),
+        sessionId: telemetryContext.sessionId ?? activeSessionId(now),
         anonymousUserId:
             telemetryContext.anonymousUserId ?? storedId(DEFAULT_ANONYMOUS_USER_ID_KEY),
         orgIdHash: telemetryContext.orgIdHash ?? null,
