@@ -82,3 +82,30 @@ describe("QuadrantPanel with no axes", () => {
         expect(screen.getByTestId("quadrant-chart")).toBeInTheDocument();
     });
 });
+
+// CHAOS-9210: a served filter-empty reason with axes and 0 points draws the reason text.
+describe("QuadrantPanel with a served filter-empty reason and axes", () => {
+    it.each([
+        ["repository_not_in_team", "The selected repository is not owned by the selected team."],
+        ["repository_not_found", "The selected repository was not found."],
+    ])("%s draws the reason text", (reason, text) => {
+        render(
+            <QuadrantPanel
+                title="Q"
+                description="d"
+                filters={filters}
+                data={
+                    {
+                        axes: { x: { metric: "cycle_time" }, y: { metric: "throughput" } },
+                        points: [],
+                        annotations: [],
+                        repo_filter_applied: true,
+                        filter_empty_reason: reason,
+                    } as never
+                }
+                emptyState="Quadrant data unavailable."
+            />,
+        );
+        expect(screen.getByTestId("quadrant-empty")).toHaveTextContent(text);
+    });
+});

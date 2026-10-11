@@ -245,10 +245,19 @@ export function HeatmapPanel({
         return <ErrorCard title="Could not be read" compact headingLevel={3} />;
     }
 
-    if (!data || !data.legend || !data.axes?.x?.length || !data.axes?.y?.length) {
+    // A known served reason is the empty state whatever axes or legend the answer holds: the
+    // answer for a repository the team does not hold has both, and no cells (CHAOS-9210).
+    const emptyReasonText = filterEmptyReasonText(data?.filter_empty_reason);
+    if (
+        emptyReasonText ||
+        !data ||
+        !data.legend ||
+        !data.axes?.x?.length ||
+        !data.axes?.y?.length
+    ) {
         return (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
-                {filterEmptyReasonText(data?.filter_empty_reason) ?? emptyState}
+                {emptyReasonText ?? emptyState}
             </div>
         );
     }
