@@ -1,3 +1,4 @@
+import "server-only";
 import { getBackendUrl } from "@/lib/origin";
 import { processMemo } from "@/lib/processMemo";
 import { deadlineFetch } from "@/lib/serverDeadline";
@@ -26,9 +27,8 @@ import { deadlineFetch } from "@/lib/serverDeadline";
  *  - A change: `force` (the `update()` trigger of the session) always starts a NEW read, and
  *    `forgetImpersonationStatus` (the start and stop actions) drops the entry of the user. An
  *    answer of a read that began before either one is not kept: only the newest read writes.
- *  - Server only, by a run-time guard: in a browser the read does nothing (no backend read, no
- *    state). It is a run-time guard and not the build-time `server-only` guard, because an
- *    existing import chain does not allow it yet.
+ *  - Server only: `import "server-only"` makes a client import fail the build. The run-time guard
+ *    stays as a second line: in a browser the read does nothing (no backend read, no state).
  *  - Size: an entry with nothing in flight, nothing kept in time and no wait is removed; above
  *    `MAX_USERS` the oldest such entries go first.
  */
