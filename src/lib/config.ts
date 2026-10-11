@@ -17,7 +17,6 @@
  * CHAOS-1233 PR body for the full exception list.
  */
 import { z } from "zod";
-import { ValidationErrors } from "@/lib/constants/errors";
 
 const publicEnvSchema = z.object({
     NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: z.string().optional(),
@@ -71,79 +70,15 @@ export const publicEnv: PublicEnv = new Proxy({} as PublicEnv, {
     },
 });
 
-const serverEnvSchema = z.object({
-    NODE_ENV: z.string().optional(),
-    LOG_LEVEL: z.string().optional(),
-    LOG_FORMAT: z.string().optional(),
-    BACKEND_URL: z.string().optional(),
-    BASE_PATH: z.string().optional(),
-    AUTH_SECRET: z.string().optional(),
-    AUTH_URL: z.string().optional(),
-    NEXTAUTH_SECRET: z.string().optional(),
-    NEXTAUTH_URL: z.string().optional(),
-    AUTH_GITHUB_ID: z.string().optional(),
-    AUTH_GITHUB_SECRET: z.string().optional(),
-    AUTH_GOOGLE_ID: z.string().optional(),
-    AUTH_GOOGLE_SECRET: z.string().optional(),
-    AUTH_GITLAB_ID: z.string().optional(),
-    AUTH_GITLAB_SECRET: z.string().optional(),
-    LINEAR_API_KEY: z.string().optional(),
-    LINEAR_TEAM_ID: z.string().optional(),
-    REDIS_URL: z.string().optional(),
-    /**
-     * When set to "true" or "1", the application trusts the `X-Forwarded-For`
-     * header for client IP extraction (used by rate limiting). Only enable this
-     * when the app is deployed behind a trusted reverse proxy that strips or
-     * rewrites forwarded headers. Defaults to false (untrusted) to prevent IP
-     * spoofing attacks.
-     */
-    TRUST_PROXY: z.string().optional(),
-    /**
-     * Number of trusted reverse proxies in front of the app (integer 1..32,
-     * default 1). With TRUST_PROXY on, the client is that many entries from the
-     * RIGHT of `X-Forwarded-For`; entries to its left are client-written and are
-     * never read. Invalid values fall back to 1.
-     */
-    TRUSTED_PROXY_HOPS: z.string().optional(),
-    USE_GRAPHQL_ANALYTICS: z.string().optional(),
-    DEV_HEALTH_TEST_MODE: z.string().optional(),
-    DEMO_EXPORT: z.string().optional(),
-    NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: z.string().optional(),
-    NEXT_PUBLIC_DOCS_URL: z.string().optional(),
-    NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: z.string().optional(),
-    NEXT_PUBLIC_DEMO_MODE: z.string().optional(),
-    NEXT_PUBLIC_RUM_ENDPOINT: z.string().optional(),
-    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
-});
-
-export type ServerEnv = z.infer<typeof serverEnvSchema>;
-
 /**
- * Returns a validated, fresh snapshot of the server environment. Parses on
- * every call so tests can mutate `process.env` between assertions. Throws if
- * called from a client bundle as a defensive guard.
+ * The server environment reader. `#server-env` resolves by condition (see `package.json`,
+ * "imports"): a server module graph gets the full reader (`serverEnv.server.ts`, `server-only`);
+ * every other graph (the browser bundle, the server render of a client component) gets a reader
+ * with the few values that code needs and no more (`serverEnv.default.ts`). The schema of the
+ * server-only variables is therefore not in any client file.
  */
-export function getServerEnv(): ServerEnv {
-    // Allow the call when running under a Node-based test runner even if the
-    // environment has stubbed a `window` (jsdom/happy-dom). The bundle-guard
-    // is about preventing accidental inclusion in *client* bundles, not about
-    // blocking server-side tests.
-    const inNodeTest =
-        typeof process !== "undefined" &&
-        // Indirect access via globalThis prevents Next.js's Edge-runtime
-        // static analyzer from flagging the Node-only `process.versions`
-        // token. The check correctly evaluates to `false` in Edge runtime,
-        // which is the desired semantics (Edge is never a Node test runner).
-        !!(globalThis as { process?: { versions?: { node?: string } } }).process?.versions?.node &&
-        (process.env.VITEST === "true" ||
-            process.env.NODE_ENV === "test" ||
-            typeof (globalThis as { jest?: unknown }).jest !== "undefined");
-
-    if (typeof window !== "undefined" && !inNodeTest) {
-        throw new Error(ValidationErrors.ServerEnvCalledFromClientBundle);
-    }
-    return serverEnvSchema.parse(process.env);
-}
+export { getServerEnv } from "#server-env";
+export type { ServerEnv } from "#server-env";
 
 export const isServer = typeof window === "undefined";
 export const isBrowser = !isServer;

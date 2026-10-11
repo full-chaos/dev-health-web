@@ -11,6 +11,9 @@
  *  - a registered module without the `server-only` import, or without its marker text: fail;
  *  - a marker that is not in the server output: fail (the scan could not see it in a client file
  *    either, so "0 client files" would prove nothing);
+ *  - the names of the server environment variables (the keys of the schema in
+ *    `src/lib/serverEnv.server.ts`, minus the few the client-graph reader may hold) are looked for
+ *    in client files too; a schema with no key, or a name that is not in the server output, fails;
  *  - with `--require-secrets`, a secret variable with no value to look for: fail.
  *
  * Output: file names, marker texts and variable NAMES only. A secret value is never printed.
@@ -32,7 +35,29 @@ export const SERVER_ONLY_MODULES = [
     },
     { file: "src/lib/authValidationMemo.ts", markers: ["authValidationMemo"] },
     { file: "src/lib/impersonationStatusMemo.ts", markers: ["impersonationStatusShared"] },
+    { file: "src/lib/serverEnv.server.ts", markers: ["TRUSTED_PROXY_HOPS"] },
 ];
+
+/** The schema of the server environment variables, and the reader a client graph gets instead. */
+export const SERVER_ENV_FILE = "src/lib/serverEnv.server.ts";
+export const CLIENT_ENV_FILE = "src/lib/serverEnv.default.ts";
+
+/**
+ * Names that may be in a client file although they are in the server schema: public names, and
+ * names that a third-party package in the client bundle holds on its own.
+ */
+export const CLIENT_ENV_NAME_PREFIXES = ["NEXT_PUBLIC_"];
+export const THIRD_PARTY_ENV_NAMES = ["NEXTAUTH_URL"];
+
+const SCHEMA_KEY = /^\s+([A-Z][A-Z0-9_]*):\s*z\./gm;
+
+function schemaKeys(source) {
+    return [...source.matchAll(SCHEMA_KEY)].map((match) => match[1]);
+}
+
+function wholeWord(name) {
+    return new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`);
+}
 
 /** Environment variables whose VALUE is a secret. */
 export const SECRET_ENV_NAMES = [
@@ -70,6 +95,9 @@ export function checkClientBundle({
     requireSecrets = false,
     modules = SERVER_ONLY_MODULES,
     secretNames = SECRET_ENV_NAMES,
+    serverEnvFile = SERVER_ENV_FILE,
+    clientEnvFile = CLIENT_ENV_FILE,
+    thirdPartyEnvNames = THIRD_PARTY_ENV_NAMES,
 }) {
     const failures = [];
 
@@ -90,6 +118,27 @@ export function checkClientBundle({
         for (const marker of entry.markers) {
             if (source.includes(marker)) markers.push({ file: entry.file, marker });
             else failures.push(`${entry.file}: marker "${marker}" is not in the source`);
+        }
+    }
+
+    // Names of server environment variables: the schema keys minus what a client graph may hold.
+    const envNames = [];
+    const serverEnvPath = join(root, serverEnvFile);
+    const clientEnvPath = join(root, clientEnvFile);
+    if (!existsSync(serverEnvPath) || !existsSync(clientEnvPath)) {
+        failures.push(`${serverEnvFile} / ${clientEnvFile}: env reader file does not exist`);
+    } else {
+        const serverKeys = schemaKeys(readFileSync(serverEnvPath, "utf8"));
+        const clientKeys = new Set(schemaKeys(readFileSync(clientEnvPath, "utf8")));
+        for (const key of serverKeys) {
+            const allowed =
+                clientKeys.has(key) ||
+                thirdPartyEnvNames.includes(key) ||
+                CLIENT_ENV_NAME_PREFIXES.some((prefix) => key.startsWith(prefix));
+            if (!allowed) envNames.push(key);
+        }
+        if (serverKeys.length === 0 || envNames.length === 0) {
+            failures.push(`${serverEnvFile}: no server environment name to look for`);
         }
     }
 
@@ -129,6 +178,18 @@ export function checkClientBundle({
         }
     }
 
+    if (serverFiles.length > 0) {
+        const serverText = serverFiles.map((path) => readFileSync(path, "utf8")).join("\n");
+        for (const name of envNames) {
+            if (!wholeWord(name).test(serverText)) {
+                failures.push(
+                    `${name}: server environment name is not in the server output, so the scan cannot see it`,
+                );
+            }
+        }
+    }
+
+    let envNameHits = 0;
     let markerHits = 0;
     let secretHits = 0;
     for (const path of clientFiles) {
@@ -138,6 +199,12 @@ export function checkClientBundle({
             if (text.includes(marker)) {
                 markerHits += 1;
                 failures.push(`${name}: client file holds text of ${file} ("${marker}")`);
+            }
+        }
+        for (const envName of envNames) {
+            if (wholeWord(envName).test(text)) {
+                envNameHits += 1;
+                failures.push(`${name}: client file holds the name of server variable ${envName}`);
             }
         }
         for (const secret of secrets) {
@@ -156,6 +223,8 @@ export function checkClientBundle({
             serverFiles: serverFiles.length,
             markers: markers.length,
             markerHits,
+            envNames: envNames.length,
+            envNameHits,
             secretsChecked: secrets.length,
             secretNames: secretNames.length,
             secretHits,
@@ -185,6 +254,7 @@ export function main(argv = process.argv.slice(2), env = process.env, log = cons
     log.log(
         `client bundle check: ${s.clientFiles} client files, ${s.serverFiles} server files, ` +
             `${s.markers} markers (${s.markerHits} client hits), ` +
+            `${s.envNames} server variable names (${s.envNameHits} client hits), ` +
             `${s.secretsChecked} of ${s.secretNames} secret values looked for (${s.secretHits} client hits)`,
     );
     if (!result.ok) {
