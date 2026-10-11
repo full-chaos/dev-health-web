@@ -29,7 +29,7 @@ export default defineConfig({
     // `impersonation-status-shared-read` (CHAOS-9218) counts the status reads of requests that
     // arrive together. The order of these files has no effect on a result.
     testMatch:
-        /(?:acr-context-fabric|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests)\.production\.spec\.ts/,
+        /(?:acr-context-fabric|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|product-telemetry-flush)\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
     outputDir: RESULTS_DIRECTORY,

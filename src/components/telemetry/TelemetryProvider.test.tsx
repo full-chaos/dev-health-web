@@ -8,6 +8,7 @@ let pathname = "/metrics?tab=dora";
 const telemetryMock = vi.hoisted(() => ({
     setTelemetryContext: vi.fn(),
     trackTelemetryEvent: vi.fn(),
+    flushTelemetryEventsOnHide: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -21,6 +22,7 @@ describe("TelemetryProvider", () => {
         pathname = "/metrics?tab=dora";
         telemetryMock.setTelemetryContext.mockClear();
         telemetryMock.trackTelemetryEvent.mockClear();
+        telemetryMock.flushTelemetryEventsOnHide.mockClear();
     });
 
     afterEach(() => {
@@ -109,6 +111,48 @@ describe("TelemetryProvider", () => {
             pagesViewed: 1,
             interactions: 1,
         });
+    });
+
+    it("flushes the queue after session_ended on pagehide and when the page turns hidden", async () => {
+        render(
+            <TelemetryProvider>
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        await waitFor(() =>
+            expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+                "session_started",
+                expect.any(Object),
+            ),
+        );
+        act(() => {
+            window.dispatchEvent(new Event("pagehide"));
+        });
+        expect(telemetryMock.flushTelemetryEventsOnHide).toHaveBeenCalledTimes(1);
+        const order = (fn: { mock: { invocationCallOrder: number[] } }) =>
+            fn.mock.invocationCallOrder.at(-1) ?? 0;
+        expect(order(telemetryMock.flushTelemetryEventsOnHide)).toBeGreaterThan(
+            order(telemetryMock.trackTelemetryEvent),
+        );
+
+        vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+        act(() => {
+            document.dispatchEvent(new Event("visibilitychange"));
+        });
+        expect(telemetryMock.flushTelemetryEventsOnHide).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not flush when the page becomes visible", async () => {
+        render(
+            <TelemetryProvider>
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+        act(() => {
+            document.dispatchEvent(new Event("visibilitychange"));
+        });
+        expect(telemetryMock.flushTelemetryEventsOnHide).not.toHaveBeenCalled();
     });
 
     it("emits feature_viewed once per route view and not on re-render", async () => {

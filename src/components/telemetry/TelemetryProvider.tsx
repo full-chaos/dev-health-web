@@ -3,7 +3,11 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-import { setTelemetryContext, trackTelemetryEvent } from "@/lib/telemetry";
+import {
+    flushTelemetryEventsOnHide,
+    setTelemetryContext,
+    trackTelemetryEvent,
+} from "@/lib/telemetry";
 import { TELEMETRY_INTERACTION_EVENT } from "@/lib/telemetry/interaction";
 import { emitClientError, emitFeatureViewed } from "@/lib/telemetry/emitters";
 import { hashIdentifier } from "@/lib/telemetry/hash";
@@ -80,6 +84,7 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
                 pagesViewed: pagesViewedRef.current,
                 interactions: interactionsRef.current,
             });
+            flushTelemetryEventsOnHide();
         };
         const endWhenHidden = () => {
             if (document.visibilityState === "hidden") {
