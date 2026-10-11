@@ -45,9 +45,12 @@ const GENERAL_TIERS = [
         tier: "quality",
     },
     {
-        commands: ["build"],
+        commands: ["build", "check:client-bundle --require-secrets"],
         jobId: "build",
-        packageScripts: { build: "next build" },
+        packageScripts: {
+            build: "next build",
+            "check:client-bundle": "node scripts/check-client-bundle.mjs",
+        },
         tier: "build",
     },
     {
