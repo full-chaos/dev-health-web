@@ -36,7 +36,7 @@ const sectionDescriptions: Record<string, string> = {
     risk: "Hotspots, ownership concentration, complexity, and bus-factor exposure. These signals are repo-scoped and reflect org-wide patterns — they are not filtered by the selected team(s).",
     reliability:
         "DORA-adjacent delivery and incident reliability signals. These are repo-scoped and org-wide — the team filter does not narrow them.",
-    investment: "KTLO, new-value, security, and infrastructure allocation.",
+    investment: "Effort allocation across the five investment themes.",
     ai_workflow_intelligence:
         "AI-assisted work patterns, review pressure, and quality guardrails with no person-level ranking.",
 };
