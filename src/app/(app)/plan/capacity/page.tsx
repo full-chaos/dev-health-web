@@ -9,6 +9,7 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { getCapacityForecastForHydration } from "@/lib/graphql/capacityHydration";
 import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { runtimeConfig } from "@/lib/runtimeConfig";
+import { readServerSession } from "#server-session";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
@@ -48,8 +49,7 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
     const graphqlEnabled = runtimeConfig["useGraphQLAnalytics"]();
     let hydrationOrgId: string | undefined;
     if (graphqlEnabled) {
-        const { auth } = await import("@/lib/auth");
-        const session = await auth();
+        const session = await readServerSession();
         hydrationOrgId = session?.user?.org_id as string | undefined;
     }
 

@@ -27,9 +27,11 @@ export default defineConfig({
     // counts the backend reads of one page load, and a development server runs effects twice.
     // `code-hotspot-links` (CHAOS-9209) looks for a prefetch request with no end.
     // `impersonation-status-shared-read` (CHAOS-9218) counts the status reads of requests that
-    // arrive together. The order of these files has no effect on a result.
+    // arrive together. `server-session-token` (CHAOS-9229) reads which variant of a module the
+    // production bundler put in the server graphs. The order of these files has no effect on a
+    // result.
     testMatch:
-        /(?:acr-context-fabric|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|product-telemetry-flush)\.production\.spec\.ts/,
+        /(?:acr-context-fabric|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|server-session-token|product-telemetry-flush)\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
     outputDir: RESULTS_DIRECTORY,

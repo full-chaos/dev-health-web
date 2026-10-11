@@ -29,6 +29,8 @@ type BackendLogEntry = {
     variables: string;
     /** When the request arrived (ms since the epoch), to order it against the steps of a spec. */
     at: number;
+    /** True when the request has a bearer token. The token itself is never kept. */
+    authorized: boolean;
 };
 let backendLog: BackendLogEntry[] = [];
 app.use((req, _res, next) => {
@@ -51,7 +53,14 @@ app.use((req, _res, next) => {
         variables = JSON.stringify(req.query);
         if (req.body && Object.keys(req.body).length > 0) variables += JSON.stringify(req.body);
     }
-    backendLog.push({ method: req.method, path: req.path, operation, variables, at: Date.now() });
+    backendLog.push({
+        method: req.method,
+        path: req.path,
+        operation,
+        variables,
+        at: Date.now(),
+        authorized: /^Bearer \S+/.test(req.get("authorization") ?? ""),
+    });
     next();
 });
 app.get("/__test/backend-log", (_req, res) => {

@@ -28,6 +28,7 @@ import { HOME_QUERY } from "./queries";
 import { translateMetricFilterToGraphQL, getOrgId } from "./investmentFetchers";
 import { graphqlFetch } from "./urqlClient";
 import { logger } from "@/lib/logger";
+import { readServerSession } from "#server-session";
 import { isServerDeadlineError } from "@/lib/serverDeadline";
 import type { HomeGraphQLResult, HomeQueryResponse } from "./types";
 import type { FilterInput, HomeWindowInput } from "./__generated__/types";
@@ -288,8 +289,7 @@ export const getHomeDataViaGraphQL = cache(async function getHomeDataViaGraphQL(
 ): Promise<HomeResponse> {
     let contextOrgId: string | undefined;
     try {
-        const { auth } = await import("@/lib/auth");
-        const session = await auth();
+        const session = await readServerSession();
         contextOrgId = session?.user?.org_id as string | undefined;
     } catch {
         // Unauthenticated fetch (codegen / tests): getOrgId below throws if

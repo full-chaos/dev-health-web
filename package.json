@@ -6,6 +6,12 @@
     "engines": {
         "node": "^22.13.0 || >=24"
     },
+    "imports": {
+        "#server-session": {
+            "react-server": "./src/lib/serverSession.server.ts",
+            "default": "./src/lib/serverSession.default.ts"
+        }
+    },
     "scripts": {
         "prepare": "lefthook install || true",
         "predev": "node scripts/write-runtime-config.mjs",
@@ -19,6 +25,7 @@
         "format:check": "prettier --check .",
         "format:check:changed": "node scripts/check-format-changed.mjs",
         "typecheck": "tsc --noEmit",
+        "check:client-bundle": "node scripts/check-client-bundle.mjs",
         "codegen": "graphql-codegen --config codegen.ts",
         "codegen:check": "graphql-codegen --config codegen.ts --check",
         "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate --allow-write",

@@ -25,16 +25,10 @@
  * See `./urqlClient.ts` for the browser/provider-side client. See CHAOS-1217
  * for the full 6-phase SSR hydration plan.
  *
- * NOTE: `import "server-only"` is intentionally omitted. The existing
- * `@/lib/api` is imported by a handful of
- * client components (FlameView, HeatmapPanel, EvidencePanel,
- * useInvestmentData). Those client paths never execute `graphqlFetch` at
- * runtime (`api.ts` gates the GraphQL branch with
- * `runtimeConfig.useGraphQLAnalytics()`
- * and dynamic-imports `@/lib/auth` only on the server path), but a
- * `"server-only"` assertion would block Turbopack's static analysis and fail
- * the build. CHAOS-1219 (api.ts split) will draw the module boundary cleanly;
- * this guard can be reintroduced then.
+ * NOTE: this module has no `import "server-only"`: client components import it
+ * (directly, and through `@/lib/api` and the fetchers) and call `graphqlFetch`
+ * in the browser. The session read is the server-only part, and it goes
+ * through `#server-session`, so the auth module stays out of client bundles.
  */
 
 import {
@@ -49,6 +43,7 @@ import {
 import { registerUrql } from "@urql/next/rsc";
 import { ValidationErrors, graphQlErrorMessage } from "@/lib/constants/errors";
 import { resolveOrigin } from "@/lib/origin";
+import { readServerSession } from "#server-session";
 import {
     fetchWithDeadline,
     isWriteDeadlineError,
@@ -189,10 +184,10 @@ export async function graphqlFetch<T>(
     // Auth must be awaited here because urql's client-level fetchOptions is
     // sync-only. Per-operation injection keeps the token fresh and scoped.
     try {
-        const session = await withDeadline(
-            import("@/lib/auth").then(({ auth }) => auth()),
-            { kind: "auth", op: "step auth headers" },
-        );
+        const session = await withDeadline(readServerSession(), {
+            kind: "auth",
+            op: "step auth headers",
+        });
         if (session?.access_token) {
             headers["Authorization"] = `Bearer ${session.access_token}`;
         }
@@ -254,10 +249,10 @@ export async function graphqlFetchForHydration<T>(
     if (options.orgId) headers["X-Org-Id"] = options.orgId;
 
     try {
-        const session = await withDeadline(
-            import("@/lib/auth").then(({ auth }) => auth()),
-            { kind: "auth", op: "step auth headers" },
-        );
+        const session = await withDeadline(readServerSession(), {
+            kind: "auth",
+            op: "step auth headers",
+        });
         if (session?.access_token) {
             headers["Authorization"] = `Bearer ${session.access_token}`;
         }
