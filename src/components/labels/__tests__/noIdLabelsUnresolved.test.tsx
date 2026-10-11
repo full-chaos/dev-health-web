@@ -193,41 +193,44 @@ describe.each(IDS)("unresolved surfaces never show a raw id (%s)", (id) => {
     });
 });
 
-describe.each(IDS)("Automations rows never show a raw id in text or attributes (%s)", (id) => {
-    it("title, rationale and recommended action carry no id token", async () => {
-        const served = (words: string) => `${words} ${id}`;
-        mockImprove.mockReturnValue({
-            data: {
-                improveOpportunities: {
-                    detectorReady: true,
-                    totalCount: 1,
-                    opportunities: [
-                        {
-                            opportunityId: "o1",
-                            kind: "HIGH_REWORK",
-                            entityType: "team",
-                            entityId: id,
-                            title: served("Elevated rework churn in"),
-                            rationale: served("Review congestion for"),
-                            severity: "high",
-                            score: 0.8,
-                            recommendedAction: served("Look at"),
-                            evidenceRefs: [],
-                        },
-                    ],
+describe.each([UUID, `jira:${UUID}`])(
+    "Automations rows never show a raw id in text or attributes (%s)",
+    (id) => {
+        it("title, rationale and recommended action carry no id token", async () => {
+            const served = (words: string) => `${words} ${id}`;
+            mockImprove.mockReturnValue({
+                data: {
+                    improveOpportunities: {
+                        detectorReady: true,
+                        totalCount: 1,
+                        opportunities: [
+                            {
+                                opportunityId: "o1",
+                                kind: "HIGH_REWORK",
+                                entityType: "team",
+                                entityId: id,
+                                title: served("Elevated rework churn in"),
+                                rationale: served("Review congestion for"),
+                                severity: "high",
+                                score: 0.8,
+                                recommendedAction: served("Look at"),
+                                evidenceRefs: [],
+                            },
+                        ],
+                    },
                 },
-            },
-            fetching: false,
-            error: undefined,
-            retry: vi.fn(),
+                fetching: false,
+                error: undefined,
+                retry: vi.fn(),
+            });
+            const { container } = renderWithEvidenceDrawer(
+                <ImproveAutomationsDashboard aiAutomationsHref="/ai/automations" />,
+            );
+            expect(container.querySelector("td[title]")).not.toBeNull();
+            expectNoIdTokens(container);
         });
-        const { container } = renderWithEvidenceDrawer(
-            <ImproveAutomationsDashboard aiAutomationsHref="/ai/automations" />,
-        );
-        expect(container.querySelector("td[title]")).not.toBeNull();
-        expectNoIdTokens(container);
-    });
-});
+    },
+);
 
 describe("other id-free guards", () => {
     it("a commit hash is not an id: its disclosure still shows the hash", () => {

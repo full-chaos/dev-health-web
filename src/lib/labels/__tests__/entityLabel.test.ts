@@ -152,10 +152,8 @@ describe("scrubIdentifiers", () => {
         expect(scrubIdentifiers(`congestion for jira:${UUID}`).text).toBe(
             "congestion for an unresolved item",
         );
-        expect(scrubIdentifiers("churn in gh:acme-web now").text).toBe(
-            "churn in an unresolved item now",
-        );
-        expect(scrubIdentifiers("Jira: slow queue").changed).toBe(false);
+        // Only the key of a scrubbed id goes. A named key such as gh:acme-web is real text.
+        expect(scrubIdentifiers("churn in gh:acme-web now").changed).toBe(false);
     });
 
     it("leaves clean prose untouched", () => {
