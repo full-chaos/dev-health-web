@@ -380,7 +380,7 @@ flowchart TD
     RS -->|needs_onboarding| OB[/auth/onboard]
     RS -->|Valid session| RR{Route group?}
     RR -->|"(app)"| APP[App pages]
-    RR -->|"(app)/admin"| RG{requireRole admin/owner}
+    RR -->|"(app)/org/admin"| RG{requireRole admin/owner}
     RR -->|"(app)/superadmin"| SU{requireSuperuser}
     RG -->|Denied| DASH[/dashboard]
     RG -->|Allowed| ADMIN[Admin pages]
@@ -452,7 +452,7 @@ flowchart TD
     U[Unauthenticated User] -->|"/"| M[Marketing landing page]
     U -->|"/dashboard"| SI1[Redirect -> /auth/signin]
     U -->|"/work"| SI2[Redirect -> /auth/signin]
-    U -->|"/admin/*"| SI3[Redirect -> /auth/signin]
+    U -->|"/org/admin/*"| SI3[Redirect -> /auth/signin]
     U -->|"/auth/signin"| LF[Login form]
     U -->|"/auth/signup"| SF[Signup form]
     U -->|"/auth/onboard"| SI4[Redirect -> /auth/signin]
@@ -603,13 +603,14 @@ Server-side guards located in `src/lib/auth.ts`:
 
 Security is enforced via layouts in specific route groups:
 
-| Route Group        | Layout File                           | Guard Applied                     |
-| ------------------ | ------------------------------------- | --------------------------------- |
-| `(app)`            | `src/app/(app)/layout.tsx`            | `requireSession()`                |
-| `(app)/admin`      | `src/app/(app)/admin/layout.tsx`      | `requireRole(["admin", "owner"])` |
-| `(app)/superadmin` | `src/app/(app)/superadmin/layout.tsx` | `requireSuperuser()`              |
-| `(auth)`           | `src/app/(auth)/layout.tsx`           | Public (No guard)                 |
-| `(marketing)`      | `src/app/(marketing)/layout.tsx`      | Public (No guard)                 |
+| Route Group         | Layout File                            | Guard Applied                                 |
+| ------------------- | -------------------------------------- | --------------------------------------------- |
+| `(app)`             | `src/app/(app)/layout.tsx`             | `requireSession()`                            |
+| `(app)/org/admin`   | `src/app/(app)/org/admin/layout.tsx`   | `requireRole(["admin", "owner"])`             |
+| `(app)/superadmin`  | `src/app/(app)/superadmin/layout.tsx`  | `requireSuperuser()`                          |
+| `(app)/data-health` | `src/app/(app)/data-health/layout.tsx` | `requireRole(["admin", "owner", "operator"])` |
+| `(auth)`            | `src/app/(auth)/layout.tsx`            | Public (No guard)                             |
+| `(marketing)`       | `src/app/(marketing)/layout.tsx`       | Public (No guard)                             |
 
 ## Impersonation
 

@@ -85,10 +85,10 @@ Route sequence
 - `/auth/signup`
 - `/auth/signin?registered=true`
 - `/auth/onboard`
-- `/admin/integrations/github`
-- `/admin/sync/new`
-- `/admin/teams/new`
-- `/admin/identities/new`
+- `/org/admin/integrations/github`
+- `/org/admin/sync/new`
+- `/org/admin/teams/new`
+- `/org/admin/identities/new`
 
 Credential behavior in flow
 
@@ -111,14 +111,14 @@ sequenceDiagram
     U->>A: Sign in
     A-->>U: Redirect to /auth/onboard
     U->>O: Complete onboarding
-    O-->>U: Continue to /admin/integrations/github
+    O-->>U: Continue to /org/admin/integrations/github
     U->>GI: Authenticate with test@example.com/password123
     GI-->>U: Integration step complete
-    U->>SY: Open /admin/sync/new and configure sync
+    U->>SY: Open /org/admin/sync/new and configure sync
     SY-->>U: Sync step complete
-    U->>TM: Open /admin/teams/new and create team
+    U->>TM: Open /org/admin/teams/new and create team
     TM-->>U: Team step complete
-    U->>ID: Open /admin/identities/new and map identity
+    U->>ID: Open /org/admin/identities/new and map identity
     ID-->>U: Setup complete
 ```
 

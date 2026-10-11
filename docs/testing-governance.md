@@ -13,7 +13,7 @@ Minimum checks for every PR:
 Additional checks when applicable:
 
 1. `npm run test:e2e` for user-flow or UI behavior changes
-2. `npm run build` for routing/runtime/config changes
+2. `npm run build`, then `npm run check:client-bundle`, for routing/runtime/config changes and for any change to a server-only module
 
 CI enforces:
 
@@ -22,15 +22,15 @@ CI enforces:
 
 ## Test Strategy By Tier
 
-| Tier     | Scope                                            | Use For                                                     | Expected Evidence                                                                                                                                       |
-| -------- | ------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tier 0   | Static checks                                    | All PRs                                                     | Lint + typecheck output                                                                                                                                 |
-| Tier 1a  | Unit tests (`src/lib/__tests__`)                 | Pure logic, transforms, hooks, utils                        | Updated/added targeted unit tests                                                                                                                       |
-| Tier 1b  | Component tests (`src/components/**/*.test.tsx`) | React component behavior, form validation, user interaction | Vitest + RTL tests with mocked server actions (**Note:** no component test files exist yet — this tier is aspirational. See README for the convention.) |
-| Tier 2   | Integration tests                                | Multi-module behavior, data/provider integration boundaries | Focused integration coverage or explicit gap note                                                                                                       |
-| Tier 3a  | E2E (`tests/*.spec.ts`)                          | User-facing workflows against MSW mock server               | Passing Playwright run and trace/screenshot for risky UI changes                                                                                        |
-| Tier 3b  | Live E2E (`tests/live/*.spec.ts`)                | Full-stack validation against real backend                  | Self-bootstrapping tests (no SQL seeding), `PLAYWRIGHT_LIVE_BACKEND_URL`                                                                                |
-| Contract | Schema drift (`live-e2e.yml`)                    | GraphQL schema sync between repos                           | CI diff of `schema.graphql` against the ops contract pin                                                                                                |
+| Tier     | Scope                                            | Use For                                                     | Expected Evidence                                                             |
+| -------- | ------------------------------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Tier 0   | Static checks                                    | All PRs                                                     | Lint + typecheck output                                                       |
+| Tier 1a  | Unit tests (`src/lib/__tests__`)                 | Pure logic, transforms, hooks, utils                        | Updated/added targeted unit tests                                             |
+| Tier 1b  | Component tests (`src/components/**/*.test.tsx`) | React component behavior, form validation, user interaction | Vitest + RTL tests with mocked server actions (see README for the convention) |
+| Tier 2   | Integration tests                                | Multi-module behavior, data/provider integration boundaries | Focused integration coverage or explicit gap note                             |
+| Tier 3a  | E2E (`tests/*.spec.ts`)                          | User-facing workflows against MSW mock server               | Passing Playwright run and trace/screenshot for risky UI changes              |
+| Tier 3b  | Live E2E (`tests/live/*.spec.ts`)                | Full-stack validation against real backend                  | Self-bootstrapping tests (no SQL seeding), `PLAYWRIGHT_LIVE_BACKEND_URL`      |
+| Contract | Schema drift (`live-e2e.yml`)                    | GraphQL schema sync between repos                           | CI diff of `schema.graphql` against the ops contract pin                      |
 
 ## `src/**` Change Policy
 

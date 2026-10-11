@@ -5,14 +5,14 @@ _architecture_; this one is the per-surface inventory Guardrail G-1 requires
 ("a route without a registered profile fails CI and may not ship"). Extends
 it rather than duplicating it: read `auth-system.md` first.
 
-- Machine-readable inventory: [`../../contracts/auth/v1/endpoint-profiles.web.json`](../../contracts/auth/v1/endpoint-profiles.web.json)
+- Machine-readable inventory: [`../contracts/auth/v1/endpoint-profiles.web.json`](../contracts/auth/v1/endpoint-profiles.web.json)
   (157 rows: 12 REST + 145 `server_action`)
-- Discovery script (independent re-derivation): [`../../ci/discover_web_routes.ts`](../../ci/discover_web_routes.ts)
+- Discovery script (independent re-derivation): [`../ci/discover_web_routes.ts`](../ci/discover_web_routes.ts)
 - CI gate (diffs discovery against the inventory; fails on an unowned
   surface, a stale row, a duplicate id, a closed-vocabulary violation,
   anchor drift, a schema violation, an unstated null, or a claimed-protected
-  action whose validator can't be shown to reject): [`../../ci/gate_web_auth_profiles.ts`](../../ci/gate_web_auth_profiles.ts),
-  proven by [`../../ci/__tests__/gate_web_auth_profiles.test.ts`](../../ci/__tests__/gate_web_auth_profiles.test.ts).
+  action whose validator can't be shown to reject): [`../ci/gate_web_auth_profiles.ts`](../ci/gate_web_auth_profiles.ts),
+  proven by [`../ci/__tests__/gate_web_auth_profiles.test.ts`](../ci/__tests__/gate_web_auth_profiles.test.ts).
   Wired into CI as a step of the `quality` job in
   `.github/workflows/tests.yml`, on every pull request; a run with no ops
   contract input (see next bullet) SKIPS the closed-vocabulary checks
@@ -30,9 +30,7 @@ it rather than duplicating it: read `auth-system.md` first.
 ## Coverage
 
 12 REST surfaces across 8 `route.ts` files under `src/app/api/` (the
-NextAuth catch-all is represented as a single `api_route` row). The Ask Dev
-proxy family (`v1/dev/*`, 7 files, 10 rows) was deleted with its routes
-(CHAOS-6262) and no longer appears in either count.
+NextAuth catch-all is represented as a single `api_route` row).
 
 Two families, by how they reach ops:
 
@@ -74,13 +72,6 @@ middleware layer.
 | `(app)/org/admin`   | `src/app/(app)/org/admin/layout.tsx`   | `requireRole(["admin","owner"])`            |
 | `(app)/superadmin`  | `src/app/(app)/superadmin/layout.tsx`  | `requireSuperuser()`                        |
 | `(app)/data-health` | `src/app/(app)/data-health/layout.tsx` | `requireRole(["admin","owner","operator"])` |
-
-**Doc-drift finding:** `auth-system.md`'s "Route Group Security" table lists
-the admin guard's layout as `src/app/(app)/admin/layout.tsx`; the actual
-path is `src/app/(app)/org/admin/layout.tsx`, and it is not the only
-additional role-gated layout (`data-health` also gates, undocumented there).
-Not fixed in this pass (`auth-system.md` is out of this lane's write scope);
-flagged for the doc owner.
 
 These guard page _navigation_, not an HTTP endpoint with a method/path the
 schema's `surface_kind` enum can represent — see the schema-evolution
@@ -143,11 +134,6 @@ in this inventory has an equivalent explicit impersonation block; the other
 two minting routes rely only on `session.user.org_id` already being
 impersonation-resolved (`resolveActiveOrgId()`), which is weaker (silently
 scopes to the impersonated org rather than refusing).
-
-## FINDING: `/api/v1/dev/*` never forwards `X-Org-Id` — RESOLVED (route deleted)
-
-`/api/v1/dev/*` and `src/app/api/v1/dev/_proxy.ts` were deleted with the
-whole Ask Dev surface (CHAOS-6262); the finding no longer has a live subject.
 
 ## FINDING: inconsistent mutation CSRF/Origin checks
 
@@ -214,8 +200,7 @@ key on the action id itself: it changes on every build.
 
 **Discovery.** `ci/discover_web_routes.ts` independently walks every file
 under `src/` whose first non-comment, non-blank line is the `"use server"`
-directive (18 files — `admin/server/ask-dev.ts` and `admin/server/platform.ts`
-deleted with the Ask Dev surface, CHAOS-6262) and emits one `serverActions`
+directive (18 files) and emits one `serverActions`
 record per exported function — `export async function NAME(...)` or the
 async-arrow form, `export type`/`export interface` lines correctly excluded
 since Next.js erases them at compile time and does not require them to be

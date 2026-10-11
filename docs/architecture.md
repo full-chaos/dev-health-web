@@ -20,6 +20,15 @@
     - **Layout**: `src/app/(marketing)/layout.tsx`. No auth required.
 - **Root Layout**: `src/app/layout.tsx`. Sets fonts, theme script (prevents FOUC), includes `runtime-config.js`.
 
+## Server-only code and the client bundle
+
+Code that holds secrets or server logic must not reach a browser file.
+
+- **`import "server-only"`**: the build refuses a client import of a marked module (`src/lib/auth.ts`, `serverEnv.server.ts`, `serverSession.server.ts`, `graphql/server.ts` and the ACR modules).
+- **Conditional imports**: `#server-env` and `#server-session` (the `imports` field of `package.json`) resolve to the full reader in a server graph. Every other graph, the browser bundle and the server render of a client component, gets a reader with the few values it needs. Reading any other server variable there fails with a clear error.
+- **`pnpm check:client-bundle`**: after `pnpm build`, scans every file in `.next/static` for the text of the registered server-only modules and for the names and values of server environment variables. It fails when it cannot measure. `ci/run_tests.sh` runs it as `pnpm check:client-bundle --require-secrets`. A new server-only module with `import "server-only"` is added to `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
+- **Server action modules**: put new helpers below the existing actions of a `"use server"` file; the auth-profile gate anchors each action to its line.
+
 ## Request Proxy
 
 - **Middleware**: `src/proxy.ts` (Next.js 16 proxy, NOT `middleware.ts`).
@@ -61,28 +70,52 @@ the request-ordering checks.
 
 All routes below require an active session. The `(app)` layout wraps them in `SessionProvider` + `GraphQLProvider`.
 
-#### Core Views
+#### Areas and destinations
 
-| Route            | Page                     | Description                                                                            |
-| :--------------- | :----------------------- | :------------------------------------------------------------------------------------- |
-| `/dashboard`     | `dashboard/page.tsx`     | Home — summary metrics, deltas, and sparklines                                         |
-| `/metrics`       | `metrics/page.tsx`       | Detailed metrics explorer with filter bar                                              |
-| `/code`          | `code/page.tsx`          | Code churn, hotspot heatmaps, ownership concentration, and churn × throughput quadrant |
-| `/work`          | `work/page.tsx`          | Work-in-progress flow, cycle time, and throughput views                                |
-| `/quality`       | `quality/page.tsx`       | Quality signals and reliability metrics                                                |
-| `/capacity`      | `capacity/page.tsx`      | Redirect to `/plan/capacity` (Completion Forecast), query string kept                  |
-| `/investment`    | `investment/page.tsx`    | Investment allocation view (GraphQL-backed)                                            |
-| `/opportunities` | `opportunities/page.tsx` | Improvement opportunities and recommendations                                          |
-| `/demo`          | `demo/page.tsx`          | Demo/sample-data showcase                                                              |
+The sidebar shows eight areas. The active area expands to its destinations. The tree is `src/lib/navigation/areas.ts`.
 
-#### Explore & Evidence
+| Area     | Route                       | Destination                                                                        |
+| :------- | :-------------------------- | :--------------------------------------------------------------------------------- |
+| Home     | `/dashboard`                | Summary metrics, deltas and sparklines. The route name did not change.             |
+| Diagnose | `/diagnose`                 | Area overview                                                                      |
+|          | `/metrics?tab=flow`         | Flow (the metrics explorer; `/team-flow` redirects here)                           |
+|          | `/investment`               | Investment: Overview, Allocation, Evidence and Confidence tabs                     |
+|          | `/landscape`                | Landscape (`/explore/landscape` redirects here)                                    |
+|          | `/diagnose/work-graph`      | Work Graph: Overview, Dependencies, Inflow-Outflow, Review Network, Artifacts      |
+|          | `/complexity`               | Complexity                                                                         |
+|          | `/cognitive-load`           | Cognitive Load                                                                     |
+|          | `/bottleneck`               | Bottlenecks                                                                        |
+| Plan     | `/plan`                     | Area overview (`/plan/delivery-forecast` redirects here)                           |
+|          | `/plan/capacity`            | Completion Forecast (`/capacity` and `/capacity-planning` redirect here)           |
+|          | `/plan/backlog-risk`        | Backlog Risk                                                                       |
+| Improve  | `/improve`                  | Area overview                                                                      |
+|          | `/opportunities`            | Opportunities                                                                      |
+|          | `/improve/experiments`      | Experiments                                                                        |
+|          | `/improve/automations`      | Automations                                                                        |
+| Govern   | `/govern`                   | Area overview                                                                      |
+|          | `/testops`                  | TestOps (also `/testops/coverage`, `/testops/pipelines`, `/testops/tests`)         |
+|          | `/quality`                  | Quality                                                                            |
+|          | `/testops/risk`             | Delivery Risk                                                                      |
+|          | `/incident-correlation`     | Incident Correlation                                                               |
+|          | `/security`                 | Security (`/security/repos/[repoId]` is the repository detail)                     |
+|          | `/feature-flags`            | Feature Flags                                                                      |
+|          | `/risk/compounding`         | Compounding Risk                                                                   |
+| AI       | `/ai`                       | Area overview                                                                      |
+|          | `/ai/impact`                | Impact                                                                             |
+|          | `/ai/review-load`           | Review Load                                                                        |
+|          | `/ai/risk`                  | Governance Risk                                                                    |
+|          | `/ai/automations`           | Automations                                                                        |
+| Reports  | `/reports`                  | Report Center (`/reports/new` and `/reports/[id]` are the create and detail pages) |
+| Admin    | `/org/admin`                | Organization                                                                       |
+|          | `/org/admin/sync`           | Connections                                                                        |
+|          | `/data-health`              | Data Confidence                                                                    |
+|          | `/settings`                 | Settings                                                                           |
+|          | `/superadmin`               | Platform (platform admins only)                                                    |
+|          | `/superadmin/billing/plans` | Platform billing (platform admins only)                                            |
 
-| Route                | Page                         | Description                                                                                                                                             |
-| :------------------- | :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/explore`           | `explore/page.tsx`           | Metric evidence drill-down — supports explain, drilldown (PRs/issues), and home snapshot views via `?metric=` and `?api=` query params                  |
-| `/explore/landscape` | `explore/landscape/page.tsx` | Quadrant landscape view — plots paired pressures (churn × throughput, cycle × throughput, WIP × throughput, review load × latency) with role-based lens |
+Other authenticated routes that are not sidebar destinations: `/explore` (metric evidence page; `?metric=` selects the metric), `/operating-review`, `/demo`, `/agent-context/context-packet`, and the `/data-health/*` sub-pages. `/work` is a legacy route: it redirects to the matching destination with a `?tab=` or `?view=` value.
 
-#### Entity Detail (Flame Diagrams)
+#### Entity Detail
 
 | Route                          | Page                                   | Description                                                                        |
 | :----------------------------- | :------------------------------------- | :--------------------------------------------------------------------------------- |
@@ -98,32 +131,38 @@ All routes below require an active session. The `(app)` layout wraps them in `Se
 | `/people/[person_id]`                  | `people/[person_id]/page.tsx`                  | Individual developer profile           |
 | `/people/[person_id]/metrics/[metric]` | `people/[person_id]/metrics/[metric]/page.tsx` | Per-developer metric detail            |
 
-#### Admin (`admin/` sub-group, requires `admin` or `owner` role)
+#### Organization admin (`org/admin/` sub-group, requires `admin` or `owner` role)
 
-| Route                 | Page                          | Description                                       |
-| :-------------------- | :---------------------------- | :------------------------------------------------ |
-| `/admin`              | `admin/page.tsx`              | Admin overview                                    |
-| `/admin/settings`     | `admin/settings/page.tsx`     | Organisation settings                             |
-| `/admin/users`        | `admin/users/page.tsx`        | User management (list, create, edit)              |
-| `/admin/teams`        | `admin/teams/page.tsx`        | Team management (list, create, edit)              |
-| `/admin/identities`   | `admin/identities/page.tsx`   | Developer identity mapping (list, create, edit)   |
-| `/admin/integrations` | `admin/integrations/page.tsx` | Integration provider configuration                |
-| `/admin/sync`         | `admin/sync/page.tsx`         | Sync config management (list, create, view, edit) |
-| `/admin/audit-logs`   | `admin/audit-logs/page.tsx`   | Organisation audit log viewer                     |
-| `/admin/retention`    | `admin/retention/page.tsx`    | Data retention policy settings                    |
-| `/admin/ip-allowlist` | `admin/ip-allowlist/page.tsx` | IP allowlist management                           |
+`/admin` and `/admin/*` are permanent redirects to `/org/admin` and `/org/admin/*` (`next.config.js`).
 
-#### Superadmin (`superadmin/` sub-group, requires superuser)
+| Route                     | Description                                                         |
+| :------------------------ | :------------------------------------------------------------------ |
+| `/org/admin`              | Organization overview                                               |
+| `/org/admin/settings`     | Organization settings                                               |
+| `/org/admin/users`        | User management (list, create, view, edit)                          |
+| `/org/admin/teams`        | Team management (list, create, edit)                                |
+| `/org/admin/identities`   | Developer identity mapping (list, create, edit)                     |
+| `/org/admin/integrations` | Integration provider configuration, including customer push sources |
+| `/org/admin/sync`         | Sync config management (list, create, view, edit, runs)             |
+| `/org/admin/audit-logs`   | Organization audit log viewer                                       |
+| `/org/admin/retention`    | Data retention policy settings                                      |
+| `/org/admin/ip-allowlist` | IP allowlist management                                             |
+| `/org/admin/ai`           | AI setup, including `/org/admin/ai/byo-llm`                         |
 
-| Route                   | Page                            | Description                                                    |
-| :---------------------- | :------------------------------ | :------------------------------------------------------------- |
-| `/superadmin`           | `superadmin/page.tsx`           | Superadmin overview                                            |
-| `/superadmin/settings`  | `superadmin/settings/page.tsx`  | Platform-wide settings                                         |
-| `/superadmin/orgs`      | `superadmin/orgs/page.tsx`      | Organisation management (list, create, detail)                 |
-| `/superadmin/users`     | `superadmin/users/page.tsx`     | Global user management                                         |
-| `/superadmin/audit`     | `superadmin/audit/page.tsx`     | Platform audit log                                             |
-| `/superadmin/licensing` | `superadmin/licensing/page.tsx` | Licence management per org                                     |
-| `/superadmin/billing/*` | `superadmin/billing/*/page.tsx` | Billing views — subscriptions, invoices, plans, refunds, audit |
+#### Platform admin (`superadmin/` sub-group, requires superuser)
+
+| Route                                   | Description                                                      |
+| :-------------------------------------- | :--------------------------------------------------------------- |
+| `/superadmin`                           | Platform overview                                                |
+| `/superadmin/settings`                  | Platform-wide settings                                           |
+| `/superadmin/orgs`                      | Organization management (list, create at `/new`, detail)         |
+| `/superadmin/users`                     | Global user management (list, create at `/new`, detail)          |
+| `/superadmin/service-accounts/new`      | Create a service account                                         |
+| `/superadmin/audit`                     | Platform audit log                                               |
+| `/superadmin/licensing`                 | Licence management per organization                              |
+| `/superadmin/product-telemetry`         | Product telemetry reader (all organizations; `/[orgId]` for one) |
+| `/superadmin/context-fabric/validation` | Context Fabric validation                                        |
+| `/superadmin/billing/*`                 | Billing views: subscriptions, invoices, plans, refunds, audit    |
 
 The licensing surface consumes organization-scoped feature booleans; see the
 [Agent Context Runtime entitlement contract](agent-context-runtime-entitlement.md)
@@ -131,19 +170,20 @@ for the hosted ACR-specific boundary.
 
 ### `(auth)` — Public Auth Flows
 
-| Route           | Page                    | Description                  |
-| :-------------- | :---------------------- | :--------------------------- |
-| `/auth/signin`  | `auth/signin/page.tsx`  | Sign-in form                 |
-| `/auth/signup`  | `auth/signup/page.tsx`  | Sign-up / registration form  |
-| `/auth/onboard` | `auth/onboard/page.tsx` | Post-registration onboarding |
-| `/auth/error`   | `auth/error/page.tsx`   | Auth error display           |
+| Route                                                           | Page                    | Description                           |
+| :-------------------------------------------------------------- | :---------------------- | :------------------------------------ |
+| `/auth/signin`                                                  | `auth/signin/page.tsx`  | Sign-in form                          |
+| `/auth/signup`                                                  | `auth/signup/page.tsx`  | Sign-up / registration form           |
+| `/auth/onboard`                                                 | `auth/onboard/page.tsx` | Post-registration onboarding          |
+| `/auth/error`                                                   | `auth/error/page.tsx`   | Auth error display                    |
+| `/auth/verify`, `/auth/forgot-password`, `/auth/reset-password` | `auth/*/page.tsx`       | Email verification and password reset |
 
 ### `(marketing)` — Public Marketing
 
-| Route      | Page               | Description                                                                 |
-| :--------- | :----------------- | :-------------------------------------------------------------------------- |
-| `/`        | `page.tsx`         | Marketing landing page (authenticated users are redirected to `/dashboard`) |
-| `/pricing` | `pricing/page.tsx` | Pricing page                                                                |
+| Route                | Page                         | Description                                                                   |
+| :------------------- | :--------------------------- | :---------------------------------------------------------------------------- |
+| `/`                  | `(marketing)/page.tsx`       | Marketing landing page (authenticated users are redirected to `/dashboard`)   |
+| `/marketing/pricing` | `marketing/pricing/page.tsx` | Pricing page (`/pricing` redirects here, as do the other root marketing URLs) |
 
 ## API Routes
 
