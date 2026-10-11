@@ -32,8 +32,16 @@ vi.mock("@/components/shell/PageHeaderEvidenceAction", () => ({
 }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <div data-testid="scope-bar" /> }));
 vi.mock("@/components/charts/VerticalBarChart", () => ({
-    VerticalBarChart: ({ categories }: { categories: string[] }) => (
-        <div data-testid="throughput-bars">{categories.join(",")}</div>
+    VerticalBarChart: ({
+        categories,
+        series,
+    }: {
+        categories: string[];
+        series: Array<{ data: Array<number | null> }>;
+    }) => (
+        <div data-testid="throughput-bars" data-values={JSON.stringify(series[0]?.data)}>
+            {categories.join(",")}
+        </div>
     ),
 }));
 
@@ -141,6 +149,92 @@ describe("Plan overview — what the page shows (pins)", () => {
 
         expect(screen.getByRole("heading", { name: "Rolling throughput" })).toBeInTheDocument();
         expect(screen.getByTestId("throughput-bars")).toHaveTextContent("4w,8w,12w");
+    });
+
+    it("draws a window with no estimate as no bar, never a zero", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({
+                rollingWindows: [
+                    {
+                        windowWeeks: 4,
+                        meanWeeklyThroughput: 12,
+                        sampleCount: 4,
+                        insufficientHistory: false,
+                    },
+                    {
+                        windowWeeks: 8,
+                        meanWeeklyThroughput: 0,
+                        sampleCount: 0,
+                        insufficientHistory: true,
+                    },
+                    {
+                        windowWeeks: 12,
+                        meanWeeklyThroughput: 0,
+                        sampleCount: 0,
+                        insufficientHistory: true,
+                    },
+                ],
+            }),
+        );
+        await renderPage();
+
+        const bars = screen.getByTestId("throughput-bars");
+        expect(bars).toHaveTextContent("4w,8w (no estimate),12w (no estimate)");
+        expect(JSON.parse(bars.getAttribute("data-values") ?? "")).toEqual([12, null, null]);
+    });
+
+    it("keeps a measured zero: a window with samples and a mean of 0 draws a 0 bar", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({
+                rollingWindows: [
+                    {
+                        windowWeeks: 4,
+                        meanWeeklyThroughput: 0,
+                        sampleCount: 58,
+                        insufficientHistory: false,
+                    },
+                    {
+                        windowWeeks: 8,
+                        meanWeeklyThroughput: 0,
+                        sampleCount: 30,
+                        insufficientHistory: false,
+                    },
+                    {
+                        windowWeeks: 12,
+                        meanWeeklyThroughput: 0,
+                        sampleCount: 2,
+                        insufficientHistory: false,
+                    },
+                ],
+            }),
+        );
+        await renderPage();
+
+        expect(
+            JSON.parse(screen.getByTestId("throughput-bars").getAttribute("data-values") ?? ""),
+        ).toEqual([0, 0, 0]);
+    });
+
+    it("says there is no rolling estimate, and draws no chart, when no window has one", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({
+                insufficientHistory: true,
+                rollingWindows: [4, 8, 12].map((windowWeeks) => ({
+                    windowWeeks,
+                    meanWeeklyThroughput: 0,
+                    sampleCount: 0,
+                    insufficientHistory: true,
+                })),
+            }),
+        );
+        await renderPage();
+
+        expect(screen.queryByTestId("throughput-bars")).toBeNull();
+        expect(screen.getByTestId("throughput-no-estimate")).toBeInTheDocument();
+        // The evidence drawer states no value either.
+        const drawer = render(evidenceSubject.current?.content as React.ReactElement);
+        expect(drawer.container.textContent).toContain("Rolling throughput · 4w");
+        expect(drawer.container.textContent).not.toContain("0 items/week");
     });
 
     it("shows the three risk checks as fact rows with value and Elevated / Normal", async () => {
