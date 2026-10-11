@@ -6,7 +6,7 @@ Frontend: Next.js 16 + React Server Components, TypeScript, Tailwind v4, **pnpm*
 
 | Need                                    | Source                                                                                                                     |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Architecture                            | [`docs/architecture.md`](docs/architecture.md)                                                                             |
+| Architecture, routes, server-only code  | [`docs/architecture.md`](docs/architecture.md)                                                                             |
 | Auth (NextAuth v5 beta)                 | [`docs/auth-system.md`](docs/auth-system.md)                                                                               |
 | Design & Style Framework                | [`docs/design-system.md`](docs/design-system.md), [`docs/design-lint.md`](docs/design-lint.md)                             |
 | GraphQL client / investment             | [`docs/graphql-client.md`](docs/graphql-client.md), [`docs/graphql-investment.md`](docs/graphql-investment.md)             |
@@ -17,22 +17,25 @@ Frontend: Next.js 16 + React Server Components, TypeScript, Tailwind v4, **pnpm*
 
 ## Layout (`src/`)
 
-| Path                                   | Role                                                                      |
-| -------------------------------------- | ------------------------------------------------------------------------- |
-| `app/(app)` / `(auth)` / `(marketing)` | Route groups: authenticated · public auth · public marketing.             |
-| `app/api`, `app/health`                | Route handlers + health check.                                            |
-| `proxy.ts`                             | **Central middleware lives here, NOT `middleware.ts`.**                   |
-| `lib/auth.ts`, `lib/guards/`           | Auth config + route guards.                                               |
-| `lib/graphql/`                         | Client, generated types, `schema.graphql` (drift-checked vs ops).         |
-| `lib/`                                 | Transforms, mappers, formatters (charting, investment, metrics, filters). |
-| `components/`                          | UI; charts/filters/navigation. Tests colocated `*.test.tsx`.              |
-| `data/`                                | Sample/demo data for test-mode + unit tests.                              |
+| Path                                   | Role                                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `app/(app)` / `(auth)` / `(marketing)` | Route groups: authenticated · public auth · public marketing.                                    |
+| `app/api`, `app/health`                | Route handlers + health check.                                                                   |
+| `components/shell/`                    | Shared app shell: sidebar, top bar, `PageHeader`, `ScopeBar`, command palette.                   |
+| `lib/navigation/`                      | Area tree (`areas.ts`) and tab sets (`tabs.ts`); one source for sidebar, breadcrumbs and titles. |
+| `proxy.ts`                             | **Central middleware lives here, NOT `middleware.ts`.**                                          |
+| `lib/auth.ts`, `lib/guards/`           | Auth config + route guards.                                                                      |
+| `lib/graphql/`                         | Client, generated types, `schema.graphql` (drift-checked vs ops).                                |
+| `lib/`                                 | Transforms, mappers, formatters (charting, investment, metrics, filters).                        |
+| `components/`                          | UI; charts/filters/navigation. Tests colocated `*.test.tsx`.                                     |
+| `data/`                                | Sample/demo data for test-mode + unit tests.                                                     |
 
 ## Key scripts (`pnpm <script>`)
 
 ```
 dev · build · test:unit (vitest run) · test:e2e (playwright test)
 lint (eslint src) · design-lint · typecheck (tsc --noEmit) · codegen (graphql-codegen)
+check:client-bundle (after build: no server-only code or secret value in a client file)
 ```
 
 ## Web-specific rules
@@ -40,6 +43,9 @@ lint (eslint src) · design-lint · typecheck (tsc --noEmit) · codegen (graphql
 - **Definition of Done (UI):** conforms to Design & Style Framework, uses shared primitives, queries return resolved names (no raw ids surfaced), `pnpm design-lint` passes, after-screenshot/visual-regression attached.
 - **Visual evidence is MANDATORY** for any rendered-UI change — PR **and** linked Linear issue. Follow [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md) end-to-end (skill: `playwright`; upload images to the PR with `gh pr edit <n> --attach '<file>#<alt text>'`). Canonical test account `admin@devhealth.example` / `devhealth123` (seeded by `dev-hops fixtures generate`); no ad-hoc accounts. Skip only for backend/type-only/no-render (`SCREENSHOT-WAIVER: <reason>`).
 - **Governance gate `enforce-src-test-policy`:** any `src/` change needs a test change (`tests/`, `__tests__/`, `*.test.*`/`*.spec.*`) **or** a `TEST-WAIVER: <reason>` line in the PR body. Script: `.github/scripts/enforce-src-test-governance.mjs`.
+- **Server-only code:** a module that holds secrets or server logic starts with `import "server-only"` and is listed in `SERVER_ONLY_MODULES` of `scripts/check-client-bundle.mjs`. Read server variables with `getServerEnv()` from a server component, route handler or server action only; a client graph gets a reader with five variables.
+- **Product telemetry:** events and delivery rules are in [`docs/product-telemetry.md`](docs/product-telemetry.md). Never add an identity, free text or a URL to a payload.
+- **Failure text:** a failed read that means "the service is down" uses `ServiceUnavailable` / `SERVICE_UNAVAILABLE_TEXT`; text never names an internal service.
 - **Test mode:** Playwright sets `DEV_HEALTH_TEST_MODE` / `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` — components must render sample data without live APIs. Default suite ignores `live/**`; live backend suite is `playwright.live.config.ts` (`tests/live/`, self-bootstrapping).
 - **Playwright traces:** the default suite retains traces on failure only; the dedicated Context Fabric configuration keeps CI traces for its evidence bundle.
 - **ESLint:** `react-hooks/set-state-in-effect` + `exhaustive-deps` enforced — derive sample data via memo + computed loading, never sync `setState` in effects.

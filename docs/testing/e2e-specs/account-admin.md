@@ -14,15 +14,15 @@ Primary test files
 
 Core routes
 
-- `/admin/integrations`
-- `/admin/integrations/[provider]`
+- `/org/admin/integrations`
+- `/org/admin/integrations/[provider]`
 
 Supported provider route examples
 
-- `/admin/integrations/github`
-- `/admin/integrations/gitlab`
-- `/admin/integrations/jira`
-- `/admin/integrations/linear`
+- `/org/admin/integrations/github`
+- `/org/admin/integrations/gitlab`
+- `/org/admin/integrations/jira`
+- `/org/admin/integrations/linear`
 
 Form fields by provider
 
@@ -40,9 +40,9 @@ Decision and routing flow
 
 ```mermaid
 flowchart TD
-    U[User opens /admin/integrations] --> C[Select provider card]
+    U[User opens /org/admin/integrations] --> C[Select provider card]
     C --> P{Provider known}
-    P -- Yes --> F[Load /admin/integrations/[provider] form]
+    P -- Yes --> F[Load /org/admin/integrations/[provider] form]
     P -- No --> N[Return 404]
     F --> I[Enter provider-specific fields]
     I --> S[Click Save Changes]
@@ -76,9 +76,9 @@ Primary test files
 
 Routes
 
-- `/admin/sync`
-- `/admin/sync/new`
-- `/admin/sync/[configId]`
+- `/org/admin/sync`
+- `/org/admin/sync/new`
+- `/org/admin/sync/[configId]`
 
 Required fields
 
@@ -102,16 +102,16 @@ sequenceDiagram
     participant L as Sync List UI
     participant F as Sync Form UI
     participant SA as Admin Server Actions
-    U->>L: Open /admin/sync
+    U->>L: Open /org/admin/sync
     L-->>U: Existing sync config list
-    U->>F: Open /admin/sync/new
+    U->>F: Open /org/admin/sync/new
     F-->>U: Empty config form
     U->>F: Enter #name
     U->>F: Select #provider and #credential_id
     F-->>U: Show provider target toggles
     U->>F: Toggle targets
     U->>F: Submit form
-    F-->>U: Redirect to /admin/sync
+    F-->>U: Redirect to /org/admin/sync
     U->>L: Click Sync Now
     L->>SA: triggerSync(configId)
     SA-->>L: Trigger accepted
@@ -224,14 +224,14 @@ sequenceDiagram
     U->>BW: Select "From" and "To" dates
     U->>BW: Click "Run backfill"
     BW->>SA: triggerBackfill(configId, since, before)
-    SA->>API: POST /admin/sync-configs/{id}/backfill
+    SA->>API: POST /org/admin/sync-configs/{id}/backfill
     API-->>SA: { backfill_job_id, sync_run_id }
     SA-->>BW: Return backfill_job_id
     BW-->>F: Close wizard
     F->>BS: Render with the persisted active job
     loop Every 3 seconds
         BS->>SA: getBackfillJobStatus(jobId)
-        SA->>API: GET /admin/backfill-jobs/{id}
+        SA->>API: GET /org/admin/backfill-jobs/{id}
         API-->>SA: BackfillJob status
         SA-->>BS: { status, progress_pct, completed_chunks, total_chunks }
         BS-->>U: Update progress bar
@@ -263,9 +263,9 @@ Primary test files
 
 Routes
 
-- `/admin/teams`
-- `/admin/teams/new`
-- `/admin/teams/[teamId]`
+- `/org/admin/teams`
+- `/org/admin/teams/new`
+- `/org/admin/teams/[teamId]`
 
 Team form fields
 
@@ -287,18 +287,18 @@ sequenceDiagram
     participant U as User
     participant TL as Team List UI
     participant TF as Team Form UI
-    U->>TL: Open /admin/teams
+    U->>TL: Open /org/admin/teams
     TL-->>U: Team list view
-    U->>TF: Open /admin/teams/new
+    U->>TF: Open /org/admin/teams/new
     TF-->>U: Empty team form
     U->>TF: Enter #team_id and #name
     U->>TF: Optional #description, #repo_patterns, #project_keys
     U->>TF: Submit create
-    TF-->>U: Redirect to /admin/teams
-    U->>TF: Open /admin/teams/[teamId]
+    TF-->>U: Redirect to /org/admin/teams
+    U->>TF: Open /org/admin/teams/[teamId]
     TF-->>U: #team_id disabled in edit mode
     U->>TF: Click Cancel
-    TF-->>U: Redirect to /admin/teams
+    TF-->>U: Redirect to /org/admin/teams
 ```
 
 Test coverage
@@ -324,8 +324,8 @@ Primary test files
 
 Routes
 
-- `/admin/identities`
-- `/admin/identities/new`
+- `/org/admin/identities`
+- `/org/admin/identities/new`
 
 Form fields
 
@@ -345,9 +345,9 @@ sequenceDiagram
     participant U as User
     participant IL as Identity List UI
     participant IF as Identity Form UI
-    U->>IL: Open /admin/identities
+    U->>IL: Open /org/admin/identities
     IL-->>U: Existing mapped identities
-    U->>IF: Open /admin/identities/new
+    U->>IF: Open /org/admin/identities/new
     IF-->>U: Empty identity form
     U->>IF: Enter #canonical_id, #display_name, #email
     U->>IF: Select team
@@ -355,9 +355,9 @@ sequenceDiagram
     IF-->>U: New provider identity row appears
     U->>IF: Select provider and enter username
     U->>IF: Submit create
-    IF-->>U: Redirect to /admin/identities
+    IF-->>U: Redirect to /org/admin/identities
     U->>IF: Click Cancel
-    IF-->>U: Redirect to /admin/identities
+    IF-->>U: Redirect to /org/admin/identities
 ```
 
 Test coverage
@@ -382,7 +382,7 @@ Primary test file
 
 Route
 
-- `/admin/settings`
+- `/org/admin/settings`
 
 Sections on page
 
@@ -402,7 +402,7 @@ sequenceDiagram
     autonumber
     participant U as User
     participant S as Settings UI
-    U->>S: Open /admin/settings
+    U->>S: Open /org/admin/settings
     S-->>U: Render General/Billing/Security/Danger Zone
     U->>S: Edit organization name in General section
     U->>S: Click Save Changes

@@ -55,6 +55,10 @@ Zone maps are optional overlays that highlight fuzzy, overlapping regions with
 common constraint patterns derived from observed metrics. Zone maps are
 heuristics. If they feel prescriptive, turn them off.
 
+In the app, the **Show interpretive overlay** checkbox under the chart head turns the
+overlay on and off. The checkbox is disabled when the chart has no overlay; zones appear
+when two or more entities are in scope. The plotted values stay raw.
+
 ### Scope guardrails
 
 - Org/team/repo views show teams, repos, or services only.
@@ -86,6 +90,17 @@ prove the trend.
 - Individual views are single-person only, for reflection and coaching.
 - Heatmap cells should remain explorable down to evidence artifacts.
 - Quadrants must show raw values only, no percentiles or scoring.
+
+## In the app
+
+- **Evidence drawer.** A heatmap cell, a table row **Evidence** action and the **Sources**
+  entry in the top bar open the same evidence drawer. It shows the served numbers, the
+  provenance and the artifacts (pull requests, work items) behind the selection. A row
+  names its artifact by the served title and repository, never by an id.
+- **Repository filter.** When a repository is selected, a chart that the repository does
+  not narrow says **Not filtered by repository**.
+- **No data.** A chart with no data draws a no-data state with the served reason. It never
+  draws `0` for a missing value.
 
 ## Relationship map
 

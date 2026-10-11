@@ -33,7 +33,9 @@ to interpreting the **confidence** of what you are looking at.
 ## Step 1 — Sign in and open the view
 
 1. Sign in at `/auth/signin`.
-2. From the primary navigation, open **Investment** (route: `/investment`).
+2. In the sidebar, open **Diagnose**, then **Investment** (route: `/investment`).
+
+The scope bar under the page header sets the organization, team, repository and time window. Investment is locked to the team scope. The **Sources** entry in the top bar and the **Evidence** action in the page header open the evidence drawer.
 
 You land on the **Overview** tab. Across the top you will see four tabs:
 
@@ -41,11 +43,8 @@ You land on the **Overview** tab. Across the top you will see four tabs:
 | -------------- | ------------------------------------------------------------------------------- |
 | **Overview**   | The headline mix and the story it suggests.                                     |
 | **Allocation** | The full Theme → Subcategory breakdown and where effort flows (by repo / team). |
-| **Evidence**   | The actual issues, PRs, and commits behind the mix.                             |
-| **Confidence** | How much to trust the picture (evidence quality).                               |
-
-> _Screenshot placeholder: `/investment` Overview tab, showing the theme mix and headline._
-> `![Investment View — Overview tab](../screenshots/investment-overview.png)`
+| **Evidence**   | The work units behind the mix, grouped by theme, subcategory or type.           |
+| **Confidence** | How much to trust the picture (evidence quality, coverage and rework).          |
 
 ---
 
@@ -92,9 +91,6 @@ than one-off customer commitments. Same effort-weighted logic, just more resolut
 subcategory shares always roll up to the theme you opened — nothing is invented at this
 level.
 
-> _Screenshot placeholder: Allocation tab with a theme expanded into subcategories._
-> `![Investment View — Allocation drill](../screenshots/investment-allocation.png)`
-
 You may also see a **flow** view (repo / team) on this tab. If a slice is labelled
 **`unassigned`**, that is **not** a kind of work — it means some effort could not be tied
 back to a known repo or team (a scope-attribution gap to chase), and it never appears
@@ -104,20 +100,18 @@ inside a theme or subcategory mix.
 
 ## Step 4 — Drill into the Evidence behind a subcategory
 
-Open the **Evidence** tab (route: `/investment?tab=evidence`), or click through from a
-subcategory. Here the view grounds every number in the **actual linked work** — the
-issues, PRs, and commits that shaped the mix:
+Open the **Evidence** tab (route: `/investment?tab=evidence`). The **Evidence drilldown**
+table groups the work units by **Theme**, **Subcategory** or **Type** (use the toggle above
+the table). Each row shows the average quality, the number of units and the weighted
+effort of the group.
 
-- A list/table of the underlying items (titles, type, the repo/PR they came from).
-- Short **extractive quotes** pulled directly from issue or PR text — these are verbatim
-  snippets, not paraphrases, so you can see exactly what the categorization leaned on.
+Select the **Evidence** action on a row. The evidence drawer opens with the served numbers
+of that group and the work units in it. From a work unit you can read the linked work and
+the short **extractive quotes** taken from issue or PR text. These are verbatim snippets,
+not paraphrases, so you can see what the categorization leaned on.
 
-This is where "appears ~60% Feature Delivery" stops being abstract: you can read the two
-big feature PRs that carried most of the churn and see why the mix leaned that way, and
-spot the smaller bugfix and upgrade items contributing the Quality and Maintenance slices.
-
-> _Screenshot placeholder: Evidence tab listing linked issues/PRs/commits with quotes._
-> `![Investment View — Evidence table](../screenshots/investment-evidence.png)`
+This is where "appears ~60% Feature Delivery" stops being abstract: you can read the work
+that carried most of the effort and see why the mix leaned that way.
 
 > **Note:** evidence quotes are only present when the backend was materialized with snippet
 > persistence enabled. If quotes are sparse, the underlying items and their links are still
@@ -128,10 +122,10 @@ spot the smaller bugfix and upgrade items contributing the Quality and Maintenan
 ## Step 5 — Interpret the Confidence
 
 Before you act on anything, open the **Confidence** tab (route:
-`/investment?tab=confidence`). It surfaces the **evidence-quality band** behind the mix —
-**high**, **moderate**, **low**, or **very low** — reflecting how much trustworthy signal
-was available (how much text there was, whether issues / PRs / commits agreed, how densely
-the work was linked).
+`/investment?tab=confidence`). It shows the **evidence quality** behind the mix, as bands:
+**high** (0.80-1.00), **moderate** (0.60-0.79), **low** (0.40-0.59) and **very low**
+(below 0.40). The **Evidence quality bands** bar shows the share of work units in each
+band. The tab also shows the low-confidence areas and the PR rework ratio by theme.
 
 **Read the confidence band _before_ you lean on the percentages:**
 
@@ -146,9 +140,6 @@ the work was linked).
 In short: the percentages tell you which way effort **appears** to lean; the confidence
 band tells you **how much weight to put on that lean.** A confident-looking 60% built on
 very-low-quality evidence deserves far more skepticism than a 45% on high-quality evidence.
-
-> _Screenshot placeholder: Confidence tab showing evidence-quality bands._
-> `![Investment View — Confidence panel](../screenshots/investment-confidence.png)`
 
 ---
 

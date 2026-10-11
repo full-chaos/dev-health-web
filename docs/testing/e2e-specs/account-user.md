@@ -54,12 +54,12 @@ Test coverage
 | Frontend E2E  | ✅       | `tests/home-flow.spec.ts` | Route and deep-link continuity are covered end-to-end.       |
 | Live E2E      | —        | —                         | No live e2e source listed for this journey.                  |
 
-## Work Tabbed Navigation
+## Diagnose Navigation and Legacy Work Links
 
 Purpose
 
-- Covers tab-specific rendering, URL tab routing, and investigation deep links.
-- Verifies persistence of filter state across tab switches.
+- Covers the Diagnose destinations in the sidebar and the redirects of the legacy `/work` route.
+- Verifies that the filter parameter `f` is kept across the redirect.
 
 Primary test file
 
@@ -67,50 +67,28 @@ Primary test file
 
 Route contract
 
-- `/work?tab=[landscape|heatmap|flow|investment|flame]`
+- `/diagnose` renders the area overview. The sidebar lists the Diagnose destinations (Flow, Investment, Landscape, Work Graph, Complexity, Cognitive Load, Bottlenecks).
+- `/work?tab=<tab>` redirects (HTTP 307) to the destination of the tab and forwards `f` and other query values:
 
-Tab expectations
+| `tab`        | Destination                          |
+| ------------ | ------------------------------------ |
+| `overview`   | `/diagnose`                          |
+| `flow`       | `/metrics?tab=flow`                  |
+| `investment` | `/investment`                        |
+| `landscape`  | `/landscape`                         |
+| `capacity`   | `/plan/capacity`                     |
+| `heatmap`    | `/cognitive-load?tab=heatmap`        |
+| `flame`      | `/complexity?tab=flame`              |
+| `graph`      | `/diagnose/work-graph`               |
+| `evidence`   | `/diagnose/work-graph?evidence=open` |
 
-- Default tab `landscape` renders `Investment Mix`.
-- `heatmap` renders `Review wait density`.
-- `flow` renders `Investment Mix` and `flow-chart-container`.
-- `investment` renders `Work Unit Investment` and `Treemap`.
-- `flame` renders `Elapsed Time Breakdown` and `chart-flame`.
-
-Investigation routes
-
-- Quadrant entity click then `View Flow` to `/work?tab=flow&context_entity_id=...`.
-- Flow view shows `Filtering flow by` text.
-- Flame deep-link `/work?tab=flame&mode=throughput&context_node=Backend`.
-- Deep-link shows `Context: Analyzing decomposition starting from node`.
-
-```mermaid
-flowchart TD
-    U[User opens /work] --> D{tab param present}
-    D -- No --> L[Load default landscape tab]
-    D -- Yes --> T[Load selected tab]
-    L --> H1[Show Investment Mix]
-    T --> K{Tab value}
-    K -- heatmap --> H2[Show Review wait density]
-    K -- flow --> F1[Show Investment Mix and flow-chart-container]
-    K -- investment --> I1[Show Work Unit Investment and Treemap]
-    K -- flame --> FL1[Show Elapsed Time Breakdown and chart-flame]
-    F1 --> Q[Quadrant panel entity click]
-    Q --> VF[View Flow link]
-    VF --> F2[/work?tab=flow&context_entity_id=...]
-    F2 --> FX[Show Filtering flow by]
-    FL1 --> DL[/work?tab=flame&mode=throughput&context_node=Backend]
-    DL --> CX[Show Context: Analyzing decomposition starting from node]
-```
+- `/work?view=work` redirects to `/diagnose/work-graph`. `/work` with no value redirects to `/diagnose`.
 
 Test coverage
 
-| Layer         | Coverage | Tests                           | Notes                                                           |
-| ------------- | -------- | ------------------------------- | --------------------------------------------------------------- |
-| Backend Unit  | —        | —                               | No backend unit source listed for client-side tab routing flow. |
-| Frontend Unit | —        | —                               | No tab component unit source listed in provided data.           |
-| Frontend E2E  | ✅       | `tests/work-navigation.spec.ts` | Covers all tab modes and context deep-links.                    |
-| Live E2E      | —        | —                               | No live e2e source listed for tabbed work navigation.           |
+| Layer        | Coverage | Tests                           | Notes                                             |
+| ------------ | -------- | ------------------------------- | ------------------------------------------------- |
+| Frontend E2E | ✅       | `tests/work-navigation.spec.ts` | Diagnose children, legacy redirects, filter kept. |
 
 ## Filter Propagation
 
@@ -128,8 +106,8 @@ Primary routes in scope
 - `/dashboard`
 - `/people`
 - `/metrics`
-- `/explore/landscape`
-- `/work`
+- `/landscape`
+- `/diagnose`
 - `/code`
 - `/opportunities`
 
@@ -158,12 +136,12 @@ sequenceDiagram
     U->>FP: Expand Who
     U->>FP: Enter developer filter
     U->>FP: Collapse Who
-    U->>NAV: Navigate to /people, /metrics, /explore/landscape, /work, /code, /opportunities
+    U->>NAV: Navigate to /people, /metrics, /landscape, /diagnose, /code, /opportunities
     NAV->>R: Route changes with query
     R-->>U: Preserve identical f param on each route
     U->>R: Open /metrics?tab=dora
     U->>FP: Change filter
-    U->>NAV: Navigate to /work
+    U->>NAV: Navigate to /diagnose
     R-->>U: Updated f preserved
 ```
 

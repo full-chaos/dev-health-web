@@ -75,13 +75,6 @@ middleware layer.
 | `(app)/superadmin`  | `src/app/(app)/superadmin/layout.tsx`  | `requireSuperuser()`                        |
 | `(app)/data-health` | `src/app/(app)/data-health/layout.tsx` | `requireRole(["admin","owner","operator"])` |
 
-**Doc-drift finding:** `auth-system.md`'s "Route Group Security" table lists
-the admin guard's layout as `src/app/(app)/admin/layout.tsx`; the actual
-path is `src/app/(app)/org/admin/layout.tsx`, and it is not the only
-additional role-gated layout (`data-health` also gates, undocumented there).
-Not fixed in this pass (`auth-system.md` is out of this lane's write scope);
-flagged for the doc owner.
-
 These guard page _navigation_, not an HTTP endpoint with a method/path the
 schema's `surface_kind` enum can represent — see the schema-evolution
 finding below.
@@ -143,11 +136,6 @@ in this inventory has an equivalent explicit impersonation block; the other
 two minting routes rely only on `session.user.org_id` already being
 impersonation-resolved (`resolveActiveOrgId()`), which is weaker (silently
 scopes to the impersonated org rather than refusing).
-
-## FINDING: `/api/v1/dev/*` never forwards `X-Org-Id` — RESOLVED (route deleted)
-
-`/api/v1/dev/*` and `src/app/api/v1/dev/_proxy.ts` were deleted with the
-whole Ask Dev surface (CHAOS-6262); the finding no longer has a live subject.
 
 ## FINDING: inconsistent mutation CSRF/Origin checks
 

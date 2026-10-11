@@ -4,8 +4,10 @@
 
 All environment variables are validated with Zod at runtime. There are two surfaces:
 
-- **`getServerEnv()`** — server-only vars. Throws if called from a client bundle. Parses fresh on every call (no caching). ([`config.ts:112`](../src/lib/config.ts#L112))
-- **`publicEnv`** — client-safe `NEXT_PUBLIC_*` vars. Exposed as a Proxy that re-parses on every property read. ([`config.ts:48`](../src/lib/config.ts#L48))
+- **`getServerEnv()`** — server-only vars. Throws if called from a client bundle. Parses fresh on every call (no caching). `config.ts` re-exports it from `#server-env`: a server module graph gets the full reader ([`serverEnv.server.ts`](../src/lib/serverEnv.server.ts), marked `server-only`); the browser bundle and the server render of a client component get a reader with `NODE_ENV`, `LOG_LEVEL`, `LOG_FORMAT`, `BACKEND_URL` and `USE_GRAPHQL_ANALYTICS` only ([`serverEnv.default.ts`](../src/lib/serverEnv.default.ts)). Any other variable read there throws.
+- **`publicEnv`** — client-safe `NEXT_PUBLIC_*` vars. Exposed as a Proxy that re-parses on every property read. ([`config.ts`](../src/lib/config.ts))
+
+`pnpm check:client-bundle` (run after `pnpm build`) fails when a client file holds a server variable name or a secret value.
 
 All fields are `optional()` in the Zod schema — the app applies its own defaults and guards rather than hard-failing at startup.
 
@@ -13,7 +15,7 @@ All fields are `optional()` in the Zod schema — the app applies its own defaul
 
 ## Server-only variables
 
-([`config.ts:74–103`](../src/lib/config.ts#L74))
+([`serverEnv.server.ts`](../src/lib/serverEnv.server.ts))
 
 | Variable                | Type   | Default | Description                                                                                                                                                                                                                                                                                                           |
 | ----------------------- | ------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

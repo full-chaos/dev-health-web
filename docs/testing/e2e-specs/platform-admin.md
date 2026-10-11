@@ -141,7 +141,7 @@ Primary test files
 
 Route
 
-- `/admin/settings` (Billing section)
+- `/org/admin/settings` (Billing section)
 
 Expected billing section elements
 
@@ -169,7 +169,7 @@ sequenceDiagram
     participant M as Change Plan Modal
     participant API as Billing Backend
     participant WH as Stripe Webhook
-    U->>S: Open /admin/settings
+    U->>S: Open /org/admin/settings
     S-->>U: Show Current Plan and Subscription History
     U->>S: Click Change Plan
     S-->>M: Open plan picker modal
