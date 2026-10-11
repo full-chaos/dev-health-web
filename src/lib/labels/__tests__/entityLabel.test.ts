@@ -148,6 +148,14 @@ describe("scrubIdentifiers", () => {
         expect(text).toBe("risk in an unresolved item today");
     });
 
+    it("takes the provider key with the id", () => {
+        expect(scrubIdentifiers(`congestion for jira:${UUID}`).text).toBe(
+            "congestion for an unresolved item",
+        );
+        // Only the key of a scrubbed id goes. A named key such as gh:acme-web is real text.
+        expect(scrubIdentifiers("churn in gh:acme-web now").changed).toBe(false);
+    });
+
     it("leaves clean prose untouched", () => {
         const clean = "Review latency is the limiting factor this week";
         expect(scrubIdentifiers(clean)).toEqual({ text: clean, changed: false });
