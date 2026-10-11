@@ -95,6 +95,14 @@ const NODE_TYPE_SYMBOLS: Record<WorkGraphNodeType, string> = {
     REVIEW_OUTCOME: "diamond",
     DEPLOYMENT: "roundRect",
     INCIDENT: "circle",
+    OPERATIONAL_SERVICE: "roundRect",
+    OPERATIONAL_ALERT: "triangle",
+    INCIDENT_TIMELINE_EVENT: "rect",
+    INCIDENT_RESPONDER: "pin",
+    ESCALATION_POLICY: "arrow",
+    REPOSITORY: "roundRect",
+    USER: "circle",
+    TEAM: "diamond",
 };
 
 const NODE_TYPE_LABELS: Record<WorkGraphNodeType, string> = {
@@ -109,6 +117,14 @@ const NODE_TYPE_LABELS: Record<WorkGraphNodeType, string> = {
     REVIEW_OUTCOME: "Review",
     DEPLOYMENT: "Deployment",
     INCIDENT: "Incident",
+    OPERATIONAL_SERVICE: "Service",
+    OPERATIONAL_ALERT: "Alert",
+    INCIDENT_TIMELINE_EVENT: "Incident timeline event",
+    INCIDENT_RESPONDER: "Incident responder",
+    ESCALATION_POLICY: "Escalation policy",
+    REPOSITORY: "Repository",
+    USER: "User",
+    TEAM: "Team",
 };
 
 const ALL_NODE_TYPES: WorkGraphNodeType[] = [
@@ -218,6 +234,14 @@ const NODE_SIZE: Record<WorkGraphNodeType, number> = {
     REVIEW_OUTCOME: 26,
     DEPLOYMENT: 34,
     INCIDENT: 34,
+    OPERATIONAL_SERVICE: 30,
+    OPERATIONAL_ALERT: 26,
+    INCIDENT_TIMELINE_EVENT: 24,
+    INCIDENT_RESPONDER: 26,
+    ESCALATION_POLICY: 26,
+    REPOSITORY: 34,
+    USER: 26,
+    TEAM: 30,
 };
 
 function edgesToGraph(

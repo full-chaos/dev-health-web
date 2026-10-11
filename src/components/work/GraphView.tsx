@@ -1,5 +1,6 @@
 "use client";
 
+import { NODE_TYPE_LABELS } from "@/lib/workGraphNodeLabels";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -149,20 +150,6 @@ const NODE_TYPES: WorkGraphNodeType[] = [
     "DEPLOYMENT",
     "INCIDENT",
 ];
-
-const NODE_TYPE_LABELS: Record<WorkGraphNodeType, string> = {
-    ISSUE: "Issue",
-    PR: "Pull Request",
-    COMMIT: "Commit",
-    FILE: "File",
-    RELEASE: "Release",
-    FEATURE_FLAG: "Feature Flag",
-    AI_WORKFLOW_RUN: "AI Workflow",
-    DIFF: "Diff",
-    REVIEW_OUTCOME: "Review",
-    DEPLOYMENT: "Deployment",
-    INCIDENT: "Incident",
-};
 
 const DEFAULT_CONNECTION_SLICE_ID = CONNECTION_SLICES[0].id;
 
