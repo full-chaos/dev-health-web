@@ -411,8 +411,8 @@ export function ForecastErrorState() {
             title="Backlog risk could not load"
             data-testid="backlog-risk-fetch-error"
         >
-            The forecast request failed. Retry after the data service recovers; no placeholder
-            backlog risk values are shown.
+            The forecast could not be read. Please try again later; no placeholder backlog risk
+            values are shown.
         </Notice>
     );
 }

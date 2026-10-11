@@ -65,7 +65,9 @@ export function RetentionRunConfirm({
                 return;
             }
             if (!result.data) {
-                setDryRunError("Dry run failed: the backend returned no response data.");
+                setDryRunError(
+                    "Dry run failed: no response data was returned. Please try again later.",
+                );
                 return;
             }
             if (result.data.error) {

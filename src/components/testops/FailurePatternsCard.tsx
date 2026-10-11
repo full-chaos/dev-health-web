@@ -93,7 +93,7 @@ export function FailurePatternsCard({
                     <DataState
                         variant="error"
                         title="Failure patterns could not be loaded"
-                        message="Pipeline analytics could not be loaded. The breakdown will reappear once the data service recovers."
+                        message="Pipeline analytics could not be loaded. Please try again later."
                     />
                 ) : model.isEmpty ? (
                     <DataState

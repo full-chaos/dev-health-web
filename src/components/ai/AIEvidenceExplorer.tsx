@@ -313,7 +313,7 @@ export function AIEvidenceExplorer({ filter, layout = "side" }: AIEvidenceExplor
             <div className="mt-4" data-testid="ai-evidence-unavailable">
                 <AIMissingDataPanel
                     title="AI-attributed PR evidence is not available"
-                    reason="The backend returned data_available=false for the selected scope. Missing evidence is shown explicitly rather than as an empty list."
+                    reason="Not available for the selected scope."
                     needed="AI attribution joined to pull requests for this scope."
                 />
             </div>

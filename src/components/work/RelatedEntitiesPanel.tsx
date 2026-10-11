@@ -142,8 +142,7 @@ export function RelatedEntitiesPanel({
                     data-testid="related-entities-error"
                     className="mt-6 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)"
                 >
-                    Related work unavailable. Work Graph evidence could not be loaded from the
-                    backend; try again once the data service recovers.
+                    Related work unavailable. Please try again later.
                 </div>
             ) : relatedEdges.length === 0 ? (
                 <div className="mt-6 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">

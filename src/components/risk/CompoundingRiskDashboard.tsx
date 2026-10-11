@@ -298,8 +298,7 @@ function ScopeTable({
                 data-testid="empty-state"
             >
                 Compounding Risk needs persisted churn, complexity, ownership, and review-latency
-                inputs before it can show a score. Check that the upstream repository metrics and
-                daily risk rollups have completed for this org.
+                inputs before it can show a score.
             </p>
         );
     }
@@ -441,8 +440,8 @@ export function CompoundingRiskDashboard({
                     </p>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
                         {hasRows
-                            ? `This usually clears once more PR review activity, file complexity history, ownership data, or review-latency data is recorded. The page will populate automatically after the upstream repository metrics and daily risk rollups complete.`
-                            : `No eligible compounding-risk rows are available for this org yet. Confirm the upstream repository metrics, including complexity history and review latency, have been generated before rerunning the daily risk rollup.`}
+                            ? `This usually clears once more PR review activity, file complexity history, ownership data, or review-latency data is recorded.`
+                            : `No eligible compounding-risk rows are available for this org yet.`}
                     </p>
 
                     {missingInputs.length > 0 && (

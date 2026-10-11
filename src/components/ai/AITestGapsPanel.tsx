@@ -39,7 +39,7 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
         return (
             <AIMissingDataPanel
                 title="AI test-gap data is not available"
-                reason="The backend returned data_available=false for the selected scope. Missing test-gap data is shown explicitly."
+                reason="Not available for the selected scope."
                 needed="AI attribution joined to test-coverage rollups."
             />
         );

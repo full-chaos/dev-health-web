@@ -62,7 +62,7 @@ export function CoverageBaselineCard({
                 <DataState
                     variant="error"
                     title="Coverage could not be loaded"
-                    message="Coverage analytics could not be loaded. The repositories will reappear once the data service recovers."
+                    message="Coverage analytics could not be loaded. Please try again later."
                 />
             ) : repositories.length === 0 ? (
                 <DataState

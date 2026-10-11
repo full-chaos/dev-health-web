@@ -240,7 +240,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                     tone: "info",
                 }}
                 isError={fetchFailed}
-                stateMessage="Coverage analytics could not be loaded. Coverage history will reappear once the data service recovers."
+                stateMessage="Coverage analytics could not be loaded. Please try again later."
                 isEmpty={!timeseriesData.some((point) => point.value !== null)}
                 stateTitle="Coverage trend not populated"
                 stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
@@ -305,7 +305,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                     <DataState
                         variant="error"
                         title="Repository coverage could not be loaded"
-                        message="Coverage analytics could not be loaded. The repositories will reappear once the data service recovers."
+                        message="Coverage analytics could not be loaded. Please try again later."
                     />
                 ) : (
                     <RepositoryCoverageTable rows={repositories} baselines={baselines} />

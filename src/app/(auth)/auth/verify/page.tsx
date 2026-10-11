@@ -38,7 +38,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
                 }
             }
         } catch {
-            message = "Unable to reach the server. Please try again later.";
+            message = "The service is down right now. Please try again later.";
         }
     }
 

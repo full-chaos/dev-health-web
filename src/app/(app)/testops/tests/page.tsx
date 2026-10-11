@@ -230,7 +230,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                                 <DataState
                                     variant="error"
                                     title={`${card.title} could not be loaded`}
-                                    message="Test analytics could not be loaded. The trend will reappear once the data service recovers."
+                                    message="Test analytics could not be loaded. Please try again later."
                                 />
                             ) : !card.points.some((point) => point.value !== null) ? (
                                 <DataState
@@ -275,7 +275,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                     <DataState
                         variant="error"
                         title="Flaky test patterns could not be loaded"
-                        message="Test analytics could not be loaded. The breakdown will reappear once the data service recovers."
+                        message="Test analytics could not be loaded. Please try again later."
                     />
                 ) : heatmapData.cells.length === 0 ? (
                     <DataState
