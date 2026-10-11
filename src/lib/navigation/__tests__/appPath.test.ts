@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { appPath } from "../appPath";
+import { appHref, appPath } from "../appPath";
 
 /**
  * CHAOS-9105. A link with a raw id in its path made the router request the same route without
@@ -57,4 +57,52 @@ describe("appPath", () => {
         const params = {} as { id: string };
         expect(() => appPath("/org/admin/teams/[id]/edit", params)).toThrow(/id/u);
     });
+});
+
+/**
+ * CHAOS-9209. A link whose query holds a raw value (`/code?file=api/server.go`, a served
+ * evidence URL) made the Next.js 16.3.8 router drop the prefetch response with its body not read
+ * and not cancelled: the router compares the search of the response URL, written again by
+ * `URLSearchParams` (`%2F`), with the raw search of the href. `appHref` writes the query in the
+ * `URLSearchParams` form, so the two are the same.
+ */
+describe("appHref", () => {
+    it.each([
+        ["/code?file=api/server.go", "/code?file=api%2Fserver.go"],
+        ["/code?file=src/app:a.py", "/code?file=src%2Fapp%3Aa.py"],
+        ["/code?file=docs/my file.md", "/code?file=docs%2Fmy+file.md"],
+        ["/code?file=docs/my%20file.md", "/code?file=docs%2Fmy+file.md"],
+        ["/code?file=a.go&repo=org/ops", "/code?file=a.go&repo=org%2Fops"],
+        ["/code?file=50%/a.go", "/code?file=50%25%2Fa.go"],
+        ["/code?file=a/b.go#L10", "/code?file=a%2Fb.go#L10"],
+    ])("writes the query of %j in the URLSearchParams form", (href, canonical) => {
+        expect(appHref(href)).toBe(canonical);
+    });
+
+    it("gives the search that the router reads back from the response URL", () => {
+        // What Next.js does to the response URL before the compare (urlToUrlWithoutFlightMarker).
+        const href = appHref("/code?file=src/app:a b.py");
+        const response = new URL(`${href}&_rsc=abc12`, "http://localhost");
+        response.searchParams.delete("_rsc");
+        expect(new URL(href, "http://localhost").search).toBe(response.search);
+    });
+
+    it("does not change a canonical href (safe to apply two times)", () => {
+        const once = appHref("/code?file=src/app:a b.py");
+        expect(appHref(once)).toBe(once);
+    });
+
+    it.each(["/code", "/code#top", "/explore?metric=churn", "/code?file=a.go"])(
+        "keeps %j, which is canonical",
+        (href) => {
+            expect(appHref(href)).toBe(href);
+        },
+    );
+
+    it.each(["https://example.com/a?file=a/b", "//example.com/a?file=a/b", "#", "mailto:a@b.c"])(
+        "keeps %j, which is not an app path",
+        (href) => {
+            expect(appHref(href)).toBe(href);
+        },
+    );
 });

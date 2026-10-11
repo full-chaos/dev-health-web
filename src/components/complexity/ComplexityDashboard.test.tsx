@@ -404,9 +404,10 @@ describe("ComplexityDashboard", () => {
             "Owner concentration": "82%",
         });
         // The evidence link stays: it is the drawer's footer action.
+        // CHAOS-9209: the query is in the URLSearchParams form, never the raw served search.
         expect(within(drawer).getByTestId("evidence-link")).toHaveAttribute(
             "href",
-            "/code?file=src/app/a.py",
+            "/code?file=src%2Fapp%2Fa.py",
         );
     });
 
