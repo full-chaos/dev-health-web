@@ -8,7 +8,12 @@ export function isDoNotTrackEnabled(): boolean {
 }
 
 export function isTelemetryOptedOut(): boolean {
-    return getLocalStorage()?.getItem(TELEMETRY_OPT_OUT_KEY) === "true";
+    try {
+        return getLocalStorage()?.getItem(TELEMETRY_OPT_OUT_KEY) === "true";
+    } catch {
+        // Unreadable storage (blocked site data): keep working, as not opted out.
+        return false;
+    }
 }
 
 export function setTelemetryOptOut(optedOut: boolean): void {
