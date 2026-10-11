@@ -1,5 +1,6 @@
 import { resolveOrigin } from "@/lib/origin";
 import { isServer } from "@/lib/env";
+import { readServerSession } from "#server-session";
 import { ApiErrors, apiErrorMessage } from "@/lib/constants/errors";
 import { fetchWithDeadline, withDeadline, type ServerFetchKind } from "@/lib/serverDeadline";
 
@@ -56,10 +57,10 @@ async function getServerAuthHeaders(): Promise<Record<string, string>> {
     try {
         // Bounded (CHAOS-9114): the session read is a wait before any request is sent. On the
         // deadline the call goes without a token and the backend answers 401 (its boundary).
-        const session = await withDeadline(
-            import("@/lib/auth").then(({ auth }) => auth()),
-            { kind: "auth", op: "step auth headers" },
-        );
+        const session = await withDeadline(readServerSession(), {
+            kind: "auth",
+            op: "step auth headers",
+        });
         if (session?.access_token) {
             return { Authorization: `Bearer ${session.access_token}` };
         }

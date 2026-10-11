@@ -1,3 +1,4 @@
+import "server-only";
 import type { JWT } from "next-auth/jwt";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import { getBackendUrl } from "@/lib/origin";

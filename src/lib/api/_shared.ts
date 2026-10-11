@@ -1,12 +1,11 @@
 import type { MetricFilter } from "@/lib/filters/types";
 import { apiClient } from "@/lib/apiClient";
+import { readServerSession } from "#server-session";
 
-// auth is imported dynamically inside server-only functions to avoid pulling
-// @/lib/auth into the client bundle (it reads process.env.AUTH_SECRET which
-// doesn't exist in the browser).
+// The session read goes through `#server-session`: a server module graph gets the real read, every
+// other graph gets a variant with no import of the auth module (it is server-only).
 export async function getAuth() {
-    const { auth } = await import("@/lib/auth");
-    return auth;
+    return readServerSession;
 }
 
 export const normalizeFilters = (filters: MetricFilter): MetricFilter => {

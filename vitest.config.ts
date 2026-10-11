@@ -6,6 +6,9 @@ export default defineConfig({
         alias: {
             "@": path.resolve(__dirname, "./src"),
             "server-only": path.resolve(__dirname, "./src/test/server-only.ts"),
+            // Unit tests exercise the server variant (the real session read, with `@/lib/auth`
+            // mocked by the test). The bundler picks the variant by condition; see package.json.
+            "#server-session": path.resolve(__dirname, "./src/lib/serverSession.server.ts"),
         },
     },
     test: {

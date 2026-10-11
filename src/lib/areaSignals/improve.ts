@@ -52,12 +52,12 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
+import { readServerSession } from "#server-session";
 
 /** Resolve the org scope from the auth session (mirrors ai.ts / server.ts lazy-auth pattern). */
 async function resolveOrgId(): Promise<string | undefined> {
     try {
-        const { auth } = await import("@/lib/auth");
-        const session = await auth();
+        const session = await readServerSession();
         return session?.user?.org_id as string | undefined;
     } catch {
         return undefined;

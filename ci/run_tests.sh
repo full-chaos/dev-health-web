@@ -39,6 +39,23 @@ run_pnpm_script() {
   pnpm "${script_name}"
 }
 
+# The production build, then the check that no client file holds server-only code or a secret
+# value. A secret variable with no value in this job gets a placeholder for the build and the
+# check only (a subshell), so the check always has a value to look for.
+run_build() {
+  (
+    local name
+    for name in AUTH_SECRET NEXTAUTH_SECRET AUTH_GITHUB_SECRET AUTH_GOOGLE_SECRET AUTH_GITLAB_SECRET LINEAR_API_KEY; do
+      if [[ -z "${!name:-}" ]]; then
+        export "${name}=client-bundle-check-placeholder-${name}"
+      fi
+    done
+    run_pnpm_script build
+    echo "==> pnpm check:client-bundle --require-secrets"
+    pnpm check:client-bundle --require-secrets
+  )
+}
+
 run_timed() {
   local phase="$1"
   shift
@@ -361,7 +378,7 @@ case "${tier}" in
     run_quality
     ;;
   build)
-    run_pnpm_script build
+    run_build
     ;;
   unit)
     run_unit
@@ -400,7 +417,7 @@ case "${tier}" in
     export CI=true
     run_pnpm_script format:check:changed
     run_quality
-    run_pnpm_script build
+    run_build
     run_unit
     run_auth_profiles_gate
     run_e2e

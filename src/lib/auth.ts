@@ -1,3 +1,4 @@
+import "server-only";
 import NextAuth, { CredentialsSignin } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
@@ -439,7 +440,8 @@ import type { Session } from "next-auth";
 // single RSC render tree so auth()/requireSession()/requireRole()/
 // requireSuperuser() share one next-auth read no matter how many server
 // components or layouts invoke them. Safe because the module is server-only
-// (no "use client" importers) and the getter has no side effects.
+// (`import "server-only"`: a client import fails the build) and the getter has
+// no side effects.
 const getServerSession = cache(async (): Promise<Session | null> => {
     try {
         return await nextAuth.auth();
