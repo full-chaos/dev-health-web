@@ -170,8 +170,16 @@ export function chartEntityLabel(
 // `scrubIdentifiers` replaces each embedded UUID / 32-char hex token with
 // "an unresolved item" so an ID never renders inside narrative.
 const UNRESOLVED_ITEM = "an unresolved item";
-const EMBEDDED_UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-const EMBEDDED_HEX32_RE = /\b[0-9a-f]{32}\b/gi;
+// A provider key in front of the id (`jira:<uuid>`) goes with the id.
+const PROVIDERS = "jira|gh|gl|github|gitlab|linear|ms-teams|bitbucket|ado|azure|pagerduty|opsgenie";
+const KEY = `(?:(?:${PROVIDERS}):)?`;
+// Any other provider-keyed id (`gh:acme-web`): the whole token goes.
+const EMBEDDED_KEYED_RE = new RegExp(`(?<![0-9a-z])(?:${PROVIDERS}):[^\\s,;)]+`, "gi");
+const EMBEDDED_UUID_RE = new RegExp(
+    `${KEY}[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
+    "gi",
+);
+const EMBEDDED_HEX32_RE = new RegExp(`${KEY}\\b[0-9a-f]{32}\\b`, "gi");
 
 /**
  * Replace embedded UUID / long-hash tokens inside a narrative string with
@@ -190,6 +198,10 @@ export function scrubIdentifiers(text: string | null | undefined): {
         return UNRESOLVED_ITEM;
     });
     out = out.replace(EMBEDDED_HEX32_RE, () => {
+        changed = true;
+        return UNRESOLVED_ITEM;
+    });
+    out = out.replace(EMBEDDED_KEYED_RE, () => {
         changed = true;
         return UNRESOLVED_ITEM;
     });

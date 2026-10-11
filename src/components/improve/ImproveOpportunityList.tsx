@@ -9,6 +9,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { DataState } from "@/components/ui/DataState";
 import { formatNumber } from "@/lib/formatters";
 import type { ImproveOpportunity } from "@/lib/graphql/__generated__/types";
+import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { nameOrUnresolved } from "@/lib/labels/unresolved";
 import { STATUS_PILL } from "@/lib/statusPill";
 
@@ -96,6 +97,9 @@ function ValueCell({ item }: { item: ImproveOpportunity }) {
     );
 }
 
+/** Served prose with any embedded id replaced; one derived value for text, tooltip and drawer. */
+const prose = (text: string | null | undefined) => scrubIdentifiers(text).text;
+
 /** The rule's limit, with the side that fires it. "Not reported" when the API did not serve it. */
 function ThresholdCell({ item }: { item: ImproveOpportunity }) {
     const text = formatDetectionNumber(item.threshold, item.unit);
@@ -132,10 +136,10 @@ function RowEvidenceButton({ item }: { item: ImproveOpportunity }) {
                             <EvidenceFact label="Signal" value={kindLabel(item.kind)} />
                             <EvidenceFact label="Captured entity" value={entityText} />
                             <EvidenceFact label="Severity" value={item.severity} />
-                            <EvidenceFact label="Detail" value={item.rationale} stacked />
+                            <EvidenceFact label="Detail" value={prose(item.rationale)} stacked />
                             <EvidenceFact
                                 label="Recommended"
-                                value={item.recommendedAction}
+                                value={prose(item.recommendedAction)}
                                 stacked
                             />
                             {item.evidenceRefs.length > 0 ? (
@@ -219,7 +223,7 @@ export function ImproveOpportunityList({
                             className="border-t border-(--card-stroke) align-top"
                             data-testid="improve-automations-row"
                         >
-                            <td className="px-3 py-3 font-medium" title={item.title}>
+                            <td className="px-3 py-3 font-medium" title={prose(item.title)}>
                                 {kindLabel(item.kind)}
                             </td>
                             <td className="px-3 py-3">
@@ -230,9 +234,11 @@ export function ImproveOpportunityList({
                             <td className="px-3 py-3">
                                 <SeverityBadge severity={item.severity} />
                             </td>
-                            <td className="px-3 py-3 text-(--ink-muted)">{item.rationale}</td>
                             <td className="px-3 py-3 text-(--ink-muted)">
-                                {item.recommendedAction}
+                                {prose(item.rationale)}
+                            </td>
+                            <td className="px-3 py-3 text-(--ink-muted)">
+                                {prose(item.recommendedAction)}
                             </td>
                             <td className="px-3 py-3">
                                 <RowEvidenceButton item={item} />

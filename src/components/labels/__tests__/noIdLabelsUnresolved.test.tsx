@@ -7,12 +7,20 @@ import { ConnectorStatusTable } from "@/app/(app)/data-health/_components/Connec
 import { InvoiceList } from "@/components/admin/billing/InvoiceList";
 import { AIAttributionDashboard } from "@/components/ai/AIAttributionDashboard";
 import { AIViolationsList } from "@/components/ai/AIViolationsList";
+import { ImproveAutomationsDashboard } from "@/components/improve/ImproveAutomationsDashboard";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
 import { RelatedEntitiesPanel } from "@/components/work/RelatedEntitiesPanel";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 import { containsIdToken } from "@/lib/labels/idToken";
 import { servedEntityName, UNRESOLVED } from "@/lib/labels/unresolved";
 
-const { mockOverview } = vi.hoisted(() => ({ mockOverview: vi.fn() }));
+const { mockOverview, mockImprove } = vi.hoisted(() => ({
+    mockOverview: vi.fn(),
+    mockImprove: vi.fn(),
+}));
+vi.mock("@/lib/graphql/hooks/useImproveOpportunities", () => ({
+    useImproveOpportunities: () => mockImprove(),
+}));
 vi.mock("@/lib/graphql/hooks/useAIReviewRisk", () => ({ useAIAttributionOverview: mockOverview }));
 vi.mock("@/lib/billing/actions", () => ({ getInvoices: vi.fn(), voidInvoice: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -182,6 +190,42 @@ describe.each(IDS)("unresolved surfaces never show a raw id (%s)", (id) => {
         );
         expectNoIdTokens(container);
         expect(container.textContent).not.toMatch(/in_ABC|cus_ABC/);
+    });
+});
+
+describe.each(IDS)("Automations rows never show a raw id in text or attributes (%s)", (id) => {
+    it("title, rationale and recommended action carry no id token", async () => {
+        const served = (words: string) => `${words} ${id}`;
+        mockImprove.mockReturnValue({
+            data: {
+                improveOpportunities: {
+                    detectorReady: true,
+                    totalCount: 1,
+                    opportunities: [
+                        {
+                            opportunityId: "o1",
+                            kind: "HIGH_REWORK",
+                            entityType: "team",
+                            entityId: id,
+                            title: served("Elevated rework churn in"),
+                            rationale: served("Review congestion for"),
+                            severity: "high",
+                            score: 0.8,
+                            recommendedAction: served("Look at"),
+                            evidenceRefs: [],
+                        },
+                    ],
+                },
+            },
+            fetching: false,
+            error: undefined,
+            retry: vi.fn(),
+        });
+        const { container } = renderWithEvidenceDrawer(
+            <ImproveAutomationsDashboard aiAutomationsHref="/ai/automations" />,
+        );
+        expect(container.querySelector("td[title]")).not.toBeNull();
+        expectNoIdTokens(container);
     });
 });
 
