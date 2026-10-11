@@ -87,10 +87,11 @@ vi.mock("@/lib/api/code", () => ({
     getRepoTopHotspots: (...args: unknown[]) => getRepoTopHotspotsMock(...args),
 }));
 
+import { resolveServerTree } from "@/test/resolveServerTree";
 import CodePage from "./page";
 
 async function renderPage(params: Record<string, string> = {}) {
-    const ui = await CodePage({ searchParams: Promise.resolve(params) });
+    const ui = await resolveServerTree(await CodePage({ searchParams: Promise.resolve(params) }));
     render(ui as React.ReactElement);
 }
 
