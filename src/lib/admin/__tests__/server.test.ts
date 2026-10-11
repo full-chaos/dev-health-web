@@ -11,6 +11,7 @@ import {
     listUsers,
     listPlatformUsers,
     createPlatformUser,
+    createServiceAccount,
     addOrgMemberByEmail,
     changeOrgMemberRole,
     createCredential,
@@ -1273,6 +1274,79 @@ describe("admin/server team drift-review actions", () => {
         const body = JSON.parse(String(options?.body ?? "{}"));
         expect(body).toMatchObject({ change_ids: ["chg-9"], dismiss_all: false });
         expect(body).not.toHaveProperty("change_indices");
+        fetchSpy.mockRestore();
+    });
+});
+
+describe("createServiceAccount (CHAOS-8966)", () => {
+    const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+    beforeEach(() => {
+        vi.resetAllMocks();
+        vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+    });
+
+    it("refuses a non-superuser without calling the backend", async () => {
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: false } });
+        const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(json({}, 201));
+
+        const result = await createServiceAccount({ name: "ci-reporter" });
+
+        expect(result.error).toBeDefined();
+        expect(result.data).toBeUndefined();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        fetchSpy.mockRestore();
+    });
+
+    it("refuses an invalid name before any call", async () => {
+        mockAuth({ user: { id: "u-1", is_superuser: true } });
+        const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(json({}, 201));
+
+        const result = await createServiceAccount({ name: "Bad Name@x" });
+
+        expect(result.error).toBeDefined();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        fetchSpy.mockRestore();
+    });
+
+    it("sends the service marker, the made address, no password and no org", async () => {
+        mockAuth({ user: { id: "u-1", org_id: "org-1", is_superuser: true } });
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(
+                json({ id: "u-2", email: "ci-reporter@service.dev-health.invalid" }, 201),
+            );
+
+        const result = await createServiceAccount({ name: " ci-reporter ", description: "CI" });
+
+        expect(result.error).toBeUndefined();
+        const [, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
+        expect(JSON.parse(options.body as string)).toEqual({
+            email: "ci-reporter@service.dev-health.invalid",
+            auth_provider: "service",
+            full_name: "CI",
+        });
+        expect((options.headers as Record<string, string>)["X-Org-Id"]).toBeUndefined();
+        fetchSpy.mockRestore();
+    });
+
+    it("shows a plain sentence for a duplicate and a generic one for a server fault", async () => {
+        mockAuth({ user: { id: "u-1", is_superuser: true } });
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValueOnce(
+                json(
+                    { detail: "User with email x@service.dev-health.invalid already exists" },
+                    400,
+                ),
+            )
+            .mockResolvedValueOnce(json({ detail: "pgx: connection refused" }, 500));
+
+        const dup = await createServiceAccount({ name: "x" });
+        const fault = await createServiceAccount({ name: "x" });
+
+        expect(dup.error).toBe("A service account with this name already exists.");
+        expect(fault.error).toBe("The change was not saved. Try again.");
         fetchSpy.mockRestore();
     });
 });

@@ -51,6 +51,12 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                         </button>
                     </form>
                     <Link
+                        href="/superadmin/service-accounts/new"
+                        className="inline-flex items-center rounded-xl border border-(--card-stroke) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-70)"
+                    >
+                        {CTA_LABELS.createServiceAccount}
+                    </Link>
+                    <Link
                         href="/superadmin/users/new"
                         className="inline-flex items-center rounded-xl bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                     >
