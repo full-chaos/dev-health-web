@@ -155,6 +155,98 @@ describe("TelemetryProvider", () => {
         expect(telemetryMock.flushTelemetryEventsOnHide).not.toHaveBeenCalled();
     });
 
+    it("sets the hashed identity before the first event of the page life", async () => {
+        render(
+            <TelemetryProvider orgId="org-raw" userId="user-raw">
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        await waitFor(() =>
+            expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+                "session_started",
+                expect.any(Object),
+            ),
+        );
+        const identityCall = telemetryMock.setTelemetryContext.mock.calls.findIndex(
+            ([ctx]) => ctx && "anonymousUserId" in ctx && "orgIdHash" in ctx,
+        );
+        expect(identityCall).toBeGreaterThanOrEqual(0);
+        const identityOrder =
+            telemetryMock.setTelemetryContext.mock.invocationCallOrder[identityCall];
+        for (const order of telemetryMock.trackTelemetryEvent.mock.invocationCallOrder) {
+            expect(order).toBeGreaterThan(identityOrder);
+        }
+    });
+
+    describe("session_ended once per visible period", () => {
+        const endedCalls = () =>
+            telemetryMock.trackTelemetryEvent.mock.calls.filter(
+                ([name]) => name === "session_ended",
+            );
+        const setVisibility = (state: "hidden" | "visible") => {
+            vi.spyOn(document, "visibilityState", "get").mockReturnValue(state);
+            act(() => {
+                document.dispatchEvent(new Event("visibilitychange"));
+            });
+        };
+        const mountReady = async () => {
+            render(
+                <TelemetryProvider>
+                    <div>App</div>
+                </TelemetryProvider>,
+            );
+            await waitFor(() =>
+                expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+                    "session_started",
+                    expect.any(Object),
+                ),
+            );
+        };
+
+        it("hidden then pagehide emits one event and still flushes on pagehide", async () => {
+            await mountReady();
+            setVisibility("hidden");
+            act(() => {
+                window.dispatchEvent(new Event("pagehide"));
+            });
+            expect(endedCalls()).toHaveLength(1);
+            expect(telemetryMock.flushTelemetryEventsOnHide).toHaveBeenCalledTimes(2);
+        });
+
+        it("hidden, visible, hidden emits one event per visible period", async () => {
+            await mountReady();
+            setVisibility("hidden");
+            setVisibility("hidden");
+            expect(endedCalls()).toHaveLength(1);
+            setVisibility("visible");
+            setVisibility("hidden");
+            expect(endedCalls()).toHaveLength(2);
+        });
+
+        it("bfcache restore re-arms the event for the next hide", async () => {
+            await mountReady();
+            act(() => {
+                window.dispatchEvent(new Event("pagehide"));
+            });
+            expect(endedCalls()).toHaveLength(1);
+            act(() => {
+                window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+            });
+            act(() => {
+                window.dispatchEvent(new Event("pagehide"));
+            });
+            expect(endedCalls()).toHaveLength(2);
+        });
+
+        it("a plain tab close (pagehide only) loses no event", async () => {
+            await mountReady();
+            act(() => {
+                window.dispatchEvent(new Event("pagehide"));
+            });
+            expect(endedCalls()).toHaveLength(1);
+        });
+    });
+
     it("emits feature_viewed once per route view and not on re-render", async () => {
         const { rerender } = render(
             <TelemetryProvider>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import {
@@ -33,6 +33,8 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
     const interactionsRef = useRef(0);
     const sessionStartedRef = useRef(false);
     const previousRoutePatternRef = useRef<string | null>(null);
+    // Events of one page life must carry one identity: hold the mount events until it is set.
+    const [identityReady, setIdentityReady] = useState(false);
     useEffect(() => {
         let cancelled = false;
         async function applyIdentity() {
@@ -42,15 +44,24 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
             ]);
             if (!cancelled) {
                 setTelemetryContext({ anonymousUserId, orgIdHash });
+                setIdentityReady(true);
             }
         }
-        void applyIdentity();
+        applyIdentity().catch(() => {
+            // Hashing failed: go on with the stored fallback identity rather than send nothing.
+            if (!cancelled) {
+                setIdentityReady(true);
+            }
+        });
         return () => {
             cancelled = true;
         };
     }, [orgId, userId]);
 
     useEffect(() => {
+        if (!identityReady) {
+            return;
+        }
         const routePattern = routePatternForPathname(pathname || "/");
         const previousRoutePattern = previousRoutePatternRef.current;
         if (previousRoutePattern === routePattern && sessionStartedRef.current) {
@@ -70,14 +81,22 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         emitFeatureViewed(routePattern);
         pagesViewedRef.current += 1;
         previousRoutePatternRef.current = routePattern;
-    }, [pathname]);
+    }, [pathname, identityReady]);
 
     useEffect(() => {
         sessionStartMsRef.current ??= performance.now();
         const recordInteraction = () => {
             interactionsRef.current += 1;
         };
+        // One session_ended per visible period: hidden then pagehide (a tab close)
+        // is one hide. Re-armed when the page is visible again or restored from bfcache.
+        let endedThisPeriod = false;
         const endSession = () => {
+            if (endedThisPeriod) {
+                flushTelemetryEventsOnHide();
+                return;
+            }
+            endedThisPeriod = true;
             const startedAt = sessionStartMsRef.current ?? performance.now();
             trackTelemetryEvent("session_ended", {
                 durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
@@ -89,6 +108,13 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         const endWhenHidden = () => {
             if (document.visibilityState === "hidden") {
                 endSession();
+            } else {
+                endedThisPeriod = false;
+            }
+        };
+        const onPageShow = (event: PageTransitionEvent) => {
+            if (event.persisted) {
+                endedThisPeriod = false;
             }
         };
         const onWindowError = (event: ErrorEvent) => emitClientError("global", event.error);
@@ -98,12 +124,14 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         window.addEventListener("unhandledrejection", onRejection);
         window.addEventListener(TELEMETRY_INTERACTION_EVENT, recordInteraction);
         window.addEventListener("pagehide", endSession);
+        window.addEventListener("pageshow", onPageShow);
         document.addEventListener("visibilitychange", endWhenHidden);
         return () => {
             window.removeEventListener("error", onWindowError);
             window.removeEventListener("unhandledrejection", onRejection);
             window.removeEventListener(TELEMETRY_INTERACTION_EVENT, recordInteraction);
             window.removeEventListener("pagehide", endSession);
+            window.removeEventListener("pageshow", onPageShow);
             document.removeEventListener("visibilitychange", endWhenHidden);
         };
     }, []);
