@@ -15,7 +15,8 @@ echarts.use([BarChart]);
 
 type VerticalBarChartProps = {
     categories: string[];
-    series: Array<{ name: string; data: number[] }>;
+    /** A `null` value draws no bar and no label (no estimate; never a zero). */
+    series: Array<{ name: string; data: Array<number | null> }>;
     height?: number | string;
     width?: number | string;
     className?: string;
@@ -63,7 +64,7 @@ export function VerticalBarChart({
             color: chartTheme.muted,
             formatter: (params: unknown) => {
                 const value = (params as NumericChartParam | undefined)?.value;
-                return formatValue(value);
+                return value == null ? "" : formatValue(value);
             },
         },
     }));

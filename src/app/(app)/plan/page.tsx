@@ -10,7 +10,11 @@ import { requireSession } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { formatNumber } from "@/lib/formatters";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
-import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
+import type {
+    ThroughputForecast,
+    ThroughputRiskOverlay,
+    ThroughputRollingWindow,
+} from "@/lib/graphql/types";
 import {
     PageFactsEvidenceAction,
     type PageFact,
@@ -35,6 +39,11 @@ type PlanPageProps = {
 
 function firstParam(value: string | string[] | undefined): string | undefined {
     return Array.isArray(value) ? value[0] : value;
+}
+
+/** The served no-estimate contract: no rolling sample, so the mean 0.0 is not a measured count. */
+function hasNoEstimate(window: ThroughputRollingWindow) {
+    return window.insufficientHistory && window.sampleCount === 0;
 }
 
 function formatWeeks(value: number | null | undefined) {
@@ -119,7 +128,10 @@ function overviewFacts(forecast: ThroughputForecast): PageFact[] {
         { label: "P90 forecast", value: weeks(forecast.p90Weeks) },
         ...forecast.rollingWindows.map((window) => ({
             label: `Rolling throughput · ${window.windowWeeks}w`,
-            value: `${formatNumber(window.meanWeeklyThroughput, { maximumFractionDigits: 1 })} items/week`,
+            // No estimate = no value (the served 0 is a placeholder), never "0 items/week".
+            value: hasNoEstimate(window)
+                ? undefined
+                : `${formatNumber(window.meanWeeklyThroughput, { maximumFractionDigits: 1 })} items/week`,
         })),
         { label: "WIP congestion", value: risk(forecast.wipCongestion) },
         { label: "Review bottleneck", value: risk(forecast.reviewBottleneck) },
@@ -310,21 +322,37 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                             </div>
                             <div className="mt-6">
                                 <h3 className="text-sm font-semibold">Rolling throughput</h3>
-                                <VerticalBarChart
-                                    categories={forecast.rollingWindows.map(
-                                        (window) => `${window.windowWeeks}w`,
-                                    )}
-                                    series={[
-                                        {
-                                            name: "Items/week",
-                                            data: forecast.rollingWindows.map(
-                                                (window) => window.meanWeeklyThroughput,
-                                            ),
-                                        },
-                                    ]}
-                                    valueFormat="number"
-                                    height={300}
-                                />
+                                {forecast.rollingWindows.every(hasNoEstimate) ? (
+                                    <p
+                                        data-testid="throughput-no-estimate"
+                                        className="mt-2 text-sm text-(--ink-muted)"
+                                    >
+                                        No rolling estimate for this scope: not enough daily history
+                                        for the 4, 8 or 12-week window.
+                                    </p>
+                                ) : (
+                                    <VerticalBarChart
+                                        categories={forecast.rollingWindows.map((window) =>
+                                            hasNoEstimate(window)
+                                                ? `${window.windowWeeks}w (no estimate)`
+                                                : `${window.windowWeeks}w`,
+                                        )}
+                                        series={[
+                                            {
+                                                name: "Items/week",
+                                                // A window with no estimate has no bar: the served 0 is a
+                                                // placeholder, not a count of zero completed items.
+                                                data: forecast.rollingWindows.map((window) =>
+                                                    hasNoEstimate(window)
+                                                        ? null
+                                                        : window.meanWeeklyThroughput,
+                                                ),
+                                            },
+                                        ]}
+                                        valueFormat="number"
+                                        height={300}
+                                    />
+                                )}
                             </div>
                         </Section>
 
