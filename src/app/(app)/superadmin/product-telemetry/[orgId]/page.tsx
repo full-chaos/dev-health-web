@@ -3,17 +3,11 @@ import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProductTelemetryDashboard } from "@/components/product-telemetry/ProductTelemetryDashboard";
 import { getProductTelemetryDashboardViaGraphQL } from "@/lib/graphql/productTelemetryFetchers";
-
-const isoDate = (date: Date) => date.toISOString().slice(0, 10);
+import { resolveReaderWindow } from "@/lib/telemetry/readerWindow";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
 const firstParam = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value);
-const toDate = (value?: string | string[]) => {
-    const param = firstParam(value);
-    return param ? new Date(param) : null;
-};
-
 export default async function ProductTelemetryOrgDashboardPage({
     params,
     searchParams,
@@ -24,17 +18,10 @@ export default async function ProductTelemetryOrgDashboardPage({
     const { orgId } = await params;
     const rawParams = (await searchParams) ?? {};
 
-    const endDate = toDate(rawParams.endDate) ?? new Date();
-    const startDate =
-        toDate(rawParams.startDate) ??
-        (() => {
-            const d = new Date(endDate);
-            d.setUTCDate(d.getUTCDate() - 30);
-            return d;
-        })();
-
-    const start = isoDate(startDate);
-    const end = isoDate(endDate);
+    const { start, end } = resolveReaderWindow({
+        startDate: firstParam(rawParams.startDate),
+        endDate: firstParam(rawParams.endDate),
+    });
     const dashboard = await getProductTelemetryDashboardViaGraphQL({
         orgId,
         startDate: start,
