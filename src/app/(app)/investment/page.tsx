@@ -17,6 +17,7 @@ import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceA
 import { Notice } from "@/components/ui/Notice";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
+import { lockScopeForView } from "@/lib/filters/lockScope";
 
 // A metric the answer does not serve is a no-data row (flags false), never the 0 placeholder.
 const getMetric = (deltas: MetricDelta[], metric: string): MetricDelta | undefined => {
@@ -51,7 +52,13 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         ? (tabParam as InvestmentTab)
         : "overview";
 
-    const filters = filtersFromPageParams(encodedFilter, params, { view: "investment" });
+    // The scope bar locks Investment to the team scope and rewrites an `f` that names another
+    // level. Read the locked filter here, so the first wave of reads is the one that stays: a
+    // wave for the URL's level would be replaced by a second wave after the rewrite.
+    const filters = lockScopeForView(
+        filtersFromPageParams(encodedFilter, params, { view: "investment" }),
+        "investment",
+    );
 
     const [health, orgResult, home] = await Promise.all([
         checkApiHealth(),

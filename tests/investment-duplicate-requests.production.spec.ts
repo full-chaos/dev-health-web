@@ -121,3 +121,77 @@ test("switching tabs starts the reads of the new tab once and never repeats a re
         InvestmentFull: 3,
     });
 });
+
+// CHAOS-9230: one Allocation load is ONE wave of reads. Investment locks the scope to the team
+// level; an `f` that names the organization level used to start a wave, then be rewritten by the
+// scope bar and start a second wave (the first one cancelled when its answers were slow).
+const F_ORG_LEVEL = Buffer.from(
+    JSON.stringify({
+        how: {},
+        scope: { ids: [], level: "org" },
+        time: { compare_days: 14, range_days: 14 },
+        what: {},
+        who: {},
+        why: {},
+    }),
+).toString("base64url");
+
+for (const [name, f] of [
+    ["default", F_DEFAULT],
+    ["org-level", F_ORG_LEVEL],
+] as const) {
+    test(`allocation load with a ${name} filter starts one wave of reads`, async ({
+        page,
+        request,
+    }) => {
+        await request.post(`${MOCK}/__test/entitlements`, {
+            data: { scenario: "investment-enabled" },
+        });
+        await request.post(`${MOCK}/__test/backend-log/reset`);
+        const seen: { op: string; start: number; fate: string; level: string }[] = [];
+        const open = new Map<object, (typeof seen)[number]>();
+        const t0 = Date.now();
+        page.on("request", (req) => {
+            const url = new URL(req.url());
+            if (url.pathname !== "/graphql") return;
+            const op = /(?:query|mutation)\s+(\w+)/.exec(url.searchParams.get("query") ?? "")?.[1];
+            const variables = JSON.parse(url.searchParams.get("variables") ?? "{}");
+            const level = String(variables.batch?.filters?.scope?.level ?? "none");
+            const entry = { op: op ?? "?", start: Date.now() - t0, fate: "open", level };
+            open.set(req, entry);
+            seen.push(entry);
+        });
+        page.on("requestfinished", (req) => {
+            const entry = open.get(req);
+            if (entry) entry.fate = "finished";
+        });
+        page.on("requestfailed", (req) => {
+            const entry = open.get(req);
+            if (entry) entry.fate = "failed";
+        });
+        await page.goto(`/investment?tab=allocation&f=${f}`);
+        await expect(page.getByTestId("investment-allocation")).toBeVisible();
+        await page.waitForLoadState("networkidle");
+        // Time for a second wave, were there one: the scope bar rewrites the URL after hydration.
+        await page.waitForTimeout(2500);
+
+        expect(seen.map((r) => r.op)).toEqual([
+            "InvestmentFull",
+            "InvestmentFull",
+            "InvestmentFull",
+        ]);
+        expect(seen.map((r) => r.fate)).toEqual(["finished", "finished", "finished"]);
+        // One wave: the three reads start together, none after a URL rewrite.
+        const starts = seen.map((r) => r.start);
+        expect(Math.max(...starts) - Math.min(...starts)).toBeLessThan(250);
+        // The first wave carries the final variables: the team scope the page settles on.
+        expect(seen.map((r) => r.level)).toEqual(["TEAM", "TEAM", "TEAM"]);
+        // The URL settles on the same filter as before: the team level, no ids.
+        const finalF = new URL(page.url()).searchParams.get("f") ?? "";
+        expect(JSON.parse(Buffer.from(finalF, "base64url").toString()).scope).toEqual({
+            ids: [],
+            level: "team",
+        });
+        expect(heavyReads(await readLog(request))).toEqual({ InvestmentFull: 3 });
+    });
+}
