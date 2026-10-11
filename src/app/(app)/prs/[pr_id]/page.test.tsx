@@ -192,9 +192,7 @@ describe("PrDetailPage", () => {
 
         await renderPage();
 
-        expect(
-            screen.getByText(/PR detail could not be loaded from the backend/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/The service is down right now/i)).toBeInTheDocument();
         expect(getAIWorkflowDrilldownViaGraphQLMock).not.toHaveBeenCalled();
     });
 
