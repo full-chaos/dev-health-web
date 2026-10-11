@@ -72,14 +72,16 @@ for (const { tab, f } of CASES) {
 }
 
 // CHAOS-9166: a tab starts only the reads it draws. `InvestmentFull` is the sankey flow: the
-// team-category flow, its prior-window baseline, and the repo-team flow.
+// team-category flow, its prior-window baseline, and the repo-team flow. CHAOS-9255: Overview and
+// Confidence start the team-category flow only; the repo-team flow is their fallback for a missing
+// coverage value (the mock answers all three), so it starts there only when one is missing.
 const HEAVY =
     /^graphql (InvestmentFull|InvestmentBreakdown|InvestmentEvidenceQuality|WorkUnitTeamAttributions)$/;
 const NEEDED: Record<(typeof TABS)[number], Record<string, number>> = {
-    overview: { InvestmentBreakdown: 1, InvestmentFull: 2 },
+    overview: { InvestmentBreakdown: 1, InvestmentFull: 1 },
     allocation: { InvestmentFull: 3 },
     evidence: { InvestmentEvidenceQuality: 1, WorkUnitTeamAttributions: 1 },
-    confidence: { InvestmentBreakdown: 1, InvestmentFull: 2 },
+    confidence: { InvestmentBreakdown: 1, InvestmentFull: 1 },
 };
 
 function heavyReads(log: Entry[]): Record<string, number> {
@@ -106,7 +108,7 @@ test("switching tabs starts the reads of the new tab once and never repeats a re
     await expect(page.getByTestId("investment-allocation")).toBeVisible();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(1500);
-    // Allocation adds only the baseline flow: the two flows of Overview are not asked again.
+    // Allocation adds the baseline and repo-team flows: the first flow of Overview is not asked again.
     expect(heavyReads(await readLog(request))).toEqual({
         InvestmentBreakdown: 1,
         InvestmentFull: 3,
