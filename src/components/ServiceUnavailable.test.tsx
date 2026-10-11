@@ -22,21 +22,29 @@ describe("ServiceUnavailable", () => {
     it("shows the API origin for a public absolute URL, without path or credentials", () => {
         mockConfig.api.baseUrl = "https://user:pw@api.example.com/internal/v1?k=1";
         render(<ServiceUnavailable />);
-        expect(screen.getByText("API at https://api.example.com")).toBeInTheDocument();
+        expect(screen.getAllByRole("listitem")).toHaveLength(2);
+        expect(
+            screen.getByText("Check the API address: https://api.example.com"),
+        ).toBeInTheDocument();
         expect(screen.queryByText(/pw|internal|k=1/)).not.toBeInTheDocument();
     });
 
     it('draws no "API at" line when the base URL is empty', () => {
         mockConfig.api.baseUrl = "";
         render(<ServiceUnavailable />);
-        expect(screen.queryByText(/API at/)).not.toBeInTheDocument();
-        expect(screen.getByText(/reachable from the web server/)).toBeInTheDocument();
+        expect(screen.queryByText(/API address|API at/)).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "Check that the API service is running and that the web server can reach it.",
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole("list")).not.toBeInTheDocument();
     });
 
     it('draws no "API at" line when the base URL is relative (same-origin)', () => {
         mockConfig.api.baseUrl = "/api";
         render(<ServiceUnavailable />);
-        expect(screen.queryByText(/API at/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/API address|API at/)).not.toBeInTheDocument();
     });
 
     it("publicApiOrigin rejects empty, relative and non-http values", () => {

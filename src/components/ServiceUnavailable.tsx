@@ -30,6 +30,10 @@ type ServiceUnavailableProps = {
 
 export function ServiceUnavailable({ landmark = true }: ServiceUnavailableProps = {}) {
     const apiOrigin = publicApiOrigin(config.api.baseUrl);
+    const checks = [
+        "Check that the API service is running and that the web server can reach it.",
+        ...(apiOrigin ? [`Check the API address: ${apiOrigin}`] : []),
+    ];
     const Content = landmark ? "main" : "div";
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -41,13 +45,18 @@ export function ServiceUnavailable({ landmark = true }: ServiceUnavailableProps 
                 <p className="text-sm text-(--ink-muted)">
                     The API status check failed. The API must be available to load this view.
                 </p>
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
-                    <p>Quick checks:</p>
-                    <ul className="mt-2 list-disc space-y-1 pl-4">
-                        {apiOrigin ? <li>API at {apiOrigin}</li> : null}
-                        <li>The API service is running and reachable from the web server.</li>
-                    </ul>
-                </div>
+                {checks.length > 1 ? (
+                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
+                        <p>Quick checks:</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-4">
+                            {checks.map((check) => (
+                                <li key={check}>{check}</li>
+                            ))}
+                        </ul>
+                    </div>
+                ) : (
+                    <p className="text-sm text-(--ink-muted)">{checks[0]}</p>
+                )}
                 <Link
                     href="/dashboard"
                     className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
