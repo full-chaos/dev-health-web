@@ -106,6 +106,15 @@ export async function flushTelemetryEvents(): Promise<void> {
     await telemetryQueue?.flush();
 }
 
+/** Send queued events now, synchronously; for `pagehide` / hidden. Never throws. */
+export function flushTelemetryEventsOnHide(): void {
+    try {
+        telemetryQueue?.flushOnHide();
+    } catch {
+        // Telemetry must never break the page while it unloads.
+    }
+}
+
 export function resetTelemetryForTests(): void {
     telemetryQueue?.dispose();
     telemetryQueue = null;
