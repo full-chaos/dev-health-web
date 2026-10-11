@@ -1,3 +1,7 @@
+import {
+    SERVICE_UNAVAILABLE_TEXT,
+    SERVICE_UNAVAILABLE_TITLE,
+} from "@/components/ServiceUnavailable";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter } from "@/lib/filters/encode";
 import Link from "next/link";
@@ -207,8 +211,8 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
             </PageHeader>
 
             {!health.ok && (
-                <Notice variant="warn" live={false}>
-                    Data service unavailable. Evidence will refresh once the API is back.
+                <Notice variant="warn" live={false} title={SERVICE_UNAVAILABLE_TITLE}>
+                    {SERVICE_UNAVAILABLE_TEXT}
                 </Notice>
             )}
 

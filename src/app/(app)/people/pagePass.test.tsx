@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { render, screen, within } from "@/test/utils";
+import {
+    SERVICE_UNAVAILABLE_TEXT,
+    SERVICE_UNAVAILABLE_TITLE,
+} from "@/components/ServiceUnavailable";
 import { NeutralDelta } from "@/components/people/NeutralDelta";
 import { PersonEvidenceTable } from "@/components/people/PersonEvidenceTable";
 
@@ -21,16 +25,32 @@ describe("People page pass (CHAOS-7762)", () => {
         expect(SEARCH).toContain('subtitle="Individual metrics for a single-person view."');
     });
 
-    it("the three service notices are page-load Notice warn with the production text", () => {
-        expect(SEARCH).toMatch(
-            /<Notice variant="warn" live=\{false\}> Data service unavailable\. Search results may be delayed until the API is back\. <\/Notice>/u,
+    it("the three service notices are page-load Notice warn with the shared generic text", () => {
+        for (const src of [SEARCH, PERSON, METRIC]) {
+            expect(src).toMatch(
+                /<Notice variant="warn" live=\{false\} title=\{SERVICE_UNAVAILABLE_TITLE\}> \{SERVICE_UNAVAILABLE_TEXT\} <\/Notice>/u,
+            );
+        }
+    });
+
+    it("the three service notices hold no API / data service word (shared constant)", () => {
+        expect(SERVICE_UNAVAILABLE_TITLE).toBe("Service unavailable");
+        expect(SERVICE_UNAVAILABLE_TEXT).toBe(
+            "The service is down right now. Please check back soon.",
         );
-        expect(PERSON).toMatch(
-            /<Notice variant="warn" live=\{false\}> Data service unavailable\. Metrics will refresh once the API is back\. <\/Notice>/u,
+        const { container } = render(
+            <>
+                {[SERVICE_UNAVAILABLE_TITLE, SERVICE_UNAVAILABLE_TEXT].map((t) => (
+                    <p key={t}>{t}</p>
+                ))}
+            </>,
         );
-        expect(METRIC).toMatch(
-            /<Notice variant="warn" live=\{false\}> Data service unavailable\. Evidence will refresh once the API is back\. <\/Notice>/u,
-        );
+        expect(container.textContent).not.toMatch(/\bAPI\b|data service/i);
+        for (const src of [SEARCH, PERSON, METRIC]) {
+            expect(src).not.toMatch(
+                /Data service unavailable|until the API is back|once the API is back/u,
+            );
+        }
     });
 
     it("CHAOS-8152: the association 'Open evidence' link is the shared ghost small button with the arrow", () => {

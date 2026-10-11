@@ -1,3 +1,7 @@
+import {
+    SERVICE_UNAVAILABLE_TEXT,
+    SERVICE_UNAVAILABLE_TITLE,
+} from "@/components/ServiceUnavailable";
 import { PeopleSearch } from "@/components/people/PeopleSearch";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter } from "@/lib/filters/encode";
@@ -27,8 +31,8 @@ export default async function PeoplePage({ searchParams }: PeoplePageProps) {
             </PageHeader>
 
             {!health.ok && (
-                <Notice variant="warn" live={false}>
-                    Data service unavailable. Search results may be delayed until the API is back.
+                <Notice variant="warn" live={false} title={SERVICE_UNAVAILABLE_TITLE}>
+                    {SERVICE_UNAVAILABLE_TEXT}
                 </Notice>
             )}
             <ScopeBar view="people" />

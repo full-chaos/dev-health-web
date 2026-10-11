@@ -22,7 +22,7 @@ describe("People search page strings (pin)", () => {
     it.each([
         'subtitle="Individual metrics for a single-person view."',
         "Select an individual to investigate.",
-        "Data service unavailable. Search results may be delayed until the API is back.",
+        "title={SERVICE_UNAVAILABLE_TITLE}",
         "<PeopleSearch",
         'view="people"',
     ])("keeps %s", (text) => {
@@ -35,7 +35,7 @@ describe("Person page strings (pin)", () => {
         'subtitle="This view is scoped to one person."',
         "Select a metric to investigate.",
         "Inactive",
-        "Data service unavailable. Metrics will refresh once the API is back.",
+        "title={SERVICE_UNAVAILABLE_TITLE}",
         'title="Churn × Throughput landscape"',
         'description="Operating mode for the selected window in individual scope."',
         'emptyState="Quadrant landscape unavailable."',
@@ -72,7 +72,7 @@ describe("Person page strings (pin)", () => {
 
 describe("Person metric page strings (pin)", () => {
     it.each([
-        "Data service unavailable. Evidence will refresh once the API is back.",
+        "title={SERVICE_UNAVAILABLE_TITLE}",
         "Definition",
         "Definition will appear when the indicator library is available.",
         "How to interpret:",

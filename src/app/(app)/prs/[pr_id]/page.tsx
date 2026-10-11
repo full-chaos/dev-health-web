@@ -1,3 +1,4 @@
+import { SERVICE_UNAVAILABLE_TEXT } from "@/components/ServiceUnavailable";
 import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
@@ -176,8 +177,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
             <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
                 <PrHeader />
                 <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
-                    PR detail could not be loaded from the backend. Try again after the data service
-                    is healthy.
+                    {SERVICE_UNAVAILABLE_TEXT}
                 </div>
             </div>
         );

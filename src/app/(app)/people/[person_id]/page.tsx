@@ -1,3 +1,7 @@
+import {
+    SERVICE_UNAVAILABLE_TEXT,
+    SERVICE_UNAVAILABLE_TITLE,
+} from "@/components/ServiceUnavailable";
 import Link from "next/link";
 
 import { DonutChart } from "@/components/charts/DonutChart";
@@ -165,8 +169,8 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
             </PageHeader>
 
             {!health.ok && (
-                <Notice variant="warn" live={false}>
-                    Data service unavailable. Metrics will refresh once the API is back.
+                <Notice variant="warn" live={false} title={SERVICE_UNAVAILABLE_TITLE}>
+                    {SERVICE_UNAVAILABLE_TEXT}
                 </Notice>
             )}
 
