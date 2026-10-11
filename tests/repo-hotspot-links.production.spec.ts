@@ -6,6 +6,10 @@ import { expect, test, type Request } from "@playwright/test";
  * This file runs only in the production-build suite (`playwright.context-fabric.config.ts`,
  * `pnpm test:e2e:context-fabric`): a development server does not prefetch links.
  *
+ * The file name sorts AFTER `investment-duplicate-requests`: that spec counts backend reads and
+ * is sensitive to the 3 s server memo of the impersonation status, so the spec that runs before
+ * it stays the same as on `main`.
+ *
  * What happened on 2026-10-10: a load of `/code` did not come to "network idle" in 45 s. The
  * API serves the link of a hotspot file as `/code?file=<path>` with the path raw (`a/b.go`). The
  * Next.js 16.3.8 router prefetched that link, read the search of the response URL in the
