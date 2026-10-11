@@ -110,4 +110,41 @@ describe("TelemetryProvider", () => {
             interactions: 1,
         });
     });
+
+    it("emits feature_viewed once per route view and not on re-render", async () => {
+        const { rerender } = render(
+            <TelemetryProvider>
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        const featureCalls = () =>
+            telemetryMock.trackTelemetryEvent.mock.calls.filter((c) => c[0] === "feature_viewed");
+        await waitFor(() => expect(featureCalls()).toHaveLength(1));
+        rerender(
+            <TelemetryProvider>
+                <div>App2</div>
+            </TelemetryProvider>,
+        );
+        expect(featureCalls()).toHaveLength(1);
+        expect(featureCalls()[0][1]).toEqual({
+            feature: "metrics",
+            surface: "route",
+            routePattern: "/metrics",
+        });
+    });
+
+    it("emits client_error from window handlers", async () => {
+        render(
+            <TelemetryProvider>
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        act(() => {
+            window.dispatchEvent(new ErrorEvent("error", { error: new RangeError("x") }));
+        });
+        expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+            "client_error",
+            expect.objectContaining({ boundary: "global", errorClass: "RangeError" }),
+        );
+    });
 });

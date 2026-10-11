@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const loggerMock = vi.hoisted(() => ({
+    warn: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+}));
+vi.mock("@/lib/logger", () => ({ logger: loggerMock }));
+
 import { createTelemetryQueue } from "../queue";
 import type { TelemetryAdapter } from "../adapters";
 import type { TelemetryEvent } from "../types";
@@ -72,5 +80,37 @@ describe("createTelemetryQueue", () => {
 
         expect(send).toHaveBeenCalledTimes(1);
         queue.dispose();
+    });
+});
+
+describe("createTelemetryQueue failure handling", () => {
+    it("counts dropped events and logs a failed send once", async () => {
+        const warn = loggerMock.warn;
+        warn.mockClear();
+        const send = vi.fn<TelemetryAdapter["send"]>().mockRejectedValue(new Error("down"));
+        const queue = createTelemetryQueue({
+            adapters: [{ name: "x", enabled: () => true, send }],
+            maxBatchSize: 100,
+            flushIntervalMs: 0,
+        });
+        queue.enqueue(event("1"));
+        await queue.flush();
+        queue.enqueue(event("2"));
+        await queue.flush();
+        expect(queue.droppedCount()).toBe(2);
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it("bounds the buffer", async () => {
+        const send = vi.fn<TelemetryAdapter["send"]>().mockResolvedValue(undefined);
+        const queue = createTelemetryQueue({
+            adapters: [{ name: "x", enabled: () => true, send }],
+            maxBatchSize: 100_000,
+            flushIntervalMs: 0,
+        });
+        for (let i = 0; i < 250; i += 1) queue.enqueue(event(String(i)));
+        await queue.flush();
+        expect(send.mock.calls[0][0]).toHaveLength(200);
+        expect(queue.droppedCount()).toBe(50);
     });
 });

@@ -5,6 +5,7 @@ import {
     firstPartyTelemetryAdapter,
     type TelemetryAdapter,
 } from "./telemetry/adapters";
+import { TELEMETRY_INTERACTION_EVENT } from "./telemetry/interaction";
 import { canTrackProductTelemetry } from "./telemetry/config";
 import { createTelemetryQueue, type TelemetryQueue } from "./telemetry/queue";
 import { routePatternForPathname } from "./telemetry/routePatterns";
@@ -13,6 +14,13 @@ import type { TelemetryEvent, TelemetryEventName, TelemetryPayloadByName } from 
 
 const DEFAULT_SESSION_ID_KEY = "devhealth-product-telemetry-session-id";
 const DEFAULT_ANONYMOUS_USER_ID_KEY = "devhealth-product-telemetry-anonymous-user-id";
+
+const INTERACTION_EVENT_NAMES: ReadonlySet<TelemetryEventName> = new Set([
+    "filter_changed",
+    "chart_interacted",
+    "navigation_interacted",
+    "guide_opened",
+]);
 
 type TelemetryContext = {
     sessionId?: string;
@@ -112,6 +120,11 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
     const win = getWindow();
     if (!win || !canTrackProductTelemetry()) {
         return;
+    }
+
+    if (INTERACTION_EVENT_NAMES.has(name)) {
+        // The session summary counts these; TelemetryProvider listens.
+        win.dispatchEvent(new Event(TELEMETRY_INTERACTION_EVENT));
     }
 
     const event: TelemetryEvent<Name> = {

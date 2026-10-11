@@ -15,6 +15,7 @@ import { addDays, formatDateInput, parseDateInput, toLocalDate } from "@/lib/dat
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam, filterFromQueryParams } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
+import { emitFilterChanges } from "@/lib/telemetry/emitters";
 import { useReportFilterPending } from "@/components/shell/FilterPending";
 import { type FilterBarClientProps, resolveScopeLock, resolveVisibility } from "./filterBarConfig";
 import { DATE_PRESETS, formatSelection, scopeLabelMap } from "./filterBarUtils";
@@ -140,10 +141,11 @@ export function useFilterBarState({
 
     const updateFilters = useCallback(
         (nextFilters: MetricFilter) => {
+            emitFilterChanges(view ?? "unknown", filters, nextFilters);
             setFilters(nextFilters);
             updateUrl(nextFilters);
         },
-        [updateUrl],
+        [filters, updateUrl, view],
     );
 
     const updatePeopleQuery = useCallback(

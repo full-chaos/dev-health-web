@@ -1,6 +1,7 @@
 "use client";
 import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
+import { emitClientError } from "@/lib/telemetry/emitters";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 /**
@@ -21,6 +22,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     useEffect(() => {
         // Capture error to Sentry and log to console as fallback
         Sentry.captureException(error);
+        emitClientError("global", error);
         logger.error({ err: error, digest: error.digest }, "[GlobalError] Unhandled global error");
     }, [error]);
 
