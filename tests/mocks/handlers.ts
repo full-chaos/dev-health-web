@@ -3059,6 +3059,43 @@ export const handlers = [
 
         const axes = QUADRANT_AXES[type] ?? QUADRANT_AXES.cycle_throughput;
 
+        // Person grain: the API holds only the subject's own point and weekly history.
+        if (url.searchParams.get("scope_type") === "person") {
+            const personId = url.searchParams.get("scope_id") ?? "";
+            const weeks = ["2026-01-05", "2026-01-12", "2026-01-19", "2026-01-26"];
+            const history = [
+                { x: 12, y: 3 },
+                { x: 30, y: 5 },
+                { x: 18, y: 8 },
+                { x: 44, y: 6 },
+            ];
+            const hasHistory = personId !== "person-new";
+            const last = hasHistory ? history[history.length - 1] : { x: 20, y: 4 };
+            return HttpResponse.json({
+                axes,
+                points: [
+                    {
+                        entity_id: personId,
+                        entity_label: personId,
+                        x: last.x,
+                        y: last.y,
+                        window_start: "2026-01-26",
+                        window_end: "2026-02-02",
+                        evidence_link: "/api/v1/explain?metric=throughput",
+                        ...(hasHistory
+                            ? {
+                                  trajectory: history.map((step, index) => ({
+                                      ...step,
+                                      window: weeks[index],
+                                  })),
+                              }
+                            : {}),
+                    },
+                ],
+                annotations: [],
+            });
+        }
+
         return HttpResponse.json({
             axes,
             points: [
