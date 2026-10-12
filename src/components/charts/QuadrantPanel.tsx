@@ -174,12 +174,22 @@ export function QuadrantPanel({
         if (!scopedData) {
             return null;
         }
-        const scopedOverlay = getZoneOverlay(scopedData, zoneColors);
-        if (!scopedOverlay && isPersonScope && data) {
-            return getZoneOverlay(data, zoneColors);
+        if (!isPersonScope) {
+            return getZoneOverlay(scopedData, zoneColors);
         }
-        return scopedOverlay;
-    }, [data, isPersonScope, scopedData, zoneColors]);
+        // A person's bands come from that person's own weekly history, never from other people.
+        const history = (scopedData.points ?? []).flatMap((point) =>
+            (point.trajectory ?? []).map((step) => ({
+                ...point,
+                x: step.x,
+                y: step.y,
+                window_start: step.window,
+            })),
+        );
+        return getZoneOverlay({ ...scopedData, points: history }, zoneColors);
+    }, [isPersonScope, scopedData, zoneColors]);
+    const showPersonOverlayHint =
+        isPersonScope && !zoneOverlay && Boolean(scopedData?.points?.length);
     const quadrantDefinition = useMemo(
         () => (scopedData ? getQuadrantDefinition(scopedData.axes) : null),
         [scopedData],
@@ -563,7 +573,7 @@ export function QuadrantPanel({
                 className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)"
             >
                 {actionsInHead || alwaysShowOverlayToggle ? null : guideButton}
-                {hasInterpretationOverlay || alwaysShowOverlayToggle ? (
+                {hasInterpretationOverlay || alwaysShowOverlayToggle || showPersonOverlayHint ? (
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
                             <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
@@ -582,7 +592,9 @@ export function QuadrantPanel({
                         <p id={overlayHintId} className="text-xs text-(--ink-muted)">
                             {hasInterpretationOverlay
                                 ? "Highlights common system modes observed in similar systems."
-                                : "Zones appear when two or more entities are in scope."}
+                                : isPersonScope
+                                  ? "Zones appear when this person has two or more distinct weeks in the selected range."
+                                  : "Zones appear when two or more entities are in scope."}
                         </p>
                     </div>
                 ) : null}
