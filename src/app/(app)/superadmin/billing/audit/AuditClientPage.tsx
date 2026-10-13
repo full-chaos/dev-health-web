@@ -19,20 +19,29 @@ import { ReconciliationTrigger } from "@/components/admin/billing/Reconciliation
 
 type AuditClientPageProps = {
     initialEntries: BillingAuditEntry[];
+    initialError?: string | null;
 };
 
-export function AuditClientPage({ initialEntries }: AuditClientPageProps) {
+const EMPTY_MESSAGE = "No billing audit entries for this organization and filter.";
+
+export function AuditClientPage({ initialEntries, initialError = null }: AuditClientPageProps) {
+    const [loadError, setLoadError] = useState<string | null>(initialError);
+    const [loading, setLoading] = useState(false);
     const [entries, setEntries] = useState(initialEntries);
     const [selectedEntry, setSelectedEntry] = useState<BillingAuditEntry | null>(null);
     const [running, setRunning] = useState(false);
     const [report, setReport] = useState<ReconciliationReport | null>(null);
 
     const refresh = async (filters?: BillingAuditFilters) => {
+        setLoading(true);
         const result = await getAuditLog(filters);
+        setLoading(false);
         if (result.error || !result.data) {
+            setLoadError(result.error ?? "Could not be read");
             toast.error(result.error);
             return;
         }
+        setLoadError(null);
         setEntries(result.data.items);
     };
 
@@ -61,6 +70,7 @@ export function AuditClientPage({ initialEntries }: AuditClientPageProps) {
             <AuditLogTable
                 variant="billing"
                 entries={entries}
+                emptyMessage={loading ? undefined : (loadError ?? EMPTY_MESSAGE)}
                 onSelect={async (entryId) => {
                     const result = await getAuditEntry(entryId);
                     if (result.error) {

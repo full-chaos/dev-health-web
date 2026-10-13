@@ -11,7 +11,7 @@ export default async function BillingAuditPage() {
     return (
         <div className="space-y-4">
             <AdminHeader title="Billing Audit" />
-            <AuditClientPage initialEntries={initialEntries} />
+            <AuditClientPage initialEntries={initialEntries} initialError={initial.error ?? null} />
         </div>
     );
 }
