@@ -372,8 +372,8 @@ export function InvestmentView({
                     </div>
 
                     {(data.isExplaining || data.explanation) && (
-                        <div className="mt-4 overflow-hidden rounded-2xl border border-dashed border-(--accent-2) bg-(--accent-2-10) lg:col-span-3">
-                            <div className="flex items-center justify-between border-b border-dashed border-(--accent-2) bg-(--accent-2-15) px-4 py-2">
+                        <div className="mt-4 overflow-hidden rounded-2xl border border-dashed border-(--accent-2) bg-(--accent-2)/10 lg:col-span-3">
+                            <div className="flex items-center justify-between border-b border-dashed border-(--accent-2) bg-(--accent-2)/15 px-4 py-2">
                                 <div className="flex items-center gap-2">
                                     <div className="rounded bg-(--accent-2) px-1.5 py-0.5 text-label-caps font-bold uppercase tracking-wider text-white">
                                         AI-Generated

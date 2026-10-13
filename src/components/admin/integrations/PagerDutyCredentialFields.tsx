@@ -10,7 +10,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
             <div>
                 <label
                     htmlFor="pagerduty-subdomain"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Account subdomain
                 </label>
@@ -19,7 +19,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
                         type="text"
                         name="subdomain"
                         id="pagerduty-subdomain"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                     />
                 </div>
             </div>
@@ -27,7 +27,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
             <div>
                 <label
                     htmlFor="pagerduty-region"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Region
                 </label>
@@ -36,7 +36,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
                         name="region"
                         id="pagerduty-region"
                         defaultValue="us"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                     >
                         <option value="us">US</option>
                         <option value="eu">EU</option>
@@ -49,7 +49,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
                     <div>
                         <label
                             htmlFor="pagerduty-client-id"
-                            className="block text-sm font-medium text-(--ink-base)"
+                            className="block text-sm font-medium text-(--text-primary)"
                         >
                             Client ID
                         </label>
@@ -58,14 +58,14 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
                                 type="text"
                                 name="client_id"
                                 id="pagerduty-client-id"
-                                className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                                className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                             />
                         </div>
                     </div>
                     <div>
                         <label
                             htmlFor="pagerduty-client-secret"
-                            className="block text-sm font-medium text-(--ink-base)"
+                            className="block text-sm font-medium text-(--text-primary)"
                         >
                             Client secret
                         </label>
@@ -74,7 +74,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
                                 type="password"
                                 name="client_secret"
                                 id="pagerduty-client-secret"
-                                className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                                className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                             />
                         </div>
                     </div>
@@ -85,7 +85,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
                 <div>
                     <label
                         htmlFor="pagerduty-api-token"
-                        className="block text-sm font-medium text-(--ink-base)"
+                        className="block text-sm font-medium text-(--text-primary)"
                     >
                         API token
                     </label>
@@ -94,7 +94,7 @@ export function PagerDutyCredentialFields({ method }: PagerDutyCredentialFieldsP
                             type="password"
                             name="api_token"
                             id="pagerduty-api-token"
-                            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                            className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         />
                     </div>
                 </div>

@@ -103,7 +103,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                 </div>
             )}
             <table className="min-w-full divide-y divide-(--card-stroke)">
-                <thead className="bg-(--card-bg)">
+                <thead className="bg-(--surface-raised)">
                     <tr>
                         {HEADINGS.map((heading) => (
                             <th

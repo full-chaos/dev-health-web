@@ -274,7 +274,7 @@ export function GroupUnitsList({
                                                 teamName={attribution.teamName}
                                             />
                                             {attribution.teamName ? (
-                                                <span className="tracking-normal text-(--ink)">
+                                                <span className="tracking-normal text-(--text-primary)">
                                                     {attribution.teamName}
                                                 </span>
                                             ) : null}

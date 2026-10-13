@@ -32,9 +32,11 @@ export function ModeCards({
     return (
         <div className="mb-8 grid gap-6 md:grid-cols-2">
             {showManagedSync && (
-                <div className="flex flex-col justify-between rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm">
+                <div className="flex flex-col justify-between rounded-lg border border-(--border) bg-(--surface) p-6 shadow-sm">
                     <div>
-                        <h3 className="text-lg font-semibold text-(--ink-base)">Managed sync</h3>
+                        <h3 className="text-lg font-semibold text-(--text-primary)">
+                            Managed sync
+                        </h3>
                         <ul className="mt-3 space-y-1.5 text-sm text-(--ink-muted)">
                             <li>FullChaos stores your {providerName} credentials.</li>
                             <li>FullChaos schedules and runs {providerName} syncs.</li>
@@ -43,7 +45,7 @@ export function ModeCards({
                     </div>
                     <a
                         href="#managed-sync-credentials"
-                        className="mt-6 inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-4 py-2 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted)"
+                        className="mt-6 inline-flex items-center justify-center rounded-md border border-(--border) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) hover:bg-(--surface-raised)"
                     >
                         {CTA_LABELS.setUpManagedSync}
                     </a>
@@ -51,13 +53,13 @@ export function ModeCards({
             )}
 
             {showCustomerPush && (
-                <div className="flex flex-col justify-between rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm">
+                <div className="flex flex-col justify-between rounded-lg border border-(--border) bg-(--surface) p-6 shadow-sm">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold text-(--ink-base)">
+                            <h3 className="text-lg font-semibold text-(--text-primary)">
                                 Customer push
                             </h3>
-                            <span className="rounded-full border border-(--border-subtle) px-2 py-0.5 text-xs font-medium text-(--ink-muted)">
+                            <span className="rounded-full border border-(--border) px-2 py-0.5 text-xs font-medium text-(--ink-muted)">
                                 Webhook relay: Experimental
                             </span>
                         </div>
@@ -70,7 +72,7 @@ export function ModeCards({
                     </div>
                     <Link
                         href={customerPushHref}
-                        className="mt-6 inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90"
+                        className="mt-6 inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90"
                     >
                         {CTA_LABELS.setUpCustomerPush}
                     </Link>

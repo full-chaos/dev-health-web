@@ -86,9 +86,11 @@ export function CustomerPushSourceOverview({ provider, source }: CustomerPushSou
                     <Link
                         key={card.segment}
                         href={`${basePath}/${card.segment}`}
-                        className="flex flex-col rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm transition-shadow hover:shadow-md"
+                        className="flex flex-col rounded-lg border border-(--border) bg-(--surface) p-6 shadow-sm transition-shadow hover:shadow-md"
                     >
-                        <h3 className="text-base font-semibold text-(--ink-base)">{card.title}</h3>
+                        <h3 className="text-base font-semibold text-(--text-primary)">
+                            {card.title}
+                        </h3>
                         <p className="mt-1.5 text-sm text-(--ink-muted)">{card.description}</p>
                     </Link>
                 ))}

@@ -38,7 +38,7 @@ function derivePhase(status: SetupStatus, locallyStarted: boolean): SyncPhase {
 const PANEL_CLASS =
     "flex flex-col gap-4 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6";
 const PRIMARY_CTA_CLASS =
-    "inline-flex items-center justify-center rounded-full bg-(--accent-2) px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-inverted) transition hover:bg-(--accent-2)/90 disabled:opacity-60";
+    "inline-flex items-center justify-center rounded-full bg-(--accent-2) px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-(--on-action) transition hover:bg-(--accent-2)/90 disabled:opacity-60";
 const SECONDARY_CTA_CLASS =
     "inline-flex items-center justify-center rounded-full border border-(--accent-2)/40 bg-(--accent-2)/10 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-(--accent-2) transition hover:bg-(--accent-2)/20";
 

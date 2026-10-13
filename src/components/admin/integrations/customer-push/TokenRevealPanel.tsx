@@ -42,7 +42,7 @@ export function TokenRevealPanel({
     return (
         <div className="space-y-4 rounded-xl border border-(--caution)/30 bg-(--caution)/12 p-6">
             <div>
-                <h3 className="text-base font-semibold text-(--ink-base)">
+                <h3 className="text-base font-semibold text-(--text-primary)">
                     {name} — token created
                 </h3>
                 <p className="mt-1 text-sm text-(--ink-muted)">
@@ -50,14 +50,14 @@ export function TokenRevealPanel({
                 </p>
             </div>
 
-            <div className="flex items-center gap-2 rounded-md border border-(--border-subtle) bg-(--surface-base) p-3">
-                <code className="flex-1 overflow-x-auto font-mono text-sm text-(--ink-base)">
+            <div className="flex items-center gap-2 rounded-md border border-(--border) bg-(--surface) p-3">
+                <code className="flex-1 overflow-x-auto font-mono text-sm text-(--text-primary)">
                     {token}
                 </code>
                 <button
                     type="button"
                     onClick={handleCopy}
-                    className="shrink-0 rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-1.5 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted)"
+                    className="shrink-0 rounded-md border border-(--border) bg-(--surface) px-3 py-1.5 text-sm font-medium text-(--text-primary) hover:bg-(--surface-raised)"
                 >
                     {copied ? "Copied" : CTA_LABELS.copy}
                 </button>
@@ -77,14 +77,14 @@ export function TokenRevealPanel({
             <div className="flex items-center gap-3">
                 <Link
                     href={examplesHref}
-                    className="inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-4 py-2 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted)"
+                    className="inline-flex items-center justify-center rounded-md border border-(--border) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) hover:bg-(--surface-raised)"
                 >
                     {CTA_LABELS.viewSetupExamples}
                 </Link>
                 <button
                     type="button"
                     onClick={onDismiss}
-                    className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90"
+                    className="inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90"
                 >
                     {CTA_LABELS.done}
                 </button>

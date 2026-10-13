@@ -104,7 +104,7 @@ export function ChordSummaryPanel({
                                         {item.label}
                                     </span>
                                 </span>
-                                <span className="text-sm text-(--accent-positive) font-mono shrink-0 ml-2">
+                                <span className="text-sm text-(--positive) font-mono shrink-0 ml-2">
                                     +{formatCompactValue(item.net)}
                                 </span>
                             </button>
