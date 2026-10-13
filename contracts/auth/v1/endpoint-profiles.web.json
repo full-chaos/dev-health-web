@@ -532,6 +532,46 @@
             ]
         },
         {
+            "id": "POST /api/auth/change-password [dev-health-web]",
+            "surface_kind": "rest",
+            "method": "POST",
+            "route": "/api/auth/change-password",
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/app/api/auth/change-password/route.ts",
+                "line": 23
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "Inline `session.access_token` presence check; forwards Bearer + body {current_password, new_password} to ops POST /api/v1/auth/change-password, which re-checks the user per request, verifies the current password, enforces the password policy and revokes every other session.",
+                "anchor": {
+                    "path": "src/app/api/auth/change-password/route.ts",
+                    "line": 24,
+                    "line_end": 27
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [],
+            "action": "auth.change_password",
+            "resource_resolver": "None: the target is always the caller (user id from the Bearer token, ops-side); the body names no user.",
+            "tenant_requirement": "none",
+            "current_state_cache_behavior": null,
+            "impersonation_policy": "exempt_no_org_context",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "Never echoes a submitted value or a backend detail: repeats two known refusal texts and policy rule names, else a fixed message per status.",
+            "gaps": [
+                "FINDING: mutating POST with no explicit Origin/CSRF check, same as switch-org; the defense is the Auth.js session cookie SameSite attribute, and ops re-verifies the current password, which a cross-site request cannot supply."
+            ]
+        },
+        {
             "id": "POST /api/feedback [dev-health-web]",
             "surface_kind": "rest",
             "method": "POST",
