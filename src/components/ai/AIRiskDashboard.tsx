@@ -7,7 +7,7 @@ import { DataState } from "@/components/ui/DataState";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import type { AIFilter } from "@/lib/filters/ai";
 import { STATUS_PILL } from "@/lib/statusPill";
-import { formatPercent } from "@/lib/formatters";
+import { COUNT_FORMAT, formatNumber, formatPercent } from "@/lib/formatters";
 import type { AiMissingState, AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
 import {
     findBucketRow,
@@ -214,7 +214,9 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                         tile to inspect Work Graph edges per PR.
                     </p>
                     <p className="mt-6 text-[1.75rem] font-semibold leading-tight tabular-nums">
-                        {risk.fetching ? "—" : (aiBucket?.incidentsCount ?? 0)}
+                        {risk.fetching
+                            ? "—"
+                            : formatNumber(aiBucket?.incidentsCount ?? 0, COUNT_FORMAT)}
                     </p>
                 </section>
             </div>

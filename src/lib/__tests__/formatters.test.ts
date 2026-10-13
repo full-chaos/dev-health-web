@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import {
+    COUNT_FORMAT,
     formatDelta,
     formatMetricParts,
     formatMetricValue,
@@ -266,5 +267,14 @@ describe("formatDateTimeUTC", () => {
 
     it("returns an em dash for an unparseable value", () => {
         expect(formatDateTimeUTC("not-a-date")).toBe("—");
+    });
+});
+
+describe("COUNT_FORMAT (CHAOS-9605)", () => {
+    it("trims a whole count and keeps one decimal on a fraction", () => {
+        expect(formatNumber(12, COUNT_FORMAT)).toBe("12");
+        expect(formatNumber(12.25, COUNT_FORMAT)).toBe("12.3");
+        expect(formatNumber(1200, COUNT_FORMAT)).toBe("1200");
+        expect(formatNumber(0.04, COUNT_FORMAT)).toBe("0");
     });
 });
