@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 
 import { NodeDetailPanel } from "../GraphView";
 import { CONFIDENCE_TONE } from "./ConfidencePanel";
-import { InvestmentExplainer } from "./InvestmentExplainer";
 import { ReadWithContextCard } from "./ReadWithContextCard";
 
 // Pins of the confidence pills and the node-type dots before the palette move (CHAOS-7882).
@@ -56,20 +56,8 @@ describe("confidence pills (pins)", () => {
         expect(new Set(Object.values(CONFIDENCE_TONE)).size).toBe(3);
     });
 
-    it.each(LEVELS)("the explainer pill for %s shows the level word, or 'unknown'", (level) => {
-        render(
-            <InvestmentExplainer
-                mixExplanation={explained(level) as never}
-                mixExplainKey="k"
-                isExplainingMix={false}
-                onRegenerate={() => {}}
-            />,
-        );
-        expect(pillOf(level ?? "unknown")).toBeInTheDocument();
-    });
-
     it.each(LEVELS)("the context card pill for %s shows the level word, or 'unknown'", (level) => {
-        render(
+        renderWithEvidenceDrawer(
             <ReadWithContextCard
                 mixExplanation={explained(level) as never}
                 mixExplainKey="k"
@@ -82,23 +70,6 @@ describe("confidence pills (pins)", () => {
             </ReadWithContextCard>,
         );
         expect(pillOf(level ?? "unknown")).toBeInTheDocument();
-    });
-
-    it("the three levels and 'unknown' get four different pill classes in the explainer", () => {
-        const seen = new Set<string>();
-        for (const level of LEVELS) {
-            const { unmount } = render(
-                <InvestmentExplainer
-                    mixExplanation={explained(level) as never}
-                    mixExplainKey="k"
-                    isExplainingMix={false}
-                    onRegenerate={() => {}}
-                />,
-            );
-            seen.add(pillOf(level ?? "unknown").className);
-            unmount();
-        }
-        expect(seen.size).toBe(4);
     });
 });
 

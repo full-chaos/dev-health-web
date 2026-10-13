@@ -196,28 +196,47 @@ describe("overview: context card", () => {
         useInvestmentDataMock.mockReset();
     });
 
-    it("holds the evidence-quality line, the coverage facts and the AI block in one card; the AI block is collapsed", () => {
+    it("holds the evidence-quality line, the coverage facts and the AI block in one card; the AI block opens in the drawer", () => {
         overview({ mixExplanation: explained() as never, mixExplainKey: "k" });
         const card = screen.getByTestId("read-with-context");
         expect(card).toHaveTextContent("Read this with context");
         expect(card).toHaveTextContent("Evidence quality");
-        // Collapsed by default: only the ghost toggle shows (the prototype card has no AI block).
+        // Closed by default: only the ghost button shows, and it opens the shared drawer.
         const toggle = within(card).getByRole("button", { name: "Show AI explanation" });
-        expect(toggle).toHaveAttribute("aria-expanded", "false");
         expect(toggle.className).toContain("border-transparent");
         expect(card).not.toHaveTextContent("What this investment mix indicates");
         expect(screen.queryByTestId("ai-generated-label")).toBeNull();
+        const heightBefore = card.innerHTML;
 
         fireEvent.click(toggle);
-        expect(within(card).getByRole("button", { name: "Hide AI explanation" })).toHaveAttribute(
-            "aria-expanded",
-            "true",
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent(
+            "What this investment mix indicates",
         );
-        expect(card).toHaveTextContent("What this investment mix indicates");
-        expect(screen.getByTestId("ai-generated-label")).toHaveTextContent("AI-generated");
-        // Regenerate is a ghost button inside the opened block.
-        const regenerate = within(card).getByRole("button", { name: "Regenerate" });
+        expect(within(drawer).getByTestId("ai-generated-label")).toHaveTextContent("AI-generated");
+        // Regenerate is a ghost button inside the drawer; the card itself does not change.
+        const regenerate = within(drawer).getByRole("button", { name: "Regenerate" });
         expect(regenerate.className).toContain("border-transparent");
+        expect(card.innerHTML).toBe(heightBefore);
+        expect(card.contains(drawer)).toBe(false);
+    });
+
+    it("the open drawer follows the explanation state (Regenerate in progress)", () => {
+        const { rerender } = overview({ mixExplanation: explained() as never, mixExplainKey: "k" });
+        fireEvent.click(screen.getByRole("button", { name: "Show AI explanation" }));
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByRole("button", { name: "Regenerate" })).toBeEnabled();
+        useInvestmentDataMock.mockReturnValue(
+            makeData({
+                mixExplanation: explained() as never,
+                mixExplainKey: "k",
+                isExplainingMix: true,
+            }),
+        );
+        rerender(<InvestmentView filters={baseFilters} activeTab="overview" />);
+        expect(
+            within(screen.getByRole("dialog")).getByRole("button", { name: /Generating/ }),
+        ).toBeDisabled();
     });
 
     it("quality line: level, caveat pill for low, mean in the Confidence tab's own format", () => {

@@ -160,10 +160,8 @@ export const CTA_LABELS = {
     returnToInvestigation: "Return to investigation",
     /** Investment Allocation, selected-path aside: the Evidence tab (approved copy, app.js line 71). */
     inspectAllocationEvidence: "Inspect allocation evidence",
-    /** Investment "Read this with context": open the collapsed AI explanation. */
+    /** Investment "Read this with context": open the AI explanation in the evidence drawer. */
     showAiExplanation: "Show AI explanation",
-    /** Investment "Read this with context": collapse the AI explanation again. */
-    hideAiExplanation: "Hide AI explanation",
     /** Investment AI explanation: ask for a new explanation of the same window. */
     regenerate: "Regenerate",
     /** Investment AI explanation: shown on the Regenerate button while the request runs. */
