@@ -23,10 +23,27 @@ export const TINT = {
 /** The note on a metric whose value is the whole organization's while a team is selected. */
 export const WHOLE_ORGANIZATION = "Whole organization";
 
+const RATIO_DECIMALS = 2;
+
+/** A ratio at the precision of the served sentences: two decimals; "<0.01" only below that. */
+function formatRatio(value: number): string {
+    const text = value.toFixed(RATIO_DECIMALS);
+    if (value !== 0 && /^-?0\.00$/.test(text)) {
+        return `${value > 0 ? "<" : ">-"}0.01 ratio`;
+    }
+    return `${value === 0 ? "0.00" : text} ratio`;
+}
+
+function formatTileValue(value: number, unit: string): string {
+    return unit === "ratio" ? formatRatio(value) : fmtMetric(value, unit);
+}
+
 function formatSigned(value: number, unit: string): string {
     // Object.is distinguishes -0 from +0 so we never emit "+0"
     const sign = Object.is(value, 0) || Object.is(value, -0) ? "" : value > 0 ? "+" : "";
-    return `${sign}${fmtMetric(value, unit)}`;
+    const text = formatTileValue(value, unit);
+    // "<0.01 ratio" already carries its direction
+    return `${text.startsWith("<") ? "" : sign}${text}`;
 }
 
 function statusClass(status: string): string {
@@ -88,7 +105,7 @@ export function MetricTile({
                     ) : null}
                     <span>
                         {hasPriorData
-                            ? `Prior: ${fmtMetric(metric.delta.priorValue, metric.unit)}`
+                            ? `Prior: ${formatTileValue(metric.delta.priorValue, metric.unit)}`
                             : "No prior period"}
                         {comparable ? (
                             <>
