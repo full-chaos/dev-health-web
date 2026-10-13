@@ -184,6 +184,12 @@ describe("Operating Review metric tile: served scope", () => {
             render(<MetricTile metric={ratio(0.1, 0.12, 0.02)} narrow={false} />);
             expect(text()).toContain("Δ +0.02 ratio");
             expect(text()).toContain("Prior: 0.10 ratio");
+            expect(screen.getByTestId("metric-value")).toHaveTextContent(/^0\.12\s*ratio/);
+        });
+
+        it("draws the headline ratio at two decimals", () => {
+            render(<MetricTile metric={ratio(0.1, 0.104, 0.004)} narrow={false} />);
+            expect(screen.getByTestId("metric-value")).toHaveTextContent(/^0\.10\s*ratio/);
         });
 
         it("prints a negative ratio move at two decimals", () => {
@@ -212,6 +218,7 @@ describe("Operating Review metric tile: served scope", () => {
                     narrow={false}
                 />,
             );
+            expect(screen.getByTestId("metric-value")).toHaveTextContent(/^7\.3\s*score/);
             expect(text()).toContain("Prior: 7.1 score");
             expect(text()).toContain("Δ +0.2 score");
         });

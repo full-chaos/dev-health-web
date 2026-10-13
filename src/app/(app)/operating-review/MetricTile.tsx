@@ -89,6 +89,7 @@ export function MetricTile({
             valueText={hasData ? undefined : noDataText(metric.key, metric.rateState)}
             valueIsMessage={!hasData}
             unit={hasData ? metric.unit : undefined}
+            valueDecimals={metric.unit === "ratio" ? RATIO_DECIMALS : undefined}
             caption={
                 teamSelected && metric.scope === "ORGANIZATION" ? WHOLE_ORGANIZATION : undefined
             }
