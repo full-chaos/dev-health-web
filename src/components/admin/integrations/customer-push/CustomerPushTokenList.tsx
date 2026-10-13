@@ -91,11 +91,11 @@ function TokenRow({ token, examplesHref }: { token: CustomerPushToken; examplesH
     return (
         <div
             data-testid={`token-row-${token.id}`}
-            className="flex flex-col gap-3 rounded-lg border border-(--border-subtle) bg-(--surface-base) p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-lg border border-(--border) bg-(--surface) p-4 sm:flex-row sm:items-center sm:justify-between"
         >
             <div>
                 <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-(--ink-base)">{token.name}</h3>
+                    <h3 className="text-sm font-semibold text-(--text-primary)">{token.name}</h3>
                     <TokenStatusBadge status={status} />
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1.5">
@@ -118,7 +118,7 @@ function TokenRow({ token, examplesHref }: { token: CustomerPushToken; examplesH
                     type="button"
                     onClick={handleRotate}
                     disabled={isBusy || status === "revoked"}
-                    className="inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-1.5 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted) disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md border border-(--border) bg-(--surface) px-3 py-1.5 text-sm font-medium text-(--text-primary) hover:bg-(--surface-raised) disabled:opacity-50"
                 >
                     {isRotating ? "Rotating..." : CTA_LABELS.rotate}
                 </button>
@@ -175,18 +175,18 @@ export function CustomerPushTokenList({
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-(--ink-base)">Credentials</h2>
+                <h2 className="text-lg font-medium text-(--text-primary)">Credentials</h2>
                 <Link
                     href={newTokenHref}
-                    className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90"
+                    className="inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90"
                 >
                     {CTA_LABELS.createCredential}
                 </Link>
             </div>
 
             {tokens.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--border-subtle) bg-(--surface-base) py-12 text-center">
-                    <h3 className="mb-2 text-lg font-medium text-(--ink-base)">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--border) bg-(--surface) py-12 text-center">
+                    <h3 className="mb-2 text-lg font-medium text-(--text-primary)">
                         No credentials yet for this source
                     </h3>
                     <p className="mb-6 text-sm text-(--ink-muted)">
@@ -194,7 +194,7 @@ export function CustomerPushTokenList({
                     </p>
                     <Link
                         href={newTokenHref}
-                        className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90"
+                        className="inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90"
                     >
                         {CTA_LABELS.createCredential}
                     </Link>

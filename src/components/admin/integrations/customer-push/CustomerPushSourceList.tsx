@@ -18,20 +18,20 @@ export function CustomerPushSourceList({
     return (
         <div id="customer-push-sources" className="space-y-4">
             <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-(--ink-base)">Customer-push sources</h2>
+                <h2 className="text-lg font-medium text-(--text-primary)">Customer-push sources</h2>
                 <Link
                     href={appPath("/org/admin/integrations/[provider]/customer-push/new", {
                         provider,
                     })}
-                    className="inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-4 py-2 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted)"
+                    className="inline-flex items-center justify-center rounded-md border border-(--border) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) hover:bg-(--surface-raised)"
                 >
                     {CTA_LABELS.createCustomerPushSource}
                 </Link>
             </div>
 
             {sources.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--border-subtle) bg-(--surface-base) py-12 text-center">
-                    <h3 className="mb-2 text-lg font-medium text-(--ink-base)">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--border) bg-(--surface) py-12 text-center">
+                    <h3 className="mb-2 text-lg font-medium text-(--text-primary)">
                         No customer-push sources yet
                     </h3>
                     <p className="mb-6 text-sm text-(--ink-muted)">
@@ -42,7 +42,7 @@ export function CustomerPushSourceList({
                         href={appPath("/org/admin/integrations/[provider]/customer-push/new", {
                             provider,
                         })}
-                        className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90"
+                        className="inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90"
                     >
                         {CTA_LABELS.createCustomerPushSource}
                     </Link>
@@ -59,11 +59,11 @@ export function CustomerPushSourceList({
                                     { provider, source_id: source.id },
                                 )}
                                 prefetch={false}
-                                className="flex flex-col justify-between rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm transition-shadow hover:shadow-md"
+                                className="flex flex-col justify-between rounded-lg border border-(--border) bg-(--surface) p-6 shadow-sm transition-shadow hover:shadow-md"
                             >
                                 <div>
                                     <div className="mb-3 flex items-center justify-between">
-                                        <h3 className="text-base font-semibold text-(--ink-base)">
+                                        <h3 className="text-base font-semibold text-(--text-primary)">
                                             {displayName}
                                         </h3>
                                         <ConnectionStatus

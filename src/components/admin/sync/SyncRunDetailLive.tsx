@@ -978,7 +978,7 @@ export function SyncRunDetailLive({
                         </div>
                         <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
                             <table className="min-w-full divide-y divide-(--card-stroke)">
-                                <thead className="bg-(--card-bg)">
+                                <thead className="bg-(--surface-raised)">
                                     <tr>
                                         {[
                                             "Source",

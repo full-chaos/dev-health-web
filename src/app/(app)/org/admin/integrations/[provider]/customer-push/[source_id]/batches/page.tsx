@@ -100,7 +100,7 @@ export default async function CustomerPushBatchesPage({
                         id="batch-status-filter"
                         name="status"
                         defaultValue={status ?? ""}
-                        className="rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base)"
+                        className="rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary)"
                     >
                         <option value="">All statuses</option>
                         {STATUSES.map((s) => (
@@ -122,7 +122,7 @@ export default async function CustomerPushBatchesPage({
                         type="date"
                         name="from"
                         defaultValue={filters.from ?? ""}
-                        className="rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base)"
+                        className="rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary)"
                     />
                 </div>
                 <div>
@@ -137,12 +137,12 @@ export default async function CustomerPushBatchesPage({
                         type="date"
                         name="to"
                         defaultValue={filters.to ?? ""}
-                        className="rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base)"
+                        className="rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary)"
                     />
                 </div>
                 <button
                     type="submit"
-                    className="rounded-md border border-(--border-subtle) bg-(--surface-base) px-4 py-2 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted)"
+                    className="rounded-md border border-(--border) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) hover:bg-(--surface-raised)"
                 >
                     {CTA_LABELS.applyFilters}
                 </button>

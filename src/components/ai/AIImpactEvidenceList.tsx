@@ -136,7 +136,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                                             <tr
                                                 key={key}
                                                 onClick={() => setSelectedKey(key)}
-                                                className={`cursor-pointer transition-colors ${isSelected ? "bg-(--accent-positive)/10 shadow-[inset_0.1875rem_0_0_var(--accent)]" : "hover:bg-background"}`}
+                                                className={`cursor-pointer transition-colors ${isSelected ? "bg-(--positive)/10 shadow-[inset_0.1875rem_0_0_var(--accent)]" : "hover:bg-background"}`}
                                                 data-testid="ai-impact-evidence-row"
                                                 data-pr-key={key}
                                             >

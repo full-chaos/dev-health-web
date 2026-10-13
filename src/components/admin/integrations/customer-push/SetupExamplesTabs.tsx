@@ -42,7 +42,7 @@ export function SetupExamplesTabs({ sourceSystem, sourceInstance }: SetupExample
                     >
                         {tab.label}
                         {tab.badge && (
-                            <span className="rounded-full border border-(--border-subtle) px-1.5 py-0.5 text-xs font-medium text-(--ink-muted)">
+                            <span className="rounded-full border border-(--border) px-1.5 py-0.5 text-xs font-medium text-(--ink-muted)">
                                 {tab.badge}
                             </span>
                         )}

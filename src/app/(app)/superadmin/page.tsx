@@ -111,7 +111,7 @@ export default async function SuperadminDashboard() {
                     <h3 className="mb-4 text-lg font-semibold text-foreground">Sync Health</h3>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="rounded-lg bg-(--bg-base) p-4">
+                        <div className="rounded-lg bg-(--background) p-4">
                             <div className="text-xs font-medium text-(--ink-muted)">
                                 Sync Configs
                             </div>
@@ -123,7 +123,7 @@ export default async function SuperadminDashboard() {
                             </div>
                         </div>
 
-                        <div className="rounded-lg bg-(--bg-base) p-4">
+                        <div className="rounded-lg bg-(--background) p-4">
                             <div className="text-xs font-medium text-(--ink-muted)">
                                 Last 24h Syncs
                             </div>

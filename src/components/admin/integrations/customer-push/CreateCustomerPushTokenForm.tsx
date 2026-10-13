@@ -90,7 +90,7 @@ export function CreateCustomerPushTokenForm({
             <div>
                 <label
                     htmlFor="customer-push-token-name"
-                    className="mb-1.5 block text-sm font-medium text-(--ink-base)"
+                    className="mb-1.5 block text-sm font-medium text-(--text-primary)"
                 >
                     Credential name
                 </label>
@@ -100,17 +100,19 @@ export function CreateCustomerPushTokenForm({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="CI runner"
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
+                    className="w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
 
             <div>
-                <span className="mb-1.5 block text-sm font-medium text-(--ink-base)">Scopes</span>
+                <span className="mb-1.5 block text-sm font-medium text-(--text-primary)">
+                    Scopes
+                </span>
                 <div className="space-y-2">
                     {V1_SCOPES.map(({ scope, description }) => (
                         <label
                             key={scope}
-                            className="flex items-start gap-2.5 rounded-md border border-(--border-subtle) bg-(--surface-base) p-3"
+                            className="flex items-start gap-2.5 rounded-md border border-(--border) bg-(--surface) p-3"
                         >
                             <input
                                 type="checkbox"
@@ -119,7 +121,7 @@ export function CreateCustomerPushTokenForm({
                                 className="mt-0.5"
                             />
                             <span>
-                                <span className="block font-mono text-sm text-(--ink-base)">
+                                <span className="block font-mono text-sm text-(--text-primary)">
                                     {scope}
                                 </span>
                                 <span className="block text-xs text-(--ink-muted)">
@@ -140,7 +142,7 @@ export function CreateCustomerPushTokenForm({
                         <span
                             key={scope}
                             title="Coming soon"
-                            className="flex cursor-not-allowed items-center gap-1.5 rounded-full border border-(--border-subtle) px-3 py-1 text-xs font-mono text-(--ink-muted) opacity-50"
+                            className="flex cursor-not-allowed items-center gap-1.5 rounded-full border border-(--border) px-3 py-1 text-xs font-mono text-(--ink-muted) opacity-50"
                         >
                             <input type="checkbox" disabled className="cursor-not-allowed" />
                             {scope}
@@ -152,7 +154,7 @@ export function CreateCustomerPushTokenForm({
             <div>
                 <label
                     htmlFor="customer-push-token-expires"
-                    className="mb-1.5 block text-sm font-medium text-(--ink-base)"
+                    className="mb-1.5 block text-sm font-medium text-(--text-primary)"
                 >
                     Expiration (optional)
                 </label>
@@ -161,7 +163,7 @@ export function CreateCustomerPushTokenForm({
                     type="date"
                     value={expiresAt}
                     onChange={(e) => setExpiresAt(e.target.value)}
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
+                    className="w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
 
@@ -169,7 +171,7 @@ export function CreateCustomerPushTokenForm({
                 <button
                     type="submit"
                     disabled={isPending || scopes.length === 0}
-                    className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90 disabled:opacity-50"
                 >
                     {isPending ? "Creating..." : CTA_LABELS.createCredential}
                 </button>

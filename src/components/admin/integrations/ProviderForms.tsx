@@ -4,7 +4,7 @@ export function GitHubForm() {
             <div>
                 <label
                     htmlFor="github-token"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Personal access token
                 </label>
@@ -13,7 +13,7 @@ export function GitHubForm() {
                         type="password"
                         name="token"
                         id="github-token"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="ghp_..."
                     />
                 </div>
@@ -23,7 +23,10 @@ export function GitHubForm() {
             </div>
 
             <div>
-                <label htmlFor="github-org" className="block text-sm font-medium text-(--ink-base)">
+                <label
+                    htmlFor="github-org"
+                    className="block text-sm font-medium text-(--text-primary)"
+                >
                     Organization / Owner
                 </label>
                 <div className="mt-1">
@@ -31,7 +34,7 @@ export function GitHubForm() {
                         type="text"
                         name="org"
                         id="github-org"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="my-org"
                     />
                 </div>
@@ -46,7 +49,7 @@ export function GitHubForm() {
                 in the Add Provider wizard's auth-method step, not here. Collapsed
                 by default so it never competes visually with the PAT field above. */}
             <details className="group">
-                <summary className="cursor-pointer text-sm font-medium text-(--ink-muted) hover:text-(--ink-base)">
+                <summary className="cursor-pointer text-sm font-medium text-(--ink-muted) hover:text-(--text-primary)">
                     Advanced: manual GitHub App credential
                 </summary>
                 <div className="mt-4 space-y-4">
@@ -59,7 +62,7 @@ export function GitHubForm() {
                         <div>
                             <label
                                 htmlFor="github-app-id"
-                                className="block text-sm font-medium text-(--ink-base)"
+                                className="block text-sm font-medium text-(--text-primary)"
                             >
                                 App ID
                             </label>
@@ -68,7 +71,7 @@ export function GitHubForm() {
                                     type="text"
                                     name="appId"
                                     id="github-app-id"
-                                    className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                                    className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                                     placeholder="123456"
                                 />
                             </div>
@@ -77,7 +80,7 @@ export function GitHubForm() {
                         <div>
                             <label
                                 htmlFor="github-installation-id"
-                                className="block text-sm font-medium text-(--ink-base)"
+                                className="block text-sm font-medium text-(--text-primary)"
                             >
                                 Installation ID
                             </label>
@@ -86,7 +89,7 @@ export function GitHubForm() {
                                     type="text"
                                     name="installationId"
                                     id="github-installation-id"
-                                    className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                                    className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                                     placeholder="987654"
                                 />
                             </div>
@@ -96,7 +99,7 @@ export function GitHubForm() {
                     <div>
                         <label
                             htmlFor="github-private-key"
-                            className="block text-sm font-medium text-(--ink-base)"
+                            className="block text-sm font-medium text-(--text-primary)"
                         >
                             Private key PEM
                         </label>
@@ -105,7 +108,7 @@ export function GitHubForm() {
                                 name="privateKey"
                                 id="github-private-key"
                                 rows={6}
-                                className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 font-mono text-sm text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted)"
+                                className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 font-mono text-sm text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action)"
                                 placeholder="-----BEGIN PRIVATE KEY-----"
                             />
                         </div>
@@ -114,7 +117,7 @@ export function GitHubForm() {
                     <div>
                         <label
                             htmlFor="github-base-url"
-                            className="block text-sm font-medium text-(--ink-base)"
+                            className="block text-sm font-medium text-(--text-primary)"
                         >
                             API base URL
                         </label>
@@ -123,7 +126,7 @@ export function GitHubForm() {
                                 type="url"
                                 name="baseUrl"
                                 id="github-base-url"
-                                className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                                className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                                 placeholder="https://api.github.com"
                             />
                         </div>
@@ -140,7 +143,7 @@ export function GitLabForm() {
             <div>
                 <label
                     htmlFor="gitlab-token"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Personal Access Token
                 </label>
@@ -149,7 +152,7 @@ export function GitLabForm() {
                         type="password"
                         name="token"
                         id="gitlab-token"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="glpat-..."
                     />
                 </div>
@@ -161,7 +164,7 @@ export function GitLabForm() {
             <div>
                 <label
                     htmlFor="gitlab-group"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Group / Project Path
                 </label>
@@ -170,7 +173,7 @@ export function GitLabForm() {
                         type="text"
                         name="group"
                         id="gitlab-group"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="my-group/my-project"
                     />
                 </div>
@@ -183,7 +186,10 @@ export function JiraForm() {
     return (
         <>
             <div>
-                <label htmlFor="jira-url" className="block text-sm font-medium text-(--ink-base)">
+                <label
+                    htmlFor="jira-url"
+                    className="block text-sm font-medium text-(--text-primary)"
+                >
                     Jira URL
                 </label>
                 <div className="mt-1">
@@ -191,14 +197,17 @@ export function JiraForm() {
                         type="url"
                         name="url"
                         id="jira-url"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="https://my-org.atlassian.net"
                     />
                 </div>
             </div>
 
             <div>
-                <label htmlFor="jira-email" className="block text-sm font-medium text-(--ink-base)">
+                <label
+                    htmlFor="jira-email"
+                    className="block text-sm font-medium text-(--text-primary)"
+                >
                     Email
                 </label>
                 <div className="mt-1">
@@ -206,14 +215,17 @@ export function JiraForm() {
                         type="email"
                         name="email"
                         id="jira-email"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="user@example.com"
                     />
                 </div>
             </div>
 
             <div>
-                <label htmlFor="jira-token" className="block text-sm font-medium text-(--ink-base)">
+                <label
+                    htmlFor="jira-token"
+                    className="block text-sm font-medium text-(--text-primary)"
+                >
                     API Token
                 </label>
                 <div className="mt-1">
@@ -221,7 +233,7 @@ export function JiraForm() {
                         type="password"
                         name="api_token"
                         id="jira-token"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                     />
                 </div>
             </div>
@@ -229,7 +241,7 @@ export function JiraForm() {
             <div>
                 <label
                     htmlFor="jira-projects"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Project Keys
                 </label>
@@ -238,7 +250,7 @@ export function JiraForm() {
                         type="text"
                         name="projects"
                         id="jira-projects"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="PROJ1, PROJ2"
                     />
                 </div>
@@ -254,7 +266,10 @@ export function LinearForm() {
     return (
         <>
             <div>
-                <label htmlFor="linear-key" className="block text-sm font-medium text-(--ink-base)">
+                <label
+                    htmlFor="linear-key"
+                    className="block text-sm font-medium text-(--text-primary)"
+                >
                     API Key
                 </label>
                 <div className="mt-1">
@@ -262,7 +277,7 @@ export function LinearForm() {
                         type="password"
                         name="apiKey"
                         id="linear-key"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="lin_api_..."
                     />
                 </div>
@@ -271,7 +286,7 @@ export function LinearForm() {
             <div>
                 <label
                     htmlFor="linear-teams"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Team IDs (Optional)
                 </label>
@@ -280,7 +295,7 @@ export function LinearForm() {
                         type="text"
                         name="teams"
                         id="linear-teams"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="team-id-1, team-id-2"
                     />
                 </div>
@@ -298,7 +313,7 @@ export function LaunchDarklyForm() {
             <div>
                 <label
                     htmlFor="launchdarkly-token"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     API Token
                 </label>
@@ -307,7 +322,7 @@ export function LaunchDarklyForm() {
                         type="password"
                         name="api_key"
                         id="launchdarkly-token"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="api-..."
                     />
                 </div>
@@ -320,7 +335,7 @@ export function LaunchDarklyForm() {
             <div>
                 <label
                     htmlFor="launchdarkly-project"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Project Key
                 </label>
@@ -329,7 +344,7 @@ export function LaunchDarklyForm() {
                         type="text"
                         name="project_key"
                         id="launchdarkly-project"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="default"
                     />
                 </div>
@@ -338,7 +353,7 @@ export function LaunchDarklyForm() {
             <div>
                 <label
                     htmlFor="launchdarkly-environment"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Environment Key
                 </label>
@@ -347,7 +362,7 @@ export function LaunchDarklyForm() {
                         type="text"
                         name="environment"
                         id="launchdarkly-environment"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder="production"
                     />
                 </div>

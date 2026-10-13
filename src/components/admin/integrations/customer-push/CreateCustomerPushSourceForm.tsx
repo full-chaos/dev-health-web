@@ -115,7 +115,7 @@ export function CreateCustomerPushSourceForm({
             <div>
                 <label
                     htmlFor="customer-push-display-name"
-                    className="mb-1.5 block text-sm font-medium text-(--ink-base)"
+                    className="mb-1.5 block text-sm font-medium text-(--text-primary)"
                 >
                     Source display name
                 </label>
@@ -125,14 +125,14 @@ export function CreateCustomerPushSourceForm({
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder={`${providerName} — ${instancePlaceholder}`}
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
+                    className="w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
 
             <div>
                 <label
                     htmlFor="customer-push-instance"
-                    className="mb-1.5 block text-sm font-medium text-(--ink-base)"
+                    className="mb-1.5 block text-sm font-medium text-(--text-primary)"
                 >
                     {instanceLabel}
                 </label>
@@ -142,15 +142,15 @@ export function CreateCustomerPushSourceForm({
                     value={instance}
                     onChange={(e) => setInstance(e.target.value)}
                     placeholder={instancePlaceholder}
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
+                    className="w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) focus:border-(--accent-2) focus:outline-none"
                 />
                 {instanceError && (
                     <p className="mt-1.5 text-sm text-(--negative)">{instanceError}</p>
                 )}
             </div>
 
-            <div className="rounded-lg border border-(--border-subtle) bg-(--surface-base) p-4 text-sm text-(--ink-muted)">
-                <p className="font-medium text-(--ink-base)">Ingestion mode: Customer push</p>
+            <div className="rounded-lg border border-(--border) bg-(--surface) p-4 text-sm text-(--ink-muted)">
+                <p className="font-medium text-(--text-primary)">Ingestion mode: Customer push</p>
                 <p className="mt-1">
                     Only one mode can own this source instance at a time. Managed sync and customer
                     push cannot both own the same {instanceLabel.toLowerCase()}.
@@ -161,7 +161,7 @@ export function CreateCustomerPushSourceForm({
                 <button
                     type="submit"
                     disabled={isPending}
-                    className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90 disabled:opacity-50"
                 >
                     {isPending ? "Creating..." : CTA_LABELS.createCustomerPushSource}
                 </button>

@@ -68,7 +68,7 @@ export function CustomerPushBatchList({
                     className={`rounded-full border px-3 py-1 text-xs font-medium ${
                         activeBucket === null
                             ? "border-(--accent) text-foreground"
-                            : "border-(--border-subtle) text-(--ink-muted) hover:text-foreground"
+                            : "border-(--border) text-(--ink-muted) hover:text-foreground"
                     }`}
                 >
                     {CTA_LABELS.allProducers}
@@ -81,7 +81,7 @@ export function CustomerPushBatchList({
                         className={`rounded-full border px-3 py-1 text-xs font-medium ${
                             activeBucket === bucket
                                 ? "border-(--accent) text-foreground"
-                                : "border-(--border-subtle) text-(--ink-muted) hover:text-foreground"
+                                : "border-(--border) text-(--ink-muted) hover:text-foreground"
                         }`}
                     >
                         {PRODUCER_BUCKET_LABELS[bucket]}
@@ -91,7 +91,7 @@ export function CustomerPushBatchList({
 
             <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
                 <table className="min-w-full divide-y divide-(--card-stroke)">
-                    <thead className="bg-(--card-bg)">
+                    <thead className="bg-(--surface-raised)">
                         <tr>
                             {[
                                 "Batch",

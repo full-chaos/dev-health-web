@@ -108,7 +108,7 @@ function PrTable({
                             <tr
                                 key={key}
                                 onClick={() => onSelect(pr)}
-                                className={`cursor-pointer transition-colors ${isSelected ? "bg-(--accent-positive)/10 shadow-[inset_0.1875rem_0_0_var(--accent)]" : "hover:bg-background/50"}`}
+                                className={`cursor-pointer transition-colors ${isSelected ? "bg-(--positive)/10 shadow-[inset_0.1875rem_0_0_var(--accent)]" : "hover:bg-background/50"}`}
                                 data-testid="ai-drilldown-pr-row"
                                 data-pr-key={key}
                                 aria-selected={isSelected}
@@ -347,7 +347,7 @@ export function AIEvidenceExplorer({ filter, layout = "side" }: AIEvidenceExplor
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder="Search title, kind, or PR number"
-                        className="w-full rounded-full border border-(--card-stroke) bg-background/60 py-2 pl-10 pr-4 text-sm focus:border-(--accent-positive) focus:outline-none"
+                        className="w-full rounded-full border border-(--card-stroke) bg-background/60 py-2 pl-10 pr-4 text-sm focus:border-(--positive) focus:outline-none"
                         data-testid="ai-drilldown-search"
                     />
                 </div>

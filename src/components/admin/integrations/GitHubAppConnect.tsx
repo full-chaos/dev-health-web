@@ -63,7 +63,7 @@ export function GitHubAppConnect({
     const ctaBoxClassName =
         variant === "flat"
             ? ""
-            : "rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm";
+            : "rounded-lg border border-(--border) bg-(--surface) p-6 shadow-sm";
 
     return (
         <div className="space-y-4">
@@ -87,7 +87,7 @@ export function GitHubAppConnect({
                 <div className={ctaBoxClassName}>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <h2 className="text-lg font-medium text-(--ink-base)">
+                            <h2 className="text-lg font-medium text-(--text-primary)">
                                 {CTA_LABELS.connectGitHubApp}
                             </h2>
                             <p className="mt-1 text-sm text-(--ink-muted)">
@@ -99,7 +99,7 @@ export function GitHubAppConnect({
                         <a
                             href={buildInstallHref(returnTo)}
                             onClick={onInstallClickAction}
-                            className="inline-flex shrink-0 items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 focus:outline-none focus:ring-2 focus:ring-(--surface-inverted) focus:ring-offset-2"
+                            className="inline-flex shrink-0 items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90 focus:outline-none focus:ring-2 focus:ring-(--action) focus:ring-offset-2"
                         >
                             {CTA_LABELS.connectGitHubApp}
                         </a>

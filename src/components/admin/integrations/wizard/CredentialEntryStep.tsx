@@ -76,7 +76,7 @@ export function CredentialEntryStep({
             <div>
                 <label
                     htmlFor="credential_name"
-                    className="block text-sm font-medium text-(--ink-base)"
+                    className="block text-sm font-medium text-(--text-primary)"
                 >
                     Credential Name
                 </label>
@@ -87,7 +87,7 @@ export function CredentialEntryStep({
                         id="credential_name"
                         value={credentialName}
                         onChange={(e) => onCredentialNameChangeAction(e.target.value)}
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                        className="block w-full rounded-md border-(--border) bg-(--surface) px-3 py-2 text-(--text-primary) shadow-sm focus:border-(--action) focus:outline-none focus:ring-1 focus:ring-(--action) sm:text-sm"
                         placeholder='e.g., "Production Token" (defaults to "default")'
                     />
                 </div>

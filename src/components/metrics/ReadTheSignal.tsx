@@ -86,8 +86,8 @@ export function ReadTheSignal({
                           : "The value for this window is unavailable."}
             </p>
             <div className="mt-4 border-l-2 border-(--card-stroke) pl-3 text-xs leading-relaxed text-(--ink-muted)">
-                <strong className="text-(--ink)">Inspect before interpreting.</strong> Use the
-                source explanation and contributing artifacts rather than treating a percentage
+                <strong className="text-(--text-primary)">Inspect before interpreting.</strong> Use
+                the source explanation and contributing artifacts rather than treating a percentage
                 change as a causal diagnosis.
             </div>
         </Section>

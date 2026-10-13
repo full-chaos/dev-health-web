@@ -144,7 +144,7 @@ export function ValidatePayloadPanel({
                 }}
                 rows={12}
                 placeholder='{"schemaVersion": "external-ingest.v1", "records": [...]}'
-                className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) p-3 font-mono text-xs text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
+                className="w-full rounded-md border border-(--border) bg-(--surface) p-3 font-mono text-xs text-(--text-primary) focus:border-(--accent-2) focus:outline-none"
             />
 
             {parseError && <p className="text-sm text-(--negative)">{parseError}</p>}
@@ -152,7 +152,7 @@ export function ValidatePayloadPanel({
             {!validateProxyAvailable && (
                 <div
                     role="status"
-                    className="rounded-lg border border-(--card-stroke) bg-(--surface-base) p-4 text-sm text-(--ink-muted)"
+                    className="rounded-lg border border-(--card-stroke) bg-(--surface) p-4 text-sm text-(--ink-muted)"
                 >
                     Server-side validation isn&apos;t available yet — it arrives with the validation
                     endpoint. You can prepare and inspect payloads here, or validate from CI with{" "}
@@ -167,7 +167,7 @@ export function ValidatePayloadPanel({
                     disabled={
                         !validateProxyAvailable || isPending || payloadText.trim().length === 0
                     }
-                    className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md bg-(--action) px-4 py-2 text-sm font-medium text-(--on-action) hover:bg-(--action)/90 disabled:opacity-50"
                 >
                     {isPending ? "Validating..." : CTA_LABELS.validatePayload}
                 </button>
