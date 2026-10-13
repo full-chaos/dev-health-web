@@ -50,10 +50,11 @@ export async function deleteUser(userId: string): Promise<ActionResult<void>> {
 export async function setUserPassword(
     userId: string,
     password: string,
+    adminPassword: string,
 ): Promise<ActionResult<void>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.users.setPassword(userId, password, token, orgId);
+        return adminApi.users.setPassword(userId, password, adminPassword, token, orgId);
     });
 }
 

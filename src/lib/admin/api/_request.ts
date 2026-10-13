@@ -16,6 +16,20 @@ export class AdminApiError extends Error {
 function formatErrorDetail(raw: unknown): string | undefined {
     if (typeof raw === "string") return raw;
     if (raw == null) return undefined;
+    if (Array.isArray(raw)) {
+        // FastAPI validation errors carry the submitted value under "input": show the field and the
+        // message only, never the value (it can be a password).
+        const lines = raw.map((item) => {
+            if (item === null || typeof item !== "object") return "Invalid request";
+            const entry = item as { loc?: unknown; msg?: unknown };
+            const field = Array.isArray(entry.loc)
+                ? entry.loc.filter((part) => part !== "body").join(".")
+                : "";
+            const msg = typeof entry.msg === "string" ? entry.msg : "Invalid value";
+            return field ? `${field}: ${msg}` : msg;
+        });
+        return lines.join("; ");
+    }
     if (typeof raw === "object") {
         const obj = raw as Record<string, unknown>;
         if (obj.error === "feature_not_licensed") {
@@ -37,7 +51,7 @@ function formatErrorDetail(raw: unknown): string | undefined {
         // JSON, regardless of whether it also has an `error` key.
         if (typeof obj.message === "string") return obj.message;
     }
-    return JSON.stringify(raw);
+    return "Request failed";
 }
 
 // CHAOS-9114: a GET is a read and gets the deadline; any other method is a write and never
