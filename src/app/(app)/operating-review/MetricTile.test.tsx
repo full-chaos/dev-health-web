@@ -174,4 +174,53 @@ describe("Operating Review metric tile: served scope", () => {
         expect(text()).toContain("No data for this window");
         expect(text()).toContain(LABEL);
     });
+
+    // CHAOS-9564: the tile prints a ratio at the precision of the served sentences.
+    describe("ratio and score precision", () => {
+        const ratio = (prior: number, value: number, absolute: number) =>
+            metric({ unit: "ratio", value }, { priorValue: prior, value, absolute, percent: 20 });
+
+        it("prints a ratio move of 0.10 to 0.12 as +0.02 and the prior at two decimals", () => {
+            render(<MetricTile metric={ratio(0.1, 0.12, 0.02)} narrow={false} />);
+            expect(text()).toContain("Δ +0.02 ratio");
+            expect(text()).toContain("Prior: 0.10 ratio");
+            expect(screen.getByTestId("metric-value")).toHaveTextContent(/^0\.12\s*ratio/);
+        });
+
+        it("draws the headline ratio at two decimals", () => {
+            render(<MetricTile metric={ratio(0.1, 0.104, 0.004)} narrow={false} />);
+            expect(screen.getByTestId("metric-value")).toHaveTextContent(/^0\.10\s*ratio/);
+        });
+
+        it("prints a negative ratio move at two decimals", () => {
+            render(<MetricTile metric={ratio(0.12, 0.1, -0.02)} narrow={false} />);
+            expect(text()).toContain("Δ -0.02 ratio");
+        });
+
+        it("prints the small-number form only below two decimals, never +0.00 or -0.00", () => {
+            const { unmount } = render(
+                <MetricTile metric={ratio(0.1, 0.104, 0.004)} narrow={false} />,
+            );
+            expect(text()).toContain("Δ <0.01 ratio");
+            expect(text()).not.toMatch(/\+<|\+0\.00|-0\.00/);
+            unmount();
+            render(<MetricTile metric={ratio(0.104, 0.1, -0.004)} narrow={false} />);
+            expect(text()).toContain("Δ >-0.01 ratio");
+        });
+
+        it("keeps a score at one decimal", () => {
+            render(
+                <MetricTile
+                    metric={metric(
+                        { unit: "score", value: 7.25 },
+                        { priorValue: 7.1, value: 7.25, absolute: 0.15 },
+                    )}
+                    narrow={false}
+                />,
+            );
+            expect(screen.getByTestId("metric-value")).toHaveTextContent(/^7\.3\s*score/);
+            expect(text()).toContain("Prior: 7.1 score");
+            expect(text()).toContain("Δ +0.2 score");
+        });
+    });
 });

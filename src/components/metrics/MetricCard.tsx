@@ -19,6 +19,8 @@ export type MetricCardProps = {
      */
     href?: string;
     value?: number;
+    /** Opt-in: draw `value` with exactly this many decimals (a per-unit precision of the caller). */
+    valueDecimals?: number;
     unit?: string;
     /**
      * The percent change. `undefined` is "no prior period". `null` is "changed from zero" (the
@@ -96,6 +98,7 @@ export function MetricCard({
     label,
     href,
     value,
+    valueDecimals,
     unit,
     delta,
     deltaUnavailableLabel = "No prior period",
@@ -123,7 +126,8 @@ export function MetricCard({
     const numericValue = value !== undefined && value !== null ? value : null;
     const hasValue = valueText !== undefined || numericValue !== null;
     // Number and unit apart, from the number and the served unit (never from a display string).
-    const parts = numericValue !== null ? formatMetricParts(numericValue, unit ?? "") : null;
+    const parts =
+        numericValue !== null ? formatMetricParts(numericValue, unit ?? "", valueDecimals) : null;
     const deltaParts =
         delta === null
             ? changedFromZeroParts(numericValue, unit, { polarity, inverseGood })

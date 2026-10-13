@@ -157,7 +157,18 @@ export type MetricValueParts = {
  * the served one, except: `loc` reads "LOC", `m` (minutes) reads "min", and `days` / `hours`
  * read "day" / "hour" when the shown number is exactly 1.
  */
-export const formatMetricParts = (value: number, unit: string): MetricValueParts => {
+export const formatMetricParts = (
+    value: number,
+    unit: string,
+    fixedDecimals?: number,
+): MetricValueParts => {
+    if (fixedDecimals !== undefined) {
+        const fixed = value.toFixed(fixedDecimals);
+        const floor = `0.${"0".repeat(fixedDecimals - 1)}1`;
+        const number =
+            value !== 0 && /^-?0\.0+$/.test(fixed) ? `${value > 0 ? "<" : ">-"}${floor}` : fixed;
+        return { value: number, unit };
+    }
     const number = formatMetricNumber(value, unit);
     if (unit === "days") {
         return { value: number, unit: number === "1" ? "day" : "days" };
