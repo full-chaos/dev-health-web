@@ -51,7 +51,7 @@ describe("Preferences in the shared app shell (CHAOS-7966)", () => {
         const header = screen.getByTestId("page-header");
         expect(within(header).getByRole("heading", { level: 1 })).toHaveTextContent("Settings");
         expect(
-            within(header).getByText("Personal display settings stored in your browser."),
+            within(header).getByText("Your display settings and your password."),
         ).toBeInTheDocument();
     });
 
