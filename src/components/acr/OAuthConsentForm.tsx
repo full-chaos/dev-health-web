@@ -4,6 +4,7 @@ import type { OAuthConsentDecisionWire } from "@/lib/acr/consent-wire";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/shared/Button";
+import { isKnownScope, scopeLabel } from "@/lib/acr/scope-labels";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 type ConsentState =
@@ -115,17 +116,6 @@ function stateCopy(state: ConsentState): { readonly description: string; readonl
                     "We could not reach the authorization service. Please try again shortly.",
                 title: "Temporarily unavailable",
             };
-    }
-}
-
-function scopeLabel(scope: string): string {
-    switch (scope) {
-        case "context:read":
-            return "Read agent context";
-        case "evidence:read":
-            return "Read source evidence";
-        default:
-            return scope;
     }
 }
 
@@ -270,7 +260,15 @@ export function OAuthConsentForm(props: OAuthConsentFormProps) {
                             <h2 className="text-h3 font-medium">Requested access</h2>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--ink-muted)">
                                 {preview.scopes.map((scope) => (
-                                    <li key={scope}>{scopeLabel(scope)}</li>
+                                    <li key={scope}>
+                                        {scopeLabel(scope)}
+                                        {isKnownScope(scope) ? null : (
+                                            <>
+                                                {" "}
+                                                (<code className="font-mono">{scope}</code>)
+                                            </>
+                                        )}
+                                    </li>
                                 ))}
                             </ul>
                         </section>

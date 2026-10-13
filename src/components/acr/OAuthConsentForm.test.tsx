@@ -214,4 +214,25 @@ describe("OAuthConsentForm", () => {
         expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();
         expect(screen.getByRole("button", { name: "Deny" })).toBeEnabled();
     });
+
+    it("Given each known scope, when reviewing, then shows its label and not the raw id", () => {
+        render(
+            <OAuthConsentForm
+                handle={HANDLE}
+                preview={{ ...PREVIEW, scopes: ["context:read", "evidence:read", "data:read"] }}
+            />,
+        );
+        for (const scope of ["context:read", "evidence:read", "data:read"]) {
+            expect(screen.queryByText(scope)).not.toBeInTheDocument();
+        }
+        expect(screen.getByText("Run direct data operations")).toBeVisible();
+    });
+
+    it("Given an unknown scope, when reviewing, then shows the generic line plus the id", () => {
+        render(
+            <OAuthConsentForm handle={HANDLE} preview={{ ...PREVIEW, scopes: ["future:write"] }} />,
+        );
+        expect(screen.getByText(/Other access not described here/)).toBeVisible();
+        expect(screen.getByText("future:write")).toBeVisible();
+    });
 });

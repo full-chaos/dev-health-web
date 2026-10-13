@@ -290,6 +290,8 @@ describe("DeviceApprovalForm", () => {
         const scopes = screen.getByRole("list", { name: "Requested access" });
         expect(scopes).toHaveTextContent("context:read");
         expect(scopes).toHaveTextContent("data:read");
+        expect(scopes).toHaveTextContent("Read agent context");
+        expect(scopes).toHaveTextContent("Run direct data operations");
         expect(screen.queryByText("evidence:read")).not.toBeInTheDocument();
         expect(screen.getByText("EP23TUGG")).toBeVisible();
     });

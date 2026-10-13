@@ -3,6 +3,7 @@
 import { type SyntheticEvent, useId, useState } from "react";
 
 import { Button } from "@/components/shared/Button";
+import { scopeLabel } from "@/lib/acr/scope-labels";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 type ApprovalState = "denied" | "expired" | "pending" | "review" | "success";
@@ -16,15 +17,6 @@ type DeviceApprovalFormProps = {
     // this form still renders the SAME editable input either way, so a
     // typed or corrected code always works too.
     readonly initialUserCode?: string;
-};
-
-// Plain-language names for the scopes acr can put on a device grant. The raw
-// scope id is always shown next to the name; an id this table does not know is
-// shown as the raw id alone, never hidden.
-const SCOPE_LABELS: Readonly<Record<string, string>> = {
-    "context:read": "Read context packets",
-    "data:read": "Run direct data operations",
-    "evidence:read": "Read evidence sources",
 };
 
 type ApprovalResponse = {
@@ -253,9 +245,7 @@ export function DeviceApprovalForm({
                                             key={scope}
                                             className="flex flex-wrap items-baseline gap-x-3 text-sm"
                                         >
-                                            {SCOPE_LABELS[scope] ? (
-                                                <span>{SCOPE_LABELS[scope]}</span>
-                                            ) : null}
+                                            <span>{scopeLabel(scope)}</span>
                                             <code className="font-mono text-(--ink-muted)">
                                                 {scope}
                                             </code>
