@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://backend.test" }));
 const fetchMock = vi.fn();
-vi.mock("@/lib/serverDeadline", () => ({ fetchWithDeadline: (...args: unknown[]) => fetchMock(...args) }));
+vi.mock("@/lib/serverDeadline", () => ({
+    fetchWithDeadline: (...args: unknown[]) => fetchMock(...args),
+}));
 
 import { request } from "../_request";
 

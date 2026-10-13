@@ -7258,7 +7258,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "Superuser check at src/lib/admin/server/users.ts:67 (CHAOS-8967, defense in depth); ops remains the authority on the request body."
+                "Superuser check at src/lib/admin/server/users.ts:68 (CHAOS-8967, defense in depth); ops remains the authority on the request body."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -7274,7 +7274,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/users.ts",
-                "line": 65
+                "line": 66
             },
             "classification": "protected",
             "public_rationale": null,
@@ -7313,7 +7313,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "Superuser check at src/lib/admin/server/users.ts:67 (CHAOS-8967, defense in depth); ops remains the authority on the request body."
+                "Superuser check at src/lib/admin/server/users.ts:68 (CHAOS-8967, defense in depth); ops remains the authority on the request body."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -7643,7 +7643,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/users.ts:55, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/users.ts:56, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
