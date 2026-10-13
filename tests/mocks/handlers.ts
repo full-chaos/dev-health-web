@@ -2547,6 +2547,44 @@ export const handlers = [
         }),
     ),
 
+    // CHAOS-9513: the signed-in user changes their own password. A current password of
+    // "wrong-password-1" is refused, a new one that is too short fails the policy, anything else
+    // answers a fresh token pair like switch-org.
+    http.post("*/api/v1/auth/change-password", async ({ request }) => {
+        const body = (await request.json()) as { current_password?: string; new_password?: string };
+        if (body.current_password === "wrong-password-1") {
+            return HttpResponse.json(
+                { detail: "Current password verification failed" },
+                { status: 403 },
+            );
+        }
+        if ((body.new_password ?? "").length < 12) {
+            return HttpResponse.json(
+                {
+                    detail: {
+                        violations: ["Password must be at least 12 characters long"],
+                    },
+                },
+                { status: 422 },
+            );
+        }
+        return HttpResponse.json<LoginResponseBody>({
+            user: {
+                id: "e2e-user-1",
+                email: "test@example.com",
+                org_id: "org-e2e",
+                role: "owner",
+                is_superuser: true,
+                permissions: ["read", "write"],
+            },
+            access_token: "mock-access-token-e2e",
+            refresh_token: "mock-refresh-token-e2e",
+            token_type: "bearer",
+            expires_in: 86400,
+            needs_onboarding: false,
+        });
+    }),
+
     http.post("*/api/v1/auth/switch-org", () =>
         HttpResponse.json<LoginResponseBody>({
             user: {
