@@ -47,9 +47,11 @@ function actionBadgeClass(action: string): string {
 function BillingAuditLogTable({
     entries,
     onSelect,
+    emptyMessage,
 }: {
     entries: AuditEntry[];
     onSelect?: (id: string) => void;
+    emptyMessage?: string;
 }) {
     return (
         <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-80)">
@@ -94,6 +96,13 @@ function BillingAuditLogTable({
                             </td>
                         </tr>
                     ))}
+                    {entries.length === 0 && emptyMessage && (
+                        <tr>
+                            <td colSpan={4} className="px-4 py-8 text-center text-(--ink-muted)">
+                                {emptyMessage}
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>
@@ -181,11 +190,19 @@ type AuditLogTableProps =
           variant: "billing";
           entries: AuditEntry[];
           onSelect?: (id: string) => void;
+          emptyMessage?: string;
       };
 
-export function AuditLogTable({ variant, entries, onSelect }: AuditLogTableProps) {
-    if (variant === "billing") {
-        return <BillingAuditLogTable entries={entries} onSelect={onSelect} />;
+export function AuditLogTable(props: AuditLogTableProps) {
+    const { entries } = props;
+    if (props.variant === "billing") {
+        return (
+            <BillingAuditLogTable
+                entries={entries}
+                onSelect={props.onSelect}
+                emptyMessage={props.emptyMessage}
+            />
+        );
     }
     return <AdminAuditLogTable entries={entries} />;
 }
