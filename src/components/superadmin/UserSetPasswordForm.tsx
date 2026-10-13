@@ -13,6 +13,7 @@ export function UserSetPasswordForm({ userId }: UserSetPasswordFormProps) {
 
     async function handleSubmit(formData: FormData) {
         const password = formData.get("password") as string;
+        const adminPassword = formData.get("admin_password") as string;
         const confirmPassword = formData.get("confirm_password") as string;
 
         if (password !== confirmPassword) {
@@ -26,7 +27,7 @@ export function UserSetPasswordForm({ userId }: UserSetPasswordFormProps) {
         }
 
         setIsLoading(true);
-        const result = await setUserPassword(userId, password);
+        const result = await setUserPassword(userId, password, adminPassword);
         setIsLoading(false);
 
         if (result.error) {
@@ -40,6 +41,19 @@ export function UserSetPasswordForm({ userId }: UserSetPasswordFormProps) {
     return (
         <form id="password-form" action={handleSubmit} className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                    <label htmlFor="admin_password" className="text-sm font-medium">
+                        Your Password
+                    </label>
+                    <input
+                        id="admin_password"
+                        name="admin_password"
+                        type="password"
+                        autoComplete="current-password"
+                        required
+                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent-2)"
+                    />
+                </div>
                 <div className="space-y-2">
                     <label htmlFor="password" className="text-sm font-medium">
                         New Password

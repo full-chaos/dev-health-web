@@ -26,10 +26,16 @@ export const usersApi = {
             orgId,
         ),
 
-    setPassword: (userId: string, password: string, token?: string, orgId?: string) =>
+    setPassword: (
+        userId: string,
+        password: string,
+        adminPassword: string,
+        token?: string,
+        orgId?: string,
+    ) =>
         request<void>(
             `/users/${userId}/password`,
-            { method: "POST", body: JSON.stringify({ password }) },
+            { method: "POST", body: JSON.stringify({ admin_password: adminPassword, password }) },
             token,
             orgId,
         ),
