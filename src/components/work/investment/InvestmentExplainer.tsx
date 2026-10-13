@@ -4,8 +4,14 @@ import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import { formatSubcategoryLabel, titleCase } from "@/lib/investment";
-import { confidenceToneClass } from "./ConfidencePanel";
 import type { MixExplanationState } from "./types";
+
+const DRIVER_HINTS: Record<string, string> = {
+    low_text_signal: "Short descriptions lack categorization signals",
+    weak_cross_links: "Few issue↔PR↔commit links detected",
+    missing_evidence_metadata: "Over 30% of units have unknown quality",
+    high_uncertainty_spread: "Quality varies significantly across units",
+};
 
 type InvestmentExplainerProps = {
     mixExplanation: MixExplanationState;
@@ -25,16 +31,13 @@ export function InvestmentExplainer({
     onRegenerate,
 }: InvestmentExplainerProps) {
     return (
-        <div data-testid="investment-explainer">
-            <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
-                What this investment mix indicates
-                <span
-                    className="whitespace-nowrap rounded-sm bg-(--surface2) px-1.75 py-0.75 text-xs font-semibold text-(--ink-muted)"
-                    data-testid="ai-generated-label"
-                >
-                    AI-generated
-                </span>
-            </h3>
+        <div className="min-w-0" data-testid="investment-explainer">
+            <span
+                className="inline-block whitespace-nowrap rounded-sm bg-(--surface2) px-1.75 py-0.75 text-xs font-semibold text-(--ink-muted)"
+                data-testid="ai-generated-label"
+            >
+                AI-generated
+            </span>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-(--ink-muted)">
                     {mixExplanation.focus.subcategory
@@ -55,7 +58,7 @@ export function InvestmentExplainer({
                     </Button>
                 )}
             </div>
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 min-w-0 space-y-4">
                 {mixExplanation.data?.status === "llm_unavailable" ? (
                     <p className="text-sm text-(--ink-muted)">
                         Investment distribution uses metadata-based categorization. Connect an LLM
@@ -69,117 +72,85 @@ export function InvestmentExplainer({
                     </p>
                 ) : (
                     <>
-                        <p className="text-sm text-foreground">{mixExplanation.data.summary}</p>
+                        <p className="wrap-anywhere text-sm text-foreground">
+                            {mixExplanation.data.summary}
+                        </p>
 
                         {(mixExplanation.data.top_findings?.length ?? 0) > 0 && (
                             <div className="space-y-2">
-                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <p className="text-label-caps uppercase text-(--ink-muted)">
                                     Findings
                                 </p>
-                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                <ul className="space-y-2" data-testid="explainer-findings">
                                     {mixExplanation.data.top_findings.slice(0, 3).map((finding) => (
-                                        <div
+                                        <li
                                             key={`${finding.finding}-${finding.evidence.theme}-${finding.evidence.share_pct}`}
-                                            className="rounded-lg border border-(--card-stroke) bg-background/50 p-3"
+                                            className="min-w-0 rounded-lg border border-(--card-stroke) bg-background/50 p-3"
                                         >
-                                            <p className="text-sm">{finding.finding}</p>
-                                            <div className="mt-2 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
-                                                <span className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5">
-                                                    {finding.evidence.theme}
+                                            <p className="wrap-anywhere text-sm">
+                                                {finding.finding}
+                                            </p>
+                                            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-xs text-(--ink-muted)">
+                                                <span className="wrap-anywhere rounded-full bg-(--card-stroke)/50 px-2 py-0.5">
+                                                    {titleCase(finding.evidence.theme)}
                                                 </span>
-                                                <span>{finding.evidence.share_pct}%</span>
+                                                <span>
+                                                    {formatNumber(finding.evidence.share_pct, {
+                                                        maximumFractionDigits: 1,
+                                                    })}
+                                                    %
+                                                </span>
                                                 {finding.evidence.evidence_quality_band && (
-                                                    <span className="opacity-70">
+                                                    <span className="wrap-anywhere opacity-70">
                                                         Quality:{" "}
                                                         {finding.evidence.evidence_quality_band}
                                                     </span>
                                                 )}
                                             </div>
-                                        </div>
+                                        </li>
                                     ))}
-                                </div>
+                                </ul>
                             </div>
                         )}
 
-                        <div className="rounded-lg border border-(--card-stroke) bg-background/30 p-3">
-                            <div className="flex items-center gap-3">
-                                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    Confidence
-                                </span>
-                                <span
-                                    className={`rounded-full px-2 py-0.5 text-xs uppercase ${confidenceToneClass(
-                                        mixExplanation.data.confidence?.level,
-                                    )}`}
-                                >
-                                    {mixExplanation.data.confidence?.level ?? "unknown"}
-                                </span>
-                                {mixExplanation.data.confidence?.quality_mean != null && (
-                                    <span className="text-xs text-(--ink-muted)">
-                                        Mean:{" "}
-                                        {formatNumber(
-                                            mixExplanation.data.confidence.quality_mean * 100,
-                                            {
-                                                maximumFractionDigits: 0,
-                                            },
-                                        )}
-                                        %
-                                        {mixExplanation.data.confidence.quality_stddev != null &&
-                                            ` +- ${formatNumber(
-                                                mixExplanation.data.confidence.quality_stddev * 100,
-                                                {
-                                                    maximumFractionDigits: 0,
-                                                },
-                                            )}%`}
-                                    </span>
-                                )}
-                            </div>
-                            {(mixExplanation.data.confidence?.drivers?.length ?? 0) > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
+                        {(mixExplanation.data.confidence?.drivers?.length ?? 0) > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-label-caps uppercase text-(--ink-muted)">
+                                    Quality drivers
+                                </p>
+                                <div className="flex flex-wrap gap-1">
                                     {(mixExplanation.data.confidence?.drivers ?? []).map(
                                         (driver) => (
                                             <span
                                                 key={driver}
-                                                className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5 text-xs text-(--ink-muted)"
-                                                title={
-                                                    driver === "low_text_signal"
-                                                        ? "Short descriptions lack categorization signals"
-                                                        : driver === "weak_cross_links"
-                                                          ? "Few issue↔PR↔commit links detected"
-                                                          : driver === "missing_evidence_metadata"
-                                                            ? "Over 30% of units have unknown quality"
-                                                            : driver === "high_uncertainty_spread"
-                                                              ? "Quality varies significantly across units"
-                                                              : driver
-                                                }
+                                                className="wrap-anywhere rounded-full bg-(--card-stroke)/50 px-2 py-0.5 text-xs text-(--ink-muted)"
+                                                title={DRIVER_HINTS[driver] ?? driver}
                                             >
                                                 {driver.replace(/_/g, " ")}
                                             </span>
                                         ),
                                     )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         {(mixExplanation.data.what_to_check_next?.length ?? 0) > 0 && (
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            <div className="space-y-2">
+                                <p className="text-label-caps uppercase text-(--ink-muted)">
                                     What to check next
                                 </p>
-                                <ul className="mt-2 space-y-2">
+                                <ul className="space-y-2">
                                     {mixExplanation.data.what_to_check_next
                                         .slice(0, 3)
                                         .map((action) => (
                                             <li
                                                 key={`${action.action}-${action.where}`}
-                                                className="text-sm"
+                                                className="wrap-anywhere text-sm"
                                             >
                                                 <span className="font-medium">{action.action}</span>
                                                 <span className="text-(--ink-muted)">
                                                     {" "}
                                                     - {action.why}
-                                                </span>
-                                                <span className="block text-xs text-(--ink-muted) opacity-70">
-                                                    {action.where}
                                                 </span>
                                             </li>
                                         ))}

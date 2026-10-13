@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 
 import { STATUS_PILL } from "@/lib/statusPill";
 import { NODE_TYPE_COLOR_SOURCE, nodeTypeDotClass } from "@/lib/workGraphNodeColors";
 import { NodeDetailPanel } from "../GraphView";
 import { confidenceToneClass } from "./ConfidencePanel";
-import { InvestmentExplainer } from "./InvestmentExplainer";
 import { ReadWithContextCard } from "./ReadWithContextCard";
 
 // The confidence pills on status tokens and the node dots on the explorer's series colors
@@ -67,20 +67,8 @@ describe("confidence pills use status tokens", () => {
         expect(confidenceToneClass(level)).toBe(tone);
     });
 
-    it.each(EXPECTED.slice(0, 4))("the explainer pill for %s has that tone", (level, tone) => {
-        render(
-            <InvestmentExplainer
-                mixExplanation={explained(level) as never}
-                mixExplainKey="k"
-                isExplainingMix={false}
-                onRegenerate={() => {}}
-            />,
-        );
-        expect(pillOf(level ?? "unknown").className).toContain(tone);
-    });
-
     it.each(EXPECTED.slice(0, 4))("the context card pill for %s has that tone", (level, tone) => {
-        render(
+        renderWithEvidenceDrawer(
             <ReadWithContextCard
                 mixExplanation={explained(level) as never}
                 mixExplainKey="k"

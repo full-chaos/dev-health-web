@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { ArrowRight, PanelRight } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { Button, buttonClassName } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -21,9 +22,35 @@ type ReadWithContextCardProps = {
     isCoverageLoading: boolean;
     /** Href of the Confidence tab (carries the page's filters). */
     confidenceHref: string;
-    /** The labelled AI explanation block. Collapsed until the reader asks for it. */
+    /** The labelled AI explanation block. It opens in the shared drawer when the reader asks. */
     children: ReactNode;
 };
+
+const AI_DRAWER_TITLE = "What this investment mix indicates";
+
+function createLiveContent(initial: ReactNode) {
+    let node = initial;
+    const listeners = new Set<() => void>();
+    return {
+        get: () => node,
+        set: (next: ReactNode) => {
+            if (next === node) return;
+            node = next;
+            listeners.forEach((listener) => listener());
+        },
+        subscribe: (listener: () => void) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+    };
+}
+
+type LiveContent = ReturnType<typeof createLiveContent>;
+
+/** The drawer keeps the element it was given; this follows the card's latest explanation. */
+function LiveExplanation({ live }: { live: LiveContent }) {
+    return <>{useSyncExternalStore(live.subscribe, live.get, live.get)}</>;
+}
 
 function Fact({ label, value, testId }: { label: string; value: string; testId: string }) {
     return (
@@ -64,8 +91,11 @@ export function ReadWithContextCard({
     const confidence = explained?.confidence ?? null;
     const coverage = combineCoverage(teamCategoryFlow, repoTeamFlow);
     const pct = (value: number | null) => (value === null ? "unavailable" : `${asPct(value)}%`);
-    const [showAi, setShowAi] = useState(false);
-    const aiRegionId = useId();
+    const drawer = useEvidenceDrawer();
+    const [live] = useState(() => createLiveContent(children));
+    useEffect(() => {
+        live.set(children);
+    }, [live, children]);
 
     return (
         <Section title="Read this with context" data-testid="read-with-context">
@@ -144,17 +174,18 @@ export function ReadWithContextCard({
                 <Button
                     variant="ghost"
                     size="sm"
-                    icon={showAi ? <ChevronDown /> : <ChevronRight />}
-                    aria-expanded={showAi}
-                    aria-controls={aiRegionId}
+                    icon={<PanelRight />}
+                    aria-haspopup="dialog"
                     data-testid="ai-explanation-toggle"
-                    onClick={() => setShowAi((open) => !open)}
+                    onClick={() =>
+                        drawer.open({
+                            title: AI_DRAWER_TITLE,
+                            content: <LiveExplanation live={live} />,
+                        })
+                    }
                 >
-                    {showAi ? CTA_LABELS.hideAiExplanation : CTA_LABELS.showAiExplanation}
+                    {CTA_LABELS.showAiExplanation}
                 </Button>
-                <div id={aiRegionId} hidden={!showAi} data-testid="ai-explanation-region">
-                    {showAi ? <div className="mt-3">{children}</div> : null}
-                </div>
             </div>
         </Section>
     );

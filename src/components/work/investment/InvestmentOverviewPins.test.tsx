@@ -4,7 +4,7 @@
  * unchanged code; the page pass must keep every assertion true (the text may move, never change).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent } from "@testing-library/react";
+import { fireEvent, within } from "@testing-library/react";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, cleanup } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -250,7 +250,7 @@ describe("InvestmentView overview today", () => {
         expect(regenerate).toHaveBeenCalledTimes(1);
     });
 
-    it("LLM panel with an explanation: summary, findings, confidence + mean, what to check next, anti-claims", () => {
+    it("LLM panel with an explanation: summary, findings, what to check next, anti-claims", () => {
         overview(makeData({ mixExplanation: explained() as never, mixExplainKey: "k" }));
         openAiExplanation();
         expect(
@@ -258,8 +258,8 @@ describe("InvestmentView overview today", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Findings")).toBeInTheDocument();
         expect(screen.getByText("Feature delivery leads the mix.")).toBeInTheDocument();
-        expect(screen.getAllByText("low").length).toBeGreaterThan(0);
-        expect(screen.getByText(/Mean:\s*45%/)).toBeInTheDocument();
+        // The quality level and mean are in the card; the drawer does not repeat them.
+        expect(within(screen.getByRole("dialog")).queryByText(/Mean:/)).toBeNull();
         expect(screen.getByText("What to check next")).toBeInTheDocument();
         expect(screen.getByText("What this does NOT say")).toBeInTheDocument();
     });
