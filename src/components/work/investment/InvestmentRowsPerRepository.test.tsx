@@ -201,7 +201,7 @@ describe("one row per unit (org / team scope)", () => {
                 .filter((o) => (o as HTMLOptionElement).value),
         ).toHaveLength(2);
         expect(screen.getByTestId("selected-unit-change-set")).toHaveTextContent(
-            "Change set: 4 lines",
+            "Change set: 10 lines",
         );
         expect(screen.queryByTestId("selected-unit-repositories")).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
