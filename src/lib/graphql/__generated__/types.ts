@@ -678,6 +678,21 @@ export type CatalogValueItem = {
   value: Scalars['String']['output'];
 };
 
+/** What a change failure rate stands on (CHAOS-9630), from the same rule that computes the rate (CHAOS-9621): the deployments of the window and the ones with a final status say how much of the rate is stated by deployment statuses, and the basis names the evidence. */
+export type ChangeFailureEvidence = {
+  __typename?: 'ChangeFailureEvidence';
+  /** The evidence a measured rate stands on: ``status`` (no incident ties to the scope; deployments with a final status stand for the rate, so the rate is divided by K), ``incident`` (incidents tie to the scope and no deployment has a final status; divided by D) or ``both`` (incidents tie to the scope and deployments have final statuses; divided by D). A measured 0 with ``status`` is a rate measured from deployment statuses, not from incident links. Null when the rate is not measured. */
+  basis?: Maybe<Scalars['String']['output']>;
+  /** K / D, from 0 to 1, not a percent. Null when the window holds no deployment. */
+  coverage?: Maybe<Scalars['Float']['output']>;
+  /** D: the deployments of the window, a cancelled deployment excluded (a cancelled deployment is not a deployment for any delivery metric). 0 when none is stored. */
+  deployments: Scalars['Int']['output'];
+  /** K: the deployments of the window that have a final status (succeeded or failed). A deployment whose status is not stored, or is not final (running, queued, inactive ...), is in D and not in K. */
+  deploymentsWithStatus: Scalars['Int']['output'];
+  /** Why there is no rate: ``not_collected`` (nothing is stored for the window), ``no_deployments_in_window`` (stored rows, and no deployment in them) or ``deployments_without_outcome`` (deployments, and neither an incident tied to the scope nor a deployment with a final status says how they went). Null when the rate is measured. */
+  unknownReason?: Maybe<Scalars['String']['output']>;
+};
+
 export type CloneSavedReportInput = {
   newName?: InputMaybe<Scalars['String']['input']>;
   parameterOverrides?: InputMaybe<Scalars['JSON']['input']>;
@@ -1298,6 +1313,8 @@ export type MeasureInput =
 
 export type MetricDelta = {
   __typename?: 'MetricDelta';
+  /** What the change failure rate of the window stands on (CHAOS-9630): the evidence basis, the deployments (D), the deployments with a final status (K), their coverage K / D and, when there is no rate, why. Null for every other metric. Served for change failure rate whatever its state, so an unknown rate says which of the three reasons it has. */
+  changeFailureEvidence?: Maybe<ChangeFailureEvidence>;
   /** Percent change between the windows. Null whenever a percent has no meaning: a window has no stored value (see hasData / hasPriorData, which say which side), or the prior value is a measured 0 and the current value is not (a percent change against zero is undefined; rateState / the sentence say so). A measured value on both sides keeps its percent (CHAOS-9063, CHAOS-9111). */
   deltaPct?: Maybe<Scalars['Float']['output']>;
   /** Whether the current window has one or more stored source rows. A stored zero has this field set to true. */
@@ -1416,6 +1433,8 @@ export type OperatingReviewInput = {
 
 export type OperatingReviewMetric = {
   __typename?: 'OperatingReviewMetric';
+  /** What the change failure rate of the week stands on (CHAOS-9630): the evidence basis, the deployments (D), the deployments with a final status (K), their coverage K / D and, when there is no rate, why. Null for every other metric. Served for change failure rate whatever its state. */
+  changeFailureEvidence?: Maybe<ChangeFailureEvidence>;
   delta: OperatingReviewDelta;
   /** True = the week holds a stored value for the metric (CHAOS-8115). False = no row of the metric's daily table in the week, only NULL values, or a read that failed: ``value`` is then a 0 placeholder, not a measured zero, and a client draws "No data". True with ``value`` 0 is a stored zero. */
   hasData: Scalars['Boolean']['output'];
