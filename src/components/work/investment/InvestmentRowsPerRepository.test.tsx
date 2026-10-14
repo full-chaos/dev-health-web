@@ -56,7 +56,7 @@ const row = (
     work_unit_name: `Unit ${id}`,
     work_unit_type: "pr",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-    effort: { metric: "active_hours", value: effort },
+    effort: { metric: "churn_loc", value: effort },
     investment: { themes: { feature_delivery: 1 }, subcategories: { "feature.build": 1 } },
     evidence_quality: { value: 0.2, band: "low" },
     evidence: {
@@ -130,7 +130,7 @@ describe("work unit in several repositories", () => {
         expect(counts.very_low).toBe(0);
     });
 
-    it("evidence table: 3 rows, Units = 2, effort = sum of shares, rows open alone, repository by name", () => {
+    it("evidence table: 3 rows, Units = 2, no size unit, rows open alone, repository by name", () => {
         evidenceQualityGroupsMock.mockReturnValue({ groups: [] });
         useInvestmentDataMock.mockReturnValue(makeData(repoRows));
         const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -139,14 +139,14 @@ describe("work unit in several repositories", () => {
 
         const groupRow = screen.getByTestId("evidence-group-row");
         expect(within(groupRow).getByText("2")).toBeInTheDocument();
-        expect(groupRow).toHaveTextContent("13 active hours");
+        expect(groupRow.textContent).not.toMatch(/lines|\bloc\b|hours|effort|13/i);
 
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         const dialog = within(screen.getByRole("dialog"));
         expect(dialog.getAllByRole("button", { name: /Unit (shared|solo)/ })).toHaveLength(3);
         expect(dialog.getByTestId("evidence-group-facts")).toHaveTextContent(/Units\s*2/);
         const names = dialog.getAllByTestId("evidence-unit-repository").map((n) => n.textContent);
-        expect(names).toEqual(["Unresolved", "org/api", "org/web"]);
+        expect(names).toEqual(["org/api", "Unresolved", "org/web"]);
         expect(screen.getByRole("dialog").textContent).not.toContain(UUID);
 
         // each row opens alone
@@ -158,7 +158,7 @@ describe("work unit in several repositories", () => {
         expect(error.mock.calls.some((call) => String(call[0]).includes("same key"))).toBe(false);
     });
 
-    it("the unit picker lists a unit once and the detail shows the summed effort", () => {
+    it("the unit picker lists a unit once and the detail shows the unit's own size as a plain fact", () => {
         evidenceQualityGroupsMock.mockReturnValue({ groups: [] });
         useInvestmentDataMock.mockReturnValue(makeData(repoRows, "shared"));
 
@@ -169,8 +169,9 @@ describe("work unit in several repositories", () => {
             .getAllByRole("option")
             .filter((o) => (o as HTMLOptionElement).value);
         expect(options).toHaveLength(2);
-        const detail = screen.getByText("Active hours:").parentElement as HTMLElement;
-        expect(detail).toHaveTextContent("10");
+        expect(screen.getByTestId("selected-unit-change-set")).toHaveTextContent(
+            "Change set: 10 lines",
+        );
         expect(screen.getByTestId("selected-unit-repositories")).toHaveTextContent(
             "org/api, Unresolved",
         );
@@ -190,7 +191,7 @@ describe("one row per unit (org / team scope)", () => {
         useInvestmentDataMock.mockReturnValue(makeData(oneRowPerUnit, "shared"));
         const { unmount } = render(<InvestmentView filters={repoFilters} activeTab="evidence" />);
         const groupRow = screen.getByTestId("evidence-group-row");
-        expect(groupRow).toHaveTextContent("13 active hours");
+        expect(groupRow.textContent).not.toMatch(/lines|\bloc\b|hours|effort/i);
         expect(within(groupRow).getByText("2")).toBeInTheDocument();
         const picker = screen.getByLabelText("Work unit") as HTMLSelectElement;
         expect(
@@ -198,7 +199,9 @@ describe("one row per unit (org / team scope)", () => {
                 .getAllByRole("option")
                 .filter((o) => (o as HTMLOptionElement).value),
         ).toHaveLength(2);
-        expect(screen.getByText("Active hours:").parentElement).toHaveTextContent("10");
+        expect(screen.getByTestId("selected-unit-change-set")).toHaveTextContent(
+            "Change set: 10 lines",
+        );
         expect(screen.queryByTestId("selected-unit-repositories")).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         expect(screen.queryAllByTestId("evidence-unit-repository")).toHaveLength(0);

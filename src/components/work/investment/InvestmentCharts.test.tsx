@@ -252,20 +252,6 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             expect(props.unit).toBe("work units");
         });
 
-        it('passes unit="loc" to the sankey chart when the flow response is explicitly unit: "LOC"', () => {
-            render(
-                <InvestmentCharts
-                    {...baseProps({
-                        workUnits: [churnWorkUnit],
-                        teamCategoryFlow: { ...sampleSankey, unit: "LOC" },
-                    })}
-                />,
-            );
-            expect(sankeySpy).toHaveBeenCalled();
-            const props = sankeySpy.mock.calls[0]?.[0] as Record<string, unknown>;
-            expect(props.unit).toBe("loc");
-        });
-
         it('defaults to "work units" (never "loc") when the flow response has no unit field, even with churn_loc work units', () => {
             render(
                 <InvestmentCharts

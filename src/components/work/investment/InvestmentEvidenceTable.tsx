@@ -10,13 +10,11 @@ import { Section } from "@/components/ui/Section";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
-import { formatNumber } from "@/lib/formatters";
 import {
     useInvestmentEvidenceQualityGroups,
     type InvestmentEvidenceQualityGroupDimension,
 } from "@/lib/graphql/hooks/useInvestment";
 import {
-    capitalizeFirst,
     formatBandLabel,
     formatQuality,
     formatSubcategoryLabel,
@@ -26,9 +24,11 @@ import {
     selectWorkUnitEntries,
     workUnitRepositoryLabel,
     workUnitRowKey,
+    workUnitChangeSet,
     titleCase,
     type WorkUnitListEntry,
 } from "@/lib/investment";
+import { formatNumber } from "@/lib/formatters";
 import type { WorkUnitInvestment } from "@/lib/types";
 import type { WorkUnitTeamAttribution } from "@/lib/graphql/__generated__/types";
 import { EvidenceEntryCard } from "./EvidenceEntryCard";
@@ -40,14 +40,13 @@ type EvidenceGroup = {
     key: string;
     label: string;
     entries: WorkUnitListEntry[];
-    totalEffort: number;
+    unitCount: number;
     /** Persisted group mean served by Analytics; never derived from displayed units. */
     qualityMean: number | null;
 };
 
 type InvestmentEvidenceTableProps = {
     workUnits: WorkUnitInvestment[];
-    effortUnit: string;
     filters: MetricFilter;
     onSelectWorkUnit: (workUnitId: string) => void;
     /**
@@ -105,7 +104,6 @@ function groupKeyForUnit(dimension: GroupDimension, unit: WorkUnitInvestment): s
 type LiveSnapshot = {
     groups: EvidenceGroup[];
     groupBy: GroupDimension;
-    effortUnit: string;
     attributionByWorkUnit?: Map<string, WorkUnitTeamAttribution>;
 };
 type LiveEvidence = { snapshot: LiveSnapshot; listeners: Set<() => void> };
@@ -143,18 +141,10 @@ function GroupEvidenceBody({
                             : "Not reported"
                     }
                 />
-                <EvidenceFact
-                    label="Units"
-                    value={String(countDistinctWorkUnits(group.entries.map((e) => e.unit)))}
-                />
-                <EvidenceFact
-                    label={capitalizeFirst(snapshot.effortUnit)}
-                    value={`${formatNumber(group.totalEffort)} ${snapshot.effortUnit}`}
-                />
+                <EvidenceFact label="Units" value={String(group.unitCount)} />
             </EvidenceFactList>
             <GroupUnitsList
                 entries={group.entries}
-                effortUnit={snapshot.effortUnit}
                 attributionByWorkUnit={snapshot.attributionByWorkUnit}
                 onOpenUnitEvidence={onOpenUnitEvidence}
             />
@@ -164,7 +154,6 @@ function GroupEvidenceBody({
 
 type GroupUnitsListProps = {
     entries: WorkUnitListEntry[];
-    effortUnit: string;
     attributionByWorkUnit?: Map<string, WorkUnitTeamAttribution>;
     /** Select the work unit for the "How this was calculated" block below the table. */
     onOpenUnitEvidence: (workUnitId: string) => void;
@@ -177,7 +166,6 @@ type GroupUnitsListProps = {
  */
 export function GroupUnitsList({
     entries,
-    effortUnit,
     attributionByWorkUnit,
     onOpenUnitEvidence,
 }: GroupUnitsListProps) {
@@ -197,6 +185,7 @@ export function GroupUnitsList({
                 const rowKey = workUnitRowKey(unit);
                 const repositoryLabel = workUnitRepositoryLabel(unit);
                 const unitOpen = openUnits.has(rowKey);
+                const changeSet = workUnitChangeSet([unit]);
                 const attribution = attributionByWorkUnit?.get(unit.work_unit_id);
                 const textual = unit.evidence?.textual ?? [];
                 const metadata = [
@@ -246,9 +235,11 @@ export function GroupUnitsList({
                                 ) : null}
                             </span>
                             <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
-                                <span>
-                                    {formatNumber(entry.weightedEffort)} {effortUnit}
-                                </span>
+                                {changeSet ? (
+                                    <span data-testid="evidence-unit-change-set">
+                                        Change set: {formatNumber(changeSet.lines)} lines
+                                    </span>
+                                ) : null}
                                 <span>
                                     {unit.evidence_quality.value !== null
                                         ? formatBandLabel(unit.evidence_quality.band ?? "unknown")
@@ -352,11 +343,10 @@ export function GroupUnitsList({
  * drawer rows instead of being gated behind a control that changed nothing.
  */
 /** One column template for the head and every group row, so the four columns line up. */
-const EVIDENCE_COLUMNS = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem_6rem]";
+const EVIDENCE_COLUMNS = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_6rem]";
 
 export function InvestmentEvidenceTable({
     workUnits,
-    effortUnit,
     filters,
     onSelectWorkUnit,
     attributionByWorkUnit,
@@ -396,29 +386,29 @@ export function InvestmentEvidenceTable({
         }
         return [...buckets.entries()]
             .map(([key, entries]) => {
-                const totalEffort = entries.reduce((sum, entry) => sum + entry.weightedEffort, 0);
+                const unitCount = countDistinctWorkUnits(entries.map((entry) => entry.unit));
                 return {
                     key,
                     label: groupLabel(groupBy, key),
                     entries,
-                    totalEffort,
+                    unitCount,
                     qualityMean: qualityByGroup.get(key) ?? null,
                 };
             })
-            .sort((a, b) => b.totalEffort - a.totalEffort);
+            .sort((a, b) => b.unitCount - a.unitCount);
     }, [allEntries, groupBy, qualityByGroup]);
 
     // The drawer body is mounted once, at the click, so it cannot re-render with this table. It
     // reads the CURRENT groups and team attribution from this store instead, so a team badge that
     // arrives after the drawer opened (its own query) shows up without opening it again.
     const live = useRef<LiveEvidence>({
-        snapshot: { groups, groupBy, effortUnit, attributionByWorkUnit },
+        snapshot: { groups, groupBy, attributionByWorkUnit },
         listeners: new Set(),
     });
     useEffect(() => {
-        live.current.snapshot = { groups, groupBy, effortUnit, attributionByWorkUnit };
+        live.current.snapshot = { groups, groupBy, attributionByWorkUnit };
         live.current.listeners.forEach((listener) => listener());
-    }, [groups, groupBy, effortUnit, attributionByWorkUnit]);
+    }, [groups, groupBy, attributionByWorkUnit]);
 
     // The row's Evidence action opens the ONE shared drawer: the group's served numbers, then its
     // work units with their details (what the expandable row held before).
@@ -462,7 +452,6 @@ export function InvestmentEvidenceTable({
                     <span>{GROUP_OPTIONS.find((o) => o.id === groupBy)?.label}</span>
                     <span className="text-right">Average quality</span>
                     <span className="text-right">Units</span>
-                    <span className="text-right">{capitalizeFirst(effortUnit)}</span>
                     {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}
                     <span className="sr-only">Evidence</span>
                 </div>
@@ -497,10 +486,7 @@ export function InvestmentEvidenceTable({
                                             : "Not reported"}
                                     </span>
                                     <span className="text-right text-sm tabular-nums text-(--ink-muted)">
-                                        {countDistinctWorkUnits(group.entries.map((e) => e.unit))}
-                                    </span>
-                                    <span className="text-right text-sm tabular-nums text-foreground">
-                                        {formatNumber(group.totalEffort)} {effortUnit}
+                                        {group.unitCount}
                                     </span>
                                     <span className="text-right">
                                         <Button

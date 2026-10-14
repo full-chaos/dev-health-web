@@ -16,13 +16,13 @@ import { UNRESOLVED } from "@/lib/labels/unresolved";
 // ============================================================================
 
 /**
- * A work unit paired with the effort weight used to rank it in list views.
+ * A work unit paired with the allocation weight used to rank it in list views.
  * Mirrors the `EvidenceUnit` shape consumed by the Evidence-tab drilldown.
  */
 export type WorkUnitListEntry = {
     unit: WorkUnitInvestment;
+    /** The unit's allocation share to the focused subcategory; 1 when none is focused. */
     weight: number;
-    weightedEffort: number;
 };
 
 /**
@@ -30,11 +30,10 @@ export type WorkUnitListEntry = {
  * subcategory.
  *
  * - When `focusSubcategory` is set: only the units that contribute to that
- *   subcategory, weighted by their subcategory share and sorted by weighted
- *   effort (descending). This is the "drill into a subcategory" behavior.
+ *   subcategory, weighted by their subcategory share and sorted by that
+ *   share (descending). This is the "drill into a subcategory" behavior.
  * - When `focusSubcategory` is null:
- *   - `fallbackToAll: true` → ALL units (weight 1, weightedEffort = raw effort),
- *     sorted by effort descending. Used by the Evidence tab so it is
+ *   - `fallbackToAll: true` → ALL units (weight 1), in the order given. Used by the Evidence tab so it is
  *     self-contained on direct entry / refresh / share (no selector required).
  *   - `fallbackToAll: false` (default) → an empty list. Used by the Overview
  *     drill-down, which prompts the user to pick a subcategory first.
@@ -54,13 +53,7 @@ export const selectWorkUnitEntries = ({
         if (!fallbackToAll) {
             return [];
         }
-        return workUnits
-            .map((unit) => ({
-                unit,
-                weight: 1,
-                weightedEffort: unit.effort.value,
-            }))
-            .sort((a, b) => b.weightedEffort - a.weightedEffort);
+        return workUnits.map((unit) => ({ unit, weight: 1 }));
     }
 
     return workUnits
@@ -69,14 +62,10 @@ export const selectWorkUnitEntries = ({
             if (weight <= 0) {
                 return null;
             }
-            return {
-                unit,
-                weight,
-                weightedEffort: unit.effort.value * weight,
-            };
+            return { unit, weight };
         })
         .filter((entry): entry is WorkUnitListEntry => Boolean(entry))
-        .sort((a, b) => b.weightedEffort - a.weightedEffort);
+        .sort((a, b) => b.weight - a.weight);
 };
 
 // ============================================================================
@@ -337,28 +326,21 @@ export const capitalizeFirst = (text: string): string =>
 export const WORK_UNIT_COUNT_UNIT = "work units";
 
 /**
- * Own name of a work unit's measured size (`effort.metric`). Lines of code and hours
- * are never "effort": they show under these names only.
+ * A work unit's change set (lines changed) as a plain fact of the unit, for evidence and context
+ * sections only. It is never an Investment measure: no mix unit, no total, no share, no weight,
+ * no sort key. Read only when `effort.metric` is `churn_loc`; when `effort` becomes the work-unit
+ * count the fact is null until ops serves a separate change-set field.
  */
-export const formatMeasureUnit = (metric: WorkUnitInvestment["effort"]["metric"]): string =>
-    metric === "active_hours" ? "active hours" : "lines changed";
+export const workUnitChangeSet = (
+    rows: ReadonlyArray<WorkUnitInvestment>,
+): { lines: number } | null => {
+    if (rows.length === 0 || rows.some((row) => row.effort?.metric !== "churn_loc")) return null;
+    return { lines: rows.reduce((sum, row) => sum + row.effort.value, 0) };
+};
 
-/**
- * Format the Sankey/Chord flow's allocation-weight unit label (CHAOS-4241).
- *
- * Distinct from `formatEffortUnit`: that function derives a label from a
- * work unit's raw `effort.metric` (how ITS effort was measured at
- * materialization time — always "churn_loc" in practice), which is
- * unrelated to what unit the Sankey/Chord flow's `value`s are actually
- * weighted by. The backend now defaults that weighting to a count of
- * attributed work units and echoes the effective unit back on the flow
- * response ("WORK_UNITS" | "LOC") so this never has to guess. Unknown or
- * missing values (older/sample responses, or a response the backend hasn't
- * labelled yet) default to "work units" — the new default weight — never
- * silently render "loc".
- */
-export const formatSankeyUnit = (unit: string | null | undefined): string =>
-    unit === "LOC" ? "loc" : "work units";
+/** A served unit that names lines of code, hours, churn or effort: never an investment value. */
+export const isNonCountUnit = (unit: string | null | undefined): boolean =>
+    Boolean(unit) && /\b(loc|lines?|hours?|churn|effort)\b/i.test((unit ?? "").replace(/_/g, " "));
 
 /**
  * Format a work unit's display label.

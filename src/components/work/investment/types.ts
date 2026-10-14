@@ -20,7 +20,6 @@ export type TreemapSelection = {
 
 export type EvidenceUnit = {
     unit: WorkUnitInvestment;
-    weightedEffort: number;
     weight: number;
 };
 

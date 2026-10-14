@@ -35,8 +35,10 @@ const stubbornGrandchildListener = [
 const targetExitsBeforeListener = [
     'const { spawn } = require("node:child_process");',
     `const listener = spawn(process.execPath, ["-e", ${JSON.stringify(listener)}], { stdio: ["ignore", "pipe", "inherit"] });`,
-    "listener.stdout.pipe(process.stdout);",
-    "setTimeout(() => process.exit(0), 100);",
+    'listener.stdout.once("data", (chunk) => {',
+    "    process.stdout.write(chunk);",
+    "    setTimeout(() => process.exit(0), 100);",
+    "});",
 ].join("");
 const unrelatedListener = [
     'const server = require("node:http").createServer();',
@@ -283,7 +285,7 @@ describe("run-owned-process", () => {
     it("cleans a descendant when its target exited before its guardian unexpectedly exits", async () => {
         const tree = startSupervised(["node", "-e", targetExitsBeforeListener]);
         const listenerProcess = await waitForListener(tree);
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         const guardianProcessId = childProcessId(tree.pid);
 
         process.kill(guardianProcessId, "SIGKILL");

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { SankeyResult } from "../types";
 import { adaptSankeyResult } from "../investmentFetchers";
 
@@ -120,12 +120,20 @@ describe("adaptSankeyResult", () => {
             expect(result.unit).toBe("WORK_UNITS");
         });
 
-        it("passes through unit: 'LOC' from the backend", () => {
+        it("never draws a LOC-served flow as work units: it is the empty flow, and the unit class is logged (CHAOS-9688)", () => {
+            const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
             const input = minimalSankey({ unit: "LOC" });
 
             const result = adaptSankeyResult(input, "investment");
 
-            expect(result.unit).toBe("LOC");
+            expect(result.nodes).toEqual([]);
+            expect(result.links).toEqual([]);
+            expect(result.unit).toBeUndefined();
+            expect(debug).toHaveBeenCalledWith(
+                expect.stringContaining("not a work-unit count"),
+                expect.objectContaining({ unitClass: "LOC" }),
+            );
+            debug.mockRestore();
         });
 
         it("omits result.unit when the backend returns no unit field", () => {
