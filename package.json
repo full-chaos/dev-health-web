@@ -74,11 +74,6 @@
         "web-vitals": "^6",
         "zod": "^4"
     },
-    "overrides": {
-        "serialize-javascript": ">=7.0.3",
-        "@graphql-codegen/plugin-helpers": "6.2.1",
-        "size-sensor": "npm:noop2@2.0.0"
-    },
     "devDependencies": {
         "@eslint/compat": "2.1.1",
         "@graphql-codegen/cli": "^7.3.1",
