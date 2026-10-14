@@ -93,6 +93,7 @@ const EXACT_PUBLIC_PATHS = [
     "/theme-init.js",
     "/robots.txt",
     "/sitemap.xml",
+    "/monitoring",
 ];
 
 const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next", "/marketing"];

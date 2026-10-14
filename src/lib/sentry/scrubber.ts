@@ -79,7 +79,8 @@ type SentryInitOptions = Parameters<typeof Sentry.init>[0];
 type SentryTransactionEvent = Parameters<
     NonNullable<SentryInitOptions["beforeSendTransaction"]>
 >[0];
-type SentrySpan = Parameters<NonNullable<SentryInitOptions["beforeSendSpan"]>>[0];
+type StaticSpanHook = Parameters<typeof Sentry.withStaticSpan>[0];
+type SentrySpan = Parameters<StaticSpanHook>[0];
 
 function scrubTransaction(event: SentryTransactionEvent): SentryTransactionEvent {
     return scrubTelemetryPayload(event);
@@ -89,13 +90,33 @@ function scrubSpan(span: SentrySpan): SentrySpan {
     return scrubTelemetryPayload(span);
 }
 
+const V10_DENY = ["forwarded", "-ip", "remote-", "via", "-user"];
+
+// Explicit v10 defaults: v11 collects far more when dataCollection is unset.
+export const V10_PRIVACY_BASELINE = {
+    traceLifecycle: "static",
+    attachStacktrace: false,
+    dataCollection: {
+        userInfo: false,
+        cookies: false,
+        httpHeaders: { request: { deny: V10_DENY }, response: { deny: V10_DENY } },
+        httpBodies: [],
+        urlQueryParams: { deny: V10_DENY },
+        genAI: { inputs: false, outputs: false },
+        databaseQueryData: false,
+        queues: false,
+        graphQL: { document: false, variables: false },
+    },
+} satisfies SentryInitOptions;
+
 export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
     const existingBeforeSend = config.beforeSend;
     const existingBeforeSendTransaction = config.beforeSendTransaction;
     const existingBeforeBreadcrumb = config.beforeBreadcrumb;
-    const existingBeforeSendSpan = config.beforeSendSpan;
+    const existingBeforeSendSpan = config.beforeSendSpan as StaticSpanHook | undefined;
 
     return {
+        ...V10_PRIVACY_BASELINE,
         ...config,
         beforeSend(event: ErrorEvent, hint: EventHint) {
             const scrubbed = scrubEvent(event, hint);
@@ -108,10 +129,10 @@ export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
                 ? existingBeforeSendTransaction(scrubbed, hint)
                 : scrubbed;
         },
-        beforeSendSpan(span: SentrySpan) {
+        beforeSendSpan: Sentry.withStaticSpan((span: SentrySpan) => {
             const scrubbed = scrubSpan(span);
             return existingBeforeSendSpan ? existingBeforeSendSpan(scrubbed) : scrubbed;
-        },
+        }),
         beforeBreadcrumb(breadcrumb: Breadcrumb, hint?: BreadcrumbHint) {
             const scrubbed = scrubBreadcrumb(breadcrumb);
             return existingBeforeBreadcrumb ? existingBeforeBreadcrumb(scrubbed, hint) : scrubbed;
