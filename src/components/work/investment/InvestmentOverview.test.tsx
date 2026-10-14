@@ -311,6 +311,19 @@ describe("overview: classification table", () => {
         expect(screen.getByTestId("classification-table")).not.toHaveTextContent("Risk");
     });
 
+    it("shows no lines, hours or effort text in the table or its drawer (CHAOS-9688)", async () => {
+        overview({
+            investmentMix: { ...mix, unit: undefined } as never,
+            workUnits: [makeUnit("a", 999)],
+        });
+        const table = screen.getByTestId("classification-table");
+        expect(table.textContent).toMatch(/work units/i);
+        expect(table.textContent).not.toMatch(/lines|\bloc\b|hours|effort|999/i);
+        fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
+        const facts = await screen.findByTestId("classification-evidence-facts");
+        expect(facts.textContent).not.toMatch(/lines|\bloc\b|hours|effort/i);
+    });
+
     it("the theme name is a button that focuses the theme, a second press clears it", () => {
         const setFocusTheme = vi.fn();
         overview({ investmentMix: mix as never, setFocusTheme });

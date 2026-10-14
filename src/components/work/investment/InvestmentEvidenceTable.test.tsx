@@ -3,13 +3,11 @@ import { fireEvent } from "@testing-library/react";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, within } from "@/test/utils";
 
-import { formatNumber } from "@/lib/formatters";
 import {
     formatBandLabel,
     formatQuality,
     formatWorkUnitLabel,
     formatWorkUnitTypeLabel,
-    selectWorkUnitEntries,
 } from "@/lib/investment";
 import type { WorkUnitInvestment } from "@/lib/types";
 import type { WorkUnitTeamAttribution } from "@/lib/graphql/__generated__/types";
@@ -131,7 +129,6 @@ const table = (
 ) => (
     <InvestmentEvidenceTable
         workUnits={[unit, second]}
-        effortUnit="active hours"
         filters={filters}
         onSelectWorkUnit={onSelectWorkUnit}
         attributionByWorkUnit={attributionByWorkUnit}
@@ -143,20 +140,19 @@ const draw = (onSelectWorkUnit = vi.fn()) => {
     return onSelectWorkUnit;
 };
 
-describe("InvestmentEvidenceTable — churn LOC is not effort (CHAOS-9618)", () => {
-    it("shows churn_loc values under the lines-changed name, never effort", () => {
+describe("InvestmentEvidenceTable — lines of code and hours are not investment (CHAOS-9688)", () => {
+    it("shows no lines, hours or effort text, whatever the unit's measured size", () => {
         const loc = { ...unit, effort: { metric: "churn_loc" as const, value: 340 } };
         const { container } = render(
             <InvestmentEvidenceTable
                 workUnits={[loc]}
-                effortUnit="lines changed"
                 filters={filters}
                 onSelectWorkUnit={vi.fn()}
             />,
         );
         const head = screen.getByTestId("evidence-table-head");
-        expect(head).toHaveTextContent("Lines changed");
-        expect(container.textContent).not.toMatch(/effort/i);
+        expect(head).toHaveTextContent("Units");
+        expect(container.textContent).not.toMatch(/lines|\bloc\b|hours|effort|340/i);
     });
 });
 
@@ -202,7 +198,6 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
             render(
                 <InvestmentEvidenceTable
                     workUnits={[{ ...unit, investment }]}
-                    effortUnit="active hours"
                     filters={filters}
                     onSelectWorkUnit={vi.fn()}
                 />,
@@ -235,7 +230,7 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
         expect(facts).not.toHaveTextContent("Feature Delivery");
         expect(facts).toHaveTextContent(formatQuality(0.7));
         expect(facts).toHaveTextContent(/Units\s*2/);
-        expect(facts).toHaveTextContent("17 active hours");
+        expect(facts.textContent).not.toMatch(/lines|\bloc\b|hours|effort|17/i);
     });
 
     it("the drawer shows every served field of the unit that the expansion showed", async () => {
@@ -269,17 +264,7 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
                 Object.values(r).some((v) => v && !Array.isArray(v) && typeof v === "object"),
             ),
         ).toBe(true);
-        // Each unit shows its OWN effort (not the group total of 17), from the same entries.
-        const entries = selectWorkUnitEntries({
-            focusSubcategory: null,
-            workUnits: [unit, second],
-            fallbackToAll: true,
-        });
-        const own = entries.find((entry) => entry.unit.work_unit_id === unit.work_unit_id)!;
-        expect(own.weightedEffort).toBe(12);
-        expect(text).toContain(`${formatNumber(own.weightedEffort)} active hours`);
-        const other = entries.find((entry) => entry.unit.work_unit_id === second.work_unit_id)!;
-        expect(text).toContain(`${formatNumber(other.weightedEffort)} active hours`);
+        expect(text).not.toMatch(/lines|\bloc\b|hours|effort/i);
         for (const record of records) {
             for (const [key, value] of Object.entries(record)) {
                 const label = key

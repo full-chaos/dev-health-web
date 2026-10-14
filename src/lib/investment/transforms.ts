@@ -337,13 +337,6 @@ export const capitalizeFirst = (text: string): string =>
 export const WORK_UNIT_COUNT_UNIT = "work units";
 
 /**
- * Own name of a work unit's measured size (`effort.metric`). Lines of code and hours
- * are never "effort": they show under these names only.
- */
-export const formatMeasureUnit = (metric: WorkUnitInvestment["effort"]["metric"]): string =>
-    metric === "active_hours" ? "active hours" : "lines changed";
-
-/**
  * Format the Sankey/Chord flow's allocation-weight unit label (CHAOS-4241).
  *
  * Distinct from `formatEffortUnit`: that function derives a label from a

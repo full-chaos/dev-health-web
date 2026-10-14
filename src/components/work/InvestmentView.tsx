@@ -1,13 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatNumber } from "@/lib/formatters";
 import {
     buildTimeRangeLabel,
     formatBandLabel,
-    capitalizeFirst,
-    formatMeasureUnit,
-    WORK_UNIT_COUNT_UNIT,
     formatQuality,
     formatWorkUnitLabel,
     firstRowPerWorkUnit,
@@ -134,21 +130,11 @@ export function InvestmentView({
     const data = useInvestmentData({ filters, activeTab });
 
     // All derived state is unconditional — data loads identically regardless of tab.
-    const effortUnit = useMemo(() => {
-        const metrics = new Set(data.workUnits.map((unit) => unit.effort.metric));
-        if (metrics.size === 1) {
-            const metric = metrics.values().next().value ?? "churn_loc";
-            return formatMeasureUnit(metric);
-        }
-        return "lines changed or hours";
-    }, [data.workUnits]);
-
     // Evidence-block dropdown lists every work unit in the window; the table
     // above it drives grouped navigation.
     const selectableUnits = useMemo(() => firstRowPerWorkUnit(data.workUnits), [data.workUnits]);
 
-    // The selected unit once: effort is the sum over its rows (one per repository under a
-    // repository scope), contextual evidence is every row's, and each repository is named.
+    // The selected unit once: contextual evidence is every row's, and each repository is named.
     const selectedDetail = useMemo(() => {
         const selectedId = data.selectedUnit?.work_unit_id;
         if (!data.selectedUnit || !selectedId) return null;
@@ -169,7 +155,6 @@ export function InvestmentView({
             ),
         );
         return {
-            effort: rows.reduce((sum, row) => sum + row.effort.value, 0),
             contextual,
             repositories,
         };
@@ -289,17 +274,6 @@ export function InvestmentView({
                                 {buildTimeRangeLabel(
                                     data.selectedUnit.time_range?.start,
                                     data.selectedUnit.time_range?.end,
-                                )}
-                            </div>
-                            <div>
-                                <span className="text-(--ink-muted)">
-                                    {capitalizeFirst(
-                                        formatMeasureUnit(data.selectedUnit.effort.metric),
-                                    )}
-                                    :
-                                </span>{" "}
-                                {formatNumber(
-                                    selectedDetail?.effort ?? data.selectedUnit.effort.value,
                                 )}
                             </div>
                             {selectedDetail && selectedDetail.repositories.length > 1 ? (
@@ -503,7 +477,6 @@ export function InvestmentView({
             <section className="flex flex-col gap-4.5" data-testid="investment-evidence">
                 <InvestmentEvidenceTable
                     workUnits={data.workUnits}
-                    effortUnit={effortUnit}
                     filters={filters}
                     onSelectWorkUnit={data.handleSelect}
                     attributionByWorkUnit={teamAttributions.byWorkUnitId}
@@ -566,7 +539,6 @@ export function InvestmentView({
                 evidenceHref={withFilterParam("/investment?tab=evidence", filters, activeRole)}
                 filters={filters}
                 role={activeRole}
-                effortUnit={WORK_UNIT_COUNT_UNIT}
             />
             {/* Not drawn in the prototype: the reading guidance stays, below the prototype blocks. */}
             <ExplainerCards />

@@ -7,7 +7,7 @@ import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
-import { titleCase } from "@/lib/investment";
+import { capitalizeFirst, titleCase, WORK_UNIT_COUNT_UNIT } from "@/lib/investment";
 import { getSortedThemes } from "@/lib/investmentMix";
 import { MixSelectionFacts } from "./MixSelectionFacts";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
@@ -24,8 +24,6 @@ type ClassificationTableProps = {
     /** The page's filters and role: the drawer's Work Graph link carries them. */
     filters: MetricFilter;
     role?: string;
-    /** The page's effort unit: the unit when the mix serves none (as the treemap drawer does). */
-    effortUnit: string;
 };
 
 /**
@@ -40,14 +38,13 @@ export function ClassificationTable({
     evidenceHref,
     filters,
     role,
-    effortUnit,
 }: ClassificationTableProps) {
     const evidence = useEvidenceDrawer();
     const themes = investmentMix ? getSortedThemes(investmentMix) : [];
     if (!investmentMix || themes.length === 0) return null;
     const total = themes.reduce((sum, theme) => sum + theme.value, 0);
     const servedUnit = investmentMix.unit?.replace(/_/g, " ");
-    const unit = servedUnit ?? effortUnit;
+    const unit = servedUnit ?? WORK_UNIT_COUNT_UNIT;
 
     // The row's Evidence action opens the ONE shared drawer with the served effort and share
     // of the theme (the same facts a treemap cell shows).
@@ -103,9 +100,7 @@ export function ClassificationTable({
                             <th className="px-4 py-2 text-left font-medium">Theme</th>
                             <th className="px-4 py-2 text-right font-medium">Share</th>
                             <th className="px-4 py-2 text-right font-medium">
-                                {servedUnit
-                                    ? servedUnit.charAt(0).toUpperCase() + servedUnit.slice(1)
-                                    : "Work units"}
+                                {capitalizeFirst(servedUnit ?? WORK_UNIT_COUNT_UNIT)}
                             </th>
                             <th className="px-4 py-2 text-right font-medium">
                                 {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}

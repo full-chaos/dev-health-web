@@ -130,7 +130,7 @@ describe("work unit in several repositories", () => {
         expect(counts.very_low).toBe(0);
     });
 
-    it("evidence table: 3 rows, Units = 2, effort = sum of shares, rows open alone, repository by name", () => {
+    it("evidence table: 3 rows, Units = 2, no size unit, rows open alone, repository by name", () => {
         evidenceQualityGroupsMock.mockReturnValue({ groups: [] });
         useInvestmentDataMock.mockReturnValue(makeData(repoRows));
         const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -139,7 +139,7 @@ describe("work unit in several repositories", () => {
 
         const groupRow = screen.getByTestId("evidence-group-row");
         expect(within(groupRow).getByText("2")).toBeInTheDocument();
-        expect(groupRow).toHaveTextContent("13 active hours");
+        expect(groupRow.textContent).not.toMatch(/lines|\bloc\b|hours|effort|13/i);
 
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         const dialog = within(screen.getByRole("dialog"));
@@ -158,7 +158,7 @@ describe("work unit in several repositories", () => {
         expect(error.mock.calls.some((call) => String(call[0]).includes("same key"))).toBe(false);
     });
 
-    it("the unit picker lists a unit once and the detail shows the summed effort", () => {
+    it("the unit picker lists a unit once and the detail shows no size", () => {
         evidenceQualityGroupsMock.mockReturnValue({ groups: [] });
         useInvestmentDataMock.mockReturnValue(makeData(repoRows, "shared"));
 
@@ -169,8 +169,7 @@ describe("work unit in several repositories", () => {
             .getAllByRole("option")
             .filter((o) => (o as HTMLOptionElement).value);
         expect(options).toHaveLength(2);
-        const detail = screen.getByText("Active hours:").parentElement as HTMLElement;
-        expect(detail).toHaveTextContent("10");
+        expect(screen.queryByText(/Active hours:|Lines changed:/)).toBeNull();
         expect(screen.getByTestId("selected-unit-repositories")).toHaveTextContent(
             "org/api, Unresolved",
         );
@@ -190,7 +189,7 @@ describe("one row per unit (org / team scope)", () => {
         useInvestmentDataMock.mockReturnValue(makeData(oneRowPerUnit, "shared"));
         const { unmount } = render(<InvestmentView filters={repoFilters} activeTab="evidence" />);
         const groupRow = screen.getByTestId("evidence-group-row");
-        expect(groupRow).toHaveTextContent("13 active hours");
+        expect(groupRow.textContent).not.toMatch(/lines|\bloc\b|hours|effort/i);
         expect(within(groupRow).getByText("2")).toBeInTheDocument();
         const picker = screen.getByLabelText("Work unit") as HTMLSelectElement;
         expect(
@@ -198,7 +197,7 @@ describe("one row per unit (org / team scope)", () => {
                 .getAllByRole("option")
                 .filter((o) => (o as HTMLOptionElement).value),
         ).toHaveLength(2);
-        expect(screen.getByText("Active hours:").parentElement).toHaveTextContent("10");
+        expect(screen.queryByText(/Active hours:|Lines changed:/)).toBeNull();
         expect(screen.queryByTestId("selected-unit-repositories")).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         expect(screen.queryAllByTestId("evidence-unit-repository")).toHaveLength(0);
