@@ -13,7 +13,7 @@ import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIIm
 import type { AIFilter } from "@/lib/filters/ai";
 import { bucketEquals } from "@/lib/ai/buckets";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatDateTimeUTC } from "@/lib/formatters";
+import { COUNT_FORMAT, formatDateTimeUTC, formatNumber } from "@/lib/formatters";
 import { AIComparisonCard } from "./AIComparisonCard";
 import { AILeverageBars } from "./AILeverageBars";
 import { AIPanelCard } from "./AIPanelCard";
@@ -86,7 +86,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                     hideTrend
                     caption={
                         summary?.aiAssistedPrs != null && summary?.totalPrs != null
-                            ? `${summary.aiAssistedPrs} of ${summary.totalPrs} PRs lean AI-assisted.`
+                            ? `${formatNumber(summary.aiAssistedPrs, COUNT_FORMAT)} of ${formatNumber(summary.totalPrs, COUNT_FORMAT)} PRs lean AI-assisted.`
                             : undefined
                     }
                 />
@@ -137,7 +137,12 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                     <div className="flex items-end justify-between gap-4">
                         <div>
                             <p className="text-[1.75rem] font-semibold leading-tight tabular-nums">
-                                {agentBucket?.agentCreatedPrCount ?? summary?.agentCreatedPrs ?? 0}
+                                {formatNumber(
+                                    agentBucket?.agentCreatedPrCount ??
+                                        summary?.agentCreatedPrs ??
+                                        0,
+                                    COUNT_FORMAT,
+                                )}
                             </p>
                             <p className="text-sm text-(--ink-muted)">agent-created PRs</p>
                         </div>
@@ -307,7 +312,7 @@ function ScopeRollupList({ label, rows }: { label: string; rows: ScopeRollupRow[
                     >
                         <span className="truncate">{row.scopeLabel}</span>
                         <span className="shrink-0 tabular-nums text-(--ink-muted)">
-                            {row.aiPrsTotal} PRs
+                            {formatNumber(row.aiPrsTotal, COUNT_FORMAT)} PRs
                             {row.aiAssistedPrRatio != null
                                 ? ` · ${formatPercent(row.aiAssistedPrRatio)}`
                                 : ""}

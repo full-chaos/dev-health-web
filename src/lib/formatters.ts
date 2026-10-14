@@ -65,6 +65,12 @@ export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) 
     return getFormatter(options).format(value);
 };
 
+/** Options for a PR count that may be a share-weighted fraction: at most one decimal, no grouping, so 12 -> "12" and 12.25 -> "12.3". */
+export const COUNT_FORMAT: Intl.NumberFormatOptions = {
+    maximumFractionDigits: 1,
+    useGrouping: false,
+};
+
 export const formatPercent = (value: number) =>
     `${formatNumber(value, { maximumFractionDigits: 0 })}%`;
 
