@@ -56,8 +56,11 @@ import type { AreaSignal, AreaSignalState } from "./types";
 
 /** Latest bucket value for a measure in an analytics timeseries result. */
 function latestMeasure(timeseries: TimeseriesResult[], measure: string): number | undefined {
-    const series = timeseries.find((t) => t.measure === measure);
-    if (!series || series.buckets.length === 0) return undefined;
+    const matching = timeseries.filter((t) => t.measure === measure);
+    // More than one served series has no single value: no web-made roll-up (CHAOS-9736 serves the org series).
+    if (matching.length !== 1) return undefined;
+    const series = matching[0];
+    if (series.buckets.length === 0) return undefined;
     // A null latest bucket is "no value", never a 0 that would derive a state.
     return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
@@ -321,9 +324,12 @@ export async function getGovernSignals(
 
     // ── Cluster: Quality ────────────────────────────────────────────────────────
 
-    const coveragePct =
-        latestMeasure(coverage?.timeseries ?? [], "COVERAGE_LINE_PCT") ??
-        latestMeasure(testOps?.coverage.timeseries ?? [], "COVERAGE_LINE_PCT");
+    const hasCoverageSeries = (coverage?.timeseries ?? []).some(
+        (t) => t.measure === "COVERAGE_LINE_PCT",
+    );
+    const coveragePct = hasCoverageSeries
+        ? latestMeasure(coverage?.timeseries ?? [], "COVERAGE_LINE_PCT")
+        : latestMeasure(testOps?.coverage.timeseries ?? [], "COVERAGE_LINE_PCT");
     const coverageResolution =
         coveragePct != null
             ? {
