@@ -86,37 +86,34 @@ test.describe("Diagnose navigation", () => {
         await expect(page.getByRole("heading", { name: "Landscape" })).toBeVisible();
     });
 
-    test("legacy Work deep links: removed tabs redirect to first-class destinations", async ({
-        page,
-    }) => {
-        // REMOVED_WORK_TAB_REDIRECTS (workPageView.ts): these tabs no longer render
-        // in the hub — the server redirects to the first-class destination and
-        // forwards the f= filter param.
-        const redirectCases = [
-            { tab: "overview", targetPattern: /\/diagnose(?:[?#].*)?$/ },
-            { tab: "flow", targetPattern: /\/metrics(?:[?#].*)?$/ },
-            { tab: "investment", targetPattern: /\/investment(?:[?#].*)?$/ },
-            { tab: "landscape", targetPattern: /\/landscape(?:[?#].*)?$/ },
-            { tab: "capacity", targetPattern: /\/plan\/capacity(?:[?#].*)?$/ },
-            { tab: "heatmap", targetPattern: /\/cognitive-load(?:[?#].*)?$/ },
-            { tab: "flame", targetPattern: /\/complexity(?:[?#].*)?$/ },
-            { tab: "graph", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
-            { tab: "evidence", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
-        ] as const;
+    // REMOVED_WORK_TAB_REDIRECTS (workPageView.ts): these tabs no longer render in the hub;
+    // the server redirects to the first-class destination and forwards the f= filter param.
+    // One test per tab: each gets its own timeout, so slow CI page loads cannot add up
+    // past a single test's budget.
+    const redirectCases = [
+        { tab: "overview", targetPattern: /\/diagnose(?:[?#].*)?$/ },
+        { tab: "flow", targetPattern: /\/metrics(?:[?#].*)?$/ },
+        { tab: "investment", targetPattern: /\/investment(?:[?#].*)?$/ },
+        { tab: "landscape", targetPattern: /\/landscape(?:[?#].*)?$/ },
+        { tab: "capacity", targetPattern: /\/plan\/capacity(?:[?#].*)?$/ },
+        { tab: "heatmap", targetPattern: /\/cognitive-load(?:[?#].*)?$/ },
+        { tab: "flame", targetPattern: /\/complexity(?:[?#].*)?$/ },
+        { tab: "graph", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
+        { tab: "evidence", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
+    ] as const;
 
-        for (const { tab, targetPattern } of redirectCases) {
+    for (const { tab, targetPattern } of redirectCases) {
+        test(`legacy Work deep links: removed tab ${tab} redirects to its first-class destination`, async ({
+            page,
+        }) => {
             await page.goto(`/work?tab=${tab}&f=${filterWith30d}`);
-            await waitForHydration(page);
 
-            // Server redirect: final URL must match the first-class destination.
             await expect(page).toHaveURL(targetPattern);
-
-            // Filter context is forwarded to the redirect target.
             expect(decodeFilter(new URL(page.url()).searchParams.get("f")).time.range_days).toBe(
                 30,
             );
-        }
-    });
+        });
+    }
 
     test("legacy Work deep links: the redirect is an HTTP 307, not a streamed client redirect", async ({
         request,
