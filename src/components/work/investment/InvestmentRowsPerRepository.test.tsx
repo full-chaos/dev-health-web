@@ -159,7 +159,7 @@ describe("work unit in several repositories", () => {
         expect(error.mock.calls.some((call) => String(call[0]).includes("same key"))).toBe(false);
     });
 
-    it("the unit picker lists a unit once and the detail shows the unit's own size as a plain fact", () => {
+    it("the unit picker lists a unit once and the detail shows the selected row's own change set, not a sum", () => {
         evidenceQualityGroupsMock.mockReturnValue({ groups: [] });
         useInvestmentDataMock.mockReturnValue(makeData(repoRows, "shared"));
 
@@ -171,7 +171,7 @@ describe("work unit in several repositories", () => {
             .filter((o) => (o as HTMLOptionElement).value);
         expect(options).toHaveLength(2);
         expect(screen.getByTestId("selected-unit-change-set")).toHaveTextContent(
-            "Change set: 10 lines",
+            "Change set: 4 lines",
         );
         expect(screen.getByTestId("selected-unit-repositories")).toHaveTextContent(
             "org/api, Unresolved",
@@ -201,7 +201,7 @@ describe("one row per unit (org / team scope)", () => {
                 .filter((o) => (o as HTMLOptionElement).value),
         ).toHaveLength(2);
         expect(screen.getByTestId("selected-unit-change-set")).toHaveTextContent(
-            "Change set: 10 lines",
+            "Change set: 4 lines",
         );
         expect(screen.queryByTestId("selected-unit-repositories")).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));

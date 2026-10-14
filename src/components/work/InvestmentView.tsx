@@ -159,7 +159,7 @@ export function InvestmentView({
         return {
             contextual,
             repositories,
-            changeSet: workUnitChangeSet(rows),
+            changeSet: workUnitChangeSet([data.selectedUnit]),
         };
     }, [data.selectedUnit, data.workUnits]);
 
