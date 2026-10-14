@@ -1,3 +1,4 @@
+import { changeFailureEvidenceIntro } from "@/components/evidence/ChangeFailureEvidenceIntro";
 import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
 import { QualityEvidenceTiles } from "@/components/quality/QualityEvidenceTiles";
@@ -89,6 +90,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         metric: "change_failure_rate",
         filters,
         role: activeRole,
+        intro: changeFailureEvidenceIntro("change_failure_rate", changeFailureMetric),
     };
 
     return (

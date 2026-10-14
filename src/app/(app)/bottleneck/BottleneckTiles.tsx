@@ -1,5 +1,6 @@
 "use client";
 
+import { changeFailureEvidenceIntro } from "@/components/evidence/ChangeFailureEvidenceIntro";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
@@ -59,7 +60,14 @@ export function BottleneckTiles({
                             row,
                         )}
                         onOpenEvidence={() =>
-                            evidence.open({ title: label, metric, filters, role, origin })
+                            evidence.open({
+                                title: label,
+                                metric,
+                                filters,
+                                role,
+                                origin,
+                                intro: changeFailureEvidenceIntro(metric, row),
+                            })
                         }
                     />
                 );

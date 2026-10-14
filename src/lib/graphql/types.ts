@@ -567,6 +567,8 @@ export interface OperatingReviewMetric {
     scope?: OperatingReviewMetricScope;
     /** Why a change failure rate has a value or not; null or absent when none is served. */
     rateState?: string | null;
+    /** What the change failure rate of the week stands on; null or absent when none is served. */
+    changeFailureEvidence?: ChangeFailureEvidenceGraphQL | null;
     delta: OperatingReviewDelta;
 }
 
@@ -882,6 +884,18 @@ export interface HomeGraphQLDelta {
     repoLinkMultiRepoItems?: number | null;
     /** Linked items and items in the window; null or absent when none is served. */
     repoLinkCoverage?: HomeGraphQLRepoLinkCoverage | null;
+    /** What the change failure rate stands on; null or absent when none is served. */
+    changeFailureEvidence?: ChangeFailureEvidenceGraphQL | null;
+}
+
+/** The evidence of a change failure rate (CHAOS-9630): basis, D, K, coverage K / D, reason. */
+export interface ChangeFailureEvidenceGraphQL {
+    basis?: string | null;
+    deployments: number;
+    deploymentsWithStatus: number;
+    /** K / D, a 0..1 fraction (not a percent); null when there is no deployment. */
+    coverage?: number | null;
+    unknownReason?: string | null;
 }
 
 export interface HomeGraphQLRepoLinkBasis {
