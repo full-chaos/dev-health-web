@@ -5,7 +5,7 @@ import {
     INVESTMENT_SANKEY_CHORD_OPTIONS,
     type InvestmentFlowChartType,
 } from "@/components/charts/ChartTypeToggle";
-import { formatInvestmentUnit, WORK_UNIT_COUNT_UNIT } from "@/lib/investment";
+import { WORK_UNIT_COUNT_UNIT } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 import { InvestmentMixSection } from "./charts/InvestmentMixSection";
@@ -88,10 +88,7 @@ export function InvestmentCharts({
         selectedThemeKey,
     });
 
-    const flowUnit = useMemo(
-        () => formatInvestmentUnit(teamCategoryFlow?.unit ?? repoTeamFlow?.unit),
-        [teamCategoryFlow?.unit, repoTeamFlow?.unit],
-    );
+    const flowUnit = WORK_UNIT_COUNT_UNIT;
 
     const dateRange = useMemo(() => {
         const { start_date, end_date, range_days } = filters.time;

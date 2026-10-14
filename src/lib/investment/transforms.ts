@@ -16,13 +16,13 @@ import { UNRESOLVED } from "@/lib/labels/unresolved";
 // ============================================================================
 
 /**
- * A work unit paired with the effort weight used to rank it in list views.
+ * A work unit paired with the allocation weight used to rank it in list views.
  * Mirrors the `EvidenceUnit` shape consumed by the Evidence-tab drilldown.
  */
 export type WorkUnitListEntry = {
     unit: WorkUnitInvestment;
+    /** The unit's allocation share to the focused subcategory; 1 when none is focused. */
     weight: number;
-    weightedEffort: number;
 };
 
 /**
@@ -30,11 +30,10 @@ export type WorkUnitListEntry = {
  * subcategory.
  *
  * - When `focusSubcategory` is set: only the units that contribute to that
- *   subcategory, weighted by their subcategory share and sorted by weighted
- *   effort (descending). This is the "drill into a subcategory" behavior.
+ *   subcategory, weighted by their subcategory share and sorted by that
+ *   share (descending). This is the "drill into a subcategory" behavior.
  * - When `focusSubcategory` is null:
- *   - `fallbackToAll: true` → ALL units (weight 1, weightedEffort = raw effort),
- *     sorted by effort descending. Used by the Evidence tab so it is
+ *   - `fallbackToAll: true` → ALL units (weight 1), in the order given. Used by the Evidence tab so it is
  *     self-contained on direct entry / refresh / share (no selector required).
  *   - `fallbackToAll: false` (default) → an empty list. Used by the Overview
  *     drill-down, which prompts the user to pick a subcategory first.
@@ -54,13 +53,7 @@ export const selectWorkUnitEntries = ({
         if (!fallbackToAll) {
             return [];
         }
-        return workUnits
-            .map((unit) => ({
-                unit,
-                weight: 1,
-                weightedEffort: unit.effort.value,
-            }))
-            .sort((a, b) => b.weightedEffort - a.weightedEffort);
+        return workUnits.map((unit) => ({ unit, weight: 1 }));
     }
 
     return workUnits
@@ -69,14 +62,10 @@ export const selectWorkUnitEntries = ({
             if (weight <= 0) {
                 return null;
             }
-            return {
-                unit,
-                weight,
-                weightedEffort: unit.effort.value * weight,
-            };
+            return { unit, weight };
         })
         .filter((entry): entry is WorkUnitListEntry => Boolean(entry))
-        .sort((a, b) => b.weightedEffort - a.weightedEffort);
+        .sort((a, b) => b.weight - a.weight);
 };
 
 // ============================================================================
@@ -336,16 +325,9 @@ export const capitalizeFirst = (text: string): string =>
 /** The unit of an Investment mix value: the mix is requested with measure COUNT. */
 export const WORK_UNIT_COUNT_UNIT = "work units";
 
-/**
- * The unit label of a served Investment value. Only work units are an investment unit: a served
- * unit that names lines of code, hours or churn is never shown, "work units" is. A served "delivery units" is the same count under another name.
- */
-export const formatInvestmentUnit = (unit: string | null | undefined): string => {
-    const label = unit?.replace(/_/g, " ").trim().toLowerCase();
-    if (!label || /\b(loc|lines?|hours?|churn|effort|delivery)\b/i.test(label))
-        return WORK_UNIT_COUNT_UNIT;
-    return label;
-};
+/** A served unit that names lines of code, hours, churn or effort: never an investment value. */
+export const isNonCountUnit = (unit: string | null | undefined): boolean =>
+    Boolean(unit) && /\b(loc|lines?|hours?|churn|effort)\b/i.test((unit ?? "").replace(/_/g, " "));
 
 /**
  * Format a work unit's display label.

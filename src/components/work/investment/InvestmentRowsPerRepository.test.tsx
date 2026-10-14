@@ -146,7 +146,7 @@ describe("work unit in several repositories", () => {
         expect(dialog.getAllByRole("button", { name: /Unit (shared|solo)/ })).toHaveLength(3);
         expect(dialog.getByTestId("evidence-group-facts")).toHaveTextContent(/Units\s*2/);
         const names = dialog.getAllByTestId("evidence-unit-repository").map((n) => n.textContent);
-        expect(names).toEqual(["Unresolved", "org/api", "org/web"]);
+        expect(names).toEqual(["org/api", "Unresolved", "org/web"]);
         expect(screen.getByRole("dialog").textContent).not.toContain(UUID);
 
         // each row opens alone
