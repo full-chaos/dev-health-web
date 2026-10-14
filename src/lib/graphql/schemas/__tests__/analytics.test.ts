@@ -16,9 +16,8 @@ describe("SankeyResultSchema", () => {
         expect(result.unit).toBe("WORK_UNITS");
     });
 
-    it("keeps unit: 'LOC' when parsing a response", () => {
-        const result = SankeyResultSchema.parse({ ...base, unit: "LOC" });
-        expect(result.unit).toBe("LOC");
+    it("rejects unit: 'LOC': lines of code is not a flow unit", () => {
+        expect(SankeyResultSchema.safeParse({ ...base, unit: "LOC" }).success).toBe(false);
     });
 
     it("parses to unit: undefined (not stripped-and-hidden) when the response omits it", () => {

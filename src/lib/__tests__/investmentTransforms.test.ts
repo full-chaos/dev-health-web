@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     titleCase,
     isNonCountUnit,
+    formatChangeSet,
     workUnitChangeSet,
     WORK_UNIT_COUNT_UNIT,
     formatSubcategoryLabel,
@@ -28,7 +29,7 @@ const makeUnit = (
     work_unit_name: `Unit ${id}`,
     work_unit_type: "pr",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-    effort: { metric: "active_hours", value: effortValue },
+    effort: { metric: "work_units", value: effortValue },
     investment: { themes: {}, subcategories },
     evidence_quality: { value: 0.7, band: "moderate" },
     evidence: { textual: [], structural: [], contextual: [] },
@@ -314,22 +315,45 @@ describe("investment unit name (CHAOS-9688)", () => {
     });
 });
 
-describe("workUnitChangeSet (CHAOS-9688)", () => {
-    const row = (metric: string, value: number) =>
-        ({ effort: { metric, value } }) as unknown as Parameters<
+describe("workUnitChangeSet (CHAOS-9696)", () => {
+    const row = (change_set: unknown) =>
+        ({ effort: { metric: "work_units", value: 1 }, change_set }) as unknown as Parameters<
             typeof workUnitChangeSet
         >[0][number];
+    const total = (n: number) => ({ additions: null, deletions: null, total: n });
 
-    it("is the lines of a churn_loc unit, summed over the unit's rows", () => {
-        expect(workUnitChangeSet([row("churn_loc", 10), row("churn_loc", 5)])).toEqual({
-            lines: 15,
-        });
+    it("is the served change set total, summed over the unit's rows", () => {
+        expect(workUnitChangeSet([row(total(10)), row(total(5))])).toEqual(total(15));
     });
 
-    it("is null for hours, a work-unit count, mixed metrics or no rows", () => {
-        expect(workUnitChangeSet([row("active_hours", 3)])).toBeNull();
-        expect(workUnitChangeSet([row("work_units", 1)])).toBeNull();
-        expect(workUnitChangeSet([row("churn_loc", 1), row("active_hours", 1)])).toBeNull();
+    it("keeps the split only when every row serves it", () => {
+        const split = { additions: 7, deletions: 3, total: 10 };
+        expect(workUnitChangeSet([row(split), row(split)])).toEqual({
+            additions: 14,
+            deletions: 6,
+            total: 20,
+        });
+        expect(workUnitChangeSet([row(split), row(total(5))])).toEqual(total(15));
+    });
+
+    it("is null when a row serves none, or there are no rows", () => {
+        expect(workUnitChangeSet([row(null)])).toBeNull();
+        expect(workUnitChangeSet([row(undefined)])).toBeNull();
+        expect(workUnitChangeSet([row(total(1)), row(null)])).toBeNull();
         expect(workUnitChangeSet([])).toBeNull();
+    });
+
+    it("never reads the effort value", () => {
+        const heavy = { effort: { metric: "work_units", value: 999 }, change_set: total(4) };
+        expect(
+            workUnitChangeSet([
+                heavy as unknown as Parameters<typeof workUnitChangeSet>[0][number],
+            ]),
+        ).toEqual(total(4));
+    });
+
+    it("formats lines, or -x / +y when the split is served", () => {
+        expect(formatChangeSet(total(1500))).toBe("1,500 lines");
+        expect(formatChangeSet({ additions: 7, deletions: 3, total: 10 })).toBe("-3 / +7");
     });
 });

@@ -79,13 +79,13 @@ Variables:
         "breakdowns": [
             {
                 "dimension": "THEME",
-                "measure": "CHURN_LOC",
+                "measure": "COUNT",
                 "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
                 "topN": 50
             },
             {
                 "dimension": "SUBCATEGORY",
-                "measure": "CHURN_LOC",
+                "measure": "COUNT",
                 "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
                 "topN": 100
             }
@@ -124,7 +124,7 @@ Variables:
     "batch": {
         "sankey": {
             "path": ["TEAM", "THEME", "REPO"],
-            "measure": "CHURN_LOC",
+            "measure": "COUNT",
             "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
             "maxNodes": 50,
             "maxEdges": 200

@@ -29,7 +29,8 @@ const unit: WorkUnitInvestment = {
     work_unit_name: "Login fix",
     work_unit_type: "pr",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-    effort: { metric: "churn_loc", value: 12 },
+    effort: { metric: "work_units", value: 1 },
+    change_set: { additions: null, deletions: null, total: 12 },
     investment: { themes: { feature_delivery: 1 }, subcategories: { "feature.build": 1 } },
     evidence_quality: { value: 0.7, band: "moderate" },
     evidence: {
@@ -50,7 +51,8 @@ const second: WorkUnitInvestment = {
     ...unit,
     work_unit_id: "wu-4444-5555-6666",
     work_unit_name: "Logout fix",
-    effort: { metric: "churn_loc", value: 5 },
+    effort: { metric: "work_units", value: 1 },
+    change_set: { additions: null, deletions: null, total: 5 },
 };
 
 const attribution = new Map<string, WorkUnitTeamAttribution>([
@@ -142,7 +144,11 @@ const draw = (onSelectWorkUnit = vi.fn()) => {
 
 describe("InvestmentEvidenceTable — lines of code and hours are not investment (CHAOS-9688)", () => {
     it("shows no lines, hours or effort text in the group table, whatever the unit's measured size", () => {
-        const loc = { ...unit, effort: { metric: "churn_loc" as const, value: 340 } };
+        const loc = {
+            ...unit,
+            effort: { metric: "work_units" as const, value: 1 },
+            change_set: null,
+        };
         const { container } = render(
             <InvestmentEvidenceTable
                 workUnits={[loc]}

@@ -56,7 +56,8 @@ const row = (
     work_unit_name: `Unit ${id}`,
     work_unit_type: "pr",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-    effort: { metric: "churn_loc", value: effort },
+    effort: { metric: "work_units", value: 1 },
+    change_set: { additions: null, deletions: null, total: effort },
     investment: { themes: { feature_delivery: 1 }, subcategories: { "feature.build": 1 } },
     evidence_quality: { value: 0.2, band: "low" },
     evidence: {
@@ -158,7 +159,7 @@ describe("work unit in several repositories", () => {
         expect(error.mock.calls.some((call) => String(call[0]).includes("same key"))).toBe(false);
     });
 
-    it("the unit picker lists a unit once and the detail shows the unit's own size as a plain fact", () => {
+    it("the unit picker lists a unit once and the detail shows the selected row's own change set, not a sum", () => {
         evidenceQualityGroupsMock.mockReturnValue({ groups: [] });
         useInvestmentDataMock.mockReturnValue(makeData(repoRows, "shared"));
 
@@ -170,7 +171,7 @@ describe("work unit in several repositories", () => {
             .filter((o) => (o as HTMLOptionElement).value);
         expect(options).toHaveLength(2);
         expect(screen.getByTestId("selected-unit-change-set")).toHaveTextContent(
-            "Change set: 10 lines",
+            "Change set: 4 lines",
         );
         expect(screen.getByTestId("selected-unit-repositories")).toHaveTextContent(
             "org/api, Unresolved",

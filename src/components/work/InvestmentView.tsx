@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatNumber } from "@/lib/formatters";
 import {
     buildTimeRangeLabel,
     formatBandLabel,
@@ -9,6 +8,7 @@ import {
     formatWorkUnitLabel,
     firstRowPerWorkUnit,
     workUnitRepositoryLabel,
+    formatChangeSet,
     workUnitChangeSet,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -159,7 +159,7 @@ export function InvestmentView({
         return {
             contextual,
             repositories,
-            changeSet: workUnitChangeSet(rows),
+            changeSet: workUnitChangeSet([data.selectedUnit]),
         };
     }, [data.selectedUnit, data.workUnits]);
 
@@ -282,7 +282,7 @@ export function InvestmentView({
                             {selectedDetail?.changeSet ? (
                                 <div data-testid="selected-unit-change-set">
                                     <span className="text-(--ink-muted)">Change set:</span>{" "}
-                                    {formatNumber(selectedDetail.changeSet.lines)} lines
+                                    {formatChangeSet(selectedDetail.changeSet)}
                                 </div>
                             ) : null}
                             {selectedDetail && selectedDetail.repositories.length > 1 ? (
