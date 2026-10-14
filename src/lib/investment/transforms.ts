@@ -337,21 +337,14 @@ export const capitalizeFirst = (text: string): string =>
 export const WORK_UNIT_COUNT_UNIT = "work units";
 
 /**
- * Format the Sankey/Chord flow's allocation-weight unit label (CHAOS-4241).
- *
- * Distinct from `formatEffortUnit`: that function derives a label from a
- * work unit's raw `effort.metric` (how ITS effort was measured at
- * materialization time — always "churn_loc" in practice), which is
- * unrelated to what unit the Sankey/Chord flow's `value`s are actually
- * weighted by. The backend now defaults that weighting to a count of
- * attributed work units and echoes the effective unit back on the flow
- * response ("WORK_UNITS" | "LOC") so this never has to guess. Unknown or
- * missing values (older/sample responses, or a response the backend hasn't
- * labelled yet) default to "work units" — the new default weight — never
- * silently render "loc".
+ * The unit label of a served Investment value. Only work units are an investment unit: a served
+ * unit that names lines of code, hours or churn is never shown, "work units" is.
  */
-export const formatSankeyUnit = (unit: string | null | undefined): string =>
-    unit === "LOC" ? "loc" : "work units";
+export const formatInvestmentUnit = (unit: string | null | undefined): string => {
+    const label = unit?.replace(/_/g, " ").trim().toLowerCase();
+    if (!label || /\b(loc|lines?|hours?|churn|effort)\b/i.test(label)) return WORK_UNIT_COUNT_UNIT;
+    return label;
+};
 
 /**
  * Format a work unit's display label.

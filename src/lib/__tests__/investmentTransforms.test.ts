@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
     titleCase,
+    formatInvestmentUnit,
     WORK_UNIT_COUNT_UNIT,
     formatSubcategoryLabel,
     normalizeThemeKey,
@@ -294,6 +295,23 @@ describe("investment transform constants", () => {
 });
 
 describe("investment unit name (CHAOS-9688)", () => {
+    it("never labels a value with lines, hours, churn or loc", () => {
+        for (const served of [
+            "LOC",
+            "loc",
+            "lines_changed",
+            "active_hours",
+            "churn_loc",
+            "effort",
+            null,
+            undefined,
+            "",
+        ]) {
+            expect(formatInvestmentUnit(served)).toBe("work units");
+        }
+        expect(formatInvestmentUnit("delivery_units")).toBe("delivery units");
+    });
+
     it("labels a mix value as work units", () => {
         expect(WORK_UNIT_COUNT_UNIT).toBe("work units");
     });

@@ -7,7 +7,7 @@ import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
-import { capitalizeFirst, titleCase, WORK_UNIT_COUNT_UNIT } from "@/lib/investment";
+import { capitalizeFirst, formatInvestmentUnit, titleCase } from "@/lib/investment";
 import { getSortedThemes } from "@/lib/investmentMix";
 import { MixSelectionFacts } from "./MixSelectionFacts";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
@@ -43,8 +43,7 @@ export function ClassificationTable({
     const themes = investmentMix ? getSortedThemes(investmentMix) : [];
     if (!investmentMix || themes.length === 0) return null;
     const total = themes.reduce((sum, theme) => sum + theme.value, 0);
-    const servedUnit = investmentMix.unit?.replace(/_/g, " ");
-    const unit = servedUnit ?? WORK_UNIT_COUNT_UNIT;
+    const unit = formatInvestmentUnit(investmentMix.unit);
 
     // The row's Evidence action opens the ONE shared drawer with the served effort and share
     // of the theme (the same facts a treemap cell shows).
@@ -100,7 +99,7 @@ export function ClassificationTable({
                             <th className="px-4 py-2 text-left font-medium">Theme</th>
                             <th className="px-4 py-2 text-right font-medium">Share</th>
                             <th className="px-4 py-2 text-right font-medium">
-                                {capitalizeFirst(servedUnit ?? WORK_UNIT_COUNT_UNIT)}
+                                {capitalizeFirst(unit)}
                             </th>
                             <th className="px-4 py-2 text-right font-medium">
                                 {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}

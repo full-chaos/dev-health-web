@@ -26,6 +26,7 @@ import {
     formatQuality,
     formatSubcategoryLabel,
     titleCase,
+    formatInvestmentUnit,
 } from "@/lib/investment";
 import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
 import type { WorkUnitInvestment } from "@/lib/types";
@@ -169,7 +170,7 @@ export function InvestmentMixSection({
                         subcategoryLabel={nodeType === "subcategory" ? subcategoryLabel : undefined}
                         value={value}
                         total={mixTotalValue}
-                        unit={investmentMix?.unit?.replace(/_/g, " ") ?? effortUnit}
+                        unit={formatInvestmentUnit(investmentMix?.unit)}
                     />
                 ),
                 footer: workGraphUrl ? (
@@ -197,7 +198,7 @@ export function InvestmentMixSection({
                 subcategoryId: categoryId,
             });
         },
-        [activeRole, effortUnit, evidence, filters, investmentMix, mixTotalValue],
+        [activeRole, evidence, filters, investmentMix, mixTotalValue],
     );
 
     const treemapData = useMemo<TreemapNode>(() => {
@@ -349,7 +350,7 @@ export function InvestmentMixSection({
                             evidenceQualityDistribution={
                                 investmentMix.evidence_quality_distribution
                             }
-                            unit={investmentMix.unit ?? effortUnit}
+                            unit={formatInvestmentUnit(investmentMix.unit)}
                             height={360}
                             focusedTheme={focusTheme}
                             onThemeClickAction={handleThemeClick}
