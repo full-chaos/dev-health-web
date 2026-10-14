@@ -68,9 +68,13 @@ function backendUrl(path: string): URL {
     }
 }
 
+export function compareScopeBytes(left: string, right: string): number {
+    return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function canonicalRepositoryScopes(values: readonly string[]): readonly string[] {
     const canonical = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
-    const sorted = [...values].sort((left, right) => left.localeCompare(right));
+    const sorted = [...values].sort(compareScopeBytes);
     if (
         values.some((value) => value !== value.toLowerCase() || !canonical.test(value)) ||
         values.some((value, index) => value !== sorted[index]) ||
