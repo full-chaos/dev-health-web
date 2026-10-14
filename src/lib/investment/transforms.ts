@@ -338,14 +338,6 @@ export const workUnitChangeSet = (
     return { lines: rows.reduce((sum, row) => sum + row.effort.value, 0) };
 };
 
-/** A work unit's active hours as a plain fact of the unit (evidence sections only); null unless the metric is active_hours. */
-export const workUnitActiveHours = (
-    rows: ReadonlyArray<WorkUnitInvestment>,
-): { hours: number } | null => {
-    if (rows.length === 0 || rows.some((row) => row.effort?.metric !== "active_hours")) return null;
-    return { hours: rows.reduce((sum, row) => sum + row.effort.value, 0) };
-};
-
 /** A served unit that names lines of code, hours, churn or effort: never an investment value. */
 export const isNonCountUnit = (unit: string | null | undefined): boolean =>
     Boolean(unit) && /\b(loc|lines?|hours?|churn|effort)\b/i.test((unit ?? "").replace(/_/g, " "));
