@@ -582,3 +582,51 @@ describe("getGovernSignals — a served no-data window is unavailable, not a 0% 
         expect(signals["incident-correlation"]).toMatchObject({ state: "low", value: "0%" });
     });
 });
+
+describe("getGovernSignals — more than one served series is unavailable, never the first (CHAOS-6140)", () => {
+    const team = (measure: string, value: number, dimensionValue: string) => ({
+        ...ts(measure, value),
+        dimensionValue,
+    });
+    const onlyCoverage = (series: ReturnType<typeof ts>[]) => {
+        mockTestOps.mockResolvedValue({
+            pipelines: emptyAnalytics,
+            tests: emptyAnalytics,
+            coverage: { timeseries: series, breakdowns: [] },
+        });
+        mockCoverage.mockResolvedValue({ timeseries: series, breakdowns: [] });
+    };
+
+    it("0 series: unavailable", async () => {
+        onlyCoverage([]);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops).toMatchObject({ state: "unavailable", value: "" });
+    });
+
+    it("1 series: its value shows", async () => {
+        onlyCoverage([team("COVERAGE_LINE_PCT", 83, "t1")]);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops.value).toContain("coverage");
+        expect(signals.testops.state).not.toBe("unavailable");
+    });
+
+    it("2 series: unavailable, no fallback to the first or to the other source", async () => {
+        onlyCoverage([team("COVERAGE_LINE_PCT", 83, "t1"), team("COVERAGE_LINE_PCT", 40, "t2")]);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops).toMatchObject({ state: "unavailable", value: "" });
+    });
+
+    it("2 flake series: unavailable", async () => {
+        mockTestOps.mockResolvedValue({
+            pipelines: emptyAnalytics,
+            tests: {
+                timeseries: [team("TEST_FLAKE_RATE", 4, "t1"), team("TEST_FLAKE_RATE", 30, "t2")],
+                breakdowns: [],
+            },
+            coverage: emptyAnalytics,
+        });
+        mockCoverage.mockResolvedValue(emptyAnalytics);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops).toMatchObject({ state: "unavailable", value: "" });
+    });
+});
