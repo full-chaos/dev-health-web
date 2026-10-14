@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
     titleCase,
-    formatMeasureUnit,
+    isNonCountUnit,
+    workUnitChangeSet,
     WORK_UNIT_COUNT_UNIT,
     formatSubcategoryLabel,
     normalizeThemeKey,
@@ -219,19 +220,18 @@ describe("selectWorkUnitEntries", () => {
                 fallbackToAll: true,
             });
             expect(entries).toHaveLength(3);
-            // weight defaults to 1, weightedEffort == raw effort
+            // weight defaults to 1
             expect(entries.every((e) => e.weight === 1)).toBe(true);
             expect(entries.map((e) => e.unit.work_unit_id).sort()).toEqual(["a", "b", "c"]);
         });
 
-        it("sorts the all-units listing by effort descending", () => {
+        it("keeps the given order: lines of code never order the listing (CHAOS-9688)", () => {
             const entries = selectWorkUnitEntries({
                 focusSubcategory: null,
                 workUnits: units,
                 fallbackToAll: true,
             });
-            expect(entries.map((e) => e.unit.work_unit_id)).toEqual(["b", "a", "c"]);
-            expect(entries.map((e) => e.weightedEffort)).toEqual([20, 10, 5]);
+            expect(entries.map((e) => e.unit.work_unit_id)).toEqual(["a", "b", "c"]);
         });
 
         it("returns [] for an empty work-unit list even with fallbackToAll", () => {
@@ -253,8 +253,6 @@ describe("selectWorkUnitEntries", () => {
             });
             // c has no feature.build weight → excluded
             expect(entries.map((e) => e.unit.work_unit_id)).toEqual(["b", "a"]);
-            // weightedEffort = effort * subcategory weight; b=20*1=20, a=10*0.5=5
-            expect(entries.map((e) => e.weightedEffort)).toEqual([20, 5]);
             expect(entries.map((e) => e.weight)).toEqual([1.0, 0.5]);
         });
 
@@ -294,16 +292,44 @@ describe("investment transform constants", () => {
     });
 });
 
-describe("measure unit names (CHAOS-9618)", () => {
-    it("names churn LOC and hours under their own names, never effort", () => {
-        expect(formatMeasureUnit("churn_loc")).toBe("lines changed");
-        expect(formatMeasureUnit("active_hours")).toBe("active hours");
-        for (const metric of ["churn_loc", "active_hours"] as const) {
-            expect(formatMeasureUnit(metric)).not.toMatch(/effort|loc$/i);
+describe("investment unit name (CHAOS-9688)", () => {
+    it("flags a served unit that names lines, hours, churn, loc or effort, and only that", () => {
+        for (const served of [
+            "LOC",
+            "loc",
+            "lines_changed",
+            "active_hours",
+            "churn_loc",
+            "effort",
+        ]) {
+            expect(isNonCountUnit(served)).toBe(true);
+        }
+        for (const served of ["WORK_UNITS", "work_units", "delivery_units", null, undefined, ""]) {
+            expect(isNonCountUnit(served)).toBe(false);
         }
     });
 
     it("labels a mix value as work units", () => {
         expect(WORK_UNIT_COUNT_UNIT).toBe("work units");
+    });
+});
+
+describe("workUnitChangeSet (CHAOS-9688)", () => {
+    const row = (metric: string, value: number) =>
+        ({ effort: { metric, value } }) as unknown as Parameters<
+            typeof workUnitChangeSet
+        >[0][number];
+
+    it("is the lines of a churn_loc unit, summed over the unit's rows", () => {
+        expect(workUnitChangeSet([row("churn_loc", 10), row("churn_loc", 5)])).toEqual({
+            lines: 15,
+        });
+    });
+
+    it("is null for hours, a work-unit count, mixed metrics or no rows", () => {
+        expect(workUnitChangeSet([row("active_hours", 3)])).toBeNull();
+        expect(workUnitChangeSet([row("work_units", 1)])).toBeNull();
+        expect(workUnitChangeSet([row("churn_loc", 1), row("active_hours", 1)])).toBeNull();
+        expect(workUnitChangeSet([])).toBeNull();
     });
 });

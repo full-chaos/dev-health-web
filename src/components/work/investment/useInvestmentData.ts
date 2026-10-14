@@ -12,7 +12,7 @@ import { formatWorkUnitTypeLabel, getBaselineFilters } from "@/lib/investment";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { WorkUnitExplanation, WorkUnitInvestment } from "@/lib/types";
-import { TOP_N_REPOS, normalizeThemeKey } from "@/lib/investment";
+import { TOP_N_REPOS, isNonCountUnit, normalizeThemeKey } from "@/lib/investment";
 import { readCoverage } from "./AllocationCoverage";
 import type { InvestmentTab, MixExplanationState } from "./types";
 
@@ -74,12 +74,21 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         loading: mixLoading,
         error: mixError,
     } = useInvestmentMix({ filters, pause: !runs("mix") });
+    const mixUnitClass = mixData?.unit;
+    const mixServedNonCount = isNonCountUnit(mixUnitClass);
+    useEffect(() => {
+        if (mixServedNonCount) {
+            console.debug("[investment] mix dropped: served unit is not a work-unit count", {
+                unitClass: mixUnitClass,
+            });
+        }
+    }, [mixServedNonCount, mixUnitClass]);
     const investmentMix = useMemo(
-        () => (mixData ? normalizeInvestmentMix(mixData) : null),
-        [mixData],
+        () => (mixData && !mixServedNonCount ? normalizeInvestmentMix(mixData) : null),
+        [mixData, mixServedNonCount],
     );
     const isMixLoading = mixLoading;
-    const mixFailed = Boolean(mixError);
+    const mixFailed = Boolean(mixError) || mixServedNonCount;
 
     const [mixExplanation, setMixExplanation] = useState<MixExplanationState>({
         data: null,
