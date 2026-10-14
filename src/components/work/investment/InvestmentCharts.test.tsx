@@ -229,13 +229,13 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
         // Regression guard: the Sankey/Chord flow sections must label their
         // unit from the flow RESPONSE's own `unit` field, never from
         // workUnits[].effort.metric (an unrelated per-unit field that is
-        // "churn_loc" in production and would keep reading "loc" forever
+        // "work_units" in production and would keep reading "loc" forever
         // even after the backend switched its default weight to a
         // work-unit count). Every fixture below uses effort.metric =
-        // "churn_loc" specifically to prove that.
+        // "work_units" specifically to prove that.
         const churnWorkUnit: WorkUnitInvestment = {
             ...sampleWorkUnit,
-            effort: { metric: "churn_loc", value: 500 },
+            effort: { metric: "work_units", value: 500 },
         };
 
         it('passes unit="work units" to the sankey chart when the flow response is unit: "WORK_UNITS"', () => {
