@@ -122,8 +122,6 @@ const nextConfig = {
 };
 
 module.exports = withSentryConfig(nextConfig, {
-    // Proxy Sentry requests through Next.js to avoid CSP / DNS issues
-    tunnelRoute: "/monitoring",
     // Suppress source map upload logs during build
     silent: !process.env.CI,
     // Upload source maps only when SENTRY_AUTH_TOKEN is set
