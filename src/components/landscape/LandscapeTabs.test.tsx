@@ -91,6 +91,50 @@ describe("Teams tab (pin)", () => {
     });
 });
 
+describe("Teams tab churn at org and team scope (CHAOS-9693)", () => {
+    // Org and team scope: the churn quadrant plots repositories, never teams. Each repository point names
+    // its owning teams with their share, so a team's churn is the sum of churn x share (D5998).
+    const withOwners = (
+        id: string,
+        x: number,
+        owners: { team_id: string; team_label: string; share: number }[],
+    ) => ({ ...pt(id, id, x, 1), owner_shares: owners });
+    const repoChurn: QuadrantResponse = {
+        axes,
+        annotations: [],
+        points: [
+            withOwners("acme/shared", 100, [
+                { team_id: "t1", team_label: "Team Alpha", share: 0.7 },
+                { team_id: "t2", team_label: "Team Beta", share: 0.3 },
+            ]),
+            withOwners("acme/solo", 40, [{ team_id: "t1", team_label: "Team Alpha", share: 1 }]),
+            pt("acme/orphan", "acme/orphan", 7, 1),
+        ],
+    };
+
+    it("shows each team's churn as the sum of repository churn x owner share", () => {
+        render(<TeamsView cycleData={cycle} churnData={repoChurn} />);
+        const churnOf = (team: string) =>
+            within(screen.getByText(team).closest("tr") as HTMLElement)
+                .getAllByRole("cell")
+                .at(-1);
+        expect(churnOf("Team Alpha")).toHaveTextContent("110");
+        expect(churnOf("Team Beta")).toHaveTextContent("30");
+        expect(churnOf("Team Gamma")).toHaveTextContent("—");
+    });
+
+    it("never counts a co-owned repository twice across teams", () => {
+        render(<TeamsView cycleData={cycle} churnData={repoChurn} />);
+        const total = ["Team Alpha", "Team Beta"].reduce((sum, team) => {
+            const cell = within(screen.getByText(team).closest("tr") as HTMLElement)
+                .getAllByRole("cell")
+                .at(-1);
+            return sum + Number(cell?.textContent?.replace(/,/g, ""));
+        }, 0);
+        expect(total).toBe(140);
+    });
+});
+
 describe("Repos tab (pin)", () => {
     it("keeps the columns and the churn-descending order", () => {
         const { container } = render(<ReposView hotspots={hotspots} />);

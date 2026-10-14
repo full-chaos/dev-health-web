@@ -34,6 +34,19 @@ export function TabPanel({
 
 // ── Teams tab — derived from the two quadrant point sets ────────────────────
 
+// At org and team scope the churn quadrant plots one point per repository, so a team's churn is the sum
+// over its repositories of churn x the team's share of each (additive measure, D5998). At repository scope
+// the points carry no owners and the tab matches them to its own repository rows by entity id.
+function teamChurnFromOwnerShares(churnData: QuadrantResponse | null): Map<string, number> {
+    const byTeam = new Map<string, number>();
+    for (const point of churnData?.points ?? []) {
+        for (const owner of point.owner_shares ?? []) {
+            byTeam.set(owner.team_id, (byTeam.get(owner.team_id) ?? 0) + point.x * owner.share);
+        }
+    }
+    return byTeam;
+}
+
 export function TeamsView({
     cycleData,
     churnData,
@@ -42,13 +55,14 @@ export function TeamsView({
     churnData: QuadrantResponse | null;
 }) {
     const churnById = new Map((churnData?.points ?? []).map((p) => [p.entity_id, p.x]));
+    const churnByTeam = teamChurnFromOwnerShares(churnData);
     const rows = (cycleData?.points ?? [])
         .map((p) => ({
             id: p.entity_id,
             label: p.entity_label,
             cycle: p.x,
             throughput: p.y,
-            churn: churnById.get(p.entity_id),
+            churn: churnByTeam.get(p.entity_id) ?? churnById.get(p.entity_id),
         }))
         .sort((a, b) => b.throughput - a.throughput);
 

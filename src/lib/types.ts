@@ -659,6 +659,13 @@ export type QuadrantPointTrajectory = {
     window: string;
 };
 
+/** An active team that owns a repository point and the share of the repository it holds (churn_throughput only). */
+export type QuadrantOwnerShare = {
+    team_id: string;
+    team_label: string;
+    share: number;
+};
+
 export type QuadrantPoint = {
     entity_id: string;
     entity_label: string;
@@ -668,6 +675,7 @@ export type QuadrantPoint = {
     window_end: string;
     evidence_link: string;
     trajectory?: QuadrantPointTrajectory[];
+    owner_shares?: QuadrantOwnerShare[];
 };
 
 export type QuadrantAnnotation = {
