@@ -555,6 +555,66 @@ describe("toHomeResponse rateCoverage (CHAOS-9141)", () => {
     });
 });
 
+describe("toHomeResponse changeFailureEvidence (CHAOS-9630)", () => {
+    const withDelta = (extra: object) => ({
+        ...graphqlFixture,
+        deltas: [{ ...graphqlFixture.deltas[0], ...extra }],
+    });
+
+    it("maps every served field and keeps a 0 count and a 0 coverage", () => {
+        const out = toHomeResponse(
+            withDelta({
+                changeFailureEvidence: {
+                    basis: null,
+                    deployments: 7,
+                    deploymentsWithStatus: 0,
+                    coverage: 0,
+                    unknownReason: "deployments_without_outcome",
+                },
+            }),
+        );
+        expect(out.deltas[0].change_failure_evidence).toEqual({
+            basis: null,
+            deployments: 7,
+            deployments_with_status: 0,
+            coverage: 0,
+            unknown_reason: "deployments_without_outcome",
+        });
+    });
+
+    it("maps a measured basis", () => {
+        const out = toHomeResponse(
+            withDelta({
+                changeFailureEvidence: {
+                    basis: "status",
+                    deployments: 40,
+                    deploymentsWithStatus: 30,
+                    coverage: 0.75,
+                    unknownReason: null,
+                },
+            }),
+        );
+        expect(out.deltas[0].change_failure_evidence).toMatchObject({
+            basis: "status",
+            deployments_with_status: 30,
+            coverage: 0.75,
+            unknown_reason: null,
+        });
+    });
+
+    it("keeps a null as null and leaves the key out when the answer has none", () => {
+        expect(
+            toHomeResponse(withDelta({ changeFailureEvidence: null })).deltas[0]
+                .change_failure_evidence,
+        ).toBeNull();
+        expect("change_failure_evidence" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
+    });
+
+    it("asks for the field in the Home query", () => {
+        expect(HOME_QUERY).toContain("changeFailureEvidence {");
+    });
+});
+
 describe("toHomeResponse repository link fields", () => {
     const withDelta = (extra: object) => ({
         ...graphqlFixture,

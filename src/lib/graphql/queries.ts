@@ -449,6 +449,13 @@ query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
         hasData
         scope
         rateState
+        changeFailureEvidence {
+          basis
+          deployments
+          deploymentsWithStatus
+          coverage
+          unknownReason
+        }
         delta {
           value
           priorValue
@@ -1231,6 +1238,13 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       repoLinkCoverage {
         linkedItems
         itemsInWindow
+      }
+      changeFailureEvidence {
+        basis
+        deployments
+        deploymentsWithStatus
+        coverage
+        unknownReason
       }
     }
     reworkThemeAllocation {

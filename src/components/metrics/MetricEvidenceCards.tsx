@@ -1,5 +1,6 @@
 "use client";
 
+import { changeFailureEvidenceIntro } from "@/components/evidence/ChangeFailureEvidenceIntro";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
@@ -70,7 +71,13 @@ export function MetricEvidenceCards({
                         // One evidence path per tile: the button opens the shared drawer, and
                         // the drawer footer links to Explore for the metric (with the role).
                         onOpenEvidence={() =>
-                            evidence.open({ title: label, metric, filters, role: activeRole })
+                            evidence.open({
+                                title: label,
+                                metric,
+                                filters,
+                                role: activeRole,
+                                intro: changeFailureEvidenceIntro(metric, data),
+                            })
                         }
                     />
                 );

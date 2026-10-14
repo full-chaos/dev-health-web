@@ -21,6 +21,14 @@ export type SparkPoint = {
     value: number | null;
 };
 
+export type ChangeFailureEvidence = {
+    basis?: string | null;
+    deployments?: number | null;
+    deployments_with_status?: number | null;
+    coverage?: number | null;
+    unknown_reason?: string | null;
+};
+
 export type MetricDelta = {
     metric: string;
     label: string;
@@ -66,6 +74,12 @@ export type MetricDelta = {
      * request or no stored counts). Absent: the REST answer, or an API before it. 0 is a value.
      */
     rate_coverage?: number | null;
+    /**
+     * What the change failure rate stands on (CHAOS-9630): basis, deployments D, deployments with a
+     * final status K, coverage K / D (a 0..1 fraction), and why there is no rate. Null: none served.
+     * Absent: the REST answer, or an API before it.
+     */
+    change_failure_evidence?: ChangeFailureEvidence | null;
     spark: SparkPoint[];
 };
 
