@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     titleCase,
     isNonCountUnit,
+    workUnitActiveHours,
     workUnitChangeSet,
     WORK_UNIT_COUNT_UNIT,
     formatSubcategoryLabel,
@@ -324,6 +325,13 @@ describe("workUnitChangeSet (CHAOS-9688)", () => {
         expect(workUnitChangeSet([row("churn_loc", 10), row("churn_loc", 5)])).toEqual({
             lines: 15,
         });
+    });
+
+    it("keeps active hours as their own fact", () => {
+        expect(workUnitActiveHours([row("active_hours", 3), row("active_hours", 2)])).toEqual({
+            hours: 5,
+        });
+        expect(workUnitActiveHours([row("churn_loc", 3)])).toBeNull();
     });
 
     it("is null for hours, a work-unit count, mixed metrics or no rows", () => {

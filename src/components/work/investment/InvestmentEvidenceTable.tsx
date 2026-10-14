@@ -24,6 +24,7 @@ import {
     selectWorkUnitEntries,
     workUnitRepositoryLabel,
     workUnitRowKey,
+    workUnitActiveHours,
     workUnitChangeSet,
     titleCase,
     type WorkUnitListEntry,
@@ -186,6 +187,7 @@ export function GroupUnitsList({
                 const repositoryLabel = workUnitRepositoryLabel(unit);
                 const unitOpen = openUnits.has(rowKey);
                 const changeSet = workUnitChangeSet([unit]);
+                const activeHours = workUnitActiveHours([unit]);
                 const attribution = attributionByWorkUnit?.get(unit.work_unit_id);
                 const textual = unit.evidence?.textual ?? [];
                 const metadata = [
@@ -238,6 +240,11 @@ export function GroupUnitsList({
                                 {changeSet ? (
                                     <span data-testid="evidence-unit-change-set">
                                         Change set: {formatNumber(changeSet.lines)} lines
+                                    </span>
+                                ) : null}
+                                {activeHours ? (
+                                    <span data-testid="evidence-unit-active-hours">
+                                        Active hours: {formatNumber(activeHours.hours)}
                                     </span>
                                 ) : null}
                                 <span>

@@ -9,6 +9,7 @@ import {
     formatWorkUnitLabel,
     firstRowPerWorkUnit,
     workUnitRepositoryLabel,
+    workUnitActiveHours,
     workUnitChangeSet,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -160,6 +161,7 @@ export function InvestmentView({
             contextual,
             repositories,
             changeSet: workUnitChangeSet(rows),
+            activeHours: workUnitActiveHours(rows),
         };
     }, [data.selectedUnit, data.workUnits]);
 
@@ -283,6 +285,12 @@ export function InvestmentView({
                                 <div data-testid="selected-unit-change-set">
                                     <span className="text-(--ink-muted)">Change set:</span>{" "}
                                     {formatNumber(selectedDetail.changeSet.lines)} lines
+                                </div>
+                            ) : null}
+                            {selectedDetail?.activeHours ? (
+                                <div data-testid="selected-unit-active-hours">
+                                    <span className="text-(--ink-muted)">Active hours:</span>{" "}
+                                    {formatNumber(selectedDetail.activeHours.hours)}
                                 </div>
                             ) : null}
                             {selectedDetail && selectedDetail.repositories.length > 1 ? (

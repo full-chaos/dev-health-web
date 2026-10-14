@@ -156,6 +156,26 @@ describe("InvestmentEvidenceTable — lines of code and hours are not investment
     });
 });
 
+describe("InvestmentEvidenceTable — active hours fact (CHAOS-9688)", () => {
+    it("keeps active hours as a plain fact of the unit in the drawer, never a column or total", async () => {
+        const hours = { ...unit, effort: { metric: "active_hours" as const, value: 7 } };
+        render(
+            <InvestmentEvidenceTable
+                workUnits={[hours]}
+                filters={filters}
+                onSelectWorkUnit={vi.fn()}
+            />,
+        );
+        expect(screen.getByTestId("evidence-table-head").textContent).not.toMatch(/hours/i);
+        fireEvent.click(screen.getByRole("button", { name: /^Evidence: / }));
+        const drawer = await screen.findByRole("dialog");
+        expect(within(drawer).getByTestId("evidence-unit-active-hours")).toHaveTextContent(
+            "Active hours: 7",
+        );
+        expect(within(drawer).queryByTestId("evidence-unit-change-set")).toBeNull();
+    });
+});
+
 describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
     it("uses the served zero mean instead of averaging displayed work units", () => {
         useInvestmentEvidenceQualityGroupsMock.mockReturnValue({
