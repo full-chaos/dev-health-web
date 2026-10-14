@@ -22,7 +22,6 @@ import type {
     FeatureFlag,
     FeatureFlagEvent,
 } from "./types";
-import { getDistinctSourceIds } from "./graph";
 
 const EMPTY_RESULT: WorkGraphEdgesResult = {
     edges: [],
@@ -256,9 +255,8 @@ export async function fetchFeatureFlagsData(
     try {
         const orgId = await resolveOrgId();
 
-        const [registry, impact, timeseries] = await Promise.all([
+        const [registry, timeseries] = await Promise.all([
             fetchFeatureFlagRegistry(),
-            fetchReleaseImpact(""),
             fetchFeatureFlagTimeseries(orgId, dateRange),
         ]);
 
@@ -279,23 +277,10 @@ export async function fetchFeatureFlagsData(
         const releaseFrictionDelta = latestFromSpark(frictionSpark);
         const releaseErrorRateDelta = latestFromSpark(errorSpark);
 
-        // coverageRatio: source from FLAG_COVERAGE_RATIO timeseries (matches sparkline).
-        // Fall back to work-graph computation when no timeseries data is available.
-        // NOTE: The || 1 denominator fabrication has been removed — an empty release
-        // graph yields no ratio (null, "--") rather than a synthetic 100% or a 0.
-        const coverageRatioFromTimeseries = latestFromSpark(coverageRatioSpark);
-        let coverageRatio: number | null;
-        if (coverageRatioFromTimeseries !== null) {
-            coverageRatio = Math.round(coverageRatioFromTimeseries);
-        } else {
-            const impactEdges = impact.edges.filter((edge) => edge.edgeType === "IMPACTS");
-            const totalReleases = getDistinctSourceIds(impact.edges).size;
-            const withTelemetry = getDistinctSourceIds(impactEdges).size;
-            // When no releases exist yet, coverage is genuinely unknown: null, never 0
-            // (a missing / null latest bucket must not read as a measured 0 %).
-            coverageRatio =
-                totalReleases > 0 ? Math.round((withTelemetry / totalReleases) * 100) : null;
-        }
+        // coverageRatio comes from the FLAG_COVERAGE_RATIO timeseries only (matches the
+        // sparkline). A missing (null) latest bucket stays null ("--"): never another source.
+        const coverageRatioLatest = latestFromSpark(coverageRatioSpark);
+        const coverageRatio = coverageRatioLatest === null ? null : Math.round(coverageRatioLatest);
 
         // activeFlagsDelta and coverageRatioDelta are intentionally omitted:
         // FLAG_ACTIVE_COUNT_DELTA and FLAG_COVERAGE_RATIO_DELTA are not yet exposed
