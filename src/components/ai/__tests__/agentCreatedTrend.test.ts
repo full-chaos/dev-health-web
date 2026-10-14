@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { AiImpactBucketRow } from "@/lib/graphql/__generated__/types";
+import type { AiImpactBucketRow, AiImpactBucketTotals } from "@/lib/graphql/__generated__/types";
 import { orderTimeseriesPoints } from "@/components/charts/timeseriesData";
-import { agentCreatedTrend } from "../utils";
+import { agentCreatedTrend, assistedWorkShareRows } from "../utils";
 
 // CHAOS-7983: the Impact agent-created trend. Today (before `day` exists on the API) the x label is
 // the 1-based row index, one point per agent_created row; this pins that so the date change is visible.
@@ -84,5 +84,21 @@ describe("agentCreatedTrend with day", () => {
         ]);
         const { categories } = orderTimeseriesPoints(points);
         expect(categories).toEqual(["Aug 2", "Aug 11"]);
+    });
+});
+
+// CHAOS-9605: counts may be share-weighted fractions; the series keeps the raw value, no rounding.
+describe("fractional counts", () => {
+    it("agentCreatedTrend keeps a fractional prsTotal as served", () => {
+        expect(agentCreatedTrend([row("agent_created", 2.25, { day: "2026-08-01" })])).toEqual([
+            { day: "2026-08-01", label: "Aug 1", value: 2.25 },
+        ]);
+    });
+
+    it("assistedWorkShareRows keeps a fractional prsTotal as served", () => {
+        const rows = [
+            { bucket: "ai_assisted", prsTotal: 4.5 },
+        ] as unknown as AiImpactBucketTotals[];
+        expect(assistedWorkShareRows(rows)[0].value).toBe(4.5);
     });
 });
