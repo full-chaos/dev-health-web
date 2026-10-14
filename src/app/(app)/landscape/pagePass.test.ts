@@ -64,4 +64,10 @@ describe("Landscape page pass (CHAOS-7761)", () => {
             );
         }
     });
+
+    it("the Teams tab reads team-keyed churn (scope_type service) at org and team scope (CHAOS-9708)", () => {
+        expect(page).toContain('scope_type: "service"');
+        expect(page).toContain('type: "churn_throughput", scope_type: "service"');
+        expect(page).toMatch(/scopeType === "org" \|\| scopeType === "team" \? teamChurn/u);
+    });
 });

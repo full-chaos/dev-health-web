@@ -124,12 +124,32 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
           )
         : QUADRANT_CARDS.map(() => Promise.resolve(null));
 
-    const [health, hotspots, busFactor, ...quadrantData] = await Promise.all([
+    // Team-keyed churn (ops serves it share-weighted; the web only displays it). At repo scope the
+    // repository-grain churn stays the Teams tab source.
+    const teamChurnPromise =
+        canQuery && activeTab === "teams" && (scopeType === "org" || scopeType === "team")
+            ? fetchOrNull(
+                  getQuadrant({
+                      type: "churn_throughput",
+                      scope_type: "service",
+                      scope_id: scopeId,
+                      range_days: filters.time.range_days,
+                      start_date: filters.time.start_date,
+                      end_date: filters.time.end_date,
+                      filters,
+                      bucket,
+                  }),
+                  "landscape/quadrant-team-churn",
+              )
+            : Promise.resolve(null);
+
+    const [health, hotspots, busFactor, teamChurn, ...quadrantData] = await Promise.all([
         checkApiHealth(),
         orgId
             ? fetchHotspots(orgId, since.toISOString(), until.toISOString())
             : Promise.resolve([]),
         fetchOrNull(getBusFactorData(filters), "landscape/bus-factor"),
+        teamChurnPromise,
         ...quadrantPromises,
     ]);
 
@@ -258,7 +278,13 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             {activeTab === "teams" && (
                 <TeamsView
                     cycleData={cycleIndex >= 0 ? quadrantData[cycleIndex] : null}
-                    churnData={churnIndex >= 0 ? quadrantData[churnIndex] : null}
+                    churnData={
+                        scopeType === "org" || scopeType === "team"
+                            ? teamChurn
+                            : churnIndex >= 0
+                              ? quadrantData[churnIndex]
+                              : null
+                    }
                 />
             )}
             {activeTab === "repos" && <ReposView hotspots={hotspots} />}
