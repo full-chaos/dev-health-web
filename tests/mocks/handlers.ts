@@ -105,7 +105,8 @@ const workUnitInvestmentsSample = [
         item_type: "issue",
         key: "PROJ-123",
         time_range: { start: "2025-02-01T12:00:00Z", end: "2025-02-03T18:00:00Z" },
-        effort: { metric: "churn_loc", value: 820 },
+        effort: { metric: "work_units", value: 1 },
+        change_set: { additions: null, deletions: null, total: 820 },
         investment: {
             themes: {
                 feature_delivery: 0.52,
@@ -157,7 +158,8 @@ const workUnitInvestmentsSample = [
         item_type: "pr",
         key: "#482",
         time_range: { start: "2025-02-02T09:00:00Z", end: "2025-02-04T16:30:00Z" },
-        effort: { metric: "churn_loc", value: 540 },
+        effort: { metric: "work_units", value: 1 },
+        change_set: { additions: null, deletions: null, total: 540 },
         investment: {
             themes: {
                 feature_delivery: 0.12,
@@ -203,7 +205,8 @@ const workUnitInvestmentsSample = [
         item_type: "incident",
         key: "INC-77",
         time_range: { start: "2025-02-05T08:00:00Z", end: "2025-02-06T20:00:00Z" },
-        effort: { metric: "churn_loc", value: 310 },
+        effort: { metric: "work_units", value: 1 },
+        change_set: { additions: null, deletions: null, total: 310 },
         investment: {
             themes: {
                 feature_delivery: 0.06,

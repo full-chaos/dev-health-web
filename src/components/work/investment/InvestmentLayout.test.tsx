@@ -106,7 +106,7 @@ const makeUnit = (
     work_unit_name: `Work unit ${id}`,
     work_unit_type: "pr",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-    effort: { metric: "active_hours", value: effortValue },
+    effort: { metric: "work_units", value: effortValue },
     investment: {
         themes: { feature_delivery: 1 },
         subcategories: { "feature_delivery.roadmap": 1 },

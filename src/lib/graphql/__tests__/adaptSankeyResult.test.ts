@@ -120,9 +120,9 @@ describe("adaptSankeyResult", () => {
             expect(result.unit).toBe("WORK_UNITS");
         });
 
-        it("never draws a LOC-served flow as work units: it is the empty flow, and the unit class is logged (CHAOS-9688)", () => {
+        it("never draws a flow served in another unit as work units: it is the empty flow, and the unit class is logged", () => {
             const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
-            const input = minimalSankey({ unit: "LOC" });
+            const input = minimalSankey({ unit: "HOURS" as never });
 
             const result = adaptSankeyResult(input, "investment");
 
@@ -131,7 +131,7 @@ describe("adaptSankeyResult", () => {
             expect(result.unit).toBeUndefined();
             expect(debug).toHaveBeenCalledWith(
                 expect.stringContaining("not a work-unit count"),
-                expect.objectContaining({ unitClass: "LOC" }),
+                expect.objectContaining({ unitClass: "HOURS" }),
             );
             debug.mockRestore();
         });

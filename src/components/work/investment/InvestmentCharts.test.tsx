@@ -85,7 +85,7 @@ const sampleWorkUnit: WorkUnitInvestment = {
     work_unit_type: "pr",
     title: "Feature work",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-    effort: { metric: "active_hours", value: 1 },
+    effort: { metric: "work_units", value: 1 },
     investment: {
         themes: { feature: 0.8, quality: 0.2 },
         subcategories: { "feature.build": 0.8, "quality.tests": 0.2 },

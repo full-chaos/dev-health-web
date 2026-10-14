@@ -328,15 +328,33 @@ export const WORK_UNIT_COUNT_UNIT = "work units";
 /**
  * A work unit's change set (lines changed) as a plain fact of the unit, for evidence and context
  * sections only. It is never an Investment measure: no mix unit, no total, no share, no weight,
- * no sort key. Read only when `effort.metric` is `churn_loc`; when `effort` becomes the work-unit
- * count the fact is null until ops serves a separate change-set field.
+ * no sort key. Read from the served `change_set`; null when any row has none. The split is kept
+ * only when every row serves it.
  */
+export type WorkUnitChangeSet = {
+    additions: number | null;
+    deletions: number | null;
+    total: number;
+};
+
 export const workUnitChangeSet = (
     rows: ReadonlyArray<WorkUnitInvestment>,
-): { lines: number } | null => {
-    if (rows.length === 0 || rows.some((row) => row.effort?.metric !== "churn_loc")) return null;
-    return { lines: rows.reduce((sum, row) => sum + row.effort.value, 0) };
+): WorkUnitChangeSet | null => {
+    if (rows.length === 0 || rows.some((row) => !row.change_set)) return null;
+    const sets = rows.map((row) => row.change_set as WorkUnitChangeSet);
+    const split = sets.every((set) => set.additions !== null && set.deletions !== null);
+    return {
+        additions: split ? sets.reduce((sum, set) => sum + (set.additions ?? 0), 0) : null,
+        deletions: split ? sets.reduce((sum, set) => sum + (set.deletions ?? 0), 0) : null,
+        total: sets.reduce((sum, set) => sum + set.total, 0),
+    };
 };
+
+/** "N lines", or "-x / +y" when additions and deletions are both served. */
+export const formatChangeSet = (set: WorkUnitChangeSet): string =>
+    set.additions !== null && set.deletions !== null
+        ? `-${formatNumber(set.deletions)} / +${formatNumber(set.additions)}`
+        : `${formatNumber(set.total)} lines`;
 
 /** A served unit that names lines of code, hours, churn or effort: never an investment value. */
 export const isNonCountUnit = (unit: string | null | undefined): boolean =>

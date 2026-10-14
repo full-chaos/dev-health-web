@@ -24,11 +24,11 @@ import {
     selectWorkUnitEntries,
     workUnitRepositoryLabel,
     workUnitRowKey,
+    formatChangeSet,
     workUnitChangeSet,
     titleCase,
     type WorkUnitListEntry,
 } from "@/lib/investment";
-import { formatNumber } from "@/lib/formatters";
 import type { WorkUnitInvestment } from "@/lib/types";
 import type { WorkUnitTeamAttribution } from "@/lib/graphql/__generated__/types";
 import { EvidenceEntryCard } from "./EvidenceEntryCard";
@@ -237,7 +237,7 @@ export function GroupUnitsList({
                             <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
                                 {changeSet ? (
                                     <span data-testid="evidence-unit-change-set">
-                                        Change set: {formatNumber(changeSet.lines)} lines
+                                        Change set: {formatChangeSet(changeSet)}
                                     </span>
                                 ) : null}
                                 <span>

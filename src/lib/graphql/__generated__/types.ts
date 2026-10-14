@@ -2219,7 +2219,6 @@ export type SankeyResult = {
 };
 
 export type SankeyValueUnit =
-  | 'LOC'
   | 'WORK_UNITS';
 
 export type SavedReportConnection = {

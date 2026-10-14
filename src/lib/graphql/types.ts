@@ -166,7 +166,7 @@ export interface SankeyResult {
     edges: SankeyEdge[];
     /** null when the backend's coverage query failed and degraded by design. */
     coverage?: SankeyCoverage | null;
-    /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS" (default) | "LOC". */
+    /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS". */
     unit?: string;
 }
 

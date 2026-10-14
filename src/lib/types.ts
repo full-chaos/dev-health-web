@@ -473,8 +473,10 @@ export type WorkUnitInvestment = {
     external_key?: string;
     /** Time range bounding the connected subgraph. */
     time_range: { start: string; end: string };
-    /** Measured size derived by the backend (churn LOC or active hours); not effort. */
-    effort: { metric: "churn_loc" | "active_hours"; value: number };
+    /** The real effort measurement: the work-unit count. */
+    effort: { metric: "work_units"; value: number };
+    /** Lines changed by the unit: a fact only, null where unknown; never a measure, share, weight or sort key. */
+    change_set?: { additions: number | null; deletions: number | null; total: number } | null;
     /** Investment vectors for themes and subcategories (each sums to ~1.0). */
     investment: WorkUnitInvestmentBreakdown;
     /** Evidence quality and server-side band. */
