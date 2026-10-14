@@ -4,7 +4,11 @@ import { auth } from "@/lib/auth";
 import { AcrRuntimeClient, type OAuthConsentPreview } from "./client";
 import { loadAcrRuntimeConfig } from "./config";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
-import { resolveOpsAuthorization, resolveOpsCredentialIssuanceAuthorization } from "./ops";
+import {
+    compareScopeBytes,
+    resolveOpsAuthorization,
+    resolveOpsCredentialIssuanceAuthorization,
+} from "./ops";
 import { contextPacketRequest, parseContextPacketForm, parseEvidenceSelection } from "./protocol";
 
 const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
@@ -172,7 +176,7 @@ function refuseIfImpersonating(
 
 function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
     if (scopes.length === 1 && scopes[0] === "*") return scopes;
-    const sorted = [...scopes].sort((left, right) => left.localeCompare(right));
+    const sorted = [...scopes].sort(compareScopeBytes);
     if (
         scopes.length === 0 ||
         scopes.length > 100 ||

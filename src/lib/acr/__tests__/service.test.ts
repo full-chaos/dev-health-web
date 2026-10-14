@@ -448,6 +448,13 @@ describe("ACR server-only runtime service", () => {
         await expect(listAuthorizedRepositories("org-123")).resolves.toEqual([]);
     });
 
+    it("accepts a server byte-ordered catalog where locale order differs", async () => {
+        const byteOrdered = ["full-chaos/a-b", "full-chaos/a.b", "full-chaos/a_b"];
+        installOpsAuthorization(byteOrdered);
+
+        await expect(listAuthorizedRepositories("org-123")).resolves.toEqual(byteOrdered);
+    });
+
     it("keeps platform validation usable without granting the customer agent runtime", async () => {
         let entitlementRequests = 0;
         vi.mocked(auth).mockResolvedValue({
