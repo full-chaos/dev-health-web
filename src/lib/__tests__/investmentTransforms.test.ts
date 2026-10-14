@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     titleCase,
     isNonCountUnit,
-    workUnitSizeFact,
+    workUnitChangeSet,
     WORK_UNIT_COUNT_UNIT,
     formatSubcategoryLabel,
     normalizeThemeKey,
@@ -314,26 +314,22 @@ describe("investment unit name (CHAOS-9688)", () => {
     });
 });
 
-describe("workUnitSizeFact (CHAOS-9688)", () => {
+describe("workUnitChangeSet (CHAOS-9688)", () => {
     const row = (metric: string, value: number) =>
         ({ effort: { metric, value } }) as unknown as Parameters<
-            typeof workUnitSizeFact
+            typeof workUnitChangeSet
         >[0][number];
 
-    it("names a lines-changed or active-hours size as a plain fact and sums a unit's rows", () => {
-        expect(workUnitSizeFact([row("churn_loc", 10), row("churn_loc", 5)])).toEqual({
-            label: "Lines changed",
-            value: 15,
-        });
-        expect(workUnitSizeFact([row("active_hours", 3)])).toEqual({
-            label: "Active hours",
-            value: 3,
+    it("is the lines of a churn_loc unit, summed over the unit's rows", () => {
+        expect(workUnitChangeSet([row("churn_loc", 10), row("churn_loc", 5)])).toEqual({
+            lines: 15,
         });
     });
 
-    it("is null for any other metric (a work-unit count is not a size fact) or mixed metrics", () => {
-        expect(workUnitSizeFact([row("work_units", 1)])).toBeNull();
-        expect(workUnitSizeFact([row("churn_loc", 1), row("active_hours", 1)])).toBeNull();
-        expect(workUnitSizeFact([])).toBeNull();
+    it("is null for hours, a work-unit count, mixed metrics or no rows", () => {
+        expect(workUnitChangeSet([row("active_hours", 3)])).toBeNull();
+        expect(workUnitChangeSet([row("work_units", 1)])).toBeNull();
+        expect(workUnitChangeSet([row("churn_loc", 1), row("active_hours", 1)])).toBeNull();
+        expect(workUnitChangeSet([])).toBeNull();
     });
 });

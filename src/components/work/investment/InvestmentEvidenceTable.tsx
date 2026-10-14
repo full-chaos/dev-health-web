@@ -24,7 +24,7 @@ import {
     selectWorkUnitEntries,
     workUnitRepositoryLabel,
     workUnitRowKey,
-    workUnitSizeFact,
+    workUnitChangeSet,
     titleCase,
     type WorkUnitListEntry,
 } from "@/lib/investment";
@@ -185,7 +185,7 @@ export function GroupUnitsList({
                 const rowKey = workUnitRowKey(unit);
                 const repositoryLabel = workUnitRepositoryLabel(unit);
                 const unitOpen = openUnits.has(rowKey);
-                const sizeFact = workUnitSizeFact([unit]);
+                const changeSet = workUnitChangeSet([unit]);
                 const attribution = attributionByWorkUnit?.get(unit.work_unit_id);
                 const textual = unit.evidence?.textual ?? [];
                 const metadata = [
@@ -235,9 +235,9 @@ export function GroupUnitsList({
                                 ) : null}
                             </span>
                             <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
-                                {sizeFact ? (
-                                    <span data-testid="evidence-unit-size">
-                                        {sizeFact.label}: {formatNumber(sizeFact.value)}
+                                {changeSet ? (
+                                    <span data-testid="evidence-unit-change-set">
+                                        Change set: {formatNumber(changeSet.lines)} lines
                                     </span>
                                 ) : null}
                                 <span>

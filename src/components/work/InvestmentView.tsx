@@ -9,7 +9,7 @@ import {
     formatWorkUnitLabel,
     firstRowPerWorkUnit,
     workUnitRepositoryLabel,
-    workUnitSizeFact,
+    workUnitChangeSet,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, ReworkThemeAllocation } from "@/lib/types";
@@ -159,7 +159,7 @@ export function InvestmentView({
         return {
             contextual,
             repositories,
-            size: workUnitSizeFact(rows),
+            changeSet: workUnitChangeSet(rows),
         };
     }, [data.selectedUnit, data.workUnits]);
 
@@ -279,12 +279,10 @@ export function InvestmentView({
                                     data.selectedUnit.time_range?.end,
                                 )}
                             </div>
-                            {selectedDetail?.size ? (
-                                <div data-testid="selected-unit-size">
-                                    <span className="text-(--ink-muted)">
-                                        {selectedDetail.size.label}:
-                                    </span>{" "}
-                                    {formatNumber(selectedDetail.size.value)}
+                            {selectedDetail?.changeSet ? (
+                                <div data-testid="selected-unit-change-set">
+                                    <span className="text-(--ink-muted)">Change set:</span>{" "}
+                                    {formatNumber(selectedDetail.changeSet.lines)} lines
                                 </div>
                             ) : null}
                             {selectedDetail && selectedDetail.repositories.length > 1 ? (

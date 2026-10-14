@@ -326,25 +326,16 @@ export const capitalizeFirst = (text: string): string =>
 export const WORK_UNIT_COUNT_UNIT = "work units";
 
 /**
- * A work unit's own size as a plain fact of the unit (evidence and context sections only). It is
- * never an Investment measure: no unit label for a mix, no total, no share, no sort key. Read
- * only from a lines-changed or active-hours metric; when `effort` becomes the work-unit count the
- * fact is null until ops serves a separate field.
+ * A work unit's change set (lines changed) as a plain fact of the unit, for evidence and context
+ * sections only. It is never an Investment measure: no mix unit, no total, no share, no weight,
+ * no sort key. Read only when `effort.metric` is `churn_loc`; when `effort` becomes the work-unit
+ * count the fact is null until ops serves a separate change-set field.
  */
-export const workUnitSizeFact = (
+export const workUnitChangeSet = (
     rows: ReadonlyArray<WorkUnitInvestment>,
-): { label: string; value: number } | null => {
-    const metrics = new Set(rows.map((row) => row.effort?.metric));
-    if (metrics.size !== 1) return null;
-    const metric = rows[0]?.effort?.metric;
-    const label =
-        metric === "churn_loc"
-            ? "Lines changed"
-            : metric === "active_hours"
-              ? "Active hours"
-              : null;
-    if (!label) return null;
-    return { label, value: rows.reduce((sum, row) => sum + row.effort.value, 0) };
+): { lines: number } | null => {
+    if (rows.length === 0 || rows.some((row) => row.effort?.metric !== "churn_loc")) return null;
+    return { lines: rows.reduce((sum, row) => sum + row.effort.value, 0) };
 };
 
 /** A served unit that names lines of code, hours, churn or effort: never an investment value. */

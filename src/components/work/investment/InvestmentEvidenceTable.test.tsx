@@ -29,7 +29,7 @@ const unit: WorkUnitInvestment = {
     work_unit_name: "Login fix",
     work_unit_type: "pr",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-    effort: { metric: "active_hours", value: 12 },
+    effort: { metric: "churn_loc", value: 12 },
     investment: { themes: { feature_delivery: 1 }, subcategories: { "feature.build": 1 } },
     evidence_quality: { value: 0.7, band: "moderate" },
     evidence: {
@@ -50,7 +50,7 @@ const second: WorkUnitInvestment = {
     ...unit,
     work_unit_id: "wu-4444-5555-6666",
     work_unit_name: "Logout fix",
-    effort: { metric: "active_hours", value: 5 },
+    effort: { metric: "churn_loc", value: 5 },
 };
 
 const attribution = new Map<string, WorkUnitTeamAttribution>([
@@ -264,10 +264,10 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
                 Object.values(r).some((v) => v && !Array.isArray(v) && typeof v === "object"),
             ),
         ).toBe(true);
-        // The unit's own size is a plain fact of the unit (evidence section), never an effort
+        // The unit's own size is a plain "Change set" fact of the unit (evidence section), never an effort
         // or a total.
-        expect(text).toContain("Active hours: 12");
-        expect(text).toContain("Active hours: 5");
+        expect(text).toContain("Change set: 12 lines");
+        expect(text).toContain("Change set: 5 lines");
         expect(text).not.toMatch(/effort|work units/i);
         for (const record of records) {
             for (const [key, value] of Object.entries(record)) {
