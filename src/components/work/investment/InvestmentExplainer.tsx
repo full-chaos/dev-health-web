@@ -2,7 +2,6 @@ import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatNumber } from "@/lib/formatters";
 import { formatSubcategoryLabel, titleCase } from "@/lib/investment";
 import type { MixExplanationState } from "./types";
 
@@ -92,13 +91,20 @@ export function InvestmentExplainer({
                                             </p>
                                             <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-xs text-(--ink-muted)">
                                                 <span className="wrap-anywhere rounded-full bg-(--card-stroke)/50 px-2 py-0.5">
-                                                    {titleCase(finding.evidence.theme)}
+                                                    {finding.evidence.subcategory
+                                                        ? formatSubcategoryLabel(
+                                                              finding.evidence.subcategory,
+                                                              false,
+                                                          )
+                                                        : titleCase(finding.evidence.theme)}
                                                 </span>
+                                                {finding.evidence.subcategory && (
+                                                    <span className="wrap-anywhere opacity-70">
+                                                        {titleCase(finding.evidence.theme)}
+                                                    </span>
+                                                )}
                                                 <span>
-                                                    {formatNumber(finding.evidence.share_pct, {
-                                                        maximumFractionDigits: 1,
-                                                    })}
-                                                    %
+                                                    {Math.round(finding.evidence.share_pct)}%
                                                 </span>
                                                 {finding.evidence.evidence_quality_band && (
                                                     <span className="wrap-anywhere opacity-70">
