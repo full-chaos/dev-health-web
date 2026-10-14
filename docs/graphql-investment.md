@@ -20,8 +20,6 @@ set `USE_GRAPHQL_ANALYTICS=true` for a runtime-only flag.
 When enabled, the following Investment view API calls switch from REST to GraphQL:
 
 - `getInvestment()` - theme/subcategory distributions
-- `getInvestmentFlow()` - Sankey flow (team → category → repo)
-- `getInvestmentRepoTeamFlow()` - Sankey flow (repo → team)
 
 When disabled (default), all calls continue to use the existing REST endpoints.
 

@@ -3,18 +3,13 @@ import type {
     DrilldownResponse,
     InvestmentResponse,
     InvestmentMixExplanation,
-    SankeyResponse,
     WorkUnitInvestment,
     WorkUnitExplanation,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { apiClient } from "@/lib/apiClient";
-import {
-    getInvestmentViaGraphQL,
-    getInvestmentFlowViaGraphQL,
-    getInvestmentRepoTeamFlowViaGraphQL,
-} from "@/lib/graphql/investmentFetchers";
+import { getInvestmentViaGraphQL } from "@/lib/graphql/investmentFetchers";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { getAuth, normalizeFilters, postJson } from "./_shared";
 
@@ -53,79 +48,6 @@ export async function explainInvestmentMix(params: {
             f: encodeFilterParam(normalized),
             llm_provider: params.llm_provider ?? "auto",
         },
-    );
-}
-
-export async function getInvestmentFlow(params: {
-    filters: MetricFilter;
-    theme?: string | null;
-    flow_mode?: "team_category_repo" | "team_subcategory_repo" | "team_category_subcategory_repo";
-    drill_category?: string | null;
-    top_n_repos?: number;
-}) {
-    const normalized = normalizeFilters(params.filters);
-
-    // Feature flag: use GraphQL transport when enabled
-    if (runtimeConfig.useGraphQLAnalytics()) {
-        const auth = await getAuth();
-        const session = await auth();
-        const orgId = session?.user?.org_id as string | undefined;
-        return getInvestmentFlowViaGraphQL({
-            ...params,
-            filters: normalized,
-            contextOrgId: orgId,
-        });
-    }
-
-    const response = await postJson<SankeyResponse>(
-        "/api/v1/investment/flow",
-        {
-            filters: normalized,
-            theme: params.theme ?? null,
-            flow_mode: params.flow_mode ?? null,
-            drill_category: params.drill_category ?? null,
-            top_n_repos: params.top_n_repos,
-        },
-        60,
-        { f: encodeFilterParam(normalized) },
-    );
-
-    // Clean labels (strip prefixes) to match frontend expectations
-    // This mirrors the logic in adaptSankeyResult
-    if (response && Array.isArray(response.nodes)) {
-        response.nodes.forEach((node) => {
-            if (node.name) {
-                node.name = node.name.replace(/^(TEAM|REPO|THEME|SUBCATEGORY):\s*/i, "");
-            }
-        });
-    }
-
-    return response;
-}
-
-export async function getInvestmentRepoTeamFlow(params: {
-    filters: MetricFilter;
-    theme?: string | null;
-}) {
-    const normalized = normalizeFilters(params.filters);
-
-    // Feature flag: use GraphQL transport when enabled
-    if (runtimeConfig.useGraphQLAnalytics()) {
-        const auth = await getAuth();
-        const session = await auth();
-        const orgId = session?.user?.org_id as string | undefined;
-        return getInvestmentRepoTeamFlowViaGraphQL({
-            ...params,
-            filters: normalized,
-            contextOrgId: orgId,
-        });
-    }
-
-    return postJson<SankeyResponse>(
-        "/api/v1/investment/flow/repo-team",
-        { filters: normalized, theme: params.theme ?? null },
-        60,
-        { f: encodeFilterParam(normalized) },
     );
 }
 
