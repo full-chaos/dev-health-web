@@ -3187,12 +3187,55 @@ export const handlers = [
             });
         }
 
+        // Team grain (CHAOS-9708): ops serves share-weighted churn keyed by team id.
+        if (url.searchParams.get("scope_type") === "service") {
+            const teamPoint = (id: string, label: string, x: number, y: number) => ({
+                entity_id: id,
+                entity_label: label,
+                x,
+                y,
+                window_start: "2026-01-05",
+                window_end: "2026-02-02",
+                evidence_link: "/api/v1/explain?metric=churn",
+            });
+            return HttpResponse.json({
+                axes,
+                points: [
+                    teamPoint("team-alpha", "Team Alpha", 4200, 12),
+                    teamPoint("team-beta", "Team Beta", 1850, 8),
+                    teamPoint("team-gamma", "Team Gamma", 640, 5),
+                ],
+                annotations: [],
+            });
+        }
+
         return HttpResponse.json({
             axes,
             points: [
-                { label: "repo-alpha", x: 24, y: 12, size: 30 },
-                { label: "repo-beta", x: 48, y: 8, size: 20 },
-                { label: "repo-gamma", x: 72, y: 5, size: 15 },
+                {
+                    label: "repo-alpha",
+                    entity_id: `${type === "churn_throughput" ? "repo" : "team"}-alpha`,
+                    entity_label: type === "churn_throughput" ? "repo-alpha" : "Team Alpha",
+                    x: 24,
+                    y: 12,
+                    size: 30,
+                },
+                {
+                    label: "repo-beta",
+                    entity_id: `${type === "churn_throughput" ? "repo" : "team"}-beta`,
+                    entity_label: type === "churn_throughput" ? "repo-beta" : "Team Beta",
+                    x: 48,
+                    y: 8,
+                    size: 20,
+                },
+                {
+                    label: "repo-gamma",
+                    entity_id: `${type === "churn_throughput" ? "repo" : "team"}-gamma`,
+                    entity_label: type === "churn_throughput" ? "repo-gamma" : "Team Gamma",
+                    x: 72,
+                    y: 5,
+                    size: 15,
+                },
             ],
             annotations: [],
         });

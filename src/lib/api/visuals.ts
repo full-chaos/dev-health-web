@@ -89,7 +89,7 @@ export async function getAggregatedFlame(params: {
 
 export async function getQuadrant(params: {
     type: "churn_throughput" | "cycle_throughput" | "wip_throughput" | "review_load_latency";
-    scope_type: "org" | "team" | "repo" | "developer" | "person";
+    scope_type: "org" | "team" | "repo" | "developer" | "person" | "service";
     scope_id?: string;
     range_days: number;
     bucket: "week" | "month";

@@ -80,6 +80,26 @@ describe("Teams tab (pin)", () => {
         const gamma = within(screen.getByText("Team Gamma").closest("tr") as HTMLElement);
         expect(gamma.getAllByRole("cell").at(-1)).toHaveTextContent("—");
     });
+    it("joins the served churn by team id and shows the served number unchanged", () => {
+        const served: QuadrantResponse = {
+            axes,
+            annotations: [],
+            points: [pt("t2", "Team Beta", 777, 1), pt("repo-name", "Team Gamma", 999, 1)],
+        };
+        render(<TeamsView cycleData={cycle} churnData={served} />);
+        const beta = within(screen.getByText("Team Beta").closest("tr") as HTMLElement);
+        expect(beta.getAllByRole("cell").at(-1)).toHaveTextContent("777");
+        const gamma = within(screen.getByText("Team Gamma").closest("tr") as HTMLElement);
+        expect(gamma.getAllByRole("cell").at(-1)).toHaveTextContent("—");
+        expect(screen.queryByText("999")).not.toBeInTheDocument();
+    });
+    it("shows an em dash for every team when no churn is served", () => {
+        render(<TeamsView cycleData={cycle} churnData={null} />);
+        for (const name of ["Team Alpha", "Team Beta", "Team Gamma"]) {
+            const row = within(screen.getByText(name).closest("tr") as HTMLElement);
+            expect(row.getAllByRole("cell").at(-1)).toHaveTextContent("—");
+        }
+    });
     it("keeps the empty state", () => {
         render(<TeamsView cycleData={null} churnData={null} />);
         expect(screen.getByText("No team data")).toBeInTheDocument();
