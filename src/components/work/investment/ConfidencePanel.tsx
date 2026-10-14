@@ -409,6 +409,12 @@ export function ConfidencePanel({
                                         {row.prs_merged.toLocaleString()} PR
                                         {row.prs_merged !== 1 ? "s" : ""}
                                     </span>
+                                    <span>
+                                        {formatNumber(row.churn_loc / 1000, {
+                                            maximumFractionDigits: 1,
+                                        })}
+                                        k churn LOC
+                                    </span>
                                 </div>
                             </li>
                         ))}
