@@ -28,7 +28,12 @@ test("sign-in returns to /acr/device with the code prefilled, and approve comple
 
     await page.getByLabel("Email").fill("admin@devhealth.example");
     await page.getByLabel("Password").fill("devhealth123");
-    await page.getByRole("button", { name: "Sign in" }).click();
+    // The credentials round trip can outlast the default 5 s expect timeout on a slow runner:
+    // wait on the navigation itself, then assert.
+    await Promise.all([
+        page.waitForURL(new RegExp(`/acr/device\\?user_code=${USER_CODE}$`)),
+        page.getByRole("button", { name: "Sign in" }).click(),
+    ]);
 
     // Full round trip: hard nav back to /acr/device with the SAME code, no
     // sign-in interstitial left over, no bounce to /dashboard.

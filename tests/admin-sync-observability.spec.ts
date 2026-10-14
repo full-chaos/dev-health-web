@@ -276,6 +276,19 @@ test.describe("Journey 2 — gap-driven backfill flow", () => {
         // git dataset's first gap window (2026-06-24 → 2026-06-26).
         const firstGapAction = timeline.getByRole("button", { name: "Backfill this gap" }).first();
         await expect(firstGapAction).toBeEnabled();
+        // This page sets no ?f= param, so waitForHydration cannot be used: wait until React has
+        // attached the button's click handler, or a click on slow CI is swallowed.
+        await expect
+            .poll(() =>
+                firstGapAction.evaluate((element) =>
+                    Object.entries(element).some(
+                        ([key, value]) =>
+                            key.startsWith("__reactProps$") &&
+                            typeof (value as { onClick?: unknown }).onClick === "function",
+                    ),
+                ),
+            )
+            .toBe(true);
         await firstGapAction.scrollIntoViewIfNeeded();
         await firstGapAction.click();
 
