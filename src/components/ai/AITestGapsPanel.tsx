@@ -6,6 +6,7 @@ import { Notice } from "@/components/ui/Notice";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
 import { findBucketRow, useAIRiskBreakdown } from "@/lib/graphql/hooks/useAIReviewRisk";
+import { COUNT_FORMAT, formatNumber } from "@/lib/formatters";
 import { AI_COMPARISON_POLARITY, AIComparisonMetricCard } from "./AIComparisonMetricCard";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 
@@ -81,11 +82,13 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
                     <h3 className="text-h3 font-semibold">PRs with test gaps</h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         AI-attributed pull requests counted toward the gap rate, out of{" "}
-                        {risk.fetching ? "—" : (aiBucket?.prsTotal ?? 0)} AI-attributed PRs in
-                        range.
+                        {risk.fetching ? "—" : formatNumber(aiBucket?.prsTotal ?? 0, COUNT_FORMAT)}{" "}
+                        AI-attributed PRs in range.
                     </p>
                     <p className="mt-6 text-[1.75rem] font-semibold leading-tight tabular-nums">
-                        {risk.fetching ? "—" : (aiBucket?.testGapPrs ?? 0)}
+                        {risk.fetching
+                            ? "—"
+                            : formatNumber(aiBucket?.testGapPrs ?? 0, COUNT_FORMAT)}
                     </p>
                 </section>
             </div>

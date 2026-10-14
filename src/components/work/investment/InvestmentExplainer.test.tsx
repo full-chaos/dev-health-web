@@ -12,6 +12,7 @@ const explanation = (overrides: Record<string, unknown> = {}) =>
                     finding: "Feature delivery appears to take the largest share.",
                     evidence: {
                         theme: "feature_delivery",
+                        subcategory: "feature_delivery.new_feature",
                         share_pct: 63.963245258098866,
                         evidence_quality_band: "moderate",
                     },
@@ -69,6 +70,43 @@ describe("InvestmentExplainer in the narrow card", () => {
         expect(screen.queryByText("feature_delivery")).not.toBeInTheDocument();
         expect(screen.getByText("64%")).toBeInTheDocument();
         expect(screen.queryByText(/63\.96/)).not.toBeInTheDocument();
+    });
+
+    it("names the subcategory on the chip with the theme as muted text", () => {
+        const { container } = renderExplainer();
+        const first = container.querySelectorAll("li")[0] as HTMLElement;
+        expect(first).toHaveTextContent("New Feature");
+        expect(first).toHaveTextContent("Feature Delivery");
+        expect(first).toHaveTextContent("64%");
+        expect(first.textContent).not.toMatch(/feature_delivery|new_feature/);
+    });
+
+    it("shows the theme label and whole-percent share when there is no subcategory", () => {
+        const { container } = renderExplainer();
+        const second = container.querySelectorAll("li")[1] as HTMLElement;
+        expect(second).toHaveTextContent("Maintenance");
+        expect(second).toHaveTextContent("12%");
+    });
+
+    it("rounds a fractional share once", () => {
+        renderExplainer(
+            explanation({
+                top_findings: [
+                    {
+                        finding: "Quality work appears sizeable.",
+                        evidence: {
+                            theme: "quality",
+                            subcategory: "quality.bugfix",
+                            share_pct: 22.4,
+                        },
+                    },
+                ],
+            }),
+        );
+        expect(screen.getByText("22%")).toBeInTheDocument();
+        expect(screen.getByText("Bugfix")).toBeInTheDocument();
+        expect(screen.queryByText(/22\.4/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/quality\.bugfix/)).not.toBeInTheDocument();
     });
 
     it("does not repeat the confidence block", () => {
