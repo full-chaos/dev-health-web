@@ -105,6 +105,7 @@ export const V10_PRIVACY_BASELINE = {
         genAI: { inputs: false, outputs: false },
         databaseQueryData: false,
         queues: false,
+        frameContextLines: 7,
         graphQL: { document: false, variables: false },
     },
 } satisfies SentryInitOptions;
@@ -118,6 +119,8 @@ export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
     return {
         ...V10_PRIVACY_BASELINE,
         ...config,
+        // Deep merge: a partial caller dataCollection must not drop the v10 defaults for the rest.
+        dataCollection: { ...V10_PRIVACY_BASELINE.dataCollection, ...config.dataCollection },
         beforeSend(event: ErrorEvent, hint: EventHint) {
             const scrubbed = scrubEvent(event, hint);
             if (scrubbed === null) return null;

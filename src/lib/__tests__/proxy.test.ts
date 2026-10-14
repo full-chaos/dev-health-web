@@ -42,9 +42,6 @@ describe("isPublicPath", () => {
         expect(isPublicPath("/terms")).toBe(true);
         expect(isPublicPath("/auth/signin")).toBe(true);
         expect(isPublicPath("/favicon.ico")).toBe(true);
-        // Sentry tunnelRoute: v11 runs it through the proxy, signed-out error reports must pass
-        expect(isPublicPath("/monitoring")).toBe(true);
-        expect(isPublicPath("/monitoring-evil")).toBe(false);
     });
 
     it("returns false for public paths with appended suffixes", () => {

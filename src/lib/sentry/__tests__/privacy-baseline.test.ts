@@ -66,4 +66,20 @@ describe("v10 privacy baseline", () => {
         const config = attachBeforeSend({ dsn: "https://fake@sentry.io/1" });
         expect(config.dataCollection).toEqual(V10_PRIVACY_BASELINE.dataCollection);
     });
+
+    it("keeps the remaining baseline keys when a caller sets a partial dataCollection", () => {
+        const config = attachBeforeSend({
+            dsn: "https://fake@example.invalid/1",
+            dataCollection: { userInfo: true },
+        });
+        expect(config.dataCollection).toEqual({
+            ...V10_PRIVACY_BASELINE.dataCollection,
+            userInfo: true,
+        });
+        expect(config.dataCollection?.cookies).toBe(false);
+    });
+
+    it("keeps frameContextLines at the v10 value", () => {
+        expect(V10_PRIVACY_BASELINE.dataCollection.frameContextLines).toBe(7);
+    });
 });
