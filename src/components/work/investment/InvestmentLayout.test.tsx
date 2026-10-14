@@ -258,7 +258,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
             "ThemeFeature Delivery",
             "SubcategoryRoadmap",
-            "Count45 delivery units",
+            "Count45 work units",
             "Share of the mix45%",
         ]);
         const link = drawer.getByTestId("mix-selection-work-graph");
@@ -281,7 +281,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
             .map((row) => row.textContent);
         expect(rows).toEqual([
             "ThemeFeature Delivery",
-            "Count60 delivery units",
+            "Count60 work units",
             "Share of the mix60%",
         ]);
     });

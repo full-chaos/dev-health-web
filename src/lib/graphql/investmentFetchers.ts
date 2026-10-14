@@ -147,7 +147,7 @@ export async function getInvestmentViaGraphQL(
     return {
         theme_distribution,
         subcategory_distribution,
-        unit: "delivery_units",
+        unit: "work_units",
     };
 }
 
@@ -164,6 +164,17 @@ export function adaptSankeyResult(
             nodes: [],
             links: [],
         };
+    }
+
+    // Only a work-unit count is an investment value. A flow served in any other unit (lines of
+    // code, hours) is never drawn as work units: it becomes the empty, no-data flow.
+    if (graphqlSankey.unit !== undefined && graphqlSankey.unit !== "WORK_UNITS") {
+        console.debug("[investment] flow dropped: served unit is not a work-unit count", {
+            unitClass: graphqlSankey.unit,
+            mode,
+            nodes: graphqlSankey.nodes.length,
+        });
+        return { mode: mode as SankeyResponse["mode"], nodes: [], links: [] };
     }
 
     // Map GraphQL nodes to REST shape
@@ -227,10 +238,6 @@ export function adaptSankeyResult(
         nodes,
         links,
         ...(coverage !== undefined && { coverage }),
-        // CHAOS-4241: pass the backend's effective unit through raw
-        // ("WORK_UNITS" | "LOC") — the web does not read it
-        // to a display label. Older/sample responses without this field
-        // format to the safe WORK_UNITS default there, never "loc".
         ...(graphqlSankey.unit !== undefined && { unit: graphqlSankey.unit }),
     };
 }

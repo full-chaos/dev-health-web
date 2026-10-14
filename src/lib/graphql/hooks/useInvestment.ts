@@ -141,7 +141,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
         return {
             theme_distribution,
             subcategory_distribution,
-            unit: "delivery_units",
+            unit: "work_units",
             evidence_quality_distribution:
                 (result.data.analytics.evidenceQualityDistribution as
                     Record<string, number> | undefined) ?? undefined,

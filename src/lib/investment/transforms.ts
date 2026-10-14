@@ -338,11 +338,12 @@ export const WORK_UNIT_COUNT_UNIT = "work units";
 
 /**
  * The unit label of a served Investment value. Only work units are an investment unit: a served
- * unit that names lines of code, hours or churn is never shown, "work units" is.
+ * unit that names lines of code, hours or churn is never shown, "work units" is. A served "delivery units" is the same count under another name.
  */
 export const formatInvestmentUnit = (unit: string | null | undefined): string => {
     const label = unit?.replace(/_/g, " ").trim().toLowerCase();
-    if (!label || /\b(loc|lines?|hours?|churn|effort)\b/i.test(label)) return WORK_UNIT_COUNT_UNIT;
+    if (!label || /\b(loc|lines?|hours?|churn|effort|delivery)\b/i.test(label))
+        return WORK_UNIT_COUNT_UNIT;
     return label;
 };
 

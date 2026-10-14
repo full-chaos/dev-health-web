@@ -307,7 +307,7 @@ describe("overview: classification table", () => {
         expect(rows[0]).toHaveTextContent("30");
         expect(rows[1]).toHaveTextContent("Quality");
         expect(rows[1]).toHaveTextContent("25%");
-        expect(screen.getByTestId("classification-table")).toHaveTextContent("Delivery units");
+        expect(screen.getByTestId("classification-table")).toHaveTextContent("Work units");
         expect(screen.getByTestId("classification-table")).not.toHaveTextContent("Risk");
     });
 
@@ -338,7 +338,7 @@ describe("overview: classification table", () => {
     it("heads the value column 'Delivery units' and ends each row with an Evidence action (CHAOS-8564)", () => {
         overview({ investmentMix: mix as never });
         const table = screen.getByTestId("classification-table");
-        expect(within(table).getByRole("columnheader", { name: "Delivery units" })).toBeTruthy();
+        expect(within(table).getByRole("columnheader", { name: "Work units" })).toBeTruthy();
         expect(within(table).getAllByTestId("classification-evidence")).toHaveLength(2);
     });
 
@@ -347,7 +347,7 @@ describe("overview: classification table", () => {
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
         const facts = await screen.findByTestId("classification-evidence-facts");
         expect(facts).toHaveTextContent("Quality");
-        expect(facts).toHaveTextContent("10 delivery units");
+        expect(facts).toHaveTextContent("10 work units");
         expect(facts).toHaveTextContent("25%");
     });
 
@@ -387,7 +387,6 @@ describe("overview: classification table", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
         const facts = await screen.findByTestId("classification-evidence-facts");
-        expect(facts).not.toHaveTextContent("delivery units");
         expect(facts).toHaveTextContent("Count10 work unitsShare of the mix");
         expect(facts).toHaveTextContent("100%");
         expect(facts).not.toHaveTextContent(/evidence quality/i);

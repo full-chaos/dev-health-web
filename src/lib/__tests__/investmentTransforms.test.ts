@@ -309,7 +309,8 @@ describe("investment unit name (CHAOS-9688)", () => {
         ]) {
             expect(formatInvestmentUnit(served)).toBe("work units");
         }
-        expect(formatInvestmentUnit("delivery_units")).toBe("delivery units");
+        expect(formatInvestmentUnit("delivery_units")).toBe("work units");
+        expect(formatInvestmentUnit("work_units")).toBe("work units");
     });
 
     it("labels a mix value as work units", () => {
