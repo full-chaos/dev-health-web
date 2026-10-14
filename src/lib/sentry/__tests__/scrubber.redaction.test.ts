@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ErrorEvent } from "@sentry/nextjs";
+import * as Sentry from "@sentry/nextjs";
 
 import {
     attachBeforeSend,
@@ -270,9 +271,10 @@ describe("Sentry credential redaction", () => {
     it("scrubs span attributes before forwarding to an existing span hook", () => {
         const config = attachBeforeSend({
             dsn: "https://fake@sentry.io/1",
-            beforeSendSpan(span) {
-                return { ...span, data: { ...span.data, hook: "called" } };
-            },
+            beforeSendSpan: Sentry.withStaticSpan((span) => ({
+                ...span,
+                data: { ...span.data, hook: "called" },
+            })),
         });
         const span = {
             data: {
@@ -283,7 +285,9 @@ describe("Sentry credential redaction", () => {
             description: "POST /callback?code=oauth-code",
         };
 
-        const result = config.beforeSendSpan?.(span as never);
+        const result = (
+            config.beforeSendSpan as unknown as (s: unknown) => { data?: Record<string, unknown> }
+        )(span);
 
         expect(JSON.stringify(result)).not.toMatch(
             /client-secret|api-secret|url-secret|oauth-code/u,

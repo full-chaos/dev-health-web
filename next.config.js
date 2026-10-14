@@ -1,6 +1,6 @@
 // @ts-check
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { withSentryConfig } = require("@sentry/nextjs");
+const { withSentryConfig } = require("@sentry/nextjs/config");
 
 const isDemoExportBuild =
     process.env.DEMO_EXPORT === "true" && process.env.NODE_ENV === "production";
