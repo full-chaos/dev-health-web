@@ -76,8 +76,8 @@ type AIComparisonDelta {
 
 type AIComparisonSide {
   bucket: String!
-  prsTotal: Float!
-  prsMerged: Float!
+  prsTotal: Int!
+  prsMerged: Int!
   cycleTimeAvgHours: Float
   reviewsPerPr: Float
   reworkRate: Float
@@ -159,28 +159,28 @@ type AIHotspotOverlapRow {
 
 type AIImpactBucketRow {
   bucket: String!
-  prsTotal: Float!
-  prsMerged: Float!
+  prsTotal: Int!
+  prsMerged: Int!
   cycleTimeAvgHours: Float
   reviewsPerPr: Float
   changesRequestedPerPr: Float
-  reworkPrs: Float!
+  reworkPrs: Int!
   reworkRate: Float
-  revertPrs: Float!
+  revertPrs: Int!
   revertRate: Float
-  incidentsCount: Float!
+  incidentsCount: Int!
   incidentRate: Float
-  testGapPrs: Float!
+  testGapPrs: Int!
   testGapRate: Float
   day: Date!
 }
 
 type AIImpactBucketTotals {
   bucket: String!
-  prsTotal: Float!
-  prsMerged: Float!
+  prsTotal: Int!
+  prsMerged: Int!
   aiAssistedPrRatio: Float
-  agentCreatedPrCount: Float!
+  agentCreatedPrCount: Int!
   cycleTimeAvgHours: Float
   aiCycleTimeDeltaHours: Float
   aiReviewAmplification: Float
@@ -194,7 +194,7 @@ type AIImpactBucketTotals {
 type AIImpactScopeRollupRow {
   scopeId: String!
   scopeLabel: String!
-  aiPrsTotal: Float!
+  aiPrsTotal: Int!
   aiAssistedPrRatio: Float
   reworkRateDelta: Float
 }
@@ -203,11 +203,11 @@ type AIImpactSummary {
   orgId: String!
   startDate: Date!
   endDate: Date!
-  totalPrs: Float!
-  aiAssistedPrs: Float!
-  agentCreatedPrs: Float!
-  humanPrs: Float!
-  unknownPrs: Float!
+  totalPrs: Int!
+  aiAssistedPrs: Int!
+  agentCreatedPrs: Int!
+  humanPrs: Int!
+  unknownPrs: Int!
   aiAssistedPrRatio: Float
   byBucket: [AIImpactBucketTotals!]!
   daily: [AIImpactBucketRow!]!
@@ -285,7 +285,7 @@ type AIReviewLoadResult {
 
 type AIReviewLoadRow {
   bucket: String!
-  prsTotal: Float!
+  prsTotal: Int!
   reviewsTotal: Int!
   reviewsPerPr: Float
   changesRequestedPerPr: Float
@@ -315,14 +315,14 @@ type AIRiskBreakdownResult {
 
 type AIRiskBreakdownRow {
   bucket: String!
-  prsTotal: Float!
-  reworkPrs: Float!
+  prsTotal: Int!
+  reworkPrs: Int!
   reworkRate: Float
-  revertPrs: Float!
+  revertPrs: Int!
   revertRate: Float
-  testGapPrs: Float!
+  testGapPrs: Int!
   testGapRate: Float
-  incidentsCount: Float!
+  incidentsCount: Int!
   incidentRate: Float
 }
 

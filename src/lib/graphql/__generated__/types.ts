@@ -94,8 +94,8 @@ export type AiComparisonSide = {
   bucket: Scalars['String']['output'];
   cycleTimeAvgHours?: Maybe<Scalars['Float']['output']>;
   incidentRate?: Maybe<Scalars['Float']['output']>;
-  prsMerged: Scalars['Float']['output'];
-  prsTotal: Scalars['Float']['output'];
+  prsMerged: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
   revertRate?: Maybe<Scalars['Float']['output']>;
   reviewsPerPr?: Maybe<Scalars['Float']['output']>;
   reworkRate?: Maybe<Scalars['Float']['output']>;
@@ -177,21 +177,21 @@ export type AiImpactBucketRow = {
   cycleTimeAvgHours?: Maybe<Scalars['Float']['output']>;
   day: Scalars['Date']['output'];
   incidentRate?: Maybe<Scalars['Float']['output']>;
-  incidentsCount: Scalars['Float']['output'];
-  prsMerged: Scalars['Float']['output'];
-  prsTotal: Scalars['Float']['output'];
-  revertPrs: Scalars['Float']['output'];
+  incidentsCount: Scalars['Int']['output'];
+  prsMerged: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
+  revertPrs: Scalars['Int']['output'];
   revertRate?: Maybe<Scalars['Float']['output']>;
   reviewsPerPr?: Maybe<Scalars['Float']['output']>;
-  reworkPrs: Scalars['Float']['output'];
+  reworkPrs: Scalars['Int']['output'];
   reworkRate?: Maybe<Scalars['Float']['output']>;
-  testGapPrs: Scalars['Float']['output'];
+  testGapPrs: Scalars['Int']['output'];
   testGapRate?: Maybe<Scalars['Float']['output']>;
 };
 
 export type AiImpactBucketTotals = {
   __typename?: 'AIImpactBucketTotals';
-  agentCreatedPrCount: Scalars['Float']['output'];
+  agentCreatedPrCount: Scalars['Int']['output'];
   aiAssistedPrRatio?: Maybe<Scalars['Float']['output']>;
   aiCycleTimeDeltaHours?: Maybe<Scalars['Float']['output']>;
   aiReviewAmplification?: Maybe<Scalars['Float']['output']>;
@@ -199,8 +199,8 @@ export type AiImpactBucketTotals = {
   cycleTimeAvgHours?: Maybe<Scalars['Float']['output']>;
   incidentDragRate?: Maybe<Scalars['Float']['output']>;
   leverage: AiLeverageComponents;
-  prsMerged: Scalars['Float']['output'];
-  prsTotal: Scalars['Float']['output'];
+  prsMerged: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
   revertRate?: Maybe<Scalars['Float']['output']>;
   reworkDragRate?: Maybe<Scalars['Float']['output']>;
   testGapRate?: Maybe<Scalars['Float']['output']>;
@@ -209,7 +209,7 @@ export type AiImpactBucketTotals = {
 export type AiImpactScopeRollupRow = {
   __typename?: 'AIImpactScopeRollupRow';
   aiAssistedPrRatio?: Maybe<Scalars['Float']['output']>;
-  aiPrsTotal: Scalars['Float']['output'];
+  aiPrsTotal: Scalars['Int']['output'];
   reworkRateDelta?: Maybe<Scalars['Float']['output']>;
   scopeId: Scalars['String']['output'];
   scopeLabel: Scalars['String']['output'];
@@ -217,22 +217,22 @@ export type AiImpactScopeRollupRow = {
 
 export type AiImpactSummary = {
   __typename?: 'AIImpactSummary';
-  agentCreatedPrs: Scalars['Float']['output'];
+  agentCreatedPrs: Scalars['Int']['output'];
   aiAssistedPrRatio?: Maybe<Scalars['Float']['output']>;
-  aiAssistedPrs: Scalars['Float']['output'];
+  aiAssistedPrs: Scalars['Int']['output'];
   byBucket: Array<AiImpactBucketTotals>;
   computedAt?: Maybe<Scalars['DateTime']['output']>;
   daily: Array<AiImpactBucketRow>;
   dataAvailable: Scalars['Boolean']['output'];
   endDate: Scalars['Date']['output'];
-  humanPrs: Scalars['Float']['output'];
+  humanPrs: Scalars['Int']['output'];
   missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
   repoBreakdown: Array<AiImpactScopeRollupRow>;
   startDate: Scalars['Date']['output'];
   teamBreakdown: Array<AiImpactScopeRollupRow>;
-  totalPrs: Scalars['Float']['output'];
-  unknownPrs: Scalars['Float']['output'];
+  totalPrs: Scalars['Int']['output'];
+  unknownPrs: Scalars['Int']['output'];
 };
 
 export type AiLeverageComponents = {
@@ -307,7 +307,7 @@ export type AiReviewLoadRow = {
   pickupLatencyHours?: Maybe<Scalars['Float']['output']>;
   postFirstReviewPushesCount: Scalars['Int']['output'];
   postFirstReviewPushesPerPr?: Maybe<Scalars['Float']['output']>;
-  prsTotal: Scalars['Float']['output'];
+  prsTotal: Scalars['Int']['output'];
   reviewAmplification?: Maybe<Scalars['Float']['output']>;
   reviewCommentsPerLoc?: Maybe<Scalars['Float']['output']>;
   reviewsPerPr?: Maybe<Scalars['Float']['output']>;
@@ -337,13 +337,13 @@ export type AiRiskBreakdownRow = {
   __typename?: 'AIRiskBreakdownRow';
   bucket: Scalars['String']['output'];
   incidentRate?: Maybe<Scalars['Float']['output']>;
-  incidentsCount: Scalars['Float']['output'];
-  prsTotal: Scalars['Float']['output'];
-  revertPrs: Scalars['Float']['output'];
+  incidentsCount: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
+  revertPrs: Scalars['Int']['output'];
   revertRate?: Maybe<Scalars['Float']['output']>;
-  reworkPrs: Scalars['Float']['output'];
+  reworkPrs: Scalars['Int']['output'];
   reworkRate?: Maybe<Scalars['Float']['output']>;
-  testGapPrs: Scalars['Float']['output'];
+  testGapPrs: Scalars['Int']['output'];
   testGapRate?: Maybe<Scalars['Float']['output']>;
 };
 
