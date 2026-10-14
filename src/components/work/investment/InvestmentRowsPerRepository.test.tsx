@@ -139,7 +139,7 @@ describe("work unit in several repositories", () => {
 
         const groupRow = screen.getByTestId("evidence-group-row");
         expect(within(groupRow).getByText("2")).toBeInTheDocument();
-        expect(groupRow).toHaveTextContent("13 hours");
+        expect(groupRow).toHaveTextContent("13 active hours");
 
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         const dialog = within(screen.getByRole("dialog"));
@@ -169,8 +169,8 @@ describe("work unit in several repositories", () => {
             .getAllByRole("option")
             .filter((o) => (o as HTMLOptionElement).value);
         expect(options).toHaveLength(2);
-        const detail = screen.getByText("Effort:").parentElement as HTMLElement;
-        expect(detail).toHaveTextContent("10 hours");
+        const detail = screen.getByText("Active hours:").parentElement as HTMLElement;
+        expect(detail).toHaveTextContent("10");
         expect(screen.getByTestId("selected-unit-repositories")).toHaveTextContent(
             "org/api, Unresolved",
         );
@@ -190,7 +190,7 @@ describe("one row per unit (org / team scope)", () => {
         useInvestmentDataMock.mockReturnValue(makeData(oneRowPerUnit, "shared"));
         const { unmount } = render(<InvestmentView filters={repoFilters} activeTab="evidence" />);
         const groupRow = screen.getByTestId("evidence-group-row");
-        expect(groupRow).toHaveTextContent("13 hours");
+        expect(groupRow).toHaveTextContent("13 active hours");
         expect(within(groupRow).getByText("2")).toBeInTheDocument();
         const picker = screen.getByLabelText("Work unit") as HTMLSelectElement;
         expect(
@@ -198,7 +198,7 @@ describe("one row per unit (org / team scope)", () => {
                 .getAllByRole("option")
                 .filter((o) => (o as HTMLOptionElement).value),
         ).toHaveLength(2);
-        expect(screen.getByText("Effort:").parentElement).toHaveTextContent("10 hours");
+        expect(screen.getByText("Active hours:").parentElement).toHaveTextContent("10");
         expect(screen.queryByTestId("selected-unit-repositories")).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Feature Delivery" }));
         expect(screen.queryAllByTestId("evidence-unit-repository")).toHaveLength(0);

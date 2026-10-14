@@ -308,7 +308,7 @@ export function AllocationCoverage({
                 deltaSlot={
                     <span>
                         {reading.unassignedShare !== null
-                            ? "of effort flows through unassigned nodes"
+                            ? "of work units flow through unassigned nodes"
                             : "No unassigned nodes detected"}
                     </span>
                 }

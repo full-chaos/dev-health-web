@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
     titleCase,
+    formatMeasureUnit,
+    WORK_UNIT_COUNT_UNIT,
     formatSubcategoryLabel,
     normalizeThemeKey,
     normalizeUnassignedLabel,
@@ -289,5 +291,19 @@ describe("investment transform constants", () => {
         expect(UNASSIGNED_REPO_LABEL.length).toBeGreaterThan(0);
         expect(UNASSIGNED_THEME_LABEL.length).toBeGreaterThan(0);
         expect(UNASSIGNED_SUBCATEGORY_LABEL.length).toBeGreaterThan(0);
+    });
+});
+
+describe("measure unit names (CHAOS-9618)", () => {
+    it("names churn LOC and hours under their own names, never effort", () => {
+        expect(formatMeasureUnit("churn_loc")).toBe("lines changed");
+        expect(formatMeasureUnit("active_hours")).toBe("active hours");
+        for (const metric of ["churn_loc", "active_hours"] as const) {
+            expect(formatMeasureUnit(metric)).not.toMatch(/effort|loc$/i);
+        }
+    });
+
+    it("labels a mix value as work units", () => {
+        expect(WORK_UNIT_COUNT_UNIT).toBe("work units");
     });
 });

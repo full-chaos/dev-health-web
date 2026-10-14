@@ -34,7 +34,7 @@ export function MixSelectionFacts({
                 <EvidenceFact label="Subcategory" value={subcategoryLabel} />
             ) : null}
             <EvidenceFact
-                label="Effort"
+                label="Count"
                 value={value === undefined ? undefined : `${formatNumber(value)} ${unit}`}
             />
             <EvidenceFact

@@ -16,6 +16,7 @@ import {
     type InvestmentEvidenceQualityGroupDimension,
 } from "@/lib/graphql/hooks/useInvestment";
 import {
+    capitalizeFirst,
     formatBandLabel,
     formatQuality,
     formatSubcategoryLabel,
@@ -147,7 +148,7 @@ function GroupEvidenceBody({
                     value={String(countDistinctWorkUnits(group.entries.map((e) => e.unit)))}
                 />
                 <EvidenceFact
-                    label="Weighted effort"
+                    label={capitalizeFirst(snapshot.effortUnit)}
                     value={`${formatNumber(group.totalEffort)} ${snapshot.effortUnit}`}
                 />
             </EvidenceFactList>
@@ -461,7 +462,7 @@ export function InvestmentEvidenceTable({
                     <span>{GROUP_OPTIONS.find((o) => o.id === groupBy)?.label}</span>
                     <span className="text-right">Average quality</span>
                     <span className="text-right">Units</span>
-                    <span className="text-right">Weighted effort</span>
+                    <span className="text-right">{capitalizeFirst(effortUnit)}</span>
                     {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}
                     <span className="sr-only">Evidence</span>
                 </div>

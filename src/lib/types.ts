@@ -459,7 +459,7 @@ export type WorkUnitInvestment = {
     external_key?: string;
     /** Time range bounding the connected subgraph. */
     time_range: { start: string; end: string };
-    /** Effort value derived by the backend (churn LOC or active hours). */
+    /** Measured size derived by the backend (churn LOC or active hours); not effort. */
     effort: { metric: "churn_loc" | "active_hours"; value: number };
     /** Investment vectors for themes and subcategories (each sums to ~1.0). */
     investment: WorkUnitInvestmentBreakdown;

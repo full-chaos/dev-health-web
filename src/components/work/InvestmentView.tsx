@@ -5,7 +5,9 @@ import { formatNumber } from "@/lib/formatters";
 import {
     buildTimeRangeLabel,
     formatBandLabel,
-    formatEffortUnit,
+    capitalizeFirst,
+    formatMeasureUnit,
+    WORK_UNIT_COUNT_UNIT,
     formatQuality,
     formatWorkUnitLabel,
     firstRowPerWorkUnit,
@@ -98,7 +100,7 @@ function ExplainerCards() {
                     <h4 className="font-(--font-display) text-base">How to read the visuals</h4>
                     <div className="mt-2">
                         <ul className="space-y-2 text-sm text-(--ink-muted)">
-                            <li>Size represents effort associated with a theme or subcategory.</li>
+                            <li>Size represents the work-unit count of a theme or subcategory.</li>
                             <li>
                                 Color indicates which theme or subcategory the work leans toward.
                             </li>
@@ -136,9 +138,9 @@ export function InvestmentView({
         const metrics = new Set(data.workUnits.map((unit) => unit.effort.metric));
         if (metrics.size === 1) {
             const metric = metrics.values().next().value ?? "churn_loc";
-            return formatEffortUnit(metric);
+            return formatMeasureUnit(metric);
         }
-        return "effort";
+        return "lines changed or hours";
     }, [data.workUnits]);
 
     // Evidence-block dropdown lists every work unit in the window; the table
@@ -290,11 +292,15 @@ export function InvestmentView({
                                 )}
                             </div>
                             <div>
-                                <span className="text-(--ink-muted)">Effort:</span>{" "}
+                                <span className="text-(--ink-muted)">
+                                    {capitalizeFirst(
+                                        formatMeasureUnit(data.selectedUnit.effort.metric),
+                                    )}
+                                    :
+                                </span>{" "}
                                 {formatNumber(
                                     selectedDetail?.effort ?? data.selectedUnit.effort.value,
-                                )}{" "}
-                                {formatEffortUnit(data.selectedUnit.effort.metric)}
+                                )}
                             </div>
                             {selectedDetail && selectedDetail.repositories.length > 1 ? (
                                 <div data-testid="selected-unit-repositories">
@@ -560,7 +566,7 @@ export function InvestmentView({
                 evidenceHref={withFilterParam("/investment?tab=evidence", filters, activeRole)}
                 filters={filters}
                 role={activeRole}
-                effortUnit={effortUnit}
+                effortUnit={WORK_UNIT_COUNT_UNIT}
             />
             {/* Not drawn in the prototype: the reading guidance stays, below the prototype blocks. */}
             <ExplainerCards />
