@@ -732,8 +732,31 @@ describe("feature flag sparklines and cards with null buckets", () => {
         expect(summary.activeFlagsSpark.map((p) => p.value)).toEqual([0, 5]);
     });
 
-    it("a null latest coverage bucket with no releases is a null ratio (--), never 0", async () => {
+    it("a null latest coverage bucket is a null ratio (--) even when releases have impact edges", async () => {
         mockSuccessfulFetch({ coverage: [60, null] });
+        const base = mockGraphql.getMockImplementation()!;
+        mockGraphql.mockImplementation((query, ...rest) => {
+            const qs = typeof query === "string" ? query : "";
+            if (qs.includes("FeatureFlagTimeseries") || qs.includes("FeatureFlag")) {
+                return base(query, ...rest);
+            }
+            return Promise.resolve({
+                workGraphEdges: {
+                    edges: [
+                        makeEdge({
+                            edgeId: "impact-1",
+                            sourceType: "RELEASE",
+                            sourceId: "release-a",
+                            targetType: "FEATURE_FLAG",
+                            targetId: "flag-a",
+                            edgeType: "IMPACTS",
+                        }),
+                    ],
+                    totalCount: 1,
+                    pageInfo: { hasNextPage: false, hasPreviousPage: false },
+                },
+            });
+        });
         const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
         expect(summary.coverageRatio).toBeNull();
     });
@@ -744,11 +767,9 @@ describe("feature flag sparklines and cards with null buckets", () => {
         expect(summary.coverageRatio).toBe(0);
     });
 
-    it("a null last coverage bucket falls back to the work-graph ratio, not to 0 from the null", async () => {
+    it("a null last coverage bucket stays null in the sparkline", async () => {
         mockSuccessfulFetch({ coverage: [60, null] });
         const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
-        // Empty edges -> the documented work-graph fallback (0 when no releases exist); the
-        // null bucket must not be read as a 0 ratio from the timeseries.
         expect(summary.coverageRatioSpark.at(-1)?.value).toBeNull();
     });
 });
