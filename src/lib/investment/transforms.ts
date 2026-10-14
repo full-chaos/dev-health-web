@@ -325,6 +325,28 @@ export const capitalizeFirst = (text: string): string =>
 /** The unit of an Investment mix value: the mix is requested with measure COUNT. */
 export const WORK_UNIT_COUNT_UNIT = "work units";
 
+/**
+ * A work unit's own size as a plain fact of the unit (evidence and context sections only). It is
+ * never an Investment measure: no unit label for a mix, no total, no share, no sort key. Read
+ * only from a lines-changed or active-hours metric; when `effort` becomes the work-unit count the
+ * fact is null until ops serves a separate field.
+ */
+export const workUnitSizeFact = (
+    rows: ReadonlyArray<WorkUnitInvestment>,
+): { label: string; value: number } | null => {
+    const metrics = new Set(rows.map((row) => row.effort?.metric));
+    if (metrics.size !== 1) return null;
+    const metric = rows[0]?.effort?.metric;
+    const label =
+        metric === "churn_loc"
+            ? "Lines changed"
+            : metric === "active_hours"
+              ? "Active hours"
+              : null;
+    if (!label) return null;
+    return { label, value: rows.reduce((sum, row) => sum + row.effort.value, 0) };
+};
+
 /** A served unit that names lines of code, hours, churn or effort: never an investment value. */
 export const isNonCountUnit = (unit: string | null | undefined): boolean =>
     Boolean(unit) && /\b(loc|lines?|hours?|churn|effort)\b/i.test((unit ?? "").replace(/_/g, " "));

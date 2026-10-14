@@ -24,9 +24,11 @@ import {
     selectWorkUnitEntries,
     workUnitRepositoryLabel,
     workUnitRowKey,
+    workUnitSizeFact,
     titleCase,
     type WorkUnitListEntry,
 } from "@/lib/investment";
+import { formatNumber } from "@/lib/formatters";
 import type { WorkUnitInvestment } from "@/lib/types";
 import type { WorkUnitTeamAttribution } from "@/lib/graphql/__generated__/types";
 import { EvidenceEntryCard } from "./EvidenceEntryCard";
@@ -183,6 +185,7 @@ export function GroupUnitsList({
                 const rowKey = workUnitRowKey(unit);
                 const repositoryLabel = workUnitRepositoryLabel(unit);
                 const unitOpen = openUnits.has(rowKey);
+                const sizeFact = workUnitSizeFact([unit]);
                 const attribution = attributionByWorkUnit?.get(unit.work_unit_id);
                 const textual = unit.evidence?.textual ?? [];
                 const metadata = [
@@ -232,6 +235,11 @@ export function GroupUnitsList({
                                 ) : null}
                             </span>
                             <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
+                                {sizeFact ? (
+                                    <span data-testid="evidence-unit-size">
+                                        {sizeFact.label}: {formatNumber(sizeFact.value)}
+                                    </span>
+                                ) : null}
                                 <span>
                                     {unit.evidence_quality.value !== null
                                         ? formatBandLabel(unit.evidence_quality.band ?? "unknown")

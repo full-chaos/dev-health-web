@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { formatNumber } from "@/lib/formatters";
 import {
     buildTimeRangeLabel,
     formatBandLabel,
@@ -8,6 +9,7 @@ import {
     formatWorkUnitLabel,
     firstRowPerWorkUnit,
     workUnitRepositoryLabel,
+    workUnitSizeFact,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, ReworkThemeAllocation } from "@/lib/types";
@@ -157,6 +159,7 @@ export function InvestmentView({
         return {
             contextual,
             repositories,
+            size: workUnitSizeFact(rows),
         };
     }, [data.selectedUnit, data.workUnits]);
 
@@ -276,6 +279,14 @@ export function InvestmentView({
                                     data.selectedUnit.time_range?.end,
                                 )}
                             </div>
+                            {selectedDetail?.size ? (
+                                <div data-testid="selected-unit-size">
+                                    <span className="text-(--ink-muted)">
+                                        {selectedDetail.size.label}:
+                                    </span>{" "}
+                                    {formatNumber(selectedDetail.size.value)}
+                                </div>
+                            ) : null}
                             {selectedDetail && selectedDetail.repositories.length > 1 ? (
                                 <div data-testid="selected-unit-repositories">
                                     <span className="text-(--ink-muted)">Repositories:</span>{" "}

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     titleCase,
     isNonCountUnit,
+    workUnitSizeFact,
     WORK_UNIT_COUNT_UNIT,
     formatSubcategoryLabel,
     normalizeThemeKey,
@@ -310,5 +311,29 @@ describe("investment unit name (CHAOS-9688)", () => {
 
     it("labels a mix value as work units", () => {
         expect(WORK_UNIT_COUNT_UNIT).toBe("work units");
+    });
+});
+
+describe("workUnitSizeFact (CHAOS-9688)", () => {
+    const row = (metric: string, value: number) =>
+        ({ effort: { metric, value } }) as unknown as Parameters<
+            typeof workUnitSizeFact
+        >[0][number];
+
+    it("names a lines-changed or active-hours size as a plain fact and sums a unit's rows", () => {
+        expect(workUnitSizeFact([row("churn_loc", 10), row("churn_loc", 5)])).toEqual({
+            label: "Lines changed",
+            value: 15,
+        });
+        expect(workUnitSizeFact([row("active_hours", 3)])).toEqual({
+            label: "Active hours",
+            value: 3,
+        });
+    });
+
+    it("is null for any other metric (a work-unit count is not a size fact) or mixed metrics", () => {
+        expect(workUnitSizeFact([row("work_units", 1)])).toBeNull();
+        expect(workUnitSizeFact([row("churn_loc", 1), row("active_hours", 1)])).toBeNull();
+        expect(workUnitSizeFact([])).toBeNull();
     });
 });

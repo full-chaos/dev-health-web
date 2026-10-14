@@ -141,7 +141,7 @@ const draw = (onSelectWorkUnit = vi.fn()) => {
 };
 
 describe("InvestmentEvidenceTable — lines of code and hours are not investment (CHAOS-9688)", () => {
-    it("shows no lines, hours or effort text, whatever the unit's measured size", () => {
+    it("shows no lines, hours or effort text in the group table, whatever the unit's measured size", () => {
         const loc = { ...unit, effort: { metric: "churn_loc" as const, value: 340 } };
         const { container } = render(
             <InvestmentEvidenceTable
@@ -264,7 +264,11 @@ describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
                 Object.values(r).some((v) => v && !Array.isArray(v) && typeof v === "object"),
             ),
         ).toBe(true);
-        expect(text).not.toMatch(/lines|\bloc\b|hours|effort/i);
+        // The unit's own size is a plain fact of the unit (evidence section), never an effort
+        // or a total.
+        expect(text).toContain("Active hours: 12");
+        expect(text).toContain("Active hours: 5");
+        expect(text).not.toMatch(/effort|work units/i);
         for (const record of records) {
             for (const [key, value] of Object.entries(record)) {
                 const label = key
