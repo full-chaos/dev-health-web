@@ -11,7 +11,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse, SankeyNode, SankeyLink } from "@/lib/types";
 import { formatSubcategoryLabel } from "@/lib/investmentMix";
 import { graphqlFetch } from "./urqlClient";
-import { INVESTMENT_BREAKDOWN_QUERY, INVESTMENT_FULL_QUERY } from "./queries";
+import { INVESTMENT_BREAKDOWN_QUERY } from "./queries";
 import type {
     AnalyticsQueryResponse,
     AnalyticsRequestInput,
@@ -240,93 +240,4 @@ export function adaptSankeyResult(
         ...(coverage !== undefined && { coverage }),
         ...(graphqlSankey.unit !== undefined && { unit: graphqlSankey.unit }),
     };
-}
-
-/**
- * Fetch investment flow (Sankey) data via GraphQL.
- *
- * Returns data in the same shape as the REST /api/v1/investment/flow endpoint.
- */
-export async function getInvestmentFlowViaGraphQL(params: {
-    filters: MetricFilter;
-    theme?: string | null;
-    flow_mode?: "team_category_repo" | "team_subcategory_repo" | "team_category_subcategory_repo";
-    drill_category?: string | null;
-    top_n_repos?: number;
-    contextOrgId?: string;
-}): Promise<SankeyResponse> {
-    const { filters } = params;
-    const orgId = getOrgId(filters, params.contextOrgId);
-    const dateRange = buildDateRange(filters);
-    const resolvedTheme = params.drill_category ?? params.theme ?? null;
-    const graphqlFilters = translateMetricFilterToGraphQL(filters);
-    if (resolvedTheme) {
-        graphqlFilters.why = {
-            ...(graphqlFilters.why ?? {}),
-            workCategory: [resolvedTheme],
-        };
-    }
-
-    // Map flow_mode to Sankey path
-    let path: DimensionInput[] = ["TEAM", "THEME", "REPO"];
-    if (params.flow_mode === "team_category_subcategory_repo") {
-        path = ["TEAM", "THEME", "SUBCATEGORY", "REPO"];
-    }
-
-    const batch: AnalyticsRequestInput = {
-        sankey: {
-            path,
-            measure: "COUNT" as MeasureInput,
-            dateRange,
-            maxNodes: 50,
-            maxEdges: 200,
-            useInvestment: true,
-        },
-        useInvestment: true,
-        filters: graphqlFilters,
-    };
-
-    const response = await graphqlFetch<AnalyticsQueryResponse>(
-        INVESTMENT_FULL_QUERY,
-        { orgId, batch },
-        { orgId },
-    );
-
-    return adaptSankeyResult(response.analytics.sankey, "investment");
-}
-
-/**
- * Fetch investment repo-team flow via GraphQL.
- *
- * Returns data in the same shape as the REST /api/v1/investment/flow/repo-team endpoint.
- */
-export async function getInvestmentRepoTeamFlowViaGraphQL(params: {
-    filters: MetricFilter;
-    theme?: string | null;
-    contextOrgId?: string;
-}): Promise<SankeyResponse> {
-    const { filters } = params;
-    const orgId = getOrgId(filters, params.contextOrgId);
-    const dateRange = buildDateRange(filters);
-
-    const batch: AnalyticsRequestInput = {
-        sankey: {
-            path: ["SUBCATEGORY", "REPO", "TEAM"] as DimensionInput[],
-            measure: "COUNT" as MeasureInput,
-            dateRange,
-            maxNodes: 50,
-            maxEdges: 200,
-            useInvestment: true,
-        },
-        useInvestment: true,
-        filters: translateMetricFilterToGraphQL(filters),
-    };
-
-    const response = await graphqlFetch<AnalyticsQueryResponse>(
-        INVESTMENT_FULL_QUERY,
-        { orgId, batch },
-        { orgId },
-    );
-
-    return adaptSankeyResult(response.analytics.sankey, "investment");
 }

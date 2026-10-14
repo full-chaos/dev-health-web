@@ -88,13 +88,6 @@ const investmentMixSample = {
     unit: "loc",
 };
 
-const investmentRepoTeamMapSample = {
-    "repo:web-app": "Growth",
-    "repo:core-api": "Core",
-    "repo:infra": "Infra",
-    "repo:search": "Data",
-};
-
 const workUnitInvestmentsSample = [
     {
         work_unit_id: "wu-41c2a",
@@ -3032,37 +3025,6 @@ export const handlers = [
                 drivers: ["high_uncertainty_spread"],
                 band_mix: { moderate: 0.6, low: 0.4 },
             },
-        }),
-    ),
-
-    http.post("*/api/v1/investment/flow", () =>
-        HttpResponse.json({
-            nodes: sankeyInvestmentNodes,
-            links: sankeyInvestmentLinks,
-            label: "Investment flow",
-            unit: "units",
-        }),
-    ),
-
-    http.post("*/api/v1/investment/flow/repo-team", () =>
-        HttpResponse.json({
-            nodes: [
-                ...Object.keys(investmentRepoTeamMapSample).map((r) => ({
-                    name: r.replace("repo:", ""),
-                    group: "repo",
-                })),
-                ...Array.from(new Set(Object.values(investmentRepoTeamMapSample))).map((t) => ({
-                    name: t,
-                    group: "team",
-                })),
-            ],
-            links: Object.entries(investmentRepoTeamMapSample).map(([repo, team]) => ({
-                source: repo.replace("repo:", ""),
-                target: team,
-                value: 10,
-            })),
-            label: "Repo → Team",
-            unit: "units",
         }),
     ),
 
