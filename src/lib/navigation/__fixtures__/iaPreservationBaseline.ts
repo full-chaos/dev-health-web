@@ -252,5 +252,6 @@ export const iaPreservationBaseline = {
         { route: "/capacity-planning", redirectsTo: "/plan/capacity" },
         { route: "/plan/delivery-forecast", redirectsTo: "/plan" },
         { route: "/explore/landscape", redirectsTo: "/landscape" },
+        { route: "/agent-context", redirectsTo: "/agent-context/context-packet" },
     ],
 } as const;
