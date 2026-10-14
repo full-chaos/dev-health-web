@@ -165,7 +165,7 @@ const GUIDANCE_TEXT = [
     "Low evidence quality indicates mixed or incomplete evidence, not bad data.",
     "These views do not assign intent, measure productivity, or evaluate individuals.",
     "How to read the visuals",
-    "Size represents effort associated with a theme or subcategory.",
+    "Size represents the work-unit count of a theme or subcategory.",
     "Color indicates which theme or subcategory the work leans toward.",
     "Opacity represents evidence quality for the interpretation.",
     "Flows show how effort appears to move from teams into themes and repos.",

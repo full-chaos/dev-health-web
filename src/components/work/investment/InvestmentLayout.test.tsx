@@ -222,7 +222,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         expect(screen.queryByRole("heading", { name: "Treemap" })).toBeNull();
         expect(screen.queryByText(/Effort size - Evidence quality opacity/)).toBeNull();
         expect(within(card).getByTestId("data-note")).toHaveTextContent(
-            "Size is effort. Opacity is evidence quality. Select a cell for its evidence.",
+            "Size is work-unit count. Opacity is evidence quality. Select a cell for its evidence.",
         );
     });
 
@@ -258,7 +258,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
             "ThemeFeature Delivery",
             "SubcategoryRoadmap",
-            "Effort45 delivery units",
+            "Count45 delivery units",
             "Share of the mix45%",
         ]);
         const link = drawer.getByTestId("mix-selection-work-graph");
@@ -281,7 +281,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
             .map((row) => row.textContent);
         expect(rows).toEqual([
             "ThemeFeature Delivery",
-            "Effort60 delivery units",
+            "Count60 delivery units",
             "Share of the mix60%",
         ]);
     });
@@ -442,14 +442,14 @@ describe("Investment Evidence (prototype view 9)", () => {
         expect(within(card).queryByRole("combobox")).toBeNull();
     });
 
-    it("columns: the grouping, Average quality, Units, Weighted effort; the head and the rows share one template", () => {
+    it("columns: the grouping, Average quality, Units, Active hours; the head and the rows share one template", () => {
         view("evidence", makeData({ workUnits: units }));
         const head = screen.getByTestId("evidence-table-head");
         expect(Array.from(head.children).map((c) => c.textContent)).toEqual([
             "Theme",
             "Average quality",
             "Units",
-            "Weighted effort",
+            "Active hours",
             "Evidence",
         ]);
         const template = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem_6rem]";

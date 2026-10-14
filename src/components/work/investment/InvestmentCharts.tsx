@@ -5,7 +5,7 @@ import {
     INVESTMENT_SANKEY_CHORD_OPTIONS,
     type InvestmentFlowChartType,
 } from "@/components/charts/ChartTypeToggle";
-import { formatEffortUnit, formatSankeyUnit } from "@/lib/investment";
+import { formatSankeyUnit, WORK_UNIT_COUNT_UNIT } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 import { InvestmentMixSection } from "./charts/InvestmentMixSection";
@@ -88,21 +88,10 @@ export function InvestmentCharts({
         selectedThemeKey,
     });
 
-    const effortUnit = useMemo(() => {
-        const metrics = new Set(workUnits.map((unit) => unit.effort.metric));
-        if (metrics.size === 1) {
-            const metric = metrics.values().next().value ?? "churn_loc";
-            return formatEffortUnit(metric);
-        }
-        return "effort";
-    }, [workUnits]);
-
     // CHAOS-4241: the Sankey/Chord flow sections must label their unit from
     // the flow response's own `unit` field (what the backend actually
-    // weighted the numbers by), NOT from `effortUnit` above (which describes
-    // an unrelated per-work-unit metric and would keep reading "loc" even
-    // after the backend switched its default weight to a work-unit count).
-    // `effortUnit` still feeds the treemap/mix section below, unchanged.
+    // weighted the numbers by), NOT from a per-work-unit metric (which
+    // would keep reading "loc" after the backend switched to a work-unit count).
     const flowUnit = useMemo(
         () => formatSankeyUnit(teamCategoryFlow?.unit ?? repoTeamFlow?.unit),
         [teamCategoryFlow?.unit, repoTeamFlow?.unit],
@@ -131,7 +120,7 @@ export function InvestmentCharts({
             isMixLoading={isMixLoading}
             mixFailed={mixFailed}
             workUnits={workUnits}
-            effortUnit={effortUnit}
+            effortUnit={WORK_UNIT_COUNT_UNIT}
             focusTheme={focusTheme}
             focusSubcategory={focusSubcategory ?? null}
             setFocusTheme={setFocusTheme}

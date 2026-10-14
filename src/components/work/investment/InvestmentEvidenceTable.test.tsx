@@ -143,6 +143,23 @@ const draw = (onSelectWorkUnit = vi.fn()) => {
     return onSelectWorkUnit;
 };
 
+describe("InvestmentEvidenceTable — churn LOC is not effort (CHAOS-9618)", () => {
+    it("shows churn_loc values under the lines-changed name, never effort", () => {
+        const loc = { ...unit, effort: { metric: "churn_loc" as const, value: 340 } };
+        const { container } = render(
+            <InvestmentEvidenceTable
+                workUnits={[loc]}
+                effortUnit="lines changed"
+                filters={filters}
+                onSelectWorkUnit={vi.fn()}
+            />,
+        );
+        const head = screen.getByTestId("evidence-table-head");
+        expect(head).toHaveTextContent("Lines changed");
+        expect(container.textContent).not.toMatch(/effort/i);
+    });
+});
+
 describe("InvestmentEvidenceTable — row Evidence action (CHAOS-8566)", () => {
     it("uses the served zero mean instead of averaging displayed work units", () => {
         useInvestmentEvidenceQualityGroupsMock.mockReturnValue({
