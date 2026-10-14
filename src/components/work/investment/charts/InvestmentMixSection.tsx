@@ -319,11 +319,11 @@ export function InvestmentMixSection({
                                 selectedKey={treemapSelection?.key ?? null}
                                 onNodeClickAction={handleTreemapSelection}
                                 describeNodeAction={describeTreemapNode}
-                                ariaLabel="Investment mix by theme and subcategory; column width follows each theme's share of effort"
+                                ariaLabel="Investment mix by theme and subcategory; column width follows each theme's share of work units"
                             />
                             <DataNote>
-                                Size is effort. Opacity is evidence quality. Select a cell for its
-                                evidence.
+                                Size is work-unit count. Opacity is evidence quality. Select a cell
+                                for its evidence.
                             </DataNote>
                         </>
                     )

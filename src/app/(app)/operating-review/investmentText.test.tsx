@@ -25,19 +25,26 @@ vi.mock("@/lib/graphql/operatingReviewFetchers", () => ({
 
 import OperatingReviewPage from "./page";
 
-// The investment section serves the five canonical themes (unit "effort"). The web
+// The investment section serves the five canonical themes (unit "work units"). The web
 // draws the served rows as they come; only the section text names the set.
 
 const THEMES = [
-    ["feature_delivery_effort", "Feature delivery"],
-    ["operational_effort", "Operational / support"],
-    ["maintenance_effort", "Maintenance / tech debt"],
-    ["quality_effort", "Quality / reliability"],
-    ["risk_effort", "Risk / security"],
+    ["feature_delivery", "Feature delivery"],
+    ["operational", "Operational / support"],
+    ["maintenance", "Maintenance / tech debt"],
+    ["quality", "Quality / reliability"],
+    ["risk", "Risk / security"],
+] as const;
+
+// Ops renames "<theme>_effort" (unit "effort") to "<theme>_work" (unit "work units"); the
+// web maps no keys, so it draws both forms as served.
+const KEY_FORMS = [
+    ["_effort", "effort"],
+    ["_work", "work units"],
 ] as const;
 
 describe("Operating Review investment section text", () => {
-    it("names the five investment themes and drops the old four-way set", async () => {
+    it.each(KEY_FORMS)("names the five investment themes (%s keys)", async (suffix, unit) => {
         reviewMock.review = {
             orgId: "org-1",
             teamId: null,
@@ -50,10 +57,10 @@ describe("Operating Review investment section text", () => {
                     key: "investment",
                     title: "Investment",
                     metrics: THEMES.map(([key, label]) => ({
-                        key,
+                        key: `${key}${suffix}`,
                         label,
                         value: 10,
-                        unit: "effort",
+                        unit,
                         delta: {
                             value: 10,
                             priorValue: 8,
@@ -74,8 +81,9 @@ describe("Operating Review investment section text", () => {
         );
 
         const section = container.querySelector("#investment") as HTMLElement;
-        expect(section).toHaveTextContent("Effort allocation across the five investment themes.");
+        expect(section).toHaveTextContent("Work allocation across the five investment themes.");
         expect(section).not.toHaveTextContent(/KTLO|new-value|infrastructure/i);
         for (const [, label] of THEMES) expect(section).toHaveTextContent(label);
+        expect(section).toHaveTextContent(`10 ${unit}`);
     });
 });

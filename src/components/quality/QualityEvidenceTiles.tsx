@@ -1,5 +1,6 @@
 "use client";
 
+import { changeFailureEvidenceIntro } from "@/components/evidence/ChangeFailureEvidenceIntro";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
@@ -51,7 +52,13 @@ export function QualityEvidenceTiles({
                     caption={withReworkCoverageNote(undefined, tile.row)}
                     description={tile.description}
                     onOpenEvidence={() =>
-                        evidence.open({ title: tile.label, metric: tile.metric, filters, role })
+                        evidence.open({
+                            title: tile.label,
+                            metric: tile.metric,
+                            filters,
+                            role,
+                            intro: changeFailureEvidenceIntro(tile.metric, tile.row),
+                        })
                     }
                     testId={`quality-tile-${tile.metric}`}
                 />

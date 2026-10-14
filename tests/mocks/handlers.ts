@@ -481,47 +481,47 @@ function operatingReviewResponse(
                 title: "Investment",
                 metrics: [
                     operatingReviewMetric(
-                        "feature_delivery_effort",
+                        "feature_delivery_work",
                         "Feature delivery",
                         48,
-                        "effort",
+                        "work units",
                         41,
                         "improved",
                     ),
                     operatingReviewMetric(
-                        "operational_effort",
+                        "operational_work",
                         "Operational / support",
                         16,
-                        "effort",
+                        "work units",
                         17,
                         "unchanged",
                     ),
                     operatingReviewMetric(
-                        "maintenance_effort",
+                        "maintenance_work",
                         "Maintenance / tech debt",
                         14,
-                        "effort",
+                        "work units",
                         18,
                         "improved",
                     ),
                     operatingReviewMetric(
-                        "quality_effort",
+                        "quality_work",
                         "Quality / reliability",
                         12,
-                        "effort",
+                        "work units",
                         10,
                         "changed",
                     ),
                     operatingReviewMetric(
-                        "risk_effort",
+                        "risk_work",
                         "Risk / security",
                         6,
-                        "effort",
+                        "work units",
                         6,
                         "unchanged",
                     ),
                 ],
-                improved: ["Feature delivery took a larger share of effort."],
+                improved: ["Feature delivery took a larger share of the work."],
                 worsened: [],
                 changed: [],
             },
@@ -1368,6 +1368,41 @@ function mockRepoLink(metric: string, repoNamed: boolean) {
     };
 }
 
+// MOCK_HOME_CFR_EVIDENCE=<status|both|unknown> (picture runs): serve a change failure rate row with
+// the evidence the backend serves for it (CHAOS-9630).
+function mockChangeFailureEvidence(kind: string) {
+    const evidence =
+        kind === "unknown"
+            ? {
+                  basis: null,
+                  deployments: 12,
+                  deploymentsWithStatus: 0,
+                  coverage: 0,
+                  unknownReason: "deployments_without_outcome",
+              }
+            : kind === "both"
+              ? {
+                    basis: "both",
+                    deployments: 40,
+                    deploymentsWithStatus: 40,
+                    coverage: 1,
+                    unknownReason: null,
+                }
+              : {
+                    basis: "status",
+                    deployments: 40,
+                    deploymentsWithStatus: 30,
+                    coverage: 0.75,
+                    unknownReason: null,
+                };
+    return {
+        ...(kind === "unknown"
+            ? { hasData: false, value: 0, rateState: "unknown_no_incident_evidence" }
+            : { rateState: "measured" }),
+        changeFailureEvidence: evidence,
+    };
+}
+
 function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
     // MOCK_HOME_RISK_COVERAGE (picture runs only): add one compounding-risk signal with this coverage.
     const riskCoverage = Number(process.env.MOCK_HOME_RISK_COVERAGE ?? "");
@@ -1439,6 +1474,18 @@ function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
                           delta_pct: 0,
                       }))
                 : []),
+            ...(process.env.MOCK_HOME_CFR_EVIDENCE &&
+            !rest.deltas.some((d) => d.metric === "change_failure_rate")
+                ? [
+                      {
+                          metric: "change_failure_rate",
+                          label: "Change Failure Rate",
+                          value: 25,
+                          unit: "%",
+                          delta_pct: 0,
+                      },
+                  ]
+                : []),
             ...(repoNamed && process.env.MOCK_HOME_REPO_LINK
                 ? [
                       {
@@ -1464,6 +1511,9 @@ function homeRestToGraphQL(rest: HomeRestFixture, repoNamed = false) {
                       : null,
             spark: [] as { ts: string; value: number | null }[],
             ...mockRepoLink(d.metric, repoNamed),
+            ...(d.metric === "change_failure_rate" && process.env.MOCK_HOME_CFR_EVIDENCE
+                ? mockChangeFailureEvidence(process.env.MOCK_HOME_CFR_EVIDENCE)
+                : {}),
             ...(d.metric === "pr_rework_ratio" && repoNamed && process.env.MOCK_HOME_REPO_LINK
                 ? { rateState: "measured", rateCoverage: 0.07 }
                 : {}),

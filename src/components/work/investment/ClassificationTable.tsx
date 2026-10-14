@@ -105,7 +105,7 @@ export function ClassificationTable({
                             <th className="px-4 py-2 text-right font-medium">
                                 {servedUnit
                                     ? servedUnit.charAt(0).toUpperCase() + servedUnit.slice(1)
-                                    : "Effort"}
+                                    : "Work units"}
                             </th>
                             <th className="px-4 py-2 text-right font-medium">
                                 {/* design-lint-disable-next-line cta-from-registry -- screen-reader-only table-column header; not an action */}

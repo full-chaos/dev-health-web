@@ -122,6 +122,20 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
                           : null,
                   }
                 : {}),
+            ...(d.changeFailureEvidence !== undefined
+                ? {
+                      change_failure_evidence: d.changeFailureEvidence
+                          ? {
+                                basis: d.changeFailureEvidence.basis,
+                                deployments: d.changeFailureEvidence.deployments,
+                                deployments_with_status:
+                                    d.changeFailureEvidence.deploymentsWithStatus,
+                                coverage: d.changeFailureEvidence.coverage,
+                                unknown_reason: d.changeFailureEvidence.unknownReason,
+                            }
+                          : null,
+                  }
+                : {}),
             spark: d.spark.map((p) => ({ ts: p.ts, value: p.value })),
         })),
         rework_theme_allocation: result.reworkThemeAllocation.map((r) => ({

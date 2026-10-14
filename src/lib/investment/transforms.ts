@@ -330,11 +330,18 @@ export const formatBandLabel = (band: WorkUnitInvestment["evidence_quality"]["ba
 export const formatQuality = (value: number): string =>
     formatNumber(value, { maximumFractionDigits: 2 });
 
+export const capitalizeFirst = (text: string): string =>
+    text.charAt(0).toUpperCase() + text.slice(1);
+
+/** The unit of an Investment mix value: the mix is requested with measure COUNT. */
+export const WORK_UNIT_COUNT_UNIT = "work units";
+
 /**
- * Format effort unit label.
+ * Own name of a work unit's measured size (`effort.metric`). Lines of code and hours
+ * are never "effort": they show under these names only.
  */
-export const formatEffortUnit = (metric: WorkUnitInvestment["effort"]["metric"]): string =>
-    metric === "active_hours" ? "hours" : "loc";
+export const formatMeasureUnit = (metric: WorkUnitInvestment["effort"]["metric"]): string =>
+    metric === "active_hours" ? "active hours" : "lines changed";
 
 /**
  * Format the Sankey/Chord flow's allocation-weight unit label (CHAOS-4241).
