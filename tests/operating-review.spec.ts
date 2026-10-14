@@ -29,7 +29,7 @@ test.describe("Operating Review", () => {
 
         const investment = page.locator("#investment");
         await expect(
-            investment.getByText("Effort allocation across the five investment themes."),
+            investment.getByText("Work-unit share across the five investment themes."),
         ).toBeVisible();
         for (const label of [
             "Feature delivery",
