@@ -170,35 +170,53 @@ print_playwright_artifact_summary() {
   done
 }
 
-run_quality() {
-  # The dependency audit runs LAST. Under `set -e` the first failing step ends
-  # the job, and a red audit (an advisory in a dependency, outside this
-  # change) used to stop the job before lint and typecheck ever ran, so type
-  # errors stayed hidden behind it. The code checks run first; the audit still
-  # fails the job.
-  run_pnpm_script codegen:check
-  # CHAOS-4696: query-api resolves a request by digesting the raw query
-  # text it receives. This asserts, for every registered document, that
-  # query-api's const (read via ops main's own registrydump -- always
-  # the LIVE tip, not a pin: this is a live invariant, not a contract
-  # sync) digests to what THIS repo's own pinned @urql/core actually
-  # puts on the wire (createRequest + formatDocument + stringifyDocument
-  # -- the real exchange-chain functions). Defaults to WIRE_PARITY_OPS_MAIN_ROOT's
-  # checkout.
-  # A paired change (same branch name on both repos) is checked against the
-  # ops branch, not main: CI passes WIRE_PARITY_OPS_ROOT for that. The check
-  # is strict on every run.
+run_wire_parity() {
+  # CHAOS-4696: query-api resolves a request by digesting the raw query text it
+  # receives. For every registered document, assert that query-api's const (read
+  # via ops main's registrydump, the LIVE tip) digests to what this repo's pinned
+  # @urql/core puts on the wire. A paired change is checked against the ops
+  # branch: CI passes WIRE_PARITY_OPS_ROOT for that.
   if [[ -z "${WIRE_PARITY_OPS_ROOT:-}" && -z "${WIRE_PARITY_OPS_MAIN_ROOT:-}" ]]; then
     echo "WIRE_PARITY_OPS_ROOT or WIRE_PARITY_OPS_MAIN_ROOT must name a clean dev-health-ops checkout." >&2
     return 1
   fi
-  wire_parity_root="${WIRE_PARITY_OPS_ROOT:-${WIRE_PARITY_OPS_MAIN_ROOT}}"
+  local wire_parity_root="${WIRE_PARITY_OPS_ROOT:-${WIRE_PARITY_OPS_MAIN_ROOT}}"
   echo "==> pnpm graphql:wire-parity:check --ops-root ${wire_parity_root}"
   pnpm graphql:wire-parity:check --ops-root "${wire_parity_root}"
-  run_pnpm_script lint
-  run_pnpm_script typecheck
+}
+
+run_audit() {
   echo "==> pnpm audit --audit-level=high --prod"
   pnpm audit --audit-level=high --prod
+}
+
+# CHAOS-3595: every quality step runs, and each verdict is printed. One red step
+# no longer hides the steps after it (a red audit used to hide lint, typecheck
+# and the contract checks). The job still fails if any step failed.
+run_quality() {
+  local failures=()
+  local step
+  local steps=(
+    "run_pnpm_script codegen:check"
+    "run_wire_parity"
+    "run_pnpm_script lint"
+    "run_pnpm_script typecheck"
+    "run_audit"
+  )
+  for step in "${steps[@]}"; do
+    # shellcheck disable=SC2086
+    if ${step}; then
+      echo "QUALITY-STEP PASS: ${step}"
+    else
+      echo "QUALITY-STEP FAIL: ${step}" >&2
+      failures+=("${step}")
+    fi
+  done
+  if (( ${#failures[@]} > 0 )); then
+    echo "quality: ${#failures[@]} of ${#steps[@]} steps failed:" >&2
+    printf '  %s\n' "${failures[@]}" >&2
+    return 1
+  fi
 }
 
 run_unit() {
