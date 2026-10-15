@@ -4,6 +4,7 @@ query TestOpsPipeline($orgId: String!, $batch: AnalyticsRequestInput!) {
     timeseries {
       dimension
       dimensionValue
+      scope
       measure
       buckets {
         date
@@ -52,6 +53,7 @@ query TestOpsCoverage($orgId: String!, $batch: AnalyticsRequestInput!) {
     timeseries {
       dimension
       dimensionValue
+      scope
       measure
       buckets {
         date

@@ -114,6 +114,9 @@ export interface DiscoveredReposResponse {
     owner: string;
     repos: DiscoveredRepo[];
     total: number;
+    owner_type?: "org" | "user" | null;
+    installation_scoped?: boolean;
+    diagnostic?: "owner_not_found" | null;
 }
 
 // ---- Batch Sync Config Create ----
