@@ -1299,6 +1299,7 @@ export type MeasureInput =
   | 'FLAG_COVERAGE_RATIO'
   | 'FLAG_ERROR_RATE_DELTA'
   | 'FLAG_FRICTION_DELTA'
+  | 'ISSUE_SIZE'
   | 'PIPELINE_DURATION_P95'
   | 'PIPELINE_FAILURE_RATE'
   | 'PIPELINE_QUEUE_TIME'
@@ -2184,8 +2185,10 @@ export type SankeyCoverage = {
   directRepoCoverage?: Maybe<Scalars['Float']['output']>;
   repoCoverage: Scalars['Float']['output'];
   repoFanoutReposPerUnit?: Maybe<Scalars['Float']['output']>;
+  sizingCoverage?: Maybe<Scalars['Float']['output']>;
   teamCoverage: Scalars['Float']['output'];
   teamFallbackRepoCoverage?: Maybe<Scalars['Float']['output']>;
+  unsizedUnitCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type SankeyEdge = {
@@ -2221,6 +2224,7 @@ export type SankeyResult = {
 };
 
 export type SankeyValueUnit =
+  | 'ISSUE_SIZE'
   | 'WORK_UNITS';
 
 export type SavedReportConnection = {

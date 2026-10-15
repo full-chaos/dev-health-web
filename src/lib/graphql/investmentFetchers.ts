@@ -100,13 +100,13 @@ export async function getInvestmentViaGraphQL(
         breakdowns: [
             {
                 dimension: "THEME" as DimensionInput,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 topN: 50,
             },
             {
                 dimension: "SUBCATEGORY" as DimensionInput,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 topN: 100,
             },
@@ -147,7 +147,7 @@ export async function getInvestmentViaGraphQL(
     return {
         theme_distribution,
         subcategory_distribution,
-        unit: "work_units",
+        unit: "issue_size",
     };
 }
 
@@ -166,9 +166,13 @@ export function adaptSankeyResult(
         };
     }
 
-    // Only a work-unit count is an investment value. A flow served in any other unit (lines of
-    // code, hours) is never drawn as work units: it becomes the empty, no-data flow.
-    if (graphqlSankey.unit !== undefined && graphqlSankey.unit !== "WORK_UNITS") {
+    // Only a work-unit count or an issue size is an investment value. A flow served in any other
+    // unit (lines of code, hours) is never drawn: it becomes the empty, no-data flow.
+    if (
+        graphqlSankey.unit !== undefined &&
+        graphqlSankey.unit !== "WORK_UNITS" &&
+        graphqlSankey.unit !== "ISSUE_SIZE"
+    ) {
         console.debug("[investment] flow dropped: served unit is not a work-unit count", {
             unitClass: graphqlSankey.unit,
             mode,
@@ -225,11 +229,18 @@ export function adaptSankeyResult(
     const repoCoverage = graphqlSankey.coverage?.repoCoverage;
     const producedTeam = typeof teamCoverage === "number" && Number.isFinite(teamCoverage);
     const producedRepo = typeof repoCoverage === "number" && Number.isFinite(repoCoverage);
+    const sizingCoverage = graphqlSankey.coverage?.sizingCoverage;
+    const unsizedUnitCount = graphqlSankey.coverage?.unsizedUnitCount;
+    const producedSizing = typeof sizingCoverage === "number" && Number.isFinite(sizingCoverage);
+    const producedUnsized =
+        typeof unsizedUnitCount === "number" && Number.isFinite(unsizedUnitCount);
     const coverage: SankeyResponse["coverage"] | undefined =
-        producedTeam || producedRepo
+        producedTeam || producedRepo || producedSizing || producedUnsized
             ? {
                   ...(producedTeam && { team: teamCoverage }),
                   ...(producedRepo && { repo: repoCoverage }),
+                  ...(producedSizing && { sizing: sizingCoverage }),
+                  ...(producedUnsized && { unsized_units: unsizedUnitCount }),
               }
             : undefined;
 

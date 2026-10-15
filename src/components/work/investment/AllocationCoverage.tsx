@@ -11,7 +11,9 @@ import {
     COVERAGE_UNAVAILABLE_REASON,
     isUnassignedLabel,
     readFlowCoverage,
+    readFlowSizing,
     stripSankeyPrefix,
+    type SizingReading,
 } from "@/lib/investment";
 import type { SankeyResponse } from "@/lib/types";
 
@@ -163,6 +165,58 @@ export function readCoverage(flow: SankeyResponse | null | undefined): CoverageR
     return { teamCoverage, repoCoverage, unassignedShare: computeUnassignedShare(flow) };
 }
 
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+/** Total work units, only when the share and the unsized count give a whole number that reproduces the share. */
+function exactUnitTotals(
+    coverage: number,
+    unsized: number | null,
+): { sized: number; total: number } | null {
+    if (unsized === null || !Number.isInteger(unsized) || unsized < 0 || coverage >= 1) {
+        return null;
+    }
+    const total = Math.round(unsized / (1 - coverage));
+    const sized = total - unsized;
+    if (total <= 0 || sized < 0 || Math.abs(sized / total - coverage) > 1e-9) {
+        return null;
+    }
+    return { sized, total };
+}
+
+/** The words for an issue-size coverage reading: a low one reads "mostly unsized", a missing one "not measured". */
+export function describeSizing(reading: SizingReading): { value: string; note: string } {
+    if (reading.state === "not-measured") {
+        return {
+            value: "Not measured",
+            note: "The share of work units with an issue size was not reported for this window.",
+        };
+    }
+    const pct = `${asPct(reading.coverage)}%`;
+    const lead = reading.mostlyCount ? "Mostly unsized: " : "";
+    const totals = exactUnitTotals(reading.coverage, reading.unsized);
+    if (totals) {
+        const { sized, total } = totals;
+        const unsized = total - sized;
+        if (unsized === 0) {
+            return {
+                value: pct,
+                note: `All ${formatNumber(total)} work units have an issue size.`,
+            };
+        }
+        const subject = `${formatNumber(sized)} of ${formatNumber(total)} work ${plural(total, "unit has", "units have")} an issue size.`;
+        const rest = `The other ${formatNumber(unsized)} ${plural(unsized, "has", "have")} no size, so ${plural(unsized, "it counts", "each counts")} as 1 work unit.`;
+        return { value: pct, note: `${lead}${subject} ${rest}` };
+    }
+    if (reading.unsized === 0 && reading.coverage >= 1) {
+        return { value: pct, note: "All work units have an issue size." };
+    }
+    const rest =
+        reading.unsized !== null
+            ? ` The other ${formatNumber(reading.unsized)} ${plural(reading.unsized, "has", "have")} no size, so ${plural(reading.unsized, "it counts", "each counts")} as 1 work unit.`
+            : "";
+    return { value: pct, note: `${lead}${pct} of work units have an issue size.${rest}` };
+}
+
 export const asPct = (value: number) =>
     formatNumber(value <= 1 ? value * 100 : value, { maximumFractionDigits: 0 });
 
@@ -209,7 +263,11 @@ export function AllocationCoverage({
         return <DataState variant="loading" />;
     }
 
+    const sizing = readFlowSizing(teamCategoryFlow, repoTeamFlow);
+    const sizingText = describeSizing(sizing);
+
     const hasAnySignal =
+        sizing.state === "measured" ||
         reading.teamCoverage !== null ||
         reading.repoCoverage !== null ||
         reading.unassignedShare !== null;
@@ -260,6 +318,7 @@ export function AllocationCoverage({
                             value={card.value !== null ? `${asPct(card.value)}%` : undefined}
                         />
                     ))}
+                    <EvidenceFact label="Issue size coverage" value={sizingText.value} />
                     <EvidenceFact
                         label="Unassigned ownership"
                         value={
@@ -269,6 +328,9 @@ export function AllocationCoverage({
                         }
                     />
                 </EvidenceFactList>
+                <p className="mt-4 text-xs text-(--ink-muted)" data-testid="sizing-coverage-note">
+                    {sizingText.note}
+                </p>
                 <p className="mt-4 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) p-3.5 text-xs text-(--ink-muted)">
                     Unassigned is visible and inspectable. It is not silently redistributed to known
                     teams or repositories.
@@ -297,6 +359,13 @@ export function AllocationCoverage({
                 />
             ))}
             <MetricCard
+                testId="coverage-tile-sizing"
+                label="Issue size coverage"
+                hideTrend
+                valueText={sizingText.value}
+                deltaSlot={<span>{sizingText.note}</span>}
+            />
+            <MetricCard
                 testId="coverage-tile-unassigned"
                 label="Unassigned ownership"
                 hideTrend
@@ -308,7 +377,7 @@ export function AllocationCoverage({
                 deltaSlot={
                     <span>
                         {reading.unassignedShare !== null
-                            ? "of work units flow through unassigned nodes"
+                            ? "of issue size flows through unassigned nodes"
                             : "No unassigned nodes detected"}
                     </span>
                 }

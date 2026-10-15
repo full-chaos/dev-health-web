@@ -5,7 +5,7 @@ import {
     INVESTMENT_SANKEY_CHORD_OPTIONS,
     type InvestmentFlowChartType,
 } from "@/components/charts/ChartTypeToggle";
-import { WORK_UNIT_COUNT_UNIT } from "@/lib/investment";
+import { ISSUE_SIZE_UNIT } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 import { InvestmentMixSection } from "./charts/InvestmentMixSection";
@@ -88,7 +88,7 @@ export function InvestmentCharts({
         selectedThemeKey,
     });
 
-    const flowUnit = WORK_UNIT_COUNT_UNIT;
+    const flowUnit = ISSUE_SIZE_UNIT;
 
     const dateRange = useMemo(() => {
         const { start_date, end_date, range_days } = filters.time;
@@ -113,7 +113,7 @@ export function InvestmentCharts({
             isMixLoading={isMixLoading}
             mixFailed={mixFailed}
             workUnits={workUnits}
-            effortUnit={WORK_UNIT_COUNT_UNIT}
+            effortUnit={ISSUE_SIZE_UNIT}
             focusTheme={focusTheme}
             focusSubcategory={focusSubcategory ?? null}
             setFocusTheme={setFocusTheme}

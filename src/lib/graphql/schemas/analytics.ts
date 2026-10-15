@@ -69,13 +69,15 @@ export const SankeyEdgeSchema = z.object({
 export const SankeyCoverageSchema = z.object({
     teamCoverage: z.number(),
     repoCoverage: z.number(),
+    sizingCoverage: z.number().nullable().optional(),
+    unsizedUnitCount: z.number().nullable().optional(),
 });
 
 // CHAOS-4241: unit of SankeyNode/SankeyEdge `value` — WORK_UNITS only. Optional here (not `.default(...)`) so a response that omits it
 // (older backend, sample data) parses to `undefined`, matching
 // formatSankeyUnit's own safe fallback to "work units" rather than this
 // schema silently asserting a unit the response never claimed.
-export const SankeyValueUnitSchema = z.enum(["WORK_UNITS"]);
+export const SankeyValueUnitSchema = z.enum(["WORK_UNITS", "ISSUE_SIZE"]);
 
 export const SankeyResultSchema = z.object({
     nodes: z.array(SankeyNodeSchema),
@@ -128,6 +130,7 @@ export const DimensionInputSchema = z.enum([
 
 export const MeasureInputSchema = z.enum([
     "COUNT",
+    "ISSUE_SIZE",
     "CHURN_LOC",
     "CYCLE_TIME_HOURS",
     "THROUGHPUT",

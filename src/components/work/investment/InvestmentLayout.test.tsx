@@ -258,7 +258,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
             "ThemeFeature Delivery",
             "SubcategoryRoadmap",
-            "Count45 work units",
+            "Issue size45",
             "Share of the mix45%",
         ]);
         const link = drawer.getByTestId("mix-selection-work-graph");
@@ -279,11 +279,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         const rows = within(screen.getByRole("dialog"))
             .getAllByTestId("evidence-fact")
             .map((row) => row.textContent);
-        expect(rows).toEqual([
-            "ThemeFeature Delivery",
-            "Count60 work units",
-            "Share of the mix60%",
-        ]);
+        expect(rows).toEqual(["ThemeFeature Delivery", "Issue size60", "Share of the mix60%"]);
     });
 
     it("closing the drawer clears the selection", async () => {
@@ -327,10 +323,10 @@ describe("Investment Allocation (prototype views 7 and 8)", () => {
         expect(screen.queryByText(/Each allocation path maps a team or theme/)).toBeNull();
     });
 
-    it("coverage is a strip of three joined tiles with the served readings", () => {
+    it("coverage is a strip of four joined tiles with the served readings", () => {
         view("allocation", makeData({ teamCategoryFlow: flow({ team: 0.68, repo: 0.49 }) }));
         const strip = screen.getByTestId("allocation-coverage-strip");
-        expect(strip).toHaveAttribute("data-columns", "3");
+        expect(strip).toHaveAttribute("data-columns", "4");
         expect(
             within(screen.getByTestId("coverage-tile-team")).getByText("68%"),
         ).toBeInTheDocument();
@@ -634,6 +630,8 @@ describe("Investment Confidence (prototype view 10)", () => {
             "Team coverage68%",
             // Not produced by the backend: "Unknown", never 0%.
             "Repo coverageUnknown",
+            // No issue size coverage served: "Not measured", never a healthy number.
+            "Issue size coverageNot measured",
             "Unassigned ownershipnone detected",
         ]);
         expect(gaps).toHaveTextContent(

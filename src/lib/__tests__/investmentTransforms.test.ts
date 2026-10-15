@@ -4,7 +4,7 @@ import {
     isNonCountUnit,
     formatChangeSet,
     workUnitChangeSet,
-    WORK_UNIT_COUNT_UNIT,
+    ISSUE_SIZE_UNIT,
     formatSubcategoryLabel,
     normalizeThemeKey,
     normalizeUnassignedLabel,
@@ -305,13 +305,22 @@ describe("investment unit name (CHAOS-9688)", () => {
         ]) {
             expect(isNonCountUnit(served)).toBe(true);
         }
-        for (const served of ["WORK_UNITS", "work_units", "delivery_units", null, undefined, ""]) {
+        for (const served of [
+            "WORK_UNITS",
+            "work_units",
+            "ISSUE_SIZE",
+            "issue_size",
+            "delivery_units",
+            null,
+            undefined,
+            "",
+        ]) {
             expect(isNonCountUnit(served)).toBe(false);
         }
     });
 
-    it("labels a mix value as work units", () => {
-        expect(WORK_UNIT_COUNT_UNIT).toBe("work units");
+    it("labels a mix value as issue size, never LOC", () => {
+        expect(ISSUE_SIZE_UNIT).toBe("issue size");
     });
 });
 

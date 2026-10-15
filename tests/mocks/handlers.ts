@@ -1775,9 +1775,42 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
 
     // Investment breakdown query (analytics).
     if (query.includes("InvestmentBreakdown") || query.includes("analytics")) {
+        // MOCK_SIZING_COVERAGE (picture runs only): "0.92", "0.12" or "null" adds an ISSUE_SIZE flow.
+        const sizingEnv = process.env.MOCK_SIZING_COVERAGE;
+        const sizingFlow =
+            sizingEnv !== undefined && query.includes("sankey")
+                ? {
+                      nodes: [
+                          { id: "t1", label: "Platform", dimension: "TEAM", value: 40 },
+                          { id: "t2", label: "Growth", dimension: "TEAM", value: 25 },
+                          { id: "c1", label: "Feature Delivery", dimension: "THEME", value: 45 },
+                          { id: "c2", label: "Maintenance", dimension: "THEME", value: 20 },
+                          { id: "r1", label: "web-app", dimension: "REPO", value: 65 },
+                      ],
+                      edges: [
+                          { source: "t1", target: "c1", value: 30 },
+                          { source: "t1", target: "c2", value: 10 },
+                          { source: "t2", target: "c1", value: 15 },
+                          { source: "t2", target: "c2", value: 10 },
+                          { source: "c1", target: "r1", value: 45 },
+                          { source: "c2", target: "r1", value: 20 },
+                      ],
+                      coverage: {
+                          teamCoverage: 0.88,
+                          repoCoverage: 0.95,
+                          sizingCoverage: sizingEnv === "null" ? null : Number(sizingEnv),
+                          unsizedUnitCount:
+                              sizingEnv === "null"
+                                  ? null
+                                  : Math.round((1 - Number(sizingEnv)) * 100),
+                      },
+                      unit: "ISSUE_SIZE",
+                  }
+                : undefined;
         return HttpResponse.json({
             data: {
                 analytics: {
+                    ...(sizingFlow && { sankey: sizingFlow }),
                     breakdowns: [
                         {
                             dimension: "THEME",

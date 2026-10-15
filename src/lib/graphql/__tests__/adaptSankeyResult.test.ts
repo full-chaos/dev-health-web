@@ -151,3 +151,38 @@ describe("adaptSankeyResult", () => {
         });
     });
 });
+
+describe("adaptSankeyResult issue size (CHAOS-9809)", () => {
+    it("keeps a flow served in ISSUE_SIZE and maps its sizing coverage", () => {
+        const result = adaptSankeyResult(
+            minimalSankey({
+                unit: "ISSUE_SIZE",
+                coverage: {
+                    teamCoverage: 0.9,
+                    repoCoverage: 0.8,
+                    sizingCoverage: 0.25,
+                    unsizedUnitCount: 3,
+                },
+            }),
+            "investment",
+        );
+        expect(result.unit).toBe("ISSUE_SIZE");
+        expect(result.coverage).toEqual({ team: 0.9, repo: 0.8, sizing: 0.25, unsized_units: 3 });
+    });
+
+    it("leaves sizing absent when the backend served null (not measured)", () => {
+        const result = adaptSankeyResult(
+            minimalSankey({
+                unit: "ISSUE_SIZE",
+                coverage: {
+                    teamCoverage: 0.9,
+                    repoCoverage: 0.8,
+                    sizingCoverage: null,
+                    unsizedUnitCount: null,
+                },
+            }),
+            "investment",
+        );
+        expect(result.coverage).toEqual({ team: 0.9, repo: 0.8 });
+    });
+});

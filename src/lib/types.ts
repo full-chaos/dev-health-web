@@ -302,6 +302,12 @@ export type InvestmentFindingEvidence = {
     theme: string;
     subcategory?: string | null;
     share_pct: number;
+    /** Measure the share is taken in: "COUNT" or "ISSUE_SIZE". */
+    measure?: string | null;
+    /** ISSUE_SIZE only: share (0..1) of the mix's work units with an issue size. Absent: not measured. */
+    sizing_coverage?: number | null;
+    /** ISSUE_SIZE only: work units with no issue size; each counts as 1 work unit. */
+    unsized_unit_count?: number | null;
     delta_pct_points?: number | null;
     evidence_quality_mean?: number | null;
     evidence_quality_band?: string | null;
@@ -447,6 +453,10 @@ export type SankeyResponse = {
     coverage?: {
         team?: number;
         repo?: number;
+        /** Share (0..1) of work units that carry an issue size (ISSUE_SIZE answers only). */
+        sizing?: number;
+        /** Work units without an issue size; each counts as 1 work unit. */
+        unsized_units?: number;
     };
 };
 
