@@ -87,7 +87,7 @@ function stateCopy(state: ConsentState): { readonly description: string; readonl
         case "invalid":
             return {
                 description:
-                    "This authorization link is invalid. Return to your application and try again.",
+                    "This authorization link is invalid, or it belongs to another signed-in account. Sign in as the account that started the login, or return to your application and try again.",
                 title: "Invalid request",
             };
         case "rateLimited":

@@ -43,6 +43,13 @@ describe("OAuthConsentForm", () => {
         expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     });
 
+    it("Given an invalid state, when rendered, then names the other-account cause and the fix", () => {
+        render(<OAuthConsentForm initialState="invalid" />);
+
+        expect(screen.getByText(/belongs to another signed-in account/i)).toBeVisible();
+        expect(screen.getByText(/sign in as the account that started the login/i)).toBeVisible();
+    });
+
     it("Given a preview, when rendered, then shows the client, redirect origin and requested access", () => {
         render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
 
