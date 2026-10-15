@@ -24,7 +24,13 @@ describe("sonner de-dup guard", () => {
         await waitFor(() => expect(screen.getAllByText("dedup-promise-done")).toHaveLength(1));
     });
 
-    it("starts with no active toasts left over from earlier tests", () => {
+    it("does not replay a toast from an earlier test into a freshly mounted Toaster", async () => {
+        toast.error("dedup-stale");
+        renderWithToaster(<div />);
+        await act(async () => {
+            await Promise.resolve();
+        });
+        expect(screen.queryByText("dedup-stale")).toBeNull();
         expect(toast.getToasts()).toHaveLength(0);
     });
 });
