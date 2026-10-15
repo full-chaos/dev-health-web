@@ -26,7 +26,7 @@ export function ContextPacketCategoryGroups({
     readonly evidenceByID: EvidenceByID;
     readonly repository?: string;
 }) {
-    const groupedItems = new Map(
+    const groupedItems = new Map<string, ACRContextPacketItemV1[]>(
         CATEGORY_LABELS.map(([category]) => [category, [] as ACRContextPacketItemV1[]]),
     );
     for (const item of packet.items) {

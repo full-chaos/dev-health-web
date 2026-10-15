@@ -36,20 +36,20 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 256,
-          "description": "Subject kind, as returned by find_subjects."
+          "description": "Subject kind, as returned by find_subjects (if listed)."
         },
         "canonical_id": {
           "type": "string",
           "minLength": 1,
           "maxLength": 256,
-          "description": "Canonical id, as returned by find_subjects. Never build or guess one."
+          "description": "Canonical id, as returned by find_subjects (if listed). Never build or guess one."
         }
       },
-      "description": "The one subject whose edges are read. Take it from find_subjects. A subject you may not read and one that does not exist give the same answer."
+      "description": "The one subject whose edges are read. Take it from find_subjects (if listed). A subject you may not read and one that does not exist give the same answer."
     },
     "types": {
       "type": "array",
-      "maxItems": 12,
+      "maxItems": 13,
       "uniqueItems": true,
       "items": {
         "enum": [
@@ -61,6 +61,7 @@
           "DOCUMENTED_BY",
           "DUPLICATES",
           "HAS_EPISODE",
+          "LINKS_PULL_REQUEST",
           "OWNED_BY_TEAM",
           "PART_OF",
           "RELATED_TO",
@@ -79,9 +80,9 @@
     },
     "depth": {
       "type": "integer",
-      "minimum": 1,
+      "minimum": 0,
       "maximum": 2,
-      "description": "1 reads the subject's own edges; 2 also reads the edges of its visible neighbours. Default 1."
+      "description": "1 reads the subject's own edges; 2 also reads the edges of its visible neighbours. Default 1. 0 means not set (the default applies)."
     },
     "as_of": {
       "type": "string",
@@ -90,15 +91,19 @@
     },
     "limit": {
       "type": "integer",
-      "minimum": 1,
+      "minimum": 0,
       "maximum": 100,
-      "description": "Edges per page (1 to 100). Default 50."
+      "description": "Edges per page (1 to 100). Default 50. 0 means not set (the default applies)."
     },
     "cursor": {
       "type": "string",
       "minLength": 1,
       "maxLength": 2048,
       "description": "The page.next_cursor of the previous page of the same request. Send the same other fields."
+    },
+    "current_only": {
+      "type": "boolean",
+      "description": "Default false. True drops BLOCKS edges whose blocking end (the from end) is done or canceled; page.dropped_inactive counts them. A blocking end with unknown status is kept."
     }
   }
 }
