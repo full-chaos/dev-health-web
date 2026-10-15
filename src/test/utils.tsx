@@ -4,7 +4,14 @@
  */
 import { render, type RenderOptions } from "@testing-library/react";
 import { type ReactElement } from "react";
-import { Toaster } from "sonner";
+import { afterEach } from "vitest";
+import { Toaster, toast } from "sonner";
+
+// sonner >= 2.0.8 replays still-active toasts to every newly mounted <Toaster/>;
+// its toast store is module-global, so dismiss between tests to avoid cross-test duplicates.
+afterEach(() => {
+    toast.dismiss();
+});
 
 // Re-export everything from testing library for convenience
 export * from "@testing-library/react";
