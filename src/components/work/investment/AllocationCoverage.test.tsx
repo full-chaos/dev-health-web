@@ -489,8 +489,13 @@ describe("AllocationCoverage — issue size coverage (CHAOS-9809)", () => {
     it("one unsized unit reads in the singular", () => {
         const tile = renderTile(flowWith({ sizing: 0.75, unsized_units: 1 }));
         expect(tile).toHaveTextContent(
-            "3 of 4 work units have an issue size. The other 1 has no size, so each counts as 1 work unit.",
+            "3 of 4 work units have an issue size. The other 1 has no size, so it counts as 1 work unit.",
         );
+    });
+
+    it("one unsized unit in the percentage form also reads in the singular", () => {
+        const tile = renderTile(flowWith({ sizing: 0.333, unsized_units: 1 }));
+        expect(tile).toHaveTextContent("The other 1 has no size, so it counts as 1 work unit.");
     });
 
     it("no unsized units reads as all sized", () => {

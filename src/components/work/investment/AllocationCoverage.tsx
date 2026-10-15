@@ -204,7 +204,7 @@ export function describeSizing(reading: SizingReading): { value: string; note: s
             };
         }
         const subject = `${formatNumber(sized)} of ${formatNumber(total)} work ${plural(total, "unit has", "units have")} an issue size.`;
-        const rest = `The other ${formatNumber(unsized)} ${plural(unsized, "has", "have")} no size, so each counts as 1 work unit.`;
+        const rest = `The other ${formatNumber(unsized)} ${plural(unsized, "has", "have")} no size, so ${plural(unsized, "it counts", "each counts")} as 1 work unit.`;
         return { value: pct, note: `${lead}${subject} ${rest}` };
     }
     if (reading.unsized === 0 && reading.coverage >= 1) {
@@ -212,7 +212,7 @@ export function describeSizing(reading: SizingReading): { value: string; note: s
     }
     const rest =
         reading.unsized !== null
-            ? ` The other ${formatNumber(reading.unsized)} ${plural(reading.unsized, "has", "have")} no size, so each counts as 1 work unit.`
+            ? ` The other ${formatNumber(reading.unsized)} ${plural(reading.unsized, "has", "have")} no size, so ${plural(reading.unsized, "it counts", "each counts")} as 1 work unit.`
             : "";
     return { value: pct, note: `${lead}${pct} of work units have an issue size.${rest}` };
 }
