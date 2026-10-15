@@ -20,25 +20,55 @@ type FetchState = {
     repos: DiscoveredRepo[];
     loading: boolean;
     error: string | null;
+    installationScoped: boolean;
+    ownerNotFound: boolean;
 };
 
 type FetchAction =
     | { type: "start" }
-    | { type: "success"; repos: DiscoveredRepo[] }
+    | {
+          type: "success";
+          repos: DiscoveredRepo[];
+          installationScoped: boolean;
+          ownerNotFound: boolean;
+      }
     | { type: "error"; error: string }
     | { type: "reset" };
+
+const EMPTY_STATE: FetchState = {
+    repos: [],
+    loading: false,
+    error: null,
+    installationScoped: false,
+    ownerNotFound: false,
+};
 
 function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
     switch (action.type) {
         case "start":
-            return { repos: [], loading: true, error: null };
+            return { ...EMPTY_STATE, loading: true };
         case "success":
-            return { repos: action.repos, loading: false, error: null };
+            return {
+                repos: action.repos,
+                loading: false,
+                error: null,
+                installationScoped: action.installationScoped,
+                ownerNotFound: action.ownerNotFound,
+            };
         case "error":
-            return { repos: [], loading: false, error: action.error };
+            return { ...EMPTY_STATE, error: action.error };
         case "reset":
-            return { repos: [], loading: false, error: null };
+            return EMPTY_STATE;
     }
+}
+
+function InstallationScopeNotice() {
+    return (
+        <Notice variant="info">
+            This list shows only the repositories that the GitHub App installation can access. To
+            see more, change the installation&apos;s repository access in GitHub.
+        </Notice>
+    );
 }
 
 export function RepoSelector({
@@ -48,11 +78,7 @@ export function RepoSelector({
     onSelectionChangeAction,
     maxRepos,
 }: RepoSelectorProps) {
-    const [state, dispatch] = useReducer(fetchReducer, {
-        repos: [],
-        loading: false,
-        error: null,
-    });
+    const [state, dispatch] = useReducer(fetchReducer, EMPTY_STATE);
     const [search, setSearch] = useState("");
 
     useEffect(() => {
@@ -69,7 +95,12 @@ export function RepoSelector({
             if (result.error) {
                 dispatch({ type: "error", error: result.error });
             } else {
-                dispatch({ type: "success", repos: result.data?.repos ?? [] });
+                dispatch({
+                    type: "success",
+                    repos: result.data?.repos ?? [],
+                    installationScoped: result.data?.installation_scoped === true,
+                    ownerNotFound: result.data?.diagnostic === "owner_not_found",
+                });
             }
         });
 
@@ -78,7 +109,7 @@ export function RepoSelector({
         };
     }, [credentialId, owner]);
 
-    const { repos, loading, error } = state;
+    const { repos, loading, error, installationScoped, ownerNotFound } = state;
 
     const filteredRepos = repos.filter((repo) => {
         const query = search.toLowerCase();
@@ -132,11 +163,24 @@ export function RepoSelector({
         return <Notice variant="danger">Failed to load repositories. {READ_FAILED_MESSAGE}</Notice>;
     }
 
+    if (ownerNotFound && repos.length === 0) {
+        return (
+            <Notice variant="warn">
+                Owner <strong>{owner}</strong> was not found. Check the spelling of the organization
+                or user name.
+            </Notice>
+        );
+    }
+
     if (repos.length === 0) {
         return (
-            <p className="text-xs text-(--ink-muted)">
-                No repositories found for <strong>{owner}</strong> using the selected credential.
-            </p>
+            <div className="space-y-2">
+                <p className="text-xs text-(--ink-muted)">
+                    No repositories found for <strong>{owner}</strong> using the selected
+                    credential.
+                </p>
+                {installationScoped && <InstallationScopeNotice />}
+            </div>
         );
     }
 
@@ -144,6 +188,7 @@ export function RepoSelector({
 
     return (
         <div className="space-y-3">
+            {installationScoped && <InstallationScopeNotice />}
             {/* Counter + actions */}
             <div className="flex items-center justify-between">
                 <span className="text-xs text-(--ink-muted)">
