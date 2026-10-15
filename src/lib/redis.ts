@@ -6,7 +6,7 @@
  *
  * Usage:
  *   import { getRedis } from "@/lib/redis";
- *   const redis = getRedis();
+ *   const redis = await getRedis();
  *   if (redis) { await redis.get("key"); }
  */
 
@@ -16,6 +16,7 @@ import { getServerEnv } from "@/lib/config";
 type RedisClient = import("ioredis").default;
 
 let _client: RedisClient | null | undefined;
+let _pending: Promise<RedisClient | null> | undefined;
 
 /**
  * Returns a shared Redis client, or `null` when `REDIS_URL` is not configured.
@@ -24,9 +25,13 @@ let _client: RedisClient | null | undefined;
  * logs and continues — callers should treat a `null` return or caught errors
  * as "Redis unavailable" and fall back gracefully.
  */
-export function getRedis(): RedisClient | null {
+export async function getRedis(): Promise<RedisClient | null> {
     if (_client !== undefined) return _client;
+    _pending ??= createClient();
+    return _pending;
+}
 
+async function createClient(): Promise<RedisClient | null> {
     const url = getServerEnv().REDIS_URL;
     if (!url) {
         _client = null;
@@ -34,9 +39,9 @@ export function getRedis(): RedisClient | null {
     }
 
     try {
-        // Dynamic import so the ioredis module is only loaded when REDIS_URL is set.
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const Redis = require("ioredis").default ?? require("ioredis");
+        // Dynamic import keeps ioredis out of the Edge bundle and loads it only
+        // when REDIS_URL is set.
+        const { default: Redis } = await import("ioredis");
 
         const client: RedisClient = new Redis(url, {
             lazyConnect: true,
@@ -71,4 +76,5 @@ export function _resetRedisClient(): void {
         _client.disconnect();
     }
     _client = undefined;
+    _pending = undefined;
 }

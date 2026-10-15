@@ -1,22 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// NOTE (CHAOS-3589): there is deliberately NO `vi.mock("ioredis", ...)` here.
-// `src/lib/redis.ts` loads the driver through a runtime `require("ioredis")`,
-// which goes straight to Node's CJS loader and bypasses Vitest's module mocker
-// entirely — a factory mock on "ioredis" is silently dead. It read as isolation
-// while providing none: with `REDIS_URL` exported in the environment (every dev
-// machine running the compose stack does) `getRedis()` handed back a *real*
-// ioredis client and these tests talked to a live server.
-//
-// Isolation is enforced two ways instead:
-//   1. Each `describe` pins `REDIS_URL` with `vi.stubEnv` instead of inheriting
-//      whatever the ambient environment happens to have, and asserts the branch
-//      it means to exercise (`getRedis()` null vs. non-null).
-//   2. Tests that take the Redis branch call `stubRedisCommands()`, which
-//      installs loud recording defaults for every command `rate-limit.ts` can
-//      issue. `rate-limit.ts` swallows Redis errors by design, so a throwing
-//      default alone would be invisible — `expectNoUnstubbedRedisCommands()`
-//      turns any command the test forgot to stub into a failure.
+// `ioredis` is mocked with an in-memory fake, so `getRedis()` never opens a
+// socket even when `REDIS_URL` is exported in the environment. Each `describe`
+// still pins `REDIS_URL` with `vi.stubEnv` and asserts the branch it means to
+// exercise (`getRedis()` null vs. non-null). `rate-limit.ts` swallows Redis
+// errors by design, so `stubRedisCommands()` installs loud recording defaults
+// and `expectNoUnstubbedRedisCommands()` fails any command a test forgot to stub.
+
+vi.mock("ioredis", () => {
+    class MockIoredis {
+        constructor(public url: string) {}
+        on = vi.fn();
+        disconnect = vi.fn();
+        eval = vi.fn();
+        ttl = vi.fn();
+    }
+    return { default: MockIoredis };
+});
 
 vi.mock("@sentry/nextjs", () => ({
     withScope: vi.fn(
@@ -105,18 +105,16 @@ describe("rate-limit", () => {
          * Bring up the Redis branch with every command replaced by a recording
          * default.
          *
-         * `getRedis()` hands back a *real* ioredis instance — the driver is
-         * pulled in via a runtime `require()` that Vitest cannot intercept — so
-         * the commands must be replaced before `rate-limit.ts` issues any of
-         * them. `lazyConnect` means no socket is opened until a command runs,
-         * and after this call no un-stubbed command can run.
+         * `getRedis()` hands back the mocked ioredis instance; its commands are
+         * replaced before `rate-limit.ts` issues any of them.
          */
         async function openStubbedRedis(): Promise<CommandStubs> {
             const { _resetRedisClient, getRedis } = await import("@/lib/redis");
             _resetRedisClient();
 
-            const redis = getRedis();
+            const redis = await getRedis();
             expect(redis).not.toBeNull();
+            expect((redis as unknown as { url: string }).url).toBe("redis://localhost:6379/0");
             return stubRedisCommands(redis);
         }
 
