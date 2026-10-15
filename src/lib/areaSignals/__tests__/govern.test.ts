@@ -630,3 +630,72 @@ describe("getGovernSignals — more than one served series is unavailable, never
         expect(signals.testops).toMatchObject({ state: "unavailable", value: "" });
     });
 });
+
+describe("getGovernSignals — the served ORG series is the org value (CHAOS-9738)", () => {
+    const series = (
+        measure: string,
+        value: number,
+        dimensionValue: string,
+        scope?: "ORG" | "DIMENSION",
+    ) => ({
+        ...ts(measure, value),
+        dimensionValue,
+        ...(scope ? { scope } : {}),
+    });
+    const withSeries = (
+        pipelines: ReturnType<typeof series>[],
+        coverage: ReturnType<typeof series>[],
+    ) => {
+        mockTestOps.mockResolvedValue({
+            pipelines: { timeseries: pipelines, breakdowns: [] },
+            tests: emptyAnalytics,
+            coverage: { timeseries: coverage, breakdowns: [] },
+        });
+        mockCoverage.mockResolvedValue({ timeseries: coverage, breakdowns: [] });
+    };
+
+    it("coverage: ORG plus team series shows the ORG value", async () => {
+        withSeries(
+            [],
+            [
+                series("COVERAGE_LINE_PCT", 83, "t1", "DIMENSION"),
+                series("COVERAGE_LINE_PCT", 40, "t2", "DIMENSION"),
+                series("COVERAGE_LINE_PCT", 61, "org", "ORG"),
+            ],
+        );
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops.value).toContain("61");
+        expect(signals.testops.state).not.toBe("unavailable");
+    });
+
+    it("pipeline success: ORG plus team series shows the ORG value", async () => {
+        withSeries(
+            [
+                series("PIPELINE_SUCCESS_RATE", 90, "t1", "DIMENSION"),
+                series("PIPELINE_SUCCESS_RATE", 50, "t2", "DIMENSION"),
+                series("PIPELINE_SUCCESS_RATE", 77, "org", "ORG"),
+            ],
+            [],
+        );
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops.value).toContain("77");
+    });
+
+    it("no ORG series and 2 team series: unavailable", async () => {
+        withSeries(
+            [],
+            [
+                series("COVERAGE_LINE_PCT", 83, "t1", "DIMENSION"),
+                series("COVERAGE_LINE_PCT", 40, "t2", "DIMENSION"),
+            ],
+        );
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops).toMatchObject({ state: "unavailable", value: "" });
+    });
+
+    it("a single DIMENSION series shows its value", async () => {
+        withSeries([], [series("COVERAGE_LINE_PCT", 72, "t1", "DIMENSION")]);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops.value).toContain("72");
+    });
+});

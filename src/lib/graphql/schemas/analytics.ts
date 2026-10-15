@@ -25,6 +25,8 @@ export const TimeseriesBucketSchema = z.object({
 export const TimeseriesResultSchema = z.object({
     dimension: z.string(),
     dimensionValue: z.string(),
+    // Absent when the operation does not select it; absent means DIMENSION.
+    scope: z.enum(["DIMENSION", "ORG"]).optional(),
     measure: z.string(),
     buckets: z.array(TimeseriesBucketSchema),
 });
