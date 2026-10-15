@@ -37,7 +37,7 @@ export type SizingReading =
     | { state: "not-measured" }
     | { state: "measured"; coverage: number; unsized: number | null; mostlyCount: boolean };
 
-/** Below this share of sized work units, most units count 1: the answer is mostly a count. */
+/** Below this share of sized work units, most units have no size: the answer is mostly unsized. */
 export const MOSTLY_COUNT_BELOW = 0.5;
 
 /**

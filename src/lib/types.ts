@@ -304,7 +304,7 @@ export type InvestmentFindingEvidence = {
     measure?: string | null;
     /** ISSUE_SIZE only: share (0..1) of the mix's work units with an issue size. Absent: not measured. */
     sizing_coverage?: number | null;
-    /** ISSUE_SIZE only: work units that count 1 because they have no issue size. */
+    /** ISSUE_SIZE only: work units with no issue size; each counts as 1 work unit. */
     unsized_unit_count?: number | null;
     delta_pct_points?: number | null;
     evidence_quality_mean?: number | null;
@@ -453,7 +453,7 @@ export type SankeyResponse = {
         repo?: number;
         /** Share (0..1) of work units that carry an issue size (ISSUE_SIZE answers only). */
         sizing?: number;
-        /** Work units without an issue size; each counts 1. */
+        /** Work units without an issue size; each counts as 1 work unit. */
         unsized_units?: number;
     };
 };

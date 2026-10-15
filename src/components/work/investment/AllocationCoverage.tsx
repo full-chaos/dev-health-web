@@ -165,26 +165,56 @@ export function readCoverage(flow: SankeyResponse | null | undefined): CoverageR
     return { teamCoverage, repoCoverage, unassignedShare: computeUnassignedShare(flow) };
 }
 
-/** The words for an issue-size coverage reading: a low one reads "mostly count", a missing one "not measured". */
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+/** Total work units, only when the share and the unsized count give a whole number that reproduces the share. */
+function exactUnitTotals(
+    coverage: number,
+    unsized: number | null,
+): { sized: number; total: number } | null {
+    if (unsized === null || !Number.isInteger(unsized) || unsized < 0 || coverage >= 1) {
+        return null;
+    }
+    const total = Math.round(unsized / (1 - coverage));
+    const sized = total - unsized;
+    if (total <= 0 || sized < 0 || Math.abs(sized / total - coverage) > 1e-9) {
+        return null;
+    }
+    return { sized, total };
+}
+
+/** The words for an issue-size coverage reading: a low one reads "mostly unsized", a missing one "not measured". */
 export function describeSizing(reading: SizingReading): { value: string; note: string } {
     if (reading.state === "not-measured") {
         return {
             value: "Not measured",
-            note: "Issue size coverage was not served for this window, so the mix may be mostly count",
+            note: "The share of work units with an issue size was not reported for this window.",
         };
     }
     const pct = `${asPct(reading.coverage)}%`;
-    const unsized =
-        reading.unsized !== null
-            ? ` ${formatNumber(reading.unsized)} work units have no issue size and count 1.`
-            : "";
-    if (reading.mostlyCount) {
-        return {
-            value: pct,
-            note: `Mostly count: only ${pct} of work units carry an issue size.${unsized}`,
-        };
+    const lead = reading.mostlyCount ? "Mostly unsized: " : "";
+    const totals = exactUnitTotals(reading.coverage, reading.unsized);
+    if (totals) {
+        const { sized, total } = totals;
+        const unsized = total - sized;
+        if (unsized === 0) {
+            return {
+                value: pct,
+                note: `All ${formatNumber(total)} work units have an issue size.`,
+            };
+        }
+        const subject = `${formatNumber(sized)} of ${formatNumber(total)} work ${plural(total, "unit has", "units have")} an issue size.`;
+        const rest = `The other ${formatNumber(unsized)} ${plural(unsized, "has", "have")} no size, so each counts as 1 work unit.`;
+        return { value: pct, note: `${lead}${subject} ${rest}` };
     }
-    return { value: pct, note: `${pct} of work units carry an issue size.${unsized}` };
+    if (reading.unsized === 0 && reading.coverage >= 1) {
+        return { value: pct, note: "All work units have an issue size." };
+    }
+    const rest =
+        reading.unsized !== null
+            ? ` The other ${formatNumber(reading.unsized)} ${plural(reading.unsized, "has", "have")} no size, so each counts as 1 work unit.`
+            : "";
+    return { value: pct, note: `${lead}${pct} of work units have an issue size.${rest}` };
 }
 
 export const asPct = (value: number) =>

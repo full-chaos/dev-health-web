@@ -469,29 +469,54 @@ describe("AllocationCoverage — issue size coverage (CHAOS-9809)", () => {
         return screen.getByTestId("coverage-tile-sizing");
     };
 
-    it("high coverage reads as a share of sized work units, not as mostly count", () => {
+    it("high coverage reads as sized of all work units", () => {
         const tile = renderTile(flowWith({ sizing: 0.92, unsized_units: 8 }));
         expect(tile).toHaveTextContent("92%");
-        expect(tile).toHaveTextContent("8 work units have no issue size and count 1");
-        expect(tile).not.toHaveTextContent(/mostly count/i);
+        expect(tile).toHaveTextContent(
+            "92 of 100 work units have an issue size. The other 8 have no size, so each counts as 1 work unit.",
+        );
+        expect(tile).not.toHaveTextContent(/mostly/i);
     });
 
-    it("low coverage reads as mostly count", () => {
+    it("low coverage reads as mostly unsized", () => {
         const tile = renderTile(flowWith({ sizing: 0.12, unsized_units: 88 }));
         expect(tile).toHaveTextContent("12%");
-        expect(tile).toHaveTextContent(/mostly count/i);
+        expect(tile).toHaveTextContent(
+            "Mostly unsized: 12 of 100 work units have an issue size. The other 88 have no size, so each counts as 1 work unit.",
+        );
     });
 
-    it("a produced zero reads as 0% and mostly count", () => {
+    it("one unsized unit reads in the singular", () => {
+        const tile = renderTile(flowWith({ sizing: 0.75, unsized_units: 1 }));
+        expect(tile).toHaveTextContent(
+            "3 of 4 work units have an issue size. The other 1 has no size, so each counts as 1 work unit.",
+        );
+    });
+
+    it("no unsized units reads as all sized", () => {
+        const tile = renderTile(flowWith({ sizing: 1, unsized_units: 0 }));
+        expect(tile).toHaveTextContent("All work units have an issue size.");
+    });
+
+    it("a produced zero reads as 0% and mostly unsized", () => {
         const tile = renderTile(flowWith({ sizing: 0, unsized_units: 100 }));
         expect(tile).toHaveTextContent("0%");
-        expect(tile).toHaveTextContent(/mostly count/i);
+        expect(tile).toHaveTextContent("Mostly unsized: 0 of 100 work units have an issue size.");
+    });
+
+    it("a share that no whole unit total reproduces falls back to the percentage", () => {
+        const tile = renderTile(flowWith({ sizing: 0.333, unsized_units: 5 }));
+        expect(tile).toHaveTextContent(
+            "Mostly unsized: 33% of work units have an issue size. The other 5 have no size, so each counts as 1 work unit.",
+        );
     });
 
     it("missing coverage reads as not measured, never as a healthy number", () => {
         const tile = renderTile(flowWith({}));
         expect(tile).toHaveTextContent("Not measured");
-        expect(tile).not.toHaveTextContent(/%.*carry an issue size/);
+        expect(tile).toHaveTextContent(
+            "The share of work units with an issue size was not reported for this window.",
+        );
         expect(tile).not.toHaveTextContent("100%");
     });
 });

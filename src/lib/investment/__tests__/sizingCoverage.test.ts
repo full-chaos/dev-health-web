@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFlowSizing, readSizingCoverage } from "./coverage";
+import { readFlowSizing, readSizingCoverage } from "../coverage";
 import type { SankeyResponse } from "@/lib/types";
 
 describe("readSizingCoverage (CHAOS-9809)", () => {
@@ -9,7 +9,7 @@ describe("readSizingCoverage (CHAOS-9809)", () => {
         }
     });
 
-    it("below half is mostly count, a produced 0 included", () => {
+    it("below half is mostly unsized, a produced 0 included", () => {
         expect(readSizingCoverage(0, 5)).toMatchObject({ state: "measured", mostlyCount: true });
         expect(readSizingCoverage(0.49, null)).toMatchObject({ mostlyCount: true, unsized: null });
         expect(readSizingCoverage(0.5, 1)).toMatchObject({ mostlyCount: false, unsized: 1 });

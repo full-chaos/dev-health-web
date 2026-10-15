@@ -148,7 +148,7 @@ describe("InvestmentExplainer issue size coverage (CHAOS-9809)", () => {
             ],
         });
 
-    it("reads a low sizing coverage as mostly count", () => {
+    it("reads a low sizing coverage as mostly unsized", () => {
         renderExplainer(
             withEvidence({
                 measure: "ISSUE_SIZE",
@@ -156,14 +156,16 @@ describe("InvestmentExplainer issue size coverage (CHAOS-9809)", () => {
                 unsized_unit_count: 9,
             }),
         );
-        expect(screen.getByTestId("finding-sizing")).toHaveTextContent(/mostly count/i);
+        expect(screen.getByTestId("finding-sizing")).toHaveTextContent(
+            "Mostly unsized: 1 of 10 work units have an issue size. The other 9 have no size, so each counts as 1 work unit.",
+        );
     });
 
     it("reads a missing sizing coverage on an ISSUE_SIZE share as not measured", () => {
         renderExplainer(withEvidence({ measure: "ISSUE_SIZE" }));
         const note = screen.getByTestId("finding-sizing");
-        expect(note).toHaveTextContent(/not served/i);
-        expect(note).not.toHaveTextContent(/carry an issue size\./);
+        expect(note).toHaveTextContent(/was not reported/i);
+        expect(note).not.toHaveTextContent(/have an issue size\./);
     });
 
     it("prints no sizing note for a COUNT share", () => {

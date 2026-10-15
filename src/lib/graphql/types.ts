@@ -161,7 +161,7 @@ export interface SankeyCoverage {
     repoCoverage: number | null;
     /** Share (0..1) of the window's work units that carry an issue size; null = not measured. */
     sizingCoverage?: number | null;
-    /** Work units without an issue size (each counts 1); null = not measured. */
+    /** Work units without an issue size (each counts as 1 work unit); null = not measured. */
     unsizedUnitCount?: number | null;
 }
 
