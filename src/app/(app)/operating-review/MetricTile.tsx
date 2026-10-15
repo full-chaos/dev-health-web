@@ -86,7 +86,15 @@ export function MetricTile({
             label={metric.label}
             // With no stored value the served number is a 0 placeholder: never drawn as 0.
             value={hasData ? metric.value : undefined}
-            valueText={hasData ? undefined : noDataText(metric.key, metric.rateState)}
+            valueText={
+                hasData
+                    ? undefined
+                    : noDataText(
+                          metric.key,
+                          metric.rateState,
+                          metric.changeFailureEvidence?.unknownReason,
+                      )
+            }
             valueIsMessage={!hasData}
             unit={hasData ? metric.unit : undefined}
             valueDecimals={metric.unit === "ratio" ? RATIO_DECIMALS : undefined}
