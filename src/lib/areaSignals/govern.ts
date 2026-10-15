@@ -57,9 +57,12 @@ import type { AreaSignal, AreaSignalState } from "./types";
 /** Latest bucket value for a measure in an analytics timeseries result. */
 function latestMeasure(timeseries: TimeseriesResult[], measure: string): number | undefined {
     const matching = timeseries.filter((t) => t.measure === measure);
-    // More than one served series has no single value: no web-made roll-up (CHAOS-9736 serves the org series).
-    if (matching.length !== 1) return undefined;
-    const series = matching[0];
+    // The served ORG series is the true org rate: show it (CHAOS-9736). Without one, a single
+    // series is the answer; more than one has no single value and gets no web-made roll-up (CHAOS-6140).
+    const org = matching.filter((t) => t.scope === "ORG");
+    const candidates = org.length > 0 ? org : matching;
+    if (candidates.length !== 1) return undefined;
+    const series = candidates[0];
     if (series.buckets.length === 0) return undefined;
     // A null latest bucket is "no value", never a 0 that would derive a state.
     return series.buckets[series.buckets.length - 1].value ?? undefined;
