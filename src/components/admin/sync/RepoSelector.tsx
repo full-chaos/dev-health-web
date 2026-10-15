@@ -65,8 +65,9 @@ function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
 function InstallationScopeNotice() {
     return (
         <Notice variant="info">
-            This list shows only the repositories that the GitHub App installation can access. To
-            see more, change the installation&apos;s repository access in GitHub.
+            Public repositories always show. Private repositories show only when the GitHub App
+            installation has access to them. To see more private repositories, change the
+            installation&apos;s repository access in GitHub.
         </Notice>
     );
 }
