@@ -356,7 +356,9 @@ describe("RepoSelector", () => {
             renderSelector();
             await waitFor(() =>
                 expect(
-                    screen.getByText(/repositories that the GitHub App installation can access/i),
+                    screen.getByText(
+                        "Public repositories always show. Private repositories show only when the GitHub App installation has access to them. To see more private repositories, change the installation's repository access in GitHub.",
+                    ),
                 ).toBeInTheDocument(),
             );
         });
