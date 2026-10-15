@@ -4,7 +4,6 @@
   "title": "ACR MCP read_facts Response v1",
   "description": "Result of the read_facts tool: facts from the acr fact registry, one coverage row per (kind, subject), the request as served, and untrusted-content labels. It is the hosted acr-data.v1 document, published unchanged.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "contract_version",
     "tool",
@@ -36,7 +35,6 @@
     },
     "request": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "kinds",
         "kinds_refused",
@@ -57,7 +55,6 @@
           "type": "array",
           "items": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "kind",
               "reason"
@@ -82,7 +79,6 @@
           "type": "array",
           "items": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "kind",
               "canonical_id",
@@ -97,13 +93,16 @@
               },
               "answer": {
                 "type": "string"
+              },
+              "active_canonical_id": {
+                "type": "string",
+                "description": "With answer team_inactive: the one active team of the same name the caller may read."
               }
             }
           }
         },
         "window": {
           "type": "object",
-          "additionalProperties": false,
           "required": [
             "mode",
             "axis",
@@ -141,6 +140,21 @@
         },
         "max_bytes": {
           "type": "integer"
+        },
+        "units": {
+          "type": "object",
+          "required": [
+            "max_units",
+            "cursor"
+          ],
+          "properties": {
+            "max_units": {
+              "type": "integer"
+            },
+            "cursor": {
+              "type": "boolean"
+            }
+          }
         }
       },
       "description": "The request as the server served it."
@@ -155,7 +169,6 @@
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "kind",
           "subject",
@@ -169,7 +182,9 @@
             "$ref": "#/$defs/ReadFactsSubjectRef"
           },
           "outcome": {
-            "enum": [
+            "description": "Outcome. Unknown, stale, sparse, not applicable and zero are distinct: a missing fact is not a healthy one. Open vocabulary; documented values: fact_served, read_no_fact, measured_zero, not_applicable, unavailable, stale, truncated, withheld_response_budget. A client must tolerate values it does not know.",
+            "type": "string",
+            "x-documented-values": [
               "fact_served",
               "read_no_fact",
               "measured_zero",
@@ -178,17 +193,44 @@
               "stale",
               "truncated",
               "withheld_response_budget"
-            ],
-            "description": "Closed outcome. Unknown, stale, sparse, not applicable and zero are distinct: a missing fact is not a healthy one."
+            ]
           },
           "provider_state": {
             "type": "string"
           },
           "kind_state": {
-            "type": "string"
+            "type": "string",
+            "description": "The fact kind's state for this read: available, no_data, stale, truncated, unavailable, unconfigured (no scope policy is configured for this kind), unauthorized, conflicted, not_applicable, pruned, scope_expansion_unavailable (the scope policy is configured, but no scope expander is wired on this server), or window_unsupported (the scope policy is configured, but it does not serve the requested window; the reason names the supported window)."
           },
           "reason": {
             "type": "string"
+          },
+          "expansion": {
+            "type": "object",
+            "required": [
+              "outcome",
+              "policy"
+            ],
+            "properties": {
+              "outcome": {
+                "type": "string",
+                "description": "The scope-expansion decision for this row. Open vocabulary; documented values: not_needed, policy_unavailable, attempted_empty, target_kind_mismatch, expanded, expanded_partial, failed, matched_unauthorized. A client must tolerate values it does not know.",
+                "x-documented-values": [
+                  "not_needed",
+                  "policy_unavailable",
+                  "attempted_empty",
+                  "target_kind_mismatch",
+                  "expanded",
+                  "expanded_partial",
+                  "failed",
+                  "matched_unauthorized"
+                ]
+              },
+              "policy": {
+                "type": "string"
+              }
+            },
+            "description": "The scope-expansion decision behind the row: the machine-readable form of what the reason says in words. On a row whose own facts were read it names why the facts reachable only through expansion were not added; the row outcome describes what was read."
           },
           "withheld": {
             "type": "array",
@@ -200,9 +242,28 @@
       },
       "description": "One row per (kind, admitted subject)."
     },
+    "request_notes": {
+      "type": "array",
+      "description": "Sentences true of one fact kind's read as a whole (for example how many of the requested subjects the read could not cover). A coverage row never carries them. Absent when no kind has a note.",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "note"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "truncation": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "truncated_by",
         "facts_omitted"
@@ -222,7 +283,6 @@
     },
     "versions": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "contract",
         "registry",
@@ -245,7 +305,6 @@
     },
     "untrusted_content": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "fields",
         "note"
@@ -267,7 +326,6 @@
   "$defs": {
     "ReadFactsSubjectRef": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "kind",
         "canonical_id"
@@ -288,7 +346,6 @@
     },
     "ServedSubject": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "kind",
         "canonical_id"
@@ -308,7 +365,6 @@
     },
     "ServedTable": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "columns",
         "rows",
@@ -401,9 +457,29 @@
       },
       "description": "One declared table. Each row is an array in columns order. Integers are strings."
     },
+    "ReachedFrom": {
+      "type": "object",
+      "required": [
+        "kind",
+        "canonical_id",
+        "basis"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "canonical_id": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "description": "How the path from the requested subject was formed: direct, activity_proxy or attributed_primary_team."
+        }
+      },
+      "description": "A requested subject a derived fact was reached from."
+    },
     "ServedFact": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "kind",
         "subject",
@@ -459,6 +535,13 @@
           "type": "string",
           "description": "For an investment fact: how effort is attributed."
         },
+        "reached_from": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReachedFrom"
+          },
+          "description": "Set on a fact whose subject was reached by scope expansion from requested subjects (for example a work item of a requested team, or a repository of a requested project): names the requested subject the expansion attributed it to and the basis of the path. A subject several requested subjects reach is attributed to one of them; their coverage rows say so. A path shows relevance, not cause."
+        },
         "withheld": {
           "type": "array",
           "items": {
@@ -473,7 +556,6 @@
     },
     "WithheldItem": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "field",
         "reason"
@@ -493,7 +575,6 @@
     },
     "Provenance": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "source",
         "source_version",
@@ -522,7 +603,6 @@
           "type": "array",
           "items": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "entity",
               "id"

@@ -15,6 +15,36 @@ describe("context packet response validation", () => {
         ).toBe(false);
     });
 
+    it("accepts the unknown watermark status and last_event_at, and still rejects a status outside the vocabulary", () => {
+        const withWatermarks = (watermarks: unknown) => ({
+            ...SAMPLE_CONTEXT_PACKET,
+            freshness: { ...SAMPLE_CONTEXT_PACKET.freshness, watermarks },
+        });
+        expect(
+            isContextPacket(
+                withWatermarks([
+                    {
+                        source: "git_commits.v1",
+                        last_ingested_at: "2026-07-08T14:00:00Z",
+                        last_event_at: "2026-07-01T09:00:00Z",
+                        status: "unknown",
+                    },
+                    {
+                        source: "file_hotspots.v1",
+                        last_event_at: "2026-07-01T09:00:00Z",
+                        status: "unknown",
+                    },
+                ]),
+            ),
+        ).toBe(true);
+        expect(isContextPacket(withWatermarks([{ source: "x", status: "not-a-status" }]))).toBe(
+            false,
+        );
+        expect(
+            isContextPacket(withWatermarks([{ source: "x", status: "unknown", last_event_at: 5 }])),
+        ).toBe(false);
+    });
+
     it("rejects malformed renderer-required nested packet fields", () => {
         expect(
             isContextPacket({

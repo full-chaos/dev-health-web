@@ -101,9 +101,9 @@
         },
         "days": {
           "type": "integer",
-          "minimum": 1,
-          "maximum": 60,
-          "description": "Trailing days. Only with mode trailing. A range or trailing window spans at most 60 days."
+          "minimum": 0,
+          "maximum": 365,
+          "description": "Trailing days. Only with mode trailing. The widest window one read takes depends on the kind: read it from data_catalog (if listed) facts.kinds[].max_window_days before choosing days (a read naming several kinds is held to the smallest maximum). 0 means not set, the same as leaving it out: a trailing window needs days from 1 to the maximum of the kinds asked."
         }
       },
       "description": "Time window. Omit it and each kind answers over its own default period; the response says so."
@@ -118,10 +118,37 @@
     },
     "max_bytes": {
       "type": "integer",
-      "minimum": 4096,
+      "anyOf": [
+        {
+          "const": 0
+        },
+        {
+          "minimum": 4096
+        }
+      ],
       "maximum": 262144,
       "default": 65536,
-      "description": "Bound on the serialized response. Facts over the bound are left out and named in truncation; coverage is never cut."
+      "description": "Bound on the serialized response, 4096 to 262144. 0 or absent means the default, 65536. Facts over the bound are left out and named in truncation; coverage is never cut."
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "description": "The next_cursor of the previous work_unit_page fact. Omit it for the first page."
+        },
+        "max_units": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150,
+          "default": 100,
+          "description": "Work-unit rows in one page, 1 to 150. 0 or absent means 100."
+        }
+      },
+      "description": "Also list the work units behind an investment allocation, one page. Needs kind investment and exactly one team, repository or organization subject. The listing comes back as extra investment facts: one work_unit_page fact (page totals and next_cursor) and one work_unit_share fact per unit and repository."
     }
   }
 }
