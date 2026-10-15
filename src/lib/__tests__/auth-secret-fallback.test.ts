@@ -34,19 +34,15 @@ async function loadSecret(nodeEnv: string | undefined): Promise<unknown> {
     nextAuthConfig.value = null;
     vi.unstubAllEnvs();
     for (const name of SECRET_VARS) vi.stubEnv(name, "");
-    if (nodeEnv === undefined) delete process.env.NODE_ENV;
-    else vi.stubEnv("NODE_ENV", nodeEnv);
+    vi.stubEnv("NODE_ENV", nodeEnv);
     await import("@/lib/auth");
     return (nextAuthConfig.value as { secret?: unknown }).secret;
 }
 
 describe("session signing secret without AUTH_SECRET / NEXTAUTH_SECRET", () => {
-    const original = process.env.NODE_ENV;
     beforeEach(() => vi.resetModules());
     afterEach(() => {
         vi.unstubAllEnvs();
-        if (original === undefined) delete process.env.NODE_ENV;
-        else process.env.NODE_ENV = original;
     });
 
     it.each(["development", "test"])("uses the fallback when NODE_ENV is %s", async (env) => {
