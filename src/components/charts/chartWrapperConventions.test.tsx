@@ -181,3 +181,28 @@ describe("bar conventions", () => {
         );
     });
 });
+
+describe("vertical bar value axis labels", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    const axisFormatter = () =>
+        (
+            chartSpy.mock.calls.at(-1)?.[0] as {
+                option: { yAxis: { axisLabel: { formatter: (v: number) => string } } };
+            }
+        ).option.yAxis.axisLabel.formatter;
+
+    it("prints distinct tick labels for a small-valued axis and never prints -0", () => {
+        render(
+            <VerticalBarChart
+                categories={["a", "b", "c"]}
+                series={[{ name: "Contribution", data: [0.12, 0.02, -0.04] }]}
+            />,
+        );
+        const ticks = [0.15, 0.1, 0.05, 0, -0.05];
+        const labels = ticks.map(axisFormatter());
+        expect(new Set(labels).size).toBe(ticks.length);
+        expect(labels).not.toContain("-0");
+        expect(axisFormatter()(-0.0001)).toBe("0");
+    });
+});

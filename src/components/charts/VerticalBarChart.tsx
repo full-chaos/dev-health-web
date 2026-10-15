@@ -6,7 +6,12 @@ import type { BarSeriesOption } from "echarts";
 import { BarChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
-import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
+import {
+    axisTickDigits,
+    formatAxisTick,
+    formatChartValue,
+    type ChartValueFormat,
+} from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
 import { buildLegend, buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
@@ -48,9 +53,14 @@ export function VerticalBarChart({
 }: VerticalBarChartProps) {
     const chartTheme = useChartTheme();
 
+    const tickDigits = axisTickDigits(series.flatMap((item) => item.data));
+
     const formatValue = (value: number | string | undefined): string => {
         const numeric = typeof value === "number" ? value : Number(value);
-        return Number.isFinite(numeric) ? formatChartValue(numeric, valueFormat) : `${value ?? ""}`;
+        if (!Number.isFinite(numeric)) return `${value ?? ""}`;
+        return valueFormat === "number"
+            ? formatAxisTick(numeric, tickDigits)
+            : formatChartValue(numeric, valueFormat);
     };
 
     const barSeries: BarSeriesOption[] = series.map((item) => ({
@@ -114,7 +124,10 @@ export function VerticalBarChart({
                 yAxis: {
                     type: "value",
                     splitLine: { lineStyle: { color: chartTheme.grid } },
-                    axisLabel: { color: chartTheme.muted, formatter: formatValue },
+                    axisLabel: {
+                        color: chartTheme.muted,
+                        formatter: formatValue,
+                    },
                 },
                 series: barSeries,
             }}
