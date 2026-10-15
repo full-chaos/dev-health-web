@@ -195,7 +195,9 @@ run_audit() {
 # and the contract checks). The job still fails if any step failed.
 run_quality() {
   local failures=()
+  local first_rc=0
   local step
+  local rc
   local steps=(
     "run_pnpm_script codegen:check"
     "run_wire_parity"
@@ -208,6 +210,8 @@ run_quality() {
     if ${step}; then
       echo "QUALITY-STEP PASS: ${step}"
     else
+      rc=$?
+      (( first_rc == 0 )) && first_rc=${rc}
       echo "QUALITY-STEP FAIL: ${step}" >&2
       failures+=("${step}")
     fi
@@ -215,7 +219,7 @@ run_quality() {
   if (( ${#failures[@]} > 0 )); then
     echo "quality: ${#failures[@]} of ${#steps[@]} steps failed:" >&2
     printf '  %s\n' "${failures[@]}" >&2
-    return 1
+    return "${first_rc}"
   fi
 }
 
