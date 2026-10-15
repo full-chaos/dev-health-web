@@ -2622,7 +2622,14 @@ export type TimeseriesResult = {
   dimension: Scalars['String']['output'];
   dimensionValue: Scalars['String']['output'];
   measure: Scalars['String']['output'];
+  /** DIMENSION for a series of the requested dimension; ORG for the org-level series, which covers all repositories of the org (including repositories with no owning team) under the request's own repository and time filters. The ORG result has dimensionValue "org" and follows the DIMENSION results. It is served only to an operation that selects this field; an operation that does not select scope gets the DIMENSION series only. */
+  scope: TimeseriesScope;
 };
+
+/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE and COVERAGE_LINE_PCT carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
+export type TimeseriesScope =
+  | 'DIMENSION'
+  | 'ORG';
 
 export type TrendPoint = {
   __typename?: 'TrendPoint';
