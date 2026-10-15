@@ -3231,6 +3231,20 @@ export const handlers = [
                     y: 5,
                     size: 15,
                 },
+                // CHAOS-8827: an active team with no work in the window (no-data point).
+                ...(type === "churn_throughput"
+                    ? []
+                    : [
+                          {
+                              entity_id: "team-idle",
+                              entity_label: "Team Idle",
+                              x: null,
+                              y: null,
+                              window_start: null,
+                              window_end: null,
+                              no_data: true,
+                          },
+                      ]),
             ],
             annotations: [],
         });

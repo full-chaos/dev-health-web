@@ -92,6 +92,7 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             delta_pct: d.deltaPct,
             has_data: d.hasData,
             has_prior_data: d.hasPriorData,
+            ...(d.priorValue !== undefined ? { prior_value: d.priorValue } : {}),
             ...(d.rateState ? { rate_state: d.rateState } : {}),
             ...(d.rateCoverage !== undefined ? { rate_coverage: d.rateCoverage } : {}),
             ...(d.repoFilterApplied !== undefined

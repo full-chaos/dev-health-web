@@ -43,6 +43,8 @@ export type MetricDelta = {
     has_data?: boolean;
     /** Explicit producer fact. A missing comparison must not render as a -100% change. */
     has_prior_data?: boolean;
+    /** The prior window's measured value in the unit of `value`; null: none stored; a stored 0 is 0. Absent: an older API. */
+    prior_value?: number | null;
     /**
      * Why a change failure rate has a value or not (rateState). Null or absent: no state served
      * (an API before it, or no stored counts). A string this web does not know reads as no state.
@@ -679,6 +681,8 @@ export type QuadrantPoint = {
     window_start: string;
     window_end: string;
     evidence_link: string;
+    /** `true` only on an active entity with no data in the window (x, y, window_* are then null); the key is absent otherwise. */
+    no_data?: boolean;
     trajectory?: QuadrantPointTrajectory[];
 };
 

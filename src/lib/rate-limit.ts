@@ -213,7 +213,7 @@ async function checkRateLimitedRedis(
     key: string,
     options: RateLimitOptions,
 ): Promise<RateLimitResult> {
-    const redis = getRedis();
+    const redis = await getRedis();
     if (!redis) {
         const reason = getServerEnv().REDIS_URL ? "client_unavailable" : "missing_redis_url";
         return await onRedisUnavailable(key, options, reason);

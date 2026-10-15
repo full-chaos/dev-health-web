@@ -58,10 +58,14 @@ describe("ACR REST contract boundary", () => {
             "schemas/context_fabric_common.v1.schema.json",
             "schemas/context_fabric_answer_projection.v1.schema.json",
             "schemas/context_fabric_investigation_request.v1.schema.json",
+            "schemas/context_fabric_investigation_response.v1.schema.json",
+            "schemas/context_fabric_investigation_response.v2.schema.json",
             "schemas/context_fabric_investigation_result.v1.schema.json",
             "schemas/context_fabric_investigation_result.v2.schema.json",
             "schemas/context_fabric_org_model_config.v1.schema.json",
             "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
+            "schemas/credential_ack_request.v1.schema.json",
+            "schemas/credential_ack_response.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
             "schemas/credential_revoke_response.v1.schema.json",
             "schemas/credential_rotate_request.v1.schema.json",
@@ -83,7 +87,7 @@ describe("ACR REST contract boundary", () => {
             "schemas/token_exchange_response.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("e6fd76beb42fb88dbe63accd91f91d7a0914aa81");
+        expect(manifest.source_commit).toBe("86352a16881aab62dfee5d094accc90a8f253542");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {
@@ -99,7 +103,7 @@ describe("ACR REST contract boundary", () => {
         const openapiPath = path.join(ACR_ROOT, "src/lib/acr/contracts/openapi/acr-v1.json");
         const openapi = fs.readFileSync(openapiPath, "utf8");
         const references = [...openapi.matchAll(/"\$ref": "\.\.\/schemas\/([^"]+)"/gu)].map(
-            (match) => match[1],
+            (match) => match[1].split("#")[0],
         );
 
         expect(references.length).toBeGreaterThan(0);

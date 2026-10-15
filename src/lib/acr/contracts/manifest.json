@@ -1,21 +1,21 @@
 {
-  "source_commit": "e6fd76beb42fb88dbe63accd91f91d7a0914aa81",
+  "source_commit": "86352a16881aab62dfee5d094accc90a8f253542",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "1bebfaf2ffb366d1d5bc2c17dd25c524347e1b3e2ac3be004f89ef7dfdc3af11"
+      "sha256": "5c204378b0a2a24c4067bf750750a5de49a490ccff4d8f30187fb68adf6970aa"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
-      "sha256": "7028b560a1f6d19cea3606768234460474e22070508654093dbb39c2fe32ee1b"
+      "sha256": "1bdf1145d4a8827865b7fee5e8f6288192d8e91edc5a750b3d2d40a9839dbc94"
     },
     {
       "path": "schemas/context_packet.v1.schema.json",
-      "sha256": "8764cda55917878c4327b2ebc03b4000d4eaa7900fa24b498f48aa9bdc5f7849"
+      "sha256": "6cafe6313373844ad2fb72b45a32382d98fac66e8786807e6e7ab601b5171d07"
     },
     {
       "path": "schemas/context_packet_item.v1.schema.json",
-      "sha256": "fd1dc43ffd77f8848dbcfe5938a8751196dec793fa29442225bec95eeca71e25"
+      "sha256": "8108a72a9752c523cb7d738474465afb3cb44bcba6b4033e1b93db36234dd061"
     },
     {
       "path": "schemas/context_packet_request.v1.schema.json",
@@ -23,15 +23,15 @@
     },
     {
       "path": "schemas/error.v1.schema.json",
-      "sha256": "8ca4b52c38345ae64255643cd88423295d49ceca00f6e77f3abd546456fcb20d"
+      "sha256": "47affe9aad36abd9e66b2c9e6832fad6cc2ffe09b200a97a104f244b5f1a7eb7"
     },
     {
       "path": "schemas/evidence_ref.v1.schema.json",
-      "sha256": "cda8e0ca967f3dba2bcc12b06bede4868a4104ffdfaf3219c7daecf40de60a82"
+      "sha256": "6ca025bcd38f6a5fcdad62a198e4e95a82f2d05d1c74960bade32526c7be7200"
     },
     {
       "path": "schemas/expanded_evidence.v1.schema.json",
-      "sha256": "00d9fc1262b621b9fa5472eeaf8c1b1581827aafb3ba185c8772b3622f3c81d7"
+      "sha256": "dc23911c96e25b5fe8f422abf01ff9a1eb923f653da131f093653e4cb0024c99"
     },
     {
       "path": "examples/context_packet.v1.json",
@@ -55,23 +55,31 @@
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "355d78d55d45e360f0cb0c74a974d6f33cb23a5291825b76818131fd3a30a8bd"
+      "sha256": "a78ed7b6ee506aedbea55d35b5d459576f2c7d98d04f705887e6aadc6f9aa4c5"
     },
     {
       "path": "schemas/context_fabric_answer_projection.v1.schema.json",
-      "sha256": "a655f417f932b68a9cf002f73b718e9bc33ba170eecd443d7469f8e89d3dba97"
+      "sha256": "a1a1e63fe95ec542c1aeaa5823b60320691c2113c1d3e33c98620671933f0199"
     },
     {
       "path": "schemas/context_fabric_investigation_request.v1.schema.json",
-      "sha256": "db34def69344d0293cbd5e6373735bada695bbfdcaf40af2222c6456e6bb6486"
+      "sha256": "6dc3afe9e370bfef5da6d58a421bebade195b0ab9cdfa9c9409b160d42d6b507"
+    },
+    {
+      "path": "schemas/context_fabric_investigation_response.v1.schema.json",
+      "sha256": "bc610fab3c413a3fab3c9aab7d6bb462474e88c50b975b12a0ca2520b89cdff0"
+    },
+    {
+      "path": "schemas/context_fabric_investigation_response.v2.schema.json",
+      "sha256": "6db8487100bc2032f611ced1ed7b3a72cd208606b5e7ef5149ad9743b681e974"
     },
     {
       "path": "schemas/context_fabric_investigation_result.v1.schema.json",
-      "sha256": "56243a35687300b06d56c38c7a4cd12eac0a5bb8a3b2fa2446d293bc09f3715b"
+      "sha256": "e47b6abc0e6faf4122eb66c62104bf4f30ed57f6d1727f635cb395e3bcdff4ff"
     },
     {
       "path": "schemas/context_fabric_investigation_result.v2.schema.json",
-      "sha256": "19da703d289b39422fdfb678d6baeb37d5c1b115620a8de95ea76c0073229c2a"
+      "sha256": "2bb6e9d88036a26aa55f054e74a1ee20f79cd731cae2524e458a6b469e2ad518"
     },
     {
       "path": "schemas/context_fabric_org_model_config.v1.schema.json",
@@ -80,6 +88,14 @@
     {
       "path": "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
       "sha256": "1f1cdd5ab3117fba2f672c18b94b22e7e8ee89b9b882745f4838037753a492a5"
+    },
+    {
+      "path": "schemas/credential_ack_request.v1.schema.json",
+      "sha256": "1b07167e4e8609eacf697eec5548a2411504cf05befda54646ebab5a00951e62"
+    },
+    {
+      "path": "schemas/credential_ack_response.v1.schema.json",
+      "sha256": "4f0e60e9a4a5a277426268edd1f9a067c5b24df57721332df2ed77fdd51fcdea"
     },
     {
       "path": "schemas/credential_revoke_request.v1.schema.json",
@@ -131,19 +147,19 @@
     },
     {
       "path": "schemas/mcp_read_facts_request.v1.schema.json",
-      "sha256": "78ca0c6b9f9701a84c30c5ff2bf22acb6c1514da890657fc0df8bbcb3ee1bc67"
+      "sha256": "6350e2afdc6dfa53f27a75b28046ba6a4c0c1a47878d5e1adec32f7238a5d531"
     },
     {
       "path": "schemas/mcp_read_facts_response.v1.schema.json",
-      "sha256": "c6f797ab84fb5cebce3613affd5fd340c3ede7ddcf827d6c703d8fc9b281371d"
+      "sha256": "31260a1b2fe8d207d93979305f28cab97334a789fe0f4bc627988fbcbfbd82ef"
     },
     {
       "path": "schemas/mcp_read_relationships_request.v1.schema.json",
-      "sha256": "f678920db9f1e23221c970c8d5cf3f8038c4332eed9dcf956684bb62d92e68eb"
+      "sha256": "7b5540a28a660a1f34bb461021714e1e5b6f7cb7a222824938e6e68dd014724c"
     },
     {
       "path": "schemas/mcp_read_relationships_response.v1.schema.json",
-      "sha256": "bb026502971161831b7903f1a58cf72261a9c9e00b80ef8a5f6fc394aa9737d0"
+      "sha256": "8ad0b2b38ff7ebe6a01015496bb0a7a95df38e9e7ae7bd6a48f5b2a0b8f4c53f"
     },
     {
       "path": "schemas/oauth_device_error.v1.schema.json",

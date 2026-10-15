@@ -7,6 +7,8 @@ import capabilitiesSchema from "./contracts/schemas/capabilities.v1.schema.json"
 import contextFabricAnswerProjectionSchema from "./contracts/schemas/context_fabric_answer_projection.v1.schema.json";
 import contextFabricCommonSchema from "./contracts/schemas/context_fabric_common.v1.schema.json";
 import contextFabricInvestigationRequestSchema from "./contracts/schemas/context_fabric_investigation_request.v1.schema.json";
+import contextFabricInvestigationResponseSchema from "./contracts/schemas/context_fabric_investigation_response.v1.schema.json";
+import contextFabricInvestigationResponseV2Schema from "./contracts/schemas/context_fabric_investigation_response.v2.schema.json";
 import contextFabricInvestigationResultSchema from "./contracts/schemas/context_fabric_investigation_result.v1.schema.json";
 import contextFabricInvestigationResultV2Schema from "./contracts/schemas/context_fabric_investigation_result.v2.schema.json";
 import contextFabricOrgModelConfigWriteRequestSchema from "./contracts/schemas/context_fabric_org_model_config_write_request.v1.schema.json";
@@ -14,6 +16,8 @@ import contextFabricOrgModelConfigSchema from "./contracts/schemas/context_fabri
 import contextPacketItemSchema from "./contracts/schemas/context_packet_item.v1.schema.json";
 import contextPacketRequestSchema from "./contracts/schemas/context_packet_request.v1.schema.json";
 import contextPacketSchema from "./contracts/schemas/context_packet.v1.schema.json";
+import credentialAckRequestSchema from "./contracts/schemas/credential_ack_request.v1.schema.json";
+import credentialAckResponseSchema from "./contracts/schemas/credential_ack_response.v1.schema.json";
 import credentialRevokeRequestSchema from "./contracts/schemas/credential_revoke_request.v1.schema.json";
 import credentialRevokeResponseSchema from "./contracts/schemas/credential_revoke_response.v1.schema.json";
 import credentialRotateRequestSchema from "./contracts/schemas/credential_rotate_request.v1.schema.json";
@@ -47,6 +51,8 @@ export const acrSchemas = {
     contextFabricAnswerProjection: contextFabricAnswerProjectionSchema,
     contextFabricCommon: contextFabricCommonSchema,
     contextFabricInvestigationRequest: contextFabricInvestigationRequestSchema,
+    contextFabricInvestigationResponse: contextFabricInvestigationResponseSchema,
+    contextFabricInvestigationResponseV2: contextFabricInvestigationResponseV2Schema,
     contextFabricInvestigationResult: contextFabricInvestigationResultSchema,
     contextFabricInvestigationResultV2: contextFabricInvestigationResultV2Schema,
     contextFabricOrgModelConfigWriteRequest: contextFabricOrgModelConfigWriteRequestSchema,
@@ -54,6 +60,8 @@ export const acrSchemas = {
     contextPacketItem: contextPacketItemSchema,
     contextPacketRequest: contextPacketRequestSchema,
     contextPacket: contextPacketSchema,
+    credentialAckRequest: credentialAckRequestSchema,
+    credentialAckResponse: credentialAckResponseSchema,
     credentialRevokeRequest: credentialRevokeRequestSchema,
     credentialRevokeResponse: credentialRevokeResponseSchema,
     credentialRotateRequest: credentialRotateRequestSchema,
@@ -86,6 +94,10 @@ const acrSchemaFiles = {
     "context_fabric_answer_projection.v1.schema.json": contextFabricAnswerProjectionSchema,
     "context_fabric_common.v1.schema.json": contextFabricCommonSchema,
     "context_fabric_investigation_request.v1.schema.json": contextFabricInvestigationRequestSchema,
+    "context_fabric_investigation_response.v1.schema.json":
+        contextFabricInvestigationResponseSchema,
+    "context_fabric_investigation_response.v2.schema.json":
+        contextFabricInvestigationResponseV2Schema,
     "context_fabric_investigation_result.v1.schema.json": contextFabricInvestigationResultSchema,
     "context_fabric_investigation_result.v2.schema.json": contextFabricInvestigationResultV2Schema,
     "context_fabric_org_model_config_write_request.v1.schema.json":
@@ -94,6 +106,8 @@ const acrSchemaFiles = {
     "context_packet_item.v1.schema.json": contextPacketItemSchema,
     "context_packet_request.v1.schema.json": contextPacketRequestSchema,
     "context_packet.v1.schema.json": contextPacketSchema,
+    "credential_ack_request.v1.schema.json": credentialAckRequestSchema,
+    "credential_ack_response.v1.schema.json": credentialAckResponseSchema,
     "credential_revoke_request.v1.schema.json": credentialRevokeRequestSchema,
     "credential_revoke_response.v1.schema.json": credentialRevokeResponseSchema,
     "credential_rotate_request.v1.schema.json": credentialRotateRequestSchema,
@@ -130,6 +144,8 @@ const ajv = new Ajv2020({
     strictTypes: false,
 });
 addFormats(ajv);
+// Annotation only: acr lists the documented members of an open vocabulary here and a client must tolerate others.
+ajv.addKeyword({ keyword: "x-documented-values", schemaType: "array" });
 for (const [schemaName, schema] of Object.entries(acrSchemaFiles))
     ajv.addSchema(schema, schemaName);
 
