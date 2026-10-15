@@ -51,7 +51,6 @@ describe("v10 privacy baseline", () => {
     it.each([
         ["server", "../../../../sentry.server.config"],
         ["edge", "../../../../sentry.edge.config"],
-        ["client", "../../../../sentry.client.config"],
     ])("applies the baseline and the scrub hooks in the %s init", async (_name, file) => {
         const config = await initConfigFor(file);
 

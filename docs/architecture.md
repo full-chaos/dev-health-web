@@ -266,7 +266,6 @@ The application uses `@sentry/nextjs` for error tracking and performance monitor
 
 | File                      | Runtime          | Key Settings                                                                                                          |
 | :------------------------ | :--------------- | :-------------------------------------------------------------------------------------------------------------------- |
-| `sentry.client.config.ts` | Browser          | Traces (10% prod / 100% dev), Session Replay (10% prod / 100% dev, 100% on error)                                     |
 | `sentry.server.config.ts` | Node.js server   | Traces (10% prod / 100% dev)                                                                                          |
 | `sentry.edge.config.ts`   | Edge runtime     | Traces (10% prod / 100% dev)                                                                                          |
 | `instrumentation.ts`      | Server bootstrap | Dynamically imports server or edge config; exports `onRequestError` to capture Server Component and middleware errors |
@@ -274,16 +273,16 @@ The application uses `@sentry/nextjs` for error tracking and performance monitor
 
 **Environment variables:**
 
-| Variable                 | Required     | Description                                         |
-| :----------------------- | :----------- | :-------------------------------------------------- |
-| `NEXT_PUBLIC_SENTRY_DSN` | Yes          | Sentry Data Source Name — used by all three configs |
-| `SENTRY_AUTH_TOKEN`      | No (CI only) | Enables source map upload during builds             |
-| `SENTRY_ORG`             | No (CI only) | Sentry organisation slug                            |
-| `SENTRY_PROJECT`         | No (CI only) | Sentry project slug                                 |
+| Variable                 | Required     | Description                                                   |
+| :----------------------- | :----------- | :------------------------------------------------------------ |
+| `NEXT_PUBLIC_SENTRY_DSN` | Yes          | Sentry Data Source Name — used by the server and edge configs |
+| `SENTRY_AUTH_TOKEN`      | No (CI only) | Enables source map upload during builds                       |
+| `SENTRY_ORG`             | No (CI only) | Sentry organisation slug                                      |
+| `SENTRY_PROJECT`         | No (CI only) | Sentry project slug                                           |
 
 **What's instrumented:**
 
-- **Client**: Unhandled exceptions, unhandled promise rejections, performance traces, and Session Replay (with full error-session capture).
+- **Client**: Not instrumented. There is no browser Sentry init.
 - **Server**: Unhandled exceptions in API routes and Server Components via `Sentry.captureRequestError` (registered in `instrumentation.ts`).
 - **Edge**: Unhandled exceptions in edge middleware/routes.
 
