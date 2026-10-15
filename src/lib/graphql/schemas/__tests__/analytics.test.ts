@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SankeyResultSchema } from "../analytics";
+import { MeasureInputSchema, SankeyResultSchema } from "../analytics";
 
 // CHAOS-4241 (codex round 1 on the web PR): SankeyResultSchema did not
 // declare `unit`, so any caller that runs a Sankey response through this
@@ -28,5 +28,39 @@ describe("SankeyResultSchema", () => {
 
     it("rejects an unrecognized unit value rather than silently accepting it", () => {
         expect(() => SankeyResultSchema.parse({ ...base, unit: "BOGUS" })).toThrow();
+    });
+
+    it("accepts ISSUE_SIZE unit with sizing coverage fields", () => {
+        const result = SankeyResultSchema.parse({
+            ...base,
+            unit: "ISSUE_SIZE",
+            coverage: {
+                teamCoverage: 1,
+                repoCoverage: 1,
+                sizingCoverage: 0.5,
+                unsizedUnitCount: 3,
+            },
+        });
+        expect(result.unit).toBe("ISSUE_SIZE");
+        expect(result.coverage?.sizingCoverage).toBe(0.5);
+    });
+
+    it("accepts null sizing coverage fields", () => {
+        const result = SankeyResultSchema.parse({
+            ...base,
+            coverage: {
+                teamCoverage: 1,
+                repoCoverage: 1,
+                sizingCoverage: null,
+                unsizedUnitCount: null,
+            },
+        });
+        expect(result.coverage?.unsizedUnitCount).toBeNull();
+    });
+});
+
+describe("MeasureInputSchema", () => {
+    it("accepts ISSUE_SIZE", () => {
+        expect(MeasureInputSchema.safeParse("ISSUE_SIZE").success).toBe(true);
     });
 });

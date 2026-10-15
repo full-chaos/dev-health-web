@@ -130,6 +130,7 @@ export const DimensionInputSchema = z.enum([
 
 export const MeasureInputSchema = z.enum([
     "COUNT",
+    "ISSUE_SIZE",
     "CHURN_LOC",
     "CYCLE_TIME_HOURS",
     "THROUGHPUT",
