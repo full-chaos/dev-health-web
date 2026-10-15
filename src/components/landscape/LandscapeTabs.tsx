@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { HotspotRow } from "@/components/complexity/ComplexityDashboard";
 import { DataState } from "@/components/ui/DataState";
 import type { BusFactor } from "@/lib/graphql/types";
+import { hasPlottableData } from "@/lib/quadrantPoints";
 import type { QuadrantResponse } from "@/lib/types";
 
 import { HotspotsTable, OwnershipTable, ReposTable, TeamsTable } from "./LandscapeTables";
@@ -42,7 +43,10 @@ export function TeamsView({
     churnData: QuadrantResponse | null;
 }) {
     const churnById = new Map((churnData?.points ?? []).map((p) => [p.entity_id, p.x]));
-    const rows = (cycleData?.points ?? [])
+    const allPoints = cycleData?.points ?? [];
+    const idle = allPoints.filter((p) => !hasPlottableData(p));
+    const rows = allPoints
+        .filter(hasPlottableData)
         .map((p) => ({
             id: p.entity_id,
             label: p.entity_label,
@@ -58,22 +62,45 @@ export function TeamsView({
             description="Delivery pace and pressure per team — throughput against cycle time and change volume."
             testId="landscape-teams"
         >
-            {rows.length === 0 ? (
+            {rows.length === 0 && idle.length === 0 ? (
                 <DataState
                     variant="detector-enabled-no-findings"
                     title="No team data"
                     description="Team operating-mode data is not available for this scope and window."
                 />
             ) : (
-                <TeamsTable
-                    rows={rows.map((r) => ({
-                        id: r.id,
-                        label: r.label,
-                        throughput: r.throughput,
-                        cycle: r.cycle,
-                        churn: r.churn === undefined ? null : r.churn,
-                    }))}
-                />
+                <>
+                    {rows.length > 0 && (
+                        <TeamsTable
+                            rows={rows.map((r) => ({
+                                id: r.id,
+                                label: r.label,
+                                throughput: r.throughput,
+                                cycle: r.cycle,
+                                churn: r.churn === undefined ? null : r.churn,
+                            }))}
+                        />
+                    )}
+                    {idle.length > 0 && (
+                        <div className="mt-4" data-testid="teams-no-data">
+                            <h3 className="text-sm font-medium">No data in this window</h3>
+                            <ul className="mt-2 divide-y divide-(--card-stroke) text-sm">
+                                {idle.map((p) => (
+                                    <li
+                                        key={p.entity_id}
+                                        className="flex justify-between py-2"
+                                        data-testid="teams-no-data-row"
+                                    >
+                                        <span>{p.entity_label}</span>
+                                        <span className="text-(--ink-muted)">
+                                            No data in this window
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </>
             )}
         </TabPanel>
     );

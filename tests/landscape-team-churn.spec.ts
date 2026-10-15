@@ -8,6 +8,9 @@ test("Landscape Teams tab shows served churn per team", async ({ page }) => {
     const alpha = teams.getByRole("row", { name: /Team Alpha/ });
     await expect(alpha).toContainText("4,200");
     await expect(teams.getByRole("row", { name: /Team Gamma/ })).toContainText("640");
+    // CHAOS-8827: an idle team is listed as no-data, never as a zero row.
+    await expect(teams.getByTestId("teams-no-data-row")).toContainText("Team Idle");
+    await expect(teams.getByRole("row", { name: /Team Idle/ })).toHaveCount(0);
     const shots = process.env.LANDSCAPE_SHOT_PATH;
     if (shots) {
         await page.setViewportSize({ width: 1600, height: 1000 });

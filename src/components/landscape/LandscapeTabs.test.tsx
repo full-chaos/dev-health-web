@@ -111,6 +111,45 @@ describe("Teams tab (pin)", () => {
     });
 });
 
+describe("Teams tab: idle teams (has_data=false)", () => {
+    const idlePt = (id: string, label: string) =>
+        ({
+            ...pt(id, label, 0, 0),
+            x: null,
+            y: null,
+            window_start: null,
+            window_end: null,
+            has_data: false,
+        }) as unknown as QuadrantResponse["points"][number];
+    const mixed: QuadrantResponse = {
+        axes,
+        annotations: [],
+        points: [{ ...pt("t1", "Team Alpha", 4.2, 10), has_data: true }, idlePt("t9", "Team Idle")],
+    };
+    it("lists an idle team as no-data, not as a zero row", () => {
+        const { container } = render(<TeamsView cycleData={mixed} churnData={null} />);
+        expect(firstCells(container)).toEqual(["Team Alpha"]);
+        const rows = screen.getAllByTestId("teams-no-data-row");
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toHaveTextContent("Team Idle");
+        expect(rows[0]).toHaveTextContent("No data in this window");
+    });
+    it("shows the list when every team is idle", () => {
+        render(
+            <TeamsView
+                cycleData={{ ...mixed, points: [idlePt("t9", "Team Idle")] }}
+                churnData={null}
+            />,
+        );
+        expect(screen.getByTestId("teams-no-data")).toBeInTheDocument();
+        expect(screen.queryByText("No team data")).not.toBeInTheDocument();
+    });
+    it("behaves as before when has_data is absent", () => {
+        render(<TeamsView cycleData={cycle} churnData={churn} />);
+        expect(screen.queryByTestId("teams-no-data")).not.toBeInTheDocument();
+    });
+});
+
 describe("Repos tab (pin)", () => {
     it("keeps the columns and the churn-descending order", () => {
         const { container } = render(<ReposView hotspots={hotspots} />);

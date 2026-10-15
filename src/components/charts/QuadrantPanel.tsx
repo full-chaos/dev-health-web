@@ -1,5 +1,6 @@
 "use client";
 
+import { plottablePoints, withPlottablePoints } from "@/lib/quadrantPoints";
 import {
     type KeyboardEvent as ReactKeyboardEvent,
     useEffect,
@@ -149,14 +150,17 @@ export function QuadrantPanel({
         return isPersonScope ? ids.slice(0, 1) : ids;
     }, [isPersonScope, scopeIds]);
     const scopedData = useMemo(() => {
-        if (!data || !isPersonScope) {
+        if (!data) {
             return data;
+        }
+        if (!isPersonScope) {
+            return withPlottablePoints(data);
         }
         const focusId = focusEntityIds[0];
         if (!focusId) {
             return { ...data, points: [] };
         }
-        const points = (data.points ?? []).filter((point) => point.entity_id === focusId);
+        const points = plottablePoints(data.points).filter((point) => point.entity_id === focusId);
         return { ...data, points };
     }, [data, focusEntityIds, isPersonScope]);
     const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);

@@ -669,6 +669,8 @@ export type QuadrantPoint = {
     window_start: string;
     window_end: string;
     evidence_link: string;
+    /** `false` = an active entity with no data in the window; x, y and window_* are then null. Absent on older ops. */
+    has_data?: boolean;
     trajectory?: QuadrantPointTrajectory[];
 };
 
