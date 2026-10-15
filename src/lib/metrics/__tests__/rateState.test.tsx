@@ -319,7 +319,11 @@ describe("change failure rate tile: the served unknown reason", () => {
             unit: "ratio",
             hasData: false,
             ...(state ? { rateState: state } : {}),
-            changeFailureEvidence: { unknownReason: reason },
+            changeFailureEvidence: {
+                deployments: 0,
+                deploymentsWithStatus: 0,
+                unknownReason: reason,
+            },
             delta: {
                 value: 0,
                 priorValue: 0.5,
