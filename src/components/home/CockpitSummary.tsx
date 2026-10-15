@@ -12,6 +12,7 @@ import { isRiskSignal } from "@/lib/cockpit/signalKinds";
 import { coverageNote, reworkCoverageNote } from "@/lib/metrics/coverageNote";
 import { filterEmptyReasonText } from "@/lib/metrics/filterEmptyReason";
 import { noDataText } from "@/lib/metrics/metricDisplay";
+import { signalPriorText } from "@/lib/metrics/priorText";
 import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
 import { NOT_FILTERED_BY_REPOSITORY, isRepoUnscopedMetric } from "@/lib/metrics/repoScope";
 import type { HomeResponse } from "@/lib/types";
@@ -99,7 +100,8 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
     // A no-value link state draws no data in the hero, never the signal's value (CHAOS-9120).
     const noValue = isRepoLinkNoValueState(topDelta?.repo_link_state);
     const reworkNote = reworkCoverageNote(topDelta);
-    const hasPrior = topSignal.prior_value != null && topSignal.prior_value !== "";
+    const priorText = signalPriorText(topSignal, topDelta);
+    const hasPrior = priorText !== null;
 
     return (
         <section data-testid="cockpit-summary" aria-label="Primary signal">
@@ -124,7 +126,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     driver: noValue
                         ? noDataText(topSignal.metric)
                         : hasPrior
-                          ? `${topSignal.current_value} from ${topSignal.prior_value}`
+                          ? `${topSignal.current_value} from ${priorText}`
                           : topSignal.current_value,
                     state: topSignal.severity,
                 }}

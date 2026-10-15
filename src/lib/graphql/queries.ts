@@ -1221,6 +1221,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       deltaPct
       hasData
       hasPriorData
+      priorValue
       spark {
         ts
         value
