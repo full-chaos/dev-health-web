@@ -111,7 +111,7 @@ describe("Teams tab (pin)", () => {
     });
 });
 
-describe("Teams tab: idle teams (has_data=false)", () => {
+describe("Teams tab: idle teams (no_data=true)", () => {
     const idlePt = (id: string, label: string) =>
         ({
             ...pt(id, label, 0, 0),
@@ -119,12 +119,12 @@ describe("Teams tab: idle teams (has_data=false)", () => {
             y: null,
             window_start: null,
             window_end: null,
-            has_data: false,
+            no_data: true,
         }) as unknown as QuadrantResponse["points"][number];
     const mixed: QuadrantResponse = {
         axes,
         annotations: [],
-        points: [{ ...pt("t1", "Team Alpha", 4.2, 10), has_data: true }, idlePt("t9", "Team Idle")],
+        points: [pt("t1", "Team Alpha", 4.2, 10), idlePt("t9", "Team Idle")],
     };
     it("lists an idle team as no-data, not as a zero row", () => {
         const { container } = render(<TeamsView cycleData={mixed} churnData={null} />);
@@ -144,7 +144,7 @@ describe("Teams tab: idle teams (has_data=false)", () => {
         expect(screen.getByTestId("teams-no-data")).toBeInTheDocument();
         expect(screen.queryByText("No team data")).not.toBeInTheDocument();
     });
-    it("behaves as before when has_data is absent", () => {
+    it("behaves as before when no_data is absent", () => {
         render(<TeamsView cycleData={cycle} churnData={churn} />);
         expect(screen.queryByTestId("teams-no-data")).not.toBeInTheDocument();
     });

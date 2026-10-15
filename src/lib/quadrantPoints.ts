@@ -1,8 +1,8 @@
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
-/** A point with `has_data === false`, or a null / non-finite x or y, is never drawn (null is not 0). */
+/** A point with `no_data === true`, or a null / non-finite x or y, is never drawn (null is not 0). */
 export function hasPlottableData(point: QuadrantPoint): boolean {
-    if (point.has_data === false) return false;
+    if (point.no_data === true) return false;
     return Number.isFinite(point.x) && Number.isFinite(point.y);
 }
 

@@ -3209,7 +3209,7 @@ export const handlers = [
                               y: null,
                               window_start: null,
                               window_end: null,
-                              has_data: false,
+                              no_data: true,
                           },
                       ]),
             ],

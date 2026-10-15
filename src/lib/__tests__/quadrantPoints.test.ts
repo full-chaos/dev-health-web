@@ -14,10 +14,10 @@ const mk = (o: Record<string, unknown>) =>
     ({ ...base, x: 1, y: 2, ...o }) as unknown as QuadrantPoint;
 
 describe("plottablePoints", () => {
-    it("drops has_data=false and null coordinates, never turning null into 0", () => {
+    it("drops no_data=true and null coordinates, never turning null into 0", () => {
         const pts = [
-            mk({ has_data: true }),
-            mk({ has_data: false, x: null, y: null }),
+            mk({ no_data: false }),
+            mk({ no_data: true, x: null, y: null }),
             mk({ x: null, y: null }),
             mk({}),
         ];
