@@ -34,13 +34,15 @@ class RateLimited extends CredentialsSignin {
     code = "rate_limited";
 }
 
-// Lazy secret: in production, pass undefined so Auth.js validates per-request
-// instead of the old IIFE that threw at module-load and killed all exports.
+// Lazy secret: outside development and test, pass undefined so Auth.js validates
+// per-request instead of the old IIFE that threw at module-load and killed all exports.
 const authEnv = getServerEnv();
 const authSecret =
     authEnv.AUTH_SECRET ||
     authEnv.NEXTAUTH_SECRET ||
-    (authEnv.NODE_ENV === "production" ? undefined : "dev-secret-change-in-production");
+    (authEnv.NODE_ENV === "development" || authEnv.NODE_ENV === "test"
+        ? "dev-secret-change-in-production"
+        : undefined);
 
 const nextAuth = NextAuth({
     trustHost: true,
