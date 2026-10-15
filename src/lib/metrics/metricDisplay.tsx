@@ -16,6 +16,15 @@ export const NO_REVIEW_DATA = "No review data for this window";
 export const NO_REWORK_SIGNAL = "Rework is not measurable for this provider";
 export const NO_MERGED_PULL_REQUESTS = "No merged pull requests in this window";
 export const NOT_MEASURED_YET = "Not measured yet";
+export const DEPLOYMENT_OUTCOMES_UNAVAILABLE =
+    "Deployment outcomes were unavailable for this window";
+
+/** The served unknown reason of a change failure rate with no value, mapped to its ruled tile text (CHAOS-9660). */
+const CHANGE_FAILURE_REASON_TEXT: Readonly<Record<string, string>> = {
+    not_collected: DEPLOYMENT_OUTCOMES_UNAVAILABLE,
+    deployments_without_outcome: DEPLOYMENT_OUTCOMES_UNAVAILABLE,
+    no_deployments_in_window: NO_DEPLOYMENTS,
+};
 
 const NOT_MEASURED_STATE_TEXT: Readonly<Record<string, string>> = {
     unknown_no_incident_evidence: NO_INCIDENT_DATA,
@@ -39,8 +48,19 @@ export function isNotMeasuredState(rateState: string | null | undefined): boolea
  * says "Not measured yet"; a known state says its reason; a null, absent or unknown future state
  * says "No data for this window" (the raw state string is never printed).
  */
-export function noDataText(metric?: string | null, rateState?: string | null): string {
+export function noDataText(
+    metric?: string | null,
+    rateState?: string | null,
+    unknownReason?: string | null,
+): string {
     if (metric === REVERT_RATE_KEY) return NOT_MEASURED_YET;
+    if (
+        metric === "change_failure_rate" &&
+        typeof unknownReason === "string" &&
+        Object.hasOwn(CHANGE_FAILURE_REASON_TEXT, unknownReason)
+    ) {
+        return CHANGE_FAILURE_REASON_TEXT[unknownReason];
+    }
     if (typeof rateState === "string" && Object.hasOwn(NOT_MEASURED_STATE_TEXT, rateState)) {
         return NOT_MEASURED_STATE_TEXT[rateState];
     }
@@ -135,7 +155,12 @@ export function readDelta(
 export function metricCardProps(
     metric:
         | (Pick<MetricDelta, "value" | "unit" | "delta_pct" | "has_data" | "has_prior_data"> &
-              Partial<Pick<MetricDelta, "metric" | "rate_state" | "repo_link_state">>)
+              Partial<
+                  Pick<
+                      MetricDelta,
+                      "metric" | "rate_state" | "repo_link_state" | "change_failure_evidence"
+                  >
+              >)
         | null
         | undefined,
 ): Pick<
@@ -155,7 +180,11 @@ export function metricCardProps(
     }
     if (display.state === "no-data") {
         return {
-            valueText: noDataText(metric.metric, metric.rate_state),
+            valueText: noDataText(
+                metric.metric,
+                metric.rate_state,
+                metric.change_failure_evidence?.unknown_reason,
+            ),
             valueIsMessage: true,
             deltaSlot: <></>,
             hideTrend: true,
