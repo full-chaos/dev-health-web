@@ -4,7 +4,7 @@
  */
 import { render, type RenderOptions } from "@testing-library/react";
 import { type ReactElement } from "react";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 
 // Re-export everything from testing library for convenience
 export * from "@testing-library/react";
@@ -26,6 +26,9 @@ export { customRender as render };
  * Use this instead of bare `render()` for any component that calls `toast.*`.
  */
 export function renderWithToaster(ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) {
+    // sonner >= 2.0.8 replays still-active toasts to every newly mounted <Toaster/> and its
+    // store is module-global, so drop toasts left by earlier tests to avoid duplicate nodes.
+    toast.dismiss();
     return customRender(
         <>
             {ui}
