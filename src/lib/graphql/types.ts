@@ -869,6 +869,8 @@ export interface HomeGraphQLDelta {
     deltaPct: number | null;
     hasData: boolean;
     hasPriorData: boolean;
+    /** The prior window's measured value (CHAOS-9817); null when it has none, a stored 0 is 0. Absent: an older API. */
+    priorValue?: number | null;
     spark: HomeGraphQLSparkPoint[];
     /** Why a change failure rate has a value or not; null or absent when none is served. */
     rateState?: string | null;
