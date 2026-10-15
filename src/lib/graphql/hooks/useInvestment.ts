@@ -89,13 +89,13 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
             breakdowns: [
                 {
                     dimension: "THEME" as DimensionInput,
-                    measure: "COUNT" as MeasureInput,
+                    measure: "ISSUE_SIZE" as MeasureInput,
                     dateRange,
                     topN: 50,
                 },
                 {
                     dimension: "SUBCATEGORY" as DimensionInput,
-                    measure: "COUNT" as MeasureInput,
+                    measure: "ISSUE_SIZE" as MeasureInput,
                     dateRange,
                     topN: 100,
                 },
@@ -141,7 +141,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
         return {
             theme_distribution,
             subcategory_distribution,
-            unit: "work_units",
+            unit: "issue_size",
             evidence_quality_distribution:
                 (result.data.analytics.evidenceQualityDistribution as
                     Record<string, number> | undefined) ?? undefined,
@@ -307,7 +307,7 @@ export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestm
         const batch: AnalyticsRequestInput = {
             sankey: {
                 path,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 maxNodes: 50,
                 maxEdges: 200,
@@ -367,7 +367,7 @@ export function useInvestmentRepoTeamFlow(
         const batch: AnalyticsRequestInput = {
             sankey: {
                 path: ["SUBCATEGORY", "REPO", "TEAM"] as DimensionInput[],
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 maxNodes: 50,
                 maxEdges: 200,

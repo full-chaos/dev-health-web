@@ -224,6 +224,8 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
       coverage {
         teamCoverage
         repoCoverage
+        sizingCoverage
+        unsizedUnitCount
       }
       unit
     }

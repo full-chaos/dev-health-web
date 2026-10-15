@@ -26,7 +26,7 @@ import {
     formatQuality,
     formatSubcategoryLabel,
     titleCase,
-    WORK_UNIT_COUNT_UNIT,
+    ISSUE_SIZE_UNIT,
 } from "@/lib/investment";
 import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
 import type { WorkUnitInvestment } from "@/lib/types";
@@ -170,7 +170,6 @@ export function InvestmentMixSection({
                         subcategoryLabel={nodeType === "subcategory" ? subcategoryLabel : undefined}
                         value={value}
                         total={mixTotalValue}
-                        unit={WORK_UNIT_COUNT_UNIT}
                     />
                 ),
                 footer: workGraphUrl ? (
@@ -350,7 +349,7 @@ export function InvestmentMixSection({
                             evidenceQualityDistribution={
                                 investmentMix.evidence_quality_distribution
                             }
-                            unit={WORK_UNIT_COUNT_UNIT}
+                            unit={ISSUE_SIZE_UNIT}
                             height={360}
                             focusedTheme={focusTheme}
                             onThemeClickAction={handleThemeClick}

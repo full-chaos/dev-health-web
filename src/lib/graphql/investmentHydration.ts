@@ -66,13 +66,13 @@ export function buildInvestmentMixVariables(
         breakdowns: [
             {
                 dimension: "THEME" as DimensionInput,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 topN: 50,
             },
             {
                 dimension: "SUBCATEGORY" as DimensionInput,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 topN: 100,
             },
@@ -108,7 +108,7 @@ function adaptBreakdown(response: AnalyticsQueryResponse): InvestmentResponse {
     return {
         theme_distribution,
         subcategory_distribution,
-        unit: "work_units",
+        unit: "issue_size",
         evidence_quality_distribution:
             (response.analytics.evidenceQualityDistribution as
                 Record<string, number> | undefined) ?? undefined,

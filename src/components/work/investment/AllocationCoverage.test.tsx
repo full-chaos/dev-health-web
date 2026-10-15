@@ -456,3 +456,42 @@ describe("AllocationCoverage — empty answer vs failed read", () => {
         expect(screen.getByText(/could not be computed/i)).toBeInTheDocument();
     });
 });
+
+describe("AllocationCoverage — issue size coverage (CHAOS-9809)", () => {
+    const flowWith = (coverage: SankeyResponse["coverage"]): SankeyResponse => ({
+        ...primaryFlow,
+        coverage: { team: 0.9, repo: 0.8, ...coverage },
+    });
+    const renderTile = (flow: SankeyResponse) => {
+        render(
+            <AllocationCoverage teamCategoryFlow={flow} repoTeamFlow={null} isLoading={false} />,
+        );
+        return screen.getByTestId("coverage-tile-sizing");
+    };
+
+    it("high coverage reads as a share of sized work units, not as mostly count", () => {
+        const tile = renderTile(flowWith({ sizing: 0.92, unsized_units: 8 }));
+        expect(tile).toHaveTextContent("92%");
+        expect(tile).toHaveTextContent("8 work units have no issue size and count 1");
+        expect(tile).not.toHaveTextContent(/mostly count/i);
+    });
+
+    it("low coverage reads as mostly count", () => {
+        const tile = renderTile(flowWith({ sizing: 0.12, unsized_units: 88 }));
+        expect(tile).toHaveTextContent("12%");
+        expect(tile).toHaveTextContent(/mostly count/i);
+    });
+
+    it("a produced zero reads as 0% and mostly count", () => {
+        const tile = renderTile(flowWith({ sizing: 0, unsized_units: 100 }));
+        expect(tile).toHaveTextContent("0%");
+        expect(tile).toHaveTextContent(/mostly count/i);
+    });
+
+    it("missing coverage reads as not measured, never as a healthy number", () => {
+        const tile = renderTile(flowWith({}));
+        expect(tile).toHaveTextContent("Not measured");
+        expect(tile).not.toHaveTextContent(/%.*carry an issue size/);
+        expect(tile).not.toHaveTextContent("100%");
+    });
+});

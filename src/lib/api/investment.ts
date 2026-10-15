@@ -42,6 +42,7 @@ export async function explainInvestmentMix(params: {
             filters: normalized,
             theme: params.theme ?? null,
             subcategory: params.subcategory ?? null,
+            measure: "ISSUE_SIZE",
         },
         0,
         {

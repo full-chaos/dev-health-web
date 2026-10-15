@@ -2,7 +2,8 @@ import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatSubcategoryLabel, titleCase } from "@/lib/investment";
+import { formatSubcategoryLabel, readSizingCoverage, titleCase } from "@/lib/investment";
+import { describeSizing } from "./AllocationCoverage";
 import type { MixExplanationState } from "./types";
 
 const DRIVER_HINTS: Record<string, string> = {
@@ -106,6 +107,23 @@ export function InvestmentExplainer({
                                                 <span>
                                                     {Math.round(finding.evidence.share_pct)}%
                                                 </span>
+                                                {finding.evidence.measure === "ISSUE_SIZE" && (
+                                                    <span
+                                                        data-testid="finding-sizing"
+                                                        className="wrap-anywhere opacity-70"
+                                                    >
+                                                        {
+                                                            describeSizing(
+                                                                readSizingCoverage(
+                                                                    finding.evidence
+                                                                        .sizing_coverage,
+                                                                    finding.evidence
+                                                                        .unsized_unit_count,
+                                                                ),
+                                                            ).note
+                                                        }
+                                                    </span>
+                                                )}
                                                 {finding.evidence.evidence_quality_band && (
                                                     <span className="wrap-anywhere opacity-70">
                                                         Quality:{" "}

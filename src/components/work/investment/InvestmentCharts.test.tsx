@@ -238,21 +238,21 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             effort: { metric: "work_units", value: 500 },
         };
 
-        it('passes unit="work units" to the sankey chart when the flow response is unit: "WORK_UNITS"', () => {
+        it('passes unit="issue size" to the sankey chart when the flow response is unit: "ISSUE_SIZE"', () => {
             render(
                 <InvestmentCharts
                     {...baseProps({
                         workUnits: [churnWorkUnit],
-                        teamCategoryFlow: { ...sampleSankey, unit: "WORK_UNITS" },
+                        teamCategoryFlow: { ...sampleSankey, unit: "ISSUE_SIZE" },
                     })}
                 />,
             );
             expect(sankeySpy).toHaveBeenCalled();
             const props = sankeySpy.mock.calls[0]?.[0] as Record<string, unknown>;
-            expect(props.unit).toBe("work units");
+            expect(props.unit).toBe("issue size");
         });
 
-        it('defaults to "work units" (never "loc") when the flow response has no unit field, even with churn_loc work units', () => {
+        it('defaults to "issue size" (never "loc") when the flow response has no unit field, even with churn_loc work units', () => {
             render(
                 <InvestmentCharts
                     {...baseProps({ workUnits: [churnWorkUnit], teamCategoryFlow: sampleSankey })}
@@ -260,7 +260,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             );
             expect(sankeySpy).toHaveBeenCalled();
             const props = sankeySpy.mock.calls[0]?.[0] as Record<string, unknown>;
-            expect(props.unit).toBe("work units");
+            expect(props.unit).toBe("issue size");
             expect(props.unit).not.toBe("loc");
         });
     });

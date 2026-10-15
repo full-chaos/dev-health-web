@@ -31,13 +31,13 @@ describe("buildInvestmentMixVariables", () => {
         expect(vars.batch.breakdowns).toHaveLength(2);
         expect(vars.batch.breakdowns?.[0]).toEqual({
             dimension: "THEME",
-            measure: "COUNT",
+            measure: "ISSUE_SIZE",
             dateRange: { startDate: "2025-01-01", endDate: "2025-01-31" },
             topN: 50,
         });
         expect(vars.batch.breakdowns?.[1]).toEqual({
             dimension: "SUBCATEGORY",
-            measure: "COUNT",
+            measure: "ISSUE_SIZE",
             dateRange: { startDate: "2025-01-01", endDate: "2025-01-31" },
             topN: 100,
         });
@@ -141,13 +141,13 @@ describe("buildInvestmentMixVariables parity with useInvestmentMix", () => {
                 breakdowns: [
                     {
                         dimension: "THEME",
-                        measure: "COUNT",
+                        measure: "ISSUE_SIZE",
                         dateRange: { startDate: "2025-01-01", endDate: "2025-01-31" },
                         topN: 50,
                     },
                     {
                         dimension: "SUBCATEGORY",
-                        measure: "COUNT",
+                        measure: "ISSUE_SIZE",
                         dateRange: { startDate: "2025-01-01", endDate: "2025-01-31" },
                         topN: 100,
                     },

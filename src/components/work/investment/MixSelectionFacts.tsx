@@ -10,8 +10,6 @@ type MixSelectionFactsProps = {
     value: number | undefined;
     /** The sum of the mix's theme values (the base of the share). */
     total: number;
-    /** The mix's unit with underscores as spaces, else the page's effort unit. */
-    unit: string;
 };
 
 /**
@@ -25,7 +23,6 @@ export function MixSelectionFacts({
     subcategoryLabel,
     value,
     total,
-    unit,
 }: MixSelectionFactsProps) {
     return (
         <EvidenceFactList aria-label="Investment mix selection" testId={testId}>
@@ -34,8 +31,8 @@ export function MixSelectionFacts({
                 <EvidenceFact label="Subcategory" value={subcategoryLabel} />
             ) : null}
             <EvidenceFact
-                label="Count"
-                value={value === undefined ? undefined : `${formatNumber(value)} ${unit}`}
+                label="Issue size"
+                value={value === undefined ? undefined : formatNumber(value)}
             />
             <EvidenceFact
                 label="Share of the mix"

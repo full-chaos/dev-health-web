@@ -159,6 +159,10 @@ export interface SankeyEdge {
 export interface SankeyCoverage {
     teamCoverage: number | null;
     repoCoverage: number | null;
+    /** Share (0..1) of the window's work units that carry an issue size; null = not measured. */
+    sizingCoverage?: number | null;
+    /** Work units without an issue size (each counts 1); null = not measured. */
+    unsizedUnitCount?: number | null;
 }
 
 export interface SankeyResult {
@@ -166,7 +170,7 @@ export interface SankeyResult {
     edges: SankeyEdge[];
     /** null when the backend's coverage query failed and degraded by design. */
     coverage?: SankeyCoverage | null;
-    /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS". */
+    /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS" or "ISSUE_SIZE". */
     unit?: string;
 }
 

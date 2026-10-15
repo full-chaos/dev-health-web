@@ -136,3 +136,38 @@ describe("InvestmentExplainer in the narrow card", () => {
         expect(screen.getByRole("button", { name: /regenerate/i })).toBeInTheDocument();
     });
 });
+
+describe("InvestmentExplainer issue size coverage (CHAOS-9809)", () => {
+    const withEvidence = (evidence: Record<string, unknown>) =>
+        explanation({
+            top_findings: [
+                {
+                    finding: "Feature delivery appears to take the largest share.",
+                    evidence: { theme: "feature_delivery", share_pct: 60, ...evidence },
+                },
+            ],
+        });
+
+    it("reads a low sizing coverage as mostly count", () => {
+        renderExplainer(
+            withEvidence({
+                measure: "ISSUE_SIZE",
+                sizing_coverage: 0.1,
+                unsized_unit_count: 9,
+            }),
+        );
+        expect(screen.getByTestId("finding-sizing")).toHaveTextContent(/mostly count/i);
+    });
+
+    it("reads a missing sizing coverage on an ISSUE_SIZE share as not measured", () => {
+        renderExplainer(withEvidence({ measure: "ISSUE_SIZE" }));
+        const note = screen.getByTestId("finding-sizing");
+        expect(note).toHaveTextContent(/not served/i);
+        expect(note).not.toHaveTextContent(/carry an issue size\./);
+    });
+
+    it("prints no sizing note for a COUNT share", () => {
+        renderExplainer(withEvidence({ measure: "COUNT" }));
+        expect(screen.queryByTestId("finding-sizing")).toBeNull();
+    });
+});

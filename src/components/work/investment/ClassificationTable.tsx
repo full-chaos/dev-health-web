@@ -7,7 +7,7 @@ import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
-import { capitalizeFirst, titleCase, WORK_UNIT_COUNT_UNIT } from "@/lib/investment";
+import { capitalizeFirst, titleCase, ISSUE_SIZE_UNIT } from "@/lib/investment";
 import { getSortedThemes } from "@/lib/investmentMix";
 import { MixSelectionFacts } from "./MixSelectionFacts";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
@@ -43,7 +43,7 @@ export function ClassificationTable({
     const themes = investmentMix ? getSortedThemes(investmentMix) : [];
     if (!investmentMix || themes.length === 0) return null;
     const total = themes.reduce((sum, theme) => sum + theme.value, 0);
-    const unit = WORK_UNIT_COUNT_UNIT;
+    const unit = ISSUE_SIZE_UNIT;
 
     // The row's Evidence action opens the ONE shared drawer with the served effort and share
     // of the theme (the same facts a treemap cell shows).
@@ -63,7 +63,6 @@ export function ClassificationTable({
                     themeLabel={themeLabel}
                     value={value}
                     total={total}
-                    unit={unit}
                 />
             ),
             footer: (
