@@ -1152,6 +1152,8 @@ export type HomeSignal = {
   currentValue: Scalars['String']['output'];
   delta?: Maybe<Scalars['String']['output']>;
   direction: Scalars['String']['output'];
+  /** One sentence on where the signal's move appears largest ("Cycle Time appears to have moved most in A, B and C."), built from the display names of its top drivers with one hedge word. Null when the signal has no stated non-zero move, no driver has a name, or the signal is not a metric signal (risk, recommendation). Never a placeholder. */
+  driver?: Maybe<Scalars['String']['output']>;
   evidenceCount: Scalars['Int']['output'];
   /** Opaque reference into the evidence store, or null when the signal carries none. */
   evidenceRef?: Maybe<Scalars['String']['output']>;
@@ -2175,9 +2177,14 @@ export type ReworkThemeAllocation = {
   allocation: Scalars['Float']['output'];
   allocationPct: Scalars['Float']['output'];
   churnLoc: Scalars['Int']['output'];
+  denominator: Scalars['Float']['output'];
   label: Scalars['String']['output'];
+  measure: SankeyValueUnit;
   prsMerged: Scalars['Int']['output'];
+  sizingCoverage?: Maybe<Scalars['Float']['output']>;
   theme: Scalars['String']['output'];
+  unsizedUnitCount?: Maybe<Scalars['Int']['output']>;
+  workUnitCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type SankeyCoverage = {
@@ -2632,7 +2639,7 @@ export type TimeseriesResult = {
   scope: TimeseriesScope;
 };
 
-/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE and COVERAGE_LINE_PCT carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
+/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE, COVERAGE_LINE_PCT and TEST_FLAKE_RATE carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
 export type TimeseriesScope =
   | 'DIMENSION'
   | 'ORG';

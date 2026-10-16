@@ -108,7 +108,7 @@ const COGNITIVE_LOAD_THRESHOLDS: SeverityThresholds = {
  */
 function buildSignal(
     descriptor: NavAreaHubItem,
-    resolved: { state: AreaSignalState; value: string },
+    resolved: { state: AreaSignalState; value: string; driver?: string },
 ): AreaSignal {
     return {
         id: descriptor.id,
@@ -118,6 +118,7 @@ function buildSignal(
         metricLabel: descriptor.metricLabel ?? descriptor.label,
         value: resolved.value,
         state: resolved.state,
+        ...(resolved.driver ? { driver: resolved.driver } : {}),
         demoted: descriptor.demoted,
     };
 }
@@ -130,12 +131,16 @@ const UNAVAILABLE = { state: "unavailable" as const, value: "" };
  * window has no data (the served 0 is a placeholder, not a measurement) or no severity was served.
  */
 function homeMetricResolution(
-    signal: { severity: AreaSignalState } | undefined,
+    signal: { severity: AreaSignalState; driver?: string | null } | undefined,
     delta: HomeDeltaReading | undefined,
     format: (value: number) => string,
 ) {
     if (!signal || (delta && !delta.hasData)) return UNAVAILABLE;
-    return { state: signal.severity, value: delta ? format(delta.value) : "" };
+    return {
+        state: signal.severity,
+        value: delta ? format(delta.value) : "",
+        ...(signal.driver ? { driver: signal.driver } : {}),
+    };
 }
 
 /** The order the resolver pushes the cards in (kept in step with the pushes below). */
@@ -158,12 +163,16 @@ function normalizeReturnedSeverity(severity: string | undefined): AreaSignalStat
 
 /** Find a home `signals[]` entry by its backend metric key. */
 function homeSignalByMetric(
-    signals: { metric: string; severity: string }[] | undefined,
+    signals: { metric: string; severity: string; driver?: string | null }[] | undefined,
     metric: string,
-): { metric: string; severity: AreaSignalState } | undefined {
+): { metric: string; severity: AreaSignalState; driver?: string | null } | undefined {
     const match = signals?.find((s) => s.metric === metric);
     return match
-        ? { metric: match.metric, severity: normalizeReturnedSeverity(match.severity) }
+        ? {
+              metric: match.metric,
+              severity: normalizeReturnedSeverity(match.severity),
+              driver: match.driver,
+          }
         : undefined;
 }
 
