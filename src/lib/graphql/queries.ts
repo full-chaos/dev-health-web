@@ -1257,6 +1257,11 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       allocationPct
       prsMerged
       churnLoc
+      measure
+      denominator
+      sizingCoverage
+      unsizedUnitCount
+      workUnitCount
     }
     summary {
       id

@@ -922,6 +922,11 @@ export interface HomeGraphQLReworkThemeAllocation {
     allocationPct: number;
     prsMerged: number;
     churnLoc: number;
+    measure: "WORK_UNITS" | "ISSUE_SIZE";
+    denominator: number;
+    sizingCoverage: number | null;
+    unsizedUnitCount: number | null;
+    workUnitCount: number | null;
 }
 
 export interface HomeGraphQLSummarySentence {

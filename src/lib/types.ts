@@ -225,6 +225,14 @@ export type ReworkThemeAllocation = {
     allocation_pct: number;
     prs_merged: number;
     churn_loc: number;
+    /** The unit `allocation` is in. Absent on a response that predates the field. */
+    measure?: "WORK_UNITS" | "ISSUE_SIZE";
+    /** The total `allocation_pct` divides by: the share base. */
+    denominator?: number;
+    /** The sizing fields are null unless measure is ISSUE_SIZE; null is not measured, never 0. */
+    sizing_coverage?: number | null;
+    unsized_unit_count?: number | null;
+    work_unit_count?: number | null;
 };
 
 export type HomeResponse = {

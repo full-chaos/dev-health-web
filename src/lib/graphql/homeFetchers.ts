@@ -146,6 +146,11 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             allocation_pct: r.allocationPct,
             prs_merged: r.prsMerged,
             churn_loc: r.churnLoc,
+            measure: r.measure,
+            denominator: r.denominator,
+            sizing_coverage: r.sizingCoverage ?? null,
+            unsized_unit_count: r.unsizedUnitCount ?? null,
+            work_unit_count: r.workUnitCount ?? null,
         })),
         summary: result.summary.map((s) => ({
             id: s.id,

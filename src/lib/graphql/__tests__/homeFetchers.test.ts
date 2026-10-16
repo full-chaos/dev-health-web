@@ -73,6 +73,11 @@ const graphqlFixture: HomeGraphQLResult = {
             allocationPct: 50,
             prsMerged: 10,
             churnLoc: 100,
+            measure: "ISSUE_SIZE",
+            denominator: 20,
+            sizingCoverage: 0.4,
+            unsizedUnitCount: 3,
+            workUnitCount: 5,
         },
     ],
     summary: [{ id: "s1", text: "Summary sentence", evidenceLink: "/evidence/s1" }],
@@ -206,6 +211,11 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
                 allocation_pct: 50,
                 prs_merged: 10,
                 churn_loc: 100,
+                measure: "ISSUE_SIZE",
+                denominator: 20,
+                sizing_coverage: 0.4,
+                unsized_unit_count: 3,
+                work_unit_count: 5,
             },
         ]);
         expect(result.summary).toEqual([

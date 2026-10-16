@@ -16,7 +16,7 @@ describe("registered document texts", () => {
     it("Home wire text equals the captured text", () => {
         expect(wireForm(HOME_QUERY).trim()).toBe(fixture("home_captured.graphql").trim());
         expect(sha256Trim(wireForm(HOME_QUERY))).toBe(
-            "bbd1b6f8cda95a999a72d56f46a7fe0b9fc35fcc705491cf4efdc851ce361341",
+            "3e6745263029cffb0b131fa841adf9b6041ef696ae5508ea89437f6d5095be8e",
         );
     });
 

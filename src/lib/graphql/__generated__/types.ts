@@ -2175,9 +2175,14 @@ export type ReworkThemeAllocation = {
   allocation: Scalars['Float']['output'];
   allocationPct: Scalars['Float']['output'];
   churnLoc: Scalars['Int']['output'];
+  denominator: Scalars['Float']['output'];
   label: Scalars['String']['output'];
+  measure: SankeyValueUnit;
   prsMerged: Scalars['Int']['output'];
+  sizingCoverage?: Maybe<Scalars['Float']['output']>;
   theme: Scalars['String']['output'];
+  unsizedUnitCount?: Maybe<Scalars['Int']['output']>;
+  workUnitCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type SankeyCoverage = {
@@ -2632,7 +2637,7 @@ export type TimeseriesResult = {
   scope: TimeseriesScope;
 };
 
-/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE and COVERAGE_LINE_PCT carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
+/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE, COVERAGE_LINE_PCT and TEST_FLAKE_RATE carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
 export type TimeseriesScope =
   | 'DIMENSION'
   | 'ORG';
