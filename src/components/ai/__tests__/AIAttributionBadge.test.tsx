@@ -23,6 +23,15 @@ describe("AIAttributionBadge", () => {
         expect(screen.getByTestId("ai-attribution-badge")).toHaveTextContent("Unknown attribution");
     });
 
+    it.each(["bot", "BOT"])("renders %s as Bot, not Unknown attribution", (bucket) => {
+        render(<AIAttributionBadge bucket={bucket} />);
+        const badge = screen.getByTestId("ai-attribution-badge");
+        expect(badge).toHaveTextContent("Bot");
+        expect(badge).not.toHaveTextContent("Unknown attribution");
+        expect(badge.className).not.toContain("border-dashed");
+        expect(screen.getByTestId("ai-attribution-dot").className).toContain("bg-(--ink-muted)");
+    });
+
     it("shows the tool inline and confidence in the tooltip", () => {
         render(<AIAttributionBadge bucket="ai_assisted" tool="copilot" confidence={0.87} />);
         const badge = screen.getByTestId("ai-attribution-badge");
@@ -36,6 +45,7 @@ describe("normalizeAttributionBucket", () => {
         ["AI_ASSISTED", "ai_assisted"],
         ["AI_REVIEW", "ai_review"],
         ["human", "human"],
+        ["BOT", "bot"],
         ["", "unknown"],
         [null, "unknown"],
         ["weird", "unknown"],
@@ -82,6 +92,7 @@ describe("AIAttributionBadge pinned markup facts (CHAOS-7763, shared cards)", ()
             ["ai_review", "AI-reviewed"],
             ["agent_created", "Agent-created"],
             ["human", "Human"],
+            ["bot", "Bot"],
             ["unknown", "Unknown attribution"],
         ] as const) {
             const { unmount } = render(<AIAttributionBadge bucket={bucket} />);
