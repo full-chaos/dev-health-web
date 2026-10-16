@@ -111,6 +111,7 @@ function changeFailureResolution(
     return {
         state: signal.severity,
         value: delta ? formatPercent(delta.value) : signal.current_value,
+        ...(signal.driver ? { driver: signal.driver } : {}),
     };
 }
 
@@ -121,7 +122,7 @@ function changeFailureResolution(
  */
 function buildSignal(
     descriptor: NavAreaHubItem,
-    resolved: { state: AreaSignalState; value: string; metricLabel?: string },
+    resolved: { state: AreaSignalState; value: string; metricLabel?: string; driver?: string },
 ): AreaSignal {
     return {
         id: descriptor.id,
@@ -131,6 +132,7 @@ function buildSignal(
         metricLabel: resolved.metricLabel ?? descriptor.metricLabel ?? descriptor.label,
         value: resolved.value,
         state: resolved.state,
+        ...(resolved.driver ? { driver: resolved.driver } : {}),
         demoted: descriptor.demoted,
     };
 }

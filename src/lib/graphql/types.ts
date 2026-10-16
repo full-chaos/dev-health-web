@@ -922,6 +922,11 @@ export interface HomeGraphQLReworkThemeAllocation {
     allocationPct: number;
     prsMerged: number;
     churnLoc: number;
+    measure: "WORK_UNITS" | "ISSUE_SIZE";
+    denominator: number;
+    sizingCoverage: number | null;
+    unsizedUnitCount: number | null;
+    workUnitCount: number | null;
 }
 
 export interface HomeGraphQLSummarySentence {
@@ -1011,6 +1016,7 @@ export interface HomeGraphQLSignal {
     coverage?: number | null;
     /** Served repository-filter flag. Absent: an older API. */
     repoFilterApplied?: boolean | null;
+    driver?: string | null;
     attribution: HomeGraphQLSignalAttribution | null;
 }
 

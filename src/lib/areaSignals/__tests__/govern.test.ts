@@ -159,6 +159,55 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         });
     });
 
+    it.each([
+        [
+            "a served driver sentence",
+            "Change failure rate appears to have moved most in A, B and C.",
+            true,
+        ],
+        ["a null driver", null, false],
+    ])(
+        "carries %s from the change failure signal to the Quality card (CHAOS-8573)",
+        async (_n, driver, shown) => {
+            mockGetHomeData.mockResolvedValue({
+                deltas: [
+                    {
+                        metric: "change_failure_rate",
+                        label: "CFR",
+                        value: 12,
+                        unit: "%",
+                        delta_pct: 0,
+                        spark: [],
+                        has_data: true,
+                    },
+                ],
+                signals: [
+                    {
+                        id: "cfr",
+                        title: "Change failure rate",
+                        metric: "change_failure_rate",
+                        current_value: "12%",
+                        direction: "up",
+                        severity: "high",
+                        confidence: "medium",
+                        affected_scope: "org",
+                        evidence_count: 3,
+                        why_it_matters: "",
+                        recommended_action: "",
+                        category: "delivery",
+                        driver,
+                    },
+                ],
+            } as never);
+            const signals = byId(await getGovernSignals(defaultMetricFilter));
+            if (shown) {
+                expect(signals.quality.driver).toBe(driver);
+            } else {
+                expect(signals.quality.driver).toBeUndefined();
+            }
+        },
+    );
+
     it("derives Security severity by count ladder (critical>=1 → critical)", async () => {
         const signals = byId(await getGovernSignals(defaultMetricFilter));
         expect(signals.security).toMatchObject({

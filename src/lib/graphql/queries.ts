@@ -1257,6 +1257,11 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       allocationPct
       prsMerged
       churnLoc
+      measure
+      denominator
+      sizingCoverage
+      unsizedUnitCount
+      workUnitCount
     }
     summary {
       id
@@ -1314,6 +1319,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       }
       coverage
       repoFilterApplied
+      driver
       attribution {
         items
         sources {

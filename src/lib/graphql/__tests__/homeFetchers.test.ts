@@ -73,6 +73,11 @@ const graphqlFixture: HomeGraphQLResult = {
             allocationPct: 50,
             prsMerged: 10,
             churnLoc: 100,
+            measure: "ISSUE_SIZE",
+            denominator: 20,
+            sizingCoverage: 0.4,
+            unsizedUnitCount: 3,
+            workUnitCount: 5,
         },
     ],
     summary: [{ id: "s1", text: "Summary sentence", evidenceLink: "/evidence/s1" }],
@@ -206,6 +211,11 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
                 allocation_pct: 50,
                 prs_merged: 10,
                 churn_loc: 100,
+                measure: "ISSUE_SIZE",
+                denominator: 20,
+                sizing_coverage: 0.4,
+                unsized_unit_count: 3,
+                work_unit_count: 5,
             },
         ]);
         expect(result.summary).toEqual([
@@ -521,6 +531,16 @@ describe("toHomeResponse coverage and repoFilterApplied (CHAOS-9078)", () => {
     it("leaves the flag out when it is not served (older backend)", () => {
         expect("repo_filter_applied" in toHomeResponse(graphqlFixture).deltas[0]).toBe(false);
         expect("repo_filter_applied" in toHomeResponse(graphqlFixture).signals![0]).toBe(false);
+    });
+
+    it("carries a served signal driver sentence and a null driver (CHAOS-8573)", () => {
+        const sentence = "Cycle time appears to have moved most in A, B and C.";
+        expect(toHomeResponse(withSignal({ driver: sentence })).signals![0].driver).toBe(sentence);
+        expect(toHomeResponse(withSignal({ driver: null })).signals![0].driver).toBeNull();
+    });
+
+    it("leaves the driver out when it is not served", () => {
+        expect("driver" in toHomeResponse(graphqlFixture).signals![0]).toBe(false);
     });
 
     it("carries a served signal coverage and flag", () => {
