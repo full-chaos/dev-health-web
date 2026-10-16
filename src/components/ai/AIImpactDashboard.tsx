@@ -13,7 +13,12 @@ import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIIm
 import type { AIFilter } from "@/lib/filters/ai";
 import { bucketEquals } from "@/lib/ai/buckets";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { COUNT_FORMAT, formatDateTimeUTC, formatNumber } from "@/lib/formatters";
+import {
+    COUNT_FORMAT,
+    formatCountNonZero,
+    formatDateTimeUTC,
+    formatNumber,
+} from "@/lib/formatters";
 import { AIComparisonCard } from "./AIComparisonCard";
 import { AILeverageBars } from "./AILeverageBars";
 import { AIPanelCard } from "./AIPanelCard";
@@ -312,7 +317,7 @@ function ScopeRollupList({ label, rows }: { label: string; rows: ScopeRollupRow[
                     >
                         <span className="truncate">{row.scopeLabel}</span>
                         <span className="shrink-0 tabular-nums text-(--ink-muted)">
-                            {formatNumber(row.aiPrsTotal, COUNT_FORMAT)} PRs
+                            {formatCountNonZero(row.aiPrsTotal)} PRs
                             {row.aiAssistedPrRatio != null
                                 ? ` · ${formatPercent(row.aiAssistedPrRatio)}`
                                 : ""}

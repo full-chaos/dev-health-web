@@ -71,6 +71,10 @@ export const COUNT_FORMAT: Intl.NumberFormatOptions = {
     useGrouping: false,
 };
 
+/** A COUNT_FORMAT count where a value above 0 and under 0.05 shows "<0.1", never "0". */
+export const formatCountNonZero = (value: number) =>
+    value > 0 && value < 0.05 ? "<0.1" : formatNumber(value, COUNT_FORMAT);
+
 export const formatPercent = (value: number) =>
     `${formatNumber(value, { maximumFractionDigits: 0 })}%`;
 
