@@ -208,6 +208,7 @@ export function toHomeResponse(result: HomeGraphQLResult): HomeResponse {
             ...(s.repoFilterApplied !== undefined
                 ? { repo_filter_applied: s.repoFilterApplied }
                 : {}),
+            ...(s.driver !== undefined ? { driver: s.driver } : {}),
             attribution: s.attribution
                 ? {
                       items: s.attribution.items,

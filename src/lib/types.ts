@@ -180,6 +180,8 @@ export type CockpitSignal = {
     coverage?: number | null;
     /** Same meaning as `MetricDelta.repo_filter_applied`; null on a signal that is not from a metric. */
     repo_filter_applied?: boolean | null;
+    /** Served one-sentence driver; null when the signal states no driver. */
+    driver?: string | null;
     attribution?: SignalAttribution | null;
 };
 

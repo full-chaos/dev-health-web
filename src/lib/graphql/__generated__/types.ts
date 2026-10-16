@@ -1152,6 +1152,8 @@ export type HomeSignal = {
   currentValue: Scalars['String']['output'];
   delta?: Maybe<Scalars['String']['output']>;
   direction: Scalars['String']['output'];
+  /** One sentence on where the signal's move appears largest ("Cycle Time appears to have moved most in A, B and C."), built from the display names of its top drivers with one hedge word. Null when the signal has no stated non-zero move, no driver has a name, or the signal is not a metric signal (risk, recommendation). Never a placeholder. */
+  driver?: Maybe<Scalars['String']['output']>;
   evidenceCount: Scalars['Int']['output'];
   /** Opaque reference into the evidence store, or null when the signal carries none. */
   evidenceRef?: Maybe<Scalars['String']['output']>;

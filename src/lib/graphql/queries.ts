@@ -1319,6 +1319,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       }
       coverage
       repoFilterApplied
+      driver
       attribution {
         items
         sources {

@@ -1016,6 +1016,7 @@ export interface HomeGraphQLSignal {
     coverage?: number | null;
     /** Served repository-filter flag. Absent: an older API. */
     repoFilterApplied?: boolean | null;
+    driver?: string | null;
     attribution: HomeGraphQLSignalAttribution | null;
 }
 

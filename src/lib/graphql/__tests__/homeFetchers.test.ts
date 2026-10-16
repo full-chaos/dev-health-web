@@ -533,6 +533,16 @@ describe("toHomeResponse coverage and repoFilterApplied (CHAOS-9078)", () => {
         expect("repo_filter_applied" in toHomeResponse(graphqlFixture).signals![0]).toBe(false);
     });
 
+    it("carries a served signal driver sentence and a null driver (CHAOS-8573)", () => {
+        const sentence = "Cycle time appears to have moved most in A, B and C.";
+        expect(toHomeResponse(withSignal({ driver: sentence })).signals![0].driver).toBe(sentence);
+        expect(toHomeResponse(withSignal({ driver: null })).signals![0].driver).toBeNull();
+    });
+
+    it("leaves the driver out when it is not served", () => {
+        expect("driver" in toHomeResponse(graphqlFixture).signals![0]).toBe(false);
+    });
+
     it("carries a served signal coverage and flag", () => {
         const out = toHomeResponse(withSignal({ coverage: 0.6, repoFilterApplied: null }));
         expect(out.signals![0]).toMatchObject({ coverage: 0.6, repo_filter_applied: null });
