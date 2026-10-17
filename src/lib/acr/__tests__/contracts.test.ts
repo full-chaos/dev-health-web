@@ -87,7 +87,7 @@ describe("ACR REST contract boundary", () => {
             "schemas/token_exchange_response.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("86352a16881aab62dfee5d094accc90a8f253542");
+        expect(manifest.source_commit).toBe("59886f28f15874cfbc2a58f4e00ab6daa8132553");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {
@@ -241,6 +241,38 @@ describe("ACR generated.ts cross-file $defs types keep their real members", () =
                 ...body,
                 enabled_tools: [...body.enabled_tools, "made_up_tool"],
             }).valid,
+        ).toBe(false);
+    });
+});
+
+describe("ACR context packet item cause_event", () => {
+    const base = acrExamples.find((e) => e.schema === "context_packet.v1.schema.json")?.value as {
+        items: Record<string, unknown>[];
+    };
+    const withCause = (cause: unknown, category = "cause") => ({
+        ...base,
+        items: [{ ...base.items[0], category, cause_event: cause }, ...base.items.slice(1)],
+    });
+    const cause = {
+        entity_type: "deployment",
+        entity_id: "d-1",
+        occurred_at: "2026-09-12T09:30:00Z",
+    };
+
+    it("accepts an item without and with cause_event", () => {
+        expect(validateAcrContract("context_packet.v1.schema.json", base).valid).toBe(true);
+        expect(validateAcrContract("context_packet.v1.schema.json", withCause(cause)).valid).toBe(
+            true,
+        );
+    });
+
+    it("still rejects a malformed cause_event or one on a non-cause item", () => {
+        expect(
+            validateAcrContract("context_packet.v1.schema.json", withCause({ ...cause, extra: 1 }))
+                .valid,
+        ).toBe(false);
+        expect(
+            validateAcrContract("context_packet.v1.schema.json", withCause(cause, "state")).valid,
         ).toBe(false);
     });
 });
