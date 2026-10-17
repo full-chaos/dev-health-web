@@ -8,6 +8,26 @@ describe("context packet response validation", () => {
         expect(isExpandedEvidence(Object.values(SAMPLE_EXPANDED_EVIDENCE)[0])).toBe(true);
     });
 
+    it("accepts a packet item that carries cause_event", () => {
+        const [first, ...rest] = SAMPLE_CONTEXT_PACKET.items;
+        const packet = {
+            ...SAMPLE_CONTEXT_PACKET,
+            items: [
+                {
+                    ...first,
+                    category: "cause",
+                    cause_event: {
+                        entity_type: "deployment",
+                        entity_id: "d-1",
+                        occurred_at: "2026-09-12T09:30:00Z",
+                    },
+                },
+                ...rest,
+            ],
+        };
+        expect(isContextPacket(packet)).toBe(true);
+    });
+
     it("rejects malformed display-critical packet and evidence payloads", () => {
         expect(isContextPacket({ ...SAMPLE_CONTEXT_PACKET, items: [{}] })).toBe(false);
         expect(

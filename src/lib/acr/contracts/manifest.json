@@ -1,5 +1,5 @@
 {
-  "source_commit": "86352a16881aab62dfee5d094accc90a8f253542",
+  "source_commit": "29c54e1b5f27cb44798417647b6f0b707faad66f",
   "files": [
     {
       "path": "openapi/acr-v1.json",
@@ -15,7 +15,7 @@
     },
     {
       "path": "schemas/context_packet_item.v1.schema.json",
-      "sha256": "8108a72a9752c523cb7d738474465afb3cb44bcba6b4033e1b93db36234dd061"
+      "sha256": "913a77f1e13f47fe62912ef2ba2fbc02f6e6ea11044b0d81977667fceee4c614"
     },
     {
       "path": "schemas/context_packet_request.v1.schema.json",
@@ -55,11 +55,11 @@
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "a78ed7b6ee506aedbea55d35b5d459576f2c7d98d04f705887e6aadc6f9aa4c5"
+      "sha256": "c74c83a719c52b614a66c68befb79ee2d9d1c5eece87e5ce4e78de5cb339c904"
     },
     {
       "path": "schemas/context_fabric_answer_projection.v1.schema.json",
-      "sha256": "a1a1e63fe95ec542c1aeaa5823b60320691c2113c1d3e33c98620671933f0199"
+      "sha256": "efab8a4e0b0f394ff8c964b92b8642e695de6c342f96730197e928c98d5e9db7"
     },
     {
       "path": "schemas/context_fabric_investigation_request.v1.schema.json",
@@ -147,7 +147,7 @@
     },
     {
       "path": "schemas/mcp_read_facts_request.v1.schema.json",
-      "sha256": "6350e2afdc6dfa53f27a75b28046ba6a4c0c1a47878d5e1adec32f7238a5d531"
+      "sha256": "505165bc4b98eb29846f42f12cb3be82082e7772c556f1216798d035a4a958db"
     },
     {
       "path": "schemas/mcp_read_facts_response.v1.schema.json",

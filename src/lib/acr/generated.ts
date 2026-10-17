@@ -4846,6 +4846,11 @@ export type ACRContextPacketItemV1 = {
      * @maxItems 100
      */
     evidence_ref_ids: string[];
+    cause_event?: {
+        entity_type: "deployment";
+        entity_id: string;
+        occurred_at: string;
+    };
 };
 
 export interface ACRContextPacketRequestV1 {
@@ -9174,7 +9179,7 @@ export interface CoverageDetail {
     detail_id: string;
     source: string;
     /**
-     * Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, synthesis_input_bounded, synthesis_model_failed, fact_score_withheld. A client must tolerate values it does not know.
+     * Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld. A client must tolerate values it does not know.
      */
     code: string;
     degrading: boolean;
@@ -9204,7 +9209,7 @@ export interface CoverageDetail {
     declared?: number;
     served?: number;
     /**
-     * Open vocabulary; documented values: model_output_invalid, synthesis_rejected, model_receipt_unrecorded, model_call_not_completed. A client must tolerate values it does not know.
+     * Open vocabulary; documented values: model_output_invalid, synthesis_rejected, model_receipt_unrecorded, model_call_not_completed, synthesis_deadline, synthesis_not_narrowable, synthesis_rows_over_budget, synthesis_retry_over_budget. A client must tolerate values it does not know.
      */
     failure_class?: string;
     /**
