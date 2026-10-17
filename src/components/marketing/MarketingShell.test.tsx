@@ -35,13 +35,9 @@ describe("MarketingShell brand", () => {
 describe("marketing home metadata", () => {
     it("has no Beta in the page, Open Graph or Twitter titles; the rest is unchanged", () => {
         expect(metadata.title).toBe(
-            "Full Chaos Dev Health — Where is your engineering effort going?",
+            "Full Chaos Dev Health — What is your engineering data telling you?",
         );
-        expect(metadata.openGraph?.title).toBe(
-            "Full Chaos Dev Health — Engineering Effort Analytics",
-        );
-        expect(metadata.twitter?.title).toBe(
-            "Full Chaos Dev Health — Engineering Effort Analytics",
-        );
+        expect(metadata.openGraph?.title).toBe("Full Chaos Dev Health — Engineering Intelligence");
+        expect(metadata.twitter?.title).toBe("Full Chaos Dev Health — Engineering Intelligence");
     });
 });

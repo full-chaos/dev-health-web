@@ -159,7 +159,7 @@ export default function MarketingHubPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
                     <h2 className="font-(--font-display) text-3xl sm:text-4xl">
-                        Ready to see where your effort is going?
+                        Ready to see what your engineering data says?
                     </h2>
                     <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
                         Start with the Community plan — free forever. Pick the buyer page that fits
