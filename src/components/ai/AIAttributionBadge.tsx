@@ -2,7 +2,7 @@
  * Provenance chip for AI-attributed work (CHAOS-2195).
  *
  * Renders the canonical attribution bucket (ai_assisted / ai_review /
- * agent_created / human / unknown — mirrors `AI_BUCKETS` in
+ * agent_created / human / bot / unknown — mirrors `AI_BUCKETS` in
  * `components/ai/utils.ts`) as a small pill, optionally annotated with the
  * detected tool and attribution confidence via a tooltip. Mirrors the
  * {@link PreviewBadge} pattern: decorative by default, no interactive state.
@@ -20,6 +20,7 @@ const BUCKET_TREATMENTS = {
     ai_review: { label: "AI-reviewed", className: PILL, dot: "bg-(--chart-color-2)" },
     agent_created: { label: "Agent-created", className: PILL, dot: "bg-(--chart-color-6)" },
     human: { label: "Human", className: PILL, dot: "bg-(--ink-muted)" },
+    bot: { label: "Bot", className: PILL, dot: "bg-(--ink-muted)" },
     unknown: {
         label: "Unknown attribution",
         className: "border-dashed border-(--card-stroke) bg-transparent text-(--ink-muted)",
@@ -52,6 +53,7 @@ const KIND_TO_BUCKET: Record<string, AIAttributionBucket> = {
     ai_review: "ai_review",
     agent_created: "agent_created",
     human: "human",
+    bot: "bot",
     unknown: "unknown",
 };
 

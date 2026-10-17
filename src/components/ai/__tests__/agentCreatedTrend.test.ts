@@ -101,4 +101,12 @@ describe("fractional counts", () => {
         ] as unknown as AiImpactBucketTotals[];
         expect(assistedWorkShareRows(rows)[0].value).toBe(4.5);
     });
+
+    it("assistedWorkShareRows excludes the bot bucket (bot is not assisted)", () => {
+        const rows = [
+            { bucket: "bot", prsTotal: 3 },
+            { bucket: "ai_assisted", prsTotal: 2 },
+        ] as unknown as AiImpactBucketTotals[];
+        expect(assistedWorkShareRows(rows).map((r) => r.name)).toEqual(["Ai Assisted"]);
+    });
 });
