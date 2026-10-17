@@ -12,6 +12,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/admin/llm/ByoLlmSettings", () => ({
     ByoLlmSettings: () => <section>BYO provider settings</section>,
 }));
+vi.mock("@/components/admin/llm/ByoLlmPurposeOverrides", () => ({
+    ByoLlmPurposeOverrides: () => <section>BYO purpose models</section>,
+}));
 vi.mock("@/components/admin/llm/ByoLlmSpendSummary", () => ({
     ByoLlmSpendSummary: () => <section>BYO spend summary</section>,
 }));
@@ -19,12 +22,14 @@ vi.mock("@/components/admin/llm/ByoLlmErrorStates", () => ({
     ByoLlmErrorStates: () => <section>BYO error guidance</section>,
 }));
 vi.mock("@/lib/admin/server", () => ({
+    deleteLLMPurpose: vi.fn(),
     deleteLLMSettings: vi.fn(),
     getLLMBudget: vi.fn(),
     getLLMSettings: vi.fn(),
     getLLMSettingsStatus: vi.fn(),
     getLLMSpendSummary: vi.fn(),
     runLLMSettingsReadiness: vi.fn(),
+    upsertLLMPurpose: vi.fn(),
     upsertLLMSettings: vi.fn(),
 }));
 
@@ -35,6 +40,7 @@ describe("ByoLlmAISetupPage", () => {
         render(<ByoLlmAISetupPage />);
 
         expect(screen.getByText("BYO provider settings")).toBeInTheDocument();
+        expect(screen.getByText("BYO purpose models")).toBeInTheDocument();
         expect(screen.getByText("BYO spend summary")).toBeInTheDocument();
         expect(screen.getByText("BYO error guidance")).toBeInTheDocument();
         expect(screen.queryByText(/Ask Dev controls/i)).not.toBeInTheDocument();

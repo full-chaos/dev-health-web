@@ -869,6 +869,36 @@ export interface LLMSettingsResponse {
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;
+    /** Per-purpose overrides, present only when at least one is stored. */
+    purposes?: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
+}
+
+/** Purposes a BYO override can be set for; the default row serves the rest. */
+export type LLMPurpose = "investigate" | "explain";
+
+export const LLM_PURPOSES: LLMPurpose[] = ["investigate", "explain"];
+
+export const LLM_PURPOSE_LABELS: Record<LLMPurpose, string> = {
+    investigate: "Investigation",
+    explain: "Explanations",
+};
+
+/** One stored override; the api_key is masked. */
+export interface LLMPurposeSettings {
+    purpose: string;
+    provider: string;
+    model?: string | null;
+    api_key?: string | null;
+    base_url?: string | null;
+}
+
+/** PUT /admin/llm-settings with a purpose: provider and model are required. */
+export interface LLMPurposeUpsert {
+    purpose: LLMPurpose;
+    provider: string;
+    model: string;
+    api_key?: string | null;
+    base_url?: string | null;
 }
 
 /**

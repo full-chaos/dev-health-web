@@ -1,5 +1,8 @@
 import { request } from "./_request";
 import type {
+    LLMPurpose,
+    LLMPurposeSettings,
+    LLMPurposeUpsert,
     LLMBudgetResponse,
     LLMSettingsResponse,
     LLMSettingsStatusResponse,
@@ -24,6 +27,22 @@ export const llmSettingsApi = {
 
     remove: (token?: string, orgId?: string) =>
         request<{ deleted: boolean }>("/llm-settings", { method: "DELETE" }, token, orgId),
+
+    upsertPurpose: (data: LLMPurposeUpsert, token?: string, orgId?: string) =>
+        request<LLMPurposeSettings>(
+            "/llm-settings",
+            { method: "PUT", body: JSON.stringify(data) },
+            token,
+            orgId,
+        ),
+
+    removePurpose: (purpose: LLMPurpose, token?: string, orgId?: string) =>
+        request<{ deleted: boolean; purpose: string }>(
+            `/llm-settings?purpose=${encodeURIComponent(purpose)}`,
+            { method: "DELETE" },
+            token,
+            orgId,
+        ),
 
     // Org-scoped per-run spend summary (CHAOS-2564). Tier/flag-gated the same
     // way as the settings CRUD above (402/403); see admin/routers/settings.py.

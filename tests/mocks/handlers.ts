@@ -883,6 +883,19 @@ const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
 const MOCK_PEOPLE: (typeof SAMPLE_PEOPLE)[number][] = [];
 
+let mockLlmDefault: Record<string, string | undefined> | null = {
+    provider: "anthropic",
+    model: "claude-large",
+    api_key: "sk-d…1234",
+};
+const mockLlmPurposes: Record<string, Record<string, string | undefined>> = {};
+function mockLlmSettingsBody() {
+    return {
+        ...(mockLlmDefault ?? {}),
+        ...(Object.keys(mockLlmPurposes).length > 0 ? { purposes: mockLlmPurposes } : {}),
+    };
+}
+
 /** One row of the `/__test/admin-rows` control endpoint (CHAOS-9105). */
 export type MockAdminRowSeed = {
     /** People of `GET /api/v1/people` (CHAOS-9117); empty or absent = the sample people. */
@@ -3585,6 +3598,35 @@ export const handlers = [
             is_active: true,
         }),
     ),
+
+    // BYO LLM settings with per-purpose overrides (CHAOS-10040): one stateful org row.
+    http.get("*/api/v1/admin/llm-settings", () => HttpResponse.json(mockLlmSettingsBody())),
+    http.put("*/api/v1/admin/llm-settings", async ({ request }) => {
+        const body = (await request.json()) as Record<string, string | undefined>;
+        if (body.purpose) {
+            if (!body.model)
+                return HttpResponse.json({ detail: "model required" }, { status: 422 });
+            const stored = {
+                purpose: body.purpose,
+                provider: body.provider,
+                model: body.model,
+                ...(body.api_key ? { api_key: "sk-o…1234" } : {}),
+            };
+            mockLlmPurposes[body.purpose] = stored;
+            return HttpResponse.json(stored);
+        }
+        mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
+        return HttpResponse.json(mockLlmSettingsBody());
+    }),
+    http.delete("*/api/v1/admin/llm-settings", ({ request }) => {
+        const purpose = new URL(request.url).searchParams.get("purpose");
+        if (purpose) {
+            delete mockLlmPurposes[purpose];
+            return HttpResponse.json({ deleted: true, purpose });
+        }
+        mockLlmDefault = null;
+        return HttpResponse.json({ deleted: true });
+    }),
 
     http.get("*/api/v1/admin/credentials", () =>
         HttpResponse.json<MockCredential[]>([...withPagerDutyCredentials(MOCK_CREDENTIALS)]),
