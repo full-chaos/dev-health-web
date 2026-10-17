@@ -3649,6 +3649,40 @@ export const handlers = [
         HttpResponse.json<MockSyncConfig[]>([...withPagerDutySyncConfigs(MOCK_SYNC_CONFIGS)]),
     ),
 
+    http.get("*/api/v1/admin/integrations", () =>
+        HttpResponse.json([
+            {
+                id: "integration-github-1",
+                provider: "github",
+                credential_id: "cred-github-1",
+                name: "GitHub",
+            },
+        ]),
+    ),
+
+    http.get("*/api/v1/admin/integrations/:id/datasets", ({ params }) =>
+        HttpResponse.json([
+            {
+                id: "dataset-work-items",
+                integration_id: params.id as string,
+                dataset_key: "work-items",
+                is_enabled: true,
+                unavailable_reason: "needs_attention:time_limit",
+                unavailable_since: "2026-07-01T06:00:00.000Z",
+                unavailable_last_seen_at: "2026-07-02T06:00:00.000Z",
+            },
+            {
+                id: "dataset-git",
+                integration_id: params.id as string,
+                dataset_key: "git",
+                is_enabled: true,
+                unavailable_reason: null,
+                unavailable_since: null,
+                unavailable_last_seen_at: null,
+            },
+        ]),
+    ),
+
     http.get("*/api/v1/admin/sync-configs/:id", ({ params }) => {
         const syncConfigId = params.id as string;
         const pagerDutyConfig = getPagerDutySyncConfig(syncConfigId);

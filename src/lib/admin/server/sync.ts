@@ -21,6 +21,7 @@ import type {
     SyncCoverageSummary,
     BackfillSelector,
     AutoImportCapabilities,
+    IntegrationDataset,
 } from "../types";
 import { requirePagerDutyCreationEntitlement } from "./canonicalIncidentIngestion";
 import { getSessionContext, withErrorHandling } from "./_shared";
@@ -263,5 +264,29 @@ export async function getAutoImportCapabilities(): Promise<ActionResult<AutoImpo
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.syncConfigs.getAutoImportCapabilities(token, orgId);
+    });
+}
+
+/**
+ * Datasets of the integrations behind one sync configuration that carry an unavailable marker.
+ * The configuration serves no integration id, so the integration is matched on provider and
+ * credential. A failed read returns an error; the caller shows a notice, never an empty list.
+ */
+export async function getSyncConfigDatasetAttention(
+    config: Pick<SyncConfig, "provider" | "credential_id">,
+): Promise<ActionResult<IntegrationDataset[]>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const integrations = await adminApi.integrations.list(token, orgId);
+        const matching = integrations.filter(
+            (item) =>
+                item.provider === config.provider &&
+                config.credential_id !== null &&
+                item.credential_id === config.credential_id,
+        );
+        const lists = await Promise.all(
+            matching.map((item) => adminApi.integrations.datasets(item.id, token, orgId)),
+        );
+        return lists.flat().filter((row) => row.unavailable_reason !== null);
     });
 }

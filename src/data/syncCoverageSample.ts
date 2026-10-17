@@ -10,6 +10,7 @@
 // so sample-mode rendering and the API contract never drift apart.
 
 import type {
+    IntegrationDataset,
     BackfillJob,
     SyncConfig,
     SyncCoverageRange,
@@ -804,3 +805,17 @@ export function resolveSampleBackfillScenario(value: string | undefined): Sample
     }
     return DEFAULT_BACKFILL_SCENARIO;
 }
+
+// ---- Needs-attention datasets (test mode) ----
+
+export const SAMPLE_ATTENTION_DATASETS: IntegrationDataset[] = [
+    {
+        id: "sample-dataset-work-items",
+        integration_id: "sample-integration",
+        dataset_key: "work-items",
+        is_enabled: true,
+        unavailable_reason: "needs_attention:time_limit",
+        unavailable_since: "2026-07-01T06:00:00.000Z",
+        unavailable_last_seen_at: "2026-07-02T06:00:00.000Z",
+    },
+];
