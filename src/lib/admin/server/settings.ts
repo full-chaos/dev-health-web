@@ -21,6 +21,9 @@ import type {
     RetentionPolicyUpdate,
     RetentionPolicyListResponse,
     RetentionExecuteResponse,
+    LLMPurpose,
+    LLMPurposeSettings,
+    LLMPurposeUpsert,
     LLMSettingsResponse,
     LLMSettingsStatusResponse,
     LLMSettingsUpsert,
@@ -281,6 +284,28 @@ export async function deleteLLMSettings(): Promise<LLMSettingsActionResult<{ del
     return withStatusErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.llmSettings.remove(token, orgId);
+        revalidatePath("/org/admin/ai");
+        return result;
+    });
+}
+
+export async function upsertLLMPurpose(
+    data: LLMPurposeUpsert,
+): Promise<LLMSettingsActionResult<LLMPurposeSettings>> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.llmSettings.upsertPurpose(data, token, orgId);
+        revalidatePath("/org/admin/ai");
+        return result;
+    });
+}
+
+export async function deleteLLMPurpose(
+    purpose: LLMPurpose,
+): Promise<LLMSettingsActionResult<{ deleted: boolean; purpose: string }>> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.llmSettings.removePurpose(purpose, token, orgId);
         revalidatePath("/org/admin/ai");
         return result;
     });

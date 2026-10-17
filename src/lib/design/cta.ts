@@ -124,6 +124,8 @@ export const CTA_LABELS = {
     copyLink: "Copy link",
     edit: "Edit",
     save: "Save",
+    /** BYO LLM: remove a per-purpose model override so the default applies (CHAOS-10040). */
+    useDefaultModel: "Use default",
     delete: "Delete",
     confirmDelete: "Confirm delete?",
     monteCarloView: "Monte Carlo view",
