@@ -8,7 +8,7 @@ test.describe("Marketing landing page", () => {
                 name: /what is your engineering data/i,
             }),
         ).toBeVisible();
-        await expect(page.getByText("Engineering intelligence")).toBeVisible();
+        await expect(page.getByText("Engineering intelligence", { exact: true })).toBeVisible();
     });
 
     test("nav contains pricing link", async ({ page }) => {
