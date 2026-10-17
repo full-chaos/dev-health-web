@@ -4181,7 +4181,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 137
+                "line": 140
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4236,7 +4236,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 105
+                "line": 108
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4291,7 +4291,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 171
+                "line": 174
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4346,7 +4346,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 50
+                "line": 53
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4401,7 +4401,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 128
+                "line": 131
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4456,7 +4456,117 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 280
+                "line": 283
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 11,
+                    "line_end": 20
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 250-266, gated by isPublicPath at 96-102) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 250,
+                        "line_end": 266
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/ai\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:289, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/settings.ts#deleteLLMPurpose",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/settings.ts",
+                "line": 303
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "getSessionContext() (src/lib/admin/server/_shared.ts:10-19) throws AdminApiError(401,'Unauthorized') if auth() returns no session/access_token. token+orgId are forwarded to adminApi.* as Authorization: Bearer + X-Org-Id, re-validated independently by ops.",
+                "anchor": {
+                    "path": "src/lib/admin/server/_shared.ts",
+                    "line": 11,
+                    "line_end": 20
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 250-266, gated by isPublicPath at 96-102) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 250,
+                        "line_end": 266
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": null,
+            "resource_resolver": null,
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/ai\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "gaps": [
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:289, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/admin/server/settings.ts#upsertLLMPurpose",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/admin/server/settings.ts",
+                "line": 292
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4511,7 +4621,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 194
+                "line": 197
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4566,7 +4676,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 68
+                "line": 71
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4621,7 +4731,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 203
+                "line": 206
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4676,7 +4786,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 151
+                "line": 154
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4731,7 +4841,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 262
+                "line": 265
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4786,7 +4896,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 235
+                "line": 238
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4841,7 +4951,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 249
+                "line": 252
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4896,7 +5006,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 309
+                "line": 334
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4951,7 +5061,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 75
+                "line": 78
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5006,7 +5116,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 95
+                "line": 98
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5061,7 +5171,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 161
+                "line": 164
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5116,7 +5226,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 213
+                "line": 216
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5171,7 +5281,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 35
+                "line": 38
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5226,7 +5336,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 42
+                "line": 45
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5281,7 +5391,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 295
+                "line": 320
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5336,7 +5446,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 116
+                "line": 119
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5391,7 +5501,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 182
+                "line": 185
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5446,7 +5556,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 83
+                "line": 86
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5501,7 +5611,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 57
+                "line": 60
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5556,7 +5666,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 269
+                "line": 272
             },
             "classification": "protected",
             "public_rationale": null,
