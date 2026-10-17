@@ -428,7 +428,7 @@ export default async function PricingPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
                     <h2 className="font-(--font-display) text-3xl sm:text-4xl">
-                        Ready to understand your engineering effort?
+                        Ready to put engineering intelligence to work?
                     </h2>
                     <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
                         Start with the Community plan — free forever. Upgrade when your team is

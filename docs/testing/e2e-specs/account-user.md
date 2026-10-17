@@ -339,7 +339,7 @@ Routes
 
 Marketing page expectations
 
-- Hero text includes `Where is your engineering effort`.
+- Hero text includes `What is your engineering data`.
 - Feature areas include Signals, Investment, Flow, DORA, Quadrant, Developer Health.
 - Persona sections include IC, EM, PM, Leadership.
 - Navigation includes pricing link.

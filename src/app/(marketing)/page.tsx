@@ -177,16 +177,16 @@ export default function MarketingPage() {
             <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 sm:pt-24">
                 <div className="mx-auto max-w-3xl text-center">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                        Engineering effort analytics
+                        Engineering intelligence
                     </p>
                     <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
-                        Where is your engineering effort{" "}
-                        <span className="text-(--accent-text)">actually</span> going?
+                        What is your engineering data{" "}
+                        <span className="text-(--accent-text)">actually</span> telling you?
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
-                        Full Chaos Dev Health is an open-source analytics platform for team
-                        operating modes and developer health. See where effort is invested and what
-                        it costs your people.
+                        Full Chaos Dev Health is an open-source engineering intelligence platform
+                        for team operating modes and developer health. See how work is invested and
+                        what it costs your people.
                     </p>
                     <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
                         <Link

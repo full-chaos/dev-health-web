@@ -5,10 +5,10 @@ test.describe("Marketing landing page", () => {
         await page.goto("/");
         await expect(
             page.getByRole("heading", {
-                name: /where is your engineering effort/i,
+                name: /what is your engineering data/i,
             }),
         ).toBeVisible();
-        await expect(page.getByText("Engineering effort analytics")).toBeVisible();
+        await expect(page.getByText("Engineering intelligence", { exact: true })).toBeVisible();
     });
 
     test("nav contains pricing link", async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe("Pricing page", () => {
     test("bottom CTA section is visible", async ({ page }) => {
         await page.goto("/marketing/pricing");
         await expect(
-            page.getByRole("heading", { name: /ready to understand your engineering effort/i }),
+            page.getByRole("heading", { name: /ready to put engineering intelligence to work/i }),
         ).toBeVisible();
         await expect(page.getByRole("link", { name: /get started free/i }).last()).toBeVisible();
         await expect(page.getByRole("link", { name: /talk to sales/i })).toBeVisible();

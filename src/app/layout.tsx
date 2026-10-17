@@ -46,15 +46,15 @@ const monoFont = localFont({
 export const metadata: Metadata = {
     metadataBase: new URL("https://www.fullchaos.dev"),
     title: {
-        default: "Full Chaos Dev Health — Engineering Effort Analytics",
+        default: "Full Chaos Dev Health — Engineering Intelligence",
         template: "%s | Full Chaos Dev Health",
     },
     description:
-        "Open-source analytics platform for team operating modes and developer health. See where effort is invested and what it costs your people.",
+        "Open-source engineering intelligence platform for team operating modes and developer health. See how work is invested and what it costs your people.",
     openGraph: {
-        title: "Full Chaos Dev Health — Engineering Effort Analytics",
+        title: "Full Chaos Dev Health — Engineering Intelligence",
         description:
-            "Understand where human effort is actually being invested, and the cost to people when certain work dominates.",
+            "Understand how work is actually being invested, and the cost to people when certain work dominates.",
         siteName: "Full Chaos Dev Health",
         locale: "en_US",
         type: "website",
@@ -63,13 +63,13 @@ export const metadata: Metadata = {
                 url: "/opengraph-image.png",
                 width: 1200,
                 height: 630,
-                alt: "Full Chaos Dev Health — Engineering Effort Analytics",
+                alt: "Full Chaos Dev Health — Engineering Intelligence",
             },
         ],
     },
     twitter: {
         card: "summary_large_image",
-        title: "Full Chaos Dev Health — Engineering Effort Analytics",
+        title: "Full Chaos Dev Health — Engineering Intelligence",
         description: "Open-source analytics for team operating modes and developer health.",
         images: ["/opengraph-image.png"],
     },
