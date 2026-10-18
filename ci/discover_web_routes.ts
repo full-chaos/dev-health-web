@@ -54,6 +54,12 @@ export type RouteRecord = {
     route: string;
     file: string;
     line: number;
+    /**
+     * true: the handler (or a function it calls, transitively) contains a
+     * rejecting guard (see isDemonstrablyRejecting). false: none found.
+     * undefined: the handler could not be resolved to a function, so no claim.
+     */
+    guarded?: boolean;
 };
 
 export type ServerActionFile = {
@@ -66,6 +72,7 @@ export type ServerActionRecord = {
     file: string;
     exportName: string;
     line: number;
+    guarded?: boolean;
 };
 
 // CHAOS-4792: discovery reads the TypeScript AST, never source text. The text
@@ -198,6 +205,143 @@ function fileToRoutePath(appRoot: string, file: string): string {
     return "/" + segments.join("/");
 }
 
+// ---------------------------------------------------------------------------
+// Guard detection (CHAOS-4780): what discovery can say about a handler's
+// protection, from source. See the HONESTY LIMIT block in
+// gate_web_auth_profiles.ts for what a lexical guard match does and does not
+// prove.
+// ---------------------------------------------------------------------------
+
+// See the ★ HONESTY LIMIT block in the module docstring before extending or
+// relying on this list beyond what it proves.
+export const REJECTING_GUARD_NAMES = [
+    "getSessionContext",
+    "requireSuperuserToken",
+    "getToken",
+    "resolveOrgId",
+    "getAuthHeaders",
+    "getAuthHeadersOrThrow",
+    "apiRequest",
+    "withAuthHeaders",
+];
+export const REJECTING_GUARD_RE = new RegExp(`\\b(?:${REJECTING_GUARD_NAMES.join("|")})\\b`);
+// Hand-rolled inline reject shapes, each verified by hand at its own call
+// site (not routed through a named helper, but still an unconditional
+// return/throw on no session):
+export const INLINE_REJECT_PATTERNS = [
+    // checkout.ts's createBillingPlan/updateBillingPlan/deleteBillingPlan/
+    // syncBillingPlanToStripe/listBillingPlans (listBillingPlans fixed
+    // CHAOS-3273 Wave 0, 2026-09-01): `if (!session?.access_token) return ...`.
+    // The DEGRADING counterexample this gate exists to catch (listBillingPlans
+    // before its fix) used `session?.access_token` only inside an `if` whose
+    // body ATTACHES a header -- no `return`/`throw` -- so requiring `return`
+    // or `throw` on the SAME lexical scan is what distinguishes the two, not
+    // just the presence of the `access_token` check.
+    /!\s*session\?\.access_token\)[^]*?(?:return|throw)/,
+    // feature-flags/actions.ts's fetchFlagPage (CHAOS-4728, merged fcc3c1db):
+    // `if (!session?.user?.org_id) { throw new Error(AuthErrors.Unauthorized); }`.
+    /!\s*session\?\.user\?\.org_id\)[^]*?(?:return|throw)/,
+];
+
+export function isDemonstrablyRejecting(snippet: string): boolean {
+    return (
+        REJECTING_GUARD_RE.test(snippet) || INLINE_REJECT_PATTERNS.some((re) => re.test(snippet))
+    );
+}
+
+const MAX_GUARD_DEPTH = 10;
+
+function functionLikeOf(decl: ts.Node): ts.Node | undefined {
+    if (
+        ts.isFunctionDeclaration(decl) ||
+        ts.isFunctionExpression(decl) ||
+        ts.isArrowFunction(decl) ||
+        ts.isMethodDeclaration(decl)
+    )
+        return decl;
+    if (ts.isVariableDeclaration(decl) && decl.initializer) return decl.initializer;
+    if (ts.isPropertyAssignment(decl)) return decl.initializer;
+    return undefined;
+}
+
+/**
+ * True when `node` contains a rejecting guard, directly or in a function it
+ * calls (resolved through the type checker, so imports and path aliases are
+ * followed). Cycle-safe through `visited`; declarations in node_modules and
+ * .d.ts files are not followed.
+ */
+function containsGuard(
+    checker: ts.TypeChecker,
+    node: ts.Node,
+    visited: Set<ts.Node>,
+    depth: number,
+): boolean {
+    if (isDemonstrablyRejecting(node.getText())) return true;
+    if (depth >= MAX_GUARD_DEPTH) return false;
+    let found = false;
+    const visit = (n: ts.Node) => {
+        if (found) return;
+        if (ts.isCallExpression(n)) {
+            const callee = ts.isPropertyAccessExpression(n.expression)
+                ? n.expression.name
+                : n.expression;
+            let sym = checker.getSymbolAtLocation(callee);
+            if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+            for (const decl of sym?.declarations ?? []) {
+                const sourceFile = decl.getSourceFile();
+                if (sourceFile.isDeclarationFile || sourceFile.fileName.includes("/node_modules/"))
+                    continue;
+                const fn = functionLikeOf(decl);
+                if (!fn || visited.has(fn)) continue;
+                visited.add(fn);
+                if (containsGuard(checker, fn, visited, depth + 1)) {
+                    found = true;
+                    return;
+                }
+            }
+        }
+        ts.forEachChild(n, visit);
+    };
+    visit(node);
+    return found;
+}
+
+/** Guard state of one exported name of `file`; undefined when it is not a resolvable function. */
+function guardedExport(program: ts.Program, file: string, name: string): boolean | undefined {
+    const sf = program.getSourceFile(file);
+    if (!sf) return undefined;
+    const checker = program.getTypeChecker();
+    const moduleSymbol = checker.getSymbolAtLocation(sf);
+    if (!moduleSymbol) return undefined;
+    let sym = checker.getExportsOfModule(moduleSymbol).find((s) => s.name === name);
+    if (!sym) return undefined;
+    if (sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+    for (const decl of sym.declarations ?? []) {
+        const fn = functionLikeOf(decl);
+        if (fn) return containsGuard(checker, fn, new Set([fn]), 0);
+    }
+    return undefined;
+}
+
+/** Guard state of the inline "use server" function that starts on `line` of `file`. */
+function guardedInline(program: ts.Program, file: string, line: number): boolean | undefined {
+    const sf = program.getSourceFile(file);
+    if (!sf) return undefined;
+    const checker = program.getTypeChecker();
+    let result: boolean | undefined;
+    const visit = (node: ts.Node) => {
+        if (result !== undefined) return;
+        const body = functionBody(node);
+        if (body && hasUseServerDirective(body.statements) && lineOf(sf, node) === line) {
+            result = containsGuard(checker, node, new Set([node]), 0);
+            return;
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(sf);
+    return result;
+}
+
 const compilerOptionsByRoot = new Map<string, ts.CompilerOptions>();
 
 // The project's own compiler options (tsconfig `paths` such as "@/*" included),
@@ -306,6 +450,7 @@ function discoverRouteFile(appRoot: string, file: string, program: ts.Program): 
         route: routePath,
         file: relFile,
         line: lineByName.get(m) ?? wildcardLine,
+        guarded: guardedExport(program, file, m),
     }));
 }
 
@@ -447,27 +592,33 @@ export function discoverServerActionFiles(root: string): {
         visit(sf);
         if (inline.length > 0) found.push({ file, relFile, fileLevel: false, sf, inline });
     }
-    const fileLevel = found.filter((f) => f.fileLevel);
     const program =
-        fileLevel.length > 0
+        found.length > 0
             ? buildProgram(
                   root,
-                  fileLevel.map((f) => f.file),
+                  found.map((f) => f.file),
               )
             : null;
     for (const f of found) {
-        let names: { name: string; line: number }[];
+        let names: { name: string; line: number; guarded?: boolean }[];
         if (f.fileLevel && program) {
             const own = exportedNames(f.sf);
             const wildcardLine = own.find((n) => n.wildcard)?.line ?? 1;
             const lineByName = new Map<string, number>();
             for (const n of own) if (!lineByName.has(n.name)) lineByName.set(n.name, n.line);
             const { names: exported, unresolvedWildcard } = checkerExports(program, f.file);
-            names = exported.map((name) => ({ name, line: lineByName.get(name) ?? wildcardLine }));
+            names = exported.map((name) => ({
+                name,
+                line: lineByName.get(name) ?? wildcardLine,
+                guarded: guardedExport(program, f.file, name),
+            }));
             // An unresolvable `export *` could export actions: demand a row.
             if (unresolvedWildcard) names.push({ name: "*", line: wildcardLine });
         } else {
-            names = f.inline;
+            names = f.inline.map((n) => ({
+                ...n,
+                guarded: program ? guardedInline(program, f.file, n.line) : undefined,
+            }));
         }
         if (names.length === 0) continue;
         for (const n of names) {
@@ -476,6 +627,7 @@ export function discoverServerActionFiles(root: string): {
                 file: f.relFile,
                 exportName: n.name,
                 line: n.line,
+                guarded: n.guarded,
             });
         }
         files.push({ file: f.relFile, exportedFunctionNames: names.map((n) => n.name) });
