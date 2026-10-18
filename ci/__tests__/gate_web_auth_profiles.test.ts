@@ -1156,6 +1156,13 @@ describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
                     "export async function GET() { const h = {}; if (session?.access_token) { h.a = 1; } return h; }\n",
             }),
         ).toBe(false);
+        // the rejecting branch only logs; the `return` after it is not part of the branch
+        expect(
+            guardOfRoute({
+                "src/app/api/f2/route.ts":
+                    "export async function GET() { if (!session?.access_token) { console.log('no session'); } return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
     });
 
     it("a function defined in the handler but never called or passed is not executed", () => {
