@@ -272,7 +272,7 @@ export function InvestmentMixSection({
                 share ? `${share} of the mix` : null,
                 typeof quality === "number"
                     ? `Average evidence quality ${formatQuality(quality)}`
-                    : "Evidence quality not reported",
+                    : "Evidence quality is reported for the whole mix, not per cell",
             ]
                 .filter(Boolean)
                 .join(". ");
@@ -319,11 +319,11 @@ export function InvestmentMixSection({
                                 selectedKey={treemapSelection?.key ?? null}
                                 onNodeClickAction={handleTreemapSelection}
                                 describeNodeAction={describeTreemapNode}
-                                ariaLabel="Investment mix by theme and subcategory; column width follows each theme's share of work units"
+                                ariaLabel="Investment mix by theme and subcategory; column width follows each theme's share of the issue size"
                             />
                             <DataNote>
-                                Size is work-unit count. Opacity is evidence quality. Select a cell
-                                for its evidence.
+                                Size is issue size (a work unit with no size counts 1). Select a
+                                cell for its evidence.
                             </DataNote>
                         </>
                     )

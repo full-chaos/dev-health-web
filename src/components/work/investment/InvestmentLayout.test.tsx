@@ -222,7 +222,7 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
         expect(screen.queryByRole("heading", { name: "Treemap" })).toBeNull();
         expect(screen.queryByText(/Effort size - Evidence quality opacity/)).toBeNull();
         expect(within(card).getByTestId("data-note")).toHaveTextContent(
-            "Size is work-unit count. Opacity is evidence quality. Select a cell for its evidence.",
+            "Size is issue size (a work unit with no size counts 1). Select a cell for its evidence.",
         );
     });
 
@@ -240,6 +240,19 @@ describe("Investment Overview (prototype views 5 and 6)", () => {
                 .getAllByRole("listitem")
                 .map((li) => li.textContent),
         ).toEqual(["Feature Delivery60%", "Quality40%"]);
+    });
+
+    it("a treemap cell tooltip states issue size and that evidence quality is reported for the whole mix", () => {
+        view("overview", data());
+        const cell = screen
+            .getAllByTestId("column-treemap-cell")
+            .find(
+                (c) => c.getAttribute("data-node-key") === "subcategory:feature_delivery.roadmap",
+            )!;
+        const tip = cell.getAttribute("title") ?? "";
+        expect(tip).toContain("issue size");
+        expect(tip).toContain("Evidence quality is reported for the whole mix, not per cell");
+        expect(tip).not.toContain("not reported");
     });
 
     it("a cell opens the ONE shared drawer with the served effort and share (no quality row), and the Work Graph link", () => {

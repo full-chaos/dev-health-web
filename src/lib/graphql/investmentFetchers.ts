@@ -42,7 +42,7 @@ export function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
 /**
  * Build a date range from MetricFilter.
  */
-function buildDateRange(filters: MetricFilter): {
+export function buildDateRange(filters: MetricFilter): {
     startDate: string;
     endDate: string;
 } {
