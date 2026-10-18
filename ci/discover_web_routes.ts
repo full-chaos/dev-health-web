@@ -195,16 +195,87 @@ function fileToRoutePath(appRoot: string, file: string): string {
     return "/" + segments.join("/");
 }
 
-function discoverRouteFile(root: string, appRoot: string, file: string): RouteRecord[] {
+const compilerOptionsByRoot = new Map<string, ts.CompilerOptions>();
+
+// The project's own compiler options (tsconfig `paths` such as "@/*" included),
+// so module resolution matches tsc. `types: []` keeps ambient @types out of the
+// program: discovery needs the import graph of the files it asks about, not
+// the whole dependency typing.
+function compilerOptions(root: string): ts.CompilerOptions {
+    let options = compilerOptionsByRoot.get(root);
+    if (!options) {
+        const configPath = join(root, "tsconfig.json");
+        const read = existsSync(configPath) ? ts.readConfigFile(configPath, ts.sys.readFile) : null;
+        const parsed = read?.config
+            ? ts.parseJsonConfigFileContent(read.config, ts.sys, root).options
+            : {};
+        options = {
+            ...parsed,
+            allowJs: true,
+            noEmit: true,
+            skipLibCheck: true,
+            types: [],
+            moduleResolution: ts.ModuleResolutionKind.Bundler,
+            module: ts.ModuleKind.ESNext,
+        };
+        compilerOptionsByRoot.set(root, options);
+    }
+    return options;
+}
+
+function buildProgram(root: string, files: string[]): ts.Program {
+    return ts.createProgram({ rootNames: files, options: compilerOptions(root) });
+}
+
+/**
+ * The value names a module exports, as the TypeScript checker computes them:
+ * `export *` (any depth, cycle-safe), aliases, re-exports and path aliases are
+ * resolved the way tsc resolves them. Type-only exports are dropped. An
+ * `export * from` whose module the checker cannot resolve is reported via
+ * `unresolvedWildcard`: it could export anything, so callers must demand a row
+ * for every possibility instead of silently seeing nothing.
+ */
+function checkerExports(
+    program: ts.Program,
+    file: string,
+): { names: string[]; unresolvedWildcard: boolean } {
+    const sf = program.getSourceFile(file);
+    if (!sf) return { names: [], unresolvedWildcard: true };
+    const checker = program.getTypeChecker();
+    let unresolvedWildcard = false;
+    for (const st of sf.statements) {
+        if (
+            ts.isExportDeclaration(st) &&
+            !st.isTypeOnly &&
+            !st.exportClause &&
+            st.moduleSpecifier &&
+            !checker.getSymbolAtLocation(st.moduleSpecifier)
+        )
+            unresolvedWildcard = true;
+    }
+    const moduleSymbol = checker.getSymbolAtLocation(sf);
+    if (!moduleSymbol) return { names: [], unresolvedWildcard };
+    const names: string[] = [];
+    for (const sym of checker.getExportsOfModule(moduleSymbol)) {
+        if (sym.name === "export=") continue;
+        const target = sym.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(sym) : sym;
+        // An alias the checker cannot resolve comes back as the unknown symbol,
+        // which carries Value flags: counted, never dropped.
+        if (target.flags & ts.SymbolFlags.Value) names.push(sym.name);
+    }
+    return { names, unresolvedWildcard };
+}
+
+function discoverRouteFile(appRoot: string, file: string, program: ts.Program): RouteRecord[] {
     const sf = parseSource(file);
     const routePath = fileToRoutePath(appRoot, file);
     const relFile = relative(process.cwd(), file);
-    const names = exportedNames(sf);
+    const own = exportedNames(sf);
     // `export const { GET, POST } = handlers;` (NextAuth catch-all) -- a
     // destructure of a runtime object, not a per-method function. One record
     // with method "api_route" (mirrors ops's convention for a runtime method
     // list), matching endpoint-profile.schema.json's `method` field.
-    const destructure = names.find(
+    const destructure = own.find(
         (n) => n.viaHandlers && (HTTP_METHODS as readonly string[]).includes(n.name),
     );
     if (destructure) {
@@ -217,64 +288,22 @@ function discoverRouteFile(root: string, appRoot: string, file: string): RouteRe
             },
         ];
     }
-    const records: RouteRecord[] = [];
-    const seen = new Set<string>();
-    const push = (method: string, line: number) => {
-        if (seen.has(method)) return;
-        seen.add(method);
-        records.push({ method: method as HttpMethod, route: routePath, file: relFile, line });
-    };
-    // `export * from "./x"` can export any method. A relative specifier is
-    // resolved and followed; anything unresolvable is reported as ALL methods
-    // so each demands its own row (one row must never cover several served
-    // handlers).
-    const visited = new Set<string>([file]);
-    const collect = (list: ExportedName[], from: string, line: number | null) => {
-        for (const n of list) {
-            const at = line ?? n.line;
-            if (n.wildcard) {
-                const target = n.from ? resolveModule(root, from, n.from) : null;
-                if (!target) {
-                    for (const m of HTTP_METHODS) push(m, at);
-                } else if (!visited.has(target)) {
-                    visited.add(target);
-                    collect(exportedNames(parseSource(target)), target, at);
-                }
-                continue;
-            }
-            if ((HTTP_METHODS as readonly string[]).includes(n.name)) push(n.name, at);
-        }
-    };
-    collect(names, file, null);
-    return records;
-}
-
-const compilerOptionsByRoot = new Map<string, ts.CompilerOptions>();
-
-// Resolve a re-export specifier the way the project does: tsconfig `paths`
-// (e.g. "@/*"), extensionless and index imports, .js -> .ts. Returns null for
-// anything that is not a project source file (packages, unresolvable), which
-// callers treat as "could export any method".
-function resolveModule(root: string, fromFile: string, spec: string): string | null {
-    let options = compilerOptionsByRoot.get(root);
-    if (!options) {
-        const configPath = join(root, "tsconfig.json");
-        const read = existsSync(configPath) ? ts.readConfigFile(configPath, ts.sys.readFile) : null;
-        const parsed = read?.config
-            ? ts.parseJsonConfigFileContent(read.config, ts.sys, root).options
-            : {};
-        options = {
-            ...parsed,
-            allowJs: true,
-            moduleResolution: ts.ModuleResolutionKind.Bundler,
-            module: ts.ModuleKind.ESNext,
-        };
-        compilerOptionsByRoot.set(root, options);
-    }
-    const resolved = ts.resolveModuleName(spec, fromFile, options, ts.sys).resolvedModule;
-    if (!resolved || resolved.isExternalLibraryImport) return null;
-    const file = resolved.resolvedFileName;
-    return DECLARATION_FILE_RE.test(file) || file.includes("/node_modules/") ? null : file;
+    const wildcardLine = own.find((n) => n.wildcard)?.line ?? 1;
+    const lineByName = new Map<string, number>();
+    for (const n of own) if (!lineByName.has(n.name)) lineByName.set(n.name, n.line);
+    const { names, unresolvedWildcard } = checkerExports(program, file);
+    const methods = new Set<string>(
+        names.filter((n) => (HTTP_METHODS as readonly string[]).includes(n)),
+    );
+    // An export * the checker cannot resolve might export any method; each
+    // possibility demands its own row (one row never covers several handlers).
+    if (unresolvedWildcard) for (const m of HTTP_METHODS) methods.add(m);
+    return [...methods].map((m) => ({
+        method: m as HttpMethod,
+        route: routePath,
+        file: relFile,
+        line: lineByName.get(m) ?? wildcardLine,
+    }));
 }
 
 function* walk(dir: string): Generator<string> {
@@ -302,10 +331,15 @@ function parseArgs(argv: string[]): { root: string; out: string | null } {
 
 export function discoverRoutes(root: string): RouteRecord[] {
     const appRoot = join(root, "src/app");
-    const out: RouteRecord[] = [];
+    const files: string[] = [];
     for (const file of walk(appRoot)) {
         if (!ROUTE_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file)) continue;
-        out.push(...discoverRouteFile(root, appRoot, file));
+        files.push(file);
+    }
+    const out: RouteRecord[] = [];
+    if (files.length > 0) {
+        const program = buildProgram(root, files);
+        for (const file of files) out.push(...discoverRouteFile(appRoot, file, program));
     }
     out.sort((a, b) => (a.route + a.method).localeCompare(b.route + b.method));
     return out;
@@ -372,6 +406,14 @@ export function discoverServerActionFiles(root: string): {
 } {
     const files: ServerActionFile[] = [];
     const actions: ServerActionRecord[] = [];
+    type Found = {
+        file: string;
+        relFile: string;
+        fileLevel: boolean;
+        sf: ts.SourceFile;
+        inline: { name: string; line: number }[];
+    };
+    const found: Found[] = [];
     for (const file of walk(join(root, "src"))) {
         if (!SOURCE_FILE_RE.test(file) || TEST_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file))
             continue;
@@ -381,34 +423,58 @@ export function discoverServerActionFiles(root: string): {
         if (!text.includes("server") && !text.includes("\\")) continue;
         const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
         const relFile = relative(process.cwd(), file);
-        const names: { name: string; line: number }[] = [];
         if (hasUseServerDirective(sf.statements)) {
-            for (const n of exportedNames(sf)) names.push({ name: n.name, line: n.line });
+            found.push({ file, relFile, fileLevel: true, sf, inline: [] });
+            continue;
+        }
+        const inline: { name: string; line: number }[] = [];
+        const used = new Set<string>();
+        const visit = (node: ts.Node) => {
+            const body = functionBody(node);
+            if (body && hasUseServerDirective(body.statements)) {
+                const line = lineOf(sf, node);
+                let name = inlineActionName(node) ?? `anonymous@L${line}`;
+                if (used.has(name)) name = `${name}@L${line}`;
+                used.add(name);
+                inline.push({ name, line });
+            }
+            ts.forEachChild(node, visit);
+        };
+        visit(sf);
+        if (inline.length > 0) found.push({ file, relFile, fileLevel: false, sf, inline });
+    }
+    const fileLevel = found.filter((f) => f.fileLevel);
+    const program =
+        fileLevel.length > 0
+            ? buildProgram(
+                  root,
+                  fileLevel.map((f) => f.file),
+              )
+            : null;
+    for (const f of found) {
+        let names: { name: string; line: number }[];
+        if (f.fileLevel && program) {
+            const own = exportedNames(f.sf);
+            const wildcardLine = own.find((n) => n.wildcard)?.line ?? 1;
+            const lineByName = new Map<string, number>();
+            for (const n of own) if (!lineByName.has(n.name)) lineByName.set(n.name, n.line);
+            const { names: exported, unresolvedWildcard } = checkerExports(program, f.file);
+            names = exported.map((name) => ({ name, line: lineByName.get(name) ?? wildcardLine }));
+            // An unresolvable `export *` could export actions: demand a row.
+            if (unresolvedWildcard) names.push({ name: "*", line: wildcardLine });
         } else {
-            const used = new Set<string>();
-            const visit = (node: ts.Node) => {
-                const body = functionBody(node);
-                if (body && hasUseServerDirective(body.statements)) {
-                    const line = lineOf(sf, node);
-                    let name = inlineActionName(node) ?? `anonymous@L${line}`;
-                    if (used.has(name)) name = `${name}@L${line}`;
-                    used.add(name);
-                    names.push({ name, line });
-                }
-                ts.forEachChild(node, visit);
-            };
-            visit(sf);
+            names = f.inline;
         }
         if (names.length === 0) continue;
         for (const n of names) {
             actions.push({
-                id: `server_action:${relFile}#${n.name}`,
-                file: relFile,
+                id: `server_action:${f.relFile}#${n.name}`,
+                file: f.relFile,
                 exportName: n.name,
                 line: n.line,
             });
         }
-        files.push({ file: relFile, exportedFunctionNames: names.map((n) => n.name) });
+        files.push({ file: f.relFile, exportedFunctionNames: names.map((n) => n.name) });
     }
     files.sort((a, b) => a.file.localeCompare(b.file));
     actions.sort((a, b) => a.id.localeCompare(b.id));
