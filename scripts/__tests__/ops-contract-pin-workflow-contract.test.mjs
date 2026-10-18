@@ -15,14 +15,57 @@ const GATE_INPUTS = [
     "WEB_CREDENTIAL_CLASSES",
     "WEB_CREDENTIAL_CLASSES_SCHEMA",
 ];
-const SWALLOWS = [
-    [/\|\|\s*true\b/, "|| true"],
-    [/\|\|\s*:(\s|$)/, "|| :"],
-    [/;\s*exit\s+0\b/, "; exit 0"],
-    [/\bset\s+\+e\b/, "set +e"],
-    [/continue-on-error\s*:/, "continue-on-error"],
-    [/^\s*if\s*:\s*(false|\$\{\{\s*false\s*\}\})\s*$/m, "if: false"],
+// Allowlists, not blocklists: any step key or executed line outside these
+// sets is a violation, whatever form the weakening takes.
+const GATE_KEYS = new Set(["name", "env", "run"]);
+const PIN_KEYS = new Set(["name", "run"]);
+const CHECKOUT_KEYS = new Set(["name", "uses", "with"]);
+const GATE_RUN_LINE = "bash ci/run_tests.sh auth-profiles-gate";
+const PIN_COMMAND = [
+    "set -euo pipefail",
+    'sha="${{ steps.ops-contract-pin.outputs.sha }}"',
+    "if ! printf '%s' \"$sha\" | grep -Eq '^[0-9a-f]{40}$'; then",
+    "cat >&2 <<EOF",
+    "exit 1",
+    "fi",
 ];
+
+function stepKeys(step) {
+    const keys = [];
+    for (const line of step.split("\n")) {
+        const m = /^ {12}- ([\w-]+):|^ {14}([\w-]+):/.exec(line);
+        if (m) keys.push(m[1] || m[2]);
+    }
+    return keys;
+}
+
+// The lines the shell executes: the `run: |` block, dedented, with heredoc
+// bodies (data, not commands) removed.
+function executedLines(step) {
+    const lines = step.split("\n");
+    const start = lines.findIndex((l) => /^ {14}run:\s*\|\s*$/.test(l));
+    if (start < 0) return null;
+    const out = [];
+    let terminator = null;
+    for (const raw of lines.slice(start + 1)) {
+        if (!/^ {18}/.test(raw) && raw.trim() !== "") break;
+        const line = raw.slice(18);
+        if (terminator !== null) {
+            if (line === terminator) terminator = null;
+            continue;
+        }
+        const here = /<<-?'?(\w+)'?\s*$/.exec(line);
+        if (here) terminator = here[1];
+        out.push(line.trim());
+    }
+    return out;
+}
+
+function disallowedKeys(step, allowed, label, found) {
+    for (const key of stepKeys(step)) {
+        if (!allowed.has(key)) found.push(`${label} step has disallowed key: ${key}`);
+    }
+}
 
 // Steps are the `- ` items at the job-steps indent. Comments are dropped
 // so a decoy in a comment cannot satisfy a check.
@@ -52,16 +95,15 @@ function violations(text) {
     if (!gate) {
         found.push("gate step missing");
     } else {
+        disallowedKeys(gate, GATE_KEYS, "gate", found);
         for (const key of GATE_INPUTS) {
             if (!new RegExp(`^\\s+${key}:\\s*\\S`, "m").test(gate)) {
                 found.push(`gate step does not set ${key}`);
             }
         }
-        if (!/^\s+run:\s*bash ci\/run_tests\.sh auth-profiles-gate\s*$/m.test(gate)) {
-            found.push("gate step does not run auth-profiles-gate");
-        }
-        for (const [re, label] of SWALLOWS) {
-            if (re.test(gate)) found.push(`gate step swallows failure: ${label}`);
+        const run = gate.split("\n").filter((l) => /^ {14}run:/.test(l));
+        if (run.length !== 1 || run[0].trim() !== `run: ${GATE_RUN_LINE}`) {
+            found.push("gate run command is not the single canonical auth-profiles-gate line");
         }
     }
 
@@ -69,19 +111,21 @@ function violations(text) {
     if (!pin) {
         found.push("pin-shape step missing");
     } else {
-        if (!pin.includes("[0-9a-f]{40}")) {
-            found.push("pin-shape step lacks the full 40-hex check in its own command");
-        }
-        for (const [re, label] of SWALLOWS) {
-            if (re.test(pin)) found.push(`pin-shape step swallows failure: ${label}`);
+        disallowedKeys(pin, PIN_KEYS, "pin-shape", found);
+        const cmd = executedLines(pin);
+        if (!cmd || JSON.stringify(cmd) !== JSON.stringify(PIN_COMMAND)) {
+            found.push("pin-shape step executed command differs from the canonical 40-hex check");
         }
     }
 
     const checkout = findStep(text, CHECKOUT_REPO);
     if (!checkout) {
         found.push("ops checkout step missing");
-    } else if (!checkout.includes(PIN_REF)) {
-        found.push("ops checkout ref is not bound to the pin step output");
+    } else {
+        disallowedKeys(checkout, CHECKOUT_KEYS, "ops checkout", found);
+        if (!checkout.includes(PIN_REF)) {
+            found.push("ops checkout ref is not bound to the pin step output");
+        }
     }
 
     return found;
@@ -115,49 +159,57 @@ describe("ops-contract pin gate workflow contract", () => {
         [
             "gate no longer runs auth-profiles-gate",
             () => mutate(GATE_RUN, "run: echo skipped"),
-            "gate step does not run auth-profiles-gate",
+            "gate run command is not the single canonical",
         ],
         [
             "gate swallows failure with || true",
             () => mutate(GATE_RUN, `${GATE_RUN} || true`),
-            "|| true",
+            "gate run command is not the single canonical",
         ],
-        ["gate swallows failure with || :", () => mutate(GATE_RUN, `${GATE_RUN} || :`), "|| :"],
+        [
+            "gate swallows failure with || :",
+            () => mutate(GATE_RUN, `${GATE_RUN} || :`),
+            "gate run command is not the single canonical",
+        ],
         [
             "gate swallows failure with ; exit 0",
             () => mutate(GATE_RUN, `${GATE_RUN}; exit 0`),
-            "; exit 0",
+            "gate run command is not the single canonical",
         ],
         [
             "gate step continue-on-error",
             () =>
                 mutate(STEP_NAME_LINE, `${STEP_NAME_LINE}\n              continue-on-error: true`),
-            "continue-on-error",
+            "disallowed key: continue-on-error",
         ],
         [
             "gate step if: false",
             () => mutate(STEP_NAME_LINE, `${STEP_NAME_LINE}\n              if: false`),
-            "if: false",
+            "disallowed key: if",
         ],
         [
             "pin regex loosened with a decoy comment",
             () =>
                 mutate("grep -Eq '^[0-9a-f]{40}$'", "grep -Eq '^[a-z0-9]+$' # [0-9a-f]{40} decoy"),
-            "pin-shape step lacks the full 40-hex check",
+            "pin-shape step executed command differs",
         ],
         [
             "pin regex weakened to accept any ref, decoy text left in an echo",
             () =>
                 mutate(
                     "if ! printf '%s' \"$sha\" | grep -Eq '^[0-9a-f]{40}$'; then",
-                    "if ! printf '%s' \"$sha\" | grep -Eq '^[a-z0-9]+$'; then echo '[0-9a-f]{40}' >/dev/null;",
+                    "echo \"grep -Eq '^[0-9a-f]{40}$'\" >/dev/null\n                  if ! printf '%s' \"$sha\" | grep -Eq '^[a-z0-9]+$'; then",
                 ),
-            "pin-shape",
+            "pin-shape step executed command differs",
         ],
         [
             "gate step skipped by a composite false condition",
-            () => mutate(STEP_NAME_LINE, `${STEP_NAME_LINE}\n              if: \${{ false && true }}`),
-            "gate step",
+            () =>
+                mutate(
+                    STEP_NAME_LINE,
+                    `${STEP_NAME_LINE}\n              if: \${{ false && true }}`,
+                ),
+            "gate step has disallowed key: if",
         ],
         [
             "pin-shape step swallows failure",
@@ -166,7 +218,7 @@ describe("ops-contract pin gate workflow contract", () => {
                     "                    exit 1\n                  fi\n",
                     "                    exit 1\n                  fi\n                  true || :\n",
                 ),
-            "pin-shape step swallows failure",
+            "pin-shape step executed command differs",
         ],
         [
             "pin-shape step deleted",
