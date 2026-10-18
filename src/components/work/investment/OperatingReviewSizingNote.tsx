@@ -1,3 +1,5 @@
+"use client";
+
 import { describeSizing } from "./AllocationCoverage";
 import { readSizingCoverage } from "@/lib/investment/coverage";
 import type { OperatingReviewSizing } from "@/lib/graphql/types";

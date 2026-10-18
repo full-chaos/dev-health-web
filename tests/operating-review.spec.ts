@@ -42,6 +42,21 @@ test.describe("Operating Review", () => {
         }
     });
 
+    test("says how much of the investment section is sized when it is read in issue size", async ({
+        page,
+    }) => {
+        await page.goto("/operating-review?week=2026-05-18");
+
+        const investment = page.locator("#investment");
+        await expect(investment.getByTestId("operating-review-sizing-coverage")).toHaveText(
+            "Issue size coverage: 25%.",
+        );
+        await expect(investment.getByTestId("operating-review-sizing-text")).toHaveText(
+            "Mostly unsized: 1 of 4 work units have an issue size. The other 3 have no size, so each counts as 1 work unit.",
+        );
+        await expect(investment).toContainText("issue size");
+    });
+
     test("renders branded AI Workflow Intelligence section with safe follow-up links", async ({
         page,
     }) => {
