@@ -69,6 +69,8 @@ function translateFilters(filters: MetricFilter): FilterInput {
 interface UseInvestmentMixOptions {
     filters: MetricFilter;
     pause?: boolean;
+    /** The window of the read; the caller that also explains the mix passes the one range both name. */
+    dateRange?: { startDate: string; endDate: string };
 }
 
 interface UseInvestmentMixResult {
@@ -79,12 +81,12 @@ interface UseInvestmentMixResult {
 }
 
 export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmentMixResult {
-    const { filters, pause = false } = options;
+    const { filters, pause = false, dateRange: namedDateRange } = options;
     const contextOrgId = useOrgId();
 
     const variables = useMemo(() => {
         const orgId = getOrgId(filters, contextOrgId);
-        const dateRange = buildDateRange(filters);
+        const dateRange = namedDateRange ?? buildDateRange(filters);
         const batch: AnalyticsRequestInput = {
             breakdowns: [
                 {
@@ -104,7 +106,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
             filters: translateFilters(filters),
         };
         return { orgId, batch };
-    }, [filters, contextOrgId]);
+    }, [filters, contextOrgId, namedDateRange]);
 
     const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
         query: INVESTMENT_BREAKDOWN_QUERY,
