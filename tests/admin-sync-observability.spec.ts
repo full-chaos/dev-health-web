@@ -483,3 +483,14 @@ test.describe("Journey 4 — datasets the provider supports but nobody enabled",
         ).toBeVisible();
     });
 });
+
+test.describe("needs attention datasets", () => {
+    test("detail page shows the badge and opens evidence in the drawer", async ({ page }) => {
+        await page.goto(DETAIL_URL);
+        const section = page.getByTestId("sync-needs-attention");
+        await expect(section.getByText("Needs attention", { exact: true }).first()).toBeVisible();
+        await expect(section.getByText("A run reached its time limit.")).toBeVisible();
+        await section.getByTestId("sync-attention-evidence-open").click();
+        await expect(page.getByTestId("sync-attention-evidence")).toBeVisible();
+    });
+});

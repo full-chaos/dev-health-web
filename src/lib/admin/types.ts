@@ -1432,3 +1432,28 @@ export interface CustomerPushBatchListParams {
     limit?: number;
     offset?: number;
 }
+
+// ---- Integration datasets (needs-attention marker) ----
+
+/** One row of GET /integrations. Only the fields the web reads. */
+export interface IntegrationSummary {
+    id: string;
+    provider: string;
+    credential_id: string | null;
+    name: string;
+}
+
+/**
+ * One row of GET /integrations/{id}/datasets. `unavailable_reason` is null for a healthy
+ * dataset. The ops planner stamps `needs_attention:<class>` after repeated equal failures
+ * and clears the three fields on the next success.
+ */
+export interface IntegrationDataset {
+    id: string;
+    integration_id: string;
+    dataset_key: string;
+    is_enabled: boolean;
+    unavailable_reason: string | null;
+    unavailable_since: string | null;
+    unavailable_last_seen_at: string | null;
+}

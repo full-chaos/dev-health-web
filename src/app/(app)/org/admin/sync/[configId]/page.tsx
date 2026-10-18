@@ -7,6 +7,7 @@ import { BackfillOperations } from "@/components/admin/sync/BackfillOperations";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
 import { SyncHeaderBadge } from "@/components/admin/sync/SyncHeaderBadge";
 import { SyncConfigHeaderActions } from "@/components/admin/sync/SyncConfigHeaderActions";
+import { SyncNeedsAttention } from "@/components/admin/sync/SyncNeedsAttention";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
 import { TestConnectionButton } from "@/components/admin/sync/TestConnectionButton";
 import { BackLink } from "@/components/shared/BackLink";
@@ -17,17 +18,25 @@ import {
     getSyncJobs,
     getSyncCoverage,
     getActiveBackfillJob,
+    getSyncConfigDatasetAttention,
 } from "@/lib/admin/server";
 import {
     SAMPLE_SYNC_CONFIG,
     SAMPLE_SYNC_JOBS,
+    SAMPLE_ATTENTION_DATASETS,
     SYNC_COVERAGE_SAMPLES,
     resolveSyncCoverageSampleScenario,
     SAMPLE_BACKFILL_JOBS,
     resolveSampleBackfillScenario,
 } from "@/data/syncCoverageSample";
 import { syncHeaderFacts } from "@/lib/admin/syncHeader";
-import type { BackfillJob, SyncConfig, SyncCoverageSummary, SyncJob } from "@/lib/admin/types";
+import type {
+    BackfillJob,
+    IntegrationDataset,
+    SyncConfig,
+    SyncCoverageSummary,
+    SyncJob,
+} from "@/lib/admin/types";
 
 interface PageProps {
     params: Promise<{ configId: string }>;
@@ -62,6 +71,8 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     let coverage: SyncCoverageSummary | null;
     let coverageError: string | null = null;
     let activeBackfillJob: BackfillJob | null;
+    let attentionDatasets: IntegrationDataset[] = [];
+    let attentionFailed = false;
 
     if (isTestMode) {
         // Render deterministic sample data without hitting the admin API so the
@@ -75,6 +86,7 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
             coverage =
                 SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenarioParam)];
         }
+        attentionDatasets = SAMPLE_ATTENTION_DATASETS;
         activeBackfillJob =
             SAMPLE_BACKFILL_JOBS[resolveSampleBackfillScenario(backfillScenarioParam)];
     } else {
@@ -90,6 +102,9 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         }
 
         config = configResult.data;
+        const attentionResult = await getSyncConfigDatasetAttention(config);
+        attentionDatasets = attentionResult.data ?? [];
+        attentionFailed = Boolean(attentionResult.error);
         jobs = jobsResult.data ?? [];
         // Non-critical supplementary status; a failed lookup just means no
         // in-progress-backfill banner renders, not a page-level error.
@@ -133,6 +148,8 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
             </AdminHeader>
 
             <SyncProgressBar configId={config.id} testMode={isTestMode} />
+
+            <SyncNeedsAttention datasets={attentionDatasets} failed={attentionFailed} />
 
             <BackfillOperations
                 configId={config.id}
