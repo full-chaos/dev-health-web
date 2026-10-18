@@ -992,6 +992,169 @@ describe("CHAOS-4792 class 4: a row cannot choose which checks apply to it", () 
     });
 });
 
+describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
+    function tree(files: Record<string, string>): string {
+        const dir = mkdtempSync(join(tmpdir(), "web-guard-"));
+        for (const [rel, text] of Object.entries(files)) {
+            const full = join(dir, rel);
+            mkdirSync(join(full, ".."), { recursive: true });
+            writeFileSync(full, text);
+        }
+        return dir;
+    }
+    function guardOfRoute(files: Record<string, string>): boolean | undefined {
+        const dir = tree(files);
+        try {
+            return discoverRoutes(dir)[0].guarded;
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+    function guardsOfActions(files: Record<string, string>): Record<string, boolean | undefined> {
+        const dir = tree(files);
+        try {
+            const { actions } = discoverServerActionFiles(dir);
+            return Object.fromEntries(actions.map((a) => [a.exportName, a.guarded]));
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+
+    it("a route calling a rejecting guard directly is guarded; one without is not", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/a/route.ts":
+                    "export async function GET() { await getSessionContext(); return null; }\n",
+            }),
+        ).toBe(true);
+        expect(
+            guardOfRoute({
+                "src/app/api/b/route.ts": "export async function GET() { return null; }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("the guard may sit in a function the handler calls, in another file, through a path alias", () => {
+        expect(
+            guardOfRoute({
+                "tsconfig.json": JSON.stringify({
+                    compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+                }),
+                "src/app/api/c/route.ts":
+                    "import { load } from '@/lib/load';\nexport const GET = async () => load();\n",
+                "src/lib/load.ts":
+                    "import { inner } from './inner';\nexport async function load() { return inner(); }\n",
+                "src/lib/inner.ts": "export async function inner() { await getToken(); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("a call cycle with no guard terminates and reports unguarded", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/d/route.ts":
+                    "import { a } from './a';\nexport async function GET() { return a(); }\n",
+                "src/app/api/d/a.ts":
+                    "import { b } from './b';\nexport function a() { return b(); }\n",
+                "src/app/api/d/b.ts":
+                    "import { a } from './a';\nexport function b() { return a(); }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("an inline reject shape counts; a header-only use of the session does not", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/e/route.ts":
+                    "export async function GET() { if (!session?.access_token) { return null; } return 1; }\n",
+            }),
+        ).toBe(true);
+        expect(
+            guardOfRoute({
+                "src/app/api/f/route.ts":
+                    "export async function GET() { const h = {}; if (session?.access_token) { h.a = 1; } return h; }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("server actions: file-level and inline actions report their own guard state", () => {
+        expect(
+            guardsOfActions({
+                "src/actions.ts":
+                    "'use server'\nexport async function guardedAction() { await resolveOrgId(); }\nexport async function openAction() { return 1; }\n",
+                "src/app/page.tsx":
+                    "export default function P() {\n  async function inlineOpen() {\n    'use server'\n    return 1;\n  }\n  async function inlineGuarded() {\n    'use server'\n    await getSessionContext();\n  }\n  return null;\n}\n",
+            }),
+        ).toEqual({
+            guardedAction: true,
+            openAction: false,
+            inlineOpen: false,
+            inlineGuarded: true,
+        });
+    });
+
+    it("a handler that cannot be resolved to a function makes no claim", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/g/route.ts": "export const { GET } = handlers;\n",
+            }),
+        ).toBeUndefined();
+    });
+});
+
+describe("CHAOS-4780: a row's protection claim must match what discovery found", () => {
+    function guardedBaseline(guarded: boolean) {
+        const b = baseline();
+        b.routes[0].guarded = guarded;
+        b.actions[0].guarded = guarded;
+        return b;
+    }
+
+    it("accepts rows that agree with discovery", () => {
+        expect(runGate(makeInputs(guardedBaseline(true)))).toEqual([]);
+    });
+
+    it("direction 1: a guarded surface relabelled public fails", () => {
+        const b = guardedBaseline(true);
+        b.doc.rows[0].classification = "public";
+        b.doc.rows[0].public_rationale = "health-style endpoint";
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("claim_contradicts_source");
+    });
+
+    it("a guarded surface with primary_validator: null and no gaps fails", () => {
+        const b = guardedBaseline(true);
+        b.doc.rows[0].primary_validator = null;
+        b.doc.rows[0].gaps = [];
+        const violations = runGate(makeInputs(b));
+        expect(
+            violations.filter((v) => v.rule === "claim_contradicts_source").map((v) => v.id),
+        ).toEqual([b.doc.rows[0].id]);
+    });
+
+    it("direction 2: a protected row on a surface with no guard found fails unless gaps discloses it", () => {
+        const b = guardedBaseline(false);
+        expect(runGate(makeInputs(b)).map((v) => v.rule)).toContain("claim_contradicts_source");
+        const disclosed = guardedBaseline(false);
+        disclosed.doc.rows[0].gaps = [
+            "No rejecting guard in the handler; proxy.ts gates this path.",
+        ];
+        disclosed.doc.rows[1].gaps = ["No rejecting guard: primary_validator does not reject."];
+        expect(
+            runGate(makeInputs(disclosed)).filter((v) => v.rule === "claim_contradicts_source"),
+        ).toEqual([]);
+    });
+
+    it("a surface whose guard state is unknown is not reconciled", () => {
+        const b = baseline();
+        b.doc.rows[0].classification = "public";
+        b.doc.rows[0].public_rationale = "x";
+        expect(runGate(makeInputs(b)).filter((v) => v.rule === "claim_contradicts_source")).toEqual(
+            [],
+        );
+    });
+});
+
 describe("gate_web_auth_profiles: real repo state", () => {
     it("the committed endpoint-profiles.web.json currently has zero violations against live discovery", () => {
         const doc = JSON.parse(
