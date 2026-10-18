@@ -44,6 +44,7 @@
 
 import { readFileSync, existsSync, statSync, readdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import ts from "typescript";
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
@@ -67,41 +68,103 @@ export type ServerActionRecord = {
     line: number;
 };
 
-// Matches an exported async function declaration whose signature starts on
-// this line -- `(` need not close on the same line (multi-line params still
-// match, since only the opening paren after the name is required).
-const EXPORTED_ASYNC_FUNCTION_RE = /^export\s+async\s+function\s+(\w+)\s*\(/;
-// Global variants of the two above, used to count EVERY exported action on a
-// line rather than only the one anchored at its start. See the count/parse
-// reconciliation in discoverServerActionFiles.
-const EXPORTED_ASYNC_FUNCTION_GLOBAL_RE = /export\s+async\s+function\s+(\w+)\s*\(/g;
-// `export const foo = async (...) => { ... }` -- not observed in this repo
-// as of this pass, but a valid Server Action form; matched defensively so
-// discovery does not silently miss one if it appears later.
-const EXPORTED_ASYNC_ARROW_RE = /^export\s+const\s+(\w+)\s*(?::[^=]+)?=\s*async\s*[( ]/;
-const EXPORTED_ASYNC_ARROW_GLOBAL_RE = /export\s+const\s+(\w+)\s*(?::[^=]+)?=\s*async\s*[( ]/g;
+// CHAOS-4792: discovery reads the TypeScript AST, never source text. The text
+// matcher it replaces enumerated the spellings its author thought of while the
+// language accepts more (`export const GET = ...`, semicolonless directives,
+// .js route files). Every module extension Next.js resolves is parsed.
+const SOURCE_FILE_RE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+// Next serves `route.<pageExtension>`; pageExtensions may carry a dotted
+// prefix (next.config.js sets "demo.ts" for demo builds, so route.demo.ts is a
+// route there). Any dotted segments before a ts/tsx/js/jsx ending count, because
+// the config is evaluated per build and discovery must cover every build.
+// route.mjs/.cjs are never page extensions of this app.
+const ROUTE_FILE_RE = /(?:^|\/)route(?:\.[\w-]+)*\.(?:tsx|ts|jsx|js)$/;
+const TEST_FILE_RE = /\.(?:test|spec)\.(?:[cm]?[jt]s|[jt]sx)$/;
+const DECLARATION_FILE_RE = /\.d\.[cm]?ts$/;
 
-function parseArgs(argv: string[]): { root: string; out: string | null } {
-    let root = process.cwd();
-    let out: string | null = null;
-    for (let i = 0; i < argv.length; i++) {
-        if (argv[i] === "--root") root = argv[++i];
-        else if (argv[i] === "--out") out = argv[++i];
-    }
-    return { root, out };
+function parseSource(file: string): ts.SourceFile {
+    return ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
 }
 
-function* walk(dir: string): Generator<string> {
-    if (!existsSync(dir)) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) {
-            if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-            yield* walk(full);
-        } else if (entry.isFile()) {
-            yield full;
+function lineOf(sf: ts.SourceFile, node: ts.Node): number {
+    return sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
+}
+
+function hasExportModifier(node: ts.Node): boolean {
+    return (
+        ts.canHaveModifiers(node) &&
+        (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    );
+}
+
+function hasDefaultModifier(node: ts.Node): boolean {
+    return (
+        ts.canHaveModifiers(node) &&
+        (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+    );
+}
+
+type ExportedName = {
+    name: string;
+    line: number;
+    viaHandlers: boolean;
+    wildcard: boolean;
+    from?: string;
+};
+
+/**
+ * Every value name a module exports, from the AST: declarations
+ * (function/class/const/let/var, destructured bindings), `export { a as B }`,
+ * `export { B } from "./x"`, `export * from "./x"` (reported as a wildcard --
+ * the re-exported names cannot be resolved here, so callers treat it as a
+ * surface they cannot prove absent), and `export default`. Type-only exports
+ * are erased at compile time and skipped.
+ */
+function exportedNames(sf: ts.SourceFile): ExportedName[] {
+    const out: ExportedName[] = [];
+    const add = (name: string, node: ts.Node, viaHandlers = false, wildcard = false) =>
+        out.push({
+            name,
+            line: lineOf(sf, node),
+            viaHandlers,
+            wildcard,
+            from:
+                ts.isExportDeclaration(node) &&
+                node.moduleSpecifier &&
+                ts.isStringLiteral(node.moduleSpecifier)
+                    ? node.moduleSpecifier.text
+                    : undefined,
+        });
+    const bindingNames = (b: ts.BindingName, into: string[]) => {
+        if (ts.isIdentifier(b)) into.push(b.text);
+        else for (const el of b.elements) if (ts.isBindingElement(el)) bindingNames(el.name, into);
+    };
+    for (const st of sf.statements) {
+        if (ts.isFunctionDeclaration(st) && hasExportModifier(st)) {
+            add(hasDefaultModifier(st) ? "default" : (st.name?.text ?? "default"), st);
+        } else if (ts.isClassDeclaration(st) && hasExportModifier(st)) {
+            add(hasDefaultModifier(st) ? "default" : (st.name?.text ?? "default"), st);
+        } else if (ts.isVariableStatement(st) && hasExportModifier(st)) {
+            for (const decl of st.declarationList.declarations) {
+                const names: string[] = [];
+                bindingNames(decl.name, names);
+                const viaHandlers =
+                    !ts.isIdentifier(decl.name) &&
+                    decl.initializer !== undefined &&
+                    ts.isIdentifier(decl.initializer) &&
+                    decl.initializer.text === "handlers";
+                for (const n of names) add(n, st, viaHandlers);
+            }
+        } else if (ts.isExportAssignment(st)) {
+            add("default", st);
+        } else if (ts.isExportDeclaration(st) && !st.isTypeOnly) {
+            const clause = st.exportClause;
+            if (!clause) add("*", st, false, true);
+            else if (ts.isNamespaceExport(clause)) add(clause.name.text, st);
+            else for (const spec of clause.elements) if (!spec.isTypeOnly) add(spec.name.text, st);
         }
     }
+    return out;
 }
 
 /**
@@ -110,7 +173,7 @@ function* walk(dir: string): Generator<string> {
  * `[id]` segments are kept bracketed verbatim, matching this repo's
  * convention of documenting the dynamic-segment placeholder rather than
  * resolving a synthetic example value -- there is no route table to resolve
- * it against, unlike FastAPI's runtime include graph. `route.ts` itself is
+ * it against, unlike FastAPI's runtime include graph. `route.<ext>` itself is
  * dropped from the tail.
  *
  * ROUTE GROUPS are stripped: a directory whose name is wrapped in
@@ -127,7 +190,7 @@ function* walk(dir: string): Generator<string> {
  */
 function fileToRoutePath(appRoot: string, file: string): string {
     const rel = relative(appRoot, file).replace(/\\/g, "/");
-    const withoutFile = rel.replace(/\/route\.tsx?$/, "").replace(/^route\.tsx?$/, "");
+    const withoutFile = rel.replace(ROUTE_FILE_RE, "");
     if (!withoutFile) return "/";
     const segments = withoutFile
         .split("/")
@@ -135,105 +198,211 @@ function fileToRoutePath(appRoot: string, file: string): string {
     return "/" + segments.join("/");
 }
 
-const EXPORT_METHOD_RE = new RegExp(
-    `^export\\s+(?:async\\s+)?function\\s+(${HTTP_METHODS.join("|")})\\s*\\(`,
-);
-// `export const { GET, POST } = handlers;` (NextAuth catch-all) -- a named
-// destructure of a runtime object, not a per-method function. Reported with
-// method "api_route" (mirrors ops's convention for a runtime method list),
-// matching endpoint-profile.schema.json's `method` field description.
-const EXPORT_DESTRUCTURE_RE = /^export\s+const\s*\{([^}]+)\}\s*=\s*handlers\s*;?\s*$/;
-// `export { handler as POST };` and `export { GET };` -- a re-export of a
-// binding defined elsewhere in the file (commonly an arrow function). Merge-gate
-// round 1 (CHAOS-3273, EXECUTED): a route file whose only export took this
-// shape was invisible, so a hidden POST handler sat beside a profiled GET and
-// the gate reported `PASS: 1 routes + 0 server actions, 0 violations`. It is
-// legal TypeScript and a normal way to write a handler, not an exotic form.
-const EXPORT_NAMED_RE = /^export\s*\{([^}]+)\}\s*;?\s*$/;
+const compilerOptionsByRoot = new Map<string, ts.CompilerOptions>();
 
-function discoverRouteFile(appRoot: string, file: string): RouteRecord[] {
-    const text = readFileSync(file, "utf8");
-    const lines = text.split("\n");
+// The project's own compiler options (tsconfig `paths` such as "@/*" included),
+// so module resolution matches tsc. `types: []` keeps ambient @types out of the
+// program: discovery needs the import graph of the files it asks about, not
+// the whole dependency typing.
+function compilerOptions(root: string): ts.CompilerOptions {
+    let options = compilerOptionsByRoot.get(root);
+    if (!options) {
+        const configPath = join(root, "tsconfig.json");
+        const read = existsSync(configPath) ? ts.readConfigFile(configPath, ts.sys.readFile) : null;
+        const parsed = read?.config
+            ? ts.parseJsonConfigFileContent(read.config, ts.sys, root).options
+            : {};
+        options = {
+            ...parsed,
+            allowJs: true,
+            noEmit: true,
+            skipLibCheck: true,
+            types: [],
+            moduleResolution: ts.ModuleResolutionKind.Bundler,
+            module: ts.ModuleKind.ESNext,
+        };
+        compilerOptionsByRoot.set(root, options);
+    }
+    return options;
+}
+
+function buildProgram(root: string, files: string[]): ts.Program {
+    return ts.createProgram({ rootNames: files, options: compilerOptions(root) });
+}
+
+/**
+ * The value names a module exports, as the TypeScript checker computes them:
+ * `export *` (any depth, cycle-safe), aliases, re-exports and path aliases are
+ * resolved the way tsc resolves them. Type-only exports are dropped. An
+ * `export * from` whose module the checker cannot resolve is reported via
+ * `unresolvedWildcard`: it could export anything, so callers must demand a row
+ * for every possibility instead of silently seeing nothing.
+ */
+function checkerExports(
+    program: ts.Program,
+    file: string,
+): { names: string[]; unresolvedWildcard: boolean } {
+    const sf = program.getSourceFile(file);
+    if (!sf) return { names: [], unresolvedWildcard: true };
+    const checker = program.getTypeChecker();
+    let unresolvedWildcard = false;
+    for (const st of sf.statements) {
+        if (
+            ts.isExportDeclaration(st) &&
+            !st.isTypeOnly &&
+            !st.exportClause &&
+            st.moduleSpecifier &&
+            !checker.getSymbolAtLocation(st.moduleSpecifier)
+        )
+            unresolvedWildcard = true;
+    }
+    const moduleSymbol = checker.getSymbolAtLocation(sf);
+    if (!moduleSymbol) return { names: [], unresolvedWildcard };
+    const names: string[] = [];
+    for (const sym of checker.getExportsOfModule(moduleSymbol)) {
+        if (sym.name === "export=") continue;
+        const target = sym.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(sym) : sym;
+        // An alias the checker cannot resolve comes back as the unknown symbol,
+        // which carries Value flags: counted, never dropped.
+        if (target.flags & ts.SymbolFlags.Value) names.push(sym.name);
+    }
+    return { names, unresolvedWildcard };
+}
+
+function discoverRouteFile(appRoot: string, file: string, program: ts.Program): RouteRecord[] {
+    const sf = parseSource(file);
     const routePath = fileToRoutePath(appRoot, file);
-    const records: RouteRecord[] = [];
-    let sawDestructure = false;
-    lines.forEach((lineText, idx) => {
-        // `export { handler as POST, other as GET };` -- take the EXPORTED
-        // name (after `as`), which is what Next dispatches on, not the local
-        // binding's name.
-        const namedMatch = EXPORT_NAMED_RE.exec(lineText.trim());
-        if (namedMatch && !/=\s*handlers/.test(lineText)) {
-            for (const clause of namedMatch[1].split(",")) {
-                const exported = clause.includes(" as ")
-                    ? clause.split(" as ")[1].trim()
-                    : clause.trim();
-                if ((HTTP_METHODS as readonly string[]).includes(exported)) {
-                    records.push({
-                        method: exported as HttpMethod,
-                        route: routePath,
-                        file: relative(process.cwd(), file),
-                        line: idx + 1,
-                    });
-                }
-            }
-        }
-        const methodMatch = EXPORT_METHOD_RE.exec(lineText.trim());
-        if (methodMatch) {
-            records.push({
-                method: methodMatch[1] as HttpMethod,
-                route: routePath,
-                file: relative(process.cwd(), file),
-                line: idx + 1,
-            });
-            return;
-        }
-        if (!sawDestructure && EXPORT_DESTRUCTURE_RE.test(lineText.trim())) {
-            sawDestructure = true;
-            records.push({
-                method: "GET" as HttpMethod, // placeholder; api_route covers both -- see note below
-                route: routePath,
-                file: relative(process.cwd(), file),
-                line: idx + 1,
-            });
-        }
-    });
-    // Collapse a destructure-style file (NextAuth) into ONE api_route record
-    // rather than one row per destructured name -- matches how this repo's
-    // endpoint-profiles.web.json represents it (method: "api_route").
-    if (sawDestructure) {
+    const relFile = relative(process.cwd(), file);
+    const own = exportedNames(sf);
+    // `export const { GET, POST } = handlers;` (NextAuth catch-all) -- a
+    // destructure of a runtime object, not a per-method function. One record
+    // with method "api_route" (mirrors ops's convention for a runtime method
+    // list), matching endpoint-profile.schema.json's `method` field.
+    const destructure = own.find(
+        (n) => n.viaHandlers && (HTTP_METHODS as readonly string[]).includes(n.name),
+    );
+    if (destructure) {
         return [
             {
                 method: "api_route" as unknown as HttpMethod,
                 route: routePath,
-                file: records[0].file,
-                line: records[0].line,
+                file: relFile,
+                line: destructure.line,
             },
         ];
     }
-    return records;
+    const wildcardLine = own.find((n) => n.wildcard)?.line ?? 1;
+    const lineByName = new Map<string, number>();
+    for (const n of own) if (!lineByName.has(n.name)) lineByName.set(n.name, n.line);
+    const { names, unresolvedWildcard } = checkerExports(program, file);
+    const methods = new Set<string>(
+        names.filter((n) => (HTTP_METHODS as readonly string[]).includes(n)),
+    );
+    // An export * the checker cannot resolve might export any method; each
+    // possibility demands its own row (one row never covers several handlers).
+    if (unresolvedWildcard) for (const m of HTTP_METHODS) methods.add(m);
+    return [...methods].map((m) => ({
+        method: m as HttpMethod,
+        route: routePath,
+        file: relFile,
+        line: lineByName.get(m) ?? wildcardLine,
+    }));
+}
+
+function* walk(dir: string): Generator<string> {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+            yield* walk(full);
+        } else if (entry.isFile()) {
+            yield full;
+        }
+    }
+}
+
+function parseArgs(argv: string[]): { root: string; out: string | null } {
+    let root = process.cwd();
+    let out: string | null = null;
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === "--root") root = argv[++i];
+        else if (argv[i] === "--out") out = argv[++i];
+    }
+    return { root, out };
 }
 
 export function discoverRoutes(root: string): RouteRecord[] {
     const appRoot = join(root, "src/app");
-    const out: RouteRecord[] = [];
+    const files: string[] = [];
     for (const file of walk(appRoot)) {
-        if (!/route\.tsx?$/.test(file)) continue;
-        out.push(...discoverRouteFile(appRoot, file));
+        if (!ROUTE_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file) || TEST_FILE_RE.test(file))
+            continue;
+        files.push(file);
+    }
+    const out: RouteRecord[] = [];
+    if (files.length > 0) {
+        const program = buildProgram(root, files);
+        for (const file of files) out.push(...discoverRouteFile(appRoot, file, program));
     }
     out.sort((a, b) => (a.route + a.method).localeCompare(b.route + b.method));
     return out;
 }
 
+/** True when a statement list opens with a `"use server"` directive (any quote, with or without `;`). */
+function hasUseServerDirective(statements: readonly ts.Statement[]): boolean {
+    for (const st of statements) {
+        if (!ts.isExpressionStatement(st) || !ts.isStringLiteral(st.expression)) return false;
+        // Compare the string VALUE: Next accepts "use\x20server", and a
+        // false positive here only demands a row, never hides a surface.
+        if (st.expression.text === "use server") return true;
+    }
+    return false;
+}
+
+function functionBody(node: ts.Node): ts.Block | undefined {
+    if (
+        (ts.isFunctionDeclaration(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isArrowFunction(node) ||
+            ts.isMethodDeclaration(node)) &&
+        node.body &&
+        ts.isBlock(node.body)
+    )
+        return node.body;
+    return undefined;
+}
+
+function inlineActionName(node: ts.Node): string | null {
+    if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name)
+        return node.name.getText();
+    if (ts.isFunctionExpression(node) && node.name) return node.name.text;
+    const parent = node.parent;
+    if (parent && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name))
+        return parent.name.text;
+    if (parent && ts.isPropertyAssignment(parent) && ts.isIdentifier(parent.name))
+        return parent.name.text;
+    return null;
+}
+
 /**
- * "use server" files -- every file whose first non-comment, non-blank line
- * is the "use server" directive (file-level opt-in). Returns BOTH:
- *   - `files`: one entry per file with its exported action names, for
+ * Server Actions -- both Next.js forms:
+ *   - FILE-level: a module whose directive prologue holds "use server"; every
+ *     value it exports is an action.
+ *   - FUNCTION-level: a function whose body opens with "use server" (inline
+ *     action in a server component or any other module).
+ * Returns BOTH:
+ *   - `files`: one entry per file with its action names, for
  *     visibility/reconciliation.
- *   - `actions`: one record per exported Server Action function, keyed
- *     `server_action:<repo-relative module path>#<exported function name>`
+ *   - `actions`: one record per Server Action, keyed
+ *     `server_action:<repo-relative module path>#<name>`
  *     -- the independently re-derived surface a CI gate diffs the checked-in
  *     profile rows against. Never keyed on a per-build action id (unstable
- *     across builds by design -- see module docstring).
+ *     across builds by design -- see module docstring). An inline action with
+ *     no name is keyed `anonymous@L<line>`.
+ *
+ * `export *` in a file-level module is reported under the name `*`: the
+ * re-exported actions cannot be resolved here, so it demands a row.
  */
 export function discoverServerActionFiles(root: string): {
     files: ServerActionFile[];
@@ -241,83 +410,75 @@ export function discoverServerActionFiles(root: string): {
 } {
     const files: ServerActionFile[] = [];
     const actions: ServerActionRecord[] = [];
+    type Found = {
+        file: string;
+        relFile: string;
+        fileLevel: boolean;
+        sf: ts.SourceFile;
+        inline: { name: string; line: number }[];
+    };
+    const found: Found[] = [];
     for (const file of walk(join(root, "src"))) {
-        if (!/\.tsx?$/.test(file)) continue;
-        if (/\.(test|spec)\.tsx?$/.test(file)) continue;
-        const text = readFileSync(file, "utf8");
-        const lines = text.split("\n");
-        // Find the first meaningful line, skipping blank lines, // comments
-        // AND /* block comments */. Merge-gate round 1 (CHAOS-3273, EXECUTED):
-        // only `//` was skipped, so a "use server" file preceded by a block
-        // comment -- a licence header, a docstring, anything -- was not
-        // recognised as a Server Action module at all, and every action in it
-        // was invisible to the gate.
-        const firstMeaningfulLine = (() => {
-            let inBlockComment = false;
-            for (const raw of lines) {
-                let l = raw.trim();
-                if (inBlockComment) {
-                    const end = l.indexOf("*/");
-                    if (end === -1) continue;
-                    l = l.slice(end + 2).trim();
-                    inBlockComment = false;
-                }
-                while (l.startsWith("/*")) {
-                    const end = l.indexOf("*/", 2);
-                    if (end === -1) {
-                        inBlockComment = true;
-                        l = "";
-                        break;
-                    }
-                    l = l.slice(end + 2).trim();
-                }
-                if (l.length === 0 || l.startsWith("//")) continue;
-                return l;
-            }
-            return undefined;
-        })();
-        if (
-            firstMeaningfulLine?.trim() !== '"use server";' &&
-            firstMeaningfulLine?.trim() !== "'use server';"
-        )
+        if (!SOURCE_FILE_RE.test(file) || TEST_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file))
             continue;
-
+        // Sound pre-filter: without a backslash a string literal's raw text IS
+        // its value, so a directive reading "use server" must contain "server".
+        const text = readFileSync(file, "utf8");
+        if (!text.includes("server") && !text.includes("\\")) continue;
+        const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
         const relFile = relative(process.cwd(), file);
-        const exportedFunctionNames: string[] = [];
-        lines.forEach((lineText, idx) => {
-            const trimmed = lineText.trim();
-            // Match EVERY exported action on the line, not just one anchored
-            // at its start.
-            //
-            // CHAOS-3273 merge-gate, EXECUTED: this used a single `.exec()`
-            // per line, so two exported actions written on ONE line yielded
-            // only the first. With the first profiled and the second not, the
-            // gate reported
-            //   PASS: 18 routes + 151 server actions, 0 violations.
-            // while `betaProbeUnprofiled` was a wholly unprofiled Server
-            // Action -- guardrail G-1 defeated by a semicolon. The sibling
-            // acr gate had the identical defect in Go (FindStringSubmatch).
-            //
-            // Worth knowing if you are re-testing this: with BOTH same-line
-            // actions unprofiled the gate DOES fail, on the first one. That
-            // reads as a catch and is not one; the hole only shows once the
-            // first is profiled.
-            const names = [
-                ...trimmed.matchAll(EXPORTED_ASYNC_FUNCTION_GLOBAL_RE),
-                ...trimmed.matchAll(EXPORTED_ASYNC_ARROW_GLOBAL_RE),
-            ].map((m) => m[1]);
-            if (names.length === 0) return;
-            for (const exportName of names) {
-                exportedFunctionNames.push(exportName);
-                actions.push({
-                    id: `server_action:${relFile}#${exportName}`,
-                    file: relFile,
-                    exportName,
-                    line: idx + 1,
-                });
+        if (hasUseServerDirective(sf.statements)) {
+            found.push({ file, relFile, fileLevel: true, sf, inline: [] });
+            continue;
+        }
+        const inline: { name: string; line: number }[] = [];
+        const used = new Set<string>();
+        const visit = (node: ts.Node) => {
+            const body = functionBody(node);
+            if (body && hasUseServerDirective(body.statements)) {
+                const line = lineOf(sf, node);
+                let name = inlineActionName(node) ?? `anonymous@L${line}`;
+                if (used.has(name)) name = `${name}@L${line}`;
+                used.add(name);
+                inline.push({ name, line });
             }
-        });
-        files.push({ file: relFile, exportedFunctionNames });
+            ts.forEachChild(node, visit);
+        };
+        visit(sf);
+        if (inline.length > 0) found.push({ file, relFile, fileLevel: false, sf, inline });
+    }
+    const fileLevel = found.filter((f) => f.fileLevel);
+    const program =
+        fileLevel.length > 0
+            ? buildProgram(
+                  root,
+                  fileLevel.map((f) => f.file),
+              )
+            : null;
+    for (const f of found) {
+        let names: { name: string; line: number }[];
+        if (f.fileLevel && program) {
+            const own = exportedNames(f.sf);
+            const wildcardLine = own.find((n) => n.wildcard)?.line ?? 1;
+            const lineByName = new Map<string, number>();
+            for (const n of own) if (!lineByName.has(n.name)) lineByName.set(n.name, n.line);
+            const { names: exported, unresolvedWildcard } = checkerExports(program, f.file);
+            names = exported.map((name) => ({ name, line: lineByName.get(name) ?? wildcardLine }));
+            // An unresolvable `export *` could export actions: demand a row.
+            if (unresolvedWildcard) names.push({ name: "*", line: wildcardLine });
+        } else {
+            names = f.inline;
+        }
+        if (names.length === 0) continue;
+        for (const n of names) {
+            actions.push({
+                id: `server_action:${f.relFile}#${n.name}`,
+                file: f.relFile,
+                exportName: n.name,
+                line: n.line,
+            });
+        }
+        files.push({ file: f.relFile, exportedFunctionNames: names.map((n) => n.name) });
     }
     files.sort((a, b) => a.file.localeCompare(b.file));
     actions.sort((a, b) => a.id.localeCompare(b.id));

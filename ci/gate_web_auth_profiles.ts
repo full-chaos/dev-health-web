@@ -124,7 +124,8 @@ export type Violation = {
         | "anchor_drift"
         | "schema_violation"
         | "unstated_null"
-        | "degrades_silently";
+        | "degrades_silently"
+        | "surface_kind_mismatch";
     id?: string;
     detail: string;
 };
@@ -421,6 +422,13 @@ export function runGate(input: GateInputs): Violation[] {
     }
 
     const discovered = discoveredIdMap(discoveredRoutes, discoveredActions);
+    // CHAOS-4792: the kind of a surface comes from discovery, never from the
+    // row's own label. A row naming a discovered id with another surface_kind
+    // is a violation, and the per-kind checks below key on this map.
+    const discoveredKind = new Map<string, "rest" | "server_action">();
+    for (const id of discovered.keys()) {
+        discoveredKind.set(id, id.startsWith("server_action:") ? "server_action" : "rest");
+    }
     const webRowsById = new Map<string, EndpointProfileRow>();
 
     for (const row of rows) {
@@ -446,6 +454,14 @@ export function runGate(input: GateInputs): Violation[] {
         // exempted rather than flagged wrong.
         if (row.service === "dev-health-web") {
             webRowsById.set(row.id, row);
+        }
+        const foundKind = discoveredKind.get(row.id);
+        if (foundKind !== undefined && row.surface_kind !== foundKind) {
+            violations.push({
+                rule: "surface_kind_mismatch",
+                id: row.id,
+                detail: `row declares surface_kind "${row.surface_kind}" but source discovery finds this id as a ${foundKind} surface; a row cannot choose which checks apply to it`,
+            });
         }
 
         const surfaceKinds = schemaDocument
@@ -497,7 +513,7 @@ export function runGate(input: GateInputs): Violation[] {
         // surface kind + service this pass verified by hand: web server_actions.
         if (
             row.service === "dev-health-web" &&
-            row.surface_kind === "server_action" &&
+            (foundKind ?? row.surface_kind) === "server_action" &&
             row.classification === "protected"
         ) {
             const gapsText = Array.isArray(row.gaps) ? row.gaps.join("\n") : "";

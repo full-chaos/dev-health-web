@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -18,6 +18,9 @@ import {
 } from "../discover_web_routes";
 
 const WEB_ROOT = resolve(__dirname, "../..");
+
+// Discovery builds a TypeScript program per call; under coverage that exceeds 5 s.
+vi.setConfig({ testTimeout: 60_000 });
 
 // SELF-CONTAINED schema fixtures, deliberately not the real ops-owned files.
 //
@@ -752,6 +755,243 @@ describe("discover_web_routes: every exported action on a line is discovered", (
     });
 });
 
+describe("CHAOS-4792: AST discovery recognises the legal forms the text matcher missed", () => {
+    function tree(files: Record<string, string>): string {
+        const dir = mkdtempSync(join(tmpdir(), "web-ast-"));
+        for (const [rel, text] of Object.entries(files)) {
+            const full = join(dir, rel);
+            mkdirSync(join(full, ".."), { recursive: true });
+            writeFileSync(full, text);
+        }
+        return dir;
+    }
+    function routesOf(files: Record<string, string>) {
+        const dir = tree(files);
+        try {
+            return discoverRoutes(dir).map((r) => `${r.method} ${r.route}`);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+    function actionsOf(files: Record<string, string>) {
+        const dir = tree(files);
+        try {
+            return discoverServerActionFiles(dir).actions.map((a) => a.id.replace(/^.*#/, ""));
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+
+    it("class 1: route.js and actions.js are scanned (.js/.jsx/.mjs)", () => {
+        expect(
+            routesOf({ "src/app/api/a/route.js": "export async function GET() { return null }\n" }),
+        ).toEqual(["GET /api/a"]);
+        expect(
+            routesOf({ "src/app/api/b/route.jsx": "export const POST = async () => null;\n" }),
+        ).toEqual(["POST /api/b"]);
+        expect(
+            actionsOf({
+                "src/app/actions.js": '"use server";\nexport async function jsAction() {}\n',
+            }),
+        ).toEqual(["jsAction"]);
+    });
+
+    it("class 2: `export const GET = async () => ...` is a handler (also non-async const, aliases, re-exports)", () => {
+        expect(
+            routesOf({
+                "src/app/api/c/route.ts": "export const GET = async () => new Response('x');\n",
+            }),
+        ).toEqual(["GET /api/c"]);
+        expect(
+            routesOf({
+                "src/app/api/d/route.ts":
+                    "const h = () => new Response('x');\nexport { h as DELETE, h as PUT };\n",
+            }).sort(),
+        ).toEqual(["DELETE /api/d", "PUT /api/d"]);
+        expect(routesOf({ "src/app/api/e/route.ts": "export { PATCH } from './impl';\n" })).toEqual(
+            ["PATCH /api/e"],
+        );
+        expect(
+            routesOf({
+                "src/app/api/f/route.ts": "export {\n  h as\n  HEAD,\n};\nconst h = () => null;\n",
+            }),
+        ).toEqual(["HEAD /api/f"]);
+    });
+
+    it("`export * from` follows a relative module: each served method is its own record", () => {
+        expect(
+            routesOf({
+                "src/app/api/g/route.ts": "export * from './impl';\n",
+                "src/app/api/g/impl.ts":
+                    "export const GET = async () => null;\nexport async function POST() {}\nexport const helper = 1;\n",
+            }).sort(),
+        ).toEqual(["GET /api/g", "POST /api/g"]);
+    });
+
+    it("`export *` follows a chain of any depth", () => {
+        const files: Record<string, string> = {
+            "src/app/api/deep/route.ts": "export * from './m1';\n",
+        };
+        for (let i = 1; i < 12; i++)
+            files[`src/app/api/deep/m${i}.ts`] = `export * from './m${i + 1}';\n`;
+        files["src/app/api/deep/m12.ts"] = "export const GET = async () => null;\n";
+        expect(routesOf(files)).toEqual(["GET /api/deep"]);
+    });
+
+    it("`export *` follows a tsconfig path alias to the real handlers", () => {
+        expect(
+            routesOf({
+                "tsconfig.json": JSON.stringify({
+                    compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+                }),
+                "src/app/api/alias/route.ts": "export * from '@/handlers';\n",
+                "src/handlers.ts": "export const GET = async () => null;\n",
+            }),
+        ).toEqual(["GET /api/alias"]);
+    });
+
+    it("`export *` from a cycle terminates", () => {
+        expect(
+            routesOf({
+                "src/app/api/cyc/route.ts": "export * from './a';\nexport const PUT = 1;\n",
+                "src/app/api/cyc/a.ts": "export * from './b';\n",
+                "src/app/api/cyc/b.ts": "export * from './a';\nexport const GET = 1;\n",
+            }).sort(),
+        ).toEqual(["GET /api/cyc", "PUT /api/cyc"]);
+    });
+
+    it("`export *` from an unresolvable module demands a row per method, never one row", () => {
+        expect(
+            routesOf({ "src/app/api/g2/route.ts": "export * from 'some-package';\n" }).sort(),
+        ).toEqual(
+            ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"].map((m) => `${m} /api/g2`),
+        );
+    });
+
+    it("route files with a dotted pageExtension prefix are routes (route.page.ts, route.demo.tsx)", () => {
+        expect(
+            routesOf({
+                "src/app/api/p/route.page.ts": "export async function GET() {}\n",
+                "src/app/api/q/route.demo.tsx": "export const POST = async () => null;\n",
+                "src/app/api/r/route.test.ts": "export async function GET() {}\n",
+            }).sort(),
+        ).toEqual(["GET /api/p", "POST /api/q"]);
+    });
+
+    it("route.mjs / route.cjs are not Next routes (pageExtensions: tsx ts jsx js)", () => {
+        expect(
+            routesOf({
+                "src/app/api/m/route.mjs": "export async function GET() {}\n",
+                "src/app/api/n/route.cjs": "exports.GET = () => null;\n",
+            }),
+        ).toEqual([]);
+    });
+
+    it('an escaped directive string ("use\\x20server") is the directive', () => {
+        expect(
+            actionsOf({
+                "src/esc.ts": '"use\\x20server";\nexport async function escapedAction() {}\n',
+            }),
+        ).toEqual(["escapedAction"]);
+    });
+
+    it("export default is not an HTTP method handler", () => {
+        expect(
+            routesOf({ "src/app/api/h/route.ts": "export default function GET() {}\n" }),
+        ).toEqual([]);
+    });
+
+    it("class 3: the directive is recognised without a semicolon, in either quote style", () => {
+        expect(
+            actionsOf({ "src/a.ts": "'use server'\nexport async function noSemi() {}\n" }),
+        ).toEqual(["noSemi"]);
+        expect(actionsOf({ "src/b.ts": '"use server"\nexport async function dq() {}\n' })).toEqual([
+            "dq",
+        ]);
+        expect(
+            actionsOf({
+                "src/c.ts":
+                    "'use client-not-this';\n'use server';\nexport async function afterOther() {}\n",
+            }),
+        ).toEqual(["afterOther"]);
+    });
+
+    it("a directive split across lines or after code is judged by the AST, not by line shape", () => {
+        expect(
+            actionsOf({
+                "src/d.ts": "\n\n  'use server'\n\n;export async function spaced() {}\n",
+            }),
+        ).toEqual(["spaced"]);
+        // not a directive: it follows a statement
+        expect(
+            actionsOf({
+                "src/e.ts": "const x = 1;\n'use server';\nexport async function notAction() {}\n",
+            }),
+        ).toEqual([]);
+        // a string that merely contains the words is not a directive
+        expect(
+            actionsOf({ "src/f.ts": "'not use server';\nexport async function nope() {}\n" }),
+        ).toEqual([]);
+    });
+
+    it("file-level: every exported value is an action (const arrow, alias, re-export, default); types are not", () => {
+        expect(
+            actionsOf({
+                "src/g.ts":
+                    "'use server'\n" +
+                    "export const arrow = async () => 1;\n" +
+                    "async function inner() {}\n" +
+                    "export { inner as aliased };\n" +
+                    "export { remote } from './other';\n" +
+                    "export default async function () {}\n" +
+                    "export type T = string;\nexport interface I {}\n",
+            }).sort(),
+        ).toEqual(["aliased", "arrow", "default", "remote"]);
+    });
+
+    it("function-level: an inline `use server` function is an action, in a file with no file-level directive", () => {
+        const names = actionsOf({
+            "src/app/page.tsx":
+                "export default function Page() {\n" +
+                "  async function save() {\n    'use server'\n    return 1;\n  }\n" +
+                '  const other = async () => {\n    "use server";\n  };\n' +
+                "  async function notAnAction() { return 2; }\n" +
+                "  return null;\n}\n",
+        });
+        expect(names.sort()).toEqual(["other", "save"]);
+    });
+});
+
+describe("CHAOS-4792 class 4: a row cannot choose which checks apply to it", () => {
+    it("a server_action id relabelled `rest` fails and cannot suppress the action checks", () => {
+        const b = baseline();
+        const row = b.doc.rows.find((r) => r.id.startsWith("server_action:"))!;
+        row.surface_kind = "rest";
+        row.method = null;
+        row.route = null;
+        row.primary_validator = null;
+        row.gaps = [];
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("surface_kind_mismatch");
+        // discovery-keyed check still fires: protected action with null validator and no gap
+        expect(violations.map((v) => v.rule)).toContain("unstated_null");
+    });
+
+    it("a rest id relabelled server_action fails", () => {
+        const b = baseline();
+        b.doc.rows[0].surface_kind = "server_action";
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("surface_kind_mismatch");
+    });
+
+    it("a graphql_* label on a discovered id also fails (no exemption by label)", () => {
+        const b = baseline();
+        b.doc.rows[1].surface_kind = "graphql_field";
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("surface_kind_mismatch");
+    });
+});
+
 describe("gate_web_auth_profiles: real repo state", () => {
     it("the committed endpoint-profiles.web.json currently has zero violations against live discovery", () => {
         const doc = JSON.parse(
@@ -785,5 +1025,5 @@ describe("gate_web_auth_profiles: real repo state", () => {
             },
         });
         expect(violations).toEqual([]);
-    });
+    }, 60_000);
 });
