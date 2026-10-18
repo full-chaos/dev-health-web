@@ -263,7 +263,6 @@ export const GUARD_SYMBOLS: readonly { file: string; name: string }[] = [
     { file: "src/lib/admin/server/_shared.ts", name: "getToken" },
     { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeaders" },
     { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeadersOrThrow" },
-    { file: "src/lib/billing/actions/_shared.ts", name: "resolveOrgId" },
     { file: "src/lib/billing/actions/_shared.ts", name: "apiRequest" },
 ];
 
