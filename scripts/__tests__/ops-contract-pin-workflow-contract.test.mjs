@@ -146,6 +146,20 @@ describe("ops-contract pin gate workflow contract", () => {
             "pin-shape step lacks the full 40-hex check",
         ],
         [
+            "pin regex weakened to accept any ref, decoy text left in an echo",
+            () =>
+                mutate(
+                    "if ! printf '%s' \"$sha\" | grep -Eq '^[0-9a-f]{40}$'; then",
+                    "if ! printf '%s' \"$sha\" | grep -Eq '^[a-z0-9]+$'; then echo '[0-9a-f]{40}' >/dev/null;",
+                ),
+            "pin-shape",
+        ],
+        [
+            "gate step skipped by a composite false condition",
+            () => mutate(STEP_NAME_LINE, `${STEP_NAME_LINE}\n              if: \${{ false && true }}`),
+            "gate step",
+        ],
+        [
             "pin-shape step swallows failure",
             () =>
                 mutate(
