@@ -1465,8 +1465,19 @@ export type OperatingReviewSection = {
   improved: Array<Scalars['String']['output']>;
   key: Scalars['String']['output'];
   metrics: Array<OperatingReviewMetric>;
+  /** The measure and the sizing coverage of the section (CHAOS-9873). Null for every section but investment. The investment section is read in ISSUE_SIZE only for a document that selects measure, sizingCoverage, unsizedUnitCount and workUnitCount here, so a client never receives issue-size values it cannot label (D6027); any other document reads WORK_UNITS and gets measure WORK_UNITS with the sizing fields null. */
+  sizing?: Maybe<OperatingReviewSizing>;
   title: Scalars['String']['output'];
   worsened: Array<Scalars['String']['output']>;
+};
+
+/** What the Investment section's work is measured in and how much of it is sized (CHAOS-9873, D6027, D6032). ISSUE_SIZE weighs each work unit by its issue size, an unsized unit counts 1; WORK_UNITS counts each unit 1. The sizing fields are read over the week's units, the ones the section's current-week values come from. They are null unless ``measure`` is ISSUE_SIZE, and null when the week holds no unit: null is "not measured", never 0. */
+export type OperatingReviewSizing = {
+  __typename?: 'OperatingReviewSizing';
+  measure: SankeyValueUnit;
+  sizingCoverage?: Maybe<Scalars['Float']['output']>;
+  unsizedUnitCount?: Maybe<Scalars['Int']['output']>;
+  workUnitCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type PageInfo = {

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { OperatingReviewSizingNote } from "@/components/work/investment/OperatingReviewSizingNote";
 import { buttonClassName } from "@/components/shared/Button";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
@@ -255,6 +256,8 @@ function OperatingReviewAgenda({
                             ))}
                         </MetricStrip>
                     ) : null}
+
+                    <OperatingReviewSizingNote sizing={section.sizing} />
 
                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                         <CalloutColumn title="Improved" tone="improved" items={section.improved} />

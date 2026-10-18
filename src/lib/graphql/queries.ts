@@ -443,6 +443,12 @@ query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
       changed
       improved
       worsened
+      sizing {
+        measure
+        sizingCoverage
+        unsizedUnitCount
+        workUnitCount
+      }
       metrics {
         key
         label
