@@ -365,7 +365,11 @@ export function discoverServerActionFiles(root: string): {
     for (const file of walk(join(root, "src"))) {
         if (!SOURCE_FILE_RE.test(file) || TEST_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file))
             continue;
-        const sf = parseSource(file);
+        // Sound pre-filter: without a backslash a string literal's raw text IS
+        // its value, so a directive reading "use server" must contain "server".
+        const text = readFileSync(file, "utf8");
+        if (!text.includes("server") && !text.includes("\\")) continue;
+        const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
         const relFile = relative(process.cwd(), file);
         const names: { name: string; line: number }[] = [];
         if (hasUseServerDirective(sf.statements)) {

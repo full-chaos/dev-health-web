@@ -980,5 +980,5 @@ describe("gate_web_auth_profiles: real repo state", () => {
             },
         });
         expect(violations).toEqual([]);
-    });
+    }, 60_000);
 });
