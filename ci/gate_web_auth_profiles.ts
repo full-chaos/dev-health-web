@@ -71,6 +71,9 @@
  * reported `guard_unresolved` and fails. The gate rejects a `public` row on a
  * guarded surface, `primary_validator: null` on a guarded surface, and a
  * `protected` row on a surface with no guard found unless gaps discloses it.
+ * A guard call counts only when awaited or returned, and only in code that can
+ * run (nothing after a top-level return/throw, no `if (false)` arm). A promise
+ * stored in a variable and awaited later is not counted.
  * NAMED GAP: "guarded" means a guard is REACHABLE from the handler, not that
  * every path passes through it; a guard reached only on one branch passes. A
  * surface whose handler cannot be resolved to a function (the NextAuth

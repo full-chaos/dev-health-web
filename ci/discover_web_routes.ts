@@ -274,25 +274,83 @@ export const INLINE_REJECT_CONDITIONS: readonly string[] = [
     "!session?.user?.org_id",
 ];
 
+const isExit = (s: ts.Statement) => ts.isReturnStatement(s) || ts.isThrowStatement(s);
+
+/** A literal `if (false)`-style condition: true/false when constant, undefined otherwise. */
+function constantCondition(e: ts.Expression): boolean | undefined {
+    if (e.kind === ts.SyntaxKind.TrueKeyword) return true;
+    if (
+        e.kind === ts.SyntaxKind.FalseKeyword ||
+        e.kind === ts.SyntaxKind.NullKeyword ||
+        (ts.isNumericLiteral(e) && Number(e.text) === 0) ||
+        (ts.isIdentifier(e) && e.text === "undefined")
+    )
+        return false;
+    return undefined;
+}
+
+/**
+ * Walk only code that can run: statements after a top-level return/throw in a
+ * block are dead, and the dead arm of an `if (<literal>)` is skipped. `f`
+ * returns false to stop descending into a node.
+ */
+function walkLive(node: ts.Node, f: (n: ts.Node) => boolean | void): void {
+    if (f(node) === false) return;
+    if (ts.isBlock(node)) {
+        for (const s of node.statements) {
+            walkLive(s, f);
+            if (isExit(s)) break;
+        }
+        return;
+    }
+    if (ts.isIfStatement(node)) {
+        const c = constantCondition(node.expression);
+        walkLive(node.expression, f);
+        if (c !== false) walkLive(node.thenStatement, f);
+        if (c !== true && node.elseStatement) walkLive(node.elseStatement, f);
+        return;
+    }
+    ts.forEachChild(node, (c) => walkLive(c, f));
+}
+
+/** `if (<closed condition>) { ...; return|throw ...; }` -- the branch itself exits. */
+function isInlineRejectIf(n: ts.Node): boolean {
+    if (
+        !ts.isIfStatement(n) ||
+        !INLINE_REJECT_CONDITIONS.includes(n.expression.getText().replace(/\s+/g, ""))
+    )
+        return false;
+    const then = n.thenStatement;
+    return isExit(then) || (ts.isBlock(then) && then.statements.some(isExit));
+}
+
 function isInlineReject(node: ts.Node): boolean {
     let found = false;
-    const visit = (n: ts.Node) => {
-        if (found) return;
-        if (
-            ts.isIfStatement(n) &&
-            INLINE_REJECT_CONDITIONS.includes(n.expression.getText().replace(/\s+/g, ""))
-        ) {
-            const then = n.thenStatement;
-            const exits = (s: ts.Statement) => ts.isReturnStatement(s) || ts.isThrowStatement(s);
-            if (exits(then) || (ts.isBlock(then) && then.statements.some(exits))) {
-                found = true;
-                return;
-            }
+    walkLive(node, (n) => {
+        if (found) return false;
+        if (isInlineRejectIf(n)) {
+            found = true;
+            return false;
         }
-        ts.forEachChild(n, visit);
-    };
-    visit(node);
+    });
     return found;
+}
+
+/**
+ * A call whose result is awaited or returned. A guard call that is neither
+ * (`getToken();`, `void getToken()`) rejects into an unobserved promise and
+ * protects nothing.
+ */
+function isConsumed(call: ts.CallExpression): boolean {
+    for (let n: ts.Node | undefined = call.parent; n; n = n.parent) {
+        if (ts.isAwaitExpression(n) || ts.isReturnStatement(n)) return true;
+        if (ts.isArrowFunction(n) && !ts.isBlock(n.body)) {
+            // expression-bodied arrow: its value is returned to the caller
+            return true;
+        }
+        if (ts.isStatement(n) || ts.isFunctionLike(n)) return false;
+    }
+    return false;
 }
 
 function isGuardDeclaration(decl: ts.Node): boolean {
@@ -338,6 +396,22 @@ function resolveDeclarations(checker: ts.TypeChecker, ref: ts.Node, hops = 0): t
     return out;
 }
 
+/** Function nodes behind a declaration, following `const GET = handler` aliases. */
+function functionLikesOf(checker: ts.TypeChecker, decl: ts.Node, hops = 0): ts.Node[] {
+    if (
+        hops < 5 &&
+        ts.isVariableDeclaration(decl) &&
+        decl.initializer &&
+        (ts.isIdentifier(decl.initializer) || ts.isPropertyAccessExpression(decl.initializer))
+    ) {
+        return resolveDeclarations(checker, decl.initializer).flatMap((x) =>
+            functionLikesOf(checker, x, hops + 1),
+        );
+    }
+    const fn = functionLikeOf(decl);
+    return fn ? [fn] : [];
+}
+
 type GuardState = "guarded" | "unguarded" | "limit";
 type GuardFields = { guarded?: boolean; guardUnresolved?: true };
 
@@ -361,17 +435,9 @@ function guardState(
     if (isInlineReject(node)) return "guarded";
     if (depth >= MAX_GUARD_DEPTH) return "limit";
     let result: GuardState = "unguarded";
-    const follow = (ref: ts.Node) => {
-        for (const decl of resolveDeclarations(checker, ref)) {
-            if (isGuardDeclaration(decl)) {
-                result = "guarded";
-                return;
-            }
-            const sourceFile = decl.getSourceFile();
-            if (sourceFile.isDeclarationFile || sourceFile.fileName.includes("/node_modules/"))
-                continue;
-            const fn = functionLikeOf(decl);
-            if (!fn || visited.has(fn)) continue;
+    const followFns = (fns: ts.Node[]) => {
+        for (const fn of fns) {
+            if (visited.has(fn)) continue;
             visited.add(fn);
             const inner = guardState(checker, fn, visited, depth + 1);
             if (inner === "guarded") {
@@ -381,8 +447,22 @@ function guardState(
             if (inner === "limit") result = "limit";
         }
     };
-    const visit = (n: ts.Node) => {
-        if (result === "guarded") return;
+    const follow = (ref: ts.Node, requireConsumed: ts.CallExpression | null) => {
+        if (requireConsumed && !isConsumed(requireConsumed)) return;
+        for (const decl of resolveDeclarations(checker, ref)) {
+            if (isGuardDeclaration(decl)) {
+                result = "guarded";
+                return;
+            }
+            const sourceFile = decl.getSourceFile();
+            if (sourceFile.isDeclarationFile || sourceFile.fileName.includes("/node_modules/"))
+                continue;
+            followFns(functionLikesOf(checker, decl));
+            if (result === "guarded") return;
+        }
+    };
+    const visit = (n: ts.Node): boolean | void => {
+        if (result === "guarded") return false;
         const isFn =
             ts.isFunctionDeclaration(n) ||
             ts.isFunctionExpression(n) ||
@@ -398,24 +478,61 @@ function guardState(
                     (p.expression === n || p.arguments.some((a) => a === n))) ||
                     ts.isReturnStatement(p) ||
                     (ts.isArrowFunction(p) && p.body === n));
-            if (!executed) return;
+            if (!executed) return false;
         }
         if (ts.isCallExpression(n)) {
-            follow(n.expression);
+            // An export initializer that IS the call (GET = withAuth(handler)) builds the handler; no await applies.
+            follow(n.expression, n === node ? null : n);
             for (const arg of n.arguments)
-                if (ts.isIdentifier(arg) || ts.isPropertyAccessExpression(arg)) follow(arg);
+                if (ts.isIdentifier(arg) || ts.isPropertyAccessExpression(arg)) follow(arg, null);
         }
-        ts.forEachChild(n, visit);
     };
-    visit(node);
+    walkLive(node, visit);
     return result;
 }
 
 /**
- * GUARD_SYMBOLS entries that no longer qualify: the declaration is missing, or
- * its body neither holds a closed inline reject shape nor calls another guard
- * symbol. Guards are trusted by symbol, so a hollowed-out guard must fail.
+ * A guard's own body must reject at its top level: an inline reject `if`, or a
+ * top-level statement that awaits/returns a call to ANOTHER guard symbol, in
+ * statements that can run (nothing after an earlier top-level return/throw).
+ * A guard whose only reject sits in dead code, an uncalled nested function or a
+ * conditional arm is hollow.
  */
+function guardBodyRejects(checker: ts.TypeChecker, fn: ts.Node): boolean {
+    const body = (fn as ts.FunctionLikeDeclaration).body;
+    if (!body || !ts.isBlock(body)) return false;
+    const callOf = (e: ts.Expression | undefined): ts.CallExpression | undefined => {
+        let x = e;
+        while (x && (ts.isParenthesizedExpression(x) || ts.isAwaitExpression(x))) x = x.expression;
+        return x && ts.isCallExpression(x) ? x : undefined;
+    };
+    for (const s of body.statements) {
+        if (isInlineRejectIf(s)) return true;
+        const exprs: (ts.Expression | undefined)[] = [];
+        if (ts.isExpressionStatement(s) || ts.isReturnStatement(s)) exprs.push(s.expression);
+        if (ts.isVariableStatement(s))
+            for (const v of s.declarationList.declarations) exprs.push(v.initializer);
+        for (const e of exprs) {
+            const call = callOf(e);
+            if (!call) continue;
+            const awaited =
+                (e && ts.isAwaitExpression(e)) || ts.isReturnStatement(s) || isConsumed(call);
+            if (!awaited) continue;
+            const self = (fn as ts.NamedDeclaration).name?.getText();
+            if (
+                resolveDeclarations(checker, call.expression).some(
+                    (decl) =>
+                        isGuardDeclaration(decl) &&
+                        (decl as ts.NamedDeclaration).name?.getText() !== self,
+                )
+            )
+                return true;
+        }
+        if (isExit(s)) return false;
+    }
+    return false;
+}
+
 export function verifyGuardSymbols(root: string): string[] {
     const files = [...new Set(GUARD_SYMBOLS.map((g) => join(root, g.file)))].filter((f) =>
         existsSync(f),
@@ -431,8 +548,7 @@ export function verifyGuardSymbols(root: string): string[] {
             moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((s) => s.name === g.name);
         const decl = sym?.declarations?.[0];
         const fn = decl && functionLikeOf(decl);
-        if (!fn || guardState(checker, fn, new Set([fn]), 0) !== "guarded")
-            bad.push(`${g.file}#${g.name}`);
+        if (!fn || !guardBodyRejects(checker, fn)) bad.push(`${g.file}#${g.name}`);
     }
     return bad;
 }
@@ -454,14 +570,23 @@ function guardedExport(program: ts.Program, file: string, name: string): GuardFi
     if (!sym) return {};
     if (sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
     for (const decl of sym.declarations ?? []) {
-        const fn = functionLikeOf(decl);
-        if (fn) return toGuardFields(guardState(checker, fn, new Set([fn]), 0));
+        const fns = functionLikesOf(checker, decl);
+        if (fns.length > 0) {
+            const states = fns.map((fn) => guardState(checker, fn, new Set([fn]), 0));
+            return toGuardFields(
+                states.includes("guarded")
+                    ? "guarded"
+                    : states.includes("limit")
+                      ? "limit"
+                      : "unguarded",
+            );
+        }
     }
     return {};
 }
 
 /** Guard fields of the inline "use server" function that starts on `line` of `file`. */
-function guardedInline(program: ts.Program, file: string, line: number): GuardFields {
+function guardedInline(program: ts.Program, file: string, pos: number): GuardFields {
     const sf = program.getSourceFile(file);
     if (!sf) return {};
     const checker = program.getTypeChecker();
@@ -470,7 +595,7 @@ function guardedInline(program: ts.Program, file: string, line: number): GuardFi
     const visit = (node: ts.Node) => {
         if (done) return;
         const body = functionBody(node);
-        if (body && hasUseServerDirective(body.statements) && lineOf(sf, node) === line) {
+        if (body && hasUseServerDirective(body.statements) && node.getStart(sf) === pos) {
             result = toGuardFields(guardState(checker, node, new Set([node]), 0));
             done = true;
             return;
@@ -699,7 +824,7 @@ export function discoverServerActionFiles(root: string): {
         relFile: string;
         fileLevel: boolean;
         sf: ts.SourceFile;
-        inline: { name: string; line: number }[];
+        inline: { name: string; line: number; pos: number }[];
     };
     const found: Found[] = [];
     for (const file of walk(join(root, "src"))) {
@@ -715,7 +840,7 @@ export function discoverServerActionFiles(root: string): {
             found.push({ file, relFile, fileLevel: true, sf, inline: [] });
             continue;
         }
-        const inline: { name: string; line: number }[] = [];
+        const inline: { name: string; line: number; pos: number }[] = [];
         const used = new Set<string>();
         const visit = (node: ts.Node) => {
             const body = functionBody(node);
@@ -724,7 +849,7 @@ export function discoverServerActionFiles(root: string): {
                 let name = inlineActionName(node) ?? `anonymous@L${line}`;
                 if (used.has(name)) name = `${name}@L${line}`;
                 used.add(name);
-                inline.push({ name, line });
+                inline.push({ name, line, pos: node.getStart(sf) });
             }
             ts.forEachChild(node, visit);
         };
@@ -756,7 +881,7 @@ export function discoverServerActionFiles(root: string): {
         } else {
             names = f.inline.map((n) => ({
                 ...n,
-                ...(program ? guardedInline(program, f.file, n.line) : {}),
+                ...(program ? guardedInline(program, f.file, n.pos) : {}),
             }));
         }
         if (names.length === 0) continue;

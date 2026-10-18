@@ -1230,6 +1230,90 @@ describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
         }
     });
 
+    it("a guard call whose promise is neither awaited nor returned protects nothing", () => {
+        const head = "import { getSessionContext } from '@/lib/admin/server/_shared';\n";
+        expect(
+            guardOfRoute({
+                "src/app/api/ig1/route.ts":
+                    head +
+                    "export async function GET() { getSessionContext(); return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/ig2/route.ts":
+                    head +
+                    "export async function GET() { void getSessionContext(); return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/ig3/route.ts":
+                    head +
+                    "export async function GET() { await getSessionContext(); return new Response('x'); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("code that can never run does not count: after a return, or in an if (false) arm", () => {
+        const head = "import { getSessionContext } from '@/lib/admin/server/_shared';\n";
+        expect(
+            guardOfRoute({
+                "src/app/api/dc1/route.ts":
+                    head +
+                    "export async function GET() { return new Response('secret'); await getSessionContext(); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/dc2/route.ts":
+                    head +
+                    "export async function GET() { if (false) { await getSessionContext(); } return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("`export const GET = handler` resolves the identifier to the handler's body", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/id/route.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "async function handler() { await getToken(); return new Response('x'); }\n" +
+                    "export const GET = handler;\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("two inline actions on one line each get their own guard state", () => {
+        expect(
+            guardsOfActions({
+                "src/app/page.tsx":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export default function P() { async function guardedAction() { 'use server'; await getSessionContext(); } async function openAction() { 'use server'; return 1; } return null; }\n",
+            }),
+        ).toEqual({ guardedAction: true, openAction: false });
+    });
+
+    it("verifyGuardSymbols rejects hollow guards whose reject is dead, nested or conditional", () => {
+        const hollow = tree({
+            "src/lib/admin/server/_shared.ts":
+                // reject only in an uncalled nested function
+                "export async function getSessionContext() { async function never() { const s = await auth(); if (!s?.access_token) { throw new Error('x'); } } return { token: 'dummy' }; }\n" +
+                // guard call after an unconditional return
+                "export async function getToken() { return 'dummy'; await getSessionContext(); }\n" +
+                // guard call in an if (false) arm
+                "export async function requireSuperuserToken() { if (false) { await getToken(); } return 'dummy'; }\n" +
+                "declare function auth(): Promise<{ access_token?: string } | null>;\n",
+        });
+        try {
+            const bad = verifyGuardSymbols(hollow);
+            for (const name of ["getSessionContext", "getToken", "requireSuperuserToken"])
+                expect(bad.some((m) => m.endsWith("#" + name))).toBe(true);
+        } finally {
+            rmSync(hollow, { recursive: true, force: true });
+        }
+    });
+
     it("server actions: file-level and inline actions report their own guard state", () => {
         expect(
             guardsOfActions({
