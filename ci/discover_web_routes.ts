@@ -255,16 +255,46 @@ export function isDemonstrablyRejecting(snippet: string): boolean {
 // The guard FUNCTIONS, declared once: a call counts as guarded only when the
 // type checker resolves it to one of these declarations (file suffix + name).
 // A local helper that merely shares a name does not count; an aliased import
-// of one of these does. Each entry rejects on a missing session by reading its
-// own body (src/lib/admin/server/_shared.ts, src/lib/billing/actions/_shared.ts).
+// of one of these does. verifyGuardSymbols() checks that each one still
+// rejects (see below), so a guard whose body is hollowed out fails the gate.
 export const GUARD_SYMBOLS: readonly { file: string; name: string }[] = [
     { file: "src/lib/admin/server/_shared.ts", name: "getSessionContext" },
     { file: "src/lib/admin/server/_shared.ts", name: "requireSuperuserToken" },
     { file: "src/lib/admin/server/_shared.ts", name: "getToken" },
     { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeaders" },
     { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeadersOrThrow" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "resolveOrgId" },
     { file: "src/lib/billing/actions/_shared.ts", name: "apiRequest" },
 ];
+
+// The closed list of inline reject shapes: `if (<condition>) { ...; return|throw ... }`
+// where the condition text is exactly one of these and the branch itself holds
+// a return or throw statement. Matched on the AST, not on text.
+export const INLINE_REJECT_CONDITIONS: readonly string[] = [
+    "!session?.access_token",
+    "!session?.user?.org_id",
+];
+
+function isInlineReject(node: ts.Node): boolean {
+    let found = false;
+    const visit = (n: ts.Node) => {
+        if (found) return;
+        if (
+            ts.isIfStatement(n) &&
+            INLINE_REJECT_CONDITIONS.includes(n.expression.getText().replace(/\s+/g, ""))
+        ) {
+            const then = n.thenStatement;
+            const exits = (s: ts.Statement) => ts.isReturnStatement(s) || ts.isThrowStatement(s);
+            if (exits(then) || (ts.isBlock(then) && then.statements.some(exits))) {
+                found = true;
+                return;
+            }
+        }
+        ts.forEachChild(n, visit);
+    };
+    visit(node);
+    return found;
+}
 
 function isGuardDeclaration(decl: ts.Node): boolean {
     const name = (decl as ts.NamedDeclaration).name;
@@ -288,17 +318,40 @@ function functionLikeOf(decl: ts.Node): ts.Node | undefined {
     return undefined;
 }
 
+/** Declarations a reference resolves to, following imports/aliases and `const g = realFn` value aliases. */
+function resolveDeclarations(checker: ts.TypeChecker, ref: ts.Node, hops = 0): ts.Declaration[] {
+    const target = ts.isPropertyAccessExpression(ref) ? ref.name : ref;
+    let sym = checker.getSymbolAtLocation(target);
+    if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+    const out: ts.Declaration[] = [];
+    for (const decl of sym?.declarations ?? []) {
+        if (
+            hops < 5 &&
+            ts.isVariableDeclaration(decl) &&
+            decl.initializer &&
+            (ts.isIdentifier(decl.initializer) || ts.isPropertyAccessExpression(decl.initializer))
+        ) {
+            out.push(...resolveDeclarations(checker, decl.initializer, hops + 1));
+        } else {
+            out.push(decl);
+        }
+    }
+    return out;
+}
+
 type GuardState = "guarded" | "unguarded" | "limit";
 type GuardFields = { guarded?: boolean; guardUnresolved?: true };
 
 /**
  * Whether a guard is reachable from `node`: a call that resolves (through the
- * type checker: imports, aliases, path aliases, wrapper calls such as
- * `withAuth(handler)`) to a declaration in GUARD_SYMBOLS, or one of the closed
- * INLINE_REJECT_PATTERNS in the text of a visited function. The walk follows
- * calls into project functions, bounded by MAX_GUARD_DEPTH and a visited set; a
- * branch that hits the bound returns "limit" (never "guarded"). "guarded" means
- * a guard is reachable, NOT that every path passes through it.
+ * type checker: imports, aliases, path aliases, value aliases) to a declaration
+ * in GUARD_SYMBOLS, or a closed inline reject shape. The walk follows calls
+ * into project functions, and functions passed to a call by reference or as a
+ * literal callback (the callee runs them, e.g. withAuth(handler)); a function
+ * that is only DEFINED inside the handler and never called or passed is not
+ * executed and is skipped. Bounded by MAX_GUARD_DEPTH and a visited set; a
+ * branch that hits the bound returns "limit" (never "guarded"). "guarded"
+ * means a guard is reachable, NOT that every path passes through it.
  */
 function guardState(
     checker: ts.TypeChecker,
@@ -306,40 +359,83 @@ function guardState(
     visited: Set<ts.Node>,
     depth: number,
 ): GuardState {
-    if (INLINE_REJECT_PATTERNS.some((re) => re.test(node.getText()))) return "guarded";
+    if (isInlineReject(node)) return "guarded";
     if (depth >= MAX_GUARD_DEPTH) return "limit";
     let result: GuardState = "unguarded";
+    const follow = (ref: ts.Node) => {
+        for (const decl of resolveDeclarations(checker, ref)) {
+            if (isGuardDeclaration(decl)) {
+                result = "guarded";
+                return;
+            }
+            const sourceFile = decl.getSourceFile();
+            if (sourceFile.isDeclarationFile || sourceFile.fileName.includes("/node_modules/"))
+                continue;
+            const fn = functionLikeOf(decl);
+            if (!fn || visited.has(fn)) continue;
+            visited.add(fn);
+            const inner = guardState(checker, fn, visited, depth + 1);
+            if (inner === "guarded") {
+                result = "guarded";
+                return;
+            }
+            if (inner === "limit") result = "limit";
+        }
+    };
     const visit = (n: ts.Node) => {
         if (result === "guarded") return;
+        const isFn =
+            ts.isFunctionDeclaration(n) ||
+            ts.isFunctionExpression(n) ||
+            ts.isArrowFunction(n) ||
+            ts.isMethodDeclaration(n);
+        if (isFn && n !== node) {
+            const p = n.parent;
+            // Executed when called, passed to a call, or handed back to the
+            // caller (a wrapper returns the function that runs the guard).
+            const executed =
+                p &&
+                ((ts.isCallExpression(p) &&
+                    (p.expression === n || p.arguments.some((a) => a === n))) ||
+                    ts.isReturnStatement(p) ||
+                    (ts.isArrowFunction(p) && p.body === n));
+            if (!executed) return;
+        }
         if (ts.isCallExpression(n)) {
-            const callee = ts.isPropertyAccessExpression(n.expression)
-                ? n.expression.name
-                : n.expression;
-            let sym = checker.getSymbolAtLocation(callee);
-            if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
-            for (const decl of sym?.declarations ?? []) {
-                if (isGuardDeclaration(decl)) {
-                    result = "guarded";
-                    return;
-                }
-                const sourceFile = decl.getSourceFile();
-                if (sourceFile.isDeclarationFile || sourceFile.fileName.includes("/node_modules/"))
-                    continue;
-                const fn = functionLikeOf(decl);
-                if (!fn || visited.has(fn)) continue;
-                visited.add(fn);
-                const inner = guardState(checker, fn, visited, depth + 1);
-                if (inner === "guarded") {
-                    result = "guarded";
-                    return;
-                }
-                if (inner === "limit") result = "limit";
-            }
+            follow(n.expression);
+            for (const arg of n.arguments)
+                if (ts.isIdentifier(arg) || ts.isPropertyAccessExpression(arg)) follow(arg);
         }
         ts.forEachChild(n, visit);
     };
     visit(node);
     return result;
+}
+
+/**
+ * GUARD_SYMBOLS entries that no longer qualify: the declaration is missing, or
+ * its body neither holds a closed inline reject shape nor calls another guard
+ * symbol. Guards are trusted by symbol, so a hollowed-out guard must fail.
+ */
+export function verifyGuardSymbols(root: string): string[] {
+    const files = [...new Set(GUARD_SYMBOLS.map((g) => join(root, g.file)))].filter((f) =>
+        existsSync(f),
+    );
+    const bad: string[] = [];
+    if (files.length === 0) return GUARD_SYMBOLS.map((g) => `${g.file}#${g.name}`);
+    const program = buildProgram(root, files);
+    const checker = program.getTypeChecker();
+    for (const g of GUARD_SYMBOLS) {
+        const sf = program.getSourceFile(join(root, g.file));
+        const moduleSymbol = sf && checker.getSymbolAtLocation(sf);
+        const sym =
+            moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((s) => s.name === g.name);
+        const decl = sym?.declarations?.[0];
+        const fn = decl && functionLikeOf(decl);
+        if (!fn || guardState(checker, fn, new Set([fn]), 0) !== "guarded")
+            bad.push(`${g.file}#${g.name}`);
+    }
+    return bad;
 }
 
 function toGuardFields(state: GuardState): GuardFields {

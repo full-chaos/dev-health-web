@@ -102,6 +102,7 @@ import {
     discoverRoutes,
     discoverServerActionFiles,
     isDemonstrablyRejecting,
+    verifyGuardSymbols,
     type RouteRecord,
     type ServerActionRecord,
 } from "./discover_web_routes";
@@ -145,7 +146,8 @@ export type Violation = {
         | "degrades_silently"
         | "surface_kind_mismatch"
         | "claim_contradicts_source"
-        | "guard_unresolved";
+        | "guard_unresolved"
+        | "guard_symbol_unverified";
     id?: string;
     detail: string;
 };
@@ -186,7 +188,21 @@ const SURFACE_KINDS_FALLBACK = new Set([
 // the ops gate does -- a schema-level addition (a newly deployed app) is
 // accepted with zero checker code change instead of being wrongly rejected.
 
+/** A gaps entry that names primary_validator and says no rejecting check exists behind it. */
+function gapsDiscloseMissingValidator(gapsText: string): boolean {
+    return (
+        /primary_validator/i.test(gapsText) &&
+        (/no reject/i.test(gapsText) ||
+            /does not reject/i.test(gapsText) ||
+            /not currently enforced/i.test(gapsText) ||
+            /degrades/i.test(gapsText) ||
+            /NO REJECTING VALIDATOR/i.test(gapsText))
+    );
+}
+
 export interface GateInputs {
+    /** GUARD_SYMBOLS entries whose declaration is missing or no longer rejects (verifyGuardSymbols). */
+    unverifiedGuardSymbols?: string[];
     discoveredRoutes: RouteRecord[];
     discoveredActions: ServerActionRecord[];
     doc: unknown;
@@ -416,6 +432,12 @@ export function runGate(input: GateInputs): Violation[] {
             guardedById.set(`${r.method} ${r.route} [dev-health-web]`, r.guarded);
     for (const a of discoveredActions)
         if (a.guarded !== undefined) guardedById.set(a.id, a.guarded);
+    for (const name of input.unverifiedGuardSymbols ?? []) {
+        violations.push({
+            rule: "guard_symbol_unverified",
+            detail: `guard function ${name} is missing or its body no longer rejects on a missing session, so surfaces that call it are not proven guarded`,
+        });
+    }
     const unresolvedGuard = new Set<string>();
     for (const r of discoveredRoutes)
         if (r.guardUnresolved) unresolvedGuard.add(`${r.method} ${r.route} [dev-health-web]`);
@@ -474,11 +496,7 @@ export function runGate(input: GateInputs): Violation[] {
         }
         if (guarded === false && row.classification === "protected") {
             const gapsText = Array.isArray(row.gaps) ? row.gaps.join("\n") : "";
-            if (
-                !/guard|primary_validator|no reject|does not reject|not currently enforced|degrades|proxy|middleware/i.test(
-                    gapsText,
-                )
-            ) {
+            if (!gapsDiscloseMissingValidator(gapsText)) {
                 violations.push({
                     rule: "claim_contradicts_source",
                     id: row.id,
@@ -548,13 +566,7 @@ export function runGate(input: GateInputs): Violation[] {
             row.classification === "protected"
         ) {
             const gapsText = Array.isArray(row.gaps) ? row.gaps.join("\n") : "";
-            const mentionsValidatorGap =
-                /primary_validator/i.test(gapsText) &&
-                (/no reject/i.test(gapsText) ||
-                    /does not reject/i.test(gapsText) ||
-                    /not currently enforced/i.test(gapsText) ||
-                    /degrades/i.test(gapsText) ||
-                    /NO REJECTING VALIDATOR/i.test(gapsText));
+            const mentionsValidatorGap = gapsDiscloseMissingValidator(gapsText);
 
             if (row.primary_validator === null) {
                 if (!mentionsValidatorGap) {
@@ -788,6 +800,7 @@ function main() {
     }
 
     const violations = runGate({
+        unverifiedGuardSymbols: verifyGuardSymbols(root),
         discoveredRoutes,
         discoveredActions,
         doc,

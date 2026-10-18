@@ -11,6 +11,7 @@ import {
     type GateInputs,
 } from "../gate_web_auth_profiles";
 import {
+    verifyGuardSymbols,
     discoverRoutes,
     discoverServerActionFiles,
     type RouteRecord,
@@ -995,11 +996,19 @@ describe("CHAOS-4792 class 4: a row cannot choose which checks apply to it", () 
 describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
     // The guard functions are identified by SYMBOL (declaring file + name), so
     // every tree below carries the real declarations at their real paths.
+    const REAL_GUARD_FILE =
+        "export async function getSessionContext() {\n" +
+        "  const session = await auth();\n" +
+        "  if (!session?.access_token) { throw new Error('Unauthorized'); }\n" +
+        "  return { token: session.access_token };\n}\n" +
+        "export async function getToken() { const c = await getSessionContext(); return c.token; }\n" +
+        "export async function requireSuperuserToken() {\n" +
+        "  const session = await auth();\n" +
+        "  if (!session?.access_token) { throw new Error('Unauthorized'); }\n" +
+        "  return session.access_token;\n}\n" +
+        "declare function auth(): Promise<{ access_token?: string } | null>;\n";
     const SHARED = {
-        "src/lib/admin/server/_shared.ts":
-            "export async function getSessionContext() { return { token: 't' }; }\n" +
-            "export async function getToken() { return 't'; }\n" +
-            "export async function requireSuperuserToken() { return 't'; }\n",
+        "src/lib/admin/server/_shared.ts": REAL_GUARD_FILE,
         "tsconfig.json": JSON.stringify({
             compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
         }),
@@ -1149,6 +1158,71 @@ describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
         ).toBe(false);
     });
 
+    it("a function defined in the handler but never called or passed is not executed", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/u/route.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export async function GET() { async function neverCalled() { await getSessionContext(); } return new Response('x'); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/u2/route.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export async function GET() { async function run() { await getSessionContext(); } await run(); return new Response('x'); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("a handler passed by reference to a wrapper, and a value alias of a guard, count", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/r/route.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "import { withAuth } from './withAuth';\n" +
+                    "async function handler() { await getToken(); return new Response('x'); }\n" +
+                    "export const GET = withAuth(handler);\n",
+                "src/app/api/r/withAuth.ts":
+                    "export function withAuth(h: () => Promise<Response>) { return h; }\n",
+            }),
+        ).toBe(true);
+        expect(
+            guardOfRoute({
+                "src/app/api/v/route.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "const check = getToken;\n" +
+                    "export async function GET() { await check(); return new Response('x'); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("verifyGuardSymbols passes for real guards and fails for a hollowed-out one", () => {
+        const dir = tree({});
+        try {
+            // fixture declares only three of the symbols; the rest are reported missing
+            const missing = verifyGuardSymbols(dir);
+            expect(missing.some((m) => m.endsWith("#getSessionContext"))).toBe(false);
+            expect(missing.some((m) => m.endsWith("#getToken"))).toBe(false);
+            expect(missing.some((m) => m.endsWith("#getAuthHeaders"))).toBe(true);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+        const hollow = tree({
+            "src/lib/admin/server/_shared.ts":
+                "export async function getSessionContext() { return { token: 'dummy' }; }\n" +
+                "export async function getToken() { return 'dummy'; }\n" +
+                "export async function requireSuperuserToken() { return 'dummy'; }\n",
+        });
+        try {
+            const bad = verifyGuardSymbols(hollow);
+            expect(bad.some((m) => m.endsWith("#getSessionContext"))).toBe(true);
+            expect(bad.some((m) => m.endsWith("#getToken"))).toBe(true);
+        } finally {
+            rmSync(hollow, { recursive: true, force: true });
+        }
+    });
+
     it("server actions: file-level and inline actions report their own guard state", () => {
         expect(
             guardsOfActions({
@@ -1211,12 +1285,28 @@ describe("CHAOS-4780: a row's protection claim must match what discovery found",
         expect(runGate(makeInputs(b)).map((v) => v.rule)).toContain("claim_contradicts_source");
         const disclosed = guardedBaseline(false);
         disclosed.doc.rows[0].gaps = [
-            "No rejecting guard in the handler; proxy.ts gates this path.",
+            "primary_validator: no rejecting guard in the handler; proxy.ts gates this path.",
         ];
         disclosed.doc.rows[1].gaps = ["No rejecting guard: primary_validator does not reject."];
         expect(
             runGate(makeInputs(disclosed)).filter((v) => v.rule === "claim_contradicts_source"),
         ).toEqual([]);
+    });
+
+    it("a gaps entry that merely contains the word guard does not disclose a missing guard", () => {
+        const b = guardedBaseline(false);
+        b.doc.rows[0].gaps = ["Guard uses the normal request timeout."];
+        expect(
+            runGate(makeInputs(b)).filter(
+                (v) => v.rule === "claim_contradicts_source" && v.id === b.doc.rows[0].id,
+            ),
+        ).toHaveLength(1);
+    });
+
+    it("an unverified guard symbol fails the gate", () => {
+        const b = guardedBaseline(true);
+        const v = runGate(makeInputs(b, { unverifiedGuardSymbols: ["src/x.ts#getToken"] }));
+        expect(v.map((x) => x.rule)).toContain("guard_symbol_unverified");
     });
 
     it("a surface whose guard walk hit its bound fails closed", () => {
@@ -1243,6 +1333,7 @@ describe("gate_web_auth_profiles: real repo state", () => {
         const routes = discoverRoutes(WEB_ROOT);
         const { actions } = discoverServerActionFiles(WEB_ROOT);
         const violations = runGate({
+            unverifiedGuardSymbols: verifyGuardSymbols(WEB_ROOT),
             discoveredRoutes: routes,
             discoveredActions: actions,
             doc,
