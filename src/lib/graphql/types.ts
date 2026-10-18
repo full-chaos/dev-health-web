@@ -576,6 +576,18 @@ export interface OperatingReviewMetric {
     delta: OperatingReviewDelta;
 }
 
+/**
+ * The measure of the investment section and how much of it is sized (CHAOS-9873). ISSUE_SIZE weighs each work
+ * unit by its issue size, an unsized unit counts 1; WORK_UNITS counts each unit 1. The three counts are null in
+ * WORK_UNITS and null when the week holds no unit: null is "not measured", never 0.
+ */
+export interface OperatingReviewSizing {
+    measure: "WORK_UNITS" | "ISSUE_SIZE";
+    sizingCoverage?: number | null;
+    unsizedUnitCount?: number | null;
+    workUnitCount?: number | null;
+}
+
 export interface OperatingReviewSection {
     key: string;
     title: string;
@@ -583,6 +595,8 @@ export interface OperatingReviewSection {
     changed: string[];
     improved: string[];
     worsened: string[];
+    /** Served for the investment section only; null or absent when none is served. */
+    sizing?: OperatingReviewSizing | null;
 }
 
 export interface OperatingReview {
