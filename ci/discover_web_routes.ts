@@ -195,7 +195,7 @@ function fileToRoutePath(appRoot: string, file: string): string {
     return "/" + segments.join("/");
 }
 
-function discoverRouteFile(appRoot: string, file: string): RouteRecord[] {
+function discoverRouteFile(root: string, appRoot: string, file: string): RouteRecord[] {
     const sf = parseSource(file);
     const routePath = fileToRoutePath(appRoot, file);
     const relFile = relative(process.cwd(), file);
@@ -229,42 +229,52 @@ function discoverRouteFile(appRoot: string, file: string): RouteRecord[] {
     // so each demands its own row (one row must never cover several served
     // handlers).
     const visited = new Set<string>([file]);
-    const collect = (list: ExportedName[], from: string, line: number | null, depth: number) => {
+    const collect = (list: ExportedName[], from: string, line: number | null) => {
         for (const n of list) {
             const at = line ?? n.line;
             if (n.wildcard) {
-                const target = n.from ? resolveRelativeModule(from, n.from) : null;
+                const target = n.from ? resolveModule(root, from, n.from) : null;
                 if (!target) {
                     for (const m of HTTP_METHODS) push(m, at);
-                } else if (depth < 8 && !visited.has(target)) {
+                } else if (!visited.has(target)) {
                     visited.add(target);
-                    collect(exportedNames(parseSource(target)), target, at, depth + 1);
+                    collect(exportedNames(parseSource(target)), target, at);
                 }
                 continue;
             }
             if ((HTTP_METHODS as readonly string[]).includes(n.name)) push(n.name, at);
         }
     };
-    collect(names, file, null, 0);
+    collect(names, file, null);
     return records;
 }
 
-const MODULE_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
+const compilerOptionsByRoot = new Map<string, ts.CompilerOptions>();
 
-function resolveRelativeModule(fromFile: string, spec: string): string | null {
-    if (!spec.startsWith(".")) return null;
-    const base = join(fromFile, "..", spec);
-    for (const stem of [base, base.replace(/\.[cm]?jsx?$/, "")]) {
-        for (const ext of MODULE_EXTENSIONS) {
-            const f = stem + ext;
-            if (existsSync(f) && statSync(f).isFile()) return f;
-        }
-        for (const ext of MODULE_EXTENSIONS.slice(1)) {
-            const f = join(stem, "index" + ext);
-            if (existsSync(f)) return f;
-        }
+// Resolve a re-export specifier the way the project does: tsconfig `paths`
+// (e.g. "@/*"), extensionless and index imports, .js -> .ts. Returns null for
+// anything that is not a project source file (packages, unresolvable), which
+// callers treat as "could export any method".
+function resolveModule(root: string, fromFile: string, spec: string): string | null {
+    let options = compilerOptionsByRoot.get(root);
+    if (!options) {
+        const configPath = join(root, "tsconfig.json");
+        const read = existsSync(configPath) ? ts.readConfigFile(configPath, ts.sys.readFile) : null;
+        const parsed = read?.config
+            ? ts.parseJsonConfigFileContent(read.config, ts.sys, root).options
+            : {};
+        options = {
+            ...parsed,
+            allowJs: true,
+            moduleResolution: ts.ModuleResolutionKind.Bundler,
+            module: ts.ModuleKind.ESNext,
+        };
+        compilerOptionsByRoot.set(root, options);
     }
-    return null;
+    const resolved = ts.resolveModuleName(spec, fromFile, options, ts.sys).resolvedModule;
+    if (!resolved || resolved.isExternalLibraryImport) return null;
+    const file = resolved.resolvedFileName;
+    return DECLARATION_FILE_RE.test(file) || file.includes("/node_modules/") ? null : file;
 }
 
 function* walk(dir: string): Generator<string> {
@@ -295,7 +305,7 @@ export function discoverRoutes(root: string): RouteRecord[] {
     const out: RouteRecord[] = [];
     for (const file of walk(appRoot)) {
         if (!ROUTE_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file)) continue;
-        out.push(...discoverRouteFile(appRoot, file));
+        out.push(...discoverRouteFile(root, appRoot, file));
     }
     out.sort((a, b) => (a.route + a.method).localeCompare(b.route + b.method));
     return out;

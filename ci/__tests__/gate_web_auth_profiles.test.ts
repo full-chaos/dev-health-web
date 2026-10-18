@@ -825,6 +825,38 @@ describe("CHAOS-4792: AST discovery recognises the legal forms the text matcher 
         ).toEqual(["GET /api/g", "POST /api/g"]);
     });
 
+    it("`export *` follows a chain of any depth", () => {
+        const files: Record<string, string> = {
+            "src/app/api/deep/route.ts": "export * from './m1';\n",
+        };
+        for (let i = 1; i < 12; i++)
+            files[`src/app/api/deep/m${i}.ts`] = `export * from './m${i + 1}';\n`;
+        files["src/app/api/deep/m12.ts"] = "export const GET = async () => null;\n";
+        expect(routesOf(files)).toEqual(["GET /api/deep"]);
+    });
+
+    it("`export *` follows a tsconfig path alias to the real handlers", () => {
+        expect(
+            routesOf({
+                "tsconfig.json": JSON.stringify({
+                    compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+                }),
+                "src/app/api/alias/route.ts": "export * from '@/handlers';\n",
+                "src/handlers.ts": "export const GET = async () => null;\n",
+            }),
+        ).toEqual(["GET /api/alias"]);
+    });
+
+    it("`export *` from a cycle terminates", () => {
+        expect(
+            routesOf({
+                "src/app/api/cyc/route.ts": "export * from './a';\nexport const PUT = 1;\n",
+                "src/app/api/cyc/a.ts": "export * from './b';\n",
+                "src/app/api/cyc/b.ts": "export * from './a';\nexport const GET = 1;\n",
+            }).sort(),
+        ).toEqual(["GET /api/cyc", "PUT /api/cyc"]);
+    });
+
     it("`export *` from an unresolvable module demands a row per method, never one row", () => {
         expect(
             routesOf({ "src/app/api/g2/route.ts": "export * from 'some-package';\n" }).sort(),
