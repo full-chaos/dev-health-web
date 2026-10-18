@@ -815,10 +815,39 @@ describe("CHAOS-4792: AST discovery recognises the legal forms the text matcher 
         ).toEqual(["HEAD /api/f"]);
     });
 
-    it("`export * from` in a route file cannot be proven empty, so it is reported", () => {
-        expect(routesOf({ "src/app/api/g/route.ts": "export * from './impl';\n" })).toEqual([
-            "api_route /api/g",
-        ]);
+    it("`export * from` follows a relative module: each served method is its own record", () => {
+        expect(
+            routesOf({
+                "src/app/api/g/route.ts": "export * from './impl';\n",
+                "src/app/api/g/impl.ts":
+                    "export const GET = async () => null;\nexport async function POST() {}\nexport const helper = 1;\n",
+            }).sort(),
+        ).toEqual(["GET /api/g", "POST /api/g"]);
+    });
+
+    it("`export *` from an unresolvable module demands a row per method, never one row", () => {
+        expect(
+            routesOf({ "src/app/api/g2/route.ts": "export * from 'some-package';\n" }).sort(),
+        ).toEqual(
+            ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"].map((m) => `${m} /api/g2`),
+        );
+    });
+
+    it("route.mjs / route.cjs are not Next routes (pageExtensions: tsx ts jsx js)", () => {
+        expect(
+            routesOf({
+                "src/app/api/m/route.mjs": "export async function GET() {}\n",
+                "src/app/api/n/route.cjs": "exports.GET = () => null;\n",
+            }),
+        ).toEqual([]);
+    });
+
+    it('an escaped directive string ("use\\x20server") is the directive', () => {
+        expect(
+            actionsOf({
+                "src/esc.ts": '"use\\x20server";\nexport async function escapedAction() {}\n',
+            }),
+        ).toEqual(["escapedAction"]);
     });
 
     it("export default is not an HTTP method handler", () => {

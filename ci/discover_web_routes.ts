@@ -73,7 +73,9 @@ export type ServerActionRecord = {
 // language accepts more (`export const GET = ...`, semicolonless directives,
 // .js route files). Every module extension Next.js resolves is parsed.
 const SOURCE_FILE_RE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
-const ROUTE_FILE_RE = /(?:^|\/)route\.(?:[cm]?[jt]s|[jt]sx)$/;
+// Next serves a route file only in an extension of next.config.js pageExtensions
+// (tsx, ts, jsx, js); route.mjs/.cjs are not routes.
+const ROUTE_FILE_RE = /(?:^|\/)route\.(?:tsx|ts|jsx|js)$/;
 const TEST_FILE_RE = /\.(?:test|spec)\.(?:[cm]?[jt]s|[jt]sx)$/;
 const DECLARATION_FILE_RE = /\.d\.[cm]?ts$/;
 
@@ -99,7 +101,13 @@ function hasDefaultModifier(node: ts.Node): boolean {
     );
 }
 
-type ExportedName = { name: string; line: number; viaHandlers: boolean; wildcard: boolean };
+type ExportedName = {
+    name: string;
+    line: number;
+    viaHandlers: boolean;
+    wildcard: boolean;
+    from?: string;
+};
 
 /**
  * Every value name a module exports, from the AST: declarations
@@ -112,7 +120,18 @@ type ExportedName = { name: string; line: number; viaHandlers: boolean; wildcard
 function exportedNames(sf: ts.SourceFile): ExportedName[] {
     const out: ExportedName[] = [];
     const add = (name: string, node: ts.Node, viaHandlers = false, wildcard = false) =>
-        out.push({ name, line: lineOf(sf, node), viaHandlers, wildcard });
+        out.push({
+            name,
+            line: lineOf(sf, node),
+            viaHandlers,
+            wildcard,
+            from:
+                ts.isExportDeclaration(node) &&
+                node.moduleSpecifier &&
+                ts.isStringLiteral(node.moduleSpecifier)
+                    ? node.moduleSpecifier.text
+                    : undefined,
+        });
     const bindingNames = (b: ts.BindingName, into: string[]) => {
         if (ts.isIdentifier(b)) into.push(b.text);
         else for (const el of b.elements) if (ts.isBindingElement(el)) bindingNames(el.name, into);
@@ -200,32 +219,52 @@ function discoverRouteFile(appRoot: string, file: string): RouteRecord[] {
     }
     const records: RouteRecord[] = [];
     const seen = new Set<string>();
-    for (const n of names) {
-        if (n.wildcard) {
-            // `export * from "./x"` can export any method; it cannot be
-            // resolved statically, so it is reported as an api_route that
-            // needs a row rather than being silently skipped.
-            if (!seen.has("*")) {
-                seen.add("*");
-                records.push({
-                    method: "api_route" as unknown as HttpMethod,
-                    route: routePath,
-                    file: relFile,
-                    line: n.line,
-                });
+    const push = (method: string, line: number) => {
+        if (seen.has(method)) return;
+        seen.add(method);
+        records.push({ method: method as HttpMethod, route: routePath, file: relFile, line });
+    };
+    // `export * from "./x"` can export any method. A relative specifier is
+    // resolved and followed; anything unresolvable is reported as ALL methods
+    // so each demands its own row (one row must never cover several served
+    // handlers).
+    const visited = new Set<string>([file]);
+    const collect = (list: ExportedName[], from: string, line: number | null, depth: number) => {
+        for (const n of list) {
+            const at = line ?? n.line;
+            if (n.wildcard) {
+                const target = n.from ? resolveRelativeModule(from, n.from) : null;
+                if (!target) {
+                    for (const m of HTTP_METHODS) push(m, at);
+                } else if (depth < 8 && !visited.has(target)) {
+                    visited.add(target);
+                    collect(exportedNames(parseSource(target)), target, at, depth + 1);
+                }
+                continue;
             }
-            continue;
+            if ((HTTP_METHODS as readonly string[]).includes(n.name)) push(n.name, at);
         }
-        if (!(HTTP_METHODS as readonly string[]).includes(n.name) || seen.has(n.name)) continue;
-        seen.add(n.name);
-        records.push({
-            method: n.name as HttpMethod,
-            route: routePath,
-            file: relFile,
-            line: n.line,
-        });
-    }
+    };
+    collect(names, file, null, 0);
     return records;
+}
+
+const MODULE_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
+
+function resolveRelativeModule(fromFile: string, spec: string): string | null {
+    if (!spec.startsWith(".")) return null;
+    const base = join(fromFile, "..", spec);
+    for (const stem of [base, base.replace(/\.[cm]?jsx?$/, "")]) {
+        for (const ext of MODULE_EXTENSIONS) {
+            const f = stem + ext;
+            if (existsSync(f) && statSync(f).isFile()) return f;
+        }
+        for (const ext of MODULE_EXTENSIONS.slice(1)) {
+            const f = join(stem, "index" + ext);
+            if (existsSync(f)) return f;
+        }
+    }
+    return null;
 }
 
 function* walk(dir: string): Generator<string> {
@@ -266,9 +305,9 @@ export function discoverRoutes(root: string): RouteRecord[] {
 function hasUseServerDirective(statements: readonly ts.Statement[]): boolean {
     for (const st of statements) {
         if (!ts.isExpressionStatement(st) || !ts.isStringLiteral(st.expression)) return false;
-        // Compare the raw text: escapes make a different string, not the directive.
-        const raw = st.expression.getText().slice(1, -1);
-        if (raw === "use server") return true;
+        // Compare the string VALUE: Next accepts "use\x20server", and a
+        // false positive here only demands a row, never hides a surface.
+        if (st.expression.text === "use server") return true;
     }
     return false;
 }
@@ -326,11 +365,7 @@ export function discoverServerActionFiles(root: string): {
     for (const file of walk(join(root, "src"))) {
         if (!SOURCE_FILE_RE.test(file) || TEST_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file))
             continue;
-        // Cheap sound pre-filter: a directive is a string literal spelled
-        // exactly use server, so a file without that text cannot hold one.
-        const text = readFileSync(file, "utf8");
-        if (!text.includes("use server")) continue;
-        const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+        const sf = parseSource(file);
         const relFile = relative(process.cwd(), file);
         const names: { name: string; line: number }[] = [];
         if (hasUseServerDirective(sf.statements)) {
