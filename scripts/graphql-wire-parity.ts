@@ -298,7 +298,7 @@ function runRegistrydump(opsRoot: string): RegistryEntry[] {
     const result = spawnSync("go", ["run", `./${tool}`, "-file", routeFile], {
         cwd: opsRoot,
         encoding: "utf8",
-        env: { ...process.env, GOTOOLCHAIN: "go1.27.0" },
+        env: { ...process.env, GOTOOLCHAIN: "go1.27.2" },
     });
     if (result.status !== 0) {
         throw new Error(
