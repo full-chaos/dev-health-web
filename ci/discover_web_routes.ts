@@ -73,9 +73,12 @@ export type ServerActionRecord = {
 // language accepts more (`export const GET = ...`, semicolonless directives,
 // .js route files). Every module extension Next.js resolves is parsed.
 const SOURCE_FILE_RE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
-// Next serves a route file only in an extension of next.config.js pageExtensions
-// (tsx, ts, jsx, js); route.mjs/.cjs are not routes.
-const ROUTE_FILE_RE = /(?:^|\/)route\.(?:tsx|ts|jsx|js)$/;
+// Next serves `route.<pageExtension>`; pageExtensions may carry a dotted
+// prefix (next.config.js sets "demo.ts" for demo builds, so route.demo.ts is a
+// route there). Any dotted segments before a ts/tsx/js/jsx ending count, because
+// the config is evaluated per build and discovery must cover every build.
+// route.mjs/.cjs are never page extensions of this app.
+const ROUTE_FILE_RE = /(?:^|\/)route(?:\.[\w-]+)*\.(?:tsx|ts|jsx|js)$/;
 const TEST_FILE_RE = /\.(?:test|spec)\.(?:[cm]?[jt]s|[jt]sx)$/;
 const DECLARATION_FILE_RE = /\.d\.[cm]?ts$/;
 
@@ -333,7 +336,8 @@ export function discoverRoutes(root: string): RouteRecord[] {
     const appRoot = join(root, "src/app");
     const files: string[] = [];
     for (const file of walk(appRoot)) {
-        if (!ROUTE_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file)) continue;
+        if (!ROUTE_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file) || TEST_FILE_RE.test(file))
+            continue;
         files.push(file);
     }
     const out: RouteRecord[] = [];

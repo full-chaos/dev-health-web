@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -18,6 +18,9 @@ import {
 } from "../discover_web_routes";
 
 const WEB_ROOT = resolve(__dirname, "../..");
+
+// Discovery builds a TypeScript program per call; under coverage that exceeds 5 s.
+vi.setConfig({ testTimeout: 60_000 });
 
 // SELF-CONTAINED schema fixtures, deliberately not the real ops-owned files.
 //
@@ -863,6 +866,16 @@ describe("CHAOS-4792: AST discovery recognises the legal forms the text matcher 
         ).toEqual(
             ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"].map((m) => `${m} /api/g2`),
         );
+    });
+
+    it("route files with a dotted pageExtension prefix are routes (route.page.ts, route.demo.tsx)", () => {
+        expect(
+            routesOf({
+                "src/app/api/p/route.page.ts": "export async function GET() {}\n",
+                "src/app/api/q/route.demo.tsx": "export const POST = async () => null;\n",
+                "src/app/api/r/route.test.ts": "export async function GET() {}\n",
+            }).sort(),
+        ).toEqual(["GET /api/p", "POST /api/q"]);
     });
 
     it("route.mjs / route.cjs are not Next routes (pageExtensions: tsx ts jsx js)", () => {
