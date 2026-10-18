@@ -1294,6 +1294,24 @@ describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
         ).toEqual({ guardedAction: true, openAction: false });
     });
 
+    it("a relative root gives the same guard verdicts as an absolute one", () => {
+        const dir = tree({
+            "src/app/api/rel/route.ts":
+                "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                "export async function GET() { await getToken(); return new Response('x'); }\n",
+        });
+        const cwd = process.cwd();
+        try {
+            process.chdir(dir);
+            expect(verifyGuardSymbols(".").filter((m) => m.endsWith("#getToken"))).toEqual([]);
+            expect(discoverRoutes(".")[0].guarded).toBe(true);
+            expect(discoverServerActionFiles(".").actions).toEqual([]);
+        } finally {
+            process.chdir(cwd);
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     it("verifyGuardSymbols rejects hollow guards whose reject is dead, nested or conditional", () => {
         const hollow = tree({
             "src/lib/admin/server/_shared.ts":

@@ -43,7 +43,7 @@
  */
 
 import { readFileSync, existsSync, statSync, readdirSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import ts from "typescript";
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
@@ -533,7 +533,8 @@ function guardBodyRejects(checker: ts.TypeChecker, fn: ts.Node): boolean {
     return false;
 }
 
-export function verifyGuardSymbols(root: string): string[] {
+export function verifyGuardSymbols(rootArg: string): string[] {
+    const root = resolve(rootArg);
     const files = [...new Set(GUARD_SYMBOLS.map((g) => join(root, g.file)))].filter((f) =>
         existsSync(f),
     );
@@ -741,7 +742,8 @@ function parseArgs(argv: string[]): { root: string; out: string | null } {
     return { root, out };
 }
 
-export function discoverRoutes(root: string): RouteRecord[] {
+export function discoverRoutes(rootArg: string): RouteRecord[] {
+    const root = resolve(rootArg);
     const appRoot = join(root, "src/app");
     const files: string[] = [];
     for (const file of walk(appRoot)) {
@@ -813,10 +815,11 @@ function inlineActionName(node: ts.Node): string | null {
  * `export *` in a file-level module is reported under the name `*`: the
  * re-exported actions cannot be resolved here, so it demands a row.
  */
-export function discoverServerActionFiles(root: string): {
+export function discoverServerActionFiles(rootArg: string): {
     files: ServerActionFile[];
     actions: ServerActionRecord[];
 } {
+    const root = resolve(rootArg);
     const files: ServerActionFile[] = [];
     const actions: ServerActionRecord[] = [];
     type Found = {
