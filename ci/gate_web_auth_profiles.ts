@@ -62,12 +62,17 @@
  * to reintroduce by accident.
  *
  * CHAOS-4780 RECONCILIATION: discovery also reports, per surface, whether a
- * known rejecting guard is reachable from the handler (its own body plus any
- * function it calls, followed through the type checker). The gate rejects a
- * `public` row on a guarded surface, `primary_validator: null` on a guarded
- * surface, and a `protected` row on a surface with no known guard unless gaps
- * discloses it. The same limit applies: "guarded" means a known guard name or
- * inline reject shape is reachable, not that every code path rejects. A
+ * guard function is reachable from the handler: its own body plus any function
+ * it calls (wrapper calls such as withAuth(handler) included), resolved by the
+ * type checker to a declaration, and counted only when that declaration is one
+ * of GUARD_SYMBOLS (file + name, declared once in discover_web_routes.ts). A
+ * local helper that shares a guard's name does not count; an aliased import of
+ * a real guard does. The call walk is bounded; a surface that hits the bound is
+ * reported `guard_unresolved` and fails. The gate rejects a `public` row on a
+ * guarded surface, `primary_validator: null` on a guarded surface, and a
+ * `protected` row on a surface with no guard found unless gaps discloses it.
+ * NAMED GAP: "guarded" means a guard is REACHABLE from the handler, not that
+ * every path passes through it; a guard reached only on one branch passes. A
  * surface whose handler cannot be resolved to a function (the NextAuth
  * `handlers` destructure) is not reconciled.
  *
@@ -92,6 +97,7 @@ import Ajv2020 from "ajv/dist/2020";
 // for and we would not be doing.
 import addFormats from "ajv-formats";
 import {
+    GUARD_SYMBOLS,
     REJECTING_GUARD_NAMES,
     discoverRoutes,
     discoverServerActionFiles,
@@ -138,7 +144,8 @@ export type Violation = {
         | "unstated_null"
         | "degrades_silently"
         | "surface_kind_mismatch"
-        | "claim_contradicts_source";
+        | "claim_contradicts_source"
+        | "guard_unresolved";
     id?: string;
     detail: string;
 };
@@ -409,6 +416,10 @@ export function runGate(input: GateInputs): Violation[] {
             guardedById.set(`${r.method} ${r.route} [dev-health-web]`, r.guarded);
     for (const a of discoveredActions)
         if (a.guarded !== undefined) guardedById.set(a.id, a.guarded);
+    const unresolvedGuard = new Set<string>();
+    for (const r of discoveredRoutes)
+        if (r.guardUnresolved) unresolvedGuard.add(`${r.method} ${r.route} [dev-health-web]`);
+    for (const a of discoveredActions) if (a.guardUnresolved) unresolvedGuard.add(a.id);
     const discoveredKind = new Map<string, "rest" | "server_action">();
     for (const id of discovered.keys()) {
         discoveredKind.set(id, id.startsWith("server_action:") ? "server_action" : "rest");
@@ -440,6 +451,13 @@ export function runGate(input: GateInputs): Violation[] {
             webRowsById.set(row.id, row);
         }
         const guarded = row.service === "dev-health-web" ? guardedById.get(row.id) : undefined;
+        if (unresolvedGuard.has(row.id)) {
+            violations.push({
+                rule: "guard_unresolved",
+                id: row.id,
+                detail: "guard discovery hit its call-depth bound for this surface, so its protection could not be established; it is never treated as guarded",
+            });
+        }
         if (guarded === true && row.classification === "public") {
             violations.push({
                 rule: "claim_contradicts_source",
@@ -464,7 +482,7 @@ export function runGate(input: GateInputs): Violation[] {
                 violations.push({
                     rule: "claim_contradicts_source",
                     id: row.id,
-                    detail: `row is classified protected but source discovery finds none of the known rejecting guards (${REJECTING_GUARD_NAMES.join(", ")}) on this surface, and gaps does not disclose it`,
+                    detail: `row is classified protected but source discovery finds none of the known rejecting guards (${GUARD_SYMBOLS.map((s) => s.name).join(", ")}) on this surface, and gaps does not disclose it`,
                 });
             }
         }

@@ -993,37 +993,57 @@ describe("CHAOS-4792 class 4: a row cannot choose which checks apply to it", () 
 });
 
 describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
+    // The guard functions are identified by SYMBOL (declaring file + name), so
+    // every tree below carries the real declarations at their real paths.
+    const SHARED = {
+        "src/lib/admin/server/_shared.ts":
+            "export async function getSessionContext() { return { token: 't' }; }\n" +
+            "export async function getToken() { return 't'; }\n" +
+            "export async function requireSuperuserToken() { return 't'; }\n",
+        "tsconfig.json": JSON.stringify({
+            compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+        }),
+    };
     function tree(files: Record<string, string>): string {
         const dir = mkdtempSync(join(tmpdir(), "web-guard-"));
-        for (const [rel, text] of Object.entries(files)) {
+        for (const [rel, text] of Object.entries({ ...SHARED, ...files })) {
             const full = join(dir, rel);
             mkdirSync(join(full, ".."), { recursive: true });
             writeFileSync(full, text);
         }
         return dir;
     }
-    function guardOfRoute(files: Record<string, string>): boolean | undefined {
+    function routeFields(files: Record<string, string>) {
         const dir = tree(files);
         try {
-            return discoverRoutes(dir)[0].guarded;
+            const r = discoverRoutes(dir)[0];
+            return { guarded: r.guarded, guardUnresolved: r.guardUnresolved };
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }
+    }
+    function guardOfRoute(files: Record<string, string>): boolean | undefined {
+        return routeFields(files).guarded;
     }
     function guardsOfActions(files: Record<string, string>): Record<string, boolean | undefined> {
         const dir = tree(files);
         try {
             const { actions } = discoverServerActionFiles(dir);
-            return Object.fromEntries(actions.map((a) => [a.exportName, a.guarded]));
+            return Object.fromEntries(
+                actions
+                    .filter((a) => !a.file.includes("_shared"))
+                    .map((a) => [a.exportName, a.guarded]),
+            );
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }
     }
 
-    it("a route calling a rejecting guard directly is guarded; one without is not", () => {
+    it("a route calling a guard function is guarded; one without is not", () => {
         expect(
             guardOfRoute({
                 "src/app/api/a/route.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
                     "export async function GET() { await getSessionContext(); return null; }\n",
             }),
         ).toBe(true);
@@ -1034,17 +1054,56 @@ describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
         ).toBe(false);
     });
 
+    it("a local helper that shares a guard's name is NOT a guard", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/n/route.ts":
+                    "async function getSessionContext() { return null; }\n" +
+                    "export async function GET() { await getSessionContext(); return null; }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/n2/route.ts":
+                    "import { getToken } from './other';\n" +
+                    "export async function GET() { await getToken(); return null; }\n",
+                "src/app/api/n2/other.ts": "export async function getToken() { return null; }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("an aliased import of a real guard IS a guard", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/al/route.ts":
+                    "import { getToken as fetchTheToken } from '@/lib/admin/server/_shared';\n" +
+                    "export async function GET() { await fetchTheToken(); return null; }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("a guard reached through a wrapper the handler is passed to counts", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/w/route.ts":
+                    "import { withAuth } from './withAuth';\n" +
+                    "export const GET = withAuth(async () => new Response('x'));\n",
+                "src/app/api/w/withAuth.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export function withAuth(h: () => Promise<Response>) { return async () => { await getSessionContext(); return h(); }; }\n",
+            }),
+        ).toBe(true);
+    });
+
     it("the guard may sit in a function the handler calls, in another file, through a path alias", () => {
         expect(
             guardOfRoute({
-                "tsconfig.json": JSON.stringify({
-                    compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
-                }),
                 "src/app/api/c/route.ts":
                     "import { load } from '@/lib/load';\nexport const GET = async () => load();\n",
                 "src/lib/load.ts":
                     "import { inner } from './inner';\nexport async function load() { return inner(); }\n",
-                "src/lib/inner.ts": "export async function inner() { await getToken(); }\n",
+                "src/lib/inner.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\nexport async function inner() { await getToken(); }\n",
             }),
         ).toBe(true);
     });
@@ -1062,7 +1121,20 @@ describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
         ).toBe(false);
     });
 
-    it("an inline reject shape counts; a header-only use of the session does not", () => {
+    it("a call chain longer than the depth bound is unresolved, never guarded", () => {
+        const files: Record<string, string> = {
+            "src/app/api/deep/route.ts":
+                "import { f0 } from './f0';\nexport async function GET() { return f0(); }\n",
+        };
+        for (let i = 0; i < 14; i++)
+            files[`src/app/api/deep/f${i}.ts`] =
+                `import { f${i + 1} } from './f${i + 1}';\nexport function f${i}() { return f${i + 1}(); }\n`;
+        files["src/app/api/deep/f14.ts"] =
+            "import { getToken } from '@/lib/admin/server/_shared';\nexport async function f14() { await getToken(); }\n";
+        expect(routeFields(files)).toEqual({ guarded: undefined, guardUnresolved: true });
+    });
+
+    it("the closed inline reject shapes count; a header-only use of the session does not", () => {
         expect(
             guardOfRoute({
                 "src/app/api/e/route.ts":
@@ -1081,8 +1153,10 @@ describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
         expect(
             guardsOfActions({
                 "src/actions.ts":
-                    "'use server'\nexport async function guardedAction() { await resolveOrgId(); }\nexport async function openAction() { return 1; }\n",
+                    "'use server'\nimport { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "export async function guardedAction() { await getToken(); }\nexport async function openAction() { return 1; }\n",
                 "src/app/page.tsx":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
                     "export default function P() {\n  async function inlineOpen() {\n    'use server'\n    return 1;\n  }\n  async function inlineGuarded() {\n    'use server'\n    await getSessionContext();\n  }\n  return null;\n}\n",
             }),
         ).toEqual({
@@ -1143,6 +1217,12 @@ describe("CHAOS-4780: a row's protection claim must match what discovery found",
         expect(
             runGate(makeInputs(disclosed)).filter((v) => v.rule === "claim_contradicts_source"),
         ).toEqual([]);
+    });
+
+    it("a surface whose guard walk hit its bound fails closed", () => {
+        const b = baseline();
+        b.routes[0].guardUnresolved = true;
+        expect(runGate(makeInputs(b)).map((v) => v.rule)).toContain("guard_unresolved");
     });
 
     it("a surface whose guard state is unknown is not reconciled", () => {
