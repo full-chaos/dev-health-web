@@ -61,6 +61,24 @@
  * (CHAOS-4728, merged fcc3c1db), and the shape a future lane is most likely
  * to reintroduce by accident.
  *
+ * CHAOS-4780 RECONCILIATION: discovery also reports, per surface, whether a
+ * guard function is reachable from the handler: its own body plus any function
+ * it calls (wrapper calls such as withAuth(handler) included), resolved by the
+ * type checker to a declaration, and counted only when that declaration is one
+ * of GUARD_SYMBOLS (file + name, declared once in discover_web_routes.ts). A
+ * local helper that shares a guard's name does not count; an aliased import of
+ * a real guard does. The call walk is bounded; a surface that hits the bound is
+ * reported `guard_unresolved` and fails. The gate rejects a `public` row on a
+ * guarded surface, `primary_validator: null` on a guarded surface, and a
+ * `protected` row on a surface with no guard found unless gaps discloses it.
+ * A guard call counts only when awaited or returned, and only in code that can
+ * run (nothing after a top-level return/throw, no `if (false)` arm). A promise
+ * stored in a variable and awaited later is not counted.
+ * NAMED GAP: "guarded" means a guard is REACHABLE from the handler, not that
+ * every path passes through it; a guard reached only on one branch passes. A
+ * surface whose handler cannot be resolved to a function (the NextAuth
+ * `handlers` destructure) is not reconciled.
+ *
  * CONTRACT INPUTS (schema + credential-classes) are owned by dev-health-ops
  * and are not vendored here. `main()` resolves them from `--schema` /
  * `--credential-classes`, falling back to sibling-checkout default paths
@@ -82,8 +100,12 @@ import Ajv2020 from "ajv/dist/2020";
 // for and we would not be doing.
 import addFormats from "ajv-formats";
 import {
+    GUARD_SYMBOLS,
+    REJECTING_GUARD_NAMES,
     discoverRoutes,
     discoverServerActionFiles,
+    isDemonstrablyRejecting,
+    verifyGuardSymbols,
     type RouteRecord,
     type ServerActionRecord,
 } from "./discover_web_routes";
@@ -125,7 +147,10 @@ export type Violation = {
         | "schema_violation"
         | "unstated_null"
         | "degrades_silently"
-        | "surface_kind_mismatch";
+        | "surface_kind_mismatch"
+        | "claim_contradicts_source"
+        | "guard_unresolved"
+        | "guard_symbol_unverified";
     id?: string;
     detail: string;
 };
@@ -166,44 +191,21 @@ const SURFACE_KINDS_FALLBACK = new Set([
 // the ops gate does -- a schema-level addition (a newly deployed app) is
 // accepted with zero checker code change instead of being wrongly rejected.
 
-// See the ★ HONESTY LIMIT block in the module docstring before extending or
-// relying on this list beyond what it proves.
-const REJECTING_GUARD_NAMES = [
-    "getSessionContext",
-    "requireSuperuserToken",
-    "getToken",
-    "resolveOrgId",
-    "getAuthHeaders",
-    "getAuthHeadersOrThrow",
-    "apiRequest",
-    "withAuthHeaders",
-];
-const REJECTING_GUARD_RE = new RegExp(`\\b(?:${REJECTING_GUARD_NAMES.join("|")})\\b`);
-// Hand-rolled inline reject shapes, each verified by hand at its own call
-// site (not routed through a named helper, but still an unconditional
-// return/throw on no session):
-const INLINE_REJECT_PATTERNS = [
-    // checkout.ts's createBillingPlan/updateBillingPlan/deleteBillingPlan/
-    // syncBillingPlanToStripe/listBillingPlans (listBillingPlans fixed
-    // CHAOS-3273 Wave 0, 2026-09-01): `if (!session?.access_token) return ...`.
-    // The DEGRADING counterexample this gate exists to catch (listBillingPlans
-    // before its fix) used `session?.access_token` only inside an `if` whose
-    // body ATTACHES a header -- no `return`/`throw` -- so requiring `return`
-    // or `throw` on the SAME lexical scan is what distinguishes the two, not
-    // just the presence of the `access_token` check.
-    /!\s*session\?\.access_token\)[^]*?(?:return|throw)/,
-    // feature-flags/actions.ts's fetchFlagPage (CHAOS-4728, merged fcc3c1db):
-    // `if (!session?.user?.org_id) { throw new Error(AuthErrors.Unauthorized); }`.
-    /!\s*session\?\.user\?\.org_id\)[^]*?(?:return|throw)/,
-];
-
-function isDemonstrablyRejecting(snippet: string): boolean {
+/** A gaps entry that names primary_validator and says no rejecting check exists behind it. */
+function gapsDiscloseMissingValidator(gapsText: string): boolean {
     return (
-        REJECTING_GUARD_RE.test(snippet) || INLINE_REJECT_PATTERNS.some((re) => re.test(snippet))
+        /primary_validator/i.test(gapsText) &&
+        (/no reject/i.test(gapsText) ||
+            /does not reject/i.test(gapsText) ||
+            /not currently enforced/i.test(gapsText) ||
+            /degrades/i.test(gapsText) ||
+            /NO REJECTING VALIDATOR/i.test(gapsText))
     );
 }
 
 export interface GateInputs {
+    /** GUARD_SYMBOLS entries whose declaration is missing or no longer rejects (verifyGuardSymbols). */
+    unverifiedGuardSymbols?: string[];
     discoveredRoutes: RouteRecord[];
     discoveredActions: ServerActionRecord[];
     doc: unknown;
@@ -425,6 +427,24 @@ export function runGate(input: GateInputs): Violation[] {
     // CHAOS-4792: the kind of a surface comes from discovery, never from the
     // row's own label. A row naming a discovered id with another surface_kind
     // is a violation, and the per-kind checks below key on this map.
+    // CHAOS-4780: what discovery found about each surface's guard. A row's
+    // protection claim is reconciled against it below.
+    const guardedById = new Map<string, boolean>();
+    for (const r of discoveredRoutes)
+        if (r.guarded !== undefined)
+            guardedById.set(`${r.method} ${r.route} [dev-health-web]`, r.guarded);
+    for (const a of discoveredActions)
+        if (a.guarded !== undefined) guardedById.set(a.id, a.guarded);
+    for (const name of input.unverifiedGuardSymbols ?? []) {
+        violations.push({
+            rule: "guard_symbol_unverified",
+            detail: `guard function ${name} is missing or its body no longer rejects on a missing session, so surfaces that call it are not proven guarded`,
+        });
+    }
+    const unresolvedGuard = new Set<string>();
+    for (const r of discoveredRoutes)
+        if (r.guardUnresolved) unresolvedGuard.add(`${r.method} ${r.route} [dev-health-web]`);
+    for (const a of discoveredActions) if (a.guardUnresolved) unresolvedGuard.add(a.id);
     const discoveredKind = new Map<string, "rest" | "server_action">();
     for (const id of discovered.keys()) {
         discoveredKind.set(id, id.startsWith("server_action:") ? "server_action" : "rest");
@@ -454,6 +474,38 @@ export function runGate(input: GateInputs): Violation[] {
         // exempted rather than flagged wrong.
         if (row.service === "dev-health-web") {
             webRowsById.set(row.id, row);
+        }
+        const guarded = row.service === "dev-health-web" ? guardedById.get(row.id) : undefined;
+        if (unresolvedGuard.has(row.id)) {
+            violations.push({
+                rule: "guard_unresolved",
+                id: row.id,
+                detail: "guard discovery hit its call-depth bound for this surface, so its protection could not be established; it is never treated as guarded",
+            });
+        }
+        if (guarded === true && row.classification === "public") {
+            violations.push({
+                rule: "claim_contradicts_source",
+                id: row.id,
+                detail: "row is classified public but source discovery finds a rejecting guard on this surface",
+            });
+        }
+        if (guarded === true && row.primary_validator === null) {
+            violations.push({
+                rule: "claim_contradicts_source",
+                id: row.id,
+                detail: "row has primary_validator: null but source discovery finds a rejecting guard on this surface",
+            });
+        }
+        if (guarded === false && row.classification === "protected") {
+            const gapsText = Array.isArray(row.gaps) ? row.gaps.join("\n") : "";
+            if (!gapsDiscloseMissingValidator(gapsText)) {
+                violations.push({
+                    rule: "claim_contradicts_source",
+                    id: row.id,
+                    detail: `row is classified protected but source discovery finds none of the known rejecting guards (${GUARD_SYMBOLS.map((s) => s.name).join(", ")}) on this surface, and gaps does not disclose it`,
+                });
+            }
         }
         const foundKind = discoveredKind.get(row.id);
         if (foundKind !== undefined && row.surface_kind !== foundKind) {
@@ -517,13 +569,7 @@ export function runGate(input: GateInputs): Violation[] {
             row.classification === "protected"
         ) {
             const gapsText = Array.isArray(row.gaps) ? row.gaps.join("\n") : "";
-            const mentionsValidatorGap =
-                /primary_validator/i.test(gapsText) &&
-                (/no reject/i.test(gapsText) ||
-                    /does not reject/i.test(gapsText) ||
-                    /not currently enforced/i.test(gapsText) ||
-                    /degrades/i.test(gapsText) ||
-                    /NO REJECTING VALIDATOR/i.test(gapsText));
+            const mentionsValidatorGap = gapsDiscloseMissingValidator(gapsText);
 
             if (row.primary_validator === null) {
                 if (!mentionsValidatorGap) {
@@ -757,6 +803,7 @@ function main() {
     }
 
     const violations = runGate({
+        unverifiedGuardSymbols: verifyGuardSymbols(root),
         discoveredRoutes,
         discoveredActions,
         doc,
