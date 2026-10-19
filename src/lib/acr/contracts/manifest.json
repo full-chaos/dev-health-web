@@ -1,9 +1,9 @@
 {
-  "source_commit": "29c54e1b5f27cb44798417647b6f0b707faad66f",
+  "source_commit": "c9598aa65ef30dfc9243ac250ff92ad906bfe9a1",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "5c204378b0a2a24c4067bf750750a5de49a490ccff4d8f30187fb68adf6970aa"
+      "sha256": "5a763398fd52479c6fde564aa76aec0e3da9f9b0e3129ae42d0b48fbbacd38cc"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -43,7 +43,7 @@
     },
     {
       "path": "schemas/acr_client_credential.v1.schema.json",
-      "sha256": "6f5f9c326ec3ea5330a44f8b4030aa99ed080f9777c7cdbaa9aec6b2ff268661"
+      "sha256": "5ef42eb9f8e7095a4a6d09ae2e41aafec814a0db761800c5c3a17bc862c00a4b"
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
@@ -151,7 +151,7 @@
     },
     {
       "path": "schemas/mcp_read_facts_response.v1.schema.json",
-      "sha256": "31260a1b2fe8d207d93979305f28cab97334a789fe0f4bc627988fbcbfbd82ef"
+      "sha256": "962a5cae055b5afb4e4712a4e4029721b722165b4da12386217b5e2ee0ab69bf"
     },
     {
       "path": "schemas/mcp_read_relationships_request.v1.schema.json",
