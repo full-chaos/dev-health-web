@@ -301,7 +301,7 @@
             },
             "classification": "protected",
             "public_rationale": null,
-            "accepted_credential_classes": ["auth_js_browser_session", "acr_device_flow_code"],
+            "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
                 "description": "Route itself only enforces Origin==expectedOrigin + IP/user-code rate limits before dispatch (no session check at this layer). Both branches (action=\"preview\"|\"approve\") call previewDeviceAuthorization/approveDeviceAuthorization, which internally call auth()+sessionOrError (401 if absent) and EXPLICITLY REJECT an impersonated session (rawSession.user.real_org_id !== session.orgId) before issuing a credential -- a positive pattern worth copying platform-wide.",
                 "anchor": {
@@ -311,7 +311,7 @@
                 }
             },
             "token_shape": {
-                "token_type": "auth_js_browser_session + acr_device_flow_code (user_code, body param)",
+                "token_type": "auth_js_browser_session (the body also names a device user_code; it is a resource reference, not a credential)",
                 "issuer": null,
                 "audience": null,
                 "algorithm": null

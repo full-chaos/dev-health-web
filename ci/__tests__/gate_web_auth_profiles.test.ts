@@ -1516,6 +1516,65 @@ describe("CHAOS-4780: a row's protection claim must match what discovery found",
     });
 });
 
+describe("gate_web_auth_profiles: a row that accepts two credential classes must name a selector (CHAOS-10199)", () => {
+    // Mirrors the ops rule in endpoint-profile.schema.json ($defs.endpointProfile.allOf):
+    // 2+ accepted classes requires class_disambiguator. The pinned ops schema
+    // carries it only after the next pin bump, so the gate mechanism is
+    // proven here on a fixture schema and the committed rows are checked directly.
+    const TWO_CLASS_RULE_SCHEMA = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        properties: {
+            rows: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        accepted_credential_classes: { type: "array" },
+                        class_disambiguator: { type: "object" },
+                    },
+                    allOf: [
+                        {
+                            if: {
+                                properties: {
+                                    accepted_credential_classes: { type: "array", minItems: 2 },
+                                },
+                                required: ["accepted_credential_classes"],
+                            },
+                            then: { required: ["class_disambiguator"] },
+                        },
+                    ],
+                },
+            },
+        },
+    } as const;
+
+    it("a two-class row without a selector fails full schema validation", () => {
+        const b = baseline();
+        const doc = structuredClone(b.doc) as EndpointProfileDoc;
+        (doc.rows[0] as Record<string, unknown>).accepted_credential_classes = [
+            "auth_js_browser_session",
+            "acr_device_flow_code",
+        ];
+        const violations = runGate(makeInputs(b, { doc, schemaDocument: TWO_CLASS_RULE_SCHEMA }));
+        expect(
+            violations.some(
+                (v) => v.rule === "schema_violation" && v.detail.includes("class_disambiguator"),
+            ),
+        ).toBe(true);
+    });
+
+    it("every committed web row accepts at most one credential class (web carries no selector or marker)", () => {
+        const doc = JSON.parse(
+            readFileSync(resolve(WEB_ROOT, "contracts/auth/v1/endpoint-profiles.web.json"), "utf8"),
+        ) as EndpointProfileDoc;
+        const offenders = doc.rows
+            .filter((row) => row.accepted_credential_classes.length >= 2)
+            .map((row) => row.id);
+        expect(offenders).toEqual([]);
+    });
+});
+
 describe("gate_web_auth_profiles: real repo state", () => {
     it("the committed endpoint-profiles.web.json currently has zero violations against live discovery", () => {
         const doc = JSON.parse(

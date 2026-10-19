@@ -767,6 +767,21 @@ describe("ByoLlmSettings", () => {
         expect(screen.getByLabelText("Base URL")).not.toHaveAttribute("aria-invalid", "true");
     });
 
+    it("describes the base URL for the selected provider", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "anthropic" } });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        expect(screen.getByTestId("byo-base-url-help")).toHaveTextContent(/Anthropic API endpoint/);
+        expect(screen.getByTestId("byo-base-url-help")).not.toHaveTextContent(/OpenAI/);
+
+        await userEvent.selectOptions(screen.getByLabelText("Provider"), "openai");
+        expect(screen.getByTestId("byo-base-url-help")).toHaveTextContent(
+            "Optional. OpenAI-compatible endpoints.",
+        );
+    });
+
     it("surfaces a 400 base_url validation error inline", async () => {
         mockLoad.mockResolvedValue({ data: { provider: "openai" } });
         mockSave.mockResolvedValue({ error: "invalid_base_url", status: 400 });
