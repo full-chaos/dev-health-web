@@ -351,6 +351,14 @@ function duplicateCredentialClassViolations(credentialClassesDocument: unknown):
     return violations;
 }
 
+/** "" / "   " / [] / {}: present on the row but saying nothing, which is absent in all but name. */
+function isEmptyValue(v: unknown): boolean {
+    if (typeof v === "string") return v.trim() === "";
+    if (Array.isArray(v)) return v.length === 0;
+    if (v !== null && typeof v === "object") return Object.keys(v).length === 0;
+    return false;
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -629,7 +637,7 @@ export function runGate(input: GateInputs): Violation[] {
                 token_shape: reach?.credential,
             };
             for (const field of ADVISORY_FIELDS) {
-                const absent = !(field in row);
+                const absent = !(field in row) || isEmptyValue(row[field]);
                 const unset = absent || row[field] === null;
                 const verdict = predicate[field];
                 if (absent && verdict !== "not_reachable") {

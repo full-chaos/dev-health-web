@@ -285,13 +285,33 @@ export const GUARD_SYMBOLS: readonly { file: string; name: string }[] = [
 // An advisory `entitlement_requirement` may be absent only when the call walk
 // reaches none of these; verifyEntitlementSymbols() fails when one is renamed
 // or removed, so the set cannot silently go stale.
-export const ENTITLEMENT_SYMBOLS: readonly { file: string; name: string }[] = [
+// `calls` are callee names the body must still call; `rejects` says the body
+// must itself throw on a condition computed from those calls' results (a
+// delegating gate only has to call the gate it delegates to).
+export const ENTITLEMENT_SYMBOLS: readonly {
+    file: string;
+    name: string;
+    calls: readonly string[];
+    rejects: boolean;
+}[] = [
     {
         file: "src/lib/admin/server/canonicalIncidentIngestion.ts",
         name: "requirePagerDutyCreationEntitlement",
+        calls: ["getCanonicalIncidentIngestionEntitlement"],
+        rejects: true,
     },
-    { file: "src/lib/acr/ops.ts", name: "requireAcrEntitlement" },
-    { file: "src/lib/acr/ops.ts", name: "resolveOpsCredentialIssuanceAuthorization" },
+    {
+        file: "src/lib/acr/ops.ts",
+        name: "requireAcrEntitlement",
+        calls: ["fetchBoundedJson", "safeParse"],
+        rejects: true,
+    },
+    {
+        file: "src/lib/acr/ops.ts",
+        name: "resolveOpsCredentialIssuanceAuthorization",
+        calls: ["requireAcrEntitlement"],
+        rejects: false,
+    },
 ];
 
 // The closed list of inline reject shapes: `if (<condition>) { ...; return|throw ... }`
@@ -435,12 +455,89 @@ function classOf(checker: ts.TypeChecker, ref: ts.Node): ts.ClassLikeDeclaration
     return undefined;
 }
 
+const isLibraryFile = (sf: ts.SourceFile) =>
+    sf.isDeclarationFile || sf.fileName.includes("/node_modules/");
+
+const isProjectDecl = (d: ts.Node) => !isLibraryFile(d.getSourceFile());
+
+const PRIMITIVE_FLAGS =
+    ts.TypeFlags.StringLike |
+    ts.TypeFlags.NumberLike |
+    ts.TypeFlags.BooleanLike |
+    ts.TypeFlags.BigIntLike |
+    ts.TypeFlags.ESSymbolLike |
+    ts.TypeFlags.Null |
+    ts.TypeFlags.Undefined |
+    ts.TypeFlags.Void |
+    ts.TypeFlags.Never;
+
+/**
+ * Whether a value of this type can run project code when a library or the
+ * language merely touches it (JSON.stringify -> toJSON, a spread or a read ->
+ * a getter, string conversion -> toString, await -> then, a callback stored on
+ * it): any member declared in the project that is a method, an accessor or
+ * callable. `any` and unknown shapes count; the check is bounded.
+ */
+function mayRunProjectCode(checker: ts.TypeChecker, type: ts.Type, depth = 0): boolean {
+    if (depth > 3) return true;
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return true;
+    if (type.flags & PRIMITIVE_FLAGS) return false;
+    if (type.isUnionOrIntersection())
+        return type.types.some((t) => mayRunProjectCode(checker, t, depth + 1));
+    if (checker.isArrayType(type) || checker.isTupleType(type))
+        return checker
+            .getTypeArguments(type as ts.TypeReference)
+            .some((t) => mayRunProjectCode(checker, t, depth + 1));
+    if (type.getCallSignatures().length > 0) return true;
+    for (const prop of checker.getPropertiesOfType(type)) {
+        const decls = prop.declarations ?? [];
+        if (!decls.some(isProjectDecl)) continue;
+        if (
+            decls.some(
+                (d) =>
+                    ts.isGetAccessor(d) ||
+                    ts.isSetAccessor(d) ||
+                    ts.isMethodDeclaration(d) ||
+                    ts.isMethodSignature(d),
+            )
+        )
+            return true;
+        const t = checker.getTypeOfSymbolAtLocation(prop, decls[0]);
+        if (mayRunProjectCode(checker, t, depth + 1)) return true;
+    }
+    return false;
+}
+
+/** Accessors (getter/setter) a property or element access can run, as declarations. */
+function accessorsOf(
+    checker: ts.TypeChecker,
+    n: ts.PropertyAccessExpression | ts.ElementAccessExpression,
+): ts.Declaration[] {
+    const out: ts.Declaration[] = [];
+    const named = ts.isPropertyAccessExpression(n)
+        ? checker.getSymbolAtLocation(n.name)
+        : ts.isStringLiteralLike(n.argumentExpression)
+          ? checker.getSymbolAtLocation(n.argumentExpression)
+          : undefined;
+    const syms = named
+        ? [named]
+        : ts.isElementAccessExpression(n)
+          ? checker.getPropertiesOfType(checker.getTypeAtLocation(n.expression))
+          : [];
+    for (const sym of syms)
+        for (const d of sym.declarations ?? [])
+            if ((ts.isGetAccessor(d) || ts.isSetAccessor(d)) && isProjectDecl(d)) out.push(d);
+    return out;
+}
+
 function functionLikeOf(decl: ts.Node): ts.Node | undefined {
     if (
         ts.isFunctionDeclaration(decl) ||
         ts.isFunctionExpression(decl) ||
         ts.isArrowFunction(decl) ||
-        ts.isMethodDeclaration(decl)
+        ts.isMethodDeclaration(decl) ||
+        ts.isGetAccessor(decl) ||
+        ts.isSetAccessor(decl)
     )
         return decl;
     if (ts.isVariableDeclaration(decl) && decl.initializer) return decl.initializer;
@@ -529,6 +626,54 @@ function guardState(
     const markLimit = () => {
         if ((result as GuardState) !== "guarded") result = "limit";
     };
+    // Dispatch and implicit execution the walk cannot resolve statically: a
+    // proof of absence may not rest on them, so each gives limit.
+    const strictChecks = (n: ts.Node) => {
+        if (ts.isCallExpression(n)) {
+            // A method of a class can be overridden by a subclass.
+            for (const decl of resolveDeclarations(checker, n.expression)) {
+                if (
+                    ts.isMethodDeclaration(decl) &&
+                    isProjectDecl(decl) &&
+                    (ts.isClassLike(decl.parent) || ts.isInterfaceDeclaration(decl.parent)) &&
+                    !decl.modifiers?.some((m) => m.kind === ts.SyntaxKind.PrivateKeyword)
+                )
+                    markLimit();
+            }
+            // A library call that receives a project object may run its hooks.
+            const decls = resolveDeclarations(checker, n.expression);
+            if (decls.length > 0 && decls.every((d) => isLibraryFile(d.getSourceFile()))) {
+                for (const arg of n.arguments) {
+                    if (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) continue;
+                    if (mayRunProjectCode(checker, checker.getTypeAtLocation(arg))) markLimit();
+                }
+                if (
+                    ts.isPropertyAccessExpression(n.expression) &&
+                    mayRunProjectCode(checker, checker.getTypeAtLocation(n.expression.expression))
+                )
+                    markLimit();
+            }
+        }
+        if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) {
+            for (const acc of accessorsOf(checker, n)) {
+                if (acc.parent && ts.isClassLike(acc.parent)) markLimit();
+                followFns([acc]);
+            }
+        }
+        const touched: ts.Expression[] = [];
+        if (ts.isTemplateExpression(n))
+            for (const sp of n.templateSpans) touched.push(sp.expression);
+        if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusToken)
+            touched.push(n.left, n.right);
+        if (ts.isSpreadAssignment(n) || ts.isSpreadElement(n)) touched.push(n.expression);
+        if (ts.isObjectBindingPattern(n) && n.parent && "initializer" in n.parent) {
+            const init = (n.parent as ts.VariableDeclaration).initializer;
+            if (init) touched.push(init);
+        }
+        if (ts.isForInStatement(n) || ts.isForOfStatement(n)) touched.push(n.expression);
+        for (const e of touched)
+            if (mayRunProjectCode(checker, checker.getTypeAtLocation(e))) markLimit();
+    };
     const follow = (ref: ts.Node, requireConsumed: ts.CallExpression | null) => {
         // A proof of absence counts every call: an unawaited gate still runs.
         if (!probe.strict && requireConsumed && !isConsumed(requireConsumed)) return;
@@ -589,6 +734,7 @@ function guardState(
         } else if (callee && probe.strict && !callResolves(checker, callee)) {
             markLimit();
         }
+        if (probe.strict) strictChecks(n);
         // fn.call(...), fn.apply(...), fn.bind(...) run or return fn itself.
         if (
             ts.isCallExpression(n) &&
@@ -670,7 +816,12 @@ export function verifyGuardSymbols(rootArg: string): string[] {
     return bad;
 }
 
-/** ENTITLEMENT_SYMBOLS entries that are no longer a top-level function declaration, or whose body no longer throws or returns on a missing entitlement. */
+/**
+ * ENTITLEMENT_SYMBOLS entries that are no longer a top-level function, no
+ * longer call what they must, or (for a rejecting gate) no longer throw on a
+ * condition computed from those calls' results. A gate replaced by a plain
+ * return, or by a throw that ignores the entitlement, is hollow.
+ */
 export function verifyEntitlementSymbols(rootArg: string): string[] {
     const root = resolve(rootArg);
     const bad: string[] = [];
@@ -682,11 +833,68 @@ export function verifyEntitlementSymbols(rootArg: string): string[] {
                       ts.isFunctionDeclaration(st) && st.name?.text === g.name,
               )
             : undefined;
-        let exits = false;
-        if (fn) walkLive(fn, (n) => void (isExit(n as ts.Statement) && (exits = true)));
-        if (!fn || !exits) bad.push(`${g.file}#${g.name}`);
+        if (!fn || !entitlementGateIsLive(fn, g)) bad.push(`${g.file}#${g.name}`);
     }
     return bad;
+}
+
+function calleeName(call: ts.CallExpression): string | undefined {
+    const e = call.expression;
+    if (ts.isIdentifier(e)) return e.text;
+    if (ts.isPropertyAccessExpression(e)) return e.name.text;
+    return undefined;
+}
+
+function entitlementGateIsLive(
+    fn: ts.FunctionDeclaration,
+    g: { calls: readonly string[]; rejects: boolean },
+): boolean {
+    const called = new Set<string>();
+    const derived = new Set<string>();
+    let rejectingIf = false;
+    const callsOf = (n: ts.Node): string[] => {
+        const out: string[] = [];
+        const v = (x: ts.Node) => {
+            if (ts.isCallExpression(x)) {
+                const name = calleeName(x);
+                if (name) out.push(name);
+            }
+            ts.forEachChild(x, v);
+        };
+        v(n);
+        return out;
+    };
+    const identifiersOf = (n: ts.Node): string[] => {
+        const out: string[] = [];
+        const v = (x: ts.Node) => {
+            if (ts.isIdentifier(x)) out.push(x.text);
+            ts.forEachChild(x, v);
+        };
+        v(n);
+        return out;
+    };
+    walkLive(fn, (n) => {
+        if (ts.isCallExpression(n)) {
+            const name = calleeName(n);
+            if (name) called.add(name);
+        }
+        if (ts.isVariableDeclaration(n) && n.initializer && ts.isIdentifier(n.name)) {
+            const fromRequired =
+                callsOf(n.initializer).some((c) => g.calls.includes(c)) ||
+                identifiersOf(n.initializer).some((id) => derived.has(id));
+            if (fromRequired) derived.add(n.name.text);
+        }
+        if (
+            ts.isIfStatement(n) &&
+            constantCondition(n.expression) === undefined &&
+            identifiersOf(n.expression).some((id) => derived.has(id)) &&
+            (ts.isThrowStatement(n.thenStatement) ||
+                (ts.isBlock(n.thenStatement) &&
+                    n.thenStatement.statements.some(ts.isThrowStatement)))
+        )
+            rejectingIf = true;
+    });
+    return g.calls.every((c) => called.has(c)) && (!g.rejects || rejectingIf);
 }
 
 function toGuardFields(state: GuardState): GuardFields {

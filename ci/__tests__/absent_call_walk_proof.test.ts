@@ -76,6 +76,15 @@ function gate(r: EndpointProfileRow, reach: { entitlement?: Reach; credential?: 
     );
 }
 
+function tree(files: Record<string, string>): string {
+    const dir = mkdtempSync(join(tmpdir(), "web-reach-"));
+    for (const [name, text] of Object.entries(files)) {
+        mkdirSync(join(dir, name, ".."), { recursive: true });
+        writeFileSync(join(dir, name), text);
+    }
+    return dir;
+}
+
 describe("absent needs a call-walk proof", () => {
     it("rejects an absent entitlement_requirement with no verdict", () => {
         const v = gate(row({}, ["entitlement_requirement"]), {});
@@ -165,16 +174,31 @@ describe("absent needs a call-walk proof", () => {
     });
 });
 
-describe("the call walk's verdicts", () => {
-    function tree(files: Record<string, string>): string {
-        const dir = mkdtempSync(join(tmpdir(), "web-reach-"));
-        for (const [name, text] of Object.entries(files)) {
-            mkdirSync(join(dir, name, ".."), { recursive: true });
-            writeFileSync(join(dir, name), text);
-        }
-        return dir;
-    }
+describe("a present but empty value is absent", () => {
+    for (const empty of ["", "  ", [], {}]) {
+        const label = JSON.stringify(empty);
+        it(`${label} on entitlement_requirement, token_shape and action needs the proof`, () => {
+            for (const field of ["entitlement_requirement", "token_shape", "action"]) {
+                const v = gate(row({ [field]: empty }), {
+                    entitlement: "limit",
+                    credential: "limit",
+                });
+                expect(
+                    v.some((x) => x.rule === "absent_without_proof" && x.detail.startsWith(field)),
+                    field,
+                ).toBe(true);
+            }
+        });
 
+        it(`${label} is accepted as absent only on a not_reachable verdict`, () => {
+            expect(
+                gate(row({ entitlement_requirement: empty }), { entitlement: "not_reachable" }),
+            ).toEqual([]);
+        });
+    }
+});
+
+describe("the call walk's verdicts", () => {
     const OPS =
         "export async function requireAcrEntitlement(): Promise<void> { throw new Error('no'); }\n";
 
@@ -234,6 +258,54 @@ describe("the call walk's verdicts", () => {
         });
     });
 
+    it("dispatch and implicit execution the walk cannot resolve never give not_reachable", () => {
+        const got = reachOf({
+            "src/lib/acr/ops.ts": OPS,
+            "src/lib/types.ts": [
+                'import { requireAcrEntitlement } from "./acr/ops";',
+                "export class Base { async run() { return 1; } }",
+                "export class Sub extends Base { async run() { await requireAcrEntitlement(); return 2; } }",
+                "export class WithGetter { get value() { return requireAcrEntitlement(); } }",
+                "export const objGetter = { get x() { return requireAcrEntitlement(); } };",
+                "export const hook = { toJSON() { void requireAcrEntitlement(); return 1; } };",
+                "export class Tostr { toString() { void requireAcrEntitlement(); return 'x'; } }",
+                "",
+            ].join("\n"),
+            "src/app/a/actions.ts": [
+                '"use server";',
+                'import { Base, Sub, WithGetter, objGetter, hook, Tostr } from "../../lib/types";',
+                "export async function virt() { const b: Base = new Sub(); await b.run(); }",
+                "export async function classGetter() { await new WithGetter().value; }",
+                "export async function objGet() { await objGetter.x; }",
+                "export async function dynKey(k: 'x') { return objGetter[k]; }",
+                "export async function toJson() { return JSON.stringify(hook); }",
+                "export async function tpl() { return `${new Tostr()}`; }",
+                "export async function plus() { return 'a' + new Tostr(); }",
+                "export async function spread() { return { ...objGetter }; }",
+                "export async function destr() { const { x } = objGetter; return x; }",
+                "export async function forIn() { for (const k in objGetter) { void k; } }",
+                "export async function plain() { return JSON.stringify({ a: 1, b: [1, 2] }) + String(3); }",
+                "export async function plain2() { const m = new Map<string, number>(); m.set('a', 1); return [...m.keys()].length; }",
+                "",
+            ].join("\n"),
+        });
+        for (const name of [
+            "virt",
+            "classGetter",
+            "objGet",
+            "dynKey",
+            "toJson",
+            "tpl",
+            "plus",
+            "spread",
+            "destr",
+            "forIn",
+        ])
+            expect(got[name], name).not.toBe("not_reachable");
+        expect(got.plain).toBe("not_reachable");
+        expect(got.plain2).toBe("not_reachable");
+    });
+
     it("a library call is not unresolved and a dead branch is not walked", () => {
         const got = reachOf({
             "src/lib/acr/ops.ts": OPS,
@@ -261,6 +333,44 @@ describe("ENTITLEMENT_SYMBOLS", () => {
             expect(verifyEntitlementSymbols(dir).length).toBe(ENTITLEMENT_SYMBOLS.length);
         } finally {
             rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it("rejects hollow gates: a plain return, a call that never rejects, a throw that ignores the result", () => {
+        const variants: Record<string, Record<string, string>> = {
+            "plain return": {
+                "src/lib/admin/server/canonicalIncidentIngestion.ts":
+                    "export async function requirePagerDutyCreationEntitlement() { return; }\n",
+                "src/lib/acr/ops.ts":
+                    "export async function requireAcrEntitlement() { return; }\nexport async function resolveOpsCredentialIssuanceAuthorization() { return 1; }\n",
+            },
+            "calls but never rejects": {
+                "src/lib/admin/server/canonicalIncidentIngestion.ts":
+                    "export async function requirePagerDutyCreationEntitlement() { await getCanonicalIncidentIngestionEntitlement(); }\n",
+                "src/lib/acr/ops.ts":
+                    "export async function requireAcrEntitlement() { const e = await fetchBoundedJson({}); e.x.safeParse(1); }\nexport async function resolveOpsCredentialIssuanceAuthorization() { await requireAcrEntitlement(); }\n",
+            },
+            "throws without looking at the result": {
+                "src/lib/admin/server/canonicalIncidentIngestion.ts":
+                    "export async function requirePagerDutyCreationEntitlement() { await getCanonicalIncidentIngestionEntitlement(); if (Math.random() > 2) { throw new Error('x'); } }\n",
+                "src/lib/acr/ops.ts":
+                    "export async function requireAcrEntitlement() { const e = await fetchBoundedJson({}); e.x.safeParse(1); if (flag()) { throw new Error('x'); } }\nexport async function resolveOpsCredentialIssuanceAuthorization() { await requireAcrEntitlement(); }\n",
+            },
+        };
+        for (const [label, files] of Object.entries(variants)) {
+            const dir = tree(files);
+            try {
+                const bad = verifyEntitlementSymbols(dir);
+                const pager =
+                    "src/lib/admin/server/canonicalIncidentIngestion.ts#requirePagerDutyCreationEntitlement";
+                const acr = "src/lib/acr/ops.ts#requireAcrEntitlement";
+                const resolve3 = "src/lib/acr/ops.ts#resolveOpsCredentialIssuanceAuthorization";
+                expect(bad.sort(), label).toEqual(
+                    (label === "plain return" ? [pager, acr, resolve3] : [pager, acr]).sort(),
+                );
+            } finally {
+                rmSync(dir, { recursive: true, force: true });
+            }
         }
     });
 
