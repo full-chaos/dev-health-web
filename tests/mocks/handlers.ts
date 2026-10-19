@@ -904,13 +904,23 @@ function mockLlmSettingsBody() {
 
 // ACR AI features toggle (CHAOS-10243): one stateful org override, eligible team org.
 let mockServiceModelOverride: boolean | null = null;
+let mockServiceModelManaged = false;
+/** `/__test/service-model`: a managed (billing or support) override, or back to self-service. */
+export function setMockServiceModel(seed: { override: boolean | null; managed: boolean }): void {
+    mockServiceModelOverride = seed.override;
+    mockServiceModelManaged = seed.managed;
+}
+function mockServiceModelControl() {
+    if (mockServiceModelOverride === null) return "none";
+    return mockServiceModelManaged ? "managed" : "self_service";
+}
 function mockServiceModelBody() {
     return {
         feature: "acr_service_model",
         enabled: mockServiceModelOverride === true,
         eligible: true,
         ineligible_reason: null,
-        control: mockServiceModelOverride === null ? "none" : "self_service",
+        control: mockServiceModelControl(),
         override: mockServiceModelOverride,
         required_tier: "team",
         current_tier: "team",
@@ -3646,6 +3656,17 @@ export const handlers = [
         const body = (await request.json()) as { enabled?: unknown };
         if (typeof body.enabled !== "boolean")
             return HttpResponse.json({ detail: "enabled required" }, { status: 422 });
+        if (mockServiceModelManaged)
+            return HttpResponse.json(
+                {
+                    detail: {
+                        error: "override_managed",
+                        message:
+                            "This setting is managed by your plan or support. Contact support to change it.",
+                    },
+                },
+                { status: 409 },
+            );
         mockServiceModelOverride = body.enabled;
         return HttpResponse.json(mockServiceModelBody());
     }),

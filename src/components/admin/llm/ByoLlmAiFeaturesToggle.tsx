@@ -77,7 +77,11 @@ export function ByoLlmAiFeaturesToggle({ loadAction, saveAction }: ByoLlmAiFeatu
     }
 
     return (
-        <Section title={AI_FEATURES_TITLE} description={AI_FEATURES_DESCRIPTION}>
+        <Section
+            title={AI_FEATURES_TITLE}
+            description={AI_FEATURES_DESCRIPTION}
+            data-testid="ai-panel-acr-ai-features"
+        >
             <div className="flex flex-col gap-3">
                 <p className="text-sm text-(--ink-muted)">{AI_FEATURES_MODEL_NOTE}</p>
                 <div className="flex flex-wrap items-center gap-3">
