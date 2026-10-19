@@ -79,7 +79,7 @@ function decodeAssertion(value: string): Record<string, unknown> {
     >;
 }
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterAll(() => server.close());
 beforeEach(() => {
     configure();

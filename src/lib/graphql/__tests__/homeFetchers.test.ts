@@ -19,7 +19,7 @@ import { handlers } from "../../../../tests/mocks/handlers";
 const mockedFetch = vi.mocked(graphqlFetch);
 const mockServer = setupServer(...handlers);
 
-beforeAll(() => mockServer.listen({ onUnhandledRequest: "error" }));
+beforeAll(() => mockServer.listen({ onUnhandledFrame: "error" }));
 afterEach(() => mockServer.resetHandlers());
 afterAll(() => mockServer.close());
 
