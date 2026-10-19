@@ -147,6 +147,14 @@ function qualityJobHeader(text) {
     return end < 0 ? null : lines.slice(start + 1, end);
 }
 
+function jobBlock(text, job) {
+    const lines = text.split("\n");
+    const start = lines.findIndex((l) => l === `    ${job}:`);
+    if (start < 0) return null;
+    const end = lines.findIndex((l, i) => i > start && /^ {4}[\w-]+:/.test(l));
+    return lines.slice(start, end < 0 ? undefined : end).join("\n");
+}
+
 function violations(text) {
     const found = [];
 
@@ -168,7 +176,7 @@ function violations(text) {
         }
     }
 
-    const all = steps(text);
+    const all = steps(jobBlock(text, "quality") ?? "");
     const indices = [];
     for (const spec of CANONICAL) {
         const hits = all.map((s, i) => [s, i]).filter(([s]) => s.join("\n").includes(spec.marker));
@@ -184,6 +192,15 @@ function violations(text) {
             found.push(`${spec.label} step differs from the canonical definition`);
         }
     }
+    const aggregate = jobBlock(text, "test");
+    const needs = /^ {8}needs: \[(.*)\]$/m.exec(aggregate ?? "");
+    if (!needs || !needs[1].split(/,\s*/).includes("quality")) {
+        found.push("aggregate job does not need the quality job");
+    }
+    if (!(aggregate ?? "").includes(`"\${{ needs.quality.result }}" != 'success'`)) {
+        found.push("aggregate job does not check the quality result");
+    }
+
     if (indices.length === CANONICAL.length) {
         const consecutive = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
         if (!consecutive) found.push("pin gate steps are not consecutive");
@@ -196,7 +213,7 @@ const real = fs.readFileSync(WORKFLOW, "utf8");
 
 function mutate(from, to) {
     expect(real.includes(from), `mutation anchor not found: ${from}`).toBe(true);
-    return real.replace(from, to);
+    return real.replace(from, () => to);
 }
 
 describe("ops-contract pin gate workflow contract", () => {
@@ -222,7 +239,7 @@ describe("ops-contract pin gate workflow contract", () => {
                 const block = real.slice(a, b);
                 const anchor = "            - name: Run design lint\n";
                 return (real.slice(0, a) + real.slice(b))
-                    .replace(anchor, block + anchor)
+                    .replace(anchor, () => block + anchor)
                     .replace(
                         "    design-lint:\n        name: Design lint\n        needs: [changes]\n        if: needs.changes.outputs.code == 'true'",
                         "    design-lint:\n        name: Design lint\n        needs: [changes]\n        if: false",
@@ -237,12 +254,12 @@ describe("ops-contract pin gate workflow contract", () => {
                     "needs: [changes, format, quality, build,",
                     "needs: [changes, format, build,",
                 ),
-            "aggregate",
+            "aggregate job does not need the quality job",
         ],
         [
             "aggregate no longer checks the quality result",
             () => mutate("\"${{ needs.quality.result }}\" != 'success' || ", ""),
-            "aggregate",
+            "aggregate job does not check the quality result",
         ],
         [
             "gate step deleted",
