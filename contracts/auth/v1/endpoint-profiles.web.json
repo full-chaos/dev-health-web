@@ -195,7 +195,7 @@
                 "Deliberately does NOT proxy to the backend (stated in the file's own docstring), so the web container's health is independent of backend availability. That also means it cannot be used to infer backend state.",
                 "action: searched the source from src/app/health/route.ts:12 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
                 "resource_resolver: searched the source from src/app/health/route.ts:12 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "current_state_cache_behavior: searched the source from src/app/health/route.ts:12 to the next export for a cache directive (pattern Cache-Control|cache:|revalidate|no-store); not determined.",
+                "current_state_cache_behavior: searched the source from src/app/health/route.ts:12 to the next export for a cache directive (case-insensitive) (pattern (?i)Cache-Control|cache:|revalidate|no-store); not determined.",
                 "entitlement_requirement: searched the source from src/app/health/route.ts:12 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
@@ -538,7 +538,7 @@
             "disclosure_behavior": "Passes through ops's status/body verbatim.",
             "gaps": [
                 "FINDING: this is a mutating POST with NO explicit Origin/CSRF check -- unlike acr/device/route.ts (origin check) and _proxy.ts's hasValidMutationOrigin(). '/api/auth' also bypasses proxy.ts's own auth/org gate (PREFIX_PUBLIC_PATH). The only CSRF defense is the Auth.js session cookie's SameSite attribute (not independently verified in this pass -- next-auth default, not a repo-level override).",
-                "current_state_cache_behavior: searched the source from src/app/api/auth/switch-org/route.ts:6 to the next export for a cache directive (pattern Cache-Control|cache:|revalidate|no-store); not determined.",
+                "current_state_cache_behavior: searched the source from src/app/api/auth/switch-org/route.ts:6 to the next export for a cache directive (case-insensitive) (pattern (?i)Cache-Control|cache:|revalidate|no-store); not determined.",
                 "entitlement_requirement: searched the source from src/app/api/auth/switch-org/route.ts:6 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
@@ -574,13 +574,12 @@
             "action": "auth.change_password",
             "resource_resolver": "None: the target is always the caller (user id from the Bearer token, ops-side); the body names no user.",
             "tenant_requirement": "none",
-            "current_state_cache_behavior": null,
+            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/change-password/route.ts:73); the other responses were not inspected.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "Never echoes a submitted value or a backend detail: repeats two known refusal texts and policy rule names, else a fixed message per status.",
             "gaps": [
                 "FINDING: mutating POST with no explicit Origin/CSRF check, same as switch-org; the defense is the Auth.js session cookie SameSite attribute, and ops re-verifies the current password, which a cross-site request cannot supply.",
-                "current_state_cache_behavior: searched the source from src/app/api/auth/change-password/route.ts:23 to the next export for a cache directive (pattern Cache-Control|cache:|revalidate|no-store); not determined.",
                 "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:23 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
@@ -632,7 +631,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "Generic 500 on any Linear API failure; upstream error text is not surfaced to the caller (line 174-181).",
             "gaps": [
-                "current_state_cache_behavior: searched the source from src/app/api/feedback/route.ts:51 to the next export for a cache directive (pattern Cache-Control|cache:|revalidate|no-store); not determined.",
+                "current_state_cache_behavior: searched the source from src/app/api/feedback/route.ts:51 to the next export for a cache directive (case-insensitive) (pattern (?i)Cache-Control|cache:|revalidate|no-store); not determined.",
                 "entitlement_requirement: searched the source from src/app/api/feedback/route.ts:51 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
@@ -658,6 +657,7 @@
                     "line_end": 235
                 }
             },
+            "token_shape": null,
             "reachable_validators": [],
             "action": null,
             "resource_resolver": null,
@@ -671,8 +671,9 @@
                 "proxy.ts's PREFIX_PUBLIC_PATHS includes '/api/auth' (src/proxy.ts:96), so proxy.ts performs no session/org check ahead of this route -- reachable_validators is genuinely empty, not undetermined.",
                 "action: searched the source from src/app/api/auth/[...nextauth]/route.ts:2 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
                 "resource_resolver: searched the source from src/app/api/auth/[...nextauth]/route.ts:2 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "current_state_cache_behavior: searched the source from src/app/api/auth/[...nextauth]/route.ts:2 to the next export for a cache directive (pattern Cache-Control|cache:|revalidate|no-store); not determined.",
-                "entitlement_requirement: searched the source from src/app/api/auth/[...nextauth]/route.ts:2 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "current_state_cache_behavior: searched the source from src/app/api/auth/[...nextauth]/route.ts:2 to the next export for a cache directive (case-insensitive) (pattern (?i)Cache-Control|cache:|revalidate|no-store); not determined.",
+                "entitlement_requirement: searched the source from src/app/api/auth/[...nextauth]/route.ts:2 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined.",
+                "token_shape: searched the source from src/app/api/auth/[...nextauth]/route.ts:2 to the next export; the row states the route issues auth_js_browser_session and src/lib/auth.ts configures the credentials provider; token type, issuer, audience and algorithm were not recorded in this pass; not determined."
             ]
         },
         {
