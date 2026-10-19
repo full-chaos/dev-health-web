@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent, waitFor } from "@/test/utils";
+import { render, screen, within, userEvent, waitFor } from "@/test/utils";
 
 vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -27,7 +27,7 @@ describe("ByoLlmSpendSummary", () => {
 
     it("renders the panel title and description", async () => {
         mockLoad.mockResolvedValue({
-            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], legacy: [] },
+            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], unattributed: [] },
         });
         renderPanel();
 
@@ -41,7 +41,7 @@ describe("ByoLlmSpendSummary", () => {
 
     describe("spend tiles (CHAOS-8240)", () => {
         const emptySpend = {
-            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], legacy: [] },
+            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], unattributed: [] },
         };
         const budget = (over: Record<string, unknown> = {}) => ({
             data: {
@@ -230,7 +230,7 @@ describe("ByoLlmSpendSummary", () => {
                         failures_by_class: {},
                     },
                 ],
-                legacy: [],
+                unattributed: [],
             },
         });
         renderPanel();
@@ -263,7 +263,7 @@ describe("ByoLlmSpendSummary", () => {
                         failures_by_class: {},
                     },
                 ],
-                legacy: [],
+                unattributed: [],
             },
         });
         renderPanel();
@@ -287,9 +287,9 @@ describe("ByoLlmSpendSummary", () => {
         ).toBeInTheDocument();
     });
 
-    it("renders an empty state when there is no spend and no legacy rows", async () => {
+    it("renders an empty state when there is no spend and no unattributed rows", async () => {
         mockLoad.mockResolvedValue({
-            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], legacy: [] },
+            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], unattributed: [] },
         });
         renderPanel();
 
@@ -297,33 +297,34 @@ describe("ByoLlmSpendSummary", () => {
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
     });
 
-    it("renders a not-tied-to-a-run state when spend exists without a run", async () => {
+    it("renders explanation spend as rows when there is no run", async () => {
         mockLoad.mockResolvedValue({
             data: {
                 since: "2024-01-01T00:00:00Z",
                 limit: 20,
                 runs: [],
-                legacy: [
+                unattributed: [
                     {
-                        run_id: "",
-                        marker: "legacy_empty_run_id",
-                        provider: "openai",
-                        model: "gpt-4o",
-                        calls: 3,
-                        input_tokens: 500,
-                        output_tokens: 100,
-                        computed_at: "2023-12-01T00:00:00Z",
+                        source: "investment_mix_explain",
+                        provider: "anthropic",
+                        model: "claude-haiku-5-5",
+                        day: "2026-10-19",
+                        calls: 1,
+                        input_tokens: 4511,
+                        output_tokens: 2149,
                     },
                 ],
             },
         });
         renderPanel();
 
-        expect(
-            await screen.findByText("Spend not tied to a run"),
-        ).toBeInTheDocument();
-        expect(screen.getByTestId("byo-llm-spend-legacy")).toBeInTheDocument();
-        expect(screen.queryByRole("table")).not.toBeInTheDocument();
+        expect(await screen.findByText("Explanations and reports")).toBeInTheDocument();
+        const section = within(screen.getByTestId("byo-llm-spend-unattributed"));
+        expect(section.getByText("Investment mix explanation")).toBeInTheDocument();
+        expect(section.getByText("claude-haiku-5-5")).toBeInTheDocument();
+        expect(section.getByText("4,511")).toBeInTheDocument();
+        expect(section.getByText("2026-10-19")).toBeInTheDocument();
+        expect(screen.queryByTestId("byo-llm-spend-table")).not.toBeInTheDocument();
         expect(screen.queryByText("No BYO-LLM spend recorded yet")).not.toBeInTheDocument();
     });
 
@@ -353,7 +354,7 @@ describe("ByoLlmSpendSummary", () => {
     it("shows a retry action on a generic load error", async () => {
         mockLoad.mockResolvedValueOnce({ error: "temporary backend failure", status: 500 });
         mockLoad.mockResolvedValueOnce({
-            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], legacy: [] },
+            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], unattributed: [] },
         });
         renderPanel();
 
