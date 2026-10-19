@@ -49,6 +49,13 @@ import ts from "typescript";
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
+/**
+ * Call-walk verdict for one advisory field: a symbol of the field's closed set
+ * is reachable from the handler, provably is not (every call resolved, none
+ * reached it), or the walk hit its bound. Only not_reachable can prove absent.
+ */
+export type Reach = "reachable" | "not_reachable" | "limit";
+
 export type RouteRecord = {
     method: HttpMethod;
     route: string;
@@ -62,6 +69,10 @@ export type RouteRecord = {
     guarded?: boolean;
     /** The call walk hit its depth bound: guard state unresolved (the gate fails closed). */
     guardUnresolved?: true;
+    /** Call-walk verdict for an ENTITLEMENT_SYMBOLS member; undefined: handler not resolved. */
+    entitlement?: Reach;
+    /** Call-walk verdict for a credential read (GUARD_SYMBOLS or an inline reject), unresolved calls = limit. */
+    credential?: Reach;
 };
 
 export type ServerActionFile = {
@@ -76,6 +87,9 @@ export type ServerActionRecord = {
     line: number;
     guarded?: boolean;
     guardUnresolved?: true;
+    entitlement?: Reach;
+    /** Call-walk verdict for a credential read (GUARD_SYMBOLS or an inline reject), unresolved calls = limit. */
+    credential?: Reach;
 };
 
 // CHAOS-4792: discovery reads the TypeScript AST, never source text. The text
@@ -266,6 +280,20 @@ export const GUARD_SYMBOLS: readonly { file: string; name: string }[] = [
     { file: "src/lib/billing/actions/_shared.ts", name: "apiRequest" },
 ];
 
+// The entitlement GATES (functions that reject a caller lacking a feature), declared once, same
+// resolution rules as GUARD_SYMBOLS. Readers of the flag are not gates.
+// An advisory `entitlement_requirement` may be absent only when the call walk
+// reaches none of these; verifyEntitlementSymbols() fails when one is renamed
+// or removed, so the set cannot silently go stale.
+export const ENTITLEMENT_SYMBOLS: readonly { file: string; name: string }[] = [
+    {
+        file: "src/lib/admin/server/canonicalIncidentIngestion.ts",
+        name: "requirePagerDutyCreationEntitlement",
+    },
+    { file: "src/lib/acr/ops.ts", name: "requireAcrEntitlement" },
+    { file: "src/lib/acr/ops.ts", name: "resolveOpsCredentialIssuanceAuthorization" },
+];
+
 // The closed list of inline reject shapes: `if (<condition>) { ...; return|throw ... }`
 // where the condition text is exactly one of these and the branch itself holds
 // a return or throw statement. Matched on the AST, not on text.
@@ -353,14 +381,49 @@ function isConsumed(call: ts.CallExpression): boolean {
     return false;
 }
 
-function isGuardDeclaration(decl: ts.Node): boolean {
+function isDeclarationOf(set: readonly { file: string; name: string }[], decl: ts.Node): boolean {
     const name = (decl as ts.NamedDeclaration).name;
     if (!name || !ts.isIdentifier(name)) return false;
     const file = decl.getSourceFile().fileName.replace(/\\/g, "/");
-    return GUARD_SYMBOLS.some((g) => g.name === name.text && file.endsWith("/" + g.file));
+    return set.some((g) => g.name === name.text && file.endsWith("/" + g.file));
 }
 
+function isGuardDeclaration(decl: ts.Node): boolean {
+    return isDeclarationOf(GUARD_SYMBOLS, decl);
+}
+
+/** What the call walk looks for: a declaration of the target set, or an inline shape. */
+type Probe = {
+    isTarget: (decl: ts.Node) => boolean;
+    inline: (node: ts.Node) => boolean;
+    /** A proof of ABSENCE: a call the walk cannot resolve to a body makes the verdict "limit". */
+    strict?: boolean;
+};
+const GUARD_PROBE: Probe = { isTarget: isGuardDeclaration, inline: (n) => isInlineReject(n) };
+const CREDENTIAL_PROBE: Probe = { ...GUARD_PROBE, strict: true };
+const ENTITLEMENT_PROBE: Probe = {
+    isTarget: (d) => isDeclarationOf(ENTITLEMENT_SYMBOLS, d),
+    inline: () => false,
+    strict: true,
+};
+
 const MAX_GUARD_DEPTH = 10;
+
+/**
+ * A call the walk can see into: every declaration it resolves to is library
+ * code (a declaration file or node_modules) or has a function body in the
+ * project. A callee that is a parameter, an interface member or has no
+ * declaration may run anything, so it cannot support a claim of absence.
+ */
+function callResolves(checker: ts.TypeChecker, call: ts.CallExpression): boolean {
+    const decls = resolveDeclarations(checker, call.expression);
+    if (decls.length === 0) return false;
+    return decls.every((decl) => {
+        const sf = decl.getSourceFile();
+        if (sf.isDeclarationFile || sf.fileName.includes("/node_modules/")) return true;
+        return functionLikesOf(checker, decl).length > 0;
+    });
+}
 
 function functionLikeOf(decl: ts.Node): ts.Node | undefined {
     if (
@@ -413,7 +476,12 @@ function functionLikesOf(checker: ts.TypeChecker, decl: ts.Node, hops = 0): ts.N
 }
 
 type GuardState = "guarded" | "unguarded" | "limit";
-type GuardFields = { guarded?: boolean; guardUnresolved?: true };
+type GuardFields = {
+    guarded?: boolean;
+    guardUnresolved?: true;
+    entitlement?: Reach;
+    credential?: Reach;
+};
 
 /**
  * Whether a guard is reachable from `node`: a call that resolves (through the
@@ -431,15 +499,16 @@ function guardState(
     node: ts.Node,
     visited: Set<ts.Node>,
     depth: number,
+    probe: Probe = GUARD_PROBE,
 ): GuardState {
-    if (isInlineReject(node)) return "guarded";
+    if (probe.inline(node)) return "guarded";
     if (depth >= MAX_GUARD_DEPTH) return "limit";
     let result: GuardState = "unguarded";
     const followFns = (fns: ts.Node[]) => {
         for (const fn of fns) {
             if (visited.has(fn)) continue;
             visited.add(fn);
-            const inner = guardState(checker, fn, visited, depth + 1);
+            const inner = guardState(checker, fn, visited, depth + 1, probe);
             if (inner === "guarded") {
                 result = "guarded";
                 return;
@@ -450,7 +519,7 @@ function guardState(
     const follow = (ref: ts.Node, requireConsumed: ts.CallExpression | null) => {
         if (requireConsumed && !isConsumed(requireConsumed)) return;
         for (const decl of resolveDeclarations(checker, ref)) {
-            if (isGuardDeclaration(decl)) {
+            if (probe.isTarget(decl)) {
                 result = "guarded";
                 return;
             }
@@ -479,6 +548,9 @@ function guardState(
                     ts.isReturnStatement(p) ||
                     (ts.isArrowFunction(p) && p.body === n));
             if (!executed) return false;
+        }
+        if (ts.isCallExpression(n) && probe.strict && !callResolves(checker, n)) {
+            result = "limit";
         }
         if (ts.isCallExpression(n)) {
             // An export initializer that IS the call (GET = withAuth(handler)) builds the handler; no await applies.
@@ -554,10 +626,41 @@ export function verifyGuardSymbols(rootArg: string): string[] {
     return bad;
 }
 
+/** ENTITLEMENT_SYMBOLS entries that are no longer a top-level function declaration, or whose body no longer throws or returns on a missing entitlement. */
+export function verifyEntitlementSymbols(rootArg: string): string[] {
+    const root = resolve(rootArg);
+    const bad: string[] = [];
+    for (const g of ENTITLEMENT_SYMBOLS) {
+        const file = join(root, g.file);
+        const fn = existsSync(file)
+            ? parseSource(file).statements.find(
+                  (st): st is ts.FunctionDeclaration =>
+                      ts.isFunctionDeclaration(st) && st.name?.text === g.name,
+              )
+            : undefined;
+        let exits = false;
+        if (fn) walkLive(fn, (n) => void (isExit(n as ts.Statement) && (exits = true)));
+        if (!fn || !exits) bad.push(`${g.file}#${g.name}`);
+    }
+    return bad;
+}
+
 function toGuardFields(state: GuardState): GuardFields {
     if (state === "guarded") return { guarded: true };
     if (state === "unguarded") return { guarded: false };
     return { guardUnresolved: true };
+}
+
+function toReach(state: GuardState): Reach {
+    return state === "guarded" ? "reachable" : state === "unguarded" ? "not_reachable" : "limit";
+}
+
+function worst(states: GuardState[]): GuardState {
+    return states.includes("guarded")
+        ? "guarded"
+        : states.includes("limit")
+          ? "limit"
+          : "unguarded";
 }
 
 /** Guard fields of one exported name of `file`; empty when it is not a resolvable function. */
@@ -574,13 +677,17 @@ function guardedExport(program: ts.Program, file: string, name: string): GuardFi
         const fns = functionLikesOf(checker, decl);
         if (fns.length > 0) {
             const states = fns.map((fn) => guardState(checker, fn, new Set([fn]), 0));
-            return toGuardFields(
-                states.includes("guarded")
-                    ? "guarded"
-                    : states.includes("limit")
-                      ? "limit"
-                      : "unguarded",
+            const ent = fns.map((fn) =>
+                guardState(checker, fn, new Set([fn]), 0, ENTITLEMENT_PROBE),
             );
+            const cred = fns.map((fn) =>
+                guardState(checker, fn, new Set([fn]), 0, CREDENTIAL_PROBE),
+            );
+            return {
+                ...toGuardFields(worst(states)),
+                entitlement: toReach(worst(ent)),
+                credential: toReach(worst(cred)),
+            };
         }
     }
     return {};
@@ -597,7 +704,15 @@ function guardedInline(program: ts.Program, file: string, pos: number): GuardFie
         if (done) return;
         const body = functionBody(node);
         if (body && hasUseServerDirective(body.statements) && node.getStart(sf) === pos) {
-            result = toGuardFields(guardState(checker, node, new Set([node]), 0));
+            result = {
+                ...toGuardFields(guardState(checker, node, new Set([node]), 0)),
+                entitlement: toReach(
+                    guardState(checker, node, new Set([node]), 0, ENTITLEMENT_PROBE),
+                ),
+                credential: toReach(
+                    guardState(checker, node, new Set([node]), 0, CREDENTIAL_PROBE),
+                ),
+            };
             done = true;
             return;
         }
@@ -896,6 +1011,8 @@ export function discoverServerActionFiles(rootArg: string): {
                 line: n.line,
                 guarded: n.guarded,
                 guardUnresolved: n.guardUnresolved,
+                entitlement: n.entitlement,
+                credential: n.credential,
             });
         }
         files.push({ file: f.relFile, exportedFunctionNames: names.map((n) => n.name) });
