@@ -27,6 +27,18 @@ it rather than duplicating it: read `auth-system.md` first.
   the same mechanism dev-health-acr uses, so a push to ops's own main never
   silently changes what this gate validates against.
 
+## Absent versus null on the advisory fields
+
+On `action`, `resource_resolver`, `current_state_cache_behavior`,
+`entitlement_requirement`, `disclosure_behavior` and `token_shape`, a field is
+**absent** when code evidence shows it does not apply to the route, and `null`
+when it is undetermined in this pass. Every `null` needs a `gaps` entry that
+begins with `<field>:` and says what was searched. Never write `null` for
+"not applicable", and never infer "absent" from silence. The rule is ops-owned
+(`docs/reference/auth/endpoint-profiles.md` in dev-health-ops, ACP decision
+sheet B10 shape b). The gate that enforces it on every advisory field is a
+separate change; this inventory already satisfies it.
+
 ## Coverage
 
 12 REST surfaces across 8 `route.ts` files under `src/app/api/` (the
