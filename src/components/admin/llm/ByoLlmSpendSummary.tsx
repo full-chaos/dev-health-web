@@ -147,7 +147,11 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
         } else if (result.error) {
             setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
-            setSummary(result.data);
+            setSummary({
+                ...result.data,
+                runs: result.data.runs ?? [],
+                unattributed: result.data.unattributed ?? [],
+            });
         }
         setLoading(false);
     }, [loadSpendAction]);

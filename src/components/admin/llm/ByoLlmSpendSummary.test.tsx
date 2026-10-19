@@ -297,6 +297,15 @@ describe("ByoLlmSpendSummary", () => {
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
     });
 
+    it("treats a response without unattributed rows as empty", async () => {
+        mockLoad.mockResolvedValue({
+            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [] },
+        } as never);
+        renderPanel();
+
+        expect(await screen.findByText("No BYO-LLM spend recorded yet")).toBeInTheDocument();
+    });
+
     it("renders explanation spend as rows when there is no run", async () => {
         mockLoad.mockResolvedValue({
             data: {
