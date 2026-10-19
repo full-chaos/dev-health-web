@@ -415,14 +415,24 @@ const MAX_GUARD_DEPTH = 10;
  * project. A callee that is a parameter, an interface member or has no
  * declaration may run anything, so it cannot support a claim of absence.
  */
-function callResolves(checker: ts.TypeChecker, call: ts.CallExpression): boolean {
-    const decls = resolveDeclarations(checker, call.expression);
+function callResolves(checker: ts.TypeChecker, callee: ts.Expression): boolean {
+    const decls = resolveDeclarations(checker, callee);
     if (decls.length === 0) return false;
     return decls.every((decl) => {
         const sf = decl.getSourceFile();
         if (sf.isDeclarationFile || sf.fileName.includes("/node_modules/")) return true;
         return functionLikesOf(checker, decl).length > 0;
     });
+}
+
+/** The project class a `new` expression constructs; undefined for a function or library constructor. */
+function classOf(checker: ts.TypeChecker, ref: ts.Node): ts.ClassLikeDeclaration | undefined {
+    for (const decl of resolveDeclarations(checker, ref)) {
+        const sf = decl.getSourceFile();
+        if (sf.isDeclarationFile || sf.fileName.includes("/node_modules/")) continue;
+        if (ts.isClassDeclaration(decl) || ts.isClassExpression(decl)) return decl;
+    }
+    return undefined;
 }
 
 function functionLikeOf(decl: ts.Node): ts.Node | undefined {
@@ -516,8 +526,12 @@ function guardState(
             if (inner === "limit") result = "limit";
         }
     };
+    const markLimit = () => {
+        if ((result as GuardState) !== "guarded") result = "limit";
+    };
     const follow = (ref: ts.Node, requireConsumed: ts.CallExpression | null) => {
-        if (requireConsumed && !isConsumed(requireConsumed)) return;
+        // A proof of absence counts every call: an unawaited gate still runs.
+        if (!probe.strict && requireConsumed && !isConsumed(requireConsumed)) return;
         for (const decl of resolveDeclarations(checker, ref)) {
             if (probe.isTarget(decl)) {
                 result = "guarded";
@@ -549,9 +563,39 @@ function guardState(
                     (ts.isArrowFunction(p) && p.body === n));
             if (!executed) return false;
         }
-        if (ts.isCallExpression(n) && probe.strict && !callResolves(checker, n)) {
-            result = "limit";
+        // `new C()` runs C's constructor; a tagged template calls its tag.
+        const callee = ts.isCallExpression(n)
+            ? n.expression
+            : ts.isNewExpression(n)
+              ? n.expression
+              : ts.isTaggedTemplateExpression(n)
+                ? n.tag
+                : undefined;
+        if (ts.isNewExpression(n) || ts.isTaggedTemplateExpression(n)) {
+            const cls = ts.isNewExpression(n) ? classOf(checker, n.expression) : undefined;
+            if (cls) {
+                const ctor = cls.members.find(ts.isConstructorDeclaration);
+                if (ctor) followFns([ctor]);
+                // A field initializer runs on construction and is not walked.
+                if (
+                    probe.strict &&
+                    cls.members.some((m) => ts.isPropertyDeclaration(m) && m.initializer)
+                )
+                    markLimit();
+            } else {
+                follow(callee!, null);
+                if (probe.strict && !callResolves(checker, callee!)) markLimit();
+            }
+        } else if (callee && probe.strict && !callResolves(checker, callee)) {
+            markLimit();
         }
+        // fn.call(...), fn.apply(...), fn.bind(...) run or return fn itself.
+        if (
+            ts.isCallExpression(n) &&
+            ts.isPropertyAccessExpression(n.expression) &&
+            ["call", "apply", "bind"].includes(n.expression.name.text)
+        )
+            follow(n.expression.expression, null);
         if (ts.isCallExpression(n)) {
             // An export initializer that IS the call (GET = withAuth(handler)) builds the handler; no await applies.
             follow(n.expression, n === node ? null : n);

@@ -209,6 +209,31 @@ describe("the call walk's verdicts", () => {
         });
     });
 
+    it("a gate reached by new, a tagged template, .call or an unawaited call is reachable", () => {
+        const got = reachOf({
+            "src/lib/acr/ops.ts": OPS,
+            "src/app/a/actions.ts": [
+                '"use server";',
+                'import { requireAcrEntitlement } from "../../lib/acr/ops";',
+                "class Ctor { constructor() { void requireAcrEntitlement(); } }",
+                "class Field { x = requireAcrEntitlement(); }",
+                "export async function viaNew() { new Ctor(); }",
+                "export async function viaField() { new Field(); }",
+                "export async function viaBind() { await requireAcrEntitlement.call(undefined); }",
+                "export async function viaTag() { const t = (s: TemplateStringsArray) => requireAcrEntitlement(); await t`x`; }",
+                "export async function viaVoid() { void requireAcrEntitlement(); }",
+                "",
+            ].join("\n"),
+        });
+        expect(got).toEqual({
+            viaNew: "reachable",
+            viaField: "limit",
+            viaBind: "reachable",
+            viaTag: "reachable",
+            viaVoid: "reachable",
+        });
+    });
+
     it("a library call is not unresolved and a dead branch is not walked", () => {
         const got = reachOf({
             "src/lib/acr/ops.ts": OPS,
