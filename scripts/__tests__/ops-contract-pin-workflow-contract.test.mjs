@@ -213,6 +213,38 @@ describe("ops-contract pin gate workflow contract", () => {
     const checkoutDiffers = "ops checkout step differs";
     const controls = [
         [
+            "gate block moved into a job the aggregate does not require",
+            () => {
+                const first = "            - name: Read the pinned ops-owned contract commit\n";
+                const lastLine = "              run: bash ci/run_tests.sh auth-profiles-gate\n";
+                const a = real.indexOf(first);
+                const b = real.indexOf(lastLine, a) + lastLine.length;
+                const block = real.slice(a, b);
+                const anchor = "            - name: Run design lint\n";
+                return (real.slice(0, a) + real.slice(b))
+                    .replace(anchor, block + anchor)
+                    .replace(
+                        "    design-lint:\n        name: Design lint\n        needs: [changes]\n        if: needs.changes.outputs.code == 'true'",
+                        "    design-lint:\n        name: Design lint\n        needs: [changes]\n        if: false",
+                    );
+            },
+            "pin-output step missing",
+        ],
+        [
+            "aggregate no longer needs the quality job",
+            () =>
+                mutate(
+                    "needs: [changes, format, quality, build,",
+                    "needs: [changes, format, build,",
+                ),
+            "aggregate",
+        ],
+        [
+            "aggregate no longer checks the quality result",
+            () => mutate("\"${{ needs.quality.result }}\" != 'success' || ", ""),
+            "aggregate",
+        ],
+        [
             "gate step deleted",
             () => mutate(GATE_NAME_LINE, "- name: renamed away"),
             "gate step missing",
