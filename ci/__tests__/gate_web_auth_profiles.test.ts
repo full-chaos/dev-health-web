@@ -457,7 +457,9 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
             });
             it(`${field}: null with a gaps entry starting "${field}:" passes`, () => {
                 expect(
-                    advisoryViolations(field, null, [`${field}: searched src/x.ts; not determined.`]),
+                    advisoryViolations(field, null, [
+                        `${field}: searched src/x.ts; not determined.`,
+                    ]),
                 ).toEqual([]);
             });
             it(`${field}: absent passes`, () => {
@@ -466,12 +468,16 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
         }
 
         it("a gaps entry whose prose merely contains the field name does not excuse the null", () => {
-            expect(advisoryViolations("action", null, ["transaction details were not profiled"])).toHaveLength(1);
+            expect(
+                advisoryViolations("action", null, ["transaction details were not profiled"]),
+            ).toHaveLength(1);
             expect(advisoryViolations("action", null, ["no action was taken"])).toHaveLength(1);
         });
 
         it("a gaps entry for a sibling field with the same prefix does not excuse the null", () => {
-            expect(advisoryViolations("action", null, ["action_scope: not traced"])).toHaveLength(1);
+            expect(advisoryViolations("action", null, ["action_scope: not traced"])).toHaveLength(
+                1,
+            );
         });
 
         it("a non-string gaps entry does not excuse the null", () => {
