@@ -55,10 +55,20 @@ as live gates: each must still call what it delegates to and, for a rejecting
 gate, throw on a condition computed from that call's result. Rule `absent_without_proof` rejects an absent
 field without a `not_reachable` verdict. Rule `reach_contradicts_row` rejects a
 null or absent field whose gate or credential read is reachable, and a recorded
-`entitlement_requirement` on a surface that reaches no gate. `action`,
-`resource_resolver`, `current_state_cache_behavior` and `disclosure_behavior`
+`entitlement_requirement` on a surface that reaches no gate.
+`current_state_cache_behavior` and `resource_resolver` have the same absent
+proof, with their own symbol sets: `CACHE_SYMBOLS` (`next/cache` revalidation
+and `unstable_cache`, React `cache`, a `fetch` with a `cache` or `next` option,
+a `Cache-Control` string) and `RESOLVER_SYMBOLS` (the session and org helpers,
+plus request input: a server action parameter, a route reading its body, query
+or params). Their values are prose the walk cannot derive, so a `null` with its
+`<field>:` gaps entry stays allowed even when the walk reaches a symbol; only
+"absent" needs the proof. `verifyCacheSymbols` and `verifyResolverSymbols` fail
+the gate when a listed name stops resolving. `action` and `disclosure_behavior`
 have no predicate yet: they may not be absent, and stay `null` with a
-`<field>:` gaps entry.
+`<field>:` gaps entry. A gate is verified live by `entitlementGateIsLive`: its
+rejecting `if` must be a top-level statement, outside any `try`, on a condition
+decided only by values derived from the awaited named call.
 
 ## Coverage
 

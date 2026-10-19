@@ -71,6 +71,10 @@ export type RouteRecord = {
     guardUnresolved?: true;
     /** Call-walk verdict for an ENTITLEMENT_SYMBOLS member; undefined: handler not resolved. */
     entitlement?: Reach;
+    /** Call-walk verdict for a cache read or write, a cache directive or a Cache-Control header. */
+    cache?: Reach;
+    /** Call-walk verdict for resolving the target resource: session or org helpers, request input, action parameters. */
+    resolver?: Reach;
     /** Call-walk verdict for a credential read (GUARD_SYMBOLS or an inline reject), unresolved calls = limit. */
     credential?: Reach;
 };
@@ -88,6 +92,10 @@ export type ServerActionRecord = {
     guarded?: boolean;
     guardUnresolved?: true;
     entitlement?: Reach;
+    /** Call-walk verdict for a cache read or write, a cache directive or a Cache-Control header. */
+    cache?: Reach;
+    /** Call-walk verdict for resolving the target resource: session or org helpers, request input, action parameters. */
+    resolver?: Reach;
     /** Call-walk verdict for a credential read (GUARD_SYMBOLS or an inline reject), unresolved calls = limit. */
     credential?: Reach;
 };
@@ -314,6 +322,46 @@ export const ENTITLEMENT_SYMBOLS: readonly {
     },
 ];
 
+// Cache reads/writes and directives. The library names are matched by name and
+// the package they are declared in; verifyCacheSymbols() fails when an upgrade
+// renames one, so the set cannot silently empty.
+export const CACHE_SYMBOLS: readonly {
+    module: string;
+    names: readonly string[];
+    pkgs: readonly string[];
+}[] = [
+    {
+        module: "next/cache",
+        names: ["revalidatePath", "revalidateTag", "updateTag", "refresh", "unstable_cache"],
+        pkgs: ["/node_modules/next/"],
+    },
+    {
+        module: "react",
+        names: ["cache"],
+        pkgs: ["/node_modules/react/", "/node_modules/@types/react/"],
+    },
+];
+
+// The resolvers of the target resource: where the org or the resource a request
+// acts on comes from. Request input (an action parameter, a route reading its
+// body, query or params) is a resolver too; see isRequestInput().
+export const RESOLVER_SYMBOLS: readonly { file: string; name: string }[] = [
+    { file: "src/lib/admin/server/_shared.ts", name: "getSessionContext" },
+    { file: "src/lib/admin/server/_shared.ts", name: "requireSuperuserToken" },
+    { file: "src/lib/admin/server/_shared.ts", name: "getToken" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeaders" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeadersOrThrow" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "apiRequest" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "resolveOrgId" },
+    { file: "src/lib/admin/server/orgs.ts", name: "getCurrentOrg" },
+    { file: "src/lib/auth.ts", name: "auth" },
+    { file: "src/lib/feature-flags/fetchers.ts", name: "resolveOrgId" },
+    { file: "src/lib/areaSignals/improve.ts", name: "resolveOrgId" },
+    { file: "src/lib/areaSignals/ai.ts", name: "resolveOrgId" },
+    { file: "src/lib/areaSignals/diagnose.ts", name: "resolveOrgId" },
+    { file: "src/lib/areaSignals/govern.ts", name: "resolveOrgId" },
+];
+
 // The closed list of inline reject shapes: `if (<condition>) { ...; return|throw ... }`
 // where the condition text is exactly one of these and the branch itself holds
 // a return or throw statement. Matched on the AST, not on text.
@@ -421,11 +469,84 @@ type Probe = {
 };
 const GUARD_PROBE: Probe = { isTarget: isGuardDeclaration, inline: (n) => isInlineReject(n) };
 const CREDENTIAL_PROBE: Probe = { ...GUARD_PROBE, strict: true };
+const CACHE_PROBE: Probe = {
+    isTarget: isCacheDeclaration,
+    inline: (n) => liveContains(n, isCacheDirective),
+    strict: true,
+};
+const RESOLVER_PROBE: Probe = {
+    isTarget: (d) => isDeclarationOf(RESOLVER_SYMBOLS, d),
+    inline: (n) => liveContains(n, isRequestInput),
+    strict: true,
+};
 const ENTITLEMENT_PROBE: Probe = {
     isTarget: (d) => isDeclarationOf(ENTITLEMENT_SYMBOLS, d),
     inline: () => false,
     strict: true,
 };
+
+function isCacheDeclaration(decl: ts.Node): boolean {
+    const name = (decl as ts.NamedDeclaration).name;
+    if (!name || !ts.isIdentifier(name)) return false;
+    const file = decl.getSourceFile().fileName.replace(/\\/g, "/");
+    return CACHE_SYMBOLS.some(
+        (c) => c.names.includes(name.text) && c.pkgs.some((pk) => file.includes(pk)),
+    );
+}
+
+/** Live code holding a node that satisfies `pred`. */
+function liveContains(node: ts.Node, pred: (n: ts.Node) => boolean): boolean {
+    let found = false;
+    walkLive(node, (n) => {
+        if (found) return false;
+        if (pred(n)) {
+            found = true;
+            return false;
+        }
+    });
+    return found;
+}
+
+const CACHE_OPTION_NAMES = new Set(["cache", "next"]);
+
+/** `fetch(url, { cache | next })` or the string "Cache-Control": a cache directive written in place. */
+function isCacheDirective(n: ts.Node): boolean {
+    if (ts.isStringLiteralLike(n)) return /^cache-control$/i.test(n.text);
+    if (!ts.isCallExpression(n)) return false;
+    const callee = n.expression;
+    const isFetch =
+        (ts.isIdentifier(callee) && callee.text === "fetch") ||
+        (ts.isPropertyAccessExpression(callee) && callee.name.text === "fetch");
+    return (
+        isFetch &&
+        n.arguments.some(
+            (a) =>
+                ts.isObjectLiteralExpression(a) &&
+                a.properties.some(
+                    (p) =>
+                        (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) &&
+                        (ts.isIdentifier(p.name) || ts.isStringLiteralLike(p.name)) &&
+                        CACHE_OPTION_NAMES.has(p.name.text),
+                ),
+        )
+    );
+}
+
+const REQUEST_INPUT_NAMES = new Set([
+    "json",
+    "formData",
+    "text",
+    "searchParams",
+    "nextUrl",
+    "url",
+    "params",
+]);
+
+/** A route reading its request body, query or path params. */
+function isRequestInput(n: ts.Node): boolean {
+    if (ts.isPropertyAccessExpression(n)) return REQUEST_INPUT_NAMES.has(n.name.text);
+    return ts.isIdentifier(n) && n.text === "params";
+}
 
 const MAX_GUARD_DEPTH = 10;
 
@@ -588,6 +709,8 @@ type GuardFields = {
     guardUnresolved?: true;
     entitlement?: Reach;
     credential?: Reach;
+    cache?: Reach;
+    resolver?: Reach;
 };
 
 /**
@@ -845,56 +968,222 @@ function calleeName(call: ts.CallExpression): string | undefined {
     return undefined;
 }
 
+const COMPARISONS = new Set([
+    ts.SyntaxKind.EqualsEqualsToken,
+    ts.SyntaxKind.EqualsEqualsEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsEqualsToken,
+    ts.SyntaxKind.LessThanToken,
+    ts.SyntaxKind.LessThanEqualsToken,
+    ts.SyntaxKind.GreaterThanToken,
+    ts.SyntaxKind.GreaterThanEqualsToken,
+]);
+
+const isLiteralOperand = (e: ts.Expression): boolean =>
+    ts.isStringLiteralLike(e) ||
+    ts.isNumericLiteral(e) ||
+    e.kind === ts.SyntaxKind.TrueKeyword ||
+    e.kind === ts.SyntaxKind.FalseKeyword ||
+    e.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isIdentifier(e) && e.text === "undefined");
+
+/** A property / element chain whose root identifier is in `roots`. */
+function rootedIn(e: ts.Expression, roots: Set<string>): boolean {
+    let x: ts.Expression = e;
+    while (
+        ts.isPropertyAccessExpression(x) ||
+        ts.isNonNullExpression(x) ||
+        ts.isParenthesizedExpression(x) ||
+        (ts.isElementAccessExpression(x) && isLiteralOperand(x.argumentExpression))
+    )
+        x = x.expression;
+    return ts.isIdentifier(x) && roots.has(x.text);
+}
+
+/**
+ * A rejecting condition whose truth is decided only by derived values: `!`,
+ * `&&`, `||`, comparisons with literals, and property chains rooted in a
+ * derived identifier. Any call, or an identifier that is not derived, makes it
+ * a condition the entitlement does not control (`Math.random() < 0 && x`).
+ */
+function conditionDecidedBy(e: ts.Expression, derived: Set<string>): boolean {
+    if (ts.isParenthesizedExpression(e)) return conditionDecidedBy(e.expression, derived);
+    if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken)
+        return conditionDecidedBy(e.operand, derived);
+    if (ts.isBinaryExpression(e)) {
+        const op = e.operatorToken.kind;
+        if (op === ts.SyntaxKind.AmpersandAmpersandToken || op === ts.SyntaxKind.BarBarToken)
+            return conditionDecidedBy(e.left, derived) && conditionDecidedBy(e.right, derived);
+        if (COMPARISONS.has(op)) {
+            const side = (x: ts.Expression) => isLiteralOperand(x) || rootedIn(x, derived);
+            return (
+                side(e.left) &&
+                side(e.right) &&
+                (rootedIn(e.left, derived) || rootedIn(e.right, derived))
+            );
+        }
+        return false;
+    }
+    return rootedIn(e, derived);
+}
+
+const callsIn = (n: ts.Node): ts.CallExpression[] => {
+    const out: ts.CallExpression[] = [];
+    const v = (x: ts.Node) => {
+        if (ts.isCallExpression(x)) out.push(x);
+        ts.forEachChild(x, v);
+    };
+    v(n);
+    return out;
+};
+
+const identifiersIn = (n: ts.Node): string[] => {
+    const out: string[] = [];
+    const v = (x: ts.Node) => {
+        if (ts.isIdentifier(x)) out.push(x.text);
+        ts.forEachChild(x, v);
+    };
+    v(n);
+    return out;
+};
+
+/**
+ * A gate is live when its own top-level statements, in order, still do the
+ * work: a delegating gate awaits (or returns) a call to the gate it delegates
+ * to; a rejecting gate awaits a named call, derives values from its result,
+ * and has a top-level `if` that throws, in the same block and outside any
+ * `try`, on a condition decided only by those values. Nothing nested under
+ * another condition or inside a `try` counts, and nothing after an earlier
+ * unconditional exit.
+ */
 function entitlementGateIsLive(
     fn: ts.FunctionDeclaration,
     g: { calls: readonly string[]; rejects: boolean },
 ): boolean {
-    const called = new Set<string>();
+    const body = fn.body;
+    if (!body) return false;
     const derived = new Set<string>();
-    let rejectingIf = false;
-    const callsOf = (n: ts.Node): string[] => {
-        const out: string[] = [];
-        const v = (x: ts.Node) => {
-            if (ts.isCallExpression(x)) {
-                const name = calleeName(x);
-                if (name) out.push(name);
-            }
-            ts.forEachChild(x, v);
-        };
-        v(n);
-        return out;
+    let delegates = false;
+    let rejecting = false;
+    const named = (c: ts.CallExpression) => {
+        const name = calleeName(c);
+        return name !== undefined && g.calls.includes(name);
     };
-    const identifiersOf = (n: ts.Node): string[] => {
-        const out: string[] = [];
-        const v = (x: ts.Node) => {
-            if (ts.isIdentifier(x)) out.push(x.text);
-            ts.forEachChild(x, v);
-        };
-        v(n);
-        return out;
+    const unwrap = (e: ts.Expression | undefined): ts.Expression | undefined => {
+        let x = e;
+        while (x && (ts.isParenthesizedExpression(x) || ts.isAwaitExpression(x))) x = x.expression;
+        return x;
     };
-    walkLive(fn, (n) => {
-        if (ts.isCallExpression(n)) {
-            const name = calleeName(n);
-            if (name) called.add(name);
+    const calledTop = new Set<string>();
+    for (const st of body.statements) {
+        for (const c of callsIn(st)) {
+            const n = calleeName(c);
+            if (n) calledTop.add(n);
         }
-        if (ts.isVariableDeclaration(n) && n.initializer && ts.isIdentifier(n.name)) {
-            const fromRequired =
-                callsOf(n.initializer).some((c) => g.calls.includes(c)) ||
-                identifiersOf(n.initializer).some((id) => derived.has(id));
-            if (fromRequired) derived.add(n.name.text);
+        if (ts.isVariableStatement(st)) {
+            for (const d of st.declarationList.declarations) {
+                if (!ts.isIdentifier(d.name) || !d.initializer) continue;
+                const awaitedNamed =
+                    ts.isAwaitExpression(d.initializer) &&
+                    ((x) => !!x && ts.isCallExpression(x) && named(x))(unwrap(d.initializer));
+                const fromDerived = identifiersIn(d.initializer).some((id) => derived.has(id));
+                if (awaitedNamed || (fromDerived && callsIn(d.initializer).some(named)))
+                    derived.add(d.name.text);
+                else if (fromDerived && rootedIn(d.initializer, derived)) derived.add(d.name.text);
+            }
+        }
+        if (ts.isExpressionStatement(st) || ts.isReturnStatement(st)) {
+            const e = st.expression;
+            const x = unwrap(e);
+            if (
+                e &&
+                (ts.isReturnStatement(st) || ts.isAwaitExpression(e)) &&
+                x &&
+                ts.isCallExpression(x) &&
+                named(x)
+            )
+                delegates = true;
         }
         if (
-            ts.isIfStatement(n) &&
-            constantCondition(n.expression) === undefined &&
-            identifiersOf(n.expression).some((id) => derived.has(id)) &&
-            (ts.isThrowStatement(n.thenStatement) ||
-                (ts.isBlock(n.thenStatement) &&
-                    n.thenStatement.statements.some(ts.isThrowStatement)))
+            ts.isIfStatement(st) &&
+            constantCondition(st.expression) === undefined &&
+            conditionDecidedBy(st.expression, derived) &&
+            (ts.isThrowStatement(st.thenStatement) ||
+                (ts.isBlock(st.thenStatement) &&
+                    st.thenStatement.statements.some(ts.isThrowStatement)))
         )
-            rejectingIf = true;
-    });
-    return g.calls.every((c) => called.has(c)) && (!g.rejects || rejectingIf);
+            rejecting = true;
+        if (isExit(st)) break;
+    }
+    if (!g.calls.every((c) => calledTop.has(c))) return false;
+    return g.rejects ? rejecting && derived.size > 0 : delegates;
+}
+
+/** CACHE_SYMBOLS names that no longer resolve to a declaration inside their package ("module#name"). */
+export function verifyCacheSymbols(rootArg: string): string[] {
+    const root = resolve(rootArg);
+    const options = compilerOptions(root);
+    const bad: string[] = [];
+    for (const c of CACHE_SYMBOLS) {
+        const resolved = ts.resolveModuleName(
+            c.module,
+            join(root, "src/__cache_probe__.ts"),
+            options,
+            ts.sys,
+        ).resolvedModule?.resolvedFileName;
+        let found = new Set<string>();
+        if (resolved) {
+            const program = buildProgram(root, [resolved]);
+            const checker = program.getTypeChecker();
+            const sf = program.getSourceFile(resolved);
+            const moduleSymbol = sf && checker.getSymbolAtLocation(sf);
+            if (moduleSymbol)
+                found = new Set(
+                    checker
+                        .getExportsOfModule(moduleSymbol)
+                        .filter((sym) => {
+                            const real =
+                                sym.flags & ts.SymbolFlags.Alias
+                                    ? checker.getAliasedSymbol(sym)
+                                    : sym;
+                            return (real.declarations ?? []).some((d) =>
+                                c.pkgs.some((pk) =>
+                                    d.getSourceFile().fileName.replace(/\\/g, "/").includes(pk),
+                                ),
+                            );
+                        })
+                        .map((sym) => sym.name),
+                );
+        }
+        for (const name of c.names) if (!found.has(name)) bad.push(`${c.module}#${name}`);
+    }
+    return bad;
+}
+
+/** RESOLVER_SYMBOLS entries that are no longer a top-level function or const ("file#name"). */
+export function verifyResolverSymbols(rootArg: string): string[] {
+    const root = resolve(rootArg);
+    const bad: string[] = [];
+    for (const g of RESOLVER_SYMBOLS) {
+        const file = join(root, g.file);
+        const declared =
+            existsSync(file) &&
+            parseSource(file).statements.some(
+                (st) =>
+                    (ts.isFunctionDeclaration(st) && st.name?.text === g.name) ||
+                    (ts.isVariableStatement(st) &&
+                        st.declarationList.declarations.some(
+                            (d) =>
+                                (ts.isIdentifier(d.name) && d.name.text === g.name) ||
+                                (ts.isObjectBindingPattern(d.name) &&
+                                    d.name.elements.some(
+                                        (el) => ts.isIdentifier(el.name) && el.name.text === g.name,
+                                    )),
+                        )),
+            );
+        if (!declared) bad.push(`${g.file}#${g.name}`);
+    }
+    return bad;
 }
 
 function toGuardFields(state: GuardState): GuardFields {
@@ -915,8 +1204,34 @@ function worst(states: GuardState[]): GuardState {
           : "unguarded";
 }
 
+/** Every call-walk verdict for the function(s) behind one surface. */
+function walkFields(
+    checker: ts.TypeChecker,
+    fns: ts.Node[],
+    kind: "route" | "action",
+): GuardFields {
+    const run = (probe?: Probe): GuardState =>
+        worst(fns.map((fn) => guardState(checker, fn, new Set([fn]), 0, probe)));
+    // A server action's declared parameters are request input naming a resource.
+    const takesInput =
+        kind === "action" &&
+        fns.some((fn) => ((fn as ts.FunctionLikeDeclaration).parameters?.length ?? 0) > 0);
+    return {
+        ...toGuardFields(run()),
+        entitlement: toReach(run(ENTITLEMENT_PROBE)),
+        credential: toReach(run(CREDENTIAL_PROBE)),
+        cache: toReach(run(CACHE_PROBE)),
+        resolver: toReach(takesInput ? "guarded" : run(RESOLVER_PROBE)),
+    };
+}
+
 /** Guard fields of one exported name of `file`; empty when it is not a resolvable function. */
-function guardedExport(program: ts.Program, file: string, name: string): GuardFields {
+function guardedExport(
+    program: ts.Program,
+    file: string,
+    name: string,
+    kind: "route" | "action",
+): GuardFields {
     const sf = program.getSourceFile(file);
     if (!sf) return {};
     const checker = program.getTypeChecker();
@@ -927,20 +1242,7 @@ function guardedExport(program: ts.Program, file: string, name: string): GuardFi
     if (sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
     for (const decl of sym.declarations ?? []) {
         const fns = functionLikesOf(checker, decl);
-        if (fns.length > 0) {
-            const states = fns.map((fn) => guardState(checker, fn, new Set([fn]), 0));
-            const ent = fns.map((fn) =>
-                guardState(checker, fn, new Set([fn]), 0, ENTITLEMENT_PROBE),
-            );
-            const cred = fns.map((fn) =>
-                guardState(checker, fn, new Set([fn]), 0, CREDENTIAL_PROBE),
-            );
-            return {
-                ...toGuardFields(worst(states)),
-                entitlement: toReach(worst(ent)),
-                credential: toReach(worst(cred)),
-            };
-        }
+        if (fns.length > 0) return walkFields(checker, fns, kind);
     }
     return {};
 }
@@ -956,15 +1258,7 @@ function guardedInline(program: ts.Program, file: string, pos: number): GuardFie
         if (done) return;
         const body = functionBody(node);
         if (body && hasUseServerDirective(body.statements) && node.getStart(sf) === pos) {
-            result = {
-                ...toGuardFields(guardState(checker, node, new Set([node]), 0)),
-                entitlement: toReach(
-                    guardState(checker, node, new Set([node]), 0, ENTITLEMENT_PROBE),
-                ),
-                credential: toReach(
-                    guardState(checker, node, new Set([node]), 0, CREDENTIAL_PROBE),
-                ),
-            };
+            result = walkFields(checker, [node], "action");
             done = true;
             return;
         }
@@ -1082,7 +1376,7 @@ function discoverRouteFile(appRoot: string, file: string, program: ts.Program): 
         route: routePath,
         file: relFile,
         line: lineByName.get(m) ?? wildcardLine,
-        ...guardedExport(program, file, m),
+        ...guardedExport(program, file, m, "route"),
     }));
 }
 
@@ -1244,7 +1538,7 @@ export function discoverServerActionFiles(rootArg: string): {
             names = exported.map((name) => ({
                 name,
                 line: lineByName.get(name) ?? wildcardLine,
-                ...guardedExport(program, f.file, name),
+                ...guardedExport(program, f.file, name, "action"),
             }));
             // An unresolvable `export *` could export actions: demand a row.
             if (unresolvedWildcard) names.push({ name: "*", line: wildcardLine });
@@ -1265,6 +1559,8 @@ export function discoverServerActionFiles(rootArg: string): {
                 guardUnresolved: n.guardUnresolved,
                 entitlement: n.entitlement,
                 credential: n.credential,
+                cache: n.cache,
+                resolver: n.resolver,
             });
         }
         files.push({ file: f.relFile, exportedFunctionNames: names.map((n) => n.name) });

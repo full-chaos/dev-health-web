@@ -158,12 +158,7 @@ describe("absent needs a call-walk proof", () => {
     });
 
     it("rejects absent on every advisory field that has no predicate", () => {
-        for (const field of [
-            "action",
-            "resource_resolver",
-            "current_state_cache_behavior",
-            "disclosure_behavior",
-        ]) {
+        for (const field of ["action", "disclosure_behavior"]) {
             const v = gate(row({}, [field]), { entitlement: "reachable", credential: "reachable" });
             expect(
                 v.map((x) => x.rule),

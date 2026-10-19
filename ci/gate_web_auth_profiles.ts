@@ -118,6 +118,8 @@ import {
     isDemonstrablyRejecting,
     verifyGuardSymbols,
     verifyEntitlementSymbols,
+    verifyCacheSymbols,
+    verifyResolverSymbols,
     type Reach,
     type RouteRecord,
     type ServerActionRecord,
@@ -175,7 +177,8 @@ export type Violation = {
         | "guard_symbol_unverified"
         | "absent_without_proof"
         | "reach_contradicts_row"
-        | "entitlement_symbol_unverified";
+        | "entitlement_symbol_unverified"
+        | "probe_symbol_unverified";
     id?: string;
     detail: string;
 };
@@ -233,6 +236,8 @@ export interface GateInputs {
     unverifiedGuardSymbols?: string[];
     /** ENTITLEMENT_SYMBOLS entries that are missing or no longer exit (verifyEntitlementSymbols). */
     unverifiedEntitlementSymbols?: string[];
+    /** CACHE_SYMBOLS and RESOLVER_SYMBOLS entries that no longer resolve (verifyCacheSymbols, verifyResolverSymbols). */
+    unverifiedProbeSymbols?: string[];
     discoveredRoutes: RouteRecord[];
     discoveredActions: ServerActionRecord[];
     doc: unknown;
@@ -476,6 +481,12 @@ export function runGate(input: GateInputs): Violation[] {
             detail: `guard function ${name} is missing or its body no longer rejects on a missing session, so surfaces that call it are not proven guarded`,
         });
     }
+    for (const name of input.unverifiedProbeSymbols ?? []) {
+        violations.push({
+            rule: "probe_symbol_unverified",
+            detail: `${name} no longer resolves, so a call walk that does not reach it proves nothing for cache or resource_resolver`,
+        });
+    }
     for (const name of input.unverifiedEntitlementSymbols ?? []) {
         violations.push({
             rule: "entitlement_symbol_unverified",
@@ -484,7 +495,10 @@ export function runGate(input: GateInputs): Violation[] {
     }
     // Call-walk verdicts per surface: the only evidence an advisory field may
     // be absent. A surface with no verdict (handler not resolved) proves nothing.
-    const reachById = new Map<string, { entitlement?: Reach; credential?: Reach }>();
+    const reachById = new Map<
+        string,
+        { entitlement?: Reach; credential?: Reach; cache?: Reach; resolver?: Reach }
+    >();
     for (const r of discoveredRoutes) reachById.set(`${r.method} ${r.route} [dev-health-web]`, r);
     for (const a of discoveredActions) reachById.set(a.id, a);
     const unresolvedGuard = new Set<string>();
@@ -628,13 +642,16 @@ export function runGate(input: GateInputs): Violation[] {
         }
 
         // Absent needs a proof. entitlement_requirement and token_shape have a
-        // call-walk predicate; the other advisory fields have none yet, so a
-        // row may not leave them absent.
+        // call-walk predicate (cache and resolver need only the absent proof);
+        // action and disclosure_behavior have none yet, so a row may not leave
+        // them absent.
         {
             const reach = reachById.get(row.id);
             const predicate: Record<string, Reach | undefined> = {
                 entitlement_requirement: reach?.entitlement,
                 token_shape: reach?.credential,
+                current_state_cache_behavior: reach?.cache,
+                resource_resolver: reach?.resolver,
             };
             for (const field of ADVISORY_FIELDS) {
                 const absent = !(field in row) || isEmptyValue(row[field]);
@@ -649,7 +666,13 @@ export function runGate(input: GateInputs): Violation[] {
                             : `${field} is absent but the call walk says ${verdict ?? "unresolved"}, not not_reachable; absent needs that proof`,
                     });
                 }
-                if (unset && verdict === "reachable") {
+                // cache and resolver values are prose the walk cannot derive: null
+                // (undetermined, with its gaps entry) stays allowed when reachable.
+                if (
+                    unset &&
+                    verdict === "reachable" &&
+                    (field === "entitlement_requirement" || field === "token_shape")
+                ) {
                     violations.push({
                         rule: "reach_contradicts_row",
                         id: row.id,
@@ -910,6 +933,7 @@ function main() {
     const violations = runGate({
         unverifiedGuardSymbols: verifyGuardSymbols(root),
         unverifiedEntitlementSymbols: verifyEntitlementSymbols(root),
+        unverifiedProbeSymbols: [...verifyCacheSymbols(root), ...verifyResolverSymbols(root)],
         discoveredRoutes,
         discoveredActions,
         doc,
