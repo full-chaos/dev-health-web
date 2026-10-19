@@ -301,7 +301,7 @@
             },
             "classification": "protected",
             "public_rationale": null,
-            "accepted_credential_classes": ["auth_js_browser_session", "acr_device_flow_code"],
+            "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
                 "description": "Route itself only enforces Origin==expectedOrigin + IP/user-code rate limits before dispatch (no session check at this layer). Both branches (action=\"preview\"|\"approve\") call previewDeviceAuthorization/approveDeviceAuthorization, which internally call auth()+sessionOrError (401 if absent) and EXPLICITLY REJECT an impersonated session (rawSession.user.real_org_id !== session.orgId) before issuing a credential -- a positive pattern worth copying platform-wide.",
                 "anchor": {
@@ -311,7 +311,7 @@
                 }
             },
             "token_shape": {
-                "token_type": "auth_js_browser_session + acr_device_flow_code (user_code, body param)",
+                "token_type": "auth_js_browser_session (the body also names a device user_code; it is a resource reference, not a credential)",
                 "issuer": null,
                 "audience": null,
                 "algorithm": null
@@ -1358,7 +1358,7 @@
             "tenant_requirement": "org_scoped",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
             "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": "canonical-incident-ingestion (via isCanonicalIncidentIngestionEnabled)",
+            "entitlement_requirement": "canonical_incident_ingestion",
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "resource_resolver: searched the source from src/lib/admin/server/canonicalIncidentIngestion.ts:30 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined."
@@ -1413,13 +1413,12 @@
             "tenant_requirement": "org_scoped",
             "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/integrations\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
             "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": null,
+            "entitlement_requirement": "canonical_incident_ingestion",
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "This action's own call to getSessionContext() is at src/lib/admin/server/credentials.ts:28, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
                 "action: searched the source from src/lib/admin/server/credentials.ts:21 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/credentials.ts:21 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/credentials.ts:21 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); the text names requirePagerDutyCreationEntitlement; the feature key was not recorded and reachability through shared helpers was not traced; not determined."
+                "resource_resolver: searched the source from src/lib/admin/server/credentials.ts:21 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4023,13 +4022,12 @@
             "tenant_requirement": "org_scoped",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
             "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": null,
+            "entitlement_requirement": "canonical_incident_ingestion",
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "This action's own call to getSessionContext() is at src/lib/admin/server/pagerduty.ts:116, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
                 "action: searched the source from src/lib/admin/server/pagerduty.ts:108 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/pagerduty.ts:108 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/pagerduty.ts:108 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); the text names requirePagerDutyCreationEntitlement; the feature key was not recorded and reachability through shared helpers was not traced; not determined."
+                "resource_resolver: searched the source from src/lib/admin/server/pagerduty.ts:108 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4081,13 +4079,12 @@
             "tenant_requirement": "org_scoped",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
             "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": null,
+            "entitlement_requirement": "canonical_incident_ingestion",
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "This action's own call to getSessionContext() is at src/lib/admin/server/pagerduty.ts:93, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
                 "action: searched the source from src/lib/admin/server/pagerduty.ts:84 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/pagerduty.ts:84 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/pagerduty.ts:84 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); the text names requirePagerDutyCreationEntitlement; the feature key was not recorded and reachability through shared helpers was not traced; not determined."
+                "resource_resolver: searched the source from src/lib/admin/server/pagerduty.ts:84 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4371,13 +4368,12 @@
             "tenant_requirement": "org_scoped",
             "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
             "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": null,
+            "entitlement_requirement": "canonical_incident_ingestion",
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "This action's own call to getSessionContext() is at src/lib/admin/server/pagerduty.ts:24, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
                 "action: searched the source from src/lib/admin/server/pagerduty.ts:21 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/pagerduty.ts:21 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/pagerduty.ts:21 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); the text names requirePagerDutyCreationEntitlement; the feature key was not recorded and reachability through shared helpers was not traced; not determined."
+                "resource_resolver: searched the source from src/lib/admin/server/pagerduty.ts:21 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -6111,13 +6107,12 @@
             "tenant_requirement": "org_scoped",
             "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/sync\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
             "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": null,
+            "entitlement_requirement": "canonical_incident_ingestion",
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "This action's own call to getSessionContext() is at src/lib/admin/server/sync.ts:61, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
                 "action: searched the source from src/lib/admin/server/sync.ts:58 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/sync.ts:58 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/sync.ts:58 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); the text names requirePagerDutyCreationEntitlement; the feature key was not recorded and reachability through shared helpers was not traced; not determined."
+                "resource_resolver: searched the source from src/lib/admin/server/sync.ts:58 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -6169,13 +6164,12 @@
             "tenant_requirement": "org_scoped",
             "current_state_cache_behavior": "Calls revalidatePath(\"/org/admin/sync\") after a successful mutation; no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
             "impersonation_policy": "subject_to_impersonation_override",
-            "entitlement_requirement": null,
+            "entitlement_requirement": "canonical_incident_ingestion",
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
                 "This action's own call to getSessionContext() is at src/lib/admin/server/sync.ts:40, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap.",
                 "action: searched the source from src/lib/admin/server/sync.ts:36 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/sync.ts:36 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/sync.ts:36 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); the text names requirePagerDutyCreationEntitlement; the feature key was not recorded and reachability through shared helpers was not traced; not determined."
+                "resource_resolver: searched the source from src/lib/admin/server/sync.ts:36 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
