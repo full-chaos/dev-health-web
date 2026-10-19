@@ -212,6 +212,36 @@ describe("ops-contract pin gate workflow contract", () => {
             "gate step has disallowed key: if",
         ],
         [
+            "gate inputs pointed at a moving checkout",
+            () =>
+                mutate(
+                    "WEB_CREDENTIAL_CLASSES: ${{ github.workspace }}/.ops-contract/",
+                    "WEB_CREDENTIAL_CLASSES: ${{ github.workspace }}/dev-health-ops-parity/",
+                ),
+            "WEB_CREDENTIAL_CLASSES",
+        ],
+        [
+            "checkout ref floating, pin expression left in the step name",
+            () =>
+                mutate(
+                    "- name: Checkout pinned ops-owned auth contract",
+                    '- name: "ref: ${{ steps.ops-contract-pin.outputs.sha }}"',
+                ).replace(
+                    "ref: ${{ steps.ops-contract-pin.outputs.sha }}\n                  path: .ops-contract",
+                    "ref: main\n                  path: .ops-contract",
+                ),
+            "ops checkout ref is not bound",
+        ],
+        [
+            "gate step bash shadowed through PATH",
+            () =>
+                mutate(
+                    "              env:\n                  WEB_ENDPOINT_PROFILE_SCHEMA",
+                    "              env:\n                  PATH: ${{ github.workspace }}/.github/noop-bin\n                  WEB_ENDPOINT_PROFILE_SCHEMA",
+                ),
+            "PATH",
+        ],
+        [
             "pin-shape step swallows failure",
             () =>
                 mutate(
