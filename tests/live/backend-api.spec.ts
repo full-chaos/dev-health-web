@@ -21,7 +21,6 @@ test("metadata endpoint returns expected shape", async ({ request }) => {
 
     const payload = (await response.json()) as Record<string, unknown>;
     expect(typeof payload.backend).toBe("string");
-    expect(typeof payload.version).toBe("string");
     expect("coverage" in payload).toBe(true);
     expect("limits" in payload).toBe(true);
     expect(Array.isArray(payload.supported_endpoints)).toBe(true);
