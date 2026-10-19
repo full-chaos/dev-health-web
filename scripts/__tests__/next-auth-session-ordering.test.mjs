@@ -54,7 +54,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe.sequential("next-auth session request ordering", () => {
+describe("next-auth session request ordering", () => {
     it("does not dispatch a session POST until the earlier session GET response body is parsed", async () => {
         useBrowserRuntime();
         const getBody = deferred();

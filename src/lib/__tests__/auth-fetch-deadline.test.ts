@@ -51,6 +51,10 @@ import Credentials from "next-auth/providers/credentials";
 import { overrideDeadlinesForTests } from "@/lib/serverDeadline";
 import { applyBackendValidationMemo, resetValidationMemoForTests } from "@/lib/authValidationMemo";
 
+const providerConfigs = vi
+    .mocked(Credentials)
+    .mock.calls.map((c) => c[0] as { authorize?: unknown });
+
 type Token = Record<string, unknown>;
 type JwtCallback = (params: { token: Token; user?: unknown; account?: unknown }) => Promise<Token>;
 const jwt = (): JwtCallback =>
@@ -230,12 +234,8 @@ describe("auth jwt callback with a backend that never answers", () => {
 
     it("a login that never answers settles at the deadline and logs the line (CHAOS-9112)", async () => {
         vi.stubGlobal("fetch", stallingFetch());
-        const configs = vi
-            .mocked(Credentials)
-            .mock.calls.map((c) => c[0] as { authorize?: unknown });
-        const authorize = configs.find((c) => typeof c.authorize === "function")?.authorize as (
-            credentials: Record<string, string>,
-        ) => Promise<unknown>;
+        const authorize = providerConfigs.find((c) => typeof c.authorize === "function")
+            ?.authorize as (credentials: Record<string, string>) => Promise<unknown>;
         expect(authorize).toBeTypeOf("function");
         const state = track(authorize({ email: "a@b.test", password: "x" }));
         await sleep(400);
