@@ -57,13 +57,14 @@ export function formatSigned(value?: number | null, suffix = ""): string {
 
 /**
  * One fixed color per attribution bucket, shared by the Impact donut and the attribution badge
- * (`AIAttributionBadge`: its dot uses the same chart colors). Human and Unknown use the muted ink.
+ * (`AIAttributionBadge`: its dot uses the same chart colors). Human, Bot and Unknown use the muted ink.
  */
 const BUCKET_COLOR: Record<string, { colorIndex?: number; muted?: boolean }> = {
     ai_assisted: { colorIndex: 1 },
     ai_review: { colorIndex: 2 },
     agent_created: { colorIndex: 6 },
     human: { muted: true },
+    bot: { muted: true },
     unknown: { muted: true },
 };
 

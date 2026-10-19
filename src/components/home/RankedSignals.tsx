@@ -14,6 +14,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import { reworkCoverageNote } from "@/lib/metrics/coverageNote";
+import { signalPriorText } from "@/lib/metrics/priorText";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { noDataText } from "@/lib/metrics/metricDisplay";
 import { isRepoLinkNoValueState, repoLinkTileNote } from "@/lib/metrics/repoLinkNote";
@@ -86,6 +87,12 @@ export function RankedSignals({
         return delta && isRepoLinkNoValueState(delta.repo_link_state) ? delta : null;
     };
 
+    const priorOf = (signal: CockpitSignal) =>
+        signalPriorText(
+            signal,
+            deltas.find((delta) => delta.metric === signal.metric),
+        );
+
     const coverageNoteOf = (signal: CockpitSignal) =>
         reworkCoverageNote(deltas.find((delta) => delta.metric === signal.metric));
 
@@ -143,10 +150,8 @@ export function RankedSignals({
             className: "whitespace-nowrap px-3 py-3.25 tabular-nums",
             render: (signal) => (
                 <span data-testid="signal-previous">
-                    {!noValueOf(signal) &&
-                    signal.prior_value != null &&
-                    signal.prior_value !== "" ? (
-                        signal.prior_value
+                    {!noValueOf(signal) && priorOf(signal) !== null ? (
+                        priorOf(signal)
                     ) : (
                         <span className="text-(--ink-muted)">{NOT_REPORTED}</span>
                     )}

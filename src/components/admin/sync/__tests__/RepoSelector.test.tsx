@@ -331,4 +331,50 @@ describe("RepoSelector", () => {
             expect(mockListRepos).toHaveBeenLastCalledWith("cred-123", "otherorg");
         });
     });
+
+    describe("GitHub owner scope", () => {
+        const listing = (extra: Record<string, unknown>, repos = MOCK_REPOS) =>
+            ({
+                data: {
+                    provider: "github",
+                    owner: "chrisgeo",
+                    repos,
+                    total: repos.length,
+                    ...extra,
+                },
+            }) as never;
+
+        it("lists a personal owner's repositories without an org-only message", async () => {
+            mockListRepos.mockResolvedValue(listing({ owner_type: "user" }));
+            renderSelector({ owner: "chrisgeo" });
+            await waitFor(() => expect(screen.getByText("repo-alpha")).toBeInTheDocument());
+            expect(screen.queryByText(/organization/i)).not.toBeInTheDocument();
+        });
+
+        it("explains installation scope when the listing is installation scoped", async () => {
+            mockListRepos.mockResolvedValue(listing({ installation_scoped: true }));
+            renderSelector();
+            await waitFor(() =>
+                expect(
+                    screen.getByText(
+                        "Public repositories always show. Private repositories show only when the GitHub App installation has access to them. To see more private repositories, change the installation's repository access in GitHub.",
+                    ),
+                ).toBeInTheDocument(),
+            );
+        });
+
+        it("shows no scope message for an old response without the new fields", async () => {
+            mockListRepos.mockResolvedValue(listing({}));
+            renderSelector();
+            await waitFor(() => expect(screen.getByText("repo-alpha")).toBeInTheDocument());
+            expect(screen.queryByText(/GitHub App installation/i)).not.toBeInTheDocument();
+        });
+
+        it("shows an owner-not-found state instead of an empty list", async () => {
+            mockListRepos.mockResolvedValue(listing({ diagnostic: "owner_not_found" }, []));
+            renderSelector({ owner: "ghost" });
+            await waitFor(() => expect(screen.getByText(/was not found/i)).toBeInTheDocument());
+            expect(screen.queryByText(/No repositories found/i)).not.toBeInTheDocument();
+        });
+    });
 });

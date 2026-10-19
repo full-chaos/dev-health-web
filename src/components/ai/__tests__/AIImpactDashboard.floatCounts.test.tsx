@@ -49,6 +49,7 @@ function summary(counts: {
     agentCreatedPrs: number;
     aiPrsTotal: number;
     agentTotal: number;
+    teamTotals?: number[];
 }) {
     return {
         data: {
@@ -80,7 +81,11 @@ function summary(counts: {
                 repoBreakdown: [
                     { scopeId: "r1", scopeLabel: "web-app", aiPrsTotal: counts.aiPrsTotal },
                 ],
-                teamBreakdown: [],
+                teamBreakdown: (counts.teamTotals ?? []).map((aiPrsTotal, index) => ({
+                    scopeId: `t${index}`,
+                    scopeLabel: `team-${index}`,
+                    aiPrsTotal,
+                })),
                 missingStates: [],
             },
         },
@@ -133,5 +138,25 @@ describe("AIImpactDashboard share-weighted counts (CHAOS-9605)", () => {
         expect(screen.getByText(/8 of 1200 PRs lean AI-assisted/)).toBeInTheDocument();
         expect(screen.getByText(/6 PRs/)).toBeInTheDocument();
         expect(screen.queryByText(/\.0\b/)).not.toBeInTheDocument();
+    });
+
+    it("shows <0.1 for a nonzero Teams count under 0.05 (CHAOS-9914)", () => {
+        mockUseAIImpactSummary.mockReturnValue(
+            summary({
+                totalPrs: 200,
+                aiAssistedPrs: 8,
+                agentCreatedPrs: 3,
+                aiPrsTotal: 6,
+                agentTotal: 3,
+                teamTotals: [168.4, 1.5, 0.03, 0],
+            }),
+        );
+        render(<AIImpactDashboard filter={filter} />);
+        const rows = screen.getAllByTestId("ai-impact-rollup-row");
+        const text = rows.map((row) => row.textContent ?? "");
+        expect(text.some((t) => t.startsWith("team-0168.4 PRs"))).toBe(true);
+        expect(text.some((t) => t.startsWith("team-11.5 PRs"))).toBe(true);
+        expect(text.some((t) => t.startsWith("team-2<0.1 PRs"))).toBe(true);
+        expect(text.some((t) => t.startsWith("team-30 PRs"))).toBe(true);
     });
 });

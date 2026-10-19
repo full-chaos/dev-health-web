@@ -322,8 +322,8 @@ export const formatQuality = (value: number): string =>
 export const capitalizeFirst = (text: string): string =>
     text.charAt(0).toUpperCase() + text.slice(1);
 
-/** The unit of an Investment mix value: the mix is requested with measure COUNT. */
-export const WORK_UNIT_COUNT_UNIT = "work units";
+/** The unit of an Investment mix value: the mix is requested with measure ISSUE_SIZE. */
+export const ISSUE_SIZE_UNIT = "issue size";
 
 /**
  * A work unit's change set (lines changed) as a plain fact of the unit, for evidence and context

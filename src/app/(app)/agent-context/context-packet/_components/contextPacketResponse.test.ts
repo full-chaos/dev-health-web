@@ -8,10 +8,60 @@ describe("context packet response validation", () => {
         expect(isExpandedEvidence(Object.values(SAMPLE_EXPANDED_EVIDENCE)[0])).toBe(true);
     });
 
+    it("accepts a packet item that carries cause_event", () => {
+        const [first, ...rest] = SAMPLE_CONTEXT_PACKET.items;
+        const packet = {
+            ...SAMPLE_CONTEXT_PACKET,
+            items: [
+                {
+                    ...first,
+                    category: "cause",
+                    cause_event: {
+                        entity_type: "deployment",
+                        entity_id: "d-1",
+                        occurred_at: "2026-09-12T09:30:00Z",
+                    },
+                },
+                ...rest,
+            ],
+        };
+        expect(isContextPacket(packet)).toBe(true);
+    });
+
     it("rejects malformed display-critical packet and evidence payloads", () => {
         expect(isContextPacket({ ...SAMPLE_CONTEXT_PACKET, items: [{}] })).toBe(false);
         expect(
             isExpandedEvidence({ ...Object.values(SAMPLE_EXPANDED_EVIDENCE)[0], evidence: {} }),
+        ).toBe(false);
+    });
+
+    it("accepts the unknown watermark status and last_event_at, and still rejects a status outside the vocabulary", () => {
+        const withWatermarks = (watermarks: unknown) => ({
+            ...SAMPLE_CONTEXT_PACKET,
+            freshness: { ...SAMPLE_CONTEXT_PACKET.freshness, watermarks },
+        });
+        expect(
+            isContextPacket(
+                withWatermarks([
+                    {
+                        source: "git_commits.v1",
+                        last_ingested_at: "2026-07-08T14:00:00Z",
+                        last_event_at: "2026-07-01T09:00:00Z",
+                        status: "unknown",
+                    },
+                    {
+                        source: "file_hotspots.v1",
+                        last_event_at: "2026-07-01T09:00:00Z",
+                        status: "unknown",
+                    },
+                ]),
+            ),
+        ).toBe(true);
+        expect(isContextPacket(withWatermarks([{ source: "x", status: "not-a-status" }]))).toBe(
+            false,
+        );
+        expect(
+            isContextPacket(withWatermarks([{ source: "x", status: "unknown", last_event_at: 5 }])),
         ).toBe(false);
     });
 

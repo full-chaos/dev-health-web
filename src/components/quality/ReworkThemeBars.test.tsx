@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ReworkThemeAllocation } from "@/lib/types";
@@ -100,5 +100,106 @@ describe("ReworkThemeBars small-bar recipe", () => {
         const fill = within(small).getByTestId("rework-theme-bar");
         expect(fill.style.minWidth).toBe("2px");
         expect(fill).toHaveAttribute("aria-hidden", "true");
+    });
+});
+
+describe("ReworkThemeBars measure (CHAOS-9624)", () => {
+    const sized = (over: Partial<ReworkThemeAllocation>) =>
+        row({
+            measure: "ISSUE_SIZE",
+            allocation: 30,
+            denominator: 120,
+            allocation_pct: 99,
+            sizing_coverage: 0.8,
+            unsized_unit_count: 4,
+            work_unit_count: 20,
+            ...over,
+        });
+
+    it("uses the denominator as the share base", () => {
+        render(<ReworkThemeBars rows={[sized({})]} />);
+        expect(screen.getByText("25%")).toBeInTheDocument();
+        expect(screen.queryByText("99%")).not.toBeInTheDocument();
+    });
+
+    it("keeps the served percent when there is no denominator", () => {
+        render(<ReworkThemeBars rows={[row({ allocation_pct: 40 })]} />);
+        expect(screen.getByText("40%")).toBeInTheDocument();
+        expect(screen.queryByTestId("theme-measure-note")).not.toBeInTheDocument();
+    });
+
+    it("ISSUE_SIZE with coverage at or above 50% shows the measure only", () => {
+        render(<ReworkThemeBars rows={[sized({})]} />);
+        expect(screen.getByTestId("theme-measure")).toHaveTextContent("Share of issue size.");
+        expect(screen.queryByTestId("theme-sizing-note")).not.toBeInTheDocument();
+    });
+
+    it("ISSUE_SIZE below 50% says mostly unsized", () => {
+        render(
+            <ReworkThemeBars
+                rows={[
+                    sized({ sizing_coverage: 0.25, unsized_unit_count: 15, work_unit_count: 20 }),
+                ]}
+            />,
+        );
+        expect(screen.getByTestId("theme-sizing-note")).toHaveTextContent(
+            "Mostly unsized: 5 of 20 work units have an issue size. The other 15 have no size, so each counts as 1 work unit.",
+        );
+    });
+
+    it("says it counts for one unsized unit", () => {
+        render(
+            <ReworkThemeBars
+                rows={[sized({ sizing_coverage: 0.4, unsized_unit_count: 3, work_unit_count: 5 })]}
+            />,
+        );
+        expect(screen.getByTestId("theme-sizing-note")).toHaveTextContent(
+            "Mostly unsized: 2 of 5 work units have an issue size. The other 3 have no size, so each counts as 1 work unit.",
+        );
+        cleanup();
+        render(
+            <ReworkThemeBars
+                rows={[sized({ sizing_coverage: 0.25, unsized_unit_count: 3, work_unit_count: 4 })]}
+            />,
+        );
+        expect(screen.getByTestId("theme-sizing-note")).toHaveTextContent("The other 3");
+    });
+
+    it("ISSUE_SIZE with null coverage says not measured, never 0", () => {
+        render(
+            <ReworkThemeBars
+                rows={[
+                    sized({
+                        sizing_coverage: null,
+                        unsized_unit_count: null,
+                        work_unit_count: null,
+                    }),
+                ]}
+            />,
+        );
+        expect(screen.getByTestId("theme-sizing-note")).toHaveTextContent(
+            "The share of work units with an issue size was not reported for this window.",
+        );
+        expect(screen.queryByText("0%")).not.toBeInTheDocument();
+    });
+
+    it("WORK_UNITS shows work units and no sizing note", () => {
+        render(
+            <ReworkThemeBars
+                rows={[
+                    row({
+                        measure: "WORK_UNITS",
+                        allocation: 2,
+                        denominator: 8,
+                        sizing_coverage: null,
+                        unsized_unit_count: null,
+                        work_unit_count: null,
+                    }),
+                ]}
+            />,
+        );
+        expect(screen.getByTestId("theme-measure")).toHaveTextContent("Share of work units.");
+        expect(screen.queryByTestId("theme-sizing-note")).not.toBeInTheDocument();
+        expect(screen.getByText("25%")).toBeInTheDocument();
     });
 });

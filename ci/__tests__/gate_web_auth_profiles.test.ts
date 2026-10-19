@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -11,6 +11,7 @@ import {
     type GateInputs,
 } from "../gate_web_auth_profiles";
 import {
+    verifyGuardSymbols,
     discoverRoutes,
     discoverServerActionFiles,
     type RouteRecord,
@@ -18,6 +19,9 @@ import {
 } from "../discover_web_routes";
 
 const WEB_ROOT = resolve(__dirname, "../..");
+
+// Discovery builds a TypeScript program per call; under coverage that exceeds 5 s.
+vi.setConfig({ testTimeout: 60_000 });
 
 // SELF-CONTAINED schema fixtures, deliberately not the real ops-owned files.
 //
@@ -85,6 +89,16 @@ const FIXTURE_CREDENTIAL_CLASS_SCHEMA = {
  * baseline itself failed, every "seed X, expect X" test downstream would be
  * meaningless -- it is asserted clean first.
  */
+// Advisory fields set, except entitlement_requirement: the fixture surfaces
+// carry a not_reachable call-walk verdict, the only proof that lets it stay absent.
+const FIXTURE_ADVISORY = {
+    action: "fixture action",
+    resource_resolver: "fixture resolver",
+    current_state_cache_behavior: "fixture cache",
+    disclosure_behavior: "fixture disclosure",
+    token_shape: { token_type: "auth_js_browser_session" },
+};
+
 function baseline(): {
     doc: EndpointProfileDoc;
     routes: RouteRecord[];
@@ -105,6 +119,7 @@ function baseline(): {
             description: "getSessionContext() rejects on no session.",
             anchor: { path: "fixture/example_route.ts", line: 1, line_end: 1 },
         },
+        ...FIXTURE_ADVISORY,
         gaps: [],
     };
     const actionRow: EndpointProfileRow = {
@@ -121,6 +136,7 @@ function baseline(): {
             description: "getSessionContext() rejects on no session.",
             anchor: { path: "fixture/actions.ts", line: 2, line_end: 2 },
         },
+        ...FIXTURE_ADVISORY,
         gaps: [],
     };
     const doc: EndpointProfileDoc = {
@@ -131,7 +147,13 @@ function baseline(): {
         rows: [restRow, actionRow],
     };
     const routes: RouteRecord[] = [
-        { method: "GET", route: "/api/example", file: "src/app/api/example/route.ts", line: 3 },
+        {
+            method: "GET",
+            route: "/api/example",
+            file: "src/app/api/example/route.ts",
+            line: 3,
+            entitlement: "not_reachable",
+        },
     ];
     const actions: ServerActionRecord[] = [
         {
@@ -139,6 +161,7 @@ function baseline(): {
             file: "fixture/actions.ts",
             exportName: "doThing",
             line: 5,
+            entitlement: "not_reachable",
         },
     ];
     const sources: Record<string, string> = {
@@ -420,6 +443,69 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
         ];
         const violations = runGate(makeInputs(b));
         expect(violations.filter((v) => v.rule === "unstated_null")).toEqual([]);
+    });
+
+    describe("unstated_null: advisory fields (absent = not applicable, null = undetermined)", () => {
+        const advisory = [
+            "action",
+            "resource_resolver",
+            "current_state_cache_behavior",
+            "entitlement_requirement",
+            "disclosure_behavior",
+            "token_shape",
+        ] as const;
+        const advisoryViolations = (
+            field: string,
+            value: unknown,
+            gaps: unknown[],
+            present = true,
+        ) => {
+            const b = baseline();
+            const row = b.doc.rows[1] as Record<string, unknown>;
+            for (const f of advisory) delete row[f];
+            if (present) row[field] = value;
+            row.gaps = gaps;
+            return runGate(makeInputs(b)).filter(
+                (v) => v.rule === "unstated_null" && v.detail.includes(field),
+            );
+        };
+
+        for (const field of advisory) {
+            it(`${field}: null with no gaps entry fails`, () => {
+                expect(advisoryViolations(field, null, [])).toHaveLength(1);
+            });
+            it(`${field}: null with a gaps entry starting "${field}:" passes`, () => {
+                expect(
+                    advisoryViolations(field, null, [
+                        `${field}: searched src/x.ts; not determined.`,
+                    ]),
+                ).toEqual([]);
+            });
+            it(`${field}: absent passes`, () => {
+                expect(advisoryViolations(field, undefined, [], false)).toEqual([]);
+            });
+        }
+
+        it("a gaps entry whose prose merely contains the field name does not excuse the null", () => {
+            expect(
+                advisoryViolations("action", null, ["transaction details were not profiled"]),
+            ).toHaveLength(1);
+            expect(advisoryViolations("action", null, ["no action was taken"])).toHaveLength(1);
+        });
+
+        it("a gaps entry for a sibling field with the same prefix does not excuse the null", () => {
+            expect(advisoryViolations("action", null, ["action_scope: not traced"])).toHaveLength(
+                1,
+            );
+        });
+
+        it("a non-string gaps entry does not excuse the null", () => {
+            expect(advisoryViolations("action", null, [42])).toHaveLength(1);
+        });
+
+        it("a gaps entry for another advisory field does not excuse this one", () => {
+            expect(advisoryViolations("token_shape", null, ["action: not traced"])).toHaveLength(1);
+        });
     });
 
     it(
@@ -752,6 +838,743 @@ describe("discover_web_routes: every exported action on a line is discovered", (
     });
 });
 
+describe("CHAOS-4792: AST discovery recognises the legal forms the text matcher missed", () => {
+    function tree(files: Record<string, string>): string {
+        const dir = mkdtempSync(join(tmpdir(), "web-ast-"));
+        for (const [rel, text] of Object.entries(files)) {
+            const full = join(dir, rel);
+            mkdirSync(join(full, ".."), { recursive: true });
+            writeFileSync(full, text);
+        }
+        return dir;
+    }
+    function routesOf(files: Record<string, string>) {
+        const dir = tree(files);
+        try {
+            return discoverRoutes(dir).map((r) => `${r.method} ${r.route}`);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+    function actionsOf(files: Record<string, string>) {
+        const dir = tree(files);
+        try {
+            return discoverServerActionFiles(dir).actions.map((a) => a.id.replace(/^.*#/, ""));
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+
+    it("class 1: route.js and actions.js are scanned (.js/.jsx/.mjs)", () => {
+        expect(
+            routesOf({ "src/app/api/a/route.js": "export async function GET() { return null }\n" }),
+        ).toEqual(["GET /api/a"]);
+        expect(
+            routesOf({ "src/app/api/b/route.jsx": "export const POST = async () => null;\n" }),
+        ).toEqual(["POST /api/b"]);
+        expect(
+            actionsOf({
+                "src/app/actions.js": '"use server";\nexport async function jsAction() {}\n',
+            }),
+        ).toEqual(["jsAction"]);
+    });
+
+    it("class 2: `export const GET = async () => ...` is a handler (also non-async const, aliases, re-exports)", () => {
+        expect(
+            routesOf({
+                "src/app/api/c/route.ts": "export const GET = async () => new Response('x');\n",
+            }),
+        ).toEqual(["GET /api/c"]);
+        expect(
+            routesOf({
+                "src/app/api/d/route.ts":
+                    "const h = () => new Response('x');\nexport { h as DELETE, h as PUT };\n",
+            }).sort(),
+        ).toEqual(["DELETE /api/d", "PUT /api/d"]);
+        expect(routesOf({ "src/app/api/e/route.ts": "export { PATCH } from './impl';\n" })).toEqual(
+            ["PATCH /api/e"],
+        );
+        expect(
+            routesOf({
+                "src/app/api/f/route.ts": "export {\n  h as\n  HEAD,\n};\nconst h = () => null;\n",
+            }),
+        ).toEqual(["HEAD /api/f"]);
+    });
+
+    it("`export * from` follows a relative module: each served method is its own record", () => {
+        expect(
+            routesOf({
+                "src/app/api/g/route.ts": "export * from './impl';\n",
+                "src/app/api/g/impl.ts":
+                    "export const GET = async () => null;\nexport async function POST() {}\nexport const helper = 1;\n",
+            }).sort(),
+        ).toEqual(["GET /api/g", "POST /api/g"]);
+    });
+
+    it("`export *` follows a chain of any depth", () => {
+        const files: Record<string, string> = {
+            "src/app/api/deep/route.ts": "export * from './m1';\n",
+        };
+        for (let i = 1; i < 12; i++)
+            files[`src/app/api/deep/m${i}.ts`] = `export * from './m${i + 1}';\n`;
+        files["src/app/api/deep/m12.ts"] = "export const GET = async () => null;\n";
+        expect(routesOf(files)).toEqual(["GET /api/deep"]);
+    });
+
+    it("`export *` follows a tsconfig path alias to the real handlers", () => {
+        expect(
+            routesOf({
+                "tsconfig.json": JSON.stringify({
+                    compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+                }),
+                "src/app/api/alias/route.ts": "export * from '@/handlers';\n",
+                "src/handlers.ts": "export const GET = async () => null;\n",
+            }),
+        ).toEqual(["GET /api/alias"]);
+    });
+
+    it("`export *` from a cycle terminates", () => {
+        expect(
+            routesOf({
+                "src/app/api/cyc/route.ts": "export * from './a';\nexport const PUT = 1;\n",
+                "src/app/api/cyc/a.ts": "export * from './b';\n",
+                "src/app/api/cyc/b.ts": "export * from './a';\nexport const GET = 1;\n",
+            }).sort(),
+        ).toEqual(["GET /api/cyc", "PUT /api/cyc"]);
+    });
+
+    it("`export *` from an unresolvable module demands a row per method, never one row", () => {
+        expect(
+            routesOf({ "src/app/api/g2/route.ts": "export * from 'some-package';\n" }).sort(),
+        ).toEqual(
+            ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"].map((m) => `${m} /api/g2`),
+        );
+    });
+
+    it("route files with a dotted pageExtension prefix are routes (route.page.ts, route.demo.tsx)", () => {
+        expect(
+            routesOf({
+                "src/app/api/p/route.page.ts": "export async function GET() {}\n",
+                "src/app/api/q/route.demo.tsx": "export const POST = async () => null;\n",
+                "src/app/api/r/route.test.ts": "export async function GET() {}\n",
+            }).sort(),
+        ).toEqual(["GET /api/p", "POST /api/q"]);
+    });
+
+    it("route.mjs / route.cjs are not Next routes (pageExtensions: tsx ts jsx js)", () => {
+        expect(
+            routesOf({
+                "src/app/api/m/route.mjs": "export async function GET() {}\n",
+                "src/app/api/n/route.cjs": "exports.GET = () => null;\n",
+            }),
+        ).toEqual([]);
+    });
+
+    it('an escaped directive string ("use\\x20server") is the directive', () => {
+        expect(
+            actionsOf({
+                "src/esc.ts": '"use\\x20server";\nexport async function escapedAction() {}\n',
+            }),
+        ).toEqual(["escapedAction"]);
+    });
+
+    it("export default is not an HTTP method handler", () => {
+        expect(
+            routesOf({ "src/app/api/h/route.ts": "export default function GET() {}\n" }),
+        ).toEqual([]);
+    });
+
+    it("class 3: the directive is recognised without a semicolon, in either quote style", () => {
+        expect(
+            actionsOf({ "src/a.ts": "'use server'\nexport async function noSemi() {}\n" }),
+        ).toEqual(["noSemi"]);
+        expect(actionsOf({ "src/b.ts": '"use server"\nexport async function dq() {}\n' })).toEqual([
+            "dq",
+        ]);
+        expect(
+            actionsOf({
+                "src/c.ts":
+                    "'use client-not-this';\n'use server';\nexport async function afterOther() {}\n",
+            }),
+        ).toEqual(["afterOther"]);
+    });
+
+    it("a directive split across lines or after code is judged by the AST, not by line shape", () => {
+        expect(
+            actionsOf({
+                "src/d.ts": "\n\n  'use server'\n\n;export async function spaced() {}\n",
+            }),
+        ).toEqual(["spaced"]);
+        // not a directive: it follows a statement
+        expect(
+            actionsOf({
+                "src/e.ts": "const x = 1;\n'use server';\nexport async function notAction() {}\n",
+            }),
+        ).toEqual([]);
+        // a string that merely contains the words is not a directive
+        expect(
+            actionsOf({ "src/f.ts": "'not use server';\nexport async function nope() {}\n" }),
+        ).toEqual([]);
+    });
+
+    it("file-level: every exported value is an action (const arrow, alias, re-export, default); types are not", () => {
+        expect(
+            actionsOf({
+                "src/g.ts":
+                    "'use server'\n" +
+                    "export const arrow = async () => 1;\n" +
+                    "async function inner() {}\n" +
+                    "export { inner as aliased };\n" +
+                    "export { remote } from './other';\n" +
+                    "export default async function () {}\n" +
+                    "export type T = string;\nexport interface I {}\n",
+            }).sort(),
+        ).toEqual(["aliased", "arrow", "default", "remote"]);
+    });
+
+    it("function-level: an inline `use server` function is an action, in a file with no file-level directive", () => {
+        const names = actionsOf({
+            "src/app/page.tsx":
+                "export default function Page() {\n" +
+                "  async function save() {\n    'use server'\n    return 1;\n  }\n" +
+                '  const other = async () => {\n    "use server";\n  };\n' +
+                "  async function notAnAction() { return 2; }\n" +
+                "  return null;\n}\n",
+        });
+        expect(names.sort()).toEqual(["other", "save"]);
+    });
+});
+
+describe("CHAOS-4792 class 4: a row cannot choose which checks apply to it", () => {
+    it("a server_action id relabelled `rest` fails and cannot suppress the action checks", () => {
+        const b = baseline();
+        const row = b.doc.rows.find((r) => r.id.startsWith("server_action:"))!;
+        row.surface_kind = "rest";
+        row.method = null;
+        row.route = null;
+        row.primary_validator = null;
+        row.gaps = [];
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("surface_kind_mismatch");
+        // discovery-keyed check still fires: protected action with null validator and no gap
+        expect(violations.map((v) => v.rule)).toContain("unstated_null");
+    });
+
+    it("a rest id relabelled server_action fails", () => {
+        const b = baseline();
+        b.doc.rows[0].surface_kind = "server_action";
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("surface_kind_mismatch");
+    });
+
+    it("a graphql_* label on a discovered id also fails (no exemption by label)", () => {
+        const b = baseline();
+        b.doc.rows[1].surface_kind = "graphql_field";
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("surface_kind_mismatch");
+    });
+});
+
+describe("CHAOS-4780: discovery reports whether a handler is guarded", () => {
+    // The guard functions are identified by SYMBOL (declaring file + name), so
+    // every tree below carries the real declarations at their real paths.
+    const REAL_GUARD_FILE =
+        "export async function getSessionContext() {\n" +
+        "  const session = await auth();\n" +
+        "  if (!session?.access_token) { throw new Error('Unauthorized'); }\n" +
+        "  return { token: session.access_token };\n}\n" +
+        "export async function getToken() { const c = await getSessionContext(); return c.token; }\n" +
+        "export async function requireSuperuserToken() {\n" +
+        "  const session = await auth();\n" +
+        "  if (!session?.access_token) { throw new Error('Unauthorized'); }\n" +
+        "  return session.access_token;\n}\n" +
+        "declare function auth(): Promise<{ access_token?: string } | null>;\n";
+    const SHARED = {
+        "src/lib/admin/server/_shared.ts": REAL_GUARD_FILE,
+        "tsconfig.json": JSON.stringify({
+            compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+        }),
+    };
+    function tree(files: Record<string, string>): string {
+        const dir = mkdtempSync(join(tmpdir(), "web-guard-"));
+        for (const [rel, text] of Object.entries({ ...SHARED, ...files })) {
+            const full = join(dir, rel);
+            mkdirSync(join(full, ".."), { recursive: true });
+            writeFileSync(full, text);
+        }
+        return dir;
+    }
+    function routeFields(files: Record<string, string>) {
+        const dir = tree(files);
+        try {
+            const r = discoverRoutes(dir)[0];
+            return { guarded: r.guarded, guardUnresolved: r.guardUnresolved };
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+    function guardOfRoute(files: Record<string, string>): boolean | undefined {
+        return routeFields(files).guarded;
+    }
+    function guardsOfActions(files: Record<string, string>): Record<string, boolean | undefined> {
+        const dir = tree(files);
+        try {
+            const { actions } = discoverServerActionFiles(dir);
+            return Object.fromEntries(
+                actions
+                    .filter((a) => !a.file.includes("_shared"))
+                    .map((a) => [a.exportName, a.guarded]),
+            );
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+
+    it("a route calling a guard function is guarded; one without is not", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/a/route.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export async function GET() { await getSessionContext(); return null; }\n",
+            }),
+        ).toBe(true);
+        expect(
+            guardOfRoute({
+                "src/app/api/b/route.ts": "export async function GET() { return null; }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("a local helper that shares a guard's name is NOT a guard", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/n/route.ts":
+                    "async function getSessionContext() { return null; }\n" +
+                    "export async function GET() { await getSessionContext(); return null; }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/n2/route.ts":
+                    "import { getToken } from './other';\n" +
+                    "export async function GET() { await getToken(); return null; }\n",
+                "src/app/api/n2/other.ts": "export async function getToken() { return null; }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("an aliased import of a real guard IS a guard", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/al/route.ts":
+                    "import { getToken as fetchTheToken } from '@/lib/admin/server/_shared';\n" +
+                    "export async function GET() { await fetchTheToken(); return null; }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("a guard reached through a wrapper the handler is passed to counts", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/w/route.ts":
+                    "import { withAuth } from './withAuth';\n" +
+                    "export const GET = withAuth(async () => new Response('x'));\n",
+                "src/app/api/w/withAuth.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export function withAuth(h: () => Promise<Response>) { return async () => { await getSessionContext(); return h(); }; }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("the guard may sit in a function the handler calls, in another file, through a path alias", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/c/route.ts":
+                    "import { load } from '@/lib/load';\nexport const GET = async () => load();\n",
+                "src/lib/load.ts":
+                    "import { inner } from './inner';\nexport async function load() { return inner(); }\n",
+                "src/lib/inner.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\nexport async function inner() { await getToken(); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("a call cycle with no guard terminates and reports unguarded", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/d/route.ts":
+                    "import { a } from './a';\nexport async function GET() { return a(); }\n",
+                "src/app/api/d/a.ts":
+                    "import { b } from './b';\nexport function a() { return b(); }\n",
+                "src/app/api/d/b.ts":
+                    "import { a } from './a';\nexport function b() { return a(); }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("a call chain longer than the depth bound is unresolved, never guarded", () => {
+        const files: Record<string, string> = {
+            "src/app/api/deep/route.ts":
+                "import { f0 } from './f0';\nexport async function GET() { return f0(); }\n",
+        };
+        for (let i = 0; i < 14; i++)
+            files[`src/app/api/deep/f${i}.ts`] =
+                `import { f${i + 1} } from './f${i + 1}';\nexport function f${i}() { return f${i + 1}(); }\n`;
+        files["src/app/api/deep/f14.ts"] =
+            "import { getToken } from '@/lib/admin/server/_shared';\nexport async function f14() { await getToken(); }\n";
+        expect(routeFields(files)).toEqual({ guarded: undefined, guardUnresolved: true });
+    });
+
+    it("the closed inline reject shapes count; a header-only use of the session does not", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/e/route.ts":
+                    "export async function GET() { if (!session?.access_token) { return null; } return 1; }\n",
+            }),
+        ).toBe(true);
+        expect(
+            guardOfRoute({
+                "src/app/api/f/route.ts":
+                    "export async function GET() { const h = {}; if (session?.access_token) { h.a = 1; } return h; }\n",
+            }),
+        ).toBe(false);
+        // the rejecting branch only logs; the `return` after it is not part of the branch
+        expect(
+            guardOfRoute({
+                "src/app/api/f2/route.ts":
+                    "export async function GET() { if (!session?.access_token) { console.log('no session'); } return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("a function defined in the handler but never called or passed is not executed", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/u/route.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export async function GET() { async function neverCalled() { await getSessionContext(); } return new Response('x'); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/u2/route.ts":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export async function GET() { async function run() { await getSessionContext(); } await run(); return new Response('x'); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("a handler passed by reference to a wrapper, and a value alias of a guard, count", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/r/route.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "import { withAuth } from './withAuth';\n" +
+                    "async function handler() { await getToken(); return new Response('x'); }\n" +
+                    "export const GET = withAuth(handler);\n",
+                "src/app/api/r/withAuth.ts":
+                    "export function withAuth(h: () => Promise<Response>) { return h; }\n",
+            }),
+        ).toBe(true);
+        expect(
+            guardOfRoute({
+                "src/app/api/v/route.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "const check = getToken;\n" +
+                    "export async function GET() { await check(); return new Response('x'); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("verifyGuardSymbols passes for real guards and fails for a hollowed-out one", () => {
+        const dir = tree({});
+        try {
+            // fixture declares only three of the symbols; the rest are reported missing
+            const missing = verifyGuardSymbols(dir);
+            expect(missing.some((m) => m.endsWith("#getSessionContext"))).toBe(false);
+            expect(missing.some((m) => m.endsWith("#getToken"))).toBe(false);
+            expect(missing.some((m) => m.endsWith("#getAuthHeaders"))).toBe(true);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+        const hollow = tree({
+            "src/lib/admin/server/_shared.ts":
+                "export async function getSessionContext() { return { token: 'dummy' }; }\n" +
+                "export async function getToken() { return 'dummy'; }\n" +
+                "export async function requireSuperuserToken() { return 'dummy'; }\n",
+        });
+        try {
+            const bad = verifyGuardSymbols(hollow);
+            expect(bad.some((m) => m.endsWith("#getSessionContext"))).toBe(true);
+            expect(bad.some((m) => m.endsWith("#getToken"))).toBe(true);
+        } finally {
+            rmSync(hollow, { recursive: true, force: true });
+        }
+    });
+
+    it("a guard call whose promise is neither awaited nor returned protects nothing", () => {
+        const head = "import { getSessionContext } from '@/lib/admin/server/_shared';\n";
+        expect(
+            guardOfRoute({
+                "src/app/api/ig1/route.ts":
+                    head +
+                    "export async function GET() { getSessionContext(); return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/ig2/route.ts":
+                    head +
+                    "export async function GET() { void getSessionContext(); return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/ig3/route.ts":
+                    head +
+                    "export async function GET() { await getSessionContext(); return new Response('x'); }\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("code that can never run does not count: after a return, or in an if (false) arm", () => {
+        const head = "import { getSessionContext } from '@/lib/admin/server/_shared';\n";
+        expect(
+            guardOfRoute({
+                "src/app/api/dc1/route.ts":
+                    head +
+                    "export async function GET() { return new Response('secret'); await getSessionContext(); }\n",
+            }),
+        ).toBe(false);
+        expect(
+            guardOfRoute({
+                "src/app/api/dc2/route.ts":
+                    head +
+                    "export async function GET() { if (false) { await getSessionContext(); } return new Response('secret'); }\n",
+            }),
+        ).toBe(false);
+    });
+
+    it("`export const GET = handler` resolves the identifier to the handler's body", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/id/route.ts":
+                    "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "async function handler() { await getToken(); return new Response('x'); }\n" +
+                    "export const GET = handler;\n",
+            }),
+        ).toBe(true);
+    });
+
+    it("two inline actions on one line each get their own guard state", () => {
+        expect(
+            guardsOfActions({
+                "src/app/page.tsx":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export default function P() { async function guardedAction() { 'use server'; await getSessionContext(); } async function openAction() { 'use server'; return 1; } return null; }\n",
+            }),
+        ).toEqual({ guardedAction: true, openAction: false });
+    });
+
+    it("a relative root gives the same guard verdicts as an absolute one", () => {
+        const dir = tree({
+            "src/app/api/rel/route.ts":
+                "import { getToken } from '@/lib/admin/server/_shared';\n" +
+                "export async function GET() { await getToken(); return new Response('x'); }\n",
+        });
+        const cwd = process.cwd();
+        try {
+            process.chdir(dir);
+            expect(verifyGuardSymbols(".").filter((m) => m.endsWith("#getToken"))).toEqual([]);
+            expect(discoverRoutes(".")[0].guarded).toBe(true);
+            expect(discoverServerActionFiles(".").actions).toEqual([]);
+        } finally {
+            process.chdir(cwd);
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it("verifyGuardSymbols rejects hollow guards whose reject is dead, nested or conditional", () => {
+        const hollow = tree({
+            "src/lib/admin/server/_shared.ts":
+                // reject only in an uncalled nested function
+                "export async function getSessionContext() { async function never() { const s = await auth(); if (!s?.access_token) { throw new Error('x'); } } return { token: 'dummy' }; }\n" +
+                // guard call after an unconditional return
+                "export async function getToken() { return 'dummy'; await getSessionContext(); }\n" +
+                // guard call in an if (false) arm
+                "export async function requireSuperuserToken() { if (false) { await getToken(); } return 'dummy'; }\n" +
+                "declare function auth(): Promise<{ access_token?: string } | null>;\n",
+        });
+        try {
+            const bad = verifyGuardSymbols(hollow);
+            for (const name of ["getSessionContext", "getToken", "requireSuperuserToken"])
+                expect(bad.some((m) => m.endsWith("#" + name))).toBe(true);
+        } finally {
+            rmSync(hollow, { recursive: true, force: true });
+        }
+    });
+
+    it("server actions: file-level and inline actions report their own guard state", () => {
+        expect(
+            guardsOfActions({
+                "src/actions.ts":
+                    "'use server'\nimport { getToken } from '@/lib/admin/server/_shared';\n" +
+                    "export async function guardedAction() { await getToken(); }\nexport async function openAction() { return 1; }\n",
+                "src/app/page.tsx":
+                    "import { getSessionContext } from '@/lib/admin/server/_shared';\n" +
+                    "export default function P() {\n  async function inlineOpen() {\n    'use server'\n    return 1;\n  }\n  async function inlineGuarded() {\n    'use server'\n    await getSessionContext();\n  }\n  return null;\n}\n",
+            }),
+        ).toEqual({
+            guardedAction: true,
+            openAction: false,
+            inlineOpen: false,
+            inlineGuarded: true,
+        });
+    });
+
+    it("a handler that cannot be resolved to a function makes no claim", () => {
+        expect(
+            guardOfRoute({
+                "src/app/api/g/route.ts": "export const { GET } = handlers;\n",
+            }),
+        ).toBeUndefined();
+    });
+});
+
+describe("CHAOS-4780: a row's protection claim must match what discovery found", () => {
+    function guardedBaseline(guarded: boolean) {
+        const b = baseline();
+        b.routes[0].guarded = guarded;
+        b.actions[0].guarded = guarded;
+        return b;
+    }
+
+    it("accepts rows that agree with discovery", () => {
+        expect(runGate(makeInputs(guardedBaseline(true)))).toEqual([]);
+    });
+
+    it("direction 1: a guarded surface relabelled public fails", () => {
+        const b = guardedBaseline(true);
+        b.doc.rows[0].classification = "public";
+        b.doc.rows[0].public_rationale = "health-style endpoint";
+        const violations = runGate(makeInputs(b));
+        expect(violations.map((v) => v.rule)).toContain("claim_contradicts_source");
+    });
+
+    it("a guarded surface with primary_validator: null and no gaps fails", () => {
+        const b = guardedBaseline(true);
+        b.doc.rows[0].primary_validator = null;
+        b.doc.rows[0].gaps = [];
+        const violations = runGate(makeInputs(b));
+        expect(
+            violations.filter((v) => v.rule === "claim_contradicts_source").map((v) => v.id),
+        ).toEqual([b.doc.rows[0].id]);
+    });
+
+    it("direction 2: a protected row on a surface with no guard found fails unless gaps discloses it", () => {
+        const b = guardedBaseline(false);
+        expect(runGate(makeInputs(b)).map((v) => v.rule)).toContain("claim_contradicts_source");
+        const disclosed = guardedBaseline(false);
+        disclosed.doc.rows[0].gaps = [
+            "primary_validator: no rejecting guard in the handler; proxy.ts gates this path.",
+        ];
+        disclosed.doc.rows[1].gaps = ["No rejecting guard: primary_validator does not reject."];
+        expect(
+            runGate(makeInputs(disclosed)).filter((v) => v.rule === "claim_contradicts_source"),
+        ).toEqual([]);
+    });
+
+    it("a gaps entry that merely contains the word guard does not disclose a missing guard", () => {
+        const b = guardedBaseline(false);
+        b.doc.rows[0].gaps = ["Guard uses the normal request timeout."];
+        expect(
+            runGate(makeInputs(b)).filter(
+                (v) => v.rule === "claim_contradicts_source" && v.id === b.doc.rows[0].id,
+            ),
+        ).toHaveLength(1);
+    });
+
+    it("an unverified guard symbol fails the gate", () => {
+        const b = guardedBaseline(true);
+        const v = runGate(makeInputs(b, { unverifiedGuardSymbols: ["src/x.ts#getToken"] }));
+        expect(v.map((x) => x.rule)).toContain("guard_symbol_unverified");
+    });
+
+    it("a surface whose guard walk hit its bound fails closed", () => {
+        const b = baseline();
+        b.routes[0].guardUnresolved = true;
+        expect(runGate(makeInputs(b)).map((v) => v.rule)).toContain("guard_unresolved");
+    });
+
+    it("a surface whose guard state is unknown is not reconciled", () => {
+        const b = baseline();
+        b.doc.rows[0].classification = "public";
+        b.doc.rows[0].public_rationale = "x";
+        expect(runGate(makeInputs(b)).filter((v) => v.rule === "claim_contradicts_source")).toEqual(
+            [],
+        );
+    });
+});
+
+describe("gate_web_auth_profiles: a row that accepts two credential classes must name a selector (CHAOS-10199)", () => {
+    // Mirrors the ops rule in endpoint-profile.schema.json ($defs.endpointProfile.allOf):
+    // 2+ accepted classes requires class_disambiguator. The pinned ops schema
+    // carries it only after the next pin bump, so the gate mechanism is
+    // proven here on a fixture schema and the committed rows are checked directly.
+    const TWO_CLASS_RULE_SCHEMA = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        properties: {
+            rows: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        accepted_credential_classes: { type: "array" },
+                        class_disambiguator: { type: "object" },
+                    },
+                    allOf: [
+                        {
+                            if: {
+                                properties: {
+                                    accepted_credential_classes: { type: "array", minItems: 2 },
+                                },
+                                required: ["accepted_credential_classes"],
+                            },
+                            then: { required: ["class_disambiguator"] },
+                        },
+                    ],
+                },
+            },
+        },
+    } as const;
+
+    it("a two-class row without a selector fails full schema validation", () => {
+        const b = baseline();
+        const doc = structuredClone(b.doc) as EndpointProfileDoc;
+        (doc.rows[0] as Record<string, unknown>).accepted_credential_classes = [
+            "auth_js_browser_session",
+            "acr_device_flow_code",
+        ];
+        const violations = runGate(makeInputs(b, { doc, schemaDocument: TWO_CLASS_RULE_SCHEMA }));
+        expect(
+            violations.some(
+                (v) => v.rule === "schema_violation" && v.detail.includes("class_disambiguator"),
+            ),
+        ).toBe(true);
+    });
+
+    it("every committed web row accepts at most one credential class (web carries no selector or marker)", () => {
+        const doc = JSON.parse(
+            readFileSync(resolve(WEB_ROOT, "contracts/auth/v1/endpoint-profiles.web.json"), "utf8"),
+        ) as EndpointProfileDoc;
+        const offenders = doc.rows
+            .filter((row) => row.accepted_credential_classes.length >= 2)
+            .map((row) => row.id);
+        expect(offenders).toEqual([]);
+    });
+});
+
 describe("gate_web_auth_profiles: real repo state", () => {
     it("the committed endpoint-profiles.web.json currently has zero violations against live discovery", () => {
         const doc = JSON.parse(
@@ -760,6 +1583,7 @@ describe("gate_web_auth_profiles: real repo state", () => {
         const routes = discoverRoutes(WEB_ROOT);
         const { actions } = discoverServerActionFiles(WEB_ROOT);
         const violations = runGate({
+            unverifiedGuardSymbols: verifyGuardSymbols(WEB_ROOT),
             discoveredRoutes: routes,
             discoveredActions: actions,
             doc,
@@ -785,5 +1609,5 @@ describe("gate_web_auth_profiles: real repo state", () => {
             },
         });
         expect(violations).toEqual([]);
-    });
+    }, 60_000);
 });

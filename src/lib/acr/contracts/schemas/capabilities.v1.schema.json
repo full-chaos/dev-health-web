@@ -47,12 +47,14 @@
           "context_for_task",
           "source_evidence",
           "investigate_question",
+          "investigate_with_interpretation",
           "investigation_result",
           "read_facts",
           "record_episode",
           "data_catalog",
           "find_subjects",
           "run_operation",
+          "graphql_query",
           "read_relationships"
         ]
       },
@@ -94,7 +96,8 @@
         },
         "requests_per_minute": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "The context request class's rate per minute. It does not describe the capabilities handshake's own budget (ACR_CAPABILITIES_REQUESTS_PER_WINDOW), the evidence, episode or data classes."
         }
       }
     },

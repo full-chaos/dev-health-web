@@ -6,6 +6,8 @@ export interface ACRClientCredentialMetadataV1 {
     org_id: string;
     repository_scopes: string[];
     /**
+     * context:admin is retired: it is accepted here so a v1 credential that carried it stays valid, but it is never issued and no stored credential can carry it. Removal rides the next major version.
+     *
      * @minItems 1
      */
     scopes: [
@@ -134,12 +136,14 @@ export interface ACRCapabilitiesV1 {
         | "context_for_task"
         | "source_evidence"
         | "investigate_question"
+        | "investigate_with_interpretation"
         | "investigation_result"
         | "read_facts"
         | "record_episode"
         | "data_catalog"
         | "find_subjects"
         | "run_operation"
+        | "graphql_query"
         | "read_relationships"
     )[];
     entitlements: {
@@ -149,6 +153,9 @@ export interface ACRCapabilitiesV1 {
         max_items: number;
         max_output_tokens: number;
         max_serialized_bytes: number;
+        /**
+         * The context request class's rate per minute. It does not describe the capabilities handshake's own budget (ACR_CAPABILITIES_REQUESTS_PER_WINDOW), the evidence, episode or data classes.
+         */
         requests_per_minute: number;
     };
     generated_at: string;
@@ -163,7 +170,7 @@ export interface ACRContextFabricCommonShapesV1 {
     [k: string]: unknown | undefined;
 }
 
-export interface ACRContextFabricInvestigationRequestV1 {
+export type ACRContextFabricInvestigationRequestV1 = {
     schema_version: "context_fabric_investigation_request.v1";
     request_id: string;
     question: string;
@@ -3944,11 +3951,658 @@ export interface ACRContextFabricInvestigationRequestV1 {
               RequestedHandle,
               RequestedHandle,
           ];
+    /**
+     * An interpretation the caller ran on its own model. When present the service runs no interpretation call: output is validated exactly as a model output is, and resolution, authorization, retrieval and answer assembly run unchanged. model_output_version, prompt_version and system_sha256 name the contract the caller ran. All three are required: a value that is absent or does not equal the service's own is refused with status 409 and the current values.
+     */
+    supplied_interpretation?: {
+        /**
+         * The model output object, at most 32768 bytes serialized.
+         */
+        output: {
+            [k: string]: unknown | undefined;
+        };
+        model_output_version: string;
+        prompt_version: string;
+        system_sha256: string;
+        client_model?: string;
+    };
+    /**
+     * Who writes the answer. Absent or server: the service's own model writes it. client: the service runs everything but its synthesis call and returns, beside the stored result, the synthesis input for the caller's model to write the answer from. Without supplied_synthesis nothing the caller writes is sent back or stored.
+     */
+    synthesis_mode?: "server" | "client";
+    /**
+     * The answer draft the caller wrote on its own model from the synthesis input of an earlier answer to the same question. Requires synthesis_mode client and a supplied_interpretation. The service runs the turn again, checks that the rebuilt synthesis input is the one the draft was written from, validates the draft exactly as it validates its own model's draft, and makes no model call. An input that changed is refused with the new synthesis input.
+     */
+    supplied_synthesis?: {
+        /**
+         * The model output object of the synthesize_answer prompt, at most 262144 bytes serialized.
+         */
+        output: {
+            [k: string]: unknown | undefined;
+        };
+        model_output_version: string;
+        prompt_version: string;
+        system_sha256: string;
+        input_sha256: string;
+        client_model?: string;
+    };
     requested_scope?: RequestedScope;
     time_context: TimeContext;
     options: InvestigationOptions;
     consumer: ConsumerInfo;
-}
+};
+
+/**
+ * The create-investigation response body: the context_fabric_investigation_result.v1 fields plus an optional synthesis_input. Generated from the result schema: every property, required entry and rule of the result is carried unchanged.
+ */
+export type ACRContextFabricInvestigationResponseV1 = {
+    schema_version: "context_fabric_investigation_result.v1";
+    result_id: string;
+    request_id: string;
+    generated_at: string;
+    status: "complete" | "partial" | "degraded" | "clarification_required" | "no_match";
+    question: string;
+    interpretation: InterpretedQuestion;
+    subject_resolution: SubjectResolution;
+    answer_plan?: AnswerPlan;
+    cohort?: Cohort;
+    direct_judgment: string;
+    current_state: string;
+    /**
+     * @maxItems 50
+     */
+    strongest_pressures: string[];
+    /**
+     * @maxItems 50
+     */
+    drivers: DriverJudgment[];
+    /**
+     * @maxItems 250
+     */
+    remaining_work: Finding[];
+    /**
+     * @maxItems 250
+     */
+    readiness_gaps: Finding[];
+    /**
+     * @maxItems 250
+     */
+    paths: RelationshipPath[];
+    /**
+     * @maxItems 250
+     */
+    conflicts: Finding[];
+    /**
+     * @maxItems 100
+     */
+    limitations: string[];
+    /**
+     * Model-authored limitations the engine dropped to fit a service-authored disclosure inside the limitations cap (CHAOS-3746; the disclosure may be retrieval degradation, a historical-axis statement, a commit retraction, or a clarification override). Absent or zero when nothing was displaced. It cannot be inferred from limitations itself: a displaced list and a list that had room are the same length and both end with the disclosure.
+     */
+    limitations_displaced?: number;
+    /**
+     * @maxItems 500
+     */
+    evidence_ref_ids: string[];
+    /**
+     * @maxItems 250
+     */
+    claimed_facts: ClaimedFact[];
+    coverage: Coverage;
+    versions: VersionSet;
+    deterministic_answer: string;
+    /**
+     * @maxItems 100
+     */
+    warnings: string[];
+    /**
+     * CHAOS-3782: true when this result was served from the immutable result store rather than a fresh investigation. When true, result_id and generated_at name the reused result's own identifier and generation time, not this request's.
+     */
+    reused: boolean;
+    temporal?: TemporalLabel;
+    effective_evidence_window?: EffectiveEvidenceWindow;
+    window_clarification?: WindowClarification;
+    structure_needs?: StructureNeeds;
+    /**
+     * @maxItems 4
+     */
+    confirmed_structure?:
+        | []
+        | [ConfirmedStructureEntry]
+        | [ConfirmedStructureEntry, ConfirmedStructureEntry]
+        | [ConfirmedStructureEntry, ConfirmedStructureEntry, ConfirmedStructureEntry]
+        | [
+              ConfirmedStructureEntry,
+              ConfirmedStructureEntry,
+              ConfirmedStructureEntry,
+              ConfirmedStructureEntry,
+          ];
+    /**
+     * @maxItems 80
+     */
+    structure_offer_snapshot?: StructureOfferSnapshotEntry[];
+    /**
+     * CHAOS-4415: the OPTIONAL renderable shapes this answer warrants, chosen by deterministic rules from the interpreted intent and this result's own cohort and claimed facts. Absent on every answer no rule fired for.
+     *
+     * @maxItems 8
+     */
+    render_shapes?:
+        | []
+        | [RenderShape]
+        | [RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape, RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape, RenderShape, RenderShape, RenderShape]
+        | [
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+          ]
+        | [
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+          ];
+    completeness: AnswerCompleteness;
+    /**
+     * CHAOS-5405 D-d: one record per attempted requirement/origin scope decision. Optional-first: absent on every result written before this field existed, and on unknown path that resolved no scope at all -- absent and empty are different documents.
+     *
+     * @maxItems 27
+     */
+    fact_scope_census?: FactScopeCensusRecord[];
+    /**
+     * Count of scope decisions the census does not list because the request's serialized byte budget could not carry every row beside the smallest valid answer. Absent when every decision is listed. Additive: absent on every result written before this field existed.
+     */
+    fact_scope_census_omitted?: number;
+    /**
+     * CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.
+     */
+    evidence_ref_labels?: {
+        [k: string]: string | undefined;
+    };
+    /**
+     * CHAOS-5442: names WHY the server refused to act on this question's frame, over a vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence. Open vocabulary; documented values: member_kind_unservable, frame_invariant_violated, unspecified, continuation_context_unverifiable, declared_kind_unmatched, organization_scope_unsupported, subject_identity_unconfirmed. A client must tolerate values it does not know.
+     */
+    refusal_basis?: string;
+    /**
+     * Present only when the server's outcome-derived completeness authority replaced the status the model authored: the status replaced (replaced_status), the pair served (direction), and the outcome row the derivation relied on (deciding_requirement, deciding_outcome; a requirement identity that also appears in completeness.outcomes). ABSENT means the served status is the model's own label, never 'unknown'. A status is never corrected up to complete.
+     */
+    status_correction?: {
+        /**
+         * The status the server replaced: the model's authored status unless an earlier server step (claim-depth trim, served-status floors) had already lowered it, which that step discloses through its own limitation.
+         */
+        replaced_status: "complete" | "partial" | "degraded";
+        /**
+         * model_status paired with the served status.
+         */
+        direction:
+            | "complete_to_partial"
+            | "complete_to_degraded"
+            | "partial_to_degraded"
+            | "degraded_to_partial";
+        /**
+         * Identity of the outcome row the derivation relied on; absent when no single row decided it.
+         */
+        deciding_requirement?: string;
+        /**
+         * That row's outcome.
+         */
+        deciding_outcome?:
+            "satisfied" | "narrowed" | "unavailable" | "not_applicable" | "not_attempted";
+    };
+    /**
+     * CHAOS-5672: present only on a read of a stored clarification whose answerability needed the stored accepted reading and could not load it. Absent means the read did not need the reading or had it. semantic_state_absent: the row carries no reading; semantic_state_unreadable: the row carries a reading this build cannot read. Fresh composition never sets it.
+     */
+    semantic_reading?: {
+        status: "unavailable";
+        /**
+         * Open vocabulary; documented values: semantic_state_absent, semantic_state_unreadable. A client must tolerate values it does not know.
+         */
+        reason: string;
+    };
+    /**
+     * The model input for the caller's model, served only in the turn that built it and never stored. Present only when the request asked synthesis_mode client and the turn reached synthesis. input_sha256 is the sha256 of the input bytes. The input names the evidence window the facts were read over in evidence_window (a relative window whose bounds the service resolved from its clock by relative_id and class only; a stated, confirmed or carried window with its bounds) and holds no time at which the turn looked: coverage.sources[].observed_at is left out; a time_context or evidence_window as_of, start or end is left out when the service pulled a future instant back to the time of its read; a fact's window_start and window_end are left out when its window_basis is default_trailing or the value is a bound the service resolved from its clock. So input_sha256 covers the facts, the coverage and the identity of the evidence window. A relative window, a clamped span and a provider's own default window are each one standing commitment: their moving bounds are not part of the digest, and a draft is accepted while the facts are unchanged. Apart from those times and the window it is what the service's own synthesis model is given; bounded is true when facts were reduced to fit the input size bound, and the input then holds fewer facts than the service's own model is given.
+     */
+    synthesis_input?: {
+        contract: {
+            model_output_version: string;
+            prompt_version: string;
+            system_sha256: string;
+        };
+        /**
+         * The synthesis input object, at most 1048576 bytes serialized.
+         */
+        input: {
+            [k: string]: unknown | undefined;
+        };
+        input_sha256: string;
+        bounded: boolean;
+        /**
+         * @minItems 1
+         * @maxItems 16
+         */
+        rules:
+            | [string]
+            | [string, string]
+            | [string, string, string]
+            | [string, string, string, string]
+            | [string, string, string, string, string]
+            | [string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string, string, string, string]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ];
+    };
+};
+
+/**
+ * The create-investigation response body: the context_fabric_investigation_result.v2 fields plus an optional synthesis_input. Generated from the result schema: every property, required entry and rule of the result is carried unchanged.
+ */
+export type ACRContextFabricInvestigationResponseV2 = {
+    schema_version: "context_fabric_investigation_result.v2";
+    result_id: string;
+    request_id: string;
+    generated_at: string;
+    status: "complete" | "partial" | "degraded" | "clarification_required" | "no_match";
+    question: string;
+    interpretation: InterpretedQuestion;
+    subject_resolution: SubjectResolution;
+    answer_plan?: AnswerPlan;
+    cohort?: Cohort;
+    direct_judgment: string;
+    current_state: string;
+    /**
+     * @maxItems 50
+     */
+    strongest_pressures: string[];
+    /**
+     * @maxItems 50
+     */
+    drivers: DriverJudgment[];
+    /**
+     * @maxItems 250
+     */
+    remaining_work: Finding[];
+    /**
+     * @maxItems 250
+     */
+    readiness_gaps: Finding[];
+    /**
+     * @maxItems 250
+     */
+    paths: RelationshipPath[];
+    /**
+     * @maxItems 250
+     */
+    conflicts: Finding[];
+    /**
+     * @maxItems 100
+     */
+    limitations: string[];
+    /**
+     * Model-authored limitations the engine dropped to fit a service-authored disclosure inside the limitations cap (CHAOS-3746; the disclosure may be retrieval degradation, a historical-axis statement, a commit retraction, or a clarification override). Absent or zero when nothing was displaced. It cannot be inferred from limitations itself: a displaced list and a list that had room are the same length and both end with the disclosure.
+     */
+    limitations_displaced?: number;
+    /**
+     * @maxItems 500
+     */
+    evidence_ref_ids: string[];
+    /**
+     * @maxItems 250
+     */
+    claimed_facts: ClaimedFact[];
+    coverage: Coverage;
+    versions: VersionSet;
+    deterministic_answer: string;
+    /**
+     * @maxItems 100
+     */
+    warnings: string[];
+    /**
+     * CHAOS-3782: true when this result was served from the immutable result store rather than a fresh investigation. When true, result_id and generated_at name the reused result's own identifier and generation time, not this request's.
+     */
+    reused: boolean;
+    temporal?: TemporalLabel;
+    effective_evidence_window?: EffectiveEvidenceWindow;
+    window_clarification?: WindowClarification;
+    structure_needs?: StructureNeedsV2;
+    /**
+     * @maxItems 4
+     */
+    confirmed_structure?:
+        | []
+        | [ConfirmedStructureEntry]
+        | [ConfirmedStructureEntry, ConfirmedStructureEntry]
+        | [ConfirmedStructureEntry, ConfirmedStructureEntry, ConfirmedStructureEntry]
+        | [
+              ConfirmedStructureEntry,
+              ConfirmedStructureEntry,
+              ConfirmedStructureEntry,
+              ConfirmedStructureEntry,
+          ];
+    /**
+     * @maxItems 80
+     */
+    structure_offer_snapshot?: StructureOfferSnapshotEntry[];
+    /**
+     * CHAOS-4415: the OPTIONAL renderable shapes this answer warrants, chosen by deterministic rules from the interpreted intent and this result's own cohort and claimed facts. Absent on every answer no rule fired for.
+     *
+     * @maxItems 8
+     */
+    render_shapes?:
+        | []
+        | [RenderShape]
+        | [RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape, RenderShape, RenderShape]
+        | [RenderShape, RenderShape, RenderShape, RenderShape, RenderShape, RenderShape]
+        | [
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+          ]
+        | [
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+              RenderShape,
+          ];
+    completeness: AnswerCompleteness;
+    /**
+     * CHAOS-5405 D-d: one record per attempted requirement/origin scope decision. Optional-first: absent on every result written before this field existed, and on unknown path that resolved no scope at all -- absent and empty are different documents.
+     *
+     * @maxItems 27
+     */
+    fact_scope_census?: FactScopeCensusRecord[];
+    /**
+     * Count of scope decisions the census does not list because the request's serialized byte budget could not carry every row beside the smallest valid answer. Absent when every decision is listed. Additive: absent on every result written before this field existed.
+     */
+    fact_scope_census_omitted?: number;
+    /**
+     * CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.
+     */
+    evidence_ref_labels?: {
+        [k: string]: string | undefined;
+    };
+    /**
+     * CHAOS-5442: names WHY the server refused to act on this question's frame, over a vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence. Open vocabulary; documented values: member_kind_unservable, frame_invariant_violated, unspecified, continuation_context_unverifiable, declared_kind_unmatched, organization_scope_unsupported, subject_identity_unconfirmed. A client must tolerate values it does not know.
+     */
+    refusal_basis?: string;
+    /**
+     * Present only when the server's outcome-derived completeness authority replaced the status the model authored: the status replaced (replaced_status), the pair served (direction), and the outcome row the derivation relied on (deciding_requirement, deciding_outcome; a requirement identity that also appears in completeness.outcomes). ABSENT means the served status is the model's own label, never 'unknown'. A status is never corrected up to complete.
+     */
+    status_correction?: {
+        /**
+         * The status the server replaced: the model's authored status unless an earlier server step (claim-depth trim, served-status floors) had already lowered it, which that step discloses through its own limitation.
+         */
+        replaced_status: "complete" | "partial" | "degraded";
+        /**
+         * model_status paired with the served status.
+         */
+        direction:
+            | "complete_to_partial"
+            | "complete_to_degraded"
+            | "partial_to_degraded"
+            | "degraded_to_partial";
+        /**
+         * Identity of the outcome row the derivation relied on; absent when no single row decided it.
+         */
+        deciding_requirement?: string;
+        /**
+         * That row's outcome.
+         */
+        deciding_outcome?:
+            "satisfied" | "narrowed" | "unavailable" | "not_applicable" | "not_attempted";
+    };
+    /**
+     * CHAOS-5672: present only on a read of a stored clarification whose answerability needed the stored accepted reading and could not load it. Absent means the read did not need the reading or had it. semantic_state_absent: the row carries no reading; semantic_state_unreadable: the row carries a reading this build cannot read. Fresh composition never sets it.
+     */
+    semantic_reading?: {
+        status: "unavailable";
+        /**
+         * Open vocabulary; documented values: semantic_state_absent, semantic_state_unreadable. A client must tolerate values it does not know.
+         */
+        reason: string;
+    };
+    /**
+     * The model input for the caller's model, served only in the turn that built it and never stored. Present only when the request asked synthesis_mode client and the turn reached synthesis. input_sha256 is the sha256 of the input bytes. The input names the evidence window the facts were read over in evidence_window (a relative window whose bounds the service resolved from its clock by relative_id and class only; a stated, confirmed or carried window with its bounds) and holds no time at which the turn looked: coverage.sources[].observed_at is left out; a time_context or evidence_window as_of, start or end is left out when the service pulled a future instant back to the time of its read; a fact's window_start and window_end are left out when its window_basis is default_trailing or the value is a bound the service resolved from its clock. So input_sha256 covers the facts, the coverage and the identity of the evidence window. A relative window, a clamped span and a provider's own default window are each one standing commitment: their moving bounds are not part of the digest, and a draft is accepted while the facts are unchanged. Apart from those times and the window it is what the service's own synthesis model is given; bounded is true when facts were reduced to fit the input size bound, and the input then holds fewer facts than the service's own model is given.
+     */
+    synthesis_input?: {
+        contract: {
+            model_output_version: string;
+            prompt_version: string;
+            system_sha256: string;
+        };
+        /**
+         * The synthesis input object, at most 1048576 bytes serialized.
+         */
+        input: {
+            [k: string]: unknown | undefined;
+        };
+        input_sha256: string;
+        bounded: boolean;
+        /**
+         * @minItems 1
+         * @maxItems 16
+         */
+        rules:
+            | [string]
+            | [string, string]
+            | [string, string, string]
+            | [string, string, string, string]
+            | [string, string, string, string, string]
+            | [string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string, string, string]
+            | [string, string, string, string, string, string, string, string, string, string]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ]
+            | [
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+                  string,
+              ];
+    };
+};
 
 export type ACRContextFabricInvestigationResultV1 = {
     schema_version: "context_fabric_investigation_result.v1";
@@ -4072,9 +4726,13 @@ export type ACRContextFabricInvestigationResultV1 = {
     /**
      * CHAOS-5405 D-d: one record per attempted requirement/origin scope decision. Optional-first: absent on every result written before this field existed, and on unknown path that resolved no scope at all -- absent and empty are different documents.
      *
-     * @maxItems 21
+     * @maxItems 27
      */
     fact_scope_census?: FactScopeCensusRecord[];
+    /**
+     * Count of scope decisions the census does not list because the request's serialized byte budget could not carry every row beside the smallest valid answer. Absent when every decision is listed. Additive: absent on every result written before this field existed.
+     */
+    fact_scope_census_omitted?: number;
     /**
      * CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.
      */
@@ -4082,22 +4740,44 @@ export type ACRContextFabricInvestigationResultV1 = {
         [k: string]: string | undefined;
     };
     /**
-     * CHAOS-5442: names WHY the server refused to act on this question's frame, over a closed vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence.
+     * CHAOS-5442: names WHY the server refused to act on this question's frame, over a vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence. Open vocabulary; documented values: member_kind_unservable, frame_invariant_violated, unspecified, continuation_context_unverifiable, declared_kind_unmatched, organization_scope_unsupported, subject_identity_unconfirmed. A client must tolerate values it does not know.
      */
-    refusal_basis?:
-        | "member_kind_unservable"
-        | "frame_invariant_violated"
-        | "unspecified"
-        | "continuation_context_unverifiable"
-        | "declared_kind_unmatched"
-        | "organization_scope_unsupported"
-        | "subject_identity_unconfirmed";
+    refusal_basis?: string;
+    /**
+     * Present only when the server's outcome-derived completeness authority replaced the status the model authored: the status replaced (replaced_status), the pair served (direction), and the outcome row the derivation relied on (deciding_requirement, deciding_outcome; a requirement identity that also appears in completeness.outcomes). ABSENT means the served status is the model's own label, never 'unknown'. A status is never corrected up to complete.
+     */
+    status_correction?: {
+        /**
+         * The status the server replaced: the model's authored status unless an earlier server step (claim-depth trim, served-status floors) had already lowered it, which that step discloses through its own limitation.
+         */
+        replaced_status: "complete" | "partial" | "degraded";
+        /**
+         * model_status paired with the served status.
+         */
+        direction:
+            | "complete_to_partial"
+            | "complete_to_degraded"
+            | "partial_to_degraded"
+            | "degraded_to_partial";
+        /**
+         * Identity of the outcome row the derivation relied on; absent when no single row decided it.
+         */
+        deciding_requirement?: string;
+        /**
+         * That row's outcome.
+         */
+        deciding_outcome?:
+            "satisfied" | "narrowed" | "unavailable" | "not_applicable" | "not_attempted";
+    };
     /**
      * CHAOS-5672: present only on a read of a stored clarification whose answerability needed the stored accepted reading and could not load it. Absent means the read did not need the reading or had it. semantic_state_absent: the row carries no reading; semantic_state_unreadable: the row carries a reading this build cannot read. Fresh composition never sets it.
      */
     semantic_reading?: {
         status: "unavailable";
-        reason: "semantic_state_absent" | "semantic_state_unreadable";
+        /**
+         * Open vocabulary; documented values: semantic_state_absent, semantic_state_unreadable. A client must tolerate values it does not know.
+         */
+        reason: string;
     };
 };
 
@@ -4125,14 +4805,23 @@ export interface ContextFabricOrganizationModelConfigurationV1 {
 export type ACRContextPacketItemV1 = {
     schema_version: "context_packet_item.v1";
     packet_item_id: string;
-    category: "state" | "pressure" | "cause" | "evidence" | "action";
-    claim_kind: "observed" | "inferred" | "recommendation";
+    /**
+     * Open vocabulary; documented values: state, pressure, cause, evidence, action. A client must tolerate values it does not know.
+     */
+    category: string;
+    /**
+     * Open vocabulary; documented values: observed, inferred, recommendation. A client must tolerate values it does not know.
+     */
+    claim_kind: string;
     title: string;
     summary: string;
     why_included: string;
     rule_id: string;
     confidence: number;
-    severity: "info" | "warning" | "high" | "critical";
+    /**
+     * Open vocabulary; documented values: info, warning, high, critical. A client must tolerate values it does not know.
+     */
+    severity: string;
     rank: number;
     validity_scope: {
         branch?: string;
@@ -4159,6 +4848,11 @@ export type ACRContextPacketItemV1 = {
      * @maxItems 100
      */
     evidence_ref_ids: string[];
+    cause_event?: {
+        entity_type: "deployment";
+        entity_id: string;
+        occurred_at: string;
+    };
 };
 
 export interface ACRContextPacketRequestV1 {
@@ -4224,7 +4918,10 @@ export interface ACRContextPacketV1 {
         repo_slug: string;
         branch?: string;
         commit_sha?: string;
-        resolution: "exact_commit" | "branch_filtered" | "repo_fallback" | "unresolved";
+        /**
+         * Open vocabulary; documented values: exact_commit, branch_filtered, repo_fallback, unresolved. A client must tolerate values it does not know.
+         */
+        resolution: string;
         fallback_reasons: string[];
     };
     query_version: string;
@@ -4257,8 +4954,18 @@ export interface ACRContextPacketV1 {
         stale_after_seconds: number;
         watermarks: {
             source: string;
+            /**
+             * Newest stored sync time of this source's rows in the repository (last_synced; work items also ingested_at). For repository_freshness it is the repository row's last_synced, rewritten on every repository sync run. For every other source it is a row WRITE time: a sync that finds nothing new rewrites nothing, so a quiet repository can show an old time here although it synced. It is never an event time (a commit, deploy or work item change). Omitted when the source stores no sync time (status unknown) or holds no rows.
+             */
             last_ingested_at?: string;
-            status: "fresh" | "stale" | "missing" | "unavailable";
+            /**
+             * Newest observed_at of this source's rows in scope. Where the source has an event time (commit, review, CI run, deploy, work item update) it is that event time and says how recent the activity is, never how recently the source was synced. Where the source has none (pull requests, commit files, dependencies, the repository row) observed_at is the row's own sync time. No status is judged from it.
+             */
+            last_event_at?: string;
+            /**
+             * Open vocabulary; documented values: fresh, stale, missing, unavailable, unknown. fresh = last_ingested_at is within stale_after_seconds before as_of. stale is served only for repository_freshness, whose last_ingested_at is a sync run stamp, when older than stale_after_seconds. unknown = rows exist but freshness cannot be judged: the source stores no sync time, only an old row write time (a quiet repository looks the same), or the time could not be read; never stale. A client must tolerate values it does not know.
+             */
+            status: string;
         }[];
     };
     coverage: {
@@ -4287,6 +4994,17 @@ export interface ACRContextPacketV1 {
         supported_schema_versions: string[];
     };
     retrieval_debug_summary?: string;
+}
+
+export interface SelfCredentialAcknowledgementRequestV1 {
+    schema_version: "credential_ack_request.v1";
+    credential_id?: string;
+}
+
+export interface SelfCredentialAcknowledgementResponseV1 {
+    schema_version: "credential_ack_response.v1";
+    credential_id: string;
+    acknowledged_at: string;
 }
 
 export interface SelfCredentialRevocationRequestV1 {
@@ -4400,6 +5118,7 @@ export interface ACRErrorV1 {
     error: {
         code:
             | "invalid_request"
+            | "budget_refusal"
             | "device_authorization_conflict"
             | "invalid_token"
             | "insufficient_scope"
@@ -4417,7 +5136,16 @@ export interface ACRErrorV1 {
         message: string;
         http_status: number;
         retryable: boolean;
+        /**
+         * Closed safe keys only. For a 400 invalid_request about the request body, details.reason is malformed_json, schema_violation, unknown_field, trailing_json or body_too_large, and details.field, when present, is the JSON path of the failing field. A budget_refusal is a 413 for a valid request whose answer did not fit the response budget; details carry the closed budget keys that route measured (overrun, measured_items, measured_bytes, max_items, max_serialized_bytes, retry_attempted, narrower_continuation); every key is optional and a route sends only the ones it measured.
+         */
         details?: {
+            reason?: string;
+            field?: string;
+            /**
+             * On a 429 rate_limited: which limit refused the request. request_budget is the organization's request budget; capabilities_budget is the capabilities handshake's own budget, spent by the caller-resolution call every MCP request makes; the credential was already decided in both cases. A consumer treats a value outside this enum as absent.
+             */
+            limit?: "request_budget" | "capabilities_budget";
             [k: string]: unknown | undefined;
         };
     };
@@ -4433,7 +5161,10 @@ export interface ACREvidenceReferenceV1 {
         display_label: string;
         safe_uri?: string;
     };
-    provenance: "native" | "explicit_text" | "heuristic" | "derived";
+    /**
+     * Open vocabulary; documented values: native, explicit_text, heuristic, derived. A client must tolerate values it does not know.
+     */
+    provenance: string;
     confidence: number;
     citation: string;
     observed_at: string;
@@ -4441,7 +5172,10 @@ export interface ACREvidenceReferenceV1 {
     source_version?: string;
     snapshot_hash?: string;
     content_digest?: string;
-    availability: "available" | "stale" | "redacted" | "deleted" | "unauthorized";
+    /**
+     * Open vocabulary; documented values: available, stale, redacted, deleted, unauthorized. A client must tolerate values it does not know.
+     */
+    availability: string;
     metadata?: {
         [k: string]: unknown | undefined;
     };
@@ -4451,7 +5185,10 @@ export interface ACRExpandedEvidenceV1 {
     schema_version: "expanded_evidence.v1";
     evidence: ACREvidenceReferenceV1;
     resolved_at: string;
-    availability: "available" | "stale" | "redacted" | "deleted" | "unauthorized";
+    /**
+     * Open vocabulary; documented values: available, stale, redacted, deleted, unauthorized. A client must tolerate values it does not know.
+     */
+    availability: string;
     excerpt?: string;
     structured_fields: {
         [k: string]: unknown | undefined;
@@ -4471,14 +5208,9 @@ export interface OAuthDeviceGrantErrorV1 {
 export type AnswerCompleteness = {
     terminal_status: "complete" | "partial" | "degraded" | "clarification_required" | "no_match";
     /**
-     * Absent (or empty) exactly when terminal_status is complete -- there is nothing to disclose. Present and one of these closed values on every other status; never the engine's or a model's own raw text.
+     * Absent (or empty) exactly when terminal_status is complete -- there is nothing to disclose. Present and one of these values on every other status; never the engine's or a model's own raw text. Open vocabulary; documented values: clarification_reason_disclosed, degraded_reason_disclosed, limitation_disclosed, warning_disclosed, undisclosed. A client must tolerate values it does not know.
      */
-    terminal_reason?:
-        | "clarification_reason_disclosed"
-        | "degraded_reason_disclosed"
-        | "limitation_disclosed"
-        | "warning_disclosed"
-        | "undisclosed";
+    terminal_reason?: string;
     claimed_facts_count: number;
     rows_count: number;
     /**
@@ -4486,46 +5218,50 @@ export type AnswerCompleteness = {
      */
     state: "not_derived" | "complete" | "partial" | "degraded";
     /**
-     * The ONE authority for what this answer was supposed to contain and what became of it. Every narrowing stage between planning and the served document APPENDS to it; no stage rewrites or removes another stage's row, and state above is derived from the whole set at the surface that serves the answer. That ordering is what makes it impossible to measure completeness and then shrink the document somewhere the measurement cannot see.
+     * The ONE authority for what this answer was supposed to contain and what became of it. Every narrowing stage between planning and the served document APPENDS to it; no stage rewrites or removes another stage's row, and state above is derived from the whole set at the surface that serves the answer. That ordering is what makes it impossible to measure completeness and then shrink the document somewhere the measurement cannot see. Rows are in stage order and a later stage supersedes an earlier one: the effective account of a requirement is its last row.
      *
      * @maxItems 200
      */
     outcomes?: PlanRequirementOutcomeRow[];
     /**
-     * CHAOS-5442: names WHY the server refused to act on this question's frame, over a closed vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence.
+     * CHAOS-5442: names WHY the server refused to act on this question's frame, over a vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence. Open vocabulary; documented values: member_kind_unservable, frame_invariant_violated, unspecified, continuation_context_unverifiable, declared_kind_unmatched, organization_scope_unsupported, subject_identity_unconfirmed. A client must tolerate values it does not know.
      */
-    refusal_basis?:
-        | "member_kind_unservable"
-        | "frame_invariant_violated"
-        | "unspecified"
-        | "continuation_context_unverifiable"
-        | "declared_kind_unmatched"
-        | "organization_scope_unsupported"
-        | "subject_identity_unconfirmed";
+    refusal_basis?: string;
+    /**
+     * Present only when the server's outcome-derived completeness authority replaced the status the model authored: the status replaced (replaced_status), the pair served (direction), and the outcome row the derivation relied on (deciding_requirement, deciding_outcome; a requirement identity that also appears in completeness.outcomes). ABSENT means the served status is the model's own label, never 'unknown'. A status is never corrected up to complete.
+     */
+    status_correction?: {
+        /**
+         * The status the server replaced: the model's authored status unless an earlier server step (claim-depth trim, served-status floors) had already lowered it, which that step discloses through its own limitation.
+         */
+        replaced_status: "complete" | "partial" | "degraded";
+        /**
+         * model_status paired with the served status.
+         */
+        direction:
+            | "complete_to_partial"
+            | "complete_to_degraded"
+            | "partial_to_degraded"
+            | "degraded_to_partial";
+        /**
+         * Identity of the outcome row the derivation relied on; absent when no single row decided it.
+         */
+        deciding_requirement?: string;
+        /**
+         * That row's outcome.
+         */
+        deciding_outcome?:
+            "satisfied" | "narrowed" | "unavailable" | "not_applicable" | "not_attempted";
+    };
 };
 /**
- * CHAOS-4636 (promoted from CHAOS-4632's shadow vocabulary once its false-emission rate was measured on real data). The closed question-family vocabulary. It does not replace InvestigationShape.
+ * CHAOS-4636 (promoted from CHAOS-4632's shadow vocabulary once its false-emission rate was measured on real data). The question-family vocabulary. It does not replace InvestigationShape. Open vocabulary; documented values: subject_investigation, discovered_cohort_ranking, scoped_cohort_status, grouped_cohort_status, explicit_comparison, trend, investment_allocation, unclassified. A client must tolerate values it does not know.
  */
-export type QuestionFamily =
-    | "subject_investigation"
-    | "discovered_cohort_ranking"
-    | "scoped_cohort_status"
-    | "grouped_cohort_status"
-    | "explicit_comparison"
-    | "trend"
-    | "investment_allocation"
-    | "unclassified";
+export type QuestionFamily = string;
 /**
- * How a family was reached. On the wire beside the family because "the model said so at N=1" and "carried from the previous turn" are different warrants for the same value.
+ * How a family was reached. On the wire beside the family because "the model said so at N=1" and "carried from the previous turn" are different warrants for the same value. Open vocabulary; documented values: model_consensus, model, model_plurality_rejected, carried, structure_precedence, fallback, none. A client must tolerate values it does not know.
  */
-export type QuestionFamilySource =
-    | "model_consensus"
-    | "model"
-    | "model_plurality_rejected"
-    | "carried"
-    | "structure_precedence"
-    | "fallback"
-    | "none";
+export type QuestionFamilySource = string;
 /**
  * CHAOS-3900 P1: the closed ContextFabricSubjectKind vocabulary, given its own $def so KindOption/AnchorOption/HandleOption/AcceptedGrammar can $ref it directly rather than each re-duplicating the enum inline the way SubjectRef/SubjectCandidate/etc. still do at their own call sites.
  */
@@ -4556,13 +5292,14 @@ export type RenderKind =
 export type StructureNeedKind =
     "expected_kind" | "subject_anchor" | "subject_handle" | "window" | "subject_candidate";
 /**
- * The declared order a narrowing step takes members in. canonical_id_lexical is ARBITRARY and says so -- what a pre-read guard needs is stability, not relevance. attention_rank exists only after the fact read. overlap_aware_set_cover (CHAOS-4678) is an exact minimum set cover over a grouped narrowing's groups, used up to a small group-count guard; beyond it a grouped narrowing falls back to largest_group_round_robin and reports that basis instead.
+ * The declared order a narrowing step takes members in. canonical_id_lexical is ARBITRARY and says so -- what a pre-read guard needs is stability, not relevance. attention_rank exists only after the fact read. overlap_aware_set_cover (CHAOS-4678) is an exact minimum set cover over a grouped narrowing's groups, used up to a small group-count guard; beyond it a grouped narrowing falls back to largest_group_round_robin and reports that basis instead. link_strength_then_id orders a repository's work-item walk by the strength of each issue's link (native, then stated in text, then heuristic) and then by canonical id.
  */
 export type NarrowingBasis =
     | "canonical_id_lexical"
     | "largest_group_round_robin"
     | "attention_rank"
-    | "overlap_aware_set_cover";
+    | "overlap_aware_set_cover"
+    | "link_strength_then_id";
 /**
  * The three moments a plan may narrow. Three, because the budgets become knowable at three different times: cardinality is all that is knowable pre-read; synthesis CREATES the drivers/findings/claims the item budget charges, so pre-synthesis can only bound its INPUTS; and only the assembled result can be measured.
  */
@@ -4571,6 +5308,193 @@ export type PlanNarrowingStage = "cardinality" | "synthesis_input" | "assembled_
  * Which budget axis an assembled answer exceeded.
  */
 export type BudgetOverrun = "fits" | "items" | "bytes";
+export type ClaimedFact = {
+    claim_id: string;
+    /**
+     * Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots, cardinality. A client must tolerate values it does not know.
+     */
+    kind: string;
+    subject: SubjectRef;
+    field: string;
+    value: ScalarValue;
+    fact_id?: string;
+    /**
+     * Additive: the served facts a derived value is computed from, in order. Set together with operation; excludes fact_id. sum takes two or more inputs, difference and ratio exactly two.
+     *
+     * @minItems 2
+     * @maxItems 8
+     */
+    derived_from?:
+        | [
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+          ]
+        | [
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+          ]
+        | [
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+          ]
+        | [
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+          ]
+        | [
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+          ]
+        | [
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+          ]
+        | [
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+              {
+                  fact_id: string;
+                  field: string;
+              },
+          ];
+    operation?: "sum" | "difference" | "ratio";
+    /**
+     * CHAOS-4347, additive: a renderable table for a fact whose evidence is genuinely a set of rows (e.g. a project's per-team metrics rollup) rather than one scalar. Optional; a claim carries `field`/`value` as its primary scalar either way.
+     *
+     * @maxItems 64
+     */
+    rows?: ClaimedFactRow[];
+    table?: ClaimedFactTable;
+    /**
+     * CHAOS-4682 (§5.1 P2 dual-read cutover), additive and OPTIONAL: the CHAOS-4645 time_series rows riding ALONGSIDE the legacy field `rows` already serves, present only on a dual-table fact (a legacy table AND a time_series table at once). `rows`/`table` above keep their CURRENT meaning and preference unconditionally -- this never changes what they carry. Nil on a single-table fact, whose one table is already served by `rows`.
+     *
+     * @maxItems 64
+     */
+    time_series_rows?: ClaimedFactRow[];
+    time_series_table?: ClaimedFactTable1;
+};
 export type ScalarValue = {
     string?: string;
     integer?: number;
@@ -4582,22 +5506,10 @@ export type ScalarValue1 = {
     [k: string]: unknown | undefined;
 };
 export type Cohort = {
-    kind:
-        | "organization"
-        | "team"
-        | "project"
-        | "repository"
-        | "work_item"
-        | "pull_request"
-        | "deployment"
-        | "incident"
-        | "document"
-        | "decision"
-        | "episode"
-        | "metric"
-        | "pull_request_review"
-        | "ci_pipeline_run"
-        | "work_item_ref";
+    /**
+     * Open vocabulary; documented values: organization, team, project, repository, work_item, pull_request, deployment, incident, document, decision, episode, metric, pull_request_review, ci_pipeline_run, work_item_ref. A client must tolerate values it does not know.
+     */
+    kind: string;
     /**
      * @maxItems 250
      */
@@ -4623,6 +5535,14 @@ export type Cohort = {
      * server-computed, true when the investigation's requested judgment asked for a comparison score_meaning does not support. Never set without score_meaning also present.
      */
     judgment_mismatch?: boolean;
+    /**
+     * how many members the caller may read, counted before the answer item limit cut the list. Present on a work-item cohort when the read measured it; members never exceed it.
+     */
+    population?: number;
+    /**
+     * true when population counts what was read and the real population can be larger.
+     */
+    population_lower_bound?: boolean;
 };
 export type CohortMember = {
     subject: SubjectRef;
@@ -7121,18 +8041,17 @@ export type CohortMemberDriver = {
     source_claimed_fact_ids?: string[];
 };
 /**
- * CHAOS-3900 P1: closed vocabulary for how a ConfirmedStructureEntry's value entered (design brief section 2.1's echo).
+ * CHAOS-3900 P1: vocabulary for how a ConfirmedStructureEntry's value entered (design brief section 2.1's echo). Open vocabulary; documented values: receipt, explicit, explicit_unattributed, carried. A client must tolerate values it does not know.
  */
-export type StructureSource = "receipt" | "explicit" | "explicit_unattributed" | "carried";
+export type StructureSource = string;
 /**
- * CHAOS-3900 P1: closed vocabulary distinguishing an engine-derived offer from a Bridge-proposed one (design brief section 2.1/2.4).
+ * CHAOS-3900 P1: vocabulary distinguishing an engine-derived offer from a Bridge-proposed one (design brief section 2.1/2.4). Open vocabulary; documented values: engine, prior. A client must tolerate values it does not know.
  */
-export type StructureOfferSource = "engine" | "prior";
+export type StructureOfferSource = string;
 /**
- * CHAOS-3900 P1: closed authority-tier vocabulary for a ConfirmedStructureEntry (design brief section 2.0's authority table). A distinct enum from WindowProvenance despite sharing the same three values -- each frame member owns its own authority vocabulary independently. engine_committed (v1-additive) is a carried subject_anchor member the engine bound to the frame's own anchor with no clarification ever offered.
+ * CHAOS-3900 P1: authority-tier vocabulary for a ConfirmedStructureEntry (design brief section 2.0's authority table). A distinct enum from WindowProvenance despite sharing the same three values -- each frame member owns its own authority vocabulary independently. engine_committed (v1-additive) is a carried subject_anchor member the engine bound to the frame's own anchor with no clarification ever offered. Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed, engine_committed. A client must tolerate values it does not know.
  */
-export type StructureProvenance =
-    "inferred_default" | "question_stated" | "clarification_confirmed" | "engine_committed";
+export type StructureProvenance = string;
 /**
  * CHAOS-3900 P1: closed vocabulary for what happened to one carried structure member (design brief section 2.1's silent-drop closure).
  */
@@ -7145,24 +8064,14 @@ export type StructureDisposition =
     | "not_evaluated";
 export type DriverJudgment = {
     driver_id: string;
-    standing: "principal" | "contributing" | "symptom" | "context" | "withheld";
-    category:
-        | "status"
-        | "actual_completion"
-        | "work"
-        | "blockers"
-        | "reviews"
-        | "continuous_integration"
-        | "deployments"
-        | "incidents"
-        | "health"
-        | "workload"
-        | "investment"
-        | "readiness"
-        | "operational_deficiency"
-        | "source_health"
-        | "relationship"
-        | "narrative";
+    /**
+     * Open vocabulary; documented values: principal, contributing, symptom, context, withheld. A client must tolerate values it does not know.
+     */
+    standing: string;
+    /**
+     * Open vocabulary; documented values: status, actual_completion, work, blockers, reviews, continuous_integration, deployments, incidents, health, workload, investment, readiness, operational_deficiency, source_health, relationship, narrative. A client must tolerate values it does not know.
+     */
+    category: string;
     title: string;
     summary: string;
     /**
@@ -7182,16 +8091,23 @@ export type DriverJudgment = {
      * @maxItems 250
      */
     claimed_fact_ids?: string[];
-    derivation:
-        | "canonical_structured"
-        | "deterministic_projection"
-        | "graph_associated"
-        | "model_extracted"
-        | "rule_inferred";
-    epistemic_status:
-        "observed" | "source_asserted" | "inferred" | "disputed" | "superseded" | "unknown";
+    /**
+     * Open vocabulary; documented values: canonical_structured, deterministic_projection, graph_associated, model_extracted, rule_inferred. A client must tolerate values it does not know.
+     */
+    derivation: string;
+    /**
+     * Open vocabulary; documented values: observed, source_asserted, inferred, disputed, superseded, unknown. A client must tolerate values it does not know.
+     */
+    epistemic_status: string;
     confidence: number;
     qualification?: string;
+    rank?: number;
+    /**
+     * Open vocabulary; documented values: available, stale, unavailable, unconfigured, unauthorized, no_data, truncated, conflicted, not_applicable, pruned. A client must tolerate values it does not know.
+     */
+    source_state?: string;
+    source_state_note?: string;
+    summary_corrected?: boolean;
     current: boolean;
 };
 /**
@@ -7201,10 +8117,18 @@ export type EffectiveEvidenceWindow = EffectiveEvidenceWindow1 & {
     start?: string;
     end?: string;
     relative_id?: RelativeWindowID;
-    window_class?:
-        "trend_assessment" | "recent_activity_lookup" | "state_snapshot" | "explicit_window";
-    provenance: "inferred_default" | "question_stated" | "clarification_confirmed";
-    confidence?: "high" | "low";
+    /**
+     * Open vocabulary; documented values: trend_assessment, recent_activity_lookup, state_snapshot, explicit_window. A client must tolerate values it does not know.
+     */
+    window_class?: string;
+    /**
+     * Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed. A client must tolerate values it does not know.
+     */
+    provenance: string;
+    /**
+     * Open vocabulary; documented values: high, low. A client must tolerate values it does not know.
+     */
+    confidence?: string;
 };
 export type EffectiveEvidenceWindow1 = {
     [k: string]: unknown | undefined;
@@ -7214,7 +8138,10 @@ export type EffectiveEvidenceWindow1 = {
  */
 export type RelativeWindowID = "trailing_30d" | "trailing_90d" | "trailing_365d" | "all_time";
 export type InterpretedQuestion = {
-    shape: "single_subject" | "explicit_cohort" | "discovered_cohort" | "open";
+    /**
+     * Open vocabulary; documented values: single_subject, explicit_cohort, discovered_cohort, open. A client must tolerate values it does not know.
+     */
+    shape: string;
     requested_judgment: string;
     /**
      * @maxItems 50
@@ -7226,21 +8153,23 @@ export type InterpretedQuestion = {
     comparison_terms?: string[];
     time_context: TimeContext;
     /**
-     * @maxItems 22
+     * @maxItems 64
      */
     fact_requirements: FactRequirement[];
     clarification_needed: boolean;
     clarification_reason?: string;
     /**
-     * CHAOS-3900 W1: the model's own sanitized, closed-vocabulary evidence-window classification pick. Absent means the model made no pick.
+     * CHAOS-3900 W1: the model's own sanitized, documented-vocabulary evidence-window classification pick. Absent means the model made no pick. Open vocabulary; documented values: trend_assessment, recent_activity_lookup, state_snapshot, explicit_window. A client must tolerate values it does not know.
      */
-    window_class?:
-        "trend_assessment" | "recent_activity_lookup" | "state_snapshot" | "explicit_window";
-    window_confidence?: "high" | "low";
+    window_class?: string;
     /**
-     * the model's own closed-vocabulary classification of what BASIS requested_judgment asks for. Absent means the model made no pick (equivalent to unspecified) -- never derived from requested_judgment's own text by a consumer.
+     * Open vocabulary; documented values: high, low. A client must tolerate values it does not know.
      */
-    requested_judgment_kind?: "performance" | "attention";
+    window_confidence?: string;
+    /**
+     * the model's own documented-vocabulary classification of what BASIS requested_judgment asks for. Absent means the model made no pick (equivalent to unspecified) -- never derived from requested_judgment's own text by a consumer. Open vocabulary; documented values: performance, attention. A client must tolerate values it does not know.
+     */
+    requested_judgment_kind?: string;
 };
 export type TimeContext = {
     axis: "current" | "valid_time" | "observed_time" | "range";
@@ -7600,6 +8529,146 @@ export type WindowOption = {
         relative_id?: RelativeWindowID;
         start?: string;
         end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
+    } & WindowOption1 & {
+        receipt_id: string;
+        option_id: string;
+        label: string;
+        relative_id?: RelativeWindowID;
+        start?: string;
+        end?: string;
     };
 export type WindowOption1 =
     | {
@@ -7608,6 +8677,20 @@ export type WindowOption1 =
     | {
           [k: string]: unknown | undefined;
       };
+export type CommitDecisionDigest = {
+    subject: SubjectRef;
+    /**
+     * Open vocabulary; documented values: (empty), caller_hint_short_circuit, pre_committed_exact_hint, exact_index, identity_fast_path, lone_floor, top_of_two, vector_margin_rescue, evidence_census. A client must tolerate values it does not know.
+     */
+    commit_gate?: string;
+    identity_proven?: boolean;
+    search_truncated?: boolean;
+    alias_lookup_complete?: boolean;
+    /**
+     * Open vocabulary; documented values: complete, incomplete, graph_lag, not_run_time_axis, not_wired. A client must tolerate values it does not know.
+     */
+    identity_lookup?: string;
+};
 /**
  * CHAOS-3478/CHAOS-3813: closed vocabulary for what happened to one PriorSubjectReceipts entry -- unlike StructureDisposition, a skip here never vetoes the investigation (a plural, best-effort conversational hint list degrades per-item by design), it is disclosed instead.
  */
@@ -7696,7 +8779,8 @@ export interface RequirementRefinement {
         | "canonical_id_lexical"
         | "largest_group_round_robin"
         | "attention_rank"
-        | "overlap_aware_set_cover";
+        | "overlap_aware_set_cover"
+        | "link_strength_then_id";
     /**
      * The declared ceiling that forced the reduction, when a ceiling did. A refinement must name at least one of basis and overrun: a reduction with no cause is the generic truncation this layer exists to replace.
      */
@@ -7742,32 +8826,11 @@ export interface AnswerPlan {
               RenderKind,
           ];
     /**
-     * @maxItems 22
+     * @maxItems 64
+     *
+     * Items: Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots. A client must tolerate values it does not know.
      */
-    fact_kinds?: (
-        | "identity"
-        | "membership"
-        | "status"
-        | "actual_completion"
-        | "work"
-        | "blockers"
-        | "required_children"
-        | "pull_requests"
-        | "reviews"
-        | "continuous_integration"
-        | "deployments"
-        | "incidents"
-        | "metrics"
-        | "health"
-        | "workload"
-        | "investment"
-        | "readiness"
-        | "operational_deficiencies"
-        | "source_health"
-        | "evidence"
-        | "flow"
-        | "landscape"
-    )[];
+    fact_kinds?: string[];
     /**
      * @maxItems 5
      */
@@ -7852,26 +8915,13 @@ export interface PlanRequirement {
      */
     requirement: string;
     /**
-     * The obligation at stake. Mirrors the server's own closed vocabulary; must equal the identity's first segment.
+     * The obligation at stake. Mirrors the server's own vocabulary; must equal the identity's first segment. Open vocabulary; documented values: state, completion, readiness, health, principal_drivers, ranking, remaining_work, evidence, coverage, count, allocation_breakdown, trend_series, period_delta. A client must tolerate values it does not know.
      */
-    obligation:
-        | "state"
-        | "completion"
-        | "readiness"
-        | "health"
-        | "principal_drivers"
-        | "ranking"
-        | "remaining_work"
-        | "evidence"
-        | "coverage"
-        | "count"
-        | "allocation_breakdown"
-        | "trend_series"
-        | "period_delta";
+    obligation: string;
     /**
-     * The subject role this obligation attaches to. Must equal the identity's second segment.
+     * The subject role this obligation attaches to. Must equal the identity's second segment. Open vocabulary; documented values: subject, member, group, operand. A client must tolerate values it does not know.
      */
-    role: "subject" | "member" | "group" | "operand";
+    role: string;
     /**
      * CHAOS-3900 P1: the closed ContextFabricSubjectKind vocabulary, given its own $def so KindOption/AnchorOption/HandleOption/AcceptedGrammar can $ref it directly rather than each re-duplicating the enum inline the way SubjectRef/SubjectCandidate/etc. still do at their own call sites.
      */
@@ -7892,93 +8942,47 @@ export interface PlanRequirement {
         | "ci_pipeline_run"
         | "work_item_ref";
     /**
-     * How the obligation is satisfied at all. What makes the server fields legible: a read populates fact_kinds, a computation populates step, and an unavailable cell populates neither.
+     * How the obligation is satisfied at all. What makes the server fields legible: a read populates fact_kinds, a computation populates step, and an unavailable cell populates neither. Open vocabulary; documented values: read, computed, answer_contract. A client must tolerate values it does not know.
      */
-    kind: "read" | "computed" | "answer_contract";
+    kind: string;
     /**
-     * @maxItems 22
+     * @maxItems 64
+     *
+     * Items: Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots. A client must tolerate values it does not know.
      */
-    fact_kinds?: (
-        | "identity"
-        | "membership"
-        | "status"
-        | "actual_completion"
-        | "work"
-        | "blockers"
-        | "required_children"
-        | "pull_requests"
-        | "reviews"
-        | "continuous_integration"
-        | "deployments"
-        | "incidents"
-        | "metrics"
-        | "health"
-        | "workload"
-        | "investment"
-        | "readiness"
-        | "operational_deficiencies"
-        | "source_health"
-        | "evidence"
-        | "flow"
-        | "landscape"
-    )[];
+    fact_kinds?: string[];
     /**
-     * The server step that satisfies a computed obligation.
+     * The server step that satisfies a computed obligation. Open vocabulary; documented values: rank_cohort, membership_cardinality. A client must tolerate values it does not know.
      */
-    step?: "rank_cohort" | "membership_cardinality";
+    step?: string;
     /**
-     * Whether a server function actually RUNS the step. Travels with input_class because either alone misleads: a step declared to consume nothing and a step nobody executes are indistinguishable from the inputs.
+     * Whether a server function actually RUNS the step. Travels with input_class because either alone misleads: a step declared to consume nothing and a step nobody executes are indistinguishable from the inputs. Open vocabulary; documented values: server_executed, declared_only. A client must tolerate values it does not know.
      */
-    step_execution?: "server_executed" | "declared_only";
+    step_execution?: string;
     /**
-     * What the computation consumes, stated positively. A step that consumes no fact and a step whose inputs nobody declared both present as an empty list; resolved_member_set says the first, an absent class says the second.
+     * What the computation consumes, stated positively. A step that consumes no fact and a step whose inputs nobody declared both present as an empty list; resolved_member_set says the first, an absent class says the second. Open vocabulary; documented values: fact_kinds, resolved_member_set. A client must tolerate values it does not know.
      */
-    input_class?: "fact_kinds" | "resolved_member_set";
+    input_class?: string;
     /**
      * The fact kinds the step CONSUMES. Deliberately not fact_kinds: those are the kinds that can SERVE this cell, and a computation's inputs are facts some other cell is responsible for reading.
      *
-     * @maxItems 22
+     * @maxItems 64
+     *
+     * Items: Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots. A client must tolerate values it does not know.
      */
-    input_fact_kinds?: (
-        | "identity"
-        | "membership"
-        | "status"
-        | "actual_completion"
-        | "work"
-        | "blockers"
-        | "required_children"
-        | "pull_requests"
-        | "reviews"
-        | "continuous_integration"
-        | "deployments"
-        | "incidents"
-        | "metrics"
-        | "health"
-        | "workload"
-        | "investment"
-        | "readiness"
-        | "operational_deficiencies"
-        | "source_health"
-        | "evidence"
-        | "flow"
-        | "landscape"
-    )[];
+    input_fact_kinds?: string[];
     /**
-     * The population the requirement completes over.
+     * The population the requirement completes over. Open vocabulary; documented values: single_subject, each_operand, each_member, each_group. A client must tolerate values it does not know.
      */
-    scope: "single_subject" | "each_operand" | "each_member" | "each_group";
+    scope: string;
     /**
-     * How much of that population must be served. Always none on an unavailable row.
+     * How much of that population must be served. Always none on an unavailable row. Open vocabulary; documented values: at_least_one, corroborated, exact, all, none. A client must tolerate values it does not know.
      */
-    quantifier: "at_least_one" | "corroborated" | "exact" | "all" | "none";
+    quantifier: string;
     /**
-     * Why the cell has no server, absent when it has one. Each member is actionable by a different party: a new producer, a declaration change, a query change, or nothing at all.
+     * Why the cell has no server, absent when it has one. Each member is actionable by a different party: a new producer, a declaration change, a query change, or nothing at all. Open vocabulary; documented values: subject_kind_unsupported, no_declaring_producer, table_shape_undeclared, computed_population_absent. A client must tolerate values it does not know.
      */
-    unavailable?:
-        | "subject_kind_unsupported"
-        | "no_declaring_producer"
-        | "table_shape_undeclared"
-        | "computed_population_absent";
+    unavailable?: string;
 }
 export interface BoundSubjectReceipt {
     result_id: string;
@@ -7991,67 +8995,11 @@ export interface CandidateBoundReceipt {
     result_id: string;
     receipt_id: string;
 }
-export interface ClaimedFact {
-    claim_id: string;
-    kind:
-        | "identity"
-        | "membership"
-        | "status"
-        | "actual_completion"
-        | "work"
-        | "blockers"
-        | "required_children"
-        | "pull_requests"
-        | "reviews"
-        | "continuous_integration"
-        | "deployments"
-        | "incidents"
-        | "metrics"
-        | "health"
-        | "workload"
-        | "investment"
-        | "readiness"
-        | "operational_deficiencies"
-        | "source_health"
-        | "evidence"
-        | "flow"
-        | "landscape"
-        | "cardinality";
-    subject: SubjectRef;
-    field: string;
-    value: ScalarValue;
-    /**
-     * CHAOS-4347, additive: a renderable table for a fact whose evidence is genuinely a set of rows (e.g. a project's per-team metrics rollup) rather than one scalar. Optional; a claim carries `field`/`value` as its primary scalar either way.
-     *
-     * @maxItems 64
-     */
-    rows?: ClaimedFactRow[];
-    table?: ClaimedFactTable;
-    /**
-     * CHAOS-4682 (§5.1 P2 dual-read cutover), additive and OPTIONAL: the CHAOS-4645 time_series rows riding ALONGSIDE the legacy field `rows` already serves, present only on a dual-table fact (a legacy table AND a time_series table at once). `rows`/`table` above keep their CURRENT meaning and preference unconditionally -- this never changes what they carry. Nil on a single-table fact, whose one table is already served by `rows`.
-     *
-     * @maxItems 64
-     */
-    time_series_rows?: ClaimedFactRow[];
-    time_series_table?: ClaimedFactTable1;
-}
 export interface SubjectRef {
-    kind:
-        | "organization"
-        | "team"
-        | "project"
-        | "repository"
-        | "work_item"
-        | "pull_request"
-        | "deployment"
-        | "incident"
-        | "document"
-        | "decision"
-        | "episode"
-        | "metric"
-        | "pull_request_review"
-        | "ci_pipeline_run"
-        | "work_item_ref";
+    /**
+     * Open vocabulary; documented values: organization, team, project, repository, work_item, pull_request, deployment, incident, document, decision, episode, metric, pull_request_review, ci_pipeline_run, work_item_ref. A client must tolerate values it does not know.
+     */
+    kind: string;
     canonical_id: string;
     label: string;
 }
@@ -8205,21 +9153,14 @@ export interface ConversationTurn {
 }
 export interface Coverage {
     /**
-     * @maxItems 100
+     * @maxItems 105
      */
     sources: {
         source: string;
-        state:
-            | "available"
-            | "stale"
-            | "unavailable"
-            | "unconfigured"
-            | "unauthorized"
-            | "no_data"
-            | "truncated"
-            | "conflicted"
-            | "not_applicable"
-            | "pruned";
+        /**
+         * Open vocabulary; documented values: available, stale, unavailable, unconfigured, unauthorized, no_data, truncated, conflicted, not_applicable, pruned. A client must tolerate values it does not know.
+         */
+        state: string;
         observed_at?: string;
         watermark?: string;
         reason?: string;
@@ -8228,38 +9169,21 @@ export interface Coverage {
     }[];
     partial: boolean;
     /**
-     * @maxItems 100
+     * @maxItems 105
      */
     degraded_reasons?: string[];
     /**
-     * @maxItems 100
+     * @maxItems 105
      */
     details?: CoverageDetail[];
 }
 export interface CoverageDetail {
     detail_id: string;
     source: string;
-    code:
-        | "fact_unconfigured"
-        | "fact_no_declaring_producer"
-        | "fact_table_shape_undeclared"
-        | "fact_scope_unexpanded"
-        | "fact_read_failed"
-        | "fact_provider_reported"
-        | "fact_pruned"
-        | "fact_narrowed"
-        | "graph_endpoint_lookup_failed"
-        | "graph_exact_name_candidates_truncated"
-        | "graph_cohort_denied_by_authorization"
-        | "graph_unknown_relationship_type"
-        | "graph_validity_unbounded"
-        | "reuse_auxiliary_refs_stripped"
-        | "answer_terminated_before_attempt"
-        | "population_truncated"
-        | "requirement_read_not_planned"
-        | "read_population_unverified"
-        | "fact_read_origin_state"
-        | "kind_census_truncated";
+    /**
+     * Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld. A client must tolerate values it does not know.
+     */
+    code: string;
     degrading: boolean;
     fact_kind?: string;
     source_state?: string;
@@ -8280,24 +9204,20 @@ export interface CoverageDetail {
     label: string;
     phrasing?: string;
     raw?: string;
-    kind?:
-        | "organization"
-        | "team"
-        | "project"
-        | "repository"
-        | "work_item"
-        | "pull_request"
-        | "deployment"
-        | "incident"
-        | "document"
-        | "decision"
-        | "episode"
-        | "metric"
-        | "pull_request_review"
-        | "ci_pipeline_run"
-        | "work_item_ref";
+    /**
+     * Open vocabulary; documented values: organization, team, project, repository, work_item, pull_request, deployment, incident, document, decision, episode, metric, pull_request_review, ci_pipeline_run, work_item_ref. A client must tolerate values it does not know.
+     */
+    kind?: string;
     declared?: number;
     served?: number;
+    /**
+     * Open vocabulary; documented values: model_output_invalid, synthesis_rejected, model_receipt_unrecorded, model_call_not_completed, synthesis_deadline, synthesis_not_narrowable, synthesis_rows_over_budget, synthesis_retry_over_budget. A client must tolerate values it does not know.
+     */
+    failure_class?: string;
+    /**
+     * Open vocabulary; documented values: retry_may_succeed, retry_unlikely_to_help. A client must tolerate values it does not know.
+     */
+    retry_hint?: string;
 }
 /**
  * CHAOS-5405 D-d: one attempted requirement/origin scope decision, as served -- what population was measured, how much of it the caller was authorized to see, how much was admitted, and whether the answer was cut short. It is SERVED rather than only logged because two distinctions the answer depends on cannot be recovered from anything else on the result: a measured zero versus an unmeasured population, and which policy a successful expansion ran on. Counts from overlapping origin groups are NOT additive, and authorized_population_count always means the CALLER-VISIBLE population, never the organization's unrestricted one.
@@ -8320,23 +9240,10 @@ export interface FactScopeCensusRecord {
 }
 export interface Finding {
     finding_id: string;
-    kind:
-        | "status"
-        | "actual_completion"
-        | "work"
-        | "blockers"
-        | "reviews"
-        | "continuous_integration"
-        | "deployments"
-        | "incidents"
-        | "health"
-        | "workload"
-        | "investment"
-        | "readiness"
-        | "operational_deficiency"
-        | "source_health"
-        | "relationship"
-        | "narrative";
+    /**
+     * Open vocabulary; documented values: status, actual_completion, work, blockers, reviews, continuous_integration, deployments, incidents, health, workload, investment, readiness, operational_deficiency, source_health, relationship, narrative. A client must tolerate values it does not know.
+     */
+    kind: string;
     summary: string;
     /**
      * @maxItems 250
@@ -8360,29 +9267,10 @@ export interface HandleBoundReceipt {
     receipt_id: string;
 }
 export interface FactRequirement {
-    kind:
-        | "identity"
-        | "membership"
-        | "status"
-        | "actual_completion"
-        | "work"
-        | "blockers"
-        | "required_children"
-        | "pull_requests"
-        | "reviews"
-        | "continuous_integration"
-        | "deployments"
-        | "incidents"
-        | "metrics"
-        | "health"
-        | "workload"
-        | "investment"
-        | "readiness"
-        | "operational_deficiencies"
-        | "source_health"
-        | "evidence"
-        | "flow"
-        | "landscape";
+    /**
+     * Open vocabulary; documented values: identity, membership, status, actual_completion, work, blockers, required_children, pull_requests, reviews, continuous_integration, deployments, incidents, metrics, health, workload, investment, readiness, operational_deficiencies, source_health, evidence, flow, landscape, security_alerts, commitment, file_hotspots. A client must tolerate values it does not know.
+     */
+    kind: string;
     /**
      * @maxItems 250
      */
@@ -8398,6 +9286,7 @@ export interface InvestigationOptions {
     max_drivers: number;
     max_evidence_refs: number;
     max_serialized_bytes: number;
+    answer_budget_bytes?: number;
     allow_clarification: boolean;
     include_debug: boolean;
     window_confirmation_mode?: WindowConfirmationMode;
@@ -8430,29 +9319,20 @@ export interface RelationshipPath {
     truncated: boolean;
 }
 export interface RelationshipEdge {
-    type:
-        | "BELONGS_TO_REPOSITORY"
-        | "BELONGS_TO_PULL_REQUEST"
-        | "CORRELATED_WITH_INCIDENT"
-        | "RELATED_TO"
-        | "DOCUMENTED_BY"
-        | "HAS_EPISODE"
-        | "BLOCKS"
-        | "PART_OF"
-        | "RELATES_TO"
-        | "DUPLICATES"
-        | "BELONGS_TO_PROJECT"
-        | "OWNED_BY_TEAM";
+    /**
+     * Open vocabulary; documented values: BELONGS_TO_REPOSITORY, BELONGS_TO_PULL_REQUEST, CORRELATED_WITH_INCIDENT, RELATED_TO, DOCUMENTED_BY, HAS_EPISODE, BLOCKS, PART_OF, RELATES_TO, DUPLICATES, BELONGS_TO_PROJECT, OWNED_BY_TEAM, LINKS_PULL_REQUEST. A client must tolerate values it does not know.
+     */
+    type: string;
     from: SubjectRef;
     to: SubjectRef;
-    derivation:
-        | "canonical_structured"
-        | "deterministic_projection"
-        | "graph_associated"
-        | "model_extracted"
-        | "rule_inferred";
-    epistemic_status:
-        "observed" | "source_asserted" | "inferred" | "disputed" | "superseded" | "unknown";
+    /**
+     * Open vocabulary; documented values: canonical_structured, deterministic_projection, graph_associated, model_extracted, rule_inferred. A client must tolerate values it does not know.
+     */
+    derivation: string;
+    /**
+     * Open vocabulary; documented values: observed, source_asserted, inferred, disputed, superseded, unknown. A client must tolerate values it does not know.
+     */
+    epistemic_status: string;
     observed_at?: string;
     valid_from?: string;
     valid_to?: string;
@@ -10035,10 +10915,1433 @@ export interface WindowExpandOption {
     option_id: string;
     label: string;
     relative_id?: RelativeWindowID;
-    window_class?:
-        "trend_assessment" | "recent_activity_lookup" | "state_snapshot" | "explicit_window";
+    /**
+     * Open vocabulary; documented values: trend_assessment, recent_activity_lookup, state_snapshot, explicit_window. A client must tolerate values it does not know.
+     */
+    window_class?: string;
     candidate_label?: string;
     candidate_kind?: SubjectKind;
+}
+/**
+ * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1.
+ */
+export interface StructureNeedsV2 {
+    /**
+     * @minItems 1
+     * @maxItems 5
+     */
+    missing:
+        | [StructureNeedKind]
+        | [StructureNeedKind, StructureNeedKind]
+        | [StructureNeedKind, StructureNeedKind, StructureNeedKind]
+        | [StructureNeedKind, StructureNeedKind, StructureNeedKind, StructureNeedKind]
+        | [
+              StructureNeedKind,
+              StructureNeedKind,
+              StructureNeedKind,
+              StructureNeedKind,
+              StructureNeedKind,
+          ];
+    /**
+     * @maxItems 20
+     */
+    kind_options?:
+        | []
+        | [KindOption]
+        | [KindOption, KindOption]
+        | [KindOption, KindOption, KindOption]
+        | [KindOption, KindOption, KindOption, KindOption]
+        | [KindOption, KindOption, KindOption, KindOption, KindOption]
+        | [KindOption, KindOption, KindOption, KindOption, KindOption, KindOption]
+        | [KindOption, KindOption, KindOption, KindOption, KindOption, KindOption, KindOption]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ]
+        | [
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+              KindOption,
+          ];
+    /**
+     * @maxItems 20
+     */
+    anchor_options?:
+        | []
+        | [AnchorOptionV2]
+        | [AnchorOptionV2, AnchorOptionV2]
+        | [AnchorOptionV2, AnchorOptionV2, AnchorOptionV2]
+        | [AnchorOptionV2, AnchorOptionV2, AnchorOptionV2, AnchorOptionV2]
+        | [AnchorOptionV2, AnchorOptionV2, AnchorOptionV2, AnchorOptionV2, AnchorOptionV2]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ]
+        | [
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+              AnchorOptionV2,
+          ];
+    /**
+     * @maxItems 20
+     */
+    handle_options?:
+        | []
+        | [HandleOption]
+        | [HandleOption, HandleOption]
+        | [HandleOption, HandleOption, HandleOption]
+        | [HandleOption, HandleOption, HandleOption, HandleOption]
+        | [HandleOption, HandleOption, HandleOption, HandleOption, HandleOption]
+        | [HandleOption, HandleOption, HandleOption, HandleOption, HandleOption, HandleOption]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ]
+        | [
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+              HandleOption,
+          ];
+    /**
+     * @maxItems 20
+     */
+    window_options?:
+        | []
+        | [WindowOption]
+        | [WindowOption, WindowOption]
+        | [WindowOption, WindowOption, WindowOption]
+        | [WindowOption, WindowOption, WindowOption, WindowOption]
+        | [WindowOption, WindowOption, WindowOption, WindowOption, WindowOption]
+        | [WindowOption, WindowOption, WindowOption, WindowOption, WindowOption, WindowOption]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ]
+        | [
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+              WindowOption,
+          ];
+    /**
+     * @maxItems 20
+     */
+    accepted_grammars?:
+        | []
+        | [AcceptedGrammar]
+        | [AcceptedGrammar, AcceptedGrammar]
+        | [AcceptedGrammar, AcceptedGrammar, AcceptedGrammar]
+        | [AcceptedGrammar, AcceptedGrammar, AcceptedGrammar, AcceptedGrammar]
+        | [AcceptedGrammar, AcceptedGrammar, AcceptedGrammar, AcceptedGrammar, AcceptedGrammar]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ]
+        | [
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+              AcceptedGrammar,
+          ];
+    /**
+     * @maxItems 20
+     */
+    candidate_options?:
+        | []
+        | [CandidateOption]
+        | [CandidateOption, CandidateOption]
+        | [CandidateOption, CandidateOption, CandidateOption]
+        | [CandidateOption, CandidateOption, CandidateOption, CandidateOption]
+        | [CandidateOption, CandidateOption, CandidateOption, CandidateOption, CandidateOption]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ]
+        | [
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+              CandidateOption,
+          ];
+    /**
+     * @maxItems 1
+     */
+    window_expand_options?: [] | [WindowExpandOption];
+}
+/**
+ * CHAOS-4042 (sol-max ruling): one server-offered anchor candidate under MEMBERSHIP-VERIFY semantics -- the claimant set is NOT required to be unique. Redemption re-verifies that (kind, canonical_id) remains a member of the term's complete claimant set at the pinned ResolvedGraphBinding epoch, matched by (matched_term_hash, kind, canonical_id) together, never id or hash alone. Wire shape is identical to v1 AnchorOption; only the meaning differs, which is why this is a distinct, permanently-separate contract rather than a v1 revision. Only ever carried on a result whose schema_version is context_fabric_investigation_result.v2 -- a v1 result (context_fabric_investigation_result.v1) uses AnchorOption and stays unique-claimant permanently.
+ */
+export interface AnchorOptionV2 {
+    receipt_id: string;
+    option_id: string;
+    label: string;
+    kind: SubjectKind;
+    canonical_id: string;
+    matched_term_hash: string;
+    offer_source: StructureOfferSource;
+    prior_version_id?: string;
+    prior_entry_id?: string;
+    phrasing?: string;
 }
 /**
  * CHAOS-3900 P1: one echoed offer inside a decisive result's structure_offer_snapshot (design brief section 2.1's B5 gap). Ids/ranks/enums only, never display text.
@@ -10061,6 +12364,10 @@ export interface SubjectResolution {
      */
     committed: SubjectRef[];
     clarification_prompt?: string;
+    /**
+     * @maxItems 50
+     */
+    inactive_hints?: InactiveHint[];
     retrieval_degraded?: boolean;
     graph_not_projected?: boolean;
     /**
@@ -10321,7 +12628,10 @@ export interface SubjectResolution {
 export interface SubjectCandidate {
     receipt_id: string;
     subject: SubjectRef;
-    state: "committed" | "proposed" | "ambiguous" | "unresolved";
+    /**
+     * Open vocabulary; documented values: committed, proposed, ambiguous, unresolved. A client must tolerate values it does not know.
+     */
+    state: string;
     /**
      * @maxItems 32
      */
@@ -10332,6 +12642,10 @@ export interface SubjectCandidate {
      */
     match_reasons: [string, ...string[]];
     confidence: number;
+    /**
+     * Source provider of the subject. Present when exactly one provider identifies the subject.
+     */
+    provider?: string;
     /**
      * @maxItems 6
      */
@@ -10373,21 +12687,10 @@ export interface SubjectCandidate {
      */
     evidence_ref_ids?: string[];
 }
-export interface CommitDecisionDigest {
+export interface InactiveHint {
     subject: SubjectRef;
-    commit_gate?:
-        | ""
-        | "caller_hint_short_circuit"
-        | "pre_committed_exact_hint"
-        | "exact_index"
-        | "identity_fast_path"
-        | "lone_floor"
-        | "top_of_two"
-        | "vector_margin_rescue"
-        | "evidence_census";
-    identity_proven?: boolean;
-    search_truncated?: boolean;
-    alias_lookup_complete?: boolean;
+    answer: "team_inactive";
+    active_canonical_id?: string;
 }
 /**
  * CHAOS-3478/CHAOS-3813: the wire-visible disposition for one PriorSubjectReceipts entry the caller sent -- one entry per carried receipt, including skipped ones.
@@ -10423,9 +12726,21 @@ export interface VersionSet {
     synthesis_version: string;
     canonical_service_version: string;
     /**
-     * CHAOS-3782: the provider/model that produced this result's synthesis, e.g. "openai-compatible/gpt-5-nano". Never a bare vendor name. Optional: rows persisted before this field existed (or by unknown writer with answer reuse disabled) omit it entirely; absence never blocks reading an existing result, and never makes that result reuse-eligible either (reuse also requires question_hash, absent on the same rows for the same reason). maxLength is provider (<=256) + "/" + model (<=256) = 513, not the 256 shared by every other field here -- those are short deployment/prompt version tokens ACR itself controls.
+     * CHAOS-3782: the provider/model of the model call that produced this result: its synthesis, or the interpretation call when the result ended without one (synthesis_version then reads not_synthesized), e.g. "openai-compatible/gpt-5-nano". Never a bare vendor name. Optional: rows persisted before this field existed (or by unknown writer with answer reuse disabled) omit it entirely; absence never blocks reading an existing result, and never makes that result reuse-eligible either (reuse also requires question_hash, absent on the same rows for the same reason). maxLength is provider (<=256) + "/" + model (<=256) = 513, not the 256 shared by every other field here -- those are short deployment/prompt version tokens ACR itself controls.
      */
     model_identity?: string;
+    /**
+     * Who interpreted the question of this result: the service's own model (server) or the caller's (client). Optional: absent when no interpretation ran on the turn. A stored result written before the field existed is served with server when its interpretation_version names a version, and without the field when its interpretation_version is unwired.
+     */
+    interpretation_source?: "server" | "client";
+    /**
+     * The model that interpreted the question of this result: <provider>/<model> for the service's own model, client-supplied/<declared model or undeclared> for the caller's. A client interpretation_source requires the client-supplied prefix and no other source may carry it. Optional: a stored result written before the field existed is served with a server interpretation_source and without this field.
+     */
+    interpretation_model_identity?: string;
+    /**
+     * Who wrote the answer of this result: the service's own model (server) or the caller's (client). Optional: absent when no synthesis step ran on the turn. A client result carries no model-written drivers or claims; the caller wrote the answer from the synthesis input of its turn. The status of a client result is partial, or degraded when the service finds a required source unavailable, or no_match; never complete.
+     */
+    synthesis_source?: "server" | "client";
 }
 /**
  * CHAOS-3900 W1: same shape as BoundSubjectReceipt, but receipt_id is additionally constrained to the closed winr_ namespace (design brief section 5, pivot brief section 2's closed kindr_/ancr_/handr_/winr_ set) -- a separate type, not a reuse of BoundSubjectReceipt, so the schema itself rejects a subject-namespaced id in prior_window_receipts the same way validate_context_fabric_request.go does.

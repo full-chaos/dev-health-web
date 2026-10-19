@@ -98,11 +98,13 @@ function ExplainerCards() {
                     <h4 className="font-(--font-display) text-base">How to read the visuals</h4>
                     <div className="mt-2">
                         <ul className="space-y-2 text-sm text-(--ink-muted)">
-                            <li>Size represents the work-unit count of a theme or subcategory.</li>
+                            <li>
+                                Size represents the issue size of a theme or subcategory; a work
+                                unit with no size counts 1.
+                            </li>
                             <li>
                                 Color indicates which theme or subcategory the work leans toward.
                             </li>
-                            <li>Opacity represents evidence quality for the interpretation.</li>
                             <li>
                                 Flows show how effort appears to move from teams into themes and
                                 repos.

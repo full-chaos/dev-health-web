@@ -26,10 +26,21 @@
  *   - schema_violation      stray top-level document keys (the schema's own
  *                           top-level additionalProperties:false), or a row
  *                           missing one of the schema's required fields
- *   - unstated_null         public_rationale null while classification is
+ *   - unstated_null         an advisory field (action, resource_resolver,
+ *                           current_state_cache_behavior,
+ *                           entitlement_requirement, disclosure_behavior,
+ *                           token_shape) that is null with no gaps entry
+ *                           beginning "<field>:" (absent = not applicable);
+ *                           public_rationale null while classification is
  *                           "public" (or non-null while "protected"); a
  *                           protected row's primary_validator is null/
  *                           non-rejecting with no gaps entry explaining it
+ *   - absent_without_proof      an advisory field left absent without a call-walk not_reachable
+ *                           verdict (entitlement_requirement, token_shape), or absent on a
+ *                           field with no predicate
+ *   - reach_contradicts_row   a null or absent field whose entitlement gate or credential
+ *                           read the call walk reaches; or a recorded entitlement_requirement
+ *                           on a surface that reaches no gate
  *   - degrades_silently     ★ the corrected predicate (2026-09-01): a
  *                           protected server_action row whose primary_validator
  *                           anchor does not demonstrably contain a call to a
@@ -61,6 +72,24 @@
  * (CHAOS-4728, merged fcc3c1db), and the shape a future lane is most likely
  * to reintroduce by accident.
  *
+ * CHAOS-4780 RECONCILIATION: discovery also reports, per surface, whether a
+ * guard function is reachable from the handler: its own body plus any function
+ * it calls (wrapper calls such as withAuth(handler) included), resolved by the
+ * type checker to a declaration, and counted only when that declaration is one
+ * of GUARD_SYMBOLS (file + name, declared once in discover_web_routes.ts). A
+ * local helper that shares a guard's name does not count; an aliased import of
+ * a real guard does. The call walk is bounded; a surface that hits the bound is
+ * reported `guard_unresolved` and fails. The gate rejects a `public` row on a
+ * guarded surface, `primary_validator: null` on a guarded surface, and a
+ * `protected` row on a surface with no guard found unless gaps discloses it.
+ * A guard call counts only when awaited or returned, and only in code that can
+ * run (nothing after a top-level return/throw, no `if (false)` arm). A promise
+ * stored in a variable and awaited later is not counted.
+ * NAMED GAP: "guarded" means a guard is REACHABLE from the handler, not that
+ * every path passes through it; a guard reached only on one branch passes. A
+ * surface whose handler cannot be resolved to a function (the NextAuth
+ * `handlers` destructure) is not reconciled.
+ *
  * CONTRACT INPUTS (schema + credential-classes) are owned by dev-health-ops
  * and are not vendored here. `main()` resolves them from `--schema` /
  * `--credential-classes`, falling back to sibling-checkout default paths
@@ -82,11 +111,26 @@ import Ajv2020 from "ajv/dist/2020";
 // for and we would not be doing.
 import addFormats from "ajv-formats";
 import {
+    GUARD_SYMBOLS,
+    REJECTING_GUARD_NAMES,
     discoverRoutes,
     discoverServerActionFiles,
+    isDemonstrablyRejecting,
+    verifyGuardSymbols,
+    verifyEntitlementSymbols,
+    type Reach,
     type RouteRecord,
     type ServerActionRecord,
 } from "./discover_web_routes";
+
+const ADVISORY_FIELDS = [
+    "action",
+    "resource_resolver",
+    "current_state_cache_behavior",
+    "entitlement_requirement",
+    "disclosure_behavior",
+    "token_shape",
+] as const;
 
 export type EndpointProfileRow = {
     id: string;
@@ -124,7 +168,14 @@ export type Violation = {
         | "anchor_drift"
         | "schema_violation"
         | "unstated_null"
-        | "degrades_silently";
+        | "degrades_silently"
+        | "surface_kind_mismatch"
+        | "claim_contradicts_source"
+        | "guard_unresolved"
+        | "guard_symbol_unverified"
+        | "absent_without_proof"
+        | "reach_contradicts_row"
+        | "entitlement_symbol_unverified";
     id?: string;
     detail: string;
 };
@@ -165,44 +216,23 @@ const SURFACE_KINDS_FALLBACK = new Set([
 // the ops gate does -- a schema-level addition (a newly deployed app) is
 // accepted with zero checker code change instead of being wrongly rejected.
 
-// See the ★ HONESTY LIMIT block in the module docstring before extending or
-// relying on this list beyond what it proves.
-const REJECTING_GUARD_NAMES = [
-    "getSessionContext",
-    "requireSuperuserToken",
-    "getToken",
-    "resolveOrgId",
-    "getAuthHeaders",
-    "getAuthHeadersOrThrow",
-    "apiRequest",
-    "withAuthHeaders",
-];
-const REJECTING_GUARD_RE = new RegExp(`\\b(?:${REJECTING_GUARD_NAMES.join("|")})\\b`);
-// Hand-rolled inline reject shapes, each verified by hand at its own call
-// site (not routed through a named helper, but still an unconditional
-// return/throw on no session):
-const INLINE_REJECT_PATTERNS = [
-    // checkout.ts's createBillingPlan/updateBillingPlan/deleteBillingPlan/
-    // syncBillingPlanToStripe/listBillingPlans (listBillingPlans fixed
-    // CHAOS-3273 Wave 0, 2026-09-01): `if (!session?.access_token) return ...`.
-    // The DEGRADING counterexample this gate exists to catch (listBillingPlans
-    // before its fix) used `session?.access_token` only inside an `if` whose
-    // body ATTACHES a header -- no `return`/`throw` -- so requiring `return`
-    // or `throw` on the SAME lexical scan is what distinguishes the two, not
-    // just the presence of the `access_token` check.
-    /!\s*session\?\.access_token\)[^]*?(?:return|throw)/,
-    // feature-flags/actions.ts's fetchFlagPage (CHAOS-4728, merged fcc3c1db):
-    // `if (!session?.user?.org_id) { throw new Error(AuthErrors.Unauthorized); }`.
-    /!\s*session\?\.user\?\.org_id\)[^]*?(?:return|throw)/,
-];
-
-function isDemonstrablyRejecting(snippet: string): boolean {
+/** A gaps entry that names primary_validator and says no rejecting check exists behind it. */
+function gapsDiscloseMissingValidator(gapsText: string): boolean {
     return (
-        REJECTING_GUARD_RE.test(snippet) || INLINE_REJECT_PATTERNS.some((re) => re.test(snippet))
+        /primary_validator/i.test(gapsText) &&
+        (/no reject/i.test(gapsText) ||
+            /does not reject/i.test(gapsText) ||
+            /not currently enforced/i.test(gapsText) ||
+            /degrades/i.test(gapsText) ||
+            /NO REJECTING VALIDATOR/i.test(gapsText))
     );
 }
 
 export interface GateInputs {
+    /** GUARD_SYMBOLS entries whose declaration is missing or no longer rejects (verifyGuardSymbols). */
+    unverifiedGuardSymbols?: string[];
+    /** ENTITLEMENT_SYMBOLS entries that are missing or no longer exit (verifyEntitlementSymbols). */
+    unverifiedEntitlementSymbols?: string[];
     discoveredRoutes: RouteRecord[];
     discoveredActions: ServerActionRecord[];
     doc: unknown;
@@ -321,6 +351,14 @@ function duplicateCredentialClassViolations(credentialClassesDocument: unknown):
     return violations;
 }
 
+/** "" / "   " / [] / {}: present on the row but saying nothing, which is absent in all but name. */
+function isEmptyValue(v: unknown): boolean {
+    if (typeof v === "string") return v.trim() === "";
+    if (Array.isArray(v)) return v.length === 0;
+    if (v !== null && typeof v === "object") return Object.keys(v).length === 0;
+    return false;
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -421,6 +459,42 @@ export function runGate(input: GateInputs): Violation[] {
     }
 
     const discovered = discoveredIdMap(discoveredRoutes, discoveredActions);
+    // CHAOS-4792: the kind of a surface comes from discovery, never from the
+    // row's own label. A row naming a discovered id with another surface_kind
+    // is a violation, and the per-kind checks below key on this map.
+    // CHAOS-4780: what discovery found about each surface's guard. A row's
+    // protection claim is reconciled against it below.
+    const guardedById = new Map<string, boolean>();
+    for (const r of discoveredRoutes)
+        if (r.guarded !== undefined)
+            guardedById.set(`${r.method} ${r.route} [dev-health-web]`, r.guarded);
+    for (const a of discoveredActions)
+        if (a.guarded !== undefined) guardedById.set(a.id, a.guarded);
+    for (const name of input.unverifiedGuardSymbols ?? []) {
+        violations.push({
+            rule: "guard_symbol_unverified",
+            detail: `guard function ${name} is missing or its body no longer rejects on a missing session, so surfaces that call it are not proven guarded`,
+        });
+    }
+    for (const name of input.unverifiedEntitlementSymbols ?? []) {
+        violations.push({
+            rule: "entitlement_symbol_unverified",
+            detail: `entitlement gate ${name} is missing or no longer rejects, so a call walk that does not reach it proves nothing`,
+        });
+    }
+    // Call-walk verdicts per surface: the only evidence an advisory field may
+    // be absent. A surface with no verdict (handler not resolved) proves nothing.
+    const reachById = new Map<string, { entitlement?: Reach; credential?: Reach }>();
+    for (const r of discoveredRoutes) reachById.set(`${r.method} ${r.route} [dev-health-web]`, r);
+    for (const a of discoveredActions) reachById.set(a.id, a);
+    const unresolvedGuard = new Set<string>();
+    for (const r of discoveredRoutes)
+        if (r.guardUnresolved) unresolvedGuard.add(`${r.method} ${r.route} [dev-health-web]`);
+    for (const a of discoveredActions) if (a.guardUnresolved) unresolvedGuard.add(a.id);
+    const discoveredKind = new Map<string, "rest" | "server_action">();
+    for (const id of discovered.keys()) {
+        discoveredKind.set(id, id.startsWith("server_action:") ? "server_action" : "rest");
+    }
     const webRowsById = new Map<string, EndpointProfileRow>();
 
     for (const row of rows) {
@@ -446,6 +520,46 @@ export function runGate(input: GateInputs): Violation[] {
         // exempted rather than flagged wrong.
         if (row.service === "dev-health-web") {
             webRowsById.set(row.id, row);
+        }
+        const guarded = row.service === "dev-health-web" ? guardedById.get(row.id) : undefined;
+        if (unresolvedGuard.has(row.id)) {
+            violations.push({
+                rule: "guard_unresolved",
+                id: row.id,
+                detail: "guard discovery hit its call-depth bound for this surface, so its protection could not be established; it is never treated as guarded",
+            });
+        }
+        if (guarded === true && row.classification === "public") {
+            violations.push({
+                rule: "claim_contradicts_source",
+                id: row.id,
+                detail: "row is classified public but source discovery finds a rejecting guard on this surface",
+            });
+        }
+        if (guarded === true && row.primary_validator === null) {
+            violations.push({
+                rule: "claim_contradicts_source",
+                id: row.id,
+                detail: "row has primary_validator: null but source discovery finds a rejecting guard on this surface",
+            });
+        }
+        if (guarded === false && row.classification === "protected") {
+            const gapsText = Array.isArray(row.gaps) ? row.gaps.join("\n") : "";
+            if (!gapsDiscloseMissingValidator(gapsText)) {
+                violations.push({
+                    rule: "claim_contradicts_source",
+                    id: row.id,
+                    detail: `row is classified protected but source discovery finds none of the known rejecting guards (${GUARD_SYMBOLS.map((s) => s.name).join(", ")}) on this surface, and gaps does not disclose it`,
+                });
+            }
+        }
+        const foundKind = discoveredKind.get(row.id);
+        if (foundKind !== undefined && row.surface_kind !== foundKind) {
+            violations.push({
+                rule: "surface_kind_mismatch",
+                id: row.id,
+                detail: `row declares surface_kind "${row.surface_kind}" but source discovery finds this id as a ${foundKind} surface; a row cannot choose which checks apply to it`,
+            });
         }
 
         const surfaceKinds = schemaDocument
@@ -493,21 +607,74 @@ export function runGate(input: GateInputs): Violation[] {
             });
         }
 
+        // unstated_null: advisory fields. Absent = not applicable; null =
+        // undetermined and needs a gaps entry that begins with "<field>:".
+        // A substring match would let prose such as "transaction details"
+        // excuse a null action.
+        for (const field of ADVISORY_FIELDS) {
+            if (!(field in row) || row[field] !== null) continue;
+            const named =
+                Array.isArray(row.gaps) &&
+                row.gaps.some(
+                    (g) => typeof g === "string" && g.trimStart().startsWith(`${field}:`),
+                );
+            if (!named) {
+                violations.push({
+                    rule: "unstated_null",
+                    id: row.id,
+                    detail: `${field} is null (undetermined) with no gaps entry beginning "${field}:"; use an absent field when it does not apply`,
+                });
+            }
+        }
+
+        // Absent needs a proof. entitlement_requirement and token_shape have a
+        // call-walk predicate; the other advisory fields have none yet, so a
+        // row may not leave them absent.
+        {
+            const reach = reachById.get(row.id);
+            const predicate: Record<string, Reach | undefined> = {
+                entitlement_requirement: reach?.entitlement,
+                token_shape: reach?.credential,
+            };
+            for (const field of ADVISORY_FIELDS) {
+                const absent = !(field in row) || isEmptyValue(row[field]);
+                const unset = absent || row[field] === null;
+                const verdict = predicate[field];
+                if (absent && verdict !== "not_reachable") {
+                    violations.push({
+                        rule: "absent_without_proof",
+                        id: row.id,
+                        detail: !(field in predicate)
+                            ? `${field} is absent but no call-walk predicate exists for it; record null with a "${field}:" gaps entry`
+                            : `${field} is absent but the call walk says ${verdict ?? "unresolved"}, not not_reachable; absent needs that proof`,
+                    });
+                }
+                if (unset && verdict === "reachable") {
+                    violations.push({
+                        rule: "reach_contradicts_row",
+                        id: row.id,
+                        detail: `${field} is ${absent ? "absent" : "null"} but the call walk reaches its ${field === "token_shape" ? "credential read" : "entitlement gate"}; record the real value`,
+                    });
+                }
+                if (field === "entitlement_requirement" && !unset && verdict === "not_reachable") {
+                    violations.push({
+                        rule: "reach_contradicts_row",
+                        id: row.id,
+                        detail: `entitlement_requirement is recorded but the call walk reaches no entitlement gate; the claim is unproven`,
+                    });
+                }
+            }
+        }
+
         // degrades_silently / unstated-null-primary_validator, only for the
         // surface kind + service this pass verified by hand: web server_actions.
         if (
             row.service === "dev-health-web" &&
-            row.surface_kind === "server_action" &&
+            (foundKind ?? row.surface_kind) === "server_action" &&
             row.classification === "protected"
         ) {
             const gapsText = Array.isArray(row.gaps) ? row.gaps.join("\n") : "";
-            const mentionsValidatorGap =
-                /primary_validator/i.test(gapsText) &&
-                (/no reject/i.test(gapsText) ||
-                    /does not reject/i.test(gapsText) ||
-                    /not currently enforced/i.test(gapsText) ||
-                    /degrades/i.test(gapsText) ||
-                    /NO REJECTING VALIDATOR/i.test(gapsText));
+            const mentionsValidatorGap = gapsDiscloseMissingValidator(gapsText);
 
             if (row.primary_validator === null) {
                 if (!mentionsValidatorGap) {
@@ -741,6 +908,8 @@ function main() {
     }
 
     const violations = runGate({
+        unverifiedGuardSymbols: verifyGuardSymbols(root),
+        unverifiedEntitlementSymbols: verifyEntitlementSymbols(root),
         discoveredRoutes,
         discoveredActions,
         doc,

@@ -19,6 +19,7 @@ import {
     formatBandLabel,
     formatQuality,
     formatWorkUnitLabel,
+    themeSharePct,
     titleCase,
     topInvestmentKey,
     workUnitRowKey,
@@ -32,6 +33,7 @@ import type {
 } from "@/lib/types";
 import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 import { AllocationCoverage } from "./AllocationCoverage";
+import { ThemeMeasureNote } from "./ThemeMeasureNote";
 import { EvidenceQualityBands } from "./EvidenceQualityBands";
 import type { MixExplanationState } from "./types";
 
@@ -386,19 +388,19 @@ export function ConfidencePanel({
                                             : row.label}
                                     </span>
                                     <span className="text-xs text-(--ink-muted)">
-                                        {formatNumber(row.allocation_pct, {
+                                        {formatNumber(themeSharePct(row), {
                                             maximumFractionDigits: 1,
                                         })}
                                         %
                                     </span>
                                 </div>
                                 <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
-                                    {row.allocation_pct > 0 && (
+                                    {themeSharePct(row) > 0 && (
                                         <div
                                             aria-hidden
                                             className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
                                             style={{
-                                                width: `${Math.min(100, row.allocation_pct)}%`,
+                                                width: `${Math.min(100, themeSharePct(row))}%`,
                                                 minWidth: 2,
                                             }}
                                         />
@@ -419,6 +421,7 @@ export function ConfidencePanel({
                             </li>
                         ))}
                     </ul>
+                    <ThemeMeasureNote rows={reworkThemeAllocation} />
                 </Section>
             )}
         </section>

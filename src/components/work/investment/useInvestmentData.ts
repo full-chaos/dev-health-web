@@ -10,6 +10,7 @@ import {
 import { explainInvestmentMix, getWorkUnitExplanation, getWorkUnits } from "@/lib/api/investment";
 import { formatWorkUnitTypeLabel, getBaselineFilters } from "@/lib/investment";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
+import { buildDateRange } from "@/lib/graphql/investmentFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { WorkUnitExplanation, WorkUnitInvestment } from "@/lib/types";
 import { TOP_N_REPOS, isNonCountUnit, normalizeThemeKey } from "@/lib/investment";
@@ -66,6 +67,8 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
     if (started.key !== filtersKey || needed.some((read) => !known.includes(read))) {
         setStarted({ key: filtersKey, reads: Array.from(new Set([...known, ...needed])) });
     }
+    // One window for the mix read and its explanation: each sampling the clock itself can differ across midnight.
+    const mixDateRange = useMemo(() => buildDateRange(filters), [filters]);
     const runs = (read: InvestmentRead) =>
         needed.includes(read) || (started.key === filtersKey && started.reads.includes(read));
 
@@ -73,7 +76,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         data: mixData,
         loading: mixLoading,
         error: mixError,
-    } = useInvestmentMix({ filters, pause: !runs("mix") });
+    } = useInvestmentMix({ filters, pause: !runs("mix"), dateRange: mixDateRange });
     const mixUnitClass = mixData?.unit;
     const mixServedNonCount = isNonCountUnit(mixUnitClass);
     useEffect(() => {
@@ -183,7 +186,10 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         }
     }, [focusTheme]);
 
-    const mixExplainKey = useMemo(() => JSON.stringify({ filters }), [filters]);
+    const mixExplainKey = useMemo(
+        () => JSON.stringify({ filters, dateRange: mixDateRange }),
+        [filters, mixDateRange],
+    );
 
     const regenerateMixExplanation = useCallback(async () => {
         setIsExplainingMix(true);
@@ -192,6 +198,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                 filters,
                 theme: focusTheme,
                 subcategory: focusSubcategory,
+                dateRange: mixDateRange,
             });
             setMixExplanation({
                 data: payload,
@@ -208,7 +215,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         } finally {
             setIsExplainingMix(false);
         }
-    }, [filters, focusSubcategory, focusTheme, mixExplainKey]);
+    }, [filters, focusSubcategory, focusTheme, mixDateRange, mixExplainKey]);
 
     useEffect(() => {
         let active = true;
@@ -218,6 +225,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                     filters,
                     theme: null,
                     subcategory: null,
+                    dateRange: mixDateRange,
                 });
                 if (active) {
                     setMixExplanation({
@@ -245,7 +253,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [filters, mixExplainKey, mixExplanation.filtersKey]);
+    }, [filters, mixDateRange, mixExplainKey, mixExplanation.filtersKey]);
 
     useEffect(() => {
         let active = true;

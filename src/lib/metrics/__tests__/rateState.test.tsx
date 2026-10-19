@@ -15,6 +15,7 @@ import {
     NO_MERGED_PULL_REQUESTS,
     NO_REVIEW_DATA,
     NO_REWORK_SIGNAL,
+    metricCardProps,
     noDataText,
 } from "../metricDisplay";
 
@@ -278,5 +279,74 @@ describe("Home card", () => {
             ),
             c,
         );
+    });
+});
+
+// CHAOS-9660: the tile of an unknown change failure rate says the served unknown reason.
+describe("change failure rate tile: the served unknown reason", () => {
+    const UNAVAILABLE = "Deployment outcomes were unavailable for this window";
+    const REASONS = [
+        { reason: "not_collected", state: null, text: UNAVAILABLE },
+        {
+            reason: "deployments_without_outcome",
+            state: "unknown_no_incident_evidence",
+            text: UNAVAILABLE,
+        },
+        {
+            reason: "no_deployments_in_window",
+            state: "not_applicable_no_deployments",
+            text: "No deployments in this window",
+        },
+    ];
+
+    it.each(REASONS)("noDataText: $reason", ({ reason, state, text }) => {
+        expect(noDataText("change_failure_rate", state, reason)).toBe(text);
+    });
+
+    it("noDataText: no or unknown reason keeps the state text; other metrics ignore it", () => {
+        expect(noDataText("change_failure_rate", "unknown_no_incident_evidence", null)).toBe(
+            NO_INCIDENT_DATA,
+        );
+        expect(noDataText("change_failure_rate", null, "something_new")).toBe(NO_DATA_FOR_WINDOW);
+        expect(noDataText("pr_rework_ratio", null, "not_collected")).toBe(NO_DATA_FOR_WINDOW);
+    });
+
+    it.each(REASONS)("operating review tile: $reason", ({ reason, state, text }) => {
+        const metric: OperatingReviewMetric = {
+            key: "change_failure_rate",
+            label: "Change failure rate",
+            value: 0,
+            unit: "ratio",
+            hasData: false,
+            ...(state ? { rateState: state } : {}),
+            changeFailureEvidence: {
+                deployments: 0,
+                deploymentsWithStatus: 0,
+                unknownReason: reason,
+            },
+            delta: {
+                value: 0,
+                priorValue: 0.5,
+                absolute: 0,
+                percent: 0,
+                status: "",
+                hasPriorData: true,
+            },
+        };
+        render(<MetricTile metric={metric} narrow={false} />);
+        expect(screen.getByTestId("metric-value")).toHaveTextContent(text);
+    });
+
+    it.each(REASONS)("metricCardProps (Home, Explore): $reason", ({ reason, state, text }) => {
+        const props = metricCardProps({
+            metric: "change_failure_rate",
+            value: 0,
+            unit: "ratio",
+            delta_pct: null,
+            has_data: false,
+            ...(state ? { rate_state: state } : {}),
+            change_failure_evidence: { unknown_reason: reason },
+        });
+        expect(props.valueText).toBe(text);
     });
 });

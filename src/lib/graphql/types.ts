@@ -159,6 +159,10 @@ export interface SankeyEdge {
 export interface SankeyCoverage {
     teamCoverage: number | null;
     repoCoverage: number | null;
+    /** Share (0..1) of the window's work units that carry an issue size; null = not measured. */
+    sizingCoverage?: number | null;
+    /** Work units without an issue size (each counts as 1 work unit); null = not measured. */
+    unsizedUnitCount?: number | null;
 }
 
 export interface SankeyResult {
@@ -166,7 +170,7 @@ export interface SankeyResult {
     edges: SankeyEdge[];
     /** null when the backend's coverage query failed and degraded by design. */
     coverage?: SankeyCoverage | null;
-    /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS". */
+    /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS" or "ISSUE_SIZE". */
     unit?: string;
 }
 
@@ -572,6 +576,18 @@ export interface OperatingReviewMetric {
     delta: OperatingReviewDelta;
 }
 
+/**
+ * The measure of the investment section and how much of it is sized (CHAOS-9873). ISSUE_SIZE weighs each work
+ * unit by its issue size, an unsized unit counts 1; WORK_UNITS counts each unit 1. The three counts are null in
+ * WORK_UNITS and null when the week holds no unit: null is "not measured", never 0.
+ */
+export interface OperatingReviewSizing {
+    measure: "WORK_UNITS" | "ISSUE_SIZE";
+    sizingCoverage?: number | null;
+    unsizedUnitCount?: number | null;
+    workUnitCount?: number | null;
+}
+
 export interface OperatingReviewSection {
     key: string;
     title: string;
@@ -579,6 +595,8 @@ export interface OperatingReviewSection {
     changed: string[];
     improved: string[];
     worsened: string[];
+    /** Served for the investment section only; null or absent when none is served. */
+    sizing?: OperatingReviewSizing | null;
 }
 
 export interface OperatingReview {
@@ -869,6 +887,8 @@ export interface HomeGraphQLDelta {
     deltaPct: number | null;
     hasData: boolean;
     hasPriorData: boolean;
+    /** The prior window's measured value (CHAOS-9817); null when it has none, a stored 0 is 0. Absent: an older API. */
+    priorValue?: number | null;
     spark: HomeGraphQLSparkPoint[];
     /** Why a change failure rate has a value or not; null or absent when none is served. */
     rateState?: string | null;
@@ -916,6 +936,11 @@ export interface HomeGraphQLReworkThemeAllocation {
     allocationPct: number;
     prsMerged: number;
     churnLoc: number;
+    measure: "WORK_UNITS" | "ISSUE_SIZE";
+    denominator: number;
+    sizingCoverage: number | null;
+    unsizedUnitCount: number | null;
+    workUnitCount: number | null;
 }
 
 export interface HomeGraphQLSummarySentence {
@@ -1005,6 +1030,7 @@ export interface HomeGraphQLSignal {
     coverage?: number | null;
     /** Served repository-filter flag. Absent: an older API. */
     repoFilterApplied?: boolean | null;
+    driver?: string | null;
     attribution: HomeGraphQLSignalAttribution | null;
 }
 

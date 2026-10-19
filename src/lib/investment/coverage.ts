@@ -32,3 +32,41 @@ export function readFlowCoverage(flow: SankeyResponse | null | undefined): FlowC
 
 /** Plain reason shown wherever a coverage value was not produced. */
 export const COVERAGE_UNAVAILABLE_REASON = "Coverage could not be computed for this window";
+
+export type SizingReading =
+    | { state: "not-measured" }
+    | { state: "measured"; coverage: number; unsized: number | null; mostlyCount: boolean };
+
+/** Below this share of sized work units, most units have no size: the answer is mostly unsized. */
+export const MOSTLY_COUNT_BELOW = 0.5;
+
+/**
+ * Read the issue-size coverage of an ISSUE_SIZE answer. Missing is not healthy: a coverage the
+ * backend did not produce is "not-measured", never a full or a fine reading. `0` is produced.
+ */
+export function readSizingCoverage(
+    coverage: number | null | undefined,
+    unsized: number | null | undefined,
+): SizingReading {
+    const share = produced(coverage);
+    if (share === null) {
+        return { state: "not-measured" };
+    }
+    return {
+        state: "measured",
+        coverage: share,
+        unsized: produced(unsized),
+        mostlyCount: share < MOSTLY_COUNT_BELOW,
+    };
+}
+
+/** The sizing reading of the first flow that carries one. */
+export function readFlowSizing(...flows: Array<SankeyResponse | null | undefined>): SizingReading {
+    for (const flow of flows) {
+        const reading = readSizingCoverage(flow?.coverage?.sizing, flow?.coverage?.unsized_units);
+        if (reading.state === "measured") {
+            return reading;
+        }
+    }
+    return { state: "not-measured" };
+}

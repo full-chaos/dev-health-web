@@ -191,6 +191,12 @@ function formatCheckedAt(value: string | null): string {
     return Number.isNaN(date.getTime()) ? "Not checked" : date.toLocaleString();
 }
 
+const DEFAULT_BASE_URL_HELP = "Optional. Custom provider endpoint.";
+const BASE_URL_HELP: Record<string, string> = {
+    openai: "Optional. OpenAI-compatible endpoints.",
+    anthropic: "Optional. Anthropic API endpoint. Leave empty for the default.",
+};
+
 /** The one-line description of the BYO LLM card (design: "Bring your own model provider for AI explanations and reports."). */
 const BYO_DESCRIPTION = "Bring your own model provider for AI explanations and reports.";
 
@@ -805,8 +811,8 @@ export function ByoLlmSettings({
                             {baseUrlError ? (
                                 <p className="mt-1 text-xs text-(--negative)">{baseUrlError}</p>
                             ) : (
-                                <p className={captionClass}>
-                                    Optional. OpenAI-compatible endpoints.
+                                <p className={captionClass} data-testid="byo-base-url-help">
+                                    {BASE_URL_HELP[provider] ?? DEFAULT_BASE_URL_HELP}
                                 </p>
                             )}
                         </div>

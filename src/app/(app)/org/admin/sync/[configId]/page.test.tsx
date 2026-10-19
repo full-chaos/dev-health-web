@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("next/navigation", () => ({ notFound: vi.fn(), useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+    notFound: vi.fn(),
+    useRouter: () => ({ refresh: vi.fn() }),
+    usePathname: () => "/org/admin/sync/cfg-1",
+}));
 vi.mock("@/lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/config")>()),
     getServerEnv: () => ({ DEV_HEALTH_TEST_MODE: "true" }),
@@ -43,7 +47,8 @@ vi.mock("@/components/admin/sync/SyncJobHistory", () => ({
     SyncJobHistory: () => <div data-testid="job-history-body" />,
 }));
 
-import { render, screen, within } from "@/test/utils";
+import { screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 
 import SyncConfigDetailPage from "./page";
 
@@ -105,5 +110,18 @@ describe("Sync detail page (CHAOS-8242)", () => {
         );
         expect(screen.queryByTestId("sync-header-badge")).not.toBeInTheDocument();
         expect(screen.queryByTestId("page-header-title-adornment")).not.toBeInTheDocument();
+    });
+});
+
+describe("Sync detail page needs-attention section", () => {
+    it("shows the Needs attention section from the sample dataset", async () => {
+        render(
+            await SyncConfigDetailPage({
+                params: Promise.resolve({ configId: "cfg-1" }),
+                searchParams: Promise.resolve({}),
+            }),
+        );
+        const section = screen.getByTestId("sync-needs-attention");
+        expect(within(section).getByText("A run reached its time limit.")).toBeInTheDocument();
     });
 });

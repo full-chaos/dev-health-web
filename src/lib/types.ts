@@ -43,6 +43,8 @@ export type MetricDelta = {
     has_data?: boolean;
     /** Explicit producer fact. A missing comparison must not render as a -100% change. */
     has_prior_data?: boolean;
+    /** The prior window's measured value in the unit of `value`; null: none stored; a stored 0 is 0. Absent: an older API. */
+    prior_value?: number | null;
     /**
      * Why a change failure rate has a value or not (rateState). Null or absent: no state served
      * (an API before it, or no stored counts). A string this web does not know reads as no state.
@@ -178,6 +180,8 @@ export type CockpitSignal = {
     coverage?: number | null;
     /** Same meaning as `MetricDelta.repo_filter_applied`; null on a signal that is not from a metric. */
     repo_filter_applied?: boolean | null;
+    /** Served one-sentence driver; null when the signal states no driver. */
+    driver?: string | null;
     attribution?: SignalAttribution | null;
 };
 
@@ -223,6 +227,14 @@ export type ReworkThemeAllocation = {
     allocation_pct: number;
     prs_merged: number;
     churn_loc: number;
+    /** The unit `allocation` is in. Absent on a response that predates the field. */
+    measure?: "WORK_UNITS" | "ISSUE_SIZE";
+    /** The total `allocation_pct` divides by: the share base. */
+    denominator?: number;
+    /** The sizing fields are null unless measure is ISSUE_SIZE; null is not measured, never 0. */
+    sizing_coverage?: number | null;
+    unsized_unit_count?: number | null;
+    work_unit_count?: number | null;
 };
 
 export type HomeResponse = {
@@ -300,6 +312,12 @@ export type InvestmentFindingEvidence = {
     theme: string;
     subcategory?: string | null;
     share_pct: number;
+    /** Measure the share is taken in: "COUNT" or "ISSUE_SIZE". */
+    measure?: string | null;
+    /** ISSUE_SIZE only: share (0..1) of the mix's work units with an issue size. Absent: not measured. */
+    sizing_coverage?: number | null;
+    /** ISSUE_SIZE only: work units with no issue size; each counts as 1 work unit. */
+    unsized_unit_count?: number | null;
     delta_pct_points?: number | null;
     evidence_quality_mean?: number | null;
     evidence_quality_band?: string | null;
@@ -445,6 +463,10 @@ export type SankeyResponse = {
     coverage?: {
         team?: number;
         repo?: number;
+        /** Share (0..1) of work units that carry an issue size (ISSUE_SIZE answers only). */
+        sizing?: number;
+        /** Work units without an issue size; each counts as 1 work unit. */
+        unsized_units?: number;
     };
 };
 
@@ -669,6 +691,8 @@ export type QuadrantPoint = {
     window_start: string;
     window_end: string;
     evidence_link: string;
+    /** `true` only on an active entity with no data in the window (x, y, window_* are then null); the key is absent otherwise. */
+    no_data?: boolean;
     trajectory?: QuadrantPointTrajectory[];
 };
 

@@ -23,7 +23,7 @@ import {
     MeasureInput,
     ScopeLevelInput,
 } from "../types";
-import { adaptSankeyResult } from "../investmentFetchers";
+import { adaptSankeyResult, buildDateRange } from "../investmentFetchers";
 import { useOrgId } from "../provider";
 
 function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
@@ -34,22 +34,6 @@ function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
         return contextOrgId;
     }
     throw new Error(AuthErrors.OrgIdRequiredFromGraphQLContext);
-}
-
-function buildDateRange(filters: MetricFilter): {
-    startDate: string;
-    endDate: string;
-} {
-    const { start_date, end_date, range_days } = filters.time;
-    if (start_date && end_date) {
-        return { startDate: start_date, endDate: end_date };
-    }
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - range_days * 24 * 60 * 60 * 1000);
-    return {
-        startDate: startDate.toISOString().split("T")[0],
-        endDate: endDate.toISOString().split("T")[0],
-    };
 }
 
 function translateFilters(filters: MetricFilter): FilterInput {
@@ -69,6 +53,8 @@ function translateFilters(filters: MetricFilter): FilterInput {
 interface UseInvestmentMixOptions {
     filters: MetricFilter;
     pause?: boolean;
+    /** The window of the read; the caller that also explains the mix passes the one range both name. */
+    dateRange?: { startDate: string; endDate: string };
 }
 
 interface UseInvestmentMixResult {
@@ -79,23 +65,23 @@ interface UseInvestmentMixResult {
 }
 
 export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmentMixResult {
-    const { filters, pause = false } = options;
+    const { filters, pause = false, dateRange: namedDateRange } = options;
     const contextOrgId = useOrgId();
 
     const variables = useMemo(() => {
         const orgId = getOrgId(filters, contextOrgId);
-        const dateRange = buildDateRange(filters);
+        const dateRange = namedDateRange ?? buildDateRange(filters);
         const batch: AnalyticsRequestInput = {
             breakdowns: [
                 {
                     dimension: "THEME" as DimensionInput,
-                    measure: "COUNT" as MeasureInput,
+                    measure: "ISSUE_SIZE" as MeasureInput,
                     dateRange,
                     topN: 50,
                 },
                 {
                     dimension: "SUBCATEGORY" as DimensionInput,
-                    measure: "COUNT" as MeasureInput,
+                    measure: "ISSUE_SIZE" as MeasureInput,
                     dateRange,
                     topN: 100,
                 },
@@ -104,7 +90,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
             filters: translateFilters(filters),
         };
         return { orgId, batch };
-    }, [filters, contextOrgId]);
+    }, [filters, contextOrgId, namedDateRange]);
 
     const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
         query: INVESTMENT_BREAKDOWN_QUERY,
@@ -141,7 +127,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
         return {
             theme_distribution,
             subcategory_distribution,
-            unit: "work_units",
+            unit: "issue_size",
             evidence_quality_distribution:
                 (result.data.analytics.evidenceQualityDistribution as
                     Record<string, number> | undefined) ?? undefined,
@@ -307,7 +293,7 @@ export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestm
         const batch: AnalyticsRequestInput = {
             sankey: {
                 path,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 maxNodes: 50,
                 maxEdges: 200,
@@ -367,7 +353,7 @@ export function useInvestmentRepoTeamFlow(
         const batch: AnalyticsRequestInput = {
             sankey: {
                 path: ["SUBCATEGORY", "REPO", "TEAM"] as DimensionInput[],
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 maxNodes: 50,
                 maxEdges: 200,

@@ -26,7 +26,7 @@ import {
     formatQuality,
     formatSubcategoryLabel,
     titleCase,
-    WORK_UNIT_COUNT_UNIT,
+    ISSUE_SIZE_UNIT,
 } from "@/lib/investment";
 import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
 import type { WorkUnitInvestment } from "@/lib/types";
@@ -170,7 +170,6 @@ export function InvestmentMixSection({
                         subcategoryLabel={nodeType === "subcategory" ? subcategoryLabel : undefined}
                         value={value}
                         total={mixTotalValue}
-                        unit={WORK_UNIT_COUNT_UNIT}
                     />
                 ),
                 footer: workGraphUrl ? (
@@ -273,7 +272,7 @@ export function InvestmentMixSection({
                 share ? `${share} of the mix` : null,
                 typeof quality === "number"
                     ? `Average evidence quality ${formatQuality(quality)}`
-                    : "Evidence quality not reported",
+                    : "Evidence quality is reported for the whole mix, not per cell",
             ]
                 .filter(Boolean)
                 .join(". ");
@@ -320,11 +319,11 @@ export function InvestmentMixSection({
                                 selectedKey={treemapSelection?.key ?? null}
                                 onNodeClickAction={handleTreemapSelection}
                                 describeNodeAction={describeTreemapNode}
-                                ariaLabel="Investment mix by theme and subcategory; column width follows each theme's share of work units"
+                                ariaLabel="Investment mix by theme and subcategory; column width follows each theme's share of the issue size"
                             />
                             <DataNote>
-                                Size is work-unit count. Opacity is evidence quality. Select a cell
-                                for its evidence.
+                                Size is issue size (a work unit with no size counts 1). Select a
+                                cell for its evidence.
                             </DataNote>
                         </>
                     )
@@ -350,7 +349,7 @@ export function InvestmentMixSection({
                             evidenceQualityDistribution={
                                 investmentMix.evidence_quality_distribution
                             }
-                            unit={WORK_UNIT_COUNT_UNIT}
+                            unit={ISSUE_SIZE_UNIT}
                             height={360}
                             focusedTheme={focusTheme}
                             onThemeClickAction={handleThemeClick}

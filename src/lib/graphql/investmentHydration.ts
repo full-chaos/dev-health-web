@@ -20,22 +20,7 @@ import type {
     MeasureInput,
     ScopeLevelInput,
 } from "./types";
-
-function buildDateRange(filters: MetricFilter): {
-    startDate: string;
-    endDate: string;
-} {
-    const { start_date, end_date, range_days } = filters.time;
-    if (start_date && end_date) {
-        return { startDate: start_date, endDate: end_date };
-    }
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - range_days * 24 * 60 * 60 * 1000);
-    return {
-        startDate: startDate.toISOString().split("T")[0],
-        endDate: endDate.toISOString().split("T")[0],
-    };
-}
+import { buildDateRange } from "./investmentFetchers";
 
 function translateFilters(filters: MetricFilter): FilterInput {
     return {
@@ -66,13 +51,13 @@ export function buildInvestmentMixVariables(
         breakdowns: [
             {
                 dimension: "THEME" as DimensionInput,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 topN: 50,
             },
             {
                 dimension: "SUBCATEGORY" as DimensionInput,
-                measure: "COUNT" as MeasureInput,
+                measure: "ISSUE_SIZE" as MeasureInput,
                 dateRange,
                 topN: 100,
             },
@@ -108,7 +93,7 @@ function adaptBreakdown(response: AnalyticsQueryResponse): InvestmentResponse {
     return {
         theme_distribution,
         subcategory_distribution,
-        unit: "work_units",
+        unit: "issue_size",
         evidence_quality_distribution:
             (response.analytics.evidenceQualityDistribution as
                 Record<string, number> | undefined) ?? undefined,

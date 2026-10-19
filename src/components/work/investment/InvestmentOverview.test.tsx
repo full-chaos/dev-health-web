@@ -307,7 +307,7 @@ describe("overview: classification table", () => {
         expect(rows[0]).toHaveTextContent("30");
         expect(rows[1]).toHaveTextContent("Quality");
         expect(rows[1]).toHaveTextContent("25%");
-        expect(screen.getByTestId("classification-table")).toHaveTextContent("Work units");
+        expect(screen.getByTestId("classification-table")).toHaveTextContent("Issue size");
         expect(screen.getByTestId("classification-table")).not.toHaveTextContent("Risk");
     });
 
@@ -317,7 +317,7 @@ describe("overview: classification table", () => {
             workUnits: [makeUnit("a", 999)],
         });
         const table = screen.getByTestId("classification-table");
-        expect(table.textContent).toMatch(/work units/i);
+        expect(table.textContent).toMatch(/issue size/i);
         expect(table.textContent).not.toMatch(/lines|\bloc\b|hours|effort|999/i);
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
         const facts = await screen.findByTestId("classification-evidence-facts");
@@ -335,10 +335,10 @@ describe("overview: classification table", () => {
         expect(setFocusTheme).toHaveBeenLastCalledWith(null);
     });
 
-    it("heads the value column 'Delivery units' and ends each row with an Evidence action (CHAOS-8564)", () => {
+    it("heads the value column 'Issue size' and ends each row with an Evidence action (CHAOS-8564)", () => {
         overview({ investmentMix: mix as never });
         const table = screen.getByTestId("classification-table");
-        expect(within(table).getByRole("columnheader", { name: "Work units" })).toBeTruthy();
+        expect(within(table).getByRole("columnheader", { name: "Issue size" })).toBeTruthy();
         expect(within(table).getAllByTestId("classification-evidence")).toHaveLength(2);
     });
 
@@ -347,7 +347,7 @@ describe("overview: classification table", () => {
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
         const facts = await screen.findByTestId("classification-evidence-facts");
         expect(facts).toHaveTextContent("Quality");
-        expect(facts).toHaveTextContent("10 work units");
+        expect(facts).toHaveTextContent("Issue size10");
         expect(facts).toHaveTextContent("25%");
     });
 
@@ -387,7 +387,7 @@ describe("overview: classification table", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "Evidence: Quality" }));
         const facts = await screen.findByTestId("classification-evidence-facts");
-        expect(facts).toHaveTextContent("Count10 work unitsShare of the mix");
+        expect(facts).toHaveTextContent("Issue size10Share of the mix");
         expect(facts).toHaveTextContent("100%");
         expect(facts).not.toHaveTextContent(/evidence quality/i);
     });

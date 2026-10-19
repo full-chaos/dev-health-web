@@ -114,6 +114,9 @@ export interface DiscoveredReposResponse {
     owner: string;
     repos: DiscoveredRepo[];
     total: number;
+    owner_type?: "org" | "user" | null;
+    installation_scoped?: boolean;
+    diagnostic?: "owner_not_found" | null;
 }
 
 // ---- Batch Sync Config Create ----
@@ -866,6 +869,36 @@ export interface LLMSettingsResponse {
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;
+    /** Per-purpose overrides, present only when at least one is stored. */
+    purposes?: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
+}
+
+/** Purposes a BYO override can be set for; the default row serves the rest. */
+export type LLMPurpose = "investigate" | "explain";
+
+export const LLM_PURPOSES: LLMPurpose[] = ["investigate", "explain"];
+
+export const LLM_PURPOSE_LABELS: Record<LLMPurpose, string> = {
+    investigate: "Investigation",
+    explain: "Explanations",
+};
+
+/** One stored override; the api_key is masked. */
+export interface LLMPurposeSettings {
+    purpose: string;
+    provider: string;
+    model?: string | null;
+    api_key?: string | null;
+    base_url?: string | null;
+}
+
+/** PUT /admin/llm-settings with a purpose: provider and model are required. */
+export interface LLMPurposeUpsert {
+    purpose: LLMPurpose;
+    provider: string;
+    model: string;
+    api_key?: string | null;
+    base_url?: string | null;
 }
 
 /**
@@ -1398,4 +1431,29 @@ export interface CustomerPushBatchListParams {
     to?: string;
     limit?: number;
     offset?: number;
+}
+
+// ---- Integration datasets (needs-attention marker) ----
+
+/** One row of GET /integrations. Only the fields the web reads. */
+export interface IntegrationSummary {
+    id: string;
+    provider: string;
+    credential_id: string | null;
+    name: string;
+}
+
+/**
+ * One row of GET /integrations/{id}/datasets. `unavailable_reason` is null for a healthy
+ * dataset. The ops planner stamps `needs_attention:<class>` after repeated equal failures
+ * and clears the three fields on the next success.
+ */
+export interface IntegrationDataset {
+    id: string;
+    integration_id: string;
+    dataset_key: string;
+    is_enabled: boolean;
+    unavailable_reason: string | null;
+    unavailable_since: string | null;
+    unavailable_last_seen_at: string | null;
 }

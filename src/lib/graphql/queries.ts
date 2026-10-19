@@ -224,6 +224,8 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
       coverage {
         teamCoverage
         repoCoverage
+        sizingCoverage
+        unsizedUnitCount
       }
       unit
     }
@@ -441,6 +443,12 @@ query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
       changed
       improved
       worsened
+      sizing {
+        measure
+        sizingCoverage
+        unsizedUnitCount
+        workUnitCount
+      }
       metrics {
         key
         label
@@ -1221,6 +1229,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       deltaPct
       hasData
       hasPriorData
+      priorValue
       spark {
         ts
         value
@@ -1254,6 +1263,11 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       allocationPct
       prsMerged
       churnLoc
+      measure
+      denominator
+      sizingCoverage
+      unsizedUnitCount
+      workUnitCount
     }
     summary {
       id
@@ -1311,6 +1325,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
       }
       coverage
       repoFilterApplied
+      driver
       attribution {
         items
         sources {

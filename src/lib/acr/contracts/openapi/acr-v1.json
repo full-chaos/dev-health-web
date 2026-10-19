@@ -443,6 +443,9 @@
           },
           {
             "$ref": "#/components/parameters/ClientVersion"
+          },
+          {
+            "$ref": "#/components/parameters/WaitBudget"
           }
         ],
         "requestBody": {
@@ -457,16 +460,19 @@
         },
         "responses": {
           "200": {
-            "description": "Investigation result; status may be complete, partial, degraded, clarification_required, or no_match. schema_version is context_fabric_investigation_result.v1, or .v2 when the result minted an anchor membership-verify offer (CHAOS-4042).",
+            "description": "Investigation result; status may be complete, partial, degraded, clarification_required, or no_match. schema_version is context_fabric_investigation_result.v1, or .v2 when the result minted an anchor membership-verify offer (CHAOS-4042). The body is the result plus, when the request asked synthesis_mode client and the turn reached synthesis, synthesis_input: the input for the caller's model to write the answer from. The result read by id never carries it. When options.max_serialized_bytes is below the size of the result, the body is instead the bounded consumer projection (context_fabric_answer_projection.v1) sized to that option, with projection_budget.full_result_omitted true and result_id naming the stored result, which GET by id serves whole against the service ceiling. A synthesis_mode client turn is never projected: its synthesis_input is outside options.max_serialized_bytes (the option bounds the result; the input has its own bound, the service ceiling), and a result over the option on such a turn is refused.",
             "content": {
               "application/json": {
                 "schema": {
                   "oneOf": [
                     {
-                      "$ref": "../schemas/context_fabric_investigation_result.v1.schema.json"
+                      "$ref": "../schemas/context_fabric_investigation_response.v1.schema.json"
                     },
                     {
-                      "$ref": "../schemas/context_fabric_investigation_result.v2.schema.json"
+                      "$ref": "../schemas/context_fabric_investigation_response.v2.schema.json"
+                    },
+                    {
+                      "$ref": "../schemas/context_fabric_answer_projection.v1.schema.json"
                     }
                   ]
                 }
@@ -474,19 +480,22 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/Error"
+            "$ref": "#/components/responses/ContextFabricInvestigationBadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Error"
           },
           "403": {
-            "$ref": "#/components/responses/Error"
+            "$ref": "#/components/responses/ContextFabricInvestigationForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/ContextFabricInvestigationConflict"
           },
           "413": {
             "$ref": "#/components/responses/Error"
           },
           "422": {
-            "$ref": "#/components/responses/Error"
+            "$ref": "#/components/responses/ContextFabricInvestigationUnprocessable"
           },
           "426": {
             "$ref": "#/components/responses/Error"
@@ -699,7 +708,11 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["grant_type", "subject_token", "subject_token_type"],
+                "required": [
+                  "grant_type",
+                  "subject_token",
+                  "subject_token_type"
+                ],
                 "properties": {
                   "grant_type": {
                     "const": "urn:ietf:params:oauth:grant-type:token-exchange"
@@ -938,95 +951,31 @@
         }
       }
     },
-    "/api/v1/context-fabric/model-config": {
-      "get": {
-        "operationId": "getContextFabricOrgModelConfig",
-        "x-required-scope": "context:admin",
-        "x-required-entitlement": "agent_context_runtime",
-        "security": [
-          {
-            "bearerAuth": []
-          },
-          {
-            "webAssertionAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/RequestID"
-          },
-          {
-            "$ref": "#/components/parameters/ClientVersion"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The organization's configured BYO LLM provider, with a masked credential",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "../schemas/context_fabric_org_model_config.v1.schema.json"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error"
-          },
-          "426": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          },
-          "503": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "put": {
-        "operationId": "putContextFabricOrgModelConfig",
-        "x-required-scope": "context:admin",
-        "x-required-entitlement": "agent_context_runtime",
+    "/api/v1/auth/credentials/self/ack": {
+      "post": {
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/RequestID"
-          },
-          {
-            "$ref": "#/components/parameters/ClientVersion"
-          }
-        ],
+        "operationId": "acknowledgeOwnCredential",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "../schemas/context_fabric_org_model_config_write_request.v1.schema.json"
+                "$ref": "../schemas/credential_ack_request.v1.schema.json"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "The organization's BYO LLM provider configuration was stored; it applies to the next request",
+            "description": "Current credential acknowledged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "../schemas/context_fabric_org_model_config.v1.schema.json"
+                  "$ref": "../schemas/credential_ack_response.v1.schema.json"
                 }
               }
             }
@@ -1037,54 +986,10 @@
           "401": {
             "$ref": "#/components/responses/Error"
           },
-          "403": {
+          "404": {
             "$ref": "#/components/responses/Error"
           },
-          "413": {
-            "$ref": "#/components/responses/Error"
-          },
-          "426": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          },
-          "503": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "delete": {
-        "operationId": "deleteContextFabricOrgModelConfig",
-        "x-required-scope": "context:admin",
-        "x-required-entitlement": "agent_context_runtime",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/RequestID"
-          },
-          {
-            "$ref": "#/components/parameters/ClientVersion"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "The organization's BYO LLM provider configuration was removed; the deployment default applies to the next request"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "426": {
+          "409": {
             "$ref": "#/components/responses/Error"
           },
           "429": {
@@ -1102,7 +1007,7 @@
     "/api/v1/context-fabric/data/catalog": {
       "get": {
         "operationId": "readContextFabricDataCatalog",
-        "summary": "Direct data catalogue (data_catalog), CHAOS-7072 S1a: the operations, subject kinds, relationship types, limits and versions for THIS caller. The sections query parameter (comma list of operations, facts, subjects, relationships, limits) filters; the facts section is not served in this release. A caller without data:read sees the operation list with available=false.",
+        "summary": "Direct data catalogue (data_catalog), CHAOS-7072 S1a: the operations, subject kinds, relationship types, limits and versions for THIS caller. The sections query parameter (comma list of operations, facts, subjects, relationships, limits) filters; the facts section lists the kinds read_facts serves, or says it is not available. A caller without data:read sees the operation list with available=false.",
         "x-required-scope": "context:read",
         "x-required-entitlement": "agent_context_runtime",
         "security": [
@@ -1429,6 +1334,76 @@
           }
         }
       }
+    },
+    "/api/v1/context-fabric/data/graphql": {
+      "post": {
+        "operationId": "runContextFabricDataGraphQLQuery",
+        "summary": "Validated free-form GraphQL query (graphql_query), CHAOS-7075 S1b. Requires the data:read scope. acr validates the query against the allowed schema (data_catalog section schema) and sends only its own rebuilt text to the MCP listener. A typed result is HTTP 200: call is served, refused (with refusal.code), operation_unavailable, upstream_error or upstream_timeout. 501 feature_not_enabled with details.reason data_graphql_not_configured when the MCP listener is not configured; 503 when the subject gate is unavailable.",
+        "x-required-scope": "data:read",
+        "x-required-entitlement": "agent_context_runtime",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestID"
+          },
+          {
+            "$ref": "#/components/parameters/ClientVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Terminal typed result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataGraphQLResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "501": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataGraphQLRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1525,7 +1500,8 @@
                 "facts",
                 "subjects",
                 "relationships",
-                "limits"
+                "limits",
+                "schema"
               ]
             }
           },
@@ -1551,7 +1527,8 @@
               "reason": {
                 "enum": [
                   "scope_missing_data_read",
-                  "data_query_not_configured"
+                  "data_query_not_configured",
+                  "subject_gate_unavailable"
                 ]
               },
               "operations": {
@@ -1585,7 +1562,8 @@
                     "reason": {
                       "enum": [
                         "scope_missing_data_read",
-                        "data_query_not_configured"
+                        "data_query_not_configured",
+                        "subject_gate_unavailable"
                       ]
                     },
                     "scope_class": {
@@ -1745,10 +1723,44 @@
             ],
             "properties": {
               "served": {
-                "const": false
+                "type": "boolean"
               },
               "note": {
                 "type": "string"
+              },
+              "kinds": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "subject_kinds",
+                    "fields"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    },
+                    "subject_kinds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "max_window_days": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "The widest range or trailing window, in days, one read_facts call takes for this kind. A read over several kinds is held to the smallest."
+                    }
+                  }
+                }
               }
             }
           },
@@ -1878,6 +1890,15 @@
                   "unrestricted",
                   "restricted"
                 ]
+              },
+              "effective_access": {
+                "type": "string"
+              },
+              "tool_access": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -1910,6 +1931,61 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "schema": {
+            "type": "object",
+            "description": "graphql_query: the allowed part of the ops schema for this credential (CHAOS-7075).",
+            "required": [
+              "caller_class",
+              "available",
+              "schema_digest",
+              "limits",
+              "roots",
+              "refused_root_fields",
+              "sdl"
+            ],
+            "properties": {
+              "caller_class": {
+                "enum": [
+                  "unrestricted",
+                  "restricted"
+                ]
+              },
+              "available": {
+                "type": "boolean"
+              },
+              "reason": {
+                "enum": [
+                  "scope_missing_data_read",
+                  "data_graphql_not_configured",
+                  "subject_gate_unavailable"
+                ]
+              },
+              "schema_digest": {
+                "type": "string"
+              },
+              "limits": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                }
+              },
+              "roots": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "refused_root_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sdl": {
+                "type": "string"
+              }
             }
           }
         }
@@ -1952,6 +2028,26 @@
             "type": "string",
             "maxLength": 1024,
             "description": "handle mode: one pull request number, work item key or CI run id (CHAOS-7126). Matches the caller may not read are neither returned nor counted."
+          },
+          "anchor": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "handle mode only: a repository (for a pull request number or CI run id) or a project (for a work item key) that narrows the handle to one subject. Any other pairing is refused. kind and id come together. The anchor is checked for your credential like any subject; one you may not read, or that does not exist, gives the same empty answer as an anchor with no match.",
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "description": "repository or project."
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            }
           }
         }
       },
@@ -2064,7 +2160,9 @@
               "mode": {
                 "enum": [
                   "list",
-                  "name"
+                  "name",
+                  "owned_by",
+                  "handle"
                 ]
               },
               "kind": {
@@ -2084,6 +2182,24 @@
               },
               "cursor": {
                 "type": "string"
+              },
+              "owned_by": {
+                "type": "string"
+              },
+              "handle": {
+                "type": "string"
+              },
+              "anchor": {
+                "type": "object",
+                "description": "Echo of the handle-mode anchor. The id is untrusted text.",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },
@@ -2162,6 +2278,17 @@
               "declared_complete",
               "declared_partial",
               "unknown"
+            ]
+          },
+          "completeness_reason": {
+            "enum": [
+              "page_cut",
+              "bounded",
+              "coverage_below_one",
+              "insufficient_history",
+              "degraded",
+              "disclosure_absent",
+              "limit_not_sent"
             ]
           },
           "result": {
@@ -2275,6 +2402,39 @@
                     "not_found",
                     "concurrency_wait"
                   ]
+                },
+                "status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599,
+                  "description": "The query service's HTTP status. Present with class http_status."
+                },
+                "graphql_code": {
+                  "type": "string",
+                  "description": "The GraphQL error code the query service returned, as a closed token; other for any code not listed.",
+                  "enum": [
+                    "graphql_validation_failed",
+                    "graphql_parse_failed",
+                    "mcp_refused",
+                    "mcp_read_budget_exceeded",
+                    "other"
+                  ]
+                },
+                "variable": {
+                  "type": "string",
+                  "description": "The GraphQL variable the query service named in its rejection.",
+                  "pattern": "^[_A-Za-z][_0-9A-Za-z]*$",
+                  "maxLength": 64
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 512,
+                  "description": "The upstream GraphQL error message, bounded; untrusted upstream text. Present with class graphql_errors."
+                },
+                "path": {
+                  "type": "string",
+                  "maxLength": 512,
+                  "description": "The upstream GraphQL error path, dot-joined; untrusted upstream text. Present with class graphql_errors."
                 }
               }
             }
@@ -2291,6 +2451,15 @@
               },
               "max_bytes": {
                 "type": "integer"
+              },
+              "rows_returned": {
+                "type": "integer"
+              },
+              "rows_read": {
+                "type": "integer"
+              },
+              "cut": {
+                "type": "string"
               }
             }
           },
@@ -2334,6 +2503,336 @@
             }
           }
         }
+      },
+      "DataGraphQLRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192,
+            "description": "One GraphQL query operation over the allowed schema. No mutation, subscription, fragment, directive or introspection; aliases on root fields only; orgId is never a client argument."
+          },
+          "variables": {
+            "type": "object",
+            "description": "Values for the variables the query declares."
+          },
+          "max_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 262144,
+            "description": "Budget for the serialized data; 0 = 32768, values above 262144 are clamped."
+          }
+        }
+      },
+      "DataGraphQLResponse": {
+        "type": "object",
+        "required": [
+          "call",
+          "completeness",
+          "source",
+          "errors",
+          "page",
+          "consistency",
+          "untrusted_content",
+          "request",
+          "root_fields"
+        ],
+        "properties": {
+          "call": {
+            "enum": [
+              "served",
+              "refused",
+              "operation_unavailable",
+              "upstream_error",
+              "upstream_timeout"
+            ]
+          },
+          "completeness": {
+            "enum": [
+              "declared_complete",
+              "declared_partial",
+              "unknown"
+            ]
+          },
+          "completeness_reason": {
+            "enum": [
+              "page_cut",
+              "bounded",
+              "coverage_below_one",
+              "insufficient_history",
+              "degraded",
+              "disclosure_absent",
+              "limit_not_sent"
+            ]
+          },
+          "result": {
+            "enum": [
+              "data",
+              "empty_unverified",
+              "empty_declared"
+            ]
+          },
+          "refusal": {
+            "type": "object",
+            "required": [
+              "code",
+              "reason"
+            ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "variable_not_allowed",
+                  "variable_out_of_range",
+                  "person_scope_not_served",
+                  "basis_dependent_shape",
+                  "no_granted_scope",
+                  "operation_not_served_for_caller",
+                  "response_budget",
+                  "invalid_request",
+                  "scope_required",
+                  "row_outside_grant",
+                  "policy_stale",
+                  "denied_or_not_found",
+                  "query_invalid",
+                  "operation_type_not_allowed",
+                  "root_field_not_allowed",
+                  "field_not_allowed",
+                  "fragment_not_allowed",
+                  "directive_not_allowed",
+                  "query_limit_exceeded",
+                  "read_budget_exceeded"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "measured_bytes": {
+                "type": "integer"
+              },
+              "max_bytes": {
+                "type": "integer"
+              },
+              "read_budget": {
+                "enum": [
+                  "bytes_ceiling",
+                  "rows_ceiling",
+                  "time_ceiling",
+                  "unknown"
+                ]
+              }
+            }
+          },
+          "source": {
+            "type": "object",
+            "required": [
+              "path",
+              "service",
+              "listener",
+              "schema_digest"
+            ],
+            "properties": {
+              "path": {
+                "const": "graphql"
+              },
+              "service": {
+                "type": "string"
+              },
+              "schema_digest": {
+                "type": "string"
+              },
+              "listener": {
+                "const": "mcp"
+              },
+              "query_digest": {
+                "type": "string"
+              }
+            }
+          },
+          "data": {
+            "type": "object",
+            "description": "Keyed by the client's root response keys; only the selected allowed fields. Untrusted content."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "class"
+              ],
+              "properties": {
+                "class": {
+                  "enum": [
+                    "graphql_errors",
+                    "decode",
+                    "http_status",
+                    "transport",
+                    "canceled",
+                    "acr_deadline",
+                    "carrier_refused",
+                    "listener_refused",
+                    "not_found",
+                    "concurrency_wait"
+                  ]
+                },
+                "status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599,
+                  "description": "The data service's HTTP status. Present with class http_status."
+                },
+                "graphql_code": {
+                  "type": "string",
+                  "description": "The GraphQL error code the data service returned, as a closed token; other for any code not listed. graphql_validation_failed and graphql_parse_failed with HTTP 422 mean the request variables or document were rejected (call refused, code invalid_request).",
+                  "enum": [
+                    "graphql_validation_failed",
+                    "graphql_parse_failed",
+                    "mcp_refused",
+                    "mcp_read_budget_exceeded",
+                    "other"
+                  ]
+                },
+                "variable": {
+                  "type": "string",
+                  "description": "The GraphQL variable the data service named in its rejection.",
+                  "pattern": "^[_A-Za-z][_0-9A-Za-z]*$",
+                  "maxLength": 64
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 512,
+                  "description": "The upstream GraphQL error message, bounded; untrusted upstream text. Present with class graphql_errors."
+                },
+                "path": {
+                  "type": "string",
+                  "maxLength": 512,
+                  "description": "The upstream GraphQL error path, dot-joined; untrusted upstream text. Present with class graphql_errors."
+                }
+              }
+            }
+          },
+          "page": {
+            "type": "object",
+            "required": [
+              "returned_bytes",
+              "max_bytes"
+            ],
+            "properties": {
+              "returned_bytes": {
+                "type": "integer"
+              },
+              "max_bytes": {
+                "type": "integer"
+              }
+            }
+          },
+          "consistency": {
+            "const": "best_effort"
+          },
+          "untrusted_content": {
+            "type": "object",
+            "required": [
+              "untrusted",
+              "fields"
+            ],
+            "properties": {
+              "untrusted": {
+                "const": true
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "request": {
+            "type": "object",
+            "required": [
+              "max_bytes"
+            ],
+            "properties": {
+              "max_bytes": {
+                "type": "integer"
+              }
+            }
+          },
+          "root_fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "field",
+                "operation",
+                "completeness",
+                "effective_scope",
+                "added_paths"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "operation": {
+                  "type": "string"
+                },
+                "completeness": {
+                  "enum": [
+                    "declared_complete",
+                    "declared_partial",
+                    "unknown"
+                  ]
+                },
+                "completeness_reason": {
+                  "enum": [
+                    "page_cut",
+                    "bounded",
+                    "coverage_below_one",
+                    "insufficient_history",
+                    "degraded",
+                    "disclosure_absent",
+                    "limit_not_sent"
+                  ]
+                },
+                "effective_scope": {
+                  "type": "object",
+                  "required": [
+                    "repo_ids",
+                    "forced_by_grant"
+                  ],
+                  "properties": {
+                    "repo_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "forced_by_grant": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "added_paths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -2360,6 +2859,17 @@
           "maxLength": 256
         }
       },
+      "WaitBudget": {
+        "name": "X-ACR-Wait-Budget-Seconds",
+        "in": "header",
+        "required": false,
+        "description": "Optional longest wait, in whole seconds, the caller will give one investigation. At least 10. The request ends by then, narrowing the service's own request timeout and never extending it: when the synthesis model call has not finished, the answer is served degraded with its result_id and coverage.details[code=synthesis_model_failed]. Stages before synthesis that run past the budget still end as 504 deadline_exceeded. A value that is not a whole number of seconds of at least 10 is ignored.",
+        "schema": {
+          "type": "integer",
+          "minimum": 10,
+          "example": 45
+        }
+      },
       "ClientVersion": {
         "name": "X-ACR-Client-Version",
         "in": "header",
@@ -2378,6 +2888,189 @@
           "application/json": {
             "schema": {
               "$ref": "../schemas/error.v1.schema.json"
+            }
+          }
+        }
+      },
+      "ContextFabricInvestigationBadRequest": {
+        "description": "Structured safe error. When the request carries supplied_synthesis without a supplied_interpretation, code is invalid_request and details.reason is supplied_interpretation_required.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "../schemas/error.v1.schema.json"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "supplied_interpretation_required"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "ContextFabricInvestigationConflict": {
+        "description": "Structured safe error. A supplied interpretation or supplied synthesis that was made under a contract this service does not run carries details.interpretation_contract or details.synthesis_contract. A supplied synthesis written from an input that is no longer the turn's input carries details.reason input_changed and details.synthesis_input, the new synthesis input.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "../schemas/error.v1.schema.json"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "synthesis_contract": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "mismatch",
+                                "current"
+                              ],
+                              "description": "The synthesis contract refusal: each contract field that is absent or differs, and the contract the service runs.",
+                              "properties": {
+                                "mismatch": {
+                                  "type": "array",
+                                  "minItems": 1,
+                                  "maxItems": 4,
+                                  "uniqueItems": true,
+                                  "items": {
+                                    "enum": [
+                                      "model_output_version",
+                                      "prompt_version",
+                                      "system_sha256",
+                                      "input_sha256"
+                                    ]
+                                  }
+                                },
+                                "current": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "model_output_version",
+                                    "prompt_version",
+                                    "system_sha256"
+                                  ],
+                                  "properties": {
+                                    "model_output_version": {
+                                      "type": "string"
+                                    },
+                                    "prompt_version": {
+                                      "type": "string"
+                                    },
+                                    "system_sha256": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{64}$"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "reason": {
+                              "enum": [
+                                "input_changed"
+                              ]
+                            },
+                            "synthesis_input": {
+                              "$ref": "../schemas/context_fabric_investigation_response.v1.schema.json#/properties/synthesis_input"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "ContextFabricInvestigationForbidden": {
+        "description": "Structured safe error. feature_not_enabled with details.reason service_model_not_entitled: a credential caller asked for an investigation that runs on the service's own model (interpretation, synthesis, or both), and the organization holds neither the acr_service_model entitlement nor its own model configuration. No model call was made and nothing was stored. The same question is served on the caller's own model with a supplied interpretation and synthesis_mode client. Web assertion callers are not refused for this reason.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "../schemas/error.v1.schema.json"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "service_model_not_entitled"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "ContextFabricInvestigationUnprocessable": {
+        "description": "Structured safe error. A supplied synthesis the service rejected carries code synthesis_rejected and details.rejection_reason, a closed token.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "../schemas/error.v1.schema.json"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "rejection_reason": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
             }
           }
         }

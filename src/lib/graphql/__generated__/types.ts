@@ -1152,6 +1152,8 @@ export type HomeSignal = {
   currentValue: Scalars['String']['output'];
   delta?: Maybe<Scalars['String']['output']>;
   direction: Scalars['String']['output'];
+  /** One sentence on where the signal's move appears largest ("Cycle Time appears to have moved most in A, B and C."), built from the display names of its top drivers with one hedge word. Null when the signal has no stated non-zero move, no driver has a name, or the signal is not a metric signal (risk, recommendation). Never a placeholder. */
+  driver?: Maybe<Scalars['String']['output']>;
   evidenceCount: Scalars['Int']['output'];
   /** Opaque reference into the evidence store, or null when the signal carries none. */
   evidenceRef?: Maybe<Scalars['String']['output']>;
@@ -1299,6 +1301,7 @@ export type MeasureInput =
   | 'FLAG_COVERAGE_RATIO'
   | 'FLAG_ERROR_RATE_DELTA'
   | 'FLAG_FRICTION_DELTA'
+  | 'ISSUE_SIZE'
   | 'PIPELINE_DURATION_P95'
   | 'PIPELINE_FAILURE_RATE'
   | 'PIPELINE_QUEUE_TIME'
@@ -1323,6 +1326,8 @@ export type MetricDelta = {
   hasPriorData: Scalars['Boolean']['output'];
   label: Scalars['String']['output'];
   metric: Scalars['String']['output'];
+  /** The value the comparison window stored, in the unit and scale of value (the same transform), read by the query that sets hasPriorData. Null exactly when hasPriorData is false: a window with no stored value is unknown, never 0. A stored zero is 0. Not derived from value and deltaPct (CHAOS-9817). */
+  priorValue?: Maybe<Scalars['Float']['output']>;
   /** The coverage of the pull request rework ratio (CHAOS-9072), from 0 to 1, not a percent: the merged pull requests of the window that have review data from a provider that stores a changes-requested review, divided by all merged pull requests of the window, of every stored day: a day stored before the review counts existed is in the denominator only, so a window that is partly not counted has a low coverage. 0 when rateState is unknown_no_review_evidence or not_applicable_no_rework_signal. Null when no stored day of the window holds a merged pull request, when rateState is null (no stored day of the window holds review counts), and for every other metric. */
   rateCoverage?: Maybe<Scalars['Float']['output']>;
   /** Why change failure rate has a value or not (CHAOS-8981): measured (the value may be 0), unknown_no_incident_evidence (deployments, and no incident tied to the scope in the window) or not_applicable_no_deployments. Null when the window holds no stored counts, and for every other metric. */
@@ -1460,8 +1465,19 @@ export type OperatingReviewSection = {
   improved: Array<Scalars['String']['output']>;
   key: Scalars['String']['output'];
   metrics: Array<OperatingReviewMetric>;
+  /** The measure and the sizing coverage of the section (CHAOS-9873). Null for every section but investment. The investment section is read in ISSUE_SIZE only for a document that selects measure, sizingCoverage, unsizedUnitCount and workUnitCount here, so a client never receives issue-size values it cannot label (D6027); any other document reads WORK_UNITS and gets measure WORK_UNITS with the sizing fields null. */
+  sizing?: Maybe<OperatingReviewSizing>;
   title: Scalars['String']['output'];
   worsened: Array<Scalars['String']['output']>;
+};
+
+/** What the Investment section's work is measured in and how much of it is sized (CHAOS-9873, D6027, D6032). ISSUE_SIZE weighs each work unit by its issue size, an unsized unit counts 1; WORK_UNITS counts each unit 1. The sizing fields are read over the week's units, the ones the section's current-week values come from. They are null unless ``measure`` is ISSUE_SIZE, and null when the week holds no unit: null is "not measured", never 0. */
+export type OperatingReviewSizing = {
+  __typename?: 'OperatingReviewSizing';
+  measure: SankeyValueUnit;
+  sizingCoverage?: Maybe<Scalars['Float']['output']>;
+  unsizedUnitCount?: Maybe<Scalars['Int']['output']>;
+  workUnitCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type PageInfo = {
@@ -2172,9 +2188,14 @@ export type ReworkThemeAllocation = {
   allocation: Scalars['Float']['output'];
   allocationPct: Scalars['Float']['output'];
   churnLoc: Scalars['Int']['output'];
+  denominator: Scalars['Float']['output'];
   label: Scalars['String']['output'];
+  measure: SankeyValueUnit;
   prsMerged: Scalars['Int']['output'];
+  sizingCoverage?: Maybe<Scalars['Float']['output']>;
   theme: Scalars['String']['output'];
+  unsizedUnitCount?: Maybe<Scalars['Int']['output']>;
+  workUnitCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type SankeyCoverage = {
@@ -2182,8 +2203,10 @@ export type SankeyCoverage = {
   directRepoCoverage?: Maybe<Scalars['Float']['output']>;
   repoCoverage: Scalars['Float']['output'];
   repoFanoutReposPerUnit?: Maybe<Scalars['Float']['output']>;
+  sizingCoverage?: Maybe<Scalars['Float']['output']>;
   teamCoverage: Scalars['Float']['output'];
   teamFallbackRepoCoverage?: Maybe<Scalars['Float']['output']>;
+  unsizedUnitCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type SankeyEdge = {
@@ -2219,6 +2242,7 @@ export type SankeyResult = {
 };
 
 export type SankeyValueUnit =
+  | 'ISSUE_SIZE'
   | 'WORK_UNITS';
 
 export type SavedReportConnection = {
@@ -2626,7 +2650,7 @@ export type TimeseriesResult = {
   scope: TimeseriesScope;
 };
 
-/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE and COVERAGE_LINE_PCT carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
+/** Which series a TimeseriesResult is. DIMENSION is one series per value of the requested dimension (a team, a repository). ORG is the one org-level series of a measure that has one: a true org rate, the org's numerator summed over the org's denominator per bucket, never a mean of the dimension series (CHAOS-9736). Today the measures PIPELINE_SUCCESS_RATE, COVERAGE_LINE_PCT and TEST_FLAKE_RATE carry an ORG series, on the non-investment path; every other measure carries DIMENSION series only. */
 export type TimeseriesScope =
   | 'DIMENSION'
   | 'ORG';

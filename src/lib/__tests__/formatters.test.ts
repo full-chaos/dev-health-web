@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import {
     COUNT_FORMAT,
+    formatCountNonZero,
     formatDelta,
     formatMetricParts,
     formatMetricValue,
@@ -276,5 +277,15 @@ describe("COUNT_FORMAT (CHAOS-9605)", () => {
         expect(formatNumber(12.25, COUNT_FORMAT)).toBe("12.3");
         expect(formatNumber(1200, COUNT_FORMAT)).toBe("1200");
         expect(formatNumber(0.04, COUNT_FORMAT)).toBe("0");
+    });
+});
+
+describe("formatCountNonZero (CHAOS-9914)", () => {
+    it("shows <0.1 for a count above 0 and under 0.05, and keeps the rest", () => {
+        expect(formatCountNonZero(0.03)).toBe("<0.1");
+        expect(formatCountNonZero(0.05)).toBe("0.1");
+        expect(formatCountNonZero(0)).toBe("0");
+        expect(formatCountNonZero(-0.03)).toBe("-0");
+        expect(formatCountNonZero(168.4)).toBe("168.4");
     });
 });

@@ -475,12 +475,18 @@ function operatingReviewResponse(
             {
                 key: "investment",
                 title: "Investment",
+                sizing: {
+                    measure: "ISSUE_SIZE",
+                    sizingCoverage: 0.25,
+                    unsizedUnitCount: 3,
+                    workUnitCount: 4,
+                },
                 metrics: [
                     operatingReviewMetric(
                         "feature_delivery_work",
                         "Feature delivery",
                         48,
-                        "work units",
+                        "issue size",
                         41,
                         "improved",
                     ),
@@ -488,7 +494,7 @@ function operatingReviewResponse(
                         "operational_work",
                         "Operational / support",
                         16,
-                        "work units",
+                        "issue size",
                         17,
                         "unchanged",
                     ),
@@ -496,7 +502,7 @@ function operatingReviewResponse(
                         "maintenance_work",
                         "Maintenance / tech debt",
                         14,
-                        "work units",
+                        "issue size",
                         18,
                         "improved",
                     ),
@@ -504,7 +510,7 @@ function operatingReviewResponse(
                         "quality_work",
                         "Quality / reliability",
                         12,
-                        "work units",
+                        "issue size",
                         10,
                         "changed",
                     ),
@@ -512,7 +518,7 @@ function operatingReviewResponse(
                         "risk_work",
                         "Risk / security",
                         6,
-                        "work units",
+                        "issue size",
                         6,
                         "unchanged",
                     ),
@@ -882,6 +888,19 @@ const MOCK_REPOSITORY_SELECTIONS = new Map<string, { owner: string; repos: strin
 const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
 const MOCK_PEOPLE: (typeof SAMPLE_PEOPLE)[number][] = [];
+
+let mockLlmDefault: Record<string, string | undefined> | null = {
+    provider: "anthropic",
+    model: "claude-large",
+    api_key: "sk-d…1234",
+};
+const mockLlmPurposes: Record<string, Record<string, string | undefined>> = {};
+function mockLlmSettingsBody() {
+    return {
+        ...(mockLlmDefault ?? {}),
+        ...(Object.keys(mockLlmPurposes).length > 0 ? { purposes: mockLlmPurposes } : {}),
+    };
+}
 
 /** One row of the `/__test/admin-rows` control endpoint (CHAOS-9105). */
 export type MockAdminRowSeed = {
@@ -1775,9 +1794,42 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
 
     // Investment breakdown query (analytics).
     if (query.includes("InvestmentBreakdown") || query.includes("analytics")) {
+        // MOCK_SIZING_COVERAGE (picture runs only): "0.92", "0.12" or "null" adds an ISSUE_SIZE flow.
+        const sizingEnv = process.env.MOCK_SIZING_COVERAGE;
+        const sizingFlow =
+            sizingEnv !== undefined && query.includes("sankey")
+                ? {
+                      nodes: [
+                          { id: "t1", label: "Platform", dimension: "TEAM", value: 40 },
+                          { id: "t2", label: "Growth", dimension: "TEAM", value: 25 },
+                          { id: "c1", label: "Feature Delivery", dimension: "THEME", value: 45 },
+                          { id: "c2", label: "Maintenance", dimension: "THEME", value: 20 },
+                          { id: "r1", label: "web-app", dimension: "REPO", value: 65 },
+                      ],
+                      edges: [
+                          { source: "t1", target: "c1", value: 30 },
+                          { source: "t1", target: "c2", value: 10 },
+                          { source: "t2", target: "c1", value: 15 },
+                          { source: "t2", target: "c2", value: 10 },
+                          { source: "c1", target: "r1", value: 45 },
+                          { source: "c2", target: "r1", value: 20 },
+                      ],
+                      coverage: {
+                          teamCoverage: 0.88,
+                          repoCoverage: 0.95,
+                          sizingCoverage: sizingEnv === "null" ? null : Number(sizingEnv),
+                          unsizedUnitCount:
+                              sizingEnv === "null"
+                                  ? null
+                                  : Math.round((1 - Number(sizingEnv)) * 100),
+                      },
+                      unit: "ISSUE_SIZE",
+                  }
+                : undefined;
         return HttpResponse.json({
             data: {
                 analytics: {
+                    ...(sizingFlow && { sankey: sizingFlow }),
                     breakdowns: [
                         {
                             dimension: "THEME",
@@ -3198,6 +3250,20 @@ export const handlers = [
                     y: 5,
                     size: 15,
                 },
+                // CHAOS-8827: an active team with no work in the window (no-data point).
+                ...(type === "churn_throughput"
+                    ? []
+                    : [
+                          {
+                              entity_id: "team-idle",
+                              entity_label: "Team Idle",
+                              x: null,
+                              y: null,
+                              window_start: null,
+                              window_end: null,
+                              no_data: true,
+                          },
+                      ]),
             ],
             annotations: [],
         });
@@ -3539,6 +3605,35 @@ export const handlers = [
         }),
     ),
 
+    // BYO LLM settings with per-purpose overrides (CHAOS-10040): one stateful org row.
+    http.get("*/api/v1/admin/llm-settings", () => HttpResponse.json(mockLlmSettingsBody())),
+    http.put("*/api/v1/admin/llm-settings", async ({ request }) => {
+        const body = (await request.json()) as Record<string, string | undefined>;
+        if (body.purpose) {
+            if (!body.model)
+                return HttpResponse.json({ detail: "model required" }, { status: 422 });
+            const stored = {
+                purpose: body.purpose,
+                provider: body.provider,
+                model: body.model,
+                ...(body.api_key ? { api_key: "sk-o…1234" } : {}),
+            };
+            mockLlmPurposes[body.purpose] = stored;
+            return HttpResponse.json(stored);
+        }
+        mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
+        return HttpResponse.json(mockLlmSettingsBody());
+    }),
+    http.delete("*/api/v1/admin/llm-settings", ({ request }) => {
+        const purpose = new URL(request.url).searchParams.get("purpose");
+        if (purpose) {
+            delete mockLlmPurposes[purpose];
+            return HttpResponse.json({ deleted: true, purpose });
+        }
+        mockLlmDefault = null;
+        return HttpResponse.json({ deleted: true });
+    }),
+
     http.get("*/api/v1/admin/credentials", () =>
         HttpResponse.json<MockCredential[]>([...withPagerDutyCredentials(MOCK_CREDENTIALS)]),
     ),
@@ -3600,6 +3695,40 @@ export const handlers = [
 
     http.get("*/api/v1/admin/sync-configs", () =>
         HttpResponse.json<MockSyncConfig[]>([...withPagerDutySyncConfigs(MOCK_SYNC_CONFIGS)]),
+    ),
+
+    http.get("*/api/v1/admin/integrations", () =>
+        HttpResponse.json([
+            {
+                id: "integration-github-1",
+                provider: "github",
+                credential_id: "cred-github-1",
+                name: "GitHub",
+            },
+        ]),
+    ),
+
+    http.get("*/api/v1/admin/integrations/:id/datasets", ({ params }) =>
+        HttpResponse.json([
+            {
+                id: "dataset-work-items",
+                integration_id: params.id as string,
+                dataset_key: "work-items",
+                is_enabled: true,
+                unavailable_reason: "needs_attention:time_limit",
+                unavailable_since: "2026-07-01T06:00:00.000Z",
+                unavailable_last_seen_at: "2026-07-02T06:00:00.000Z",
+            },
+            {
+                id: "dataset-git",
+                integration_id: params.id as string,
+                dataset_key: "git",
+                is_enabled: true,
+                unavailable_reason: null,
+                unavailable_since: null,
+                unavailable_last_seen_at: null,
+            },
+        ]),
     ),
 
     http.get("*/api/v1/admin/sync-configs/:id", ({ params }) => {

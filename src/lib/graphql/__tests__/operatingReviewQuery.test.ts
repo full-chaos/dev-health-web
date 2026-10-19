@@ -47,3 +47,17 @@ describe("OPERATING_REVIEW_QUERY", () => {
         ]);
     });
 });
+
+// CHAOS-9873 (D6027): the investment section is read in issue size only for a document that selects the section's
+// measure and its whole sizing, so the request asks for all four. The text is registered on the API side exactly,
+// right after `worsened`.
+describe("OPERATING_REVIEW_QUERY sizing", () => {
+    it("asks for the measure and the whole sizing of a section", () => {
+        expect(fieldsOf("sizing")).toEqual([
+            "measure",
+            "sizingCoverage",
+            "unsizedUnitCount",
+            "workUnitCount",
+        ]);
+    });
+});

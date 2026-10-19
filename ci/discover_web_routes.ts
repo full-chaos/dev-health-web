@@ -43,16 +43,36 @@
  */
 
 import { readFileSync, existsSync, statSync, readdirSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
+import ts from "typescript";
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/**
+ * Call-walk verdict for one advisory field: a symbol of the field's closed set
+ * is reachable from the handler, provably is not (every call resolved, none
+ * reached it), or the walk hit its bound. Only not_reachable can prove absent.
+ */
+export type Reach = "reachable" | "not_reachable" | "limit";
 
 export type RouteRecord = {
     method: HttpMethod;
     route: string;
     file: string;
     line: number;
+    /**
+     * true: the handler (or a function it calls, transitively) contains a
+     * rejecting guard (see isDemonstrablyRejecting). false: none found.
+     * undefined: the handler could not be resolved to a function, so no claim.
+     */
+    guarded?: boolean;
+    /** The call walk hit its depth bound: guard state unresolved (the gate fails closed). */
+    guardUnresolved?: true;
+    /** Call-walk verdict for an ENTITLEMENT_SYMBOLS member; undefined: handler not resolved. */
+    entitlement?: Reach;
+    /** Call-walk verdict for a credential read (GUARD_SYMBOLS or an inline reject), unresolved calls = limit. */
+    credential?: Reach;
 };
 
 export type ServerActionFile = {
@@ -65,43 +85,110 @@ export type ServerActionRecord = {
     file: string;
     exportName: string;
     line: number;
+    guarded?: boolean;
+    guardUnresolved?: true;
+    entitlement?: Reach;
+    /** Call-walk verdict for a credential read (GUARD_SYMBOLS or an inline reject), unresolved calls = limit. */
+    credential?: Reach;
 };
 
-// Matches an exported async function declaration whose signature starts on
-// this line -- `(` need not close on the same line (multi-line params still
-// match, since only the opening paren after the name is required).
-const EXPORTED_ASYNC_FUNCTION_RE = /^export\s+async\s+function\s+(\w+)\s*\(/;
-// Global variants of the two above, used to count EVERY exported action on a
-// line rather than only the one anchored at its start. See the count/parse
-// reconciliation in discoverServerActionFiles.
-const EXPORTED_ASYNC_FUNCTION_GLOBAL_RE = /export\s+async\s+function\s+(\w+)\s*\(/g;
-// `export const foo = async (...) => { ... }` -- not observed in this repo
-// as of this pass, but a valid Server Action form; matched defensively so
-// discovery does not silently miss one if it appears later.
-const EXPORTED_ASYNC_ARROW_RE = /^export\s+const\s+(\w+)\s*(?::[^=]+)?=\s*async\s*[( ]/;
-const EXPORTED_ASYNC_ARROW_GLOBAL_RE = /export\s+const\s+(\w+)\s*(?::[^=]+)?=\s*async\s*[( ]/g;
+// CHAOS-4792: discovery reads the TypeScript AST, never source text. The text
+// matcher it replaces enumerated the spellings its author thought of while the
+// language accepts more (`export const GET = ...`, semicolonless directives,
+// .js route files). Every module extension Next.js resolves is parsed.
+const SOURCE_FILE_RE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+// Next serves `route.<pageExtension>`; pageExtensions may carry a dotted
+// prefix (next.config.js sets "demo.ts" for demo builds, so route.demo.ts is a
+// route there). Any dotted segments before a ts/tsx/js/jsx ending count, because
+// the config is evaluated per build and discovery must cover every build.
+// route.mjs/.cjs are never page extensions of this app.
+const ROUTE_FILE_RE = /(?:^|\/)route(?:\.[\w-]+)*\.(?:tsx|ts|jsx|js)$/;
+const TEST_FILE_RE = /\.(?:test|spec)\.(?:[cm]?[jt]s|[jt]sx)$/;
+const DECLARATION_FILE_RE = /\.d\.[cm]?ts$/;
 
-function parseArgs(argv: string[]): { root: string; out: string | null } {
-    let root = process.cwd();
-    let out: string | null = null;
-    for (let i = 0; i < argv.length; i++) {
-        if (argv[i] === "--root") root = argv[++i];
-        else if (argv[i] === "--out") out = argv[++i];
-    }
-    return { root, out };
+function parseSource(file: string): ts.SourceFile {
+    return ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
 }
 
-function* walk(dir: string): Generator<string> {
-    if (!existsSync(dir)) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) {
-            if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-            yield* walk(full);
-        } else if (entry.isFile()) {
-            yield full;
+function lineOf(sf: ts.SourceFile, node: ts.Node): number {
+    return sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
+}
+
+function hasExportModifier(node: ts.Node): boolean {
+    return (
+        ts.canHaveModifiers(node) &&
+        (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    );
+}
+
+function hasDefaultModifier(node: ts.Node): boolean {
+    return (
+        ts.canHaveModifiers(node) &&
+        (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+    );
+}
+
+type ExportedName = {
+    name: string;
+    line: number;
+    viaHandlers: boolean;
+    wildcard: boolean;
+    from?: string;
+};
+
+/**
+ * Every value name a module exports, from the AST: declarations
+ * (function/class/const/let/var, destructured bindings), `export { a as B }`,
+ * `export { B } from "./x"`, `export * from "./x"` (reported as a wildcard --
+ * the re-exported names cannot be resolved here, so callers treat it as a
+ * surface they cannot prove absent), and `export default`. Type-only exports
+ * are erased at compile time and skipped.
+ */
+function exportedNames(sf: ts.SourceFile): ExportedName[] {
+    const out: ExportedName[] = [];
+    const add = (name: string, node: ts.Node, viaHandlers = false, wildcard = false) =>
+        out.push({
+            name,
+            line: lineOf(sf, node),
+            viaHandlers,
+            wildcard,
+            from:
+                ts.isExportDeclaration(node) &&
+                node.moduleSpecifier &&
+                ts.isStringLiteral(node.moduleSpecifier)
+                    ? node.moduleSpecifier.text
+                    : undefined,
+        });
+    const bindingNames = (b: ts.BindingName, into: string[]) => {
+        if (ts.isIdentifier(b)) into.push(b.text);
+        else for (const el of b.elements) if (ts.isBindingElement(el)) bindingNames(el.name, into);
+    };
+    for (const st of sf.statements) {
+        if (ts.isFunctionDeclaration(st) && hasExportModifier(st)) {
+            add(hasDefaultModifier(st) ? "default" : (st.name?.text ?? "default"), st);
+        } else if (ts.isClassDeclaration(st) && hasExportModifier(st)) {
+            add(hasDefaultModifier(st) ? "default" : (st.name?.text ?? "default"), st);
+        } else if (ts.isVariableStatement(st) && hasExportModifier(st)) {
+            for (const decl of st.declarationList.declarations) {
+                const names: string[] = [];
+                bindingNames(decl.name, names);
+                const viaHandlers =
+                    !ts.isIdentifier(decl.name) &&
+                    decl.initializer !== undefined &&
+                    ts.isIdentifier(decl.initializer) &&
+                    decl.initializer.text === "handlers";
+                for (const n of names) add(n, st, viaHandlers);
+            }
+        } else if (ts.isExportAssignment(st)) {
+            add("default", st);
+        } else if (ts.isExportDeclaration(st) && !st.isTypeOnly) {
+            const clause = st.exportClause;
+            if (!clause) add("*", st, false, true);
+            else if (ts.isNamespaceExport(clause)) add(clause.name.text, st);
+            else for (const spec of clause.elements) if (!spec.isTypeOnly) add(spec.name.text, st);
         }
     }
+    return out;
 }
 
 /**
@@ -110,7 +197,7 @@ function* walk(dir: string): Generator<string> {
  * `[id]` segments are kept bracketed verbatim, matching this repo's
  * convention of documenting the dynamic-segment placeholder rather than
  * resolving a synthetic example value -- there is no route table to resolve
- * it against, unlike FastAPI's runtime include graph. `route.ts` itself is
+ * it against, unlike FastAPI's runtime include graph. `route.<ext>` itself is
  * dropped from the tail.
  *
  * ROUTE GROUPS are stripped: a directory whose name is wrapped in
@@ -127,7 +214,7 @@ function* walk(dir: string): Generator<string> {
  */
 function fileToRoutePath(appRoot: string, file: string): string {
     const rel = relative(appRoot, file).replace(/\\/g, "/");
-    const withoutFile = rel.replace(/\/route\.tsx?$/, "").replace(/^route\.tsx?$/, "");
+    const withoutFile = rel.replace(ROUTE_FILE_RE, "");
     if (!withoutFile) return "/";
     const segments = withoutFile
         .split("/")
@@ -135,189 +222,1052 @@ function fileToRoutePath(appRoot: string, file: string): string {
     return "/" + segments.join("/");
 }
 
-const EXPORT_METHOD_RE = new RegExp(
-    `^export\\s+(?:async\\s+)?function\\s+(${HTTP_METHODS.join("|")})\\s*\\(`,
-);
-// `export const { GET, POST } = handlers;` (NextAuth catch-all) -- a named
-// destructure of a runtime object, not a per-method function. Reported with
-// method "api_route" (mirrors ops's convention for a runtime method list),
-// matching endpoint-profile.schema.json's `method` field description.
-const EXPORT_DESTRUCTURE_RE = /^export\s+const\s*\{([^}]+)\}\s*=\s*handlers\s*;?\s*$/;
-// `export { handler as POST };` and `export { GET };` -- a re-export of a
-// binding defined elsewhere in the file (commonly an arrow function). Merge-gate
-// round 1 (CHAOS-3273, EXECUTED): a route file whose only export took this
-// shape was invisible, so a hidden POST handler sat beside a profiled GET and
-// the gate reported `PASS: 1 routes + 0 server actions, 0 violations`. It is
-// legal TypeScript and a normal way to write a handler, not an exotic form.
-const EXPORT_NAMED_RE = /^export\s*\{([^}]+)\}\s*;?\s*$/;
+// ---------------------------------------------------------------------------
+// Guard detection (CHAOS-4780): what discovery can say about a handler's
+// protection, from source. See the HONESTY LIMIT block in
+// gate_web_auth_profiles.ts for what a lexical guard match does and does not
+// prove.
+// ---------------------------------------------------------------------------
 
-function discoverRouteFile(appRoot: string, file: string): RouteRecord[] {
-    const text = readFileSync(file, "utf8");
-    const lines = text.split("\n");
-    const routePath = fileToRoutePath(appRoot, file);
-    const records: RouteRecord[] = [];
-    let sawDestructure = false;
-    lines.forEach((lineText, idx) => {
-        // `export { handler as POST, other as GET };` -- take the EXPORTED
-        // name (after `as`), which is what Next dispatches on, not the local
-        // binding's name.
-        const namedMatch = EXPORT_NAMED_RE.exec(lineText.trim());
-        if (namedMatch && !/=\s*handlers/.test(lineText)) {
-            for (const clause of namedMatch[1].split(",")) {
-                const exported = clause.includes(" as ")
-                    ? clause.split(" as ")[1].trim()
-                    : clause.trim();
-                if ((HTTP_METHODS as readonly string[]).includes(exported)) {
-                    records.push({
-                        method: exported as HttpMethod,
-                        route: routePath,
-                        file: relative(process.cwd(), file),
-                        line: idx + 1,
-                    });
-                }
-            }
+// See the ★ HONESTY LIMIT block in the module docstring before extending or
+// relying on this list beyond what it proves.
+export const REJECTING_GUARD_NAMES = [
+    "getSessionContext",
+    "requireSuperuserToken",
+    "getToken",
+    "resolveOrgId",
+    "getAuthHeaders",
+    "getAuthHeadersOrThrow",
+    "apiRequest",
+    "withAuthHeaders",
+];
+export const REJECTING_GUARD_RE = new RegExp(`\\b(?:${REJECTING_GUARD_NAMES.join("|")})\\b`);
+// Hand-rolled inline reject shapes, each verified by hand at its own call
+// site (not routed through a named helper, but still an unconditional
+// return/throw on no session):
+export const INLINE_REJECT_PATTERNS = [
+    // checkout.ts's createBillingPlan/updateBillingPlan/deleteBillingPlan/
+    // syncBillingPlanToStripe/listBillingPlans (listBillingPlans fixed
+    // CHAOS-3273 Wave 0, 2026-09-01): `if (!session?.access_token) return ...`.
+    // The DEGRADING counterexample this gate exists to catch (listBillingPlans
+    // before its fix) used `session?.access_token` only inside an `if` whose
+    // body ATTACHES a header -- no `return`/`throw` -- so requiring `return`
+    // or `throw` on the SAME lexical scan is what distinguishes the two, not
+    // just the presence of the `access_token` check.
+    /!\s*session\?\.access_token\)[^]*?(?:return|throw)/,
+    // feature-flags/actions.ts's fetchFlagPage (CHAOS-4728, merged fcc3c1db):
+    // `if (!session?.user?.org_id) { throw new Error(AuthErrors.Unauthorized); }`.
+    /!\s*session\?\.user\?\.org_id\)[^]*?(?:return|throw)/,
+];
+
+export function isDemonstrablyRejecting(snippet: string): boolean {
+    return (
+        REJECTING_GUARD_RE.test(snippet) || INLINE_REJECT_PATTERNS.some((re) => re.test(snippet))
+    );
+}
+
+// The guard FUNCTIONS, declared once: a call counts as guarded only when the
+// type checker resolves it to one of these declarations (file suffix + name).
+// A local helper that merely shares a name does not count; an aliased import
+// of one of these does. verifyGuardSymbols() checks that each one still
+// rejects (see below), so a guard whose body is hollowed out fails the gate.
+export const GUARD_SYMBOLS: readonly { file: string; name: string }[] = [
+    { file: "src/lib/admin/server/_shared.ts", name: "getSessionContext" },
+    { file: "src/lib/admin/server/_shared.ts", name: "requireSuperuserToken" },
+    { file: "src/lib/admin/server/_shared.ts", name: "getToken" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeaders" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "getAuthHeadersOrThrow" },
+    { file: "src/lib/billing/actions/_shared.ts", name: "apiRequest" },
+];
+
+// The entitlement GATES (functions that reject a caller lacking a feature), declared once, same
+// resolution rules as GUARD_SYMBOLS. Readers of the flag are not gates.
+// An advisory `entitlement_requirement` may be absent only when the call walk
+// reaches none of these; verifyEntitlementSymbols() fails when one is renamed
+// or removed, so the set cannot silently go stale.
+// `calls` are callee names the body must still call; `rejects` says the body
+// must itself throw on a condition computed from those calls' results (a
+// delegating gate only has to call the gate it delegates to).
+export const ENTITLEMENT_SYMBOLS: readonly {
+    file: string;
+    name: string;
+    calls: readonly string[];
+    rejects: boolean;
+}[] = [
+    {
+        file: "src/lib/admin/server/canonicalIncidentIngestion.ts",
+        name: "requirePagerDutyCreationEntitlement",
+        calls: ["getCanonicalIncidentIngestionEntitlement"],
+        rejects: true,
+    },
+    {
+        file: "src/lib/acr/ops.ts",
+        name: "requireAcrEntitlement",
+        calls: ["fetchBoundedJson", "safeParse"],
+        rejects: true,
+    },
+    {
+        file: "src/lib/acr/ops.ts",
+        name: "resolveOpsCredentialIssuanceAuthorization",
+        calls: ["requireAcrEntitlement"],
+        rejects: false,
+    },
+];
+
+// The closed list of inline reject shapes: `if (<condition>) { ...; return|throw ... }`
+// where the condition text is exactly one of these and the branch itself holds
+// a return or throw statement. Matched on the AST, not on text.
+export const INLINE_REJECT_CONDITIONS: readonly string[] = [
+    "!session?.access_token",
+    "!session?.user?.org_id",
+];
+
+const isExit = (s: ts.Statement) => ts.isReturnStatement(s) || ts.isThrowStatement(s);
+
+/** A literal `if (false)`-style condition: true/false when constant, undefined otherwise. */
+function constantCondition(e: ts.Expression): boolean | undefined {
+    if (e.kind === ts.SyntaxKind.TrueKeyword) return true;
+    if (
+        e.kind === ts.SyntaxKind.FalseKeyword ||
+        e.kind === ts.SyntaxKind.NullKeyword ||
+        (ts.isNumericLiteral(e) && Number(e.text) === 0) ||
+        (ts.isIdentifier(e) && e.text === "undefined")
+    )
+        return false;
+    return undefined;
+}
+
+/**
+ * Walk only code that can run: statements after a top-level return/throw in a
+ * block are dead, and the dead arm of an `if (<literal>)` is skipped. `f`
+ * returns false to stop descending into a node.
+ */
+function walkLive(node: ts.Node, f: (n: ts.Node) => boolean | void): void {
+    if (f(node) === false) return;
+    if (ts.isBlock(node)) {
+        for (const s of node.statements) {
+            walkLive(s, f);
+            if (isExit(s)) break;
         }
-        const methodMatch = EXPORT_METHOD_RE.exec(lineText.trim());
-        if (methodMatch) {
-            records.push({
-                method: methodMatch[1] as HttpMethod,
-                route: routePath,
-                file: relative(process.cwd(), file),
-                line: idx + 1,
-            });
-            return;
-        }
-        if (!sawDestructure && EXPORT_DESTRUCTURE_RE.test(lineText.trim())) {
-            sawDestructure = true;
-            records.push({
-                method: "GET" as HttpMethod, // placeholder; api_route covers both -- see note below
-                route: routePath,
-                file: relative(process.cwd(), file),
-                line: idx + 1,
-            });
+        return;
+    }
+    if (ts.isIfStatement(node)) {
+        const c = constantCondition(node.expression);
+        walkLive(node.expression, f);
+        if (c !== false) walkLive(node.thenStatement, f);
+        if (c !== true && node.elseStatement) walkLive(node.elseStatement, f);
+        return;
+    }
+    ts.forEachChild(node, (c) => walkLive(c, f));
+}
+
+/** `if (<closed condition>) { ...; return|throw ...; }` -- the branch itself exits. */
+function isInlineRejectIf(n: ts.Node): boolean {
+    if (
+        !ts.isIfStatement(n) ||
+        !INLINE_REJECT_CONDITIONS.includes(n.expression.getText().replace(/\s+/g, ""))
+    )
+        return false;
+    const then = n.thenStatement;
+    return isExit(then) || (ts.isBlock(then) && then.statements.some(isExit));
+}
+
+function isInlineReject(node: ts.Node): boolean {
+    let found = false;
+    walkLive(node, (n) => {
+        if (found) return false;
+        if (isInlineRejectIf(n)) {
+            found = true;
+            return false;
         }
     });
-    // Collapse a destructure-style file (NextAuth) into ONE api_route record
-    // rather than one row per destructured name -- matches how this repo's
-    // endpoint-profiles.web.json represents it (method: "api_route").
-    if (sawDestructure) {
+    return found;
+}
+
+/**
+ * A call whose result is awaited or returned. A guard call that is neither
+ * (`getToken();`, `void getToken()`) rejects into an unobserved promise and
+ * protects nothing.
+ */
+function isConsumed(call: ts.CallExpression): boolean {
+    for (let n: ts.Node | undefined = call.parent; n; n = n.parent) {
+        if (ts.isAwaitExpression(n) || ts.isReturnStatement(n)) return true;
+        if (ts.isArrowFunction(n) && !ts.isBlock(n.body)) {
+            // expression-bodied arrow: its value is returned to the caller
+            return true;
+        }
+        if (ts.isStatement(n) || ts.isFunctionLike(n)) return false;
+    }
+    return false;
+}
+
+function isDeclarationOf(set: readonly { file: string; name: string }[], decl: ts.Node): boolean {
+    const name = (decl as ts.NamedDeclaration).name;
+    if (!name || !ts.isIdentifier(name)) return false;
+    const file = decl.getSourceFile().fileName.replace(/\\/g, "/");
+    return set.some((g) => g.name === name.text && file.endsWith("/" + g.file));
+}
+
+function isGuardDeclaration(decl: ts.Node): boolean {
+    return isDeclarationOf(GUARD_SYMBOLS, decl);
+}
+
+/** What the call walk looks for: a declaration of the target set, or an inline shape. */
+type Probe = {
+    isTarget: (decl: ts.Node) => boolean;
+    inline: (node: ts.Node) => boolean;
+    /** A proof of ABSENCE: a call the walk cannot resolve to a body makes the verdict "limit". */
+    strict?: boolean;
+};
+const GUARD_PROBE: Probe = { isTarget: isGuardDeclaration, inline: (n) => isInlineReject(n) };
+const CREDENTIAL_PROBE: Probe = { ...GUARD_PROBE, strict: true };
+const ENTITLEMENT_PROBE: Probe = {
+    isTarget: (d) => isDeclarationOf(ENTITLEMENT_SYMBOLS, d),
+    inline: () => false,
+    strict: true,
+};
+
+const MAX_GUARD_DEPTH = 10;
+
+/**
+ * A call the walk can see into: every declaration it resolves to is library
+ * code (a declaration file or node_modules) or has a function body in the
+ * project. A callee that is a parameter, an interface member or has no
+ * declaration may run anything, so it cannot support a claim of absence.
+ */
+function callResolves(checker: ts.TypeChecker, callee: ts.Expression): boolean {
+    const decls = resolveDeclarations(checker, callee);
+    if (decls.length === 0) return false;
+    return decls.every((decl) => {
+        const sf = decl.getSourceFile();
+        if (sf.isDeclarationFile || sf.fileName.includes("/node_modules/")) return true;
+        return functionLikesOf(checker, decl).length > 0;
+    });
+}
+
+/** The project class a `new` expression constructs; undefined for a function or library constructor. */
+function classOf(checker: ts.TypeChecker, ref: ts.Node): ts.ClassLikeDeclaration | undefined {
+    for (const decl of resolveDeclarations(checker, ref)) {
+        const sf = decl.getSourceFile();
+        if (sf.isDeclarationFile || sf.fileName.includes("/node_modules/")) continue;
+        if (ts.isClassDeclaration(decl) || ts.isClassExpression(decl)) return decl;
+    }
+    return undefined;
+}
+
+const isLibraryFile = (sf: ts.SourceFile) =>
+    sf.isDeclarationFile || sf.fileName.includes("/node_modules/");
+
+const isProjectDecl = (d: ts.Node) => !isLibraryFile(d.getSourceFile());
+
+const PRIMITIVE_FLAGS =
+    ts.TypeFlags.StringLike |
+    ts.TypeFlags.NumberLike |
+    ts.TypeFlags.BooleanLike |
+    ts.TypeFlags.BigIntLike |
+    ts.TypeFlags.ESSymbolLike |
+    ts.TypeFlags.Null |
+    ts.TypeFlags.Undefined |
+    ts.TypeFlags.Void |
+    ts.TypeFlags.Never;
+
+/**
+ * Whether a value of this type can run project code when a library or the
+ * language merely touches it (JSON.stringify -> toJSON, a spread or a read ->
+ * a getter, string conversion -> toString, await -> then, a callback stored on
+ * it): any member declared in the project that is a method, an accessor or
+ * callable. `any` and unknown shapes count; the check is bounded.
+ */
+function mayRunProjectCode(checker: ts.TypeChecker, type: ts.Type, depth = 0): boolean {
+    if (depth > 3) return true;
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return true;
+    if (type.flags & PRIMITIVE_FLAGS) return false;
+    if (type.isUnionOrIntersection())
+        return type.types.some((t) => mayRunProjectCode(checker, t, depth + 1));
+    if (checker.isArrayType(type) || checker.isTupleType(type))
+        return checker
+            .getTypeArguments(type as ts.TypeReference)
+            .some((t) => mayRunProjectCode(checker, t, depth + 1));
+    if (type.getCallSignatures().length > 0) return true;
+    for (const prop of checker.getPropertiesOfType(type)) {
+        const decls = prop.declarations ?? [];
+        if (!decls.some(isProjectDecl)) continue;
+        if (
+            decls.some(
+                (d) =>
+                    ts.isGetAccessor(d) ||
+                    ts.isSetAccessor(d) ||
+                    ts.isMethodDeclaration(d) ||
+                    ts.isMethodSignature(d),
+            )
+        )
+            return true;
+        const t = checker.getTypeOfSymbolAtLocation(prop, decls[0]);
+        if (mayRunProjectCode(checker, t, depth + 1)) return true;
+    }
+    return false;
+}
+
+/** Accessors (getter/setter) a property or element access can run, as declarations. */
+function accessorsOf(
+    checker: ts.TypeChecker,
+    n: ts.PropertyAccessExpression | ts.ElementAccessExpression,
+): ts.Declaration[] {
+    const out: ts.Declaration[] = [];
+    const named = ts.isPropertyAccessExpression(n)
+        ? checker.getSymbolAtLocation(n.name)
+        : ts.isStringLiteralLike(n.argumentExpression)
+          ? checker.getSymbolAtLocation(n.argumentExpression)
+          : undefined;
+    const syms = named
+        ? [named]
+        : ts.isElementAccessExpression(n)
+          ? checker.getPropertiesOfType(checker.getTypeAtLocation(n.expression))
+          : [];
+    for (const sym of syms)
+        for (const d of sym.declarations ?? [])
+            if ((ts.isGetAccessor(d) || ts.isSetAccessor(d)) && isProjectDecl(d)) out.push(d);
+    return out;
+}
+
+function functionLikeOf(decl: ts.Node): ts.Node | undefined {
+    if (
+        ts.isFunctionDeclaration(decl) ||
+        ts.isFunctionExpression(decl) ||
+        ts.isArrowFunction(decl) ||
+        ts.isMethodDeclaration(decl) ||
+        ts.isGetAccessor(decl) ||
+        ts.isSetAccessor(decl)
+    )
+        return decl;
+    if (ts.isVariableDeclaration(decl) && decl.initializer) return decl.initializer;
+    if (ts.isPropertyAssignment(decl)) return decl.initializer;
+    return undefined;
+}
+
+/** Declarations a reference resolves to, following imports/aliases and `const g = realFn` value aliases. */
+function resolveDeclarations(checker: ts.TypeChecker, ref: ts.Node, hops = 0): ts.Declaration[] {
+    const target = ts.isPropertyAccessExpression(ref) ? ref.name : ref;
+    let sym = checker.getSymbolAtLocation(target);
+    if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+    const out: ts.Declaration[] = [];
+    for (const decl of sym?.declarations ?? []) {
+        if (
+            hops < 5 &&
+            ts.isVariableDeclaration(decl) &&
+            decl.initializer &&
+            (ts.isIdentifier(decl.initializer) || ts.isPropertyAccessExpression(decl.initializer))
+        ) {
+            out.push(...resolveDeclarations(checker, decl.initializer, hops + 1));
+        } else {
+            out.push(decl);
+        }
+    }
+    return out;
+}
+
+/** Function nodes behind a declaration, following `const GET = handler` aliases. */
+function functionLikesOf(checker: ts.TypeChecker, decl: ts.Node, hops = 0): ts.Node[] {
+    if (
+        hops < 5 &&
+        ts.isVariableDeclaration(decl) &&
+        decl.initializer &&
+        (ts.isIdentifier(decl.initializer) || ts.isPropertyAccessExpression(decl.initializer))
+    ) {
+        return resolveDeclarations(checker, decl.initializer).flatMap((x) =>
+            functionLikesOf(checker, x, hops + 1),
+        );
+    }
+    const fn = functionLikeOf(decl);
+    return fn ? [fn] : [];
+}
+
+type GuardState = "guarded" | "unguarded" | "limit";
+type GuardFields = {
+    guarded?: boolean;
+    guardUnresolved?: true;
+    entitlement?: Reach;
+    credential?: Reach;
+};
+
+/**
+ * Whether a guard is reachable from `node`: a call that resolves (through the
+ * type checker: imports, aliases, path aliases, value aliases) to a declaration
+ * in GUARD_SYMBOLS, or a closed inline reject shape. The walk follows calls
+ * into project functions, and functions passed to a call by reference or as a
+ * literal callback (the callee runs them, e.g. withAuth(handler)); a function
+ * that is only DEFINED inside the handler and never called or passed is not
+ * executed and is skipped. Bounded by MAX_GUARD_DEPTH and a visited set; a
+ * branch that hits the bound returns "limit" (never "guarded"). "guarded"
+ * means a guard is reachable, NOT that every path passes through it.
+ */
+function guardState(
+    checker: ts.TypeChecker,
+    node: ts.Node,
+    visited: Set<ts.Node>,
+    depth: number,
+    probe: Probe = GUARD_PROBE,
+): GuardState {
+    if (probe.inline(node)) return "guarded";
+    if (depth >= MAX_GUARD_DEPTH) return "limit";
+    let result: GuardState = "unguarded";
+    const followFns = (fns: ts.Node[]) => {
+        for (const fn of fns) {
+            if (visited.has(fn)) continue;
+            visited.add(fn);
+            const inner = guardState(checker, fn, visited, depth + 1, probe);
+            if (inner === "guarded") {
+                result = "guarded";
+                return;
+            }
+            if (inner === "limit") result = "limit";
+        }
+    };
+    const markLimit = () => {
+        if ((result as GuardState) !== "guarded") result = "limit";
+    };
+    // Dispatch and implicit execution the walk cannot resolve statically: a
+    // proof of absence may not rest on them, so each gives limit.
+    const strictChecks = (n: ts.Node) => {
+        if (ts.isCallExpression(n)) {
+            // A method of a class can be overridden by a subclass.
+            for (const decl of resolveDeclarations(checker, n.expression)) {
+                if (
+                    ts.isMethodDeclaration(decl) &&
+                    isProjectDecl(decl) &&
+                    (ts.isClassLike(decl.parent) || ts.isInterfaceDeclaration(decl.parent)) &&
+                    !decl.modifiers?.some((m) => m.kind === ts.SyntaxKind.PrivateKeyword)
+                )
+                    markLimit();
+            }
+            // A library call that receives a project object may run its hooks.
+            const decls = resolveDeclarations(checker, n.expression);
+            if (decls.length > 0 && decls.every((d) => isLibraryFile(d.getSourceFile()))) {
+                for (const arg of n.arguments) {
+                    if (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) continue;
+                    if (mayRunProjectCode(checker, checker.getTypeAtLocation(arg))) markLimit();
+                }
+                if (
+                    ts.isPropertyAccessExpression(n.expression) &&
+                    mayRunProjectCode(checker, checker.getTypeAtLocation(n.expression.expression))
+                )
+                    markLimit();
+            }
+        }
+        if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) {
+            for (const acc of accessorsOf(checker, n)) {
+                if (acc.parent && ts.isClassLike(acc.parent)) markLimit();
+                followFns([acc]);
+            }
+        }
+        const touched: ts.Expression[] = [];
+        if (ts.isTemplateExpression(n))
+            for (const sp of n.templateSpans) touched.push(sp.expression);
+        if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusToken)
+            touched.push(n.left, n.right);
+        if (ts.isSpreadAssignment(n) || ts.isSpreadElement(n)) touched.push(n.expression);
+        if (ts.isObjectBindingPattern(n) && n.parent && "initializer" in n.parent) {
+            const init = (n.parent as ts.VariableDeclaration).initializer;
+            if (init) touched.push(init);
+        }
+        if (ts.isForInStatement(n) || ts.isForOfStatement(n)) touched.push(n.expression);
+        for (const e of touched)
+            if (mayRunProjectCode(checker, checker.getTypeAtLocation(e))) markLimit();
+    };
+    const follow = (ref: ts.Node, requireConsumed: ts.CallExpression | null) => {
+        // A proof of absence counts every call: an unawaited gate still runs.
+        if (!probe.strict && requireConsumed && !isConsumed(requireConsumed)) return;
+        for (const decl of resolveDeclarations(checker, ref)) {
+            if (probe.isTarget(decl)) {
+                result = "guarded";
+                return;
+            }
+            const sourceFile = decl.getSourceFile();
+            if (sourceFile.isDeclarationFile || sourceFile.fileName.includes("/node_modules/"))
+                continue;
+            followFns(functionLikesOf(checker, decl));
+            if (result === "guarded") return;
+        }
+    };
+    const visit = (n: ts.Node): boolean | void => {
+        if (result === "guarded") return false;
+        const isFn =
+            ts.isFunctionDeclaration(n) ||
+            ts.isFunctionExpression(n) ||
+            ts.isArrowFunction(n) ||
+            ts.isMethodDeclaration(n);
+        if (isFn && n !== node) {
+            const p = n.parent;
+            // Executed when called, passed to a call, or handed back to the
+            // caller (a wrapper returns the function that runs the guard).
+            const executed =
+                p &&
+                ((ts.isCallExpression(p) &&
+                    (p.expression === n || p.arguments.some((a) => a === n))) ||
+                    ts.isReturnStatement(p) ||
+                    (ts.isArrowFunction(p) && p.body === n));
+            if (!executed) return false;
+        }
+        // `new C()` runs C's constructor; a tagged template calls its tag.
+        const callee = ts.isCallExpression(n)
+            ? n.expression
+            : ts.isNewExpression(n)
+              ? n.expression
+              : ts.isTaggedTemplateExpression(n)
+                ? n.tag
+                : undefined;
+        if (ts.isNewExpression(n) || ts.isTaggedTemplateExpression(n)) {
+            const cls = ts.isNewExpression(n) ? classOf(checker, n.expression) : undefined;
+            if (cls) {
+                const ctor = cls.members.find(ts.isConstructorDeclaration);
+                if (ctor) followFns([ctor]);
+                // A field initializer runs on construction and is not walked.
+                if (
+                    probe.strict &&
+                    cls.members.some((m) => ts.isPropertyDeclaration(m) && m.initializer)
+                )
+                    markLimit();
+            } else {
+                follow(callee!, null);
+                if (probe.strict && !callResolves(checker, callee!)) markLimit();
+            }
+        } else if (callee && probe.strict && !callResolves(checker, callee)) {
+            markLimit();
+        }
+        if (probe.strict) strictChecks(n);
+        // fn.call(...), fn.apply(...), fn.bind(...) run or return fn itself.
+        if (
+            ts.isCallExpression(n) &&
+            ts.isPropertyAccessExpression(n.expression) &&
+            ["call", "apply", "bind"].includes(n.expression.name.text)
+        )
+            follow(n.expression.expression, null);
+        if (ts.isCallExpression(n)) {
+            // An export initializer that IS the call (GET = withAuth(handler)) builds the handler; no await applies.
+            follow(n.expression, n === node ? null : n);
+            for (const arg of n.arguments)
+                if (ts.isIdentifier(arg) || ts.isPropertyAccessExpression(arg)) follow(arg, null);
+        }
+    };
+    walkLive(node, visit);
+    return result;
+}
+
+/**
+ * A guard's own body must reject at its top level: an inline reject `if`, or a
+ * top-level statement that awaits/returns a call to ANOTHER guard symbol, in
+ * statements that can run (nothing after an earlier top-level return/throw).
+ * A guard whose only reject sits in dead code, an uncalled nested function or a
+ * conditional arm is hollow.
+ */
+function guardBodyRejects(checker: ts.TypeChecker, fn: ts.Node): boolean {
+    const body = (fn as ts.FunctionLikeDeclaration).body;
+    if (!body || !ts.isBlock(body)) return false;
+    const callOf = (e: ts.Expression | undefined): ts.CallExpression | undefined => {
+        let x = e;
+        while (x && (ts.isParenthesizedExpression(x) || ts.isAwaitExpression(x))) x = x.expression;
+        return x && ts.isCallExpression(x) ? x : undefined;
+    };
+    for (const s of body.statements) {
+        if (isInlineRejectIf(s)) return true;
+        const exprs: (ts.Expression | undefined)[] = [];
+        if (ts.isExpressionStatement(s) || ts.isReturnStatement(s)) exprs.push(s.expression);
+        if (ts.isVariableStatement(s))
+            for (const v of s.declarationList.declarations) exprs.push(v.initializer);
+        for (const e of exprs) {
+            const call = callOf(e);
+            if (!call) continue;
+            const awaited =
+                (e && ts.isAwaitExpression(e)) || ts.isReturnStatement(s) || isConsumed(call);
+            if (!awaited) continue;
+            const self = (fn as ts.NamedDeclaration).name?.getText();
+            if (
+                resolveDeclarations(checker, call.expression).some(
+                    (decl) =>
+                        isGuardDeclaration(decl) &&
+                        (decl as ts.NamedDeclaration).name?.getText() !== self,
+                )
+            )
+                return true;
+        }
+        if (isExit(s)) return false;
+    }
+    return false;
+}
+
+export function verifyGuardSymbols(rootArg: string): string[] {
+    const root = resolve(rootArg);
+    const files = [...new Set(GUARD_SYMBOLS.map((g) => join(root, g.file)))].filter((f) =>
+        existsSync(f),
+    );
+    const bad: string[] = [];
+    if (files.length === 0) return GUARD_SYMBOLS.map((g) => `${g.file}#${g.name}`);
+    const program = buildProgram(root, files);
+    const checker = program.getTypeChecker();
+    for (const g of GUARD_SYMBOLS) {
+        const sf = program.getSourceFile(join(root, g.file));
+        const moduleSymbol = sf && checker.getSymbolAtLocation(sf);
+        const sym =
+            moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((s) => s.name === g.name);
+        const decl = sym?.declarations?.[0];
+        const fn = decl && functionLikeOf(decl);
+        if (!fn || !guardBodyRejects(checker, fn)) bad.push(`${g.file}#${g.name}`);
+    }
+    return bad;
+}
+
+/**
+ * ENTITLEMENT_SYMBOLS entries that are no longer a top-level function, no
+ * longer call what they must, or (for a rejecting gate) no longer throw on a
+ * condition computed from those calls' results. A gate replaced by a plain
+ * return, or by a throw that ignores the entitlement, is hollow.
+ */
+export function verifyEntitlementSymbols(rootArg: string): string[] {
+    const root = resolve(rootArg);
+    const bad: string[] = [];
+    for (const g of ENTITLEMENT_SYMBOLS) {
+        const file = join(root, g.file);
+        const fn = existsSync(file)
+            ? parseSource(file).statements.find(
+                  (st): st is ts.FunctionDeclaration =>
+                      ts.isFunctionDeclaration(st) && st.name?.text === g.name,
+              )
+            : undefined;
+        if (!fn || !entitlementGateIsLive(fn, g)) bad.push(`${g.file}#${g.name}`);
+    }
+    return bad;
+}
+
+function calleeName(call: ts.CallExpression): string | undefined {
+    const e = call.expression;
+    if (ts.isIdentifier(e)) return e.text;
+    if (ts.isPropertyAccessExpression(e)) return e.name.text;
+    return undefined;
+}
+
+function entitlementGateIsLive(
+    fn: ts.FunctionDeclaration,
+    g: { calls: readonly string[]; rejects: boolean },
+): boolean {
+    const called = new Set<string>();
+    const derived = new Set<string>();
+    let rejectingIf = false;
+    const callsOf = (n: ts.Node): string[] => {
+        const out: string[] = [];
+        const v = (x: ts.Node) => {
+            if (ts.isCallExpression(x)) {
+                const name = calleeName(x);
+                if (name) out.push(name);
+            }
+            ts.forEachChild(x, v);
+        };
+        v(n);
+        return out;
+    };
+    const identifiersOf = (n: ts.Node): string[] => {
+        const out: string[] = [];
+        const v = (x: ts.Node) => {
+            if (ts.isIdentifier(x)) out.push(x.text);
+            ts.forEachChild(x, v);
+        };
+        v(n);
+        return out;
+    };
+    walkLive(fn, (n) => {
+        if (ts.isCallExpression(n)) {
+            const name = calleeName(n);
+            if (name) called.add(name);
+        }
+        if (ts.isVariableDeclaration(n) && n.initializer && ts.isIdentifier(n.name)) {
+            const fromRequired =
+                callsOf(n.initializer).some((c) => g.calls.includes(c)) ||
+                identifiersOf(n.initializer).some((id) => derived.has(id));
+            if (fromRequired) derived.add(n.name.text);
+        }
+        if (
+            ts.isIfStatement(n) &&
+            constantCondition(n.expression) === undefined &&
+            identifiersOf(n.expression).some((id) => derived.has(id)) &&
+            (ts.isThrowStatement(n.thenStatement) ||
+                (ts.isBlock(n.thenStatement) &&
+                    n.thenStatement.statements.some(ts.isThrowStatement)))
+        )
+            rejectingIf = true;
+    });
+    return g.calls.every((c) => called.has(c)) && (!g.rejects || rejectingIf);
+}
+
+function toGuardFields(state: GuardState): GuardFields {
+    if (state === "guarded") return { guarded: true };
+    if (state === "unguarded") return { guarded: false };
+    return { guardUnresolved: true };
+}
+
+function toReach(state: GuardState): Reach {
+    return state === "guarded" ? "reachable" : state === "unguarded" ? "not_reachable" : "limit";
+}
+
+function worst(states: GuardState[]): GuardState {
+    return states.includes("guarded")
+        ? "guarded"
+        : states.includes("limit")
+          ? "limit"
+          : "unguarded";
+}
+
+/** Guard fields of one exported name of `file`; empty when it is not a resolvable function. */
+function guardedExport(program: ts.Program, file: string, name: string): GuardFields {
+    const sf = program.getSourceFile(file);
+    if (!sf) return {};
+    const checker = program.getTypeChecker();
+    const moduleSymbol = checker.getSymbolAtLocation(sf);
+    if (!moduleSymbol) return {};
+    let sym = checker.getExportsOfModule(moduleSymbol).find((s) => s.name === name);
+    if (!sym) return {};
+    if (sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+    for (const decl of sym.declarations ?? []) {
+        const fns = functionLikesOf(checker, decl);
+        if (fns.length > 0) {
+            const states = fns.map((fn) => guardState(checker, fn, new Set([fn]), 0));
+            const ent = fns.map((fn) =>
+                guardState(checker, fn, new Set([fn]), 0, ENTITLEMENT_PROBE),
+            );
+            const cred = fns.map((fn) =>
+                guardState(checker, fn, new Set([fn]), 0, CREDENTIAL_PROBE),
+            );
+            return {
+                ...toGuardFields(worst(states)),
+                entitlement: toReach(worst(ent)),
+                credential: toReach(worst(cred)),
+            };
+        }
+    }
+    return {};
+}
+
+/** Guard fields of the inline "use server" function that starts on `line` of `file`. */
+function guardedInline(program: ts.Program, file: string, pos: number): GuardFields {
+    const sf = program.getSourceFile(file);
+    if (!sf) return {};
+    const checker = program.getTypeChecker();
+    let result: GuardFields = {};
+    let done = false;
+    const visit = (node: ts.Node) => {
+        if (done) return;
+        const body = functionBody(node);
+        if (body && hasUseServerDirective(body.statements) && node.getStart(sf) === pos) {
+            result = {
+                ...toGuardFields(guardState(checker, node, new Set([node]), 0)),
+                entitlement: toReach(
+                    guardState(checker, node, new Set([node]), 0, ENTITLEMENT_PROBE),
+                ),
+                credential: toReach(
+                    guardState(checker, node, new Set([node]), 0, CREDENTIAL_PROBE),
+                ),
+            };
+            done = true;
+            return;
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(sf);
+    return result;
+}
+
+const compilerOptionsByRoot = new Map<string, ts.CompilerOptions>();
+
+// The project's own compiler options (tsconfig `paths` such as "@/*" included),
+// so module resolution matches tsc. `types: []` keeps ambient @types out of the
+// program: discovery needs the import graph of the files it asks about, not
+// the whole dependency typing.
+function compilerOptions(root: string): ts.CompilerOptions {
+    let options = compilerOptionsByRoot.get(root);
+    if (!options) {
+        const configPath = join(root, "tsconfig.json");
+        const read = existsSync(configPath) ? ts.readConfigFile(configPath, ts.sys.readFile) : null;
+        const parsed = read?.config
+            ? ts.parseJsonConfigFileContent(read.config, ts.sys, root).options
+            : {};
+        options = {
+            ...parsed,
+            allowJs: true,
+            noEmit: true,
+            skipLibCheck: true,
+            types: [],
+            moduleResolution: ts.ModuleResolutionKind.Bundler,
+            module: ts.ModuleKind.ESNext,
+        };
+        compilerOptionsByRoot.set(root, options);
+    }
+    return options;
+}
+
+function buildProgram(root: string, files: string[]): ts.Program {
+    return ts.createProgram({ rootNames: files, options: compilerOptions(root) });
+}
+
+/**
+ * The value names a module exports, as the TypeScript checker computes them:
+ * `export *` (any depth, cycle-safe), aliases, re-exports and path aliases are
+ * resolved the way tsc resolves them. Type-only exports are dropped. An
+ * `export * from` whose module the checker cannot resolve is reported via
+ * `unresolvedWildcard`: it could export anything, so callers must demand a row
+ * for every possibility instead of silently seeing nothing.
+ */
+function checkerExports(
+    program: ts.Program,
+    file: string,
+): { names: string[]; unresolvedWildcard: boolean } {
+    const sf = program.getSourceFile(file);
+    if (!sf) return { names: [], unresolvedWildcard: true };
+    const checker = program.getTypeChecker();
+    let unresolvedWildcard = false;
+    for (const st of sf.statements) {
+        if (
+            ts.isExportDeclaration(st) &&
+            !st.isTypeOnly &&
+            !st.exportClause &&
+            st.moduleSpecifier &&
+            !checker.getSymbolAtLocation(st.moduleSpecifier)
+        )
+            unresolvedWildcard = true;
+    }
+    const moduleSymbol = checker.getSymbolAtLocation(sf);
+    if (!moduleSymbol) return { names: [], unresolvedWildcard };
+    const names: string[] = [];
+    for (const sym of checker.getExportsOfModule(moduleSymbol)) {
+        if (sym.name === "export=") continue;
+        const target = sym.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(sym) : sym;
+        // An alias the checker cannot resolve comes back as the unknown symbol,
+        // which carries Value flags: counted, never dropped.
+        if (target.flags & ts.SymbolFlags.Value) names.push(sym.name);
+    }
+    return { names, unresolvedWildcard };
+}
+
+function discoverRouteFile(appRoot: string, file: string, program: ts.Program): RouteRecord[] {
+    const sf = parseSource(file);
+    const routePath = fileToRoutePath(appRoot, file);
+    const relFile = relative(process.cwd(), file);
+    const own = exportedNames(sf);
+    // `export const { GET, POST } = handlers;` (NextAuth catch-all) -- a
+    // destructure of a runtime object, not a per-method function. One record
+    // with method "api_route" (mirrors ops's convention for a runtime method
+    // list), matching endpoint-profile.schema.json's `method` field.
+    const destructure = own.find(
+        (n) => n.viaHandlers && (HTTP_METHODS as readonly string[]).includes(n.name),
+    );
+    if (destructure) {
         return [
             {
                 method: "api_route" as unknown as HttpMethod,
                 route: routePath,
-                file: records[0].file,
-                line: records[0].line,
+                file: relFile,
+                line: destructure.line,
             },
         ];
     }
-    return records;
+    const wildcardLine = own.find((n) => n.wildcard)?.line ?? 1;
+    const lineByName = new Map<string, number>();
+    for (const n of own) if (!lineByName.has(n.name)) lineByName.set(n.name, n.line);
+    const { names, unresolvedWildcard } = checkerExports(program, file);
+    const methods = new Set<string>(
+        names.filter((n) => (HTTP_METHODS as readonly string[]).includes(n)),
+    );
+    // An export * the checker cannot resolve might export any method; each
+    // possibility demands its own row (one row never covers several handlers).
+    if (unresolvedWildcard) for (const m of HTTP_METHODS) methods.add(m);
+    return [...methods].map((m) => ({
+        method: m as HttpMethod,
+        route: routePath,
+        file: relFile,
+        line: lineByName.get(m) ?? wildcardLine,
+        ...guardedExport(program, file, m),
+    }));
 }
 
-export function discoverRoutes(root: string): RouteRecord[] {
+function* walk(dir: string): Generator<string> {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+            yield* walk(full);
+        } else if (entry.isFile()) {
+            yield full;
+        }
+    }
+}
+
+function parseArgs(argv: string[]): { root: string; out: string | null } {
+    let root = process.cwd();
+    let out: string | null = null;
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === "--root") root = argv[++i];
+        else if (argv[i] === "--out") out = argv[++i];
+    }
+    return { root, out };
+}
+
+export function discoverRoutes(rootArg: string): RouteRecord[] {
+    const root = resolve(rootArg);
     const appRoot = join(root, "src/app");
-    const out: RouteRecord[] = [];
+    const files: string[] = [];
     for (const file of walk(appRoot)) {
-        if (!/route\.tsx?$/.test(file)) continue;
-        out.push(...discoverRouteFile(appRoot, file));
+        if (!ROUTE_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file) || TEST_FILE_RE.test(file))
+            continue;
+        files.push(file);
+    }
+    const out: RouteRecord[] = [];
+    if (files.length > 0) {
+        const program = buildProgram(root, files);
+        for (const file of files) out.push(...discoverRouteFile(appRoot, file, program));
     }
     out.sort((a, b) => (a.route + a.method).localeCompare(b.route + b.method));
     return out;
 }
 
+/** True when a statement list opens with a `"use server"` directive (any quote, with or without `;`). */
+function hasUseServerDirective(statements: readonly ts.Statement[]): boolean {
+    for (const st of statements) {
+        if (!ts.isExpressionStatement(st) || !ts.isStringLiteral(st.expression)) return false;
+        // Compare the string VALUE: Next accepts "use\x20server", and a
+        // false positive here only demands a row, never hides a surface.
+        if (st.expression.text === "use server") return true;
+    }
+    return false;
+}
+
+function functionBody(node: ts.Node): ts.Block | undefined {
+    if (
+        (ts.isFunctionDeclaration(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isArrowFunction(node) ||
+            ts.isMethodDeclaration(node)) &&
+        node.body &&
+        ts.isBlock(node.body)
+    )
+        return node.body;
+    return undefined;
+}
+
+function inlineActionName(node: ts.Node): string | null {
+    if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name)
+        return node.name.getText();
+    if (ts.isFunctionExpression(node) && node.name) return node.name.text;
+    const parent = node.parent;
+    if (parent && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name))
+        return parent.name.text;
+    if (parent && ts.isPropertyAssignment(parent) && ts.isIdentifier(parent.name))
+        return parent.name.text;
+    return null;
+}
+
 /**
- * "use server" files -- every file whose first non-comment, non-blank line
- * is the "use server" directive (file-level opt-in). Returns BOTH:
- *   - `files`: one entry per file with its exported action names, for
+ * Server Actions -- both Next.js forms:
+ *   - FILE-level: a module whose directive prologue holds "use server"; every
+ *     value it exports is an action.
+ *   - FUNCTION-level: a function whose body opens with "use server" (inline
+ *     action in a server component or any other module).
+ * Returns BOTH:
+ *   - `files`: one entry per file with its action names, for
  *     visibility/reconciliation.
- *   - `actions`: one record per exported Server Action function, keyed
- *     `server_action:<repo-relative module path>#<exported function name>`
+ *   - `actions`: one record per Server Action, keyed
+ *     `server_action:<repo-relative module path>#<name>`
  *     -- the independently re-derived surface a CI gate diffs the checked-in
  *     profile rows against. Never keyed on a per-build action id (unstable
- *     across builds by design -- see module docstring).
+ *     across builds by design -- see module docstring). An inline action with
+ *     no name is keyed `anonymous@L<line>`.
+ *
+ * `export *` in a file-level module is reported under the name `*`: the
+ * re-exported actions cannot be resolved here, so it demands a row.
  */
-export function discoverServerActionFiles(root: string): {
+export function discoverServerActionFiles(rootArg: string): {
     files: ServerActionFile[];
     actions: ServerActionRecord[];
 } {
+    const root = resolve(rootArg);
     const files: ServerActionFile[] = [];
     const actions: ServerActionRecord[] = [];
+    type Found = {
+        file: string;
+        relFile: string;
+        fileLevel: boolean;
+        sf: ts.SourceFile;
+        inline: { name: string; line: number; pos: number }[];
+    };
+    const found: Found[] = [];
     for (const file of walk(join(root, "src"))) {
-        if (!/\.tsx?$/.test(file)) continue;
-        if (/\.(test|spec)\.tsx?$/.test(file)) continue;
-        const text = readFileSync(file, "utf8");
-        const lines = text.split("\n");
-        // Find the first meaningful line, skipping blank lines, // comments
-        // AND /* block comments */. Merge-gate round 1 (CHAOS-3273, EXECUTED):
-        // only `//` was skipped, so a "use server" file preceded by a block
-        // comment -- a licence header, a docstring, anything -- was not
-        // recognised as a Server Action module at all, and every action in it
-        // was invisible to the gate.
-        const firstMeaningfulLine = (() => {
-            let inBlockComment = false;
-            for (const raw of lines) {
-                let l = raw.trim();
-                if (inBlockComment) {
-                    const end = l.indexOf("*/");
-                    if (end === -1) continue;
-                    l = l.slice(end + 2).trim();
-                    inBlockComment = false;
-                }
-                while (l.startsWith("/*")) {
-                    const end = l.indexOf("*/", 2);
-                    if (end === -1) {
-                        inBlockComment = true;
-                        l = "";
-                        break;
-                    }
-                    l = l.slice(end + 2).trim();
-                }
-                if (l.length === 0 || l.startsWith("//")) continue;
-                return l;
-            }
-            return undefined;
-        })();
-        if (
-            firstMeaningfulLine?.trim() !== '"use server";' &&
-            firstMeaningfulLine?.trim() !== "'use server';"
-        )
+        if (!SOURCE_FILE_RE.test(file) || TEST_FILE_RE.test(file) || DECLARATION_FILE_RE.test(file))
             continue;
-
+        // Sound pre-filter: without a backslash a string literal's raw text IS
+        // its value, so a directive reading "use server" must contain "server".
+        const text = readFileSync(file, "utf8");
+        if (!text.includes("server") && !text.includes("\\")) continue;
+        const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
         const relFile = relative(process.cwd(), file);
-        const exportedFunctionNames: string[] = [];
-        lines.forEach((lineText, idx) => {
-            const trimmed = lineText.trim();
-            // Match EVERY exported action on the line, not just one anchored
-            // at its start.
-            //
-            // CHAOS-3273 merge-gate, EXECUTED: this used a single `.exec()`
-            // per line, so two exported actions written on ONE line yielded
-            // only the first. With the first profiled and the second not, the
-            // gate reported
-            //   PASS: 18 routes + 151 server actions, 0 violations.
-            // while `betaProbeUnprofiled` was a wholly unprofiled Server
-            // Action -- guardrail G-1 defeated by a semicolon. The sibling
-            // acr gate had the identical defect in Go (FindStringSubmatch).
-            //
-            // Worth knowing if you are re-testing this: with BOTH same-line
-            // actions unprofiled the gate DOES fail, on the first one. That
-            // reads as a catch and is not one; the hole only shows once the
-            // first is profiled.
-            const names = [
-                ...trimmed.matchAll(EXPORTED_ASYNC_FUNCTION_GLOBAL_RE),
-                ...trimmed.matchAll(EXPORTED_ASYNC_ARROW_GLOBAL_RE),
-            ].map((m) => m[1]);
-            if (names.length === 0) return;
-            for (const exportName of names) {
-                exportedFunctionNames.push(exportName);
-                actions.push({
-                    id: `server_action:${relFile}#${exportName}`,
-                    file: relFile,
-                    exportName,
-                    line: idx + 1,
-                });
+        if (hasUseServerDirective(sf.statements)) {
+            found.push({ file, relFile, fileLevel: true, sf, inline: [] });
+            continue;
+        }
+        const inline: { name: string; line: number; pos: number }[] = [];
+        const used = new Set<string>();
+        const visit = (node: ts.Node) => {
+            const body = functionBody(node);
+            if (body && hasUseServerDirective(body.statements)) {
+                const line = lineOf(sf, node);
+                let name = inlineActionName(node) ?? `anonymous@L${line}`;
+                if (used.has(name)) name = `${name}@L${line}`;
+                used.add(name);
+                inline.push({ name, line, pos: node.getStart(sf) });
             }
-        });
-        files.push({ file: relFile, exportedFunctionNames });
+            ts.forEachChild(node, visit);
+        };
+        visit(sf);
+        if (inline.length > 0) found.push({ file, relFile, fileLevel: false, sf, inline });
+    }
+    const program =
+        found.length > 0
+            ? buildProgram(
+                  root,
+                  found.map((f) => f.file),
+              )
+            : null;
+    for (const f of found) {
+        let names: ({ name: string; line: number } & GuardFields)[];
+        if (f.fileLevel && program) {
+            const own = exportedNames(f.sf);
+            const wildcardLine = own.find((n) => n.wildcard)?.line ?? 1;
+            const lineByName = new Map<string, number>();
+            for (const n of own) if (!lineByName.has(n.name)) lineByName.set(n.name, n.line);
+            const { names: exported, unresolvedWildcard } = checkerExports(program, f.file);
+            names = exported.map((name) => ({
+                name,
+                line: lineByName.get(name) ?? wildcardLine,
+                ...guardedExport(program, f.file, name),
+            }));
+            // An unresolvable `export *` could export actions: demand a row.
+            if (unresolvedWildcard) names.push({ name: "*", line: wildcardLine });
+        } else {
+            names = f.inline.map((n) => ({
+                ...n,
+                ...(program ? guardedInline(program, f.file, n.pos) : {}),
+            }));
+        }
+        if (names.length === 0) continue;
+        for (const n of names) {
+            actions.push({
+                id: `server_action:${f.relFile}#${n.name}`,
+                file: f.relFile,
+                exportName: n.name,
+                line: n.line,
+                guarded: n.guarded,
+                guardUnresolved: n.guardUnresolved,
+                entitlement: n.entitlement,
+                credential: n.credential,
+            });
+        }
+        files.push({ file: f.relFile, exportedFunctionNames: names.map((n) => n.name) });
     }
     files.sort((a, b) => a.file.localeCompare(b.file));
     actions.sort((a, b) => a.id.localeCompare(b.id));

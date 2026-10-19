@@ -34,14 +34,27 @@ export async function explainInvestmentMix(params: {
     theme?: string | null;
     subcategory?: string | null;
     llm_provider?: string;
+    dateRange?: { startDate: string; endDate: string };
 }) {
     const normalized = normalizeFilters(params.filters);
+    // The window of the mix on screen, named by the caller that reads it: the explanation's shares are the mix's
+    // shares only over the same range. Without one the server derives its own window.
+    const chartWindow = params.dateRange ?? null;
     return postJson<InvestmentMixExplanation>(
         "/api/v1/investment/explain",
         {
             filters: normalized,
             theme: params.theme ?? null,
             subcategory: params.subcategory ?? null,
+            measure: "ISSUE_SIZE",
+            ...(chartWindow
+                ? {
+                      date_range: {
+                          start_date: chartWindow.startDate,
+                          end_date: chartWindow.endDate,
+                      },
+                  }
+                : {}),
         },
         0,
         {

@@ -3,6 +3,7 @@ export { AdminApiError } from "./api/_request";
 import { settingsApi } from "./api/settings";
 import { credentialsApi } from "./api/credentials";
 import { syncConfigsApi } from "./api/sync";
+import { integrationsApi } from "./api/integrations";
 import { identitiesApi } from "./api/identities";
 import { teamsApi } from "./api/teams";
 import { usersApi } from "./api/users";
@@ -21,6 +22,7 @@ export const adminApi = {
     settings: settingsApi,
     credentials: credentialsApi,
     syncConfigs: syncConfigsApi,
+    integrations: integrationsApi,
     customerPush: customerPushApi,
     pagerDuty: pagerDutyApi,
     identities: identitiesApi,

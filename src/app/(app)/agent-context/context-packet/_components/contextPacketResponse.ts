@@ -12,7 +12,7 @@ const RESOLVED_SCOPE_RESOLUTIONS = [
     "repo_fallback",
     "unresolved",
 ] as const;
-const WATERMARK_STATUSES = ["fresh", "stale", "missing", "unavailable"] as const;
+const WATERMARK_STATUSES = ["fresh", "stale", "missing", "unavailable", "unknown"] as const;
 const EVIDENCE_AVAILABILITIES = [
     "available",
     "stale",
@@ -135,6 +135,7 @@ function isWatermark(value: unknown): boolean {
         isRecord(value) &&
         isString(value.source) &&
         isOptionalTimestamp(value.last_ingested_at) &&
+        isOptionalTimestamp(value.last_event_at) &&
         isCanonicalValue(value.status, WATERMARK_STATUSES)
     );
 }
