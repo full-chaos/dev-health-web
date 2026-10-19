@@ -107,7 +107,7 @@ function SpendTile({ label, micro }: { label: string; micro: number | null | und
  * tier/flag gate (402/403) renders as an explicit upsell rather than a
  * generic load error. Rows with no `run_id` (spend recorded before per-run
  * tracking began) are never folded into the per-run table — they surface as
- * a distinct legacy state (`legacy` rows), per plan §6.3 / §7 C4.
+ * a distinct state (`legacy` rows, recorded without a run), per plan §6.3 / §7 C4.
  */
 export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlmSpendSummaryProps) {
     const [loading, setLoading] = useState(true);
@@ -247,8 +247,8 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
         body = (
             <DataState
                 variant="detector-unavailable"
-                title="Legacy spend not attributable to a run"
-                description="Spend was recorded before per-run tracking began and can't be attributed to a specific run. Only spend with a known run is shown here."
+                title="Spend not tied to a run"
+                description="Calls made with your organization's own provider, such as explanations, are recorded without a run, so they are not listed per run."
                 data-testid="byo-llm-spend-legacy"
             />
         );
@@ -302,8 +302,9 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
                 </p>
                 {summary.legacy.length > 0 ? (
                     <p className="text-xs text-(--ink-muted)">
-                        Additional legacy spend recorded before per-run tracking began exists for
-                        this organization and is not attributable to a specific run above.
+                        Additional spend from your organization&apos;s own provider is recorded
+                        without a run (for example explanations) and is not attributable to a
+                        specific run above.
                     </p>
                 ) : null}
             </div>

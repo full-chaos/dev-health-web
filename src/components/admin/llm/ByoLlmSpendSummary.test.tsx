@@ -297,7 +297,7 @@ describe("ByoLlmSpendSummary", () => {
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
     });
 
-    it("renders a legacy state when spend exists but predates per-run tracking", async () => {
+    it("renders a not-tied-to-a-run state when spend exists without a run", async () => {
         mockLoad.mockResolvedValue({
             data: {
                 since: "2024-01-01T00:00:00Z",
@@ -320,7 +320,7 @@ describe("ByoLlmSpendSummary", () => {
         renderPanel();
 
         expect(
-            await screen.findByText("Legacy spend not attributable to a run"),
+            await screen.findByText("Spend not tied to a run"),
         ).toBeInTheDocument();
         expect(screen.getByTestId("byo-llm-spend-legacy")).toBeInTheDocument();
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
