@@ -6,6 +6,8 @@ export interface ACRClientCredentialMetadataV1 {
     org_id: string;
     repository_scopes: string[];
     /**
+     * context:admin is retired: it is accepted here so a v1 credential that carried it stays valid, but it is never issued and no stored credential can carry it. Removal rides the next major version.
+     *
      * @minItems 1
      */
     scopes: [
