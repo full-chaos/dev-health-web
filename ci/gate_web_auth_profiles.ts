@@ -35,6 +35,12 @@
  *                           "public" (or non-null while "protected"); a
  *                           protected row's primary_validator is null/
  *                           non-rejecting with no gaps entry explaining it
+ *   - absent_without_proof      an advisory field left absent without a call-walk not_reachable
+ *                           verdict (entitlement_requirement, token_shape), or absent on a
+ *                           field with no predicate
+ *   - reach_contradicts_row   a null or absent field whose entitlement gate or credential
+ *                           read the call walk reaches; or a recorded entitlement_requirement
+ *                           on a surface that reaches no gate
  *   - degrades_silently     ★ the corrected predicate (2026-09-01): a
  *                           protected server_action row whose primary_validator
  *                           anchor does not demonstrably contain a call to a
@@ -111,6 +117,8 @@ import {
     discoverServerActionFiles,
     isDemonstrablyRejecting,
     verifyGuardSymbols,
+    verifyEntitlementSymbols,
+    type Reach,
     type RouteRecord,
     type ServerActionRecord,
 } from "./discover_web_routes";
@@ -164,7 +172,10 @@ export type Violation = {
         | "surface_kind_mismatch"
         | "claim_contradicts_source"
         | "guard_unresolved"
-        | "guard_symbol_unverified";
+        | "guard_symbol_unverified"
+        | "absent_without_proof"
+        | "reach_contradicts_row"
+        | "entitlement_symbol_unverified";
     id?: string;
     detail: string;
 };
@@ -220,6 +231,8 @@ function gapsDiscloseMissingValidator(gapsText: string): boolean {
 export interface GateInputs {
     /** GUARD_SYMBOLS entries whose declaration is missing or no longer rejects (verifyGuardSymbols). */
     unverifiedGuardSymbols?: string[];
+    /** ENTITLEMENT_SYMBOLS entries that are missing or no longer exit (verifyEntitlementSymbols). */
+    unverifiedEntitlementSymbols?: string[];
     discoveredRoutes: RouteRecord[];
     discoveredActions: ServerActionRecord[];
     doc: unknown;
@@ -336,6 +349,14 @@ function duplicateCredentialClassViolations(credentialClassesDocument: unknown):
         }
     }
     return violations;
+}
+
+/** "" / "   " / [] / {}: present on the row but saying nothing, which is absent in all but name. */
+function isEmptyValue(v: unknown): boolean {
+    if (typeof v === "string") return v.trim() === "";
+    if (Array.isArray(v)) return v.length === 0;
+    if (v !== null && typeof v === "object") return Object.keys(v).length === 0;
+    return false;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -455,6 +476,17 @@ export function runGate(input: GateInputs): Violation[] {
             detail: `guard function ${name} is missing or its body no longer rejects on a missing session, so surfaces that call it are not proven guarded`,
         });
     }
+    for (const name of input.unverifiedEntitlementSymbols ?? []) {
+        violations.push({
+            rule: "entitlement_symbol_unverified",
+            detail: `entitlement gate ${name} is missing or no longer rejects, so a call walk that does not reach it proves nothing`,
+        });
+    }
+    // Call-walk verdicts per surface: the only evidence an advisory field may
+    // be absent. A surface with no verdict (handler not resolved) proves nothing.
+    const reachById = new Map<string, { entitlement?: Reach; credential?: Reach }>();
+    for (const r of discoveredRoutes) reachById.set(`${r.method} ${r.route} [dev-health-web]`, r);
+    for (const a of discoveredActions) reachById.set(a.id, a);
     const unresolvedGuard = new Set<string>();
     for (const r of discoveredRoutes)
         if (r.guardUnresolved) unresolvedGuard.add(`${r.method} ${r.route} [dev-health-web]`);
@@ -592,6 +624,45 @@ export function runGate(input: GateInputs): Violation[] {
                     id: row.id,
                     detail: `${field} is null (undetermined) with no gaps entry beginning "${field}:"; use an absent field when it does not apply`,
                 });
+            }
+        }
+
+        // Absent needs a proof. entitlement_requirement and token_shape have a
+        // call-walk predicate; the other advisory fields have none yet, so a
+        // row may not leave them absent.
+        {
+            const reach = reachById.get(row.id);
+            const predicate: Record<string, Reach | undefined> = {
+                entitlement_requirement: reach?.entitlement,
+                token_shape: reach?.credential,
+            };
+            for (const field of ADVISORY_FIELDS) {
+                const absent = !(field in row) || isEmptyValue(row[field]);
+                const unset = absent || row[field] === null;
+                const verdict = predicate[field];
+                if (absent && verdict !== "not_reachable") {
+                    violations.push({
+                        rule: "absent_without_proof",
+                        id: row.id,
+                        detail: !(field in predicate)
+                            ? `${field} is absent but no call-walk predicate exists for it; record null with a "${field}:" gaps entry`
+                            : `${field} is absent but the call walk says ${verdict ?? "unresolved"}, not not_reachable; absent needs that proof`,
+                    });
+                }
+                if (unset && verdict === "reachable") {
+                    violations.push({
+                        rule: "reach_contradicts_row",
+                        id: row.id,
+                        detail: `${field} is ${absent ? "absent" : "null"} but the call walk reaches its ${field === "token_shape" ? "credential read" : "entitlement gate"}; record the real value`,
+                    });
+                }
+                if (field === "entitlement_requirement" && !unset && verdict === "not_reachable") {
+                    violations.push({
+                        rule: "reach_contradicts_row",
+                        id: row.id,
+                        detail: `entitlement_requirement is recorded but the call walk reaches no entitlement gate; the claim is unproven`,
+                    });
+                }
             }
         }
 
@@ -838,6 +909,7 @@ function main() {
 
     const violations = runGate({
         unverifiedGuardSymbols: verifyGuardSymbols(root),
+        unverifiedEntitlementSymbols: verifyEntitlementSymbols(root),
         discoveredRoutes,
         discoveredActions,
         doc,

@@ -89,6 +89,16 @@ const FIXTURE_CREDENTIAL_CLASS_SCHEMA = {
  * baseline itself failed, every "seed X, expect X" test downstream would be
  * meaningless -- it is asserted clean first.
  */
+// Advisory fields set, except entitlement_requirement: the fixture surfaces
+// carry a not_reachable call-walk verdict, the only proof that lets it stay absent.
+const FIXTURE_ADVISORY = {
+    action: "fixture action",
+    resource_resolver: "fixture resolver",
+    current_state_cache_behavior: "fixture cache",
+    disclosure_behavior: "fixture disclosure",
+    token_shape: { token_type: "auth_js_browser_session" },
+};
+
 function baseline(): {
     doc: EndpointProfileDoc;
     routes: RouteRecord[];
@@ -109,6 +119,7 @@ function baseline(): {
             description: "getSessionContext() rejects on no session.",
             anchor: { path: "fixture/example_route.ts", line: 1, line_end: 1 },
         },
+        ...FIXTURE_ADVISORY,
         gaps: [],
     };
     const actionRow: EndpointProfileRow = {
@@ -125,6 +136,7 @@ function baseline(): {
             description: "getSessionContext() rejects on no session.",
             anchor: { path: "fixture/actions.ts", line: 2, line_end: 2 },
         },
+        ...FIXTURE_ADVISORY,
         gaps: [],
     };
     const doc: EndpointProfileDoc = {
@@ -135,7 +147,13 @@ function baseline(): {
         rows: [restRow, actionRow],
     };
     const routes: RouteRecord[] = [
-        { method: "GET", route: "/api/example", file: "src/app/api/example/route.ts", line: 3 },
+        {
+            method: "GET",
+            route: "/api/example",
+            file: "src/app/api/example/route.ts",
+            line: 3,
+            entitlement: "not_reachable",
+        },
     ];
     const actions: ServerActionRecord[] = [
         {
@@ -143,6 +161,7 @@ function baseline(): {
             file: "fixture/actions.ts",
             exportName: "doThing",
             line: 5,
+            entitlement: "not_reachable",
         },
     ];
     const sources: Record<string, string> = {

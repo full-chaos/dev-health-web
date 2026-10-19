@@ -39,6 +39,27 @@ begins with `<field>:` and says what was searched. Never write `null` for
 sheet B10 shape b). The gate that enforces it on every advisory field is a
 separate change; this inventory already satisfies it.
 
+The gate now enforces "absent" for two fields. A row may leave
+`entitlement_requirement` or `token_shape` absent only when the type-checker
+call walk in `ci/discover_web_routes.ts` proves it: the walk follows every call
+from the handler and reaches no member of `ENTITLEMENT_SYMBOLS` (entitlement
+gates) or `GUARD_SYMBOLS` (credential reads). A call the walk cannot resolve to
+a body (a parameter callback, an interface member) makes the verdict `limit`,
+and `limit` never proves absence. So does anything the walk cannot resolve
+statically: a call to an overridable class method, a read that may run a getter
+(property, element, spread, destructuring, `for...in`), a string conversion of a
+project object, and a library call that receives a project object with methods
+or accessors (`JSON.stringify` runs `toJSON`). A present field that is empty
+(`""`, `[]`, `{}`) counts as absent. `ENTITLEMENT_SYMBOLS` entries are verified
+as live gates: each must still call what it delegates to and, for a rejecting
+gate, throw on a condition computed from that call's result. Rule `absent_without_proof` rejects an absent
+field without a `not_reachable` verdict. Rule `reach_contradicts_row` rejects a
+null or absent field whose gate or credential read is reachable, and a recorded
+`entitlement_requirement` on a surface that reaches no gate. `action`,
+`resource_resolver`, `current_state_cache_behavior` and `disclosure_behavior`
+have no predicate yet: they may not be absent, and stay `null` with a
+`<field>:` gaps entry.
+
 ## Coverage
 
 12 REST surfaces across 8 `route.ts` files under `src/app/api/` (the
