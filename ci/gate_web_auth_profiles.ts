@@ -26,7 +26,12 @@
  *   - schema_violation      stray top-level document keys (the schema's own
  *                           top-level additionalProperties:false), or a row
  *                           missing one of the schema's required fields
- *   - unstated_null         public_rationale null while classification is
+ *   - unstated_null         an advisory field (action, resource_resolver,
+ *                           current_state_cache_behavior,
+ *                           entitlement_requirement, disclosure_behavior,
+ *                           token_shape) that is null with no gaps entry
+ *                           beginning "<field>:" (absent = not applicable);
+ *                           public_rationale null while classification is
  *                           "public" (or non-null while "protected"); a
  *                           protected row's primary_validator is null/
  *                           non-rejecting with no gaps entry explaining it
@@ -109,6 +114,15 @@ import {
     type RouteRecord,
     type ServerActionRecord,
 } from "./discover_web_routes";
+
+const ADVISORY_FIELDS = [
+    "action",
+    "resource_resolver",
+    "current_state_cache_behavior",
+    "entitlement_requirement",
+    "disclosure_behavior",
+    "token_shape",
+] as const;
 
 export type EndpointProfileRow = {
     id: string;
@@ -559,6 +573,26 @@ export function runGate(input: GateInputs): Violation[] {
                 id: row.id,
                 detail: 'classification is "protected" but public_rationale is set (should be null)',
             });
+        }
+
+        // unstated_null: advisory fields. Absent = not applicable; null =
+        // undetermined and needs a gaps entry that begins with "<field>:".
+        // A substring match would let prose such as "transaction details"
+        // excuse a null action.
+        for (const field of ADVISORY_FIELDS) {
+            if (!(field in row) || row[field] !== null) continue;
+            const named =
+                Array.isArray(row.gaps) &&
+                row.gaps.some(
+                    (g) => typeof g === "string" && g.trimStart().startsWith(`${field}:`),
+                );
+            if (!named) {
+                violations.push({
+                    rule: "unstated_null",
+                    id: row.id,
+                    detail: `${field} is null (undetermined) with no gaps entry beginning "${field}:"; use an absent field when it does not apply`,
+                });
+            }
         }
 
         // degrades_silently / unstated-null-primary_validator, only for the

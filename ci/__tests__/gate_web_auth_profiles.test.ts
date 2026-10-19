@@ -426,6 +426,69 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
         expect(violations.filter((v) => v.rule === "unstated_null")).toEqual([]);
     });
 
+    describe("unstated_null: advisory fields (absent = not applicable, null = undetermined)", () => {
+        const advisory = [
+            "action",
+            "resource_resolver",
+            "current_state_cache_behavior",
+            "entitlement_requirement",
+            "disclosure_behavior",
+            "token_shape",
+        ] as const;
+        const advisoryViolations = (
+            field: string,
+            value: unknown,
+            gaps: unknown[],
+            present = true,
+        ) => {
+            const b = baseline();
+            const row = b.doc.rows[1] as Record<string, unknown>;
+            for (const f of advisory) delete row[f];
+            if (present) row[field] = value;
+            row.gaps = gaps;
+            return runGate(makeInputs(b)).filter(
+                (v) => v.rule === "unstated_null" && v.detail.includes(field),
+            );
+        };
+
+        for (const field of advisory) {
+            it(`${field}: null with no gaps entry fails`, () => {
+                expect(advisoryViolations(field, null, [])).toHaveLength(1);
+            });
+            it(`${field}: null with a gaps entry starting "${field}:" passes`, () => {
+                expect(
+                    advisoryViolations(field, null, [
+                        `${field}: searched src/x.ts; not determined.`,
+                    ]),
+                ).toEqual([]);
+            });
+            it(`${field}: absent passes`, () => {
+                expect(advisoryViolations(field, undefined, [], false)).toEqual([]);
+            });
+        }
+
+        it("a gaps entry whose prose merely contains the field name does not excuse the null", () => {
+            expect(
+                advisoryViolations("action", null, ["transaction details were not profiled"]),
+            ).toHaveLength(1);
+            expect(advisoryViolations("action", null, ["no action was taken"])).toHaveLength(1);
+        });
+
+        it("a gaps entry for a sibling field with the same prefix does not excuse the null", () => {
+            expect(advisoryViolations("action", null, ["action_scope: not traced"])).toHaveLength(
+                1,
+            );
+        });
+
+        it("a non-string gaps entry does not excuse the null", () => {
+            expect(advisoryViolations("action", null, [42])).toHaveLength(1);
+        });
+
+        it("a gaps entry for another advisory field does not excuse this one", () => {
+            expect(advisoryViolations("token_shape", null, ["action: not traced"])).toHaveLength(1);
+        });
+    });
+
     it(
         "degrades_silently: THE fetchers.ts:32-36 shape -- auth() called but falls back to a default " +
             "instead of rejecting, with no gaps disclosure -- fails the gate",
