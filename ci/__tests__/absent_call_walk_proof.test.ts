@@ -297,11 +297,11 @@ describe("the call walk's verdicts", () => {
             "forIn",
         ])
             expect(got[name], name).not.toBe("not_reachable");
-        expect(got.plain).toBe("not_reachable");
-        expect(got.plain2).toBe("not_reachable");
+        expect(got.plain).toBe("limit");
+        expect(got.plain2).toBe("limit");
     });
 
-    it("a library call is not unresolved and a dead branch is not walked", () => {
+    it("a library call and a gate in a dead branch are both unproven (limit)", () => {
         const got = reachOf({
             "src/lib/acr/ops.ts": OPS,
             "src/app/a/actions.ts": [
@@ -312,7 +312,7 @@ describe("the call walk's verdicts", () => {
                 "",
             ].join("\n"),
         });
-        expect(got).toEqual({ lib: "not_reachable", dead: "not_reachable" });
+        expect(got).toEqual({ lib: "limit", dead: "limit" });
     });
 });
 

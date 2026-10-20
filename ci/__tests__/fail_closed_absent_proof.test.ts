@@ -160,7 +160,7 @@ describe("the cache walk fails closed", () => {
         expect(got.unknownLibrary).toBe("limit");
     });
 
-    it("still proves absence for code it fully understands", () => {
+    it("proves absence only for code with no call at all", () => {
         const got = actionReach(
             {
                 "src/app/a/actions.ts": ACTIONS([
@@ -176,11 +176,11 @@ describe("the cache walk fails closed", () => {
         );
         expect(got).toEqual({
             plain: "not_reachable",
-            builtins: "not_reachable",
-            logs: "not_reachable",
-            bodyOnly: "not_reachable",
-            bodyStatus: "not_reachable",
-            urlOnly: "not_reachable",
+            builtins: "limit",
+            logs: "limit",
+            bodyOnly: "limit",
+            bodyStatus: "limit",
+            urlOnly: "limit",
         });
     });
 
@@ -238,15 +238,15 @@ describe("the resolver walk fails closed", () => {
             expect(verdict, route).toBe("reachable");
     });
 
-    it("keeps a route that reads nothing not_reachable (the /health shape)", () => {
+    it("a route that calls anything is limit (the /health shape included)", () => {
         const got = routeReach({
             "src/app/health/route.ts":
                 "export function GET() { return Response.json({ status: 'ok', ts: Date.now() }); }\n",
             "src/app/api/none/route.ts":
                 "export async function GET() { return new Response('ok'); }\n",
         });
-        expect(got["/health"]).toBe("not_reachable");
-        expect(got["/api/none"]).not.toBe("reachable");
+        expect(got["/health"]).toBe("limit");
+        expect(got["/api/none"]).toBe("limit");
     });
 
     it("an unknown library call is limit, never not_reachable", () => {
