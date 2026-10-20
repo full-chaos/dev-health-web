@@ -15,9 +15,12 @@ it rather than duplicating it: read `auth-system.md` first.
   proven by [`../ci/__tests__/gate_web_auth_profiles.test.ts`](../ci/__tests__/gate_web_auth_profiles.test.ts).
   Wired into CI as a step of the `quality` job in
   `.github/workflows/tests.yml`, on every pull request; a run with no ops
-  contract input (see next bullet) SKIPS the closed-vocabulary checks
-  locally but FAILS in CI (`checkContractInputsPresent`) -- a skip that
-  still exits 0 is a green build nobody reads the warning on.
+  contract input (see next bullet) FAILS, in CI and locally
+  (`checkContractInputsPresent`): a measurement that did not happen must
+  fail. A local run that cannot supply the inputs passes
+  `--allow-missing-contract-inputs` (or sets `WEB_ALLOW_MISSING_CONTRACT_INPUTS=1`
+  for `ci/run_tests.sh`); the gate then lists the checks it skipped. CI has
+  no opt-out.
 - Shared schema (owned by ops, reused as-is): `contracts/auth/v1/endpoint-profile.schema.json`.
   The "service" closed vocabulary is read LIVE from this schema's
   `$defs.endpointProfile.properties.service.enum`, never hardcoded.

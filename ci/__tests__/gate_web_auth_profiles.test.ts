@@ -584,19 +584,47 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
     });
 });
 
-describe("gate_web_auth_profiles: checkContractInputsPresent (fix-by-context: skip locally, FAIL in CI)", () => {
+describe("gate_web_auth_profiles: checkContractInputsPresent (FAIL in CI and locally; the local opt-out lists the skipped checks)", () => {
     it("nothing missing: never fatal, no message, regardless of CI", () => {
         expect(checkContractInputsPresent(true, [])).toEqual({ fatal: false, message: null });
         expect(checkContractInputsPresent(false, [])).toEqual({ fatal: false, message: null });
     });
 
-    it("local run (inCI=false): missing input is an honest, non-fatal WARN naming what's missing", () => {
+    it("local run (inCI=false), no opt-out: a missing input is FATAL, names what is missing and the opt-out flag", () => {
         const result = checkContractInputsPresent(false, [
             "credential-classes.json (--credential-classes)",
         ]);
+        expect(result.fatal).toBe(true);
+        expect(result.message).toMatch(/^FAIL:/);
+        expect(result.message).toContain("credential-classes.json");
+        expect(result.message).toContain("--allow-missing-contract-inputs");
+    });
+
+    it("local run with the opt-out: non-fatal WARN that lists the skipped checks", () => {
+        const result = checkContractInputsPresent(
+            false,
+            [
+                "credential-classes.json (--credential-classes)",
+                "endpoint-profile.schema.json (--schema)",
+            ],
+            true,
+        );
         expect(result.fatal).toBe(false);
         expect(result.message).toMatch(/^WARN:/);
+        expect(result.message).toContain("SKIPPED");
         expect(result.message).toContain("credential-classes.json");
+        expect(result.message).toContain("endpoint-profile.schema.json");
+        expect(result.message).toMatch(/closed-vocabulary|schema validation/);
+    });
+
+    it("CI stays fatal even with the opt-out", () => {
+        const result = checkContractInputsPresent(
+            true,
+            ["endpoint-profile.schema.json (--schema)"],
+            true,
+        );
+        expect(result.fatal).toBe(true);
+        expect(result.message).toMatch(/^FAIL:/);
     });
 
     it("CI run (inCI=true): missing input is FATAL, message says FAIL and names what's missing", () => {
@@ -635,15 +663,41 @@ describe("gate_web_auth_profiles: main() CLI, CI mode, missing contract inputs (
         expect(result.stderr).toContain("endpoint-profile.schema.json");
     }, 30_000);
 
-    it("exits 0 (WARN only) locally (CI unset) with the same missing inputs", () => {
+    it("exits non-zero locally (CI unset) with missing inputs and no opt-out flag", () => {
         const env = envWithout("CI", "GITHUB_ACTIONS");
         const result = spawnSync(tsxBin, [scriptPath, "--root", WEB_ROOT], {
             cwd: WEB_ROOT,
             encoding: "utf8",
             env,
         });
+        expect(result.status).toBe(1);
+        expect(result.stderr).toMatch(/^FAIL:/m);
+        expect(result.stderr).toContain("--allow-missing-contract-inputs");
+    }, 30_000);
+
+    it("exits 0 locally with --allow-missing-contract-inputs and lists the skipped checks", () => {
+        const env = envWithout("CI", "GITHUB_ACTIONS");
+        const result = spawnSync(
+            tsxBin,
+            [scriptPath, "--root", WEB_ROOT, "--allow-missing-contract-inputs"],
+            { cwd: WEB_ROOT, encoding: "utf8", env },
+        );
         expect(result.status).toBe(0);
         expect(result.stderr).toMatch(/^WARN:/m);
+        expect(result.stderr).toContain("SKIPPED");
+        expect(result.stderr).toContain("credential-classes.json");
+    }, 30_000);
+
+    it("CI stays fatal even with the opt-out flag", () => {
+        const env = envWithout("GITHUB_ACTIONS");
+        env.CI = "true";
+        const result = spawnSync(
+            tsxBin,
+            [scriptPath, "--root", WEB_ROOT, "--allow-missing-contract-inputs"],
+            { cwd: WEB_ROOT, encoding: "utf8", env },
+        );
+        expect(result.status).toBe(1);
+        expect(result.stderr).toMatch(/^FAIL:/m);
     }, 30_000);
 });
 

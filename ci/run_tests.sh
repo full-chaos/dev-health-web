@@ -237,10 +237,9 @@ run_unit() {
 # (ci/gate_web_auth_profiles.ts). WEB_ENDPOINT_PROFILE_SCHEMA/
 # WEB_CREDENTIAL_CLASSES, when set, must name the pinned ops-owned contract
 # files (see ci/ops-contract.pin and .github/workflows/tests.yml's sparse
-# checkout). Unset locally is an honest, non-fatal skip of the
-# closed-vocabulary checks (the gate script itself decides fatal-in-CI vs
-# skip-locally, keyed off CI/GITHUB_ACTIONS -- this wrapper never guesses
-# that).
+# checkout). A missing input fails the gate, in CI and locally. A local run
+# that cannot supply them sets WEB_ALLOW_MISSING_CONTRACT_INPUTS=1: the gate
+# then skips those checks and lists them (never in CI).
 run_auth_profiles_gate() {
   local args=()
   if [[ -n "${WEB_ENDPOINT_PROFILE_SCHEMA:-}" ]]; then
@@ -251,6 +250,9 @@ run_auth_profiles_gate() {
   fi
   if [[ -n "${WEB_CREDENTIAL_CLASSES_SCHEMA:-}" ]]; then
     args+=(--credential-classes-schema "${WEB_CREDENTIAL_CLASSES_SCHEMA}")
+  fi
+  if [[ "${WEB_ALLOW_MISSING_CONTRACT_INPUTS:-}" == "1" ]]; then
+    args+=(--allow-missing-contract-inputs)
   fi
   echo "==> pnpm auth-profiles:gate ${args[*]}"
   pnpm auth-profiles:gate "${args[@]}"

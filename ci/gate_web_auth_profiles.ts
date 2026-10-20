@@ -868,6 +868,7 @@ function schemaEnumFrom(schemaDocument: unknown, field: string): string[] | null
 export function checkContractInputsPresent(
     inCI: boolean,
     missing: string[],
+    allowMissing = false,
 ): { fatal: boolean; message: string | null } {
     if (missing.length === 0) {
         return { fatal: false, message: null };
@@ -879,17 +880,27 @@ export function checkContractInputsPresent(
             message:
                 `FAIL: missing ops-owned contract input(s) in CI: ${detail}. ` +
                 "CI must supply these via the pinned sparse checkout (see ci/ops-contract.pin and " +
-                ".github/workflows/tests.yml) -- a skip is only acceptable in a local run where " +
-                "they were not passed. There is no implicit fallback path.",
+                ".github/workflows/tests.yml) -- there is no opt-out in CI and no implicit fallback path.",
+        };
+    }
+    if (!allowMissing) {
+        return {
+            fatal: true,
+            message:
+                `FAIL: missing ops-owned contract input(s): ${detail}. A measurement that did not ` +
+                "happen must fail, so a local run fails too. Pass the inputs " +
+                "(--schema, --credential-classes, --credential-classes-schema), or pass " +
+                "--allow-missing-contract-inputs to skip those checks and have them listed.",
         };
     }
     return {
         fatal: false,
         message:
-            `WARN: missing ops-owned contract input(s), closed-vocabulary check(s) for them are ` +
-            `SKIPPED, not passed: ${detail}. Every other check still ran. Checked --schema/` +
-            "--schema / --credential-classes / --credential-classes-schema; there is no implicit fallback path, deliberately. " +
-            "This is fatal in CI; CI/GITHUB_ACTIONS is unset here, so this is a local run.",
+            `WARN: missing ops-owned contract input(s): ${detail}. SKIPPED, not passed, by ` +
+            "--allow-missing-contract-inputs: the closed-vocabulary checks for accepted_credential_classes, " +
+            "service and surface_kind, the endpoint-profile schema validation, and the " +
+            "credential-classes document validation. Every other check still ran. " +
+            "This is fatal in CI.",
     };
 }
 
@@ -899,26 +910,28 @@ function parseArgs(argv: string[]): {
     credentialClasses: string | null;
     credentialClassesSchema: string | null;
     schema: string | null;
+    allowMissing: boolean;
 } {
     let root = process.cwd();
     let profile = join(root, "contracts/auth/v1/endpoint-profiles.web.json");
     let credentialClasses: string | null = null;
     let credentialClassesSchema: string | null = null;
     let schema: string | null = null;
+    let allowMissing = false;
     for (let i = 0; i < argv.length; i++) {
         if (argv[i] === "--root") root = argv[++i];
         else if (argv[i] === "--profile") profile = argv[++i];
         else if (argv[i] === "--credential-classes") credentialClasses = argv[++i];
         else if (argv[i] === "--credential-classes-schema") credentialClassesSchema = argv[++i];
         else if (argv[i] === "--schema") schema = argv[++i];
+        else if (argv[i] === "--allow-missing-contract-inputs") allowMissing = true;
     }
-    return { root, profile, credentialClasses, credentialClassesSchema, schema };
+    return { root, profile, credentialClasses, credentialClassesSchema, schema, allowMissing };
 }
 
 function main() {
-    const { root, profile, credentialClasses, credentialClassesSchema, schema } = parseArgs(
-        process.argv.slice(2),
-    );
+    const { root, profile, credentialClasses, credentialClassesSchema, schema, allowMissing } =
+        parseArgs(process.argv.slice(2));
     const inCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
     const discoveredRoutes = discoverRoutes(root);
@@ -937,7 +950,7 @@ function main() {
         missingInputs.push("credential-classes.schema.json (--credential-classes-schema)");
     }
 
-    const { fatal, message } = checkContractInputsPresent(inCI, missingInputs);
+    const { fatal, message } = checkContractInputsPresent(inCI, missingInputs, allowMissing);
     if (message) {
         process.stderr.write(message + "\n");
     }
