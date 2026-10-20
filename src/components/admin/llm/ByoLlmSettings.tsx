@@ -9,6 +9,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
+import { fetchLLMModels } from "@/lib/admin/llmModelsClient";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
@@ -66,7 +67,11 @@ export type ByoLlmSettingsProps = {
      * Reads the model ids the saved provider offers (ops calls the provider with the saved key).
      * Read only: the picker only suggests names, the model field stays free text.
      */
-    loadModelsAction?: () => Promise<LLMSettingsActionResult<LLMModelListResponse>>;
+    loadModelsAction?: (
+        signal: AbortSignal,
+    ) => Promise<LLMSettingsActionResult<LLMModelListResponse>>;
+    /** Turns the picker on with the default browser read (a GET, never a Server Action). */
+    modelPicker?: boolean;
 };
 
 const MODEL_LIST_UNAVAILABLE_FALLBACK = "The provider's model list is not available right now.";
@@ -225,7 +230,8 @@ export function ByoLlmSettings({
     saveSettingsAction,
     removeSettingsAction,
     runReadinessAction,
-    loadModelsAction,
+    loadModelsAction: loadModelsProp,
+    modelPicker,
 }: ByoLlmSettingsProps) {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
@@ -250,6 +256,8 @@ export function ByoLlmSettings({
     const [modelListNote, setModelListNote] = useState<string | null>(null);
     const [modelListProvider, setModelListProvider] = useState<string | null>(null);
     const modelListRequest = useRef(0);
+    const modelListAbort = useRef<AbortController | null>(null);
+    const loadModelsAction = loadModelsProp ?? (modelPicker ? fetchLLMModels : undefined);
 
     const [saving, setSaving] = useState(false);
     const [checkingReadiness, setCheckingReadiness] = useState(false);
@@ -329,23 +337,37 @@ export function ByoLlmSettings({
     const fetchModels = useCallback(async () => {
         if (!loadModelsAction) return;
         const request = ++modelListRequest.current;
+        modelListAbort.current?.abort();
+        const controller = new AbortController();
+        modelListAbort.current = controller;
         try {
-            const result = await loadModelsAction();
+            const result = await loadModelsAction(controller.signal);
             if (request !== modelListRequest.current) return;
-            const ids = result.data?.models.map((m) => m.id) ?? [];
-            if (result.data && ids.length > 0) {
+            const list = result.data;
+            const ids =
+                list && list.source !== "unavailable" && Array.isArray(list.models)
+                    ? Array.from(
+                          new Set(
+                              list.models
+                                  .map((m) => (m as { id?: unknown } | null)?.id)
+                                  .filter(
+                                      (id): id is string => typeof id === "string" && id !== "",
+                                  ),
+                          ),
+                      )
+                    : [];
+            if (ids.length > 0) {
                 setModelOptions(ids);
                 setModelListNote(null);
             } else {
                 setModelOptions([]);
                 setModelListNote(
-                    result.data?.reason
-                        ? (MODEL_LIST_UNAVAILABLE_TEXT[result.data.reason] ??
-                              MODEL_LIST_UNAVAILABLE_FALLBACK)
+                    typeof list?.reason === "string" && MODEL_LIST_UNAVAILABLE_TEXT[list.reason]
+                        ? MODEL_LIST_UNAVAILABLE_TEXT[list.reason]
                         : MODEL_LIST_UNAVAILABLE_FALLBACK,
                 );
             }
-            setModelListProvider(result.data ? (savedSettings?.provider ?? null) : null);
+            setModelListProvider(list ? (savedSettings?.provider ?? null) : null);
         } catch {
             if (request !== modelListRequest.current) return;
             setModelOptions([]);
@@ -362,11 +384,17 @@ export function ByoLlmSettings({
         } else {
             // The form closed or the saved key is gone: drop the list and any read still in flight.
             modelListRequest.current += 1;
+            modelListAbort.current?.abort();
             setModelOptions([]);
             setModelListNote(null);
             setModelListProvider(null);
         }
     }, [editingSavedKey, fetchModels]);
+
+    useEffect(() => {
+        const abort = modelListAbort;
+        return () => abort.current?.abort();
+    }, []);
 
     const modelListMatchesProvider = modelOptions.length > 0 && modelListProvider === provider;
     let modelListHint: string | null = null;

@@ -308,4 +308,88 @@ describe("ByoLlmSettings model picker", () => {
         );
         expect(document.getElementById("byo-model-options")).toBeNull();
     });
+    it.each([
+        ["a row with no id", { models: [{}], source: "live", reason: null }],
+        ["empty and non-string ids", { models: [{ id: "" }, { id: 5 }, null], source: "live" }],
+        ["a models field that is not a list", { models: "gpt-4o", source: "live" }],
+        [
+            "a list the answer declares unavailable",
+            { models: [{ id: "gpt-4o" }], source: "unavailable" },
+        ],
+    ])("treats %s as unavailable, not as a list", async (_name, data) => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValue({ data } as never);
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+        await waitFor(() =>
+            expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
+                "The provider's model list is not available right now.",
+            ),
+        );
+        expect(document.getElementById("byo-model-options")).toBeNull();
+        expect(screen.getByLabelText("Model")).not.toHaveAttribute("list");
+    });
+
+    it("keeps only valid distinct ids", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValue({
+            data: {
+                models: [
+                    { id: "gpt-4o" },
+                    {} as { id: string },
+                    { id: "gpt-4o" },
+                    { id: "o4-mini" },
+                ],
+                source: "live",
+                reason: null,
+                fetched_at: null,
+            },
+        });
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(optionValues()).toEqual(["gpt-4o", "o4-mini"]));
+        expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
+            "2 models from your provider.",
+        );
+    });
+
+    it("gives the list read an abort signal and aborts it when the form closes or unmounts", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        const signals: AbortSignal[] = [];
+        mockLoadModels.mockImplementation((signal) => {
+            signals.push(signal);
+            return new Promise(() => {});
+        });
+        const view = renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(signals).toHaveLength(1));
+        expect(signals[0].aborted).toBe(false);
+
+        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        expect(signals[0].aborted).toBe(true);
+
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(signals).toHaveLength(2));
+        expect(signals[1].aborted).toBe(false);
+        view.unmount();
+        expect(signals[1].aborted).toBe(true);
+    });
+
+    it("lets a save run while the list read is still pending", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockReturnValue(new Promise(() => {}));
+        mockSave.mockResolvedValue({ data: SAVED });
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(mockLoadModels).toHaveBeenCalled());
+
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    });
 });
