@@ -11,6 +11,7 @@ import {
     type GateInputs,
 } from "../gate_web_auth_profiles";
 import {
+    verifyEntitlementSymbols,
     verifyGuardSymbols,
     discoverRoutes,
     discoverServerActionFiles,
@@ -1610,4 +1611,133 @@ describe("gate_web_auth_profiles: real repo state", () => {
         });
         expect(violations).toEqual([]);
     }, 60_000);
+});
+
+describe("gate_web_auth_profiles: proof binding (polarity, callee binding, casts, scalar types)", () => {
+    const PAGER_FILE = "src/lib/admin/server/canonicalIncidentIngestion.ts";
+    const PAGER_ID = `${PAGER_FILE}#requirePagerDutyCreationEntitlement`;
+    const STUB =
+        "async function getCanonicalIncidentIngestionEntitlement() { return { data: { enabled: false } }; }\n";
+    const ACR = [
+        'import { fetchBoundedJson } from "./http";',
+        "const schema = { safeParse: (_v: unknown) => ({ success: false, data: { is_valid: false } }) };",
+        "export async function requireAcrEntitlement(): Promise<void> {",
+        "    const entitlement = await fetchBoundedJson({});",
+        "    if (entitlement.status !== 200) { throw new Error('down'); }",
+        "    const parsed = schema.safeParse(entitlement.value);",
+        "    if (!parsed.success || !parsed.data.is_valid) { throw new Error('no'); }",
+        "}",
+        "export async function resolveOpsCredentialIssuanceAuthorization() { await requireAcrEntitlement(); return 1; }",
+        "",
+    ].join("\n");
+
+    function scratch(files: Record<string, string>): string {
+        const dir = mkdtempSync(join(tmpdir(), "web-bind-"));
+        for (const [name, text] of Object.entries(files)) {
+            mkdirSync(join(dir, name, ".."), { recursive: true });
+            writeFileSync(join(dir, name), text);
+        }
+        return dir;
+    }
+    function badGates(pagerSource: string): string[] {
+        const dir = scratch({ [PAGER_FILE]: pagerSource, "src/lib/acr/ops.ts": ACR });
+        try {
+            return verifyEntitlementSymbols(dir);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    }
+    const gate = (cond: string, helper = STUB) =>
+        helper +
+        [
+            "export async function requirePagerDutyCreationEntitlement(): Promise<void> {",
+            "    const entitlement = await getCanonicalIncidentIngestionEntitlement();",
+            `    if (${cond}) { throw new Error('no'); }`,
+            "}",
+            "",
+        ].join("\n");
+
+    it("control: the faithful gate and the real gates are live", () => {
+        expect(badGates(gate("entitlement.data?.enabled !== true"))).toEqual([]);
+        expect(verifyEntitlementSymbols(WEB_ROOT)).toEqual([]);
+    });
+
+    it("RED 1: a throw on the ENABLED value is not live (polarity is bound to the refusal)", () => {
+        for (const cond of [
+            "entitlement.data?.enabled === true",
+            "entitlement.data?.enabled !== false",
+            "entitlement.data?.enabled !== null",
+            "entitlement.status === 200",
+        ])
+            expect(badGates(gate(cond)), cond).toEqual([PAGER_ID]);
+        for (const cond of [
+            "entitlement.data?.enabled === false",
+            "!entitlement.data?.enabled",
+            "!(entitlement.data?.enabled ?? false)",
+            "entitlement.data?.enabled == null",
+            "entitlement.status !== 200",
+        ])
+            expect(badGates(gate(cond)), cond).toEqual([]);
+    });
+
+    it("RED 2: a gate-local function with the entitlement helper's name is not live (bound by import, not by name)", () => {
+        const shadowed = [
+            "export async function requirePagerDutyCreationEntitlement(): Promise<void> {",
+            "    const getCanonicalIncidentIngestionEntitlement = async () => ({ data: { enabled: true } });",
+            "    const entitlement = await getCanonicalIncidentIngestionEntitlement();",
+            "    if (entitlement.data?.enabled !== true) { throw new Error('no'); }",
+            "}",
+            "",
+        ].join("\n");
+        expect(badGates(STUB + shadowed)).toEqual([PAGER_ID]);
+        const redeclared = gate("entitlement.data?.enabled !== true").replace(
+            "async function getCanonicalIncidentIngestionEntitlement() { return { data: { enabled: false } }; }",
+            "const unrelated = 1;",
+        );
+        expect(badGates(redeclared)).toEqual([PAGER_ID]);
+    });
+
+    it("RED 3: a handler that casts a value through `as` is not inert (not_reachable needs no cast)", () => {
+        const dir = scratch({
+            "src/app/a/actions.ts": [
+                '"use server";',
+                "export async function castNumber() { const n = {} as unknown as number; return n + 1; }",
+                "export async function satisfiesNumber() { const n = 1 satisfies number; return n + 1; }",
+                "export async function nonNull(x: number) { return x! + 1; }",
+                "export async function plain() { const n = 1; return n + 1; }",
+                "",
+            ].join("\n"),
+        });
+        try {
+            const { actions } = discoverServerActionFiles(dir);
+            const got = Object.fromEntries(
+                actions.map((a) => [a.exportName, [a.cache, a.entitlement, a.credential]]),
+            );
+            for (const name of ["castNumber", "satisfiesNumber", "nonNull"])
+                expect(got[name], name).toEqual(["limit", "limit", "limit"]);
+            expect(got.plain).toEqual(["not_reachable", "not_reachable", "not_reachable"]);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it("RED 4: advisory scalars are type-checked even without the ops schema", () => {
+        const b = baseline();
+        const row = b.doc.rows[1] as Record<string, unknown>;
+        row.resource_resolver = 0;
+        row.current_state_cache_behavior = false;
+        row.action = ["x"];
+        row.token_shape = "bearer";
+        const v = runGate(makeInputs(b)).filter((x) => x.rule === "schema_violation");
+        const detail = v.map((x) => x.detail).join("\n");
+        for (const field of [
+            "resource_resolver",
+            "current_state_cache_behavior",
+            "action",
+            "token_shape",
+        ])
+            expect(detail, field).toContain(field);
+        const ok = baseline();
+        expect(runGate(makeInputs(ok)).filter((x) => x.rule === "schema_violation")).toEqual([]);
+    });
 });
