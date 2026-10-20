@@ -39,6 +39,10 @@ updates:
           - dependency-name: "@vitest/coverage-v8"
             update-types:
                 - "version-update:semver-major"
+          # @sentry/nextjs 11.8 pulls vite <=8.0.15 via @sentry/cloudflare (GHSA-fx2h-pf6j-xcff); pnpm audit fails until the advisory clears
+          - dependency-name: "@sentry/nextjs"
+            versions:
+                - "11.8.x"
 
     - package-ecosystem: "github-actions"
       directory: "/"
