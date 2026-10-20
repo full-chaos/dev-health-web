@@ -4,6 +4,7 @@ import type {
     LLMPurposeSettings,
     LLMPurposeUpsert,
     LLMBudgetResponse,
+    LLMModelListResponse,
     LLMSettingsResponse,
     LLMSettingsStatusResponse,
     LLMSettingsUpsert,
@@ -85,6 +86,10 @@ export const llmSettingsApi = {
     // participate in admission before provider calls complete.
     budget: (token?: string, orgId?: string) =>
         request<LLMBudgetResponse>("/llm-settings/budget", {}, token, orgId),
+
+    // Read only: the model ids the saved provider offers, fetched by ops with the saved key.
+    models: (token?: string, orgId?: string) =>
+        request<LLMModelListResponse>("/llm-settings/models", {}, token, orgId),
 
     serviceModel: (token?: string, orgId?: string) =>
         request<ServiceModelSetting>("/llm-settings/service-model", {}, token, orgId),

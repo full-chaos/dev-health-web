@@ -8,6 +8,7 @@ export * from "./server/identities";
 export * from "./server/teams";
 export * from "./server/settings";
 export * from "./server/aiFeatures";
+export * from "./server/llmModels";
 export * from "./server/orgs";
 export * from "./server/billing";
 export * from "./server/setup";

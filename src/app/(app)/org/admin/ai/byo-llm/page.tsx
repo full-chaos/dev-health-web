@@ -13,6 +13,7 @@ import {
     getLLMSettingsStatus,
     getLLMSpendSummary,
     getServiceModelSetting,
+    listLLMModels,
     runLLMSettingsReadiness,
     setServiceModelSetting,
     upsertLLMPurpose,
@@ -36,6 +37,7 @@ export default function ByoLlmAISetupPage() {
                 saveSettingsAction={upsertLLMSettings}
                 removeSettingsAction={deleteLLMSettings}
                 runReadinessAction={runLLMSettingsReadiness}
+                loadModelsAction={listLLMModels}
             />
             <ByoLlmAiFeaturesToggle
                 loadAction={getServiceModelSetting}

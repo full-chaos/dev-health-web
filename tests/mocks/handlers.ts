@@ -3649,6 +3649,24 @@ export const handlers = [
         mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
         return HttpResponse.json(mockLlmSettingsBody());
     }),
+    // The provider's model ids for the saved key; a removed setting answers unavailable.
+    http.get("*/api/v1/admin/llm-settings/models", () =>
+        HttpResponse.json(
+            mockLlmDefault
+                ? {
+                      models: [
+                          { id: "gpt-4o" },
+                          { id: "gpt-4o-mini" },
+                          { id: "gpt-5" },
+                          { id: "o4-mini" },
+                      ],
+                      source: "live",
+                      reason: null,
+                      fetched_at: "2026-10-20T12:00:00Z",
+                  }
+                : { models: [], source: "unavailable", reason: "not_configured", fetched_at: null },
+        ),
+    ),
     http.get("*/api/v1/admin/llm-settings/service-model", () =>
         HttpResponse.json(mockServiceModelBody()),
     ),

@@ -929,6 +929,17 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
 }
 
+/** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */
+export type LLMModelListSource = "live" | "cache" | "unavailable";
+
+export interface LLMModelListResponse {
+    models: { id: string }[];
+    source: LLMModelListSource;
+    /** Safe reason code when source is "unavailable" (for example not_configured, provider_rejected). */
+    reason: string | null;
+    fetched_at: string | null;
+}
+
 // ---- BYO LLM Organization Budget (CHAOS-3238) ----
 
 export type LLMBudgetReason =

@@ -14,6 +14,7 @@ import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
     type LLMBudgetResponse,
+    type LLMModelListResponse,
     type LLMProvider,
     type LLMSettingsActionResult,
     type LLMSettingsResponse,
@@ -61,6 +62,21 @@ export type ByoLlmSettingsProps = {
      * which is applied directly rather than re-fetching status.
      */
     runReadinessAction: () => Promise<LLMSettingsActionResult<LLMSettingsStatusResponse>>;
+    /**
+     * Reads the model ids the saved provider offers (ops calls the provider with the saved key).
+     * Read only: the picker only suggests names, the model field stays free text.
+     */
+    loadModelsAction?: () => Promise<LLMSettingsActionResult<LLMModelListResponse>>;
+};
+
+const MODEL_LIST_UNAVAILABLE_TEXT: Record<string, string> = {
+    not_configured: "Save a provider and API key to load its models.",
+    api_key_required: "Save an API key to load the provider's models.",
+    base_url_required: "Add a base URL and save to load the provider's models.",
+    invalid_base_url: "The saved base URL cannot be used to load models.",
+    provider_rejected: "The provider rejected the saved key, so its models could not be loaded.",
+    provider_unavailable: "The provider's model list could not be reached.",
+    invalid_response: "The provider returned a model list this page cannot use.",
 };
 
 const inputClass =
@@ -207,6 +223,7 @@ export function ByoLlmSettings({
     saveSettingsAction,
     removeSettingsAction,
     runReadinessAction,
+    loadModelsAction,
 }: ByoLlmSettingsProps) {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
@@ -227,6 +244,9 @@ export function ByoLlmSettings({
     const [hasStoredKey, setHasStoredKey] = useState(false);
     const [maskedKey, setMaskedKey] = useState<string | null>(null);
     const [hasSavedSettings, setHasSavedSettings] = useState(false);
+    const [modelOptions, setModelOptions] = useState<string[]>([]);
+    const [modelListNote, setModelListNote] = useState<string | null>(null);
+    const [modelListProvider, setModelListProvider] = useState<string | null>(null);
 
     const [saving, setSaving] = useState(false);
     const [checkingReadiness, setCheckingReadiness] = useState(false);
@@ -302,6 +322,49 @@ export function ByoLlmSettings({
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSettings coordinates async loading state after mount.
         fetchSettings();
     }, [fetchSettings]);
+
+    const fetchModels = useCallback(async () => {
+        if (!loadModelsAction) return;
+        const result = await loadModelsAction();
+        const ids = result.data?.models.map((m) => m.id) ?? [];
+        if (result.data && ids.length > 0) {
+            setModelOptions(ids);
+            setModelListNote(null);
+        } else {
+            setModelOptions([]);
+            setModelListNote(
+                result.data?.reason
+                    ? (MODEL_LIST_UNAVAILABLE_TEXT[result.data.reason] ??
+                          "The provider's model list is not available right now.")
+                    : "The provider's model list is not available right now.",
+            );
+        }
+        setModelListProvider(result.data ? (savedSettings?.provider ?? null) : null);
+    }, [loadModelsAction, savedSettings]);
+
+    const editingSavedKey = mode === "edit" && hasStoredKey && hasSavedSettings;
+    useEffect(() => {
+        if (editingSavedKey) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchModels reads the provider's model list once the saved-key form opens.
+            void fetchModels();
+        }
+    }, [editingSavedKey, fetchModels]);
+
+    const modelListMatchesProvider = modelOptions.length > 0 && modelListProvider === provider;
+    let modelListHint: string | null = null;
+    if (loadModelsAction) {
+        if (modelListMatchesProvider) {
+            modelListHint = `${modelOptions.length} models from your provider. Any model name still works.`;
+        } else if (!hasStoredKey) {
+            modelListHint =
+                "Save an API key to load the provider's models. Any model name still works.";
+        } else if (savedSettings?.provider && savedSettings.provider !== provider) {
+            modelListHint =
+                "Save the provider change, then reopen the form to load that provider's models.";
+        } else if (modelListNote) {
+            modelListHint = `${modelListNote} Any model name still works.`;
+        }
+    }
 
     const handleEdit = () => {
         setFormError(null);
@@ -770,9 +833,22 @@ export function ByoLlmSettings({
                                 type="text"
                                 value={model}
                                 placeholder="Model name"
+                                list={modelListMatchesProvider ? "byo-model-options" : undefined}
                                 onChange={(e) => setModel(e.target.value)}
                                 className={inputClass}
                             />
+                            {modelListMatchesProvider ? (
+                                <datalist id="byo-model-options" data-testid="byo-model-options">
+                                    {modelOptions.map((id) => (
+                                        <option key={id} value={id} />
+                                    ))}
+                                </datalist>
+                            ) : null}
+                            {modelListHint ? (
+                                <p className={captionClass} data-testid="byo-model-hint">
+                                    {modelListHint}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div>
