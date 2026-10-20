@@ -902,6 +902,31 @@ function mockLlmSettingsBody() {
     };
 }
 
+// ACR AI features toggle (CHAOS-10243): one stateful org override, eligible team org.
+let mockServiceModelOverride: boolean | null = null;
+let mockServiceModelManaged = false;
+/** `/__test/service-model`: a managed (billing or support) override, or back to self-service. */
+export function setMockServiceModel(seed: { override: boolean | null; managed: boolean }): void {
+    mockServiceModelOverride = seed.override;
+    mockServiceModelManaged = seed.managed;
+}
+function mockServiceModelControl() {
+    if (mockServiceModelOverride === null) return "none";
+    return mockServiceModelManaged ? "managed" : "self_service";
+}
+function mockServiceModelBody() {
+    return {
+        feature: "acr_service_model",
+        enabled: mockServiceModelOverride === true,
+        eligible: true,
+        ineligible_reason: null,
+        control: mockServiceModelControl(),
+        override: mockServiceModelOverride,
+        required_tier: "team",
+        current_tier: "team",
+    };
+}
+
 /** One row of the `/__test/admin-rows` control endpoint (CHAOS-9105). */
 export type MockAdminRowSeed = {
     /** People of `GET /api/v1/people` (CHAOS-9117); empty or absent = the sample people. */
@@ -3623,6 +3648,27 @@ export const handlers = [
         }
         mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
         return HttpResponse.json(mockLlmSettingsBody());
+    }),
+    http.get("*/api/v1/admin/llm-settings/service-model", () =>
+        HttpResponse.json(mockServiceModelBody()),
+    ),
+    http.put("*/api/v1/admin/llm-settings/service-model", async ({ request }) => {
+        const body = (await request.json()) as { enabled?: unknown };
+        if (typeof body.enabled !== "boolean")
+            return HttpResponse.json({ detail: "enabled required" }, { status: 422 });
+        if (mockServiceModelManaged)
+            return HttpResponse.json(
+                {
+                    detail: {
+                        error: "override_managed",
+                        message:
+                            "This setting is managed by your plan or support. Contact support to change it.",
+                    },
+                },
+                { status: 409 },
+            );
+        mockServiceModelOverride = body.enabled;
+        return HttpResponse.json(mockServiceModelBody());
     }),
     http.delete("*/api/v1/admin/llm-settings", ({ request }) => {
         const purpose = new URL(request.url).searchParams.get("purpose");

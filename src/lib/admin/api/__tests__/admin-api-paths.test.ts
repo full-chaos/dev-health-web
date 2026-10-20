@@ -144,3 +144,27 @@ describe("llmSettingsApi budget contract", () => {
         );
     });
 });
+
+describe("llmSettingsApi service-model contract", () => {
+    it("reads the ACR AI features toggle from the v1 admin path", async () => {
+        await llmSettingsApi.serviceModel("token", "org-1");
+
+        expect(mockRequest).toHaveBeenCalledWith(
+            "/llm-settings/service-model",
+            {},
+            "token",
+            "org-1",
+        );
+    });
+
+    it("writes an explicit off as enabled false", async () => {
+        await llmSettingsApi.setServiceModel(false, "token", "org-1");
+
+        expect(mockRequest).toHaveBeenCalledWith(
+            "/llm-settings/service-model",
+            { method: "PUT", body: JSON.stringify({ enabled: false }) },
+            "token",
+            "org-1",
+        );
+    });
+});
