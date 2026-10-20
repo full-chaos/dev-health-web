@@ -36,6 +36,7 @@ export default function ByoLlmAISetupPage() {
                 saveSettingsAction={upsertLLMSettings}
                 removeSettingsAction={deleteLLMSettings}
                 runReadinessAction={runLLMSettingsReadiness}
+                modelPicker
             />
             <ByoLlmAiFeaturesToggle
                 loadAction={getServiceModelSetting}
