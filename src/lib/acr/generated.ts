@@ -4781,27 +4781,6 @@ export type ACRContextFabricInvestigationResultV1 = {
     };
 };
 
-export interface ContextFabricOrganizationModelConfigurationWriteRequestV1 {
-    schema_version: "context_fabric_org_model_config_write_request.v1";
-    provider: string;
-    base_url?: string;
-    model: string;
-    fallback_model?: string;
-    credential: string;
-}
-
-export interface ContextFabricOrganizationModelConfigurationV1 {
-    schema_version: "context_fabric_org_model_config.v1";
-    org_id: string;
-    provider: string;
-    base_url?: string;
-    model: string;
-    fallback_model?: string;
-    credential_masked: string;
-    created_at: string;
-    updated_at: string;
-}
-
 export type ACRContextPacketItemV1 = {
     schema_version: "context_packet_item.v1";
     packet_item_id: string;

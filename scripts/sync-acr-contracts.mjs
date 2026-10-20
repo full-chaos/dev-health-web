@@ -14,7 +14,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const SOURCE_COMMIT = "c9598aa65ef30dfc9243ac250ff92ad906bfe9a1";
+const SOURCE_COMMIT = "ae88ef719eaff8f689c9b621b7c453c40bbdc446";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
     printWidth: 100,
@@ -49,8 +49,6 @@ const DEPENDENCY_CLOSURE_PATHS = [
     "contracts/jsonschema/v1/context_fabric_investigation_response.v2.schema.json",
     "contracts/jsonschema/v1/context_fabric_investigation_result.v1.schema.json",
     "contracts/jsonschema/v1/context_fabric_investigation_result.v2.schema.json",
-    "contracts/jsonschema/v1/context_fabric_org_model_config.v1.schema.json",
-    "contracts/jsonschema/v1/context_fabric_org_model_config_write_request.v1.schema.json",
     "contracts/jsonschema/v1/credential_ack_request.v1.schema.json",
     "contracts/jsonschema/v1/credential_ack_response.v1.schema.json",
     "contracts/jsonschema/v1/credential_revoke_request.v1.schema.json",

@@ -11,8 +11,6 @@ import contextFabricInvestigationResponseSchema from "./contracts/schemas/contex
 import contextFabricInvestigationResponseV2Schema from "./contracts/schemas/context_fabric_investigation_response.v2.schema.json";
 import contextFabricInvestigationResultSchema from "./contracts/schemas/context_fabric_investigation_result.v1.schema.json";
 import contextFabricInvestigationResultV2Schema from "./contracts/schemas/context_fabric_investigation_result.v2.schema.json";
-import contextFabricOrgModelConfigWriteRequestSchema from "./contracts/schemas/context_fabric_org_model_config_write_request.v1.schema.json";
-import contextFabricOrgModelConfigSchema from "./contracts/schemas/context_fabric_org_model_config.v1.schema.json";
 import contextPacketItemSchema from "./contracts/schemas/context_packet_item.v1.schema.json";
 import contextPacketRequestSchema from "./contracts/schemas/context_packet_request.v1.schema.json";
 import contextPacketSchema from "./contracts/schemas/context_packet.v1.schema.json";
@@ -55,8 +53,6 @@ export const acrSchemas = {
     contextFabricInvestigationResponseV2: contextFabricInvestigationResponseV2Schema,
     contextFabricInvestigationResult: contextFabricInvestigationResultSchema,
     contextFabricInvestigationResultV2: contextFabricInvestigationResultV2Schema,
-    contextFabricOrgModelConfigWriteRequest: contextFabricOrgModelConfigWriteRequestSchema,
-    contextFabricOrgModelConfig: contextFabricOrgModelConfigSchema,
     contextPacketItem: contextPacketItemSchema,
     contextPacketRequest: contextPacketRequestSchema,
     contextPacket: contextPacketSchema,
@@ -100,9 +96,6 @@ const acrSchemaFiles = {
         contextFabricInvestigationResponseV2Schema,
     "context_fabric_investigation_result.v1.schema.json": contextFabricInvestigationResultSchema,
     "context_fabric_investigation_result.v2.schema.json": contextFabricInvestigationResultV2Schema,
-    "context_fabric_org_model_config_write_request.v1.schema.json":
-        contextFabricOrgModelConfigWriteRequestSchema,
-    "context_fabric_org_model_config.v1.schema.json": contextFabricOrgModelConfigSchema,
     "context_packet_item.v1.schema.json": contextPacketItemSchema,
     "context_packet_request.v1.schema.json": contextPacketRequestSchema,
     "context_packet.v1.schema.json": contextPacketSchema,

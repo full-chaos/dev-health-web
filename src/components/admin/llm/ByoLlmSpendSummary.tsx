@@ -57,6 +57,15 @@ const PANEL_TITLE = "AI / LLM Spend Summary (BYO-LLM)";
 const PANEL_DESCRIPTION =
     "Per-run LLM call volume, token usage, and model for the latest runs in the last 30 days.";
 
+const SOURCE_LABELS: Record<string, string> = {
+    investment_mix_explain: "Investment mix explanation",
+    work_unit_explain: "Work unit explanation",
+};
+
+function sourceLabel(source: string): string {
+    return SOURCE_LABELS[source] ?? source;
+}
+
 function formatNumber(value: number): string {
     return value.toLocaleString();
 }
@@ -107,7 +116,7 @@ function SpendTile({ label, micro }: { label: string; micro: number | null | und
  * tier/flag gate (402/403) renders as an explicit upsell rather than a
  * generic load error. Rows with no `run_id` (spend recorded before per-run
  * tracking began) are never folded into the per-run table — they surface as
- * a distinct legacy state (`legacy` rows), per plan §6.3 / §7 C4.
+ * its own table (`unattributed` rows, recorded without a run), per plan §6.3 / §7 C4.
  */
 export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlmSpendSummaryProps) {
     const [loading, setLoading] = useState(true);
@@ -138,7 +147,11 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
         } else if (result.error) {
             setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
-            setSummary(result.data);
+            setSummary({
+                ...result.data,
+                runs: result.data.runs ?? [],
+                unattributed: result.data.unattributed ?? [],
+            });
         }
         setLoading(false);
     }, [loadSpendAction]);
@@ -237,74 +250,116 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
                 }
             />
         );
-    } else if (!summary || (summary.runs.length === 0 && summary.legacy.length === 0)) {
+    } else if (!summary || (summary.runs.length === 0 && summary.unattributed.length === 0)) {
         body = (
             <AIEmptyState title="No BYO-LLM spend recorded yet">
                 Spend appears here once a run makes at least one BYO-LLM call.
             </AIEmptyState>
         );
-    } else if (summary.runs.length === 0 && summary.legacy.length > 0) {
-        body = (
-            <DataState
-                variant="detector-unavailable"
-                title="Legacy spend not attributable to a run"
-                description="Spend was recorded before per-run tracking began and can't be attributed to a specific run. Only spend with a known run is shown here."
-                data-testid="byo-llm-spend-legacy"
-            />
-        );
     } else {
         body = (
             <div className="space-y-3">
-                <div className="overflow-x-auto rounded-(--radius-sm) border border-(--card-stroke)">
-                    <table className="w-full text-left text-sm" data-testid="byo-llm-spend-table">
-                        <thead className="bg-background text-label-caps uppercase text-(--ink-muted)">
-                            <tr>
-                                <th className="px-3 py-2.75 font-medium">Run</th>
-                                <th className="px-3 py-2.75 font-medium">Model</th>
-                                <th className="px-3 py-2.75 text-right font-medium">Calls</th>
-                                <th className="px-3 py-2.75 text-right font-medium">
-                                    Input tokens
-                                </th>
-                                <th className="px-3 py-2.75 text-right font-medium">
-                                    Output tokens
-                                </th>
-                                <th className="px-3 py-2.75 font-medium">Failures by class</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {summary.runs.map((run, index) => (
-                                <tr
-                                    key={run.run_id}
-                                    className="border-b border-(--card-stroke)/60 last:border-0"
-                                >
-                                    <td className="px-3 py-3 text-xs">Run {index + 1}</td>
-                                    <td className="px-3 py-3">{run.model ?? "—"}</td>
-                                    <td className="px-3 py-3 text-right">
-                                        {formatNumber(run.calls)}
-                                    </td>
-                                    <td className="px-3 py-3 text-right">
-                                        {formatNumber(run.input_tokens)}
-                                    </td>
-                                    <td className="px-3 py-3 text-right">
-                                        {formatNumber(run.output_tokens)}
-                                    </td>
-                                    <td className="px-3 py-3">
-                                        <FailureBadges failuresByClass={run.failures_by_class} />
-                                    </td>
+                {summary.runs.length > 0 ? (
+                    <div className="overflow-x-auto rounded-(--radius-sm) border border-(--card-stroke)">
+                        <table
+                            className="w-full text-left text-sm"
+                            data-testid="byo-llm-spend-table"
+                        >
+                            <thead className="bg-background text-label-caps uppercase text-(--ink-muted)">
+                                <tr>
+                                    <th className="px-3 py-2.75 font-medium">Run</th>
+                                    <th className="px-3 py-2.75 font-medium">Model</th>
+                                    <th className="px-3 py-2.75 text-right font-medium">Calls</th>
+                                    <th className="px-3 py-2.75 text-right font-medium">
+                                        Input tokens
+                                    </th>
+                                    <th className="px-3 py-2.75 text-right font-medium">
+                                        Output tokens
+                                    </th>
+                                    <th className="px-3 py-2.75 font-medium">Failures by class</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                <p className="text-xs text-(--ink-muted)">
-                    Failure classes reflect persisted categorization outcomes (from work-unit
-                    categorization), not exact provider-exception counts.
-                </p>
-                {summary.legacy.length > 0 ? (
+                            </thead>
+                            <tbody>
+                                {summary.runs.map((run, index) => (
+                                    <tr
+                                        key={run.run_id}
+                                        className="border-b border-(--card-stroke)/60 last:border-0"
+                                    >
+                                        <td className="px-3 py-3 text-xs">Run {index + 1}</td>
+                                        <td className="px-3 py-3">{run.model ?? "—"}</td>
+                                        <td className="px-3 py-3 text-right">
+                                            {formatNumber(run.calls)}
+                                        </td>
+                                        <td className="px-3 py-3 text-right">
+                                            {formatNumber(run.input_tokens)}
+                                        </td>
+                                        <td className="px-3 py-3 text-right">
+                                            {formatNumber(run.output_tokens)}
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            <FailureBadges
+                                                failuresByClass={run.failures_by_class}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : null}
+                {summary.runs.length > 0 ? (
                     <p className="text-xs text-(--ink-muted)">
-                        Additional legacy spend recorded before per-run tracking began exists for
-                        this organization and is not attributable to a specific run above.
+                        Failure classes reflect persisted categorization outcomes (from work-unit
+                        categorization), not exact provider-exception counts.
                     </p>
+                ) : null}
+                {summary.unattributed.length > 0 ? (
+                    <div className="space-y-2" data-testid="byo-llm-spend-unattributed">
+                        <h3 className="text-sm font-medium text-foreground">
+                            Explanations and reports
+                        </h3>
+                        <div className="overflow-x-auto rounded-(--radius-sm) border border-(--card-stroke)">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-background text-label-caps uppercase text-(--ink-muted)">
+                                    <tr>
+                                        <th className="px-3 py-2.75 font-medium">Day</th>
+                                        <th className="px-3 py-2.75 font-medium">Used for</th>
+                                        <th className="px-3 py-2.75 font-medium">Model</th>
+                                        <th className="px-3 py-2.75 text-right font-medium">
+                                            Calls
+                                        </th>
+                                        <th className="px-3 py-2.75 text-right font-medium">
+                                            Input tokens
+                                        </th>
+                                        <th className="px-3 py-2.75 text-right font-medium">
+                                            Output tokens
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {summary.unattributed.map((row) => (
+                                        <tr
+                                            key={`${row.day}|${row.source}|${row.provider}|${row.model}`}
+                                            className="border-b border-(--card-stroke)/60 last:border-0"
+                                        >
+                                            <td className="px-3 py-3 text-xs">{row.day}</td>
+                                            <td className="px-3 py-3">{sourceLabel(row.source)}</td>
+                                            <td className="px-3 py-3">{row.model ?? "—"}</td>
+                                            <td className="px-3 py-3 text-right">
+                                                {formatNumber(row.calls)}
+                                            </td>
+                                            <td className="px-3 py-3 text-right">
+                                                {formatNumber(row.input_tokens)}
+                                            </td>
+                                            <td className="px-3 py-3 text-right">
+                                                {formatNumber(row.output_tokens)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 ) : null}
             </div>
         );

@@ -5,6 +5,19 @@ updates:
       schedule:
           interval: "weekly"
       groups:
+          graphql-codegen:
+              patterns:
+                  - "graphql"
+                  - "graphql-*"
+                  - "@graphql-codegen/*"
+                  - "@graphql-typed-document-node/*"
+          next:
+              patterns:
+                  - "next"
+                  - "next-auth"
+                  - "@auth/*"
+                  - "eslint-config-next"
+                  - "@next/*"
           all-dependencies:
               patterns:
                   - "*"
@@ -15,6 +28,21 @@ updates:
           - dependency-name: "typescript"
             update-types:
                 - "version-update:semver-major"
+          # @mswjs/http-middleware 0.10.x is peer-bound to msw 2; msw 3 breaks the mock backend
+          - dependency-name: "msw"
+            update-types:
+                - "version-update:semver-major"
+          # vitest 5 detaches the jest-dom matcher typings from Assertion (TS2339 on toBeInTheDocument)
+          - dependency-name: "vitest"
+            update-types:
+                - "version-update:semver-major"
+          - dependency-name: "@vitest/coverage-v8"
+            update-types:
+                - "version-update:semver-major"
+          # @sentry/nextjs 11.8 pulls vite <=8.0.15 via @sentry/cloudflare (GHSA-fx2h-pf6j-xcff); pnpm audit fails until the advisory clears
+          - dependency-name: "@sentry/nextjs"
+            versions:
+                - "11.8.x"
 
     - package-ecosystem: "github-actions"
       directory: "/"
