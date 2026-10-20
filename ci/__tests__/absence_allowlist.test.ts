@@ -170,7 +170,14 @@ describe("a gate is live only in one closed shape", () => {
             "",
         ].join("\n");
     function bad(cond: string): string[] {
-        const dir = tree({ [FILE]: pager(cond), "src/lib/acr/ops.ts": ACR });
+        const dir = tree({
+            [FILE]:
+                "async function getCanonicalIncidentIngestionEntitlement() { return { data: { enabled: false } }; }\n" +
+                pager(cond),
+            "src/lib/acr/ops.ts":
+                'import { fetchBoundedJson } from "./http";\nconst schema = { safeParse: (_v: unknown) => ({ success: false, data: { is_valid: false } }) };\n' +
+                ACR,
+        });
         try {
             return verifyEntitlementSymbols(dir);
         } finally {
@@ -184,7 +191,7 @@ describe("a gate is live only in one closed shape", () => {
             "entitlement.data?.enabled !== true",
             "!entitlement.data?.enabled",
             "!entitlement.a || entitlement.b !== 200",
-            "entitlement.status == 500 || !entitlement.ok",
+            "entitlement.ok === false || entitlement.status != 200",
         ])
             expect(bad(cond), cond).toEqual([]);
     });

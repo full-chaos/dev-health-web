@@ -71,7 +71,14 @@ have no predicate yet: they may not be absent, and stay `null` with a
 `return`, where `<cond>` is a `||` of leaves, each `!chain` or a chain compared
 with a literal, with every chain derived from that call. No `&&`, no `!` on
 anything but a chain, no bare truthiness, no `try`, `switch`, loop, label,
-`let` or reassignment: anything else is not live.
+`let` or reassignment: anything else is not live. The polarity is bound to the
+refusal: a leaf is true exactly when the value is disabled or unset (`!chain`,
+`!(chain ?? false)`, `chain !== <positive literal>`, `chain === <falsy
+literal>`); `enabled === true` throws on an enabled entitlement and is not a
+closed condition. A callee is bound by declaration, not by name: it must be a
+top-level function or const of the gate's own module, or an import from the
+module the gate lists (`fetchBoundedJson` from `./http`), and never a name the
+gate declares locally.
 
 "Absent" rests on an allowlist, not on a list of hazards. A verdict is
 `not_reachable` only when the whole handler is provably inert: literals,
@@ -79,12 +86,15 @@ anything but a chain, no bare truthiness, no `try`, `switch`, loop, label,
 literals, operators on primitive operands, `if` / `else`, `return`, and
 `throw new Error(<inert>)`. It holds no call at all (a global or a dependency
 can be patched, so no builtin is trusted), no property read on a non-literal,
-no `await`, no spread and no getter. Anything else is `limit`, so an aliased
+no `await`, no spread, no getter, and no cast (`as`, `satisfies`, `!`), since
+a cast overrides the static type the proof trusts. Anything else is `limit`, so an aliased
 `fetch`, a patched `console`, a `valueOf`, an interface-typed getter or a
 `Proxy` trap can never produce an absence. The call walk still finds
 `reachable`; request reads are decided by the type of the value (`Request`,
 `NextRequest`, `Headers`), and cache targets match by declaration identity.
-`GET /health` calls `NextResponse.json`, so its `token_shape` is `null` with a
+The model is a static lint over honest code: patching `Object.prototype` or
+replacing a global such as `Error` from another module is outside it (it is
+not a defence against a malicious committer). `GET /health` calls `NextResponse.json`, so its `token_shape` is `null` with a
 gaps entry (manual review), not absent.
 
 ## Coverage

@@ -28,8 +28,12 @@ const GOOD_ACR =
 function tree(pager: string, acr: string): string {
     const dir = mkdtempSync(join(tmpdir(), "web-live-"));
     const files: Record<string, string> = {
-        "src/lib/admin/server/canonicalIncidentIngestion.ts": pager,
-        "src/lib/acr/ops.ts": acr,
+        "src/lib/admin/server/canonicalIncidentIngestion.ts":
+            "async function getCanonicalIncidentIngestionEntitlement() { return { data: { enabled: false } }; }\n" +
+            pager,
+        "src/lib/acr/ops.ts":
+            'import { fetchBoundedJson } from "./http";\nconst schema = { safeParse: (_v: unknown) => ({ success: false, data: { is_valid: false } }) };\n' +
+            acr,
     };
     for (const [name, text] of Object.entries(files)) {
         mkdirSync(join(dir, name, ".."), { recursive: true });

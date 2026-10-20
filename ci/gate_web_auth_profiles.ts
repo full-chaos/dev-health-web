@@ -690,6 +690,20 @@ export function runGate(input: GateInputs): Violation[] {
             }
         }
 
+        // Advisory scalars are type-checked here, not left to the ops schema: a run
+        // without the schema input must not accept `resource_resolver: 0`.
+        for (const field of ADVISORY_FIELDS) {
+            if (!(field in row) || row[field] === null) continue;
+            const v = row[field];
+            const ok = field === "token_shape" ? isPlainObject(v) : typeof v === "string";
+            if (!ok)
+                violations.push({
+                    rule: "schema_violation",
+                    id: row.id,
+                    detail: `${field} must be ${field === "token_shape" ? "an object" : "a string"} or null (the schema's own type), got ${Array.isArray(v) ? "array" : typeof v}`,
+                });
+        }
+
         // degrades_silently / unstated-null-primary_validator, only for the
         // surface kind + service this pass verified by hand: web server_actions.
         if (

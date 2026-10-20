@@ -54,7 +54,14 @@ describe("a hollow entitlement gate is never live", () => {
     ].join("\n");
 
     function bad(body: string): string[] {
-        const dir = tree({ [PAGER_FILE]: pager(body), "src/lib/acr/ops.ts": ACR });
+        const dir = tree({
+            [PAGER_FILE]:
+                "async function getCanonicalIncidentIngestionEntitlement() { return { data: { enabled: false } }; }\n" +
+                pager(body),
+            "src/lib/acr/ops.ts":
+                'import { fetchBoundedJson } from "./http";\nconst schema = { safeParse: (_v: unknown) => ({ success: false, data: { is_valid: false } }) };\n' +
+                ACR,
+        });
         try {
             return verifyEntitlementSymbols(dir);
         } finally {

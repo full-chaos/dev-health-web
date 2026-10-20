@@ -301,6 +301,7 @@ export const ENTITLEMENT_SYMBOLS: readonly {
     name: string;
     calls: readonly string[];
     rejects: boolean;
+    from?: Readonly<Record<string, string>>;
 }[] = [
     {
         file: "src/lib/admin/server/canonicalIncidentIngestion.ts",
@@ -313,6 +314,7 @@ export const ENTITLEMENT_SYMBOLS: readonly {
         name: "requireAcrEntitlement",
         calls: ["fetchBoundedJson", "safeParse"],
         rejects: true,
+        from: { fetchBoundedJson: "./http" },
     },
     {
         file: "src/lib/acr/ops.ts",
@@ -1000,13 +1002,12 @@ export function verifyEntitlementSymbols(rootArg: string): string[] {
     const bad: string[] = [];
     for (const g of ENTITLEMENT_SYMBOLS) {
         const file = join(root, g.file);
-        const fn = existsSync(file)
-            ? parseSource(file).statements.find(
-                  (st): st is ts.FunctionDeclaration =>
-                      ts.isFunctionDeclaration(st) && st.name?.text === g.name,
-              )
-            : undefined;
-        if (!fn || !entitlementGateIsLive(fn, g)) bad.push(`${g.file}#${g.name}`);
+        const sf = existsSync(file) ? parseSource(file) : undefined;
+        const fn = sf?.statements.find(
+            (st): st is ts.FunctionDeclaration =>
+                ts.isFunctionDeclaration(st) && st.name?.text === g.name,
+        );
+        if (!sf || !fn || !entitlementGateIsLive(sf, fn, g)) bad.push(`${g.file}#${g.name}`);
     }
     return bad;
 }
@@ -1049,11 +1050,22 @@ const EQUALITY_OPS = new Set([
     ts.SyntaxKind.ExclamationEqualsEqualsToken,
 ]);
 
+const isFalsyLiteral = (e: ts.Expression): boolean =>
+    e.kind === ts.SyntaxKind.FalseKeyword ||
+    e.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isIdentifier(e) && e.text === "undefined") ||
+    (ts.isNumericLiteral(e) && Number(e.text) === 0) ||
+    (ts.isStringLiteralLike(e) && e.text === "");
+
 /**
- * Whether a rejecting condition is in the one closed shape: a `||` of leaves,
- * each `!chain` or `chain ==|===|!=|!== literal`, every chain rooted in a
- * derived value. No `&&` (a conjunction can be written so it never holds), no
- * `!` on anything but a chain, no bare truthiness, no chain against a chain.
+ * Whether a rejecting condition is in the one closed shape, with its polarity
+ * bound to the refusal: a `||` of leaves that are true exactly when the value
+ * is disabled or unset. A leaf is `!chain`, `!(chain ?? <falsy literal>)`,
+ * `chain !==|!= <positive literal>` (anything but falsy: `enabled !== true`,
+ * `status !== 200`), or `chain ===|== <falsy literal>` (`enabled === false`,
+ * `== null`). The opposite polarity (`enabled === true`, `!== false`) throws on
+ * an ENABLED entitlement, so it is not closed. Every chain is rooted in a
+ * derived value. No `&&`, no bare truthiness, no chain against a chain.
  */
 function isClosedCondition(e: ts.Expression, derived: Set<string>): boolean {
     if (ts.isParenthesizedExpression(e)) return isClosedCondition(e.expression, derived);
@@ -1062,17 +1074,32 @@ function isClosedCondition(e: ts.Expression, derived: Set<string>): boolean {
         if (op === ts.SyntaxKind.BarBarToken)
             return isClosedCondition(e.left, derived) && isClosedCondition(e.right, derived);
         if (EQUALITY_OPS.has(op)) {
+            const negated =
+                op === ts.SyntaxKind.ExclamationEqualsToken ||
+                op === ts.SyntaxKind.ExclamationEqualsEqualsToken;
             const lc = chainText(e.left, derived);
             const rc = chainText(e.right, derived);
-            return (
-                (lc !== undefined && rc === undefined && isLiteralOperand(e.right)) ||
-                (rc !== undefined && lc === undefined && isLiteralOperand(e.left))
-            );
+            const lit =
+                lc !== undefined && rc === undefined && isLiteralOperand(e.right)
+                    ? e.right
+                    : rc !== undefined && lc === undefined && isLiteralOperand(e.left)
+                      ? e.left
+                      : undefined;
+            if (!lit) return false;
+            return negated ? !isFalsyLiteral(lit) : isFalsyLiteral(lit);
         }
         return false;
     }
-    if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken)
-        return chainText(e.operand, derived) !== undefined;
+    if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken) {
+        let x: ts.Expression = e.operand;
+        while (ts.isParenthesizedExpression(x)) x = x.expression;
+        if (
+            ts.isBinaryExpression(x) &&
+            x.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+        )
+            return chainText(x.left, derived) !== undefined && isFalsyLiteral(x.right);
+        return chainText(x, derived) !== undefined;
+    }
     return false;
 }
 
@@ -1120,9 +1147,69 @@ function throwsOutright(st: ts.IfStatement): boolean {
  * assignments, a call that is not awaited) makes the gate unproven, never live.
  * A delegating gate awaits (or returns) a call to the gate it delegates to.
  */
+/** Names declared anywhere inside `fn`: locals, parameters, nested functions, binding elements, catch variables. */
+function namesDeclaredIn(fn: ts.Node): Set<string> {
+    const out = new Set<string>();
+    const addName = (n: ts.BindingName) => {
+        if (ts.isIdentifier(n)) out.add(n.text);
+        else for (const el of n.elements) if (!ts.isOmittedExpression(el)) addName(el.name);
+    };
+    const v = (x: ts.Node) => {
+        if (ts.isVariableDeclaration(x) || ts.isParameter(x) || ts.isBindingElement(x))
+            addName(x.name);
+        else if ((ts.isFunctionDeclaration(x) || ts.isClassDeclaration(x)) && x.name)
+            out.add(x.name.text);
+        ts.forEachChild(x, v);
+    };
+    v(fn);
+    return out;
+}
+
+/**
+ * Whether `name` used inside `fn` is the module's own binding and not a local
+ * stand-in: it is not declared inside `fn`, and at module level it is either a
+ * top-level function / const (a same-file helper) or an import (from exactly
+ * `module` when one is required). Bound by declaration, never by bare name.
+ */
+function boundToModule(
+    sf: ts.SourceFile,
+    fn: ts.Node,
+    name: string,
+    module: string | undefined,
+): boolean {
+    if (namesDeclaredIn(fn).has(name)) return false;
+    for (const st of sf.statements) {
+        if (ts.isFunctionDeclaration(st) && st.name?.text === name) return module === undefined;
+        if (
+            ts.isVariableStatement(st) &&
+            st.declarationList.declarations.some(
+                (d) => ts.isIdentifier(d.name) && d.name.text === name,
+            )
+        )
+            return module === undefined;
+        if (
+            ts.isImportDeclaration(st) &&
+            st.importClause &&
+            ts.isStringLiteral(st.moduleSpecifier)
+        ) {
+            const c = st.importClause;
+            const local =
+                c.name?.text === name ||
+                (c.namedBindings &&
+                    ((ts.isNamespaceImport(c.namedBindings) &&
+                        c.namedBindings.name.text === name) ||
+                        (ts.isNamedImports(c.namedBindings) &&
+                            c.namedBindings.elements.some((el) => el.name.text === name))));
+            if (local) return module === undefined || st.moduleSpecifier.text === module;
+        }
+    }
+    return false;
+}
+
 function entitlementGateIsLive(
+    sf: ts.SourceFile,
     fn: ts.FunctionDeclaration,
-    g: { calls: readonly string[]; rejects: boolean },
+    g: { calls: readonly string[]; rejects: boolean; from?: Readonly<Record<string, string>> },
 ): boolean {
     const body = fn.body;
     if (!body) return false;
@@ -1130,7 +1217,13 @@ function entitlementGateIsLive(
     const calledTop = new Set<string>();
     const named = (c: ts.CallExpression) => {
         const name = calleeName(c);
-        return name !== undefined && g.calls.includes(name);
+        if (name === undefined || !g.calls.includes(name)) return false;
+        const callee = c.expression;
+        if (ts.isIdentifier(callee)) return boundToModule(sf, fn, name, g.from?.[name]);
+        let root: ts.Expression = callee;
+        while (ts.isPropertyAccessExpression(root) || ts.isElementAccessExpression(root))
+            root = root.expression;
+        return ts.isIdentifier(root) && boundToModule(sf, fn, root.text, undefined) ? true : false;
     };
     const callOf = (e: ts.Expression | undefined): ts.CallExpression | undefined => {
         let x = e;
@@ -1305,13 +1398,8 @@ function isInertHandler(checker: ts.TypeChecker, fn: ts.Node): boolean {
     const seen = new Set<ts.Node>();
     const primitive = (e: ts.Expression) => isPrimitiveType(checker.getTypeAtLocation(e));
     const inertExpr = (e: ts.Expression): boolean => {
-        if (
-            ts.isParenthesizedExpression(e) ||
-            ts.isAsExpression(e) ||
-            ts.isSatisfiesExpression(e) ||
-            ts.isNonNullExpression(e)
-        )
-            return inertExpr(e.expression);
+        // A cast (as, satisfies, !) overrides the static type the proof trusts: not inert.
+        if (ts.isParenthesizedExpression(e)) return inertExpr(e.expression);
         if (
             ts.isStringLiteralLike(e) ||
             ts.isNumericLiteral(e) ||
