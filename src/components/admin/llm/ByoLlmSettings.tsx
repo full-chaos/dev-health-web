@@ -69,6 +69,8 @@ export type ByoLlmSettingsProps = {
     loadModelsAction?: () => Promise<LLMSettingsActionResult<LLMModelListResponse>>;
 };
 
+const MODEL_LIST_UNAVAILABLE_FALLBACK = "The provider's model list is not available right now.";
+
 const MODEL_LIST_UNAVAILABLE_TEXT: Record<string, string> = {
     not_configured: "Save a provider and API key to load its models.",
     api_key_required: "Save an API key to load the provider's models.",
@@ -327,22 +329,29 @@ export function ByoLlmSettings({
     const fetchModels = useCallback(async () => {
         if (!loadModelsAction) return;
         const request = ++modelListRequest.current;
-        const result = await loadModelsAction();
-        if (request !== modelListRequest.current) return;
-        const ids = result.data?.models.map((m) => m.id) ?? [];
-        if (result.data && ids.length > 0) {
-            setModelOptions(ids);
-            setModelListNote(null);
-        } else {
+        try {
+            const result = await loadModelsAction();
+            if (request !== modelListRequest.current) return;
+            const ids = result.data?.models.map((m) => m.id) ?? [];
+            if (result.data && ids.length > 0) {
+                setModelOptions(ids);
+                setModelListNote(null);
+            } else {
+                setModelOptions([]);
+                setModelListNote(
+                    result.data?.reason
+                        ? (MODEL_LIST_UNAVAILABLE_TEXT[result.data.reason] ??
+                              MODEL_LIST_UNAVAILABLE_FALLBACK)
+                        : MODEL_LIST_UNAVAILABLE_FALLBACK,
+                );
+            }
+            setModelListProvider(result.data ? (savedSettings?.provider ?? null) : null);
+        } catch {
+            if (request !== modelListRequest.current) return;
             setModelOptions([]);
-            setModelListNote(
-                result.data?.reason
-                    ? (MODEL_LIST_UNAVAILABLE_TEXT[result.data.reason] ??
-                          "The provider's model list is not available right now.")
-                    : "The provider's model list is not available right now.",
-            );
+            setModelListNote(MODEL_LIST_UNAVAILABLE_FALLBACK);
+            setModelListProvider(null);
         }
-        setModelListProvider(result.data ? (savedSettings?.provider ?? null) : null);
     }, [loadModelsAction, savedSettings]);
 
     const editingSavedKey = mode === "edit" && hasStoredKey && hasSavedSettings;

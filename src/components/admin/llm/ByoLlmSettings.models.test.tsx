@@ -263,4 +263,49 @@ describe("ByoLlmSettings model picker", () => {
 
         expect(document.getElementById("byo-model-options")).toBeNull();
     });
+    it("shows the unavailable sentence and keeps free text when the list action rejects", async () => {
+        const unhandled: unknown[] = [];
+        const onUnhandled = (reason: unknown) => unhandled.push(reason);
+        process.on("unhandledRejection", onUnhandled);
+        try {
+            mockLoad.mockResolvedValue({ data: SAVED });
+            mockLoadModels.mockRejectedValue(new Error("transport failure"));
+            mockSave.mockResolvedValue({ data: { ...SAVED, model: "my-model" } });
+            renderForm();
+            await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+            await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+            await waitFor(() =>
+                expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
+                    "The provider's model list is not available right now. Any model name still works.",
+                ),
+            );
+            expect(document.getElementById("byo-model-options")).toBeNull();
+            const modelInput = screen.getByLabelText<HTMLInputElement>("Model");
+            await userEvent.clear(modelInput);
+            await userEvent.type(modelInput, "my-model");
+            await userEvent.click(screen.getByRole("button", { name: "Save" }));
+            expect(mockSave).toHaveBeenCalledWith(expect.objectContaining({ model: "my-model" }));
+
+            await new Promise((r) => setTimeout(r, 20));
+            expect(unhandled).toEqual([]);
+        } finally {
+            process.off("unhandledRejection", onUnhandled);
+        }
+    });
+
+    it("treats a malformed list answer as unavailable", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValue({ data: { models: null } } as never);
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+        await waitFor(() =>
+            expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
+                "The provider's model list is not available right now.",
+            ),
+        );
+        expect(document.getElementById("byo-model-options")).toBeNull();
+    });
 });
