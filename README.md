@@ -116,6 +116,8 @@ bash ci/run_tests.sh live-e2e
 npm run test:ci
 ```
 
+The `ci` tier runs the auth-profile gate (`auth-profiles-gate`), which needs the ops-owned contract files (`WEB_ENDPOINT_PROFILE_SCHEMA`, `WEB_CREDENTIAL_CLASSES`, `WEB_CREDENTIAL_CLASSES_SCHEMA`) and fails without them, in CI and locally; a local run that cannot supply them sets `WEB_ALLOW_MISSING_CONTRACT_INPUTS=1`, and the gate then lists the checks it skipped (CI has no opt-out). See `docs/auth-endpoint-profiles.md`.
+
 ### Live Backend E2E (Phase 2)
 
 Use this tier when validating against a real `dev-health-ops` backend (no mock server).

@@ -118,6 +118,8 @@ import {
     isDemonstrablyRejecting,
     verifyGuardSymbols,
     verifyEntitlementSymbols,
+    verifyCacheSymbols,
+    verifyResolverSymbols,
     type Reach,
     type RouteRecord,
     type ServerActionRecord,
@@ -175,7 +177,8 @@ export type Violation = {
         | "guard_symbol_unverified"
         | "absent_without_proof"
         | "reach_contradicts_row"
-        | "entitlement_symbol_unverified";
+        | "entitlement_symbol_unverified"
+        | "probe_symbol_unverified";
     id?: string;
     detail: string;
 };
@@ -233,6 +236,8 @@ export interface GateInputs {
     unverifiedGuardSymbols?: string[];
     /** ENTITLEMENT_SYMBOLS entries that are missing or no longer exit (verifyEntitlementSymbols). */
     unverifiedEntitlementSymbols?: string[];
+    /** CACHE_SYMBOLS and RESOLVER_SYMBOLS entries that no longer resolve (verifyCacheSymbols, verifyResolverSymbols). */
+    unverifiedProbeSymbols?: string[];
     discoveredRoutes: RouteRecord[];
     discoveredActions: ServerActionRecord[];
     doc: unknown;
@@ -353,9 +358,10 @@ function duplicateCredentialClassViolations(credentialClassesDocument: unknown):
 
 /** "" / "   " / [] / {}: present on the row but saying nothing, which is absent in all but name. */
 function isEmptyValue(v: unknown): boolean {
+    if (v === null) return false;
     if (typeof v === "string") return v.trim() === "";
-    if (Array.isArray(v)) return v.length === 0;
-    if (v !== null && typeof v === "object") return Object.keys(v).length === 0;
+    if (Array.isArray(v)) return v.every((x) => x === null || isEmptyValue(x));
+    if (typeof v === "object") return Object.values(v).every((x) => x === null || isEmptyValue(x));
     return false;
 }
 
@@ -476,6 +482,12 @@ export function runGate(input: GateInputs): Violation[] {
             detail: `guard function ${name} is missing or its body no longer rejects on a missing session, so surfaces that call it are not proven guarded`,
         });
     }
+    for (const name of input.unverifiedProbeSymbols ?? []) {
+        violations.push({
+            rule: "probe_symbol_unverified",
+            detail: `${name} no longer resolves, so a call walk that does not reach it proves nothing for cache or resource_resolver`,
+        });
+    }
     for (const name of input.unverifiedEntitlementSymbols ?? []) {
         violations.push({
             rule: "entitlement_symbol_unverified",
@@ -484,7 +496,10 @@ export function runGate(input: GateInputs): Violation[] {
     }
     // Call-walk verdicts per surface: the only evidence an advisory field may
     // be absent. A surface with no verdict (handler not resolved) proves nothing.
-    const reachById = new Map<string, { entitlement?: Reach; credential?: Reach }>();
+    const reachById = new Map<
+        string,
+        { entitlement?: Reach; credential?: Reach; cache?: Reach; resolver?: Reach }
+    >();
     for (const r of discoveredRoutes) reachById.set(`${r.method} ${r.route} [dev-health-web]`, r);
     for (const a of discoveredActions) reachById.set(a.id, a);
     const unresolvedGuard = new Set<string>();
@@ -628,13 +643,16 @@ export function runGate(input: GateInputs): Violation[] {
         }
 
         // Absent needs a proof. entitlement_requirement and token_shape have a
-        // call-walk predicate; the other advisory fields have none yet, so a
-        // row may not leave them absent.
+        // call-walk predicate (cache and resolver need only the absent proof);
+        // action and disclosure_behavior have none yet, so a row may not leave
+        // them absent.
         {
             const reach = reachById.get(row.id);
             const predicate: Record<string, Reach | undefined> = {
                 entitlement_requirement: reach?.entitlement,
                 token_shape: reach?.credential,
+                current_state_cache_behavior: reach?.cache,
+                resource_resolver: reach?.resolver,
             };
             for (const field of ADVISORY_FIELDS) {
                 const absent = !(field in row) || isEmptyValue(row[field]);
@@ -649,7 +667,13 @@ export function runGate(input: GateInputs): Violation[] {
                             : `${field} is absent but the call walk says ${verdict ?? "unresolved"}, not not_reachable; absent needs that proof`,
                     });
                 }
-                if (unset && verdict === "reachable") {
+                // cache and resolver values are prose the walk cannot derive: null
+                // (undetermined, with its gaps entry) stays allowed when reachable.
+                if (
+                    unset &&
+                    verdict === "reachable" &&
+                    (field === "entitlement_requirement" || field === "token_shape")
+                ) {
                     violations.push({
                         rule: "reach_contradicts_row",
                         id: row.id,
@@ -664,6 +688,20 @@ export function runGate(input: GateInputs): Violation[] {
                     });
                 }
             }
+        }
+
+        // Advisory scalars are type-checked here, not left to the ops schema: a run
+        // without the schema input must not accept `resource_resolver: 0`.
+        for (const field of ADVISORY_FIELDS) {
+            if (!(field in row) || row[field] === null) continue;
+            const v = row[field];
+            const ok = field === "token_shape" ? isPlainObject(v) : typeof v === "string";
+            if (!ok)
+                violations.push({
+                    rule: "schema_violation",
+                    id: row.id,
+                    detail: `${field} must be ${field === "token_shape" ? "an object" : "a string"} or null (the schema's own type), got ${Array.isArray(v) ? "array" : typeof v}`,
+                });
         }
 
         // degrades_silently / unstated-null-primary_validator, only for the
@@ -830,6 +868,7 @@ function schemaEnumFrom(schemaDocument: unknown, field: string): string[] | null
 export function checkContractInputsPresent(
     inCI: boolean,
     missing: string[],
+    allowMissing = false,
 ): { fatal: boolean; message: string | null } {
     if (missing.length === 0) {
         return { fatal: false, message: null };
@@ -841,17 +880,27 @@ export function checkContractInputsPresent(
             message:
                 `FAIL: missing ops-owned contract input(s) in CI: ${detail}. ` +
                 "CI must supply these via the pinned sparse checkout (see ci/ops-contract.pin and " +
-                ".github/workflows/tests.yml) -- a skip is only acceptable in a local run where " +
-                "they were not passed. There is no implicit fallback path.",
+                ".github/workflows/tests.yml) -- there is no opt-out in CI and no implicit fallback path.",
+        };
+    }
+    if (!allowMissing) {
+        return {
+            fatal: true,
+            message:
+                `FAIL: missing ops-owned contract input(s): ${detail}. A measurement that did not ` +
+                "happen must fail, so a local run fails too. Pass the inputs " +
+                "(--schema, --credential-classes, --credential-classes-schema), or pass " +
+                "--allow-missing-contract-inputs to skip those checks and have them listed.",
         };
     }
     return {
         fatal: false,
         message:
-            `WARN: missing ops-owned contract input(s), closed-vocabulary check(s) for them are ` +
-            `SKIPPED, not passed: ${detail}. Every other check still ran. Checked --schema/` +
-            "--schema / --credential-classes / --credential-classes-schema; there is no implicit fallback path, deliberately. " +
-            "This is fatal in CI; CI/GITHUB_ACTIONS is unset here, so this is a local run.",
+            `WARN: missing ops-owned contract input(s): ${detail}. SKIPPED, not passed, by ` +
+            "--allow-missing-contract-inputs: the closed-vocabulary checks for accepted_credential_classes, " +
+            "service and surface_kind, the endpoint-profile schema validation, and the " +
+            "credential-classes document validation. Every other check still ran. " +
+            "This is fatal in CI.",
     };
 }
 
@@ -861,26 +910,28 @@ function parseArgs(argv: string[]): {
     credentialClasses: string | null;
     credentialClassesSchema: string | null;
     schema: string | null;
+    allowMissing: boolean;
 } {
     let root = process.cwd();
     let profile = join(root, "contracts/auth/v1/endpoint-profiles.web.json");
     let credentialClasses: string | null = null;
     let credentialClassesSchema: string | null = null;
     let schema: string | null = null;
+    let allowMissing = false;
     for (let i = 0; i < argv.length; i++) {
         if (argv[i] === "--root") root = argv[++i];
         else if (argv[i] === "--profile") profile = argv[++i];
         else if (argv[i] === "--credential-classes") credentialClasses = argv[++i];
         else if (argv[i] === "--credential-classes-schema") credentialClassesSchema = argv[++i];
         else if (argv[i] === "--schema") schema = argv[++i];
+        else if (argv[i] === "--allow-missing-contract-inputs") allowMissing = true;
     }
-    return { root, profile, credentialClasses, credentialClassesSchema, schema };
+    return { root, profile, credentialClasses, credentialClassesSchema, schema, allowMissing };
 }
 
 function main() {
-    const { root, profile, credentialClasses, credentialClassesSchema, schema } = parseArgs(
-        process.argv.slice(2),
-    );
+    const { root, profile, credentialClasses, credentialClassesSchema, schema, allowMissing } =
+        parseArgs(process.argv.slice(2));
     const inCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
     const discoveredRoutes = discoverRoutes(root);
@@ -899,7 +950,7 @@ function main() {
         missingInputs.push("credential-classes.schema.json (--credential-classes-schema)");
     }
 
-    const { fatal, message } = checkContractInputsPresent(inCI, missingInputs);
+    const { fatal, message } = checkContractInputsPresent(inCI, missingInputs, allowMissing);
     if (message) {
         process.stderr.write(message + "\n");
     }
@@ -910,6 +961,7 @@ function main() {
     const violations = runGate({
         unverifiedGuardSymbols: verifyGuardSymbols(root),
         unverifiedEntitlementSymbols: verifyEntitlementSymbols(root),
+        unverifiedProbeSymbols: [...verifyCacheSymbols(root), ...verifyResolverSymbols(root)],
         discoveredRoutes,
         discoveredActions,
         doc,
