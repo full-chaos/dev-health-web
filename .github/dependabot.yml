@@ -32,6 +32,13 @@ updates:
           - dependency-name: "msw"
             update-types:
                 - "version-update:semver-major"
+          # vitest 5 detaches the jest-dom matcher typings from Assertion (TS2339 on toBeInTheDocument)
+          - dependency-name: "vitest"
+            update-types:
+                - "version-update:semver-major"
+          - dependency-name: "@vitest/coverage-v8"
+            update-types:
+                - "version-update:semver-major"
 
     - package-ecosystem: "github-actions"
       directory: "/"
