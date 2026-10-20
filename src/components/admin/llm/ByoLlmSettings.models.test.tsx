@@ -392,4 +392,29 @@ describe("ByoLlmSettings model picker", () => {
 
         await waitFor(() => expect(mockSave).toHaveBeenCalled());
     });
+    it("keeps only the valid id when a non-string id sits next to it", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValue({
+            data: { models: [{ id: 5 }, { id: "gpt-4o" }], source: "live", reason: null },
+        } as never);
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(optionValues()).toEqual(["gpt-4o"]));
+    });
+
+    it("maps a reason that is an inherited object key to the fixed sentence", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValue({
+            data: { models: [], source: "unavailable", reason: "__proto__", fetched_at: null },
+        });
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() =>
+            expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
+                "The provider's model list is not available right now. Any model name still works.",
+            ),
+        );
+    });
 });

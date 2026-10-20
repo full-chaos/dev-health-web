@@ -362,7 +362,8 @@ export function ByoLlmSettings({
             } else {
                 setModelOptions([]);
                 setModelListNote(
-                    typeof list?.reason === "string" && MODEL_LIST_UNAVAILABLE_TEXT[list.reason]
+                    typeof list?.reason === "string" &&
+                        Object.hasOwn(MODEL_LIST_UNAVAILABLE_TEXT, list.reason)
                         ? MODEL_LIST_UNAVAILABLE_TEXT[list.reason]
                         : MODEL_LIST_UNAVAILABLE_FALLBACK,
                 );
