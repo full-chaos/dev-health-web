@@ -2,7 +2,7 @@
 
 import { isPlanGateMessage } from "@/lib/actionFailure";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { DataState } from "@/components/ui/DataState";
@@ -247,6 +247,7 @@ export function ByoLlmSettings({
     const [modelOptions, setModelOptions] = useState<string[]>([]);
     const [modelListNote, setModelListNote] = useState<string | null>(null);
     const [modelListProvider, setModelListProvider] = useState<string | null>(null);
+    const modelListRequest = useRef(0);
 
     const [saving, setSaving] = useState(false);
     const [checkingReadiness, setCheckingReadiness] = useState(false);
@@ -325,7 +326,9 @@ export function ByoLlmSettings({
 
     const fetchModels = useCallback(async () => {
         if (!loadModelsAction) return;
+        const request = ++modelListRequest.current;
         const result = await loadModelsAction();
+        if (request !== modelListRequest.current) return;
         const ids = result.data?.models.map((m) => m.id) ?? [];
         if (result.data && ids.length > 0) {
             setModelOptions(ids);
@@ -347,6 +350,12 @@ export function ByoLlmSettings({
         if (editingSavedKey) {
             // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchModels reads the provider's model list once the saved-key form opens.
             void fetchModels();
+        } else {
+            // The form closed or the saved key is gone: drop the list and any read still in flight.
+            modelListRequest.current += 1;
+            setModelOptions([]);
+            setModelListNote(null);
+            setModelListProvider(null);
         }
     }, [editingSavedKey, fetchModels]);
 

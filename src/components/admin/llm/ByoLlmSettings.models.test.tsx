@@ -195,4 +195,72 @@ describe("ByoLlmSettings model picker", () => {
         expect(mockRemove).not.toHaveBeenCalled();
         expect(mockRunReadiness).not.toHaveBeenCalled();
     });
+    it("drops the suggestions when the saved setting is deleted", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValue({
+            data: { models: [{ id: "gpt-4o" }], source: "live", reason: null, fetched_at: null },
+        });
+        mockRemove.mockResolvedValue({ data: { ok: true } } as never);
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(optionValues()).toEqual(["gpt-4o"]));
+
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+        await userEvent.click(screen.getByRole("button", { name: /Confirm/ }));
+
+        await waitFor(() => expect(mockRemove).toHaveBeenCalled());
+        await waitFor(() => expect(document.getElementById("byo-model-options")).toBeNull());
+        expect(screen.getByLabelText("Model")).not.toHaveAttribute("list");
+        expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
+            "Save an API key to load the provider's models.",
+        );
+    });
+
+    it("ignores a list read that finishes after the setting was deleted", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        let finish: (value: Awaited<ReturnType<typeof mockLoadModels>>) => void = () => {};
+        mockLoadModels.mockReturnValue(
+            new Promise((resolve) => {
+                finish = resolve;
+            }),
+        );
+        mockRemove.mockResolvedValue({ data: { ok: true } } as never);
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(mockLoadModels).toHaveBeenCalledTimes(1));
+
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+        await userEvent.click(screen.getByRole("button", { name: /Confirm/ }));
+        await waitFor(() => expect(mockRemove).toHaveBeenCalled());
+        finish({
+            data: {
+                models: [{ id: "stale-openai-model" }],
+                source: "live",
+                reason: null,
+                fetched_at: null,
+            },
+        });
+
+        await new Promise((r) => setTimeout(r, 20));
+        expect(document.getElementById("byo-model-options")).toBeNull();
+    });
+
+    it("drops the suggestions when the form is cancelled and reopened before the new read ends", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValueOnce({
+            data: { models: [{ id: "gpt-4o" }], source: "live", reason: null, fetched_at: null },
+        });
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(optionValues()).toEqual(["gpt-4o"]));
+        mockLoadModels.mockReturnValue(new Promise(() => {}));
+
+        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+        expect(document.getElementById("byo-model-options")).toBeNull();
+    });
 });
