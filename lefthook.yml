@@ -48,6 +48,7 @@ pre-commit:
             stage_fixed: true
         eslint-fix:
             glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+            exclude: "src/lib/graphql/__generated__/**"
             run: pnpm exec eslint --fix {staged_files}
             stage_fixed: true
         design-lint:
@@ -63,6 +64,7 @@ pre-push:
             fail_text: "Run `pnpm format` locally, commit the result, push again. Or `git push --no-verify` to bypass."
         eslint-check:
             glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+            exclude: "src/lib/graphql/__generated__/**"
             run: pnpm exec eslint {push_files}
             fail_text: "Run `pnpm lint --fix` locally, commit the result, push again. Or `git push --no-verify` to bypass."
         typecheck:
