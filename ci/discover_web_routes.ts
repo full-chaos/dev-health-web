@@ -362,6 +362,19 @@ export const RESOLVER_SYMBOLS: readonly { file: string; name: string }[] = [
     { file: "src/lib/areaSignals/govern.ts", name: "resolveOrgId" },
 ];
 
+// Request-scoped readers from next/headers: where the org or resource comes from.
+export const RESOLVER_LIBRARY_SYMBOLS: readonly {
+    module: string;
+    names: readonly string[];
+    pkgs: readonly string[];
+}[] = [
+    {
+        module: "next/headers",
+        names: ["cookies", "headers", "draftMode"],
+        pkgs: ["/node_modules/next/"],
+    },
+];
+
 // The closed list of inline reject shapes: `if (<condition>) { ...; return|throw ... }`
 // where the condition text is exactly one of these and the branch itself holds
 // a return or throw statement. Matched on the AST, not on text.
@@ -462,21 +475,23 @@ function isGuardDeclaration(decl: ts.Node): boolean {
 
 /** What the call walk looks for: a declaration of the target set, or an inline shape. */
 type Probe = {
-    isTarget: (decl: ts.Node) => boolean;
-    inline: (node: ts.Node) => boolean;
+    isTarget: (decl: ts.Node, checker: ts.TypeChecker) => boolean;
+    inline: (node: ts.Node, checker: ts.TypeChecker) => boolean;
     /** A proof of ABSENCE: a call the walk cannot resolve to a body makes the verdict "limit". */
     strict?: boolean;
 };
 const GUARD_PROBE: Probe = { isTarget: isGuardDeclaration, inline: (n) => isInlineReject(n) };
 const CREDENTIAL_PROBE: Probe = { ...GUARD_PROBE, strict: true };
 const CACHE_PROBE: Probe = {
-    isTarget: isCacheDeclaration,
+    isTarget: (d, checker) => isLibrarySymbolDecl(CACHE_SYMBOLS, d, checker),
     inline: (n) => liveContains(n, isCacheDirective),
     strict: true,
 };
 const RESOLVER_PROBE: Probe = {
-    isTarget: (d) => isDeclarationOf(RESOLVER_SYMBOLS, d),
-    inline: (n) => liveContains(n, isRequestInput),
+    isTarget: (d, checker) =>
+        isDeclarationOf(RESOLVER_SYMBOLS, d) ||
+        isLibrarySymbolDecl(RESOLVER_LIBRARY_SYMBOLS, d, checker),
+    inline: (n, checker) => liveContains(n, (x) => isRequestInput(x, checker)),
     strict: true,
 };
 const ENTITLEMENT_PROBE: Probe = {
@@ -485,13 +500,36 @@ const ENTITLEMENT_PROBE: Probe = {
     strict: true,
 };
 
-function isCacheDeclaration(decl: ts.Node): boolean {
+/**
+ * A declaration in a library package that is, or is exported under, one of the
+ * listed public names: `export { impl as revalidatePath }` counts as
+ * revalidatePath, whatever the implementation is called inside the package.
+ */
+function isLibrarySymbolDecl(
+    sets: readonly { module: string; names: readonly string[]; pkgs: readonly string[] }[],
+    decl: ts.Node,
+    checker: ts.TypeChecker,
+): boolean {
     const name = (decl as ts.NamedDeclaration).name;
     if (!name || !ts.isIdentifier(name)) return false;
-    const file = decl.getSourceFile().fileName.replace(/\\/g, "/");
-    return CACHE_SYMBOLS.some(
-        (c) => c.names.includes(name.text) && c.pkgs.some((pk) => file.includes(pk)),
-    );
+    const sf = decl.getSourceFile();
+    const file = sf.fileName.replace(/\\/g, "/");
+    for (const c of sets) {
+        if (!c.pkgs.some((pk) => file.includes(pk))) continue;
+        if (c.names.includes(name.text)) return true;
+        const moduleSymbol = checker.getSymbolAtLocation(sf);
+        const declSymbol = checker.getSymbolAtLocation(name);
+        if (!moduleSymbol || !declSymbol) continue;
+        if (
+            checker.getExportsOfModule(moduleSymbol).some((e) => {
+                if (!c.names.includes(e.name)) return false;
+                const real = e.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(e) : e;
+                return real === declSymbol;
+            })
+        )
+            return true;
+    }
+    return false;
 }
 
 /** Live code holding a node that satisfies `pred`. */
@@ -532,20 +570,31 @@ function isCacheDirective(n: ts.Node): boolean {
     );
 }
 
-const REQUEST_INPUT_NAMES = new Set([
-    "json",
-    "formData",
-    "text",
-    "searchParams",
-    "nextUrl",
-    "url",
-    "params",
-]);
+const REQUEST_TYPE_NAMES = new Set(["Request", "NextRequest", "Headers"]);
 
-/** A route reading its request body, query or path params. */
-function isRequestInput(n: ts.Node): boolean {
-    if (ts.isPropertyAccessExpression(n)) return REQUEST_INPUT_NAMES.has(n.name.text);
-    return ts.isIdentifier(n) && n.text === "params";
+/**
+ * A route reading its request: any member read, or a destructuring, of a value
+ * whose type is a library Request / NextRequest / Headers (body, headers, url,
+ * clone(), arrayBuffer(), ...), or the path `params`. Decided by type, not by
+ * member name, so a member nobody listed is still a read.
+ */
+function isRequestInput(n: ts.Node, checker: ts.TypeChecker): boolean {
+    if (ts.isIdentifier(n) && n.text === "params") return true;
+    let target: ts.Expression | undefined;
+    if (ts.isPropertyAccessExpression(n)) {
+        if (n.name.text === "params") return true;
+        target = n.expression;
+    } else if (ts.isElementAccessExpression(n)) target = n.expression;
+    else if (ts.isObjectBindingPattern(n) && n.parent && "initializer" in n.parent)
+        target = (n.parent as ts.VariableDeclaration).initializer;
+    if (!target) return false;
+    const type = checker.getTypeAtLocation(target);
+    const sym = type.symbol ?? type.aliasSymbol;
+    return (
+        !!sym &&
+        REQUEST_TYPE_NAMES.has(sym.name) &&
+        (sym.declarations ?? []).some((d) => isLibraryFile(d.getSourceFile()))
+    );
 }
 
 const MAX_GUARD_DEPTH = 10;
@@ -581,6 +630,61 @@ const isLibraryFile = (sf: ts.SourceFile) =>
 
 const isProjectDecl = (d: ts.Node) => !isLibraryFile(d.getSourceFile());
 
+// ES builtins are inert; so are these globals and their members. Every other
+// library symbol is code the walk cannot see into.
+const ES_LIB_RE = /\/typescript\/lib\/lib\.(?:es|decorators)[\w.]*\.d\.ts$/;
+const INERT_LIBRARY_NAMES = new Set(["console", "Console", "URL", "URLSearchParams"]);
+
+function isInertLibraryDecl(decl: ts.Node): boolean {
+    const sf = decl.getSourceFile();
+    if (ES_LIB_RE.test(sf.fileName.replace(/\\/g, "/"))) return true;
+    const name = (decl as ts.NamedDeclaration).name;
+    if (name && ts.isIdentifier(name) && INERT_LIBRARY_NAMES.has(name.text)) return true;
+    const parent = decl.parent as ts.NamedDeclaration | undefined;
+    return (
+        !!parent &&
+        !!parent.name &&
+        ts.isIdentifier(parent.name) &&
+        INERT_LIBRARY_NAMES.has(parent.name.text)
+    );
+}
+
+function inTypePosition(n: ts.Node): boolean {
+    for (let p: ts.Node | undefined = n.parent; p; p = p.parent) if (ts.isTypeNode(p)) return true;
+    return false;
+}
+
+/** `Response.json(body)` / `NextResponse.json(body, { status })`: no headers can ride along. */
+function isInertJsonCall(checker: ts.TypeChecker, n: ts.CallExpression): boolean {
+    const callee = n.expression;
+    if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== "json") return false;
+    if (n.arguments.length > 2 || !ts.isIdentifier(callee.expression)) return false;
+    // A second argument may only set the status: headers (and so Cache-Control) cannot ride along.
+    const init = n.arguments[1];
+    if (
+        init &&
+        !(
+            ts.isObjectLiteralExpression(init) &&
+            init.properties.every(
+                (p) =>
+                    ts.isPropertyAssignment(p) &&
+                    ts.isIdentifier(p.name) &&
+                    (p.name.text === "status" || p.name.text === "statusText"),
+            )
+        )
+    )
+        return false;
+    return resolveDeclarations(checker, callee.expression).some((d) => {
+        const dn = (d as ts.NamedDeclaration).name;
+        return (
+            isLibraryFile(d.getSourceFile()) &&
+            !!dn &&
+            ts.isIdentifier(dn) &&
+            (dn.text === "Response" || dn.text === "NextResponse")
+        );
+    });
+}
+
 const PRIMITIVE_FLAGS =
     ts.TypeFlags.StringLike |
     ts.TypeFlags.NumberLike |
@@ -609,7 +713,8 @@ function mayRunProjectCode(checker: ts.TypeChecker, type: ts.Type, depth = 0): b
         return checker
             .getTypeArguments(type as ts.TypeReference)
             .some((t) => mayRunProjectCode(checker, t, depth + 1));
-    if (type.getCallSignatures().length > 0) return true;
+    if (type.getCallSignatures().some((sig) => !sig.declaration || isProjectDecl(sig.declaration)))
+        return true;
     for (const prop of checker.getPropertiesOfType(type)) {
         const decls = prop.declarations ?? [];
         if (!decls.some(isProjectDecl)) continue;
@@ -731,7 +836,7 @@ function guardState(
     depth: number,
     probe: Probe = GUARD_PROBE,
 ): GuardState {
-    if (probe.inline(node)) return "guarded";
+    if (probe.inline(node, checker)) return "guarded";
     if (depth >= MAX_GUARD_DEPTH) return "limit";
     let result: GuardState = "unguarded";
     const followFns = (fns: ts.Node[]) => {
@@ -751,7 +856,23 @@ function guardState(
     };
     // Dispatch and implicit execution the walk cannot resolve statically: a
     // proof of absence may not rest on them, so each gives limit.
+    const inertIds = new Set<ts.Node>();
     const strictChecks = (n: ts.Node) => {
+        // Fail closed: a reference to a library symbol the walk cannot see into
+        // (anything but an ES builtin or an inert global) makes the verdict limit.
+        if (ts.isCallExpression(n) && isInertJsonCall(checker, n)) {
+            const callee = n.expression as ts.PropertyAccessExpression;
+            inertIds.add(callee.expression);
+            inertIds.add(callee.name);
+        }
+        if (ts.isIdentifier(n) && !inertIds.has(n) && !inTypePosition(n)) {
+            // A symbol with an ES declaration is an ES builtin even when other lib
+            // files (scripthost, dom) add members to the same interface.
+            const libDecls = resolveDeclarations(checker, n).filter((d) =>
+                isLibraryFile(d.getSourceFile()),
+            );
+            if (libDecls.length > 0 && !libDecls.some(isInertLibraryDecl)) markLimit();
+        }
         if (ts.isCallExpression(n)) {
             // A method of a class can be overridden by a subclass.
             for (const decl of resolveDeclarations(checker, n.expression)) {
@@ -801,7 +922,7 @@ function guardState(
         // A proof of absence counts every call: an unawaited gate still runs.
         if (!probe.strict && requireConsumed && !isConsumed(requireConsumed)) return;
         for (const decl of resolveDeclarations(checker, ref)) {
-            if (probe.isTarget(decl)) {
+            if (probe.isTarget(decl, checker)) {
                 result = "guarded";
                 return;
             }
@@ -968,15 +1089,11 @@ function calleeName(call: ts.CallExpression): string | undefined {
     return undefined;
 }
 
-const COMPARISONS = new Set([
-    ts.SyntaxKind.EqualsEqualsToken,
-    ts.SyntaxKind.EqualsEqualsEqualsToken,
-    ts.SyntaxKind.ExclamationEqualsToken,
-    ts.SyntaxKind.ExclamationEqualsEqualsToken,
-    ts.SyntaxKind.LessThanToken,
-    ts.SyntaxKind.LessThanEqualsToken,
-    ts.SyntaxKind.GreaterThanToken,
-    ts.SyntaxKind.GreaterThanEqualsToken,
+const EQUALITY_NEGATED = new Map<ts.SyntaxKind, boolean>([
+    [ts.SyntaxKind.EqualsEqualsToken, false],
+    [ts.SyntaxKind.EqualsEqualsEqualsToken, false],
+    [ts.SyntaxKind.ExclamationEqualsToken, true],
+    [ts.SyntaxKind.ExclamationEqualsEqualsToken, true],
 ]);
 
 const isLiteralOperand = (e: ts.Expression): boolean =>
@@ -987,44 +1104,58 @@ const isLiteralOperand = (e: ts.Expression): boolean =>
     e.kind === ts.SyntaxKind.NullKeyword ||
     (ts.isIdentifier(e) && e.text === "undefined");
 
-/** A property / element chain whose root identifier is in `roots`. */
-function rootedIn(e: ts.Expression, roots: Set<string>): boolean {
-    let x: ts.Expression = e;
-    while (
-        ts.isPropertyAccessExpression(x) ||
-        ts.isNonNullExpression(x) ||
-        ts.isParenthesizedExpression(x) ||
-        (ts.isElementAccessExpression(x) && isLiteralOperand(x.argumentExpression))
-    )
-        x = x.expression;
-    return ts.isIdentifier(x) && roots.has(x.text);
+/** Text of a property / element chain rooted in a derived identifier; undefined for anything else. */
+function chainText(e: ts.Expression, derived: Set<string>): string | undefined {
+    if (ts.isParenthesizedExpression(e) || ts.isNonNullExpression(e))
+        return chainText(e.expression, derived);
+    if (ts.isIdentifier(e)) return derived.has(e.text) ? e.text : undefined;
+    if (ts.isPropertyAccessExpression(e)) {
+        const base = chainText(e.expression, derived);
+        return base === undefined ? undefined : `${base}.${e.name.text}`;
+    }
+    if (ts.isElementAccessExpression(e) && isLiteralOperand(e.argumentExpression)) {
+        const base = chainText(e.expression, derived);
+        return base === undefined ? undefined : `${base}[${e.argumentExpression.getText()}]`;
+    }
+    return undefined;
 }
 
+type Leaf = { text: string; negated: boolean };
+
 /**
- * A rejecting condition whose truth is decided only by derived values: `!`,
- * `&&`, `||`, comparisons with literals, and property chains rooted in a
- * derived identifier. Any call, or an identifier that is not derived, makes it
- * a condition the entitlement does not control (`Math.random() < 0 && x`).
+ * The leaves of a rejecting condition, or undefined when it has any form
+ * outside this closed grammar: `!`, `&&`, `||`, a derived chain, or a derived
+ * chain compared with a literal. A call, a non-derived identifier, a chain
+ * compared with itself or with another chain, all give undefined (unproven).
  */
-function conditionDecidedBy(e: ts.Expression, derived: Set<string>): boolean {
-    if (ts.isParenthesizedExpression(e)) return conditionDecidedBy(e.expression, derived);
+function conditionLeaves(
+    e: ts.Expression,
+    derived: Set<string>,
+    negated = false,
+): Leaf[] | undefined {
+    if (ts.isParenthesizedExpression(e)) return conditionLeaves(e.expression, derived, negated);
     if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken)
-        return conditionDecidedBy(e.operand, derived);
+        return conditionLeaves(e.operand, derived, !negated);
     if (ts.isBinaryExpression(e)) {
         const op = e.operatorToken.kind;
-        if (op === ts.SyntaxKind.AmpersandAmpersandToken || op === ts.SyntaxKind.BarBarToken)
-            return conditionDecidedBy(e.left, derived) && conditionDecidedBy(e.right, derived);
-        if (COMPARISONS.has(op)) {
-            const side = (x: ts.Expression) => isLiteralOperand(x) || rootedIn(x, derived);
-            return (
-                side(e.left) &&
-                side(e.right) &&
-                (rootedIn(e.left, derived) || rootedIn(e.right, derived))
-            );
+        if (op === ts.SyntaxKind.AmpersandAmpersandToken || op === ts.SyntaxKind.BarBarToken) {
+            const l = conditionLeaves(e.left, derived, negated);
+            const r = conditionLeaves(e.right, derived, negated);
+            return l && r ? [...l, ...r] : undefined;
         }
-        return false;
+        const eq = EQUALITY_NEGATED.get(op);
+        if (eq !== undefined) {
+            const lc = chainText(e.left, derived);
+            const rc = chainText(e.right, derived);
+            if (lc !== undefined && isLiteralOperand(e.right))
+                return [{ text: `${lc}==${e.right.getText()}`, negated: negated !== eq }];
+            if (rc !== undefined && isLiteralOperand(e.left))
+                return [{ text: `${rc}==${e.left.getText()}`, negated: negated !== eq }];
+        }
+        return undefined;
     }
-    return rootedIn(e, derived);
+    const text = chainText(e, derived);
+    return text === undefined ? undefined : [{ text, negated }];
 }
 
 const callsIn = (n: ts.Node): ts.CallExpression[] => {
@@ -1047,14 +1178,29 @@ const identifiersIn = (n: ts.Node): string[] => {
     return out;
 };
 
+/** `if (cond) { <statements>; throw ... }` with no else: the only rejecting shape. */
+function throwsOutright(st: ts.IfStatement): boolean {
+    if (st.elseStatement) return false;
+    const then = st.thenStatement;
+    if (ts.isThrowStatement(then)) return true;
+    if (!ts.isBlock(then) || then.statements.length === 0) return false;
+    const last = then.statements[then.statements.length - 1];
+    return (
+        ts.isThrowStatement(last) &&
+        then.statements.every(
+            (x) =>
+                ts.isExpressionStatement(x) || ts.isVariableStatement(x) || ts.isThrowStatement(x),
+        )
+    );
+}
+
 /**
- * A gate is live when its own top-level statements, in order, still do the
- * work: a delegating gate awaits (or returns) a call to the gate it delegates
- * to; a rejecting gate awaits a named call, derives values from its result,
- * and has a top-level `if` that throws, in the same block and outside any
- * `try`, on a condition decided only by those values. Nothing nested under
- * another condition or inside a `try` counts, and nothing after an earlier
- * unconditional exit.
+ * A gate is live only when its body is entirely forms this analyser understands,
+ * in order: `const` declarations, awaited calls, `if` statements that throw on a
+ * condition decided by values derived from an awaited named call, and a final
+ * `return`. Any other statement form (`try`, `switch`, loops, labels, `let`,
+ * assignments, a call that is not awaited) makes the gate unproven, never live.
+ * A delegating gate awaits (or returns) a call to the gate it delegates to.
  */
 function entitlementGateIsLive(
     fn: ts.FunctionDeclaration,
@@ -1063,68 +1209,66 @@ function entitlementGateIsLive(
     const body = fn.body;
     if (!body) return false;
     const derived = new Set<string>();
-    let delegates = false;
-    let rejecting = false;
+    const calledTop = new Set<string>();
     const named = (c: ts.CallExpression) => {
         const name = calleeName(c);
         return name !== undefined && g.calls.includes(name);
     };
-    const unwrap = (e: ts.Expression | undefined): ts.Expression | undefined => {
+    const callOf = (e: ts.Expression | undefined): ts.CallExpression | undefined => {
         let x = e;
         while (x && (ts.isParenthesizedExpression(x) || ts.isAwaitExpression(x))) x = x.expression;
-        return x;
+        return x && ts.isCallExpression(x) ? x : undefined;
     };
-    const calledTop = new Set<string>();
-    for (const st of body.statements) {
+    let delegates = false;
+    let rejecting = 0;
+    const statements = body.statements;
+    for (let idx = 0; idx < statements.length; idx++) {
+        const st = statements[idx];
         for (const c of callsIn(st)) {
             const n = calleeName(c);
             if (n) calledTop.add(n);
         }
         if (ts.isVariableStatement(st)) {
+            if (!(st.declarationList.flags & ts.NodeFlags.Const)) return false;
             for (const d of st.declarationList.declarations) {
-                if (!ts.isIdentifier(d.name) || !d.initializer) continue;
-                const awaitedNamed =
-                    ts.isAwaitExpression(d.initializer) &&
-                    ((x) => !!x && ts.isCallExpression(x) && named(x))(unwrap(d.initializer));
+                if (!ts.isIdentifier(d.name) || !d.initializer) return false;
+                const call = callOf(d.initializer);
+                const awaitedNamed = ts.isAwaitExpression(d.initializer) && !!call && named(call);
                 const fromDerived = identifiersIn(d.initializer).some((id) => derived.has(id));
                 if (awaitedNamed || (fromDerived && callsIn(d.initializer).some(named)))
                     derived.add(d.name.text);
-                else if (fromDerived && rootedIn(d.initializer, derived)) derived.add(d.name.text);
+                else if (fromDerived && chainText(d.initializer, derived) !== undefined)
+                    derived.add(d.name.text);
             }
-        }
-        if (ts.isExpressionStatement(st) || ts.isReturnStatement(st)) {
-            const e = st.expression;
-            const x = unwrap(e);
+        } else if (ts.isExpressionStatement(st)) {
+            if (!ts.isAwaitExpression(st.expression)) return false;
+            const call = callOf(st.expression);
+            if (!call) return false;
+            if (named(call)) delegates = true;
+        } else if (ts.isIfStatement(st)) {
+            const leaves = conditionLeaves(st.expression, derived);
+            if (!leaves || leaves.length === 0 || !throwsOutright(st)) return false;
             if (
-                e &&
-                (ts.isReturnStatement(st) || ts.isAwaitExpression(e)) &&
-                x &&
-                ts.isCallExpression(x) &&
-                named(x)
+                leaves.some((a) => leaves.some((b) => a.text === b.text && a.negated !== b.negated))
             )
-                delegates = true;
-        }
-        if (
-            ts.isIfStatement(st) &&
-            constantCondition(st.expression) === undefined &&
-            conditionDecidedBy(st.expression, derived) &&
-            (ts.isThrowStatement(st.thenStatement) ||
-                (ts.isBlock(st.thenStatement) &&
-                    st.thenStatement.statements.some(ts.isThrowStatement)))
-        )
-            rejecting = true;
-        if (isExit(st)) break;
+                return false;
+            rejecting++;
+        } else if (ts.isReturnStatement(st)) {
+            if (idx !== statements.length - 1) return false;
+            const call = callOf(st.expression);
+            if (call && named(call)) delegates = true;
+        } else return false;
     }
     if (!g.calls.every((c) => calledTop.has(c))) return false;
-    return g.rejects ? rejecting && derived.size > 0 : delegates;
+    return g.rejects ? rejecting > 0 && derived.size > 0 : delegates;
 }
 
-/** CACHE_SYMBOLS names that no longer resolve to a declaration inside their package ("module#name"). */
+/** CACHE_SYMBOLS and RESOLVER_LIBRARY_SYMBOLS names that no longer resolve to a declaration inside their package ("module#name"). */
 export function verifyCacheSymbols(rootArg: string): string[] {
     const root = resolve(rootArg);
     const options = compilerOptions(root);
     const bad: string[] = [];
-    for (const c of CACHE_SYMBOLS) {
+    for (const c of [...CACHE_SYMBOLS, ...RESOLVER_LIBRARY_SYMBOLS]) {
         const resolved = ts.resolveModuleName(
             c.module,
             join(root, "src/__cache_probe__.ts"),

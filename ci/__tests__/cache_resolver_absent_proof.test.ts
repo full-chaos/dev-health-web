@@ -145,6 +145,7 @@ const TSCONFIG = JSON.stringify({
         baseUrl: ".",
         paths: {
             "next/cache": ["node_modules/next/cache.d.ts"],
+            "next/headers": ["node_modules/next/headers.d.ts"],
             react: ["node_modules/react/index.d.ts"],
         },
     },
@@ -153,6 +154,8 @@ const LIBS = {
     "tsconfig.json": TSCONFIG,
     "node_modules/next/cache.d.ts": NEXT_CACHE,
     "node_modules/react/index.d.ts": REACT,
+    "node_modules/next/headers.d.ts":
+        "export function cookies(): Promise<{ get(n: string): string | undefined }>;\nexport function headers(): Promise<{ get(n: string): string | null }>;\nexport function draftMode(): Promise<{ isEnabled: boolean }>;\n",
 };
 
 function tree(files: Record<string, string>): string {
@@ -212,7 +215,7 @@ describe("the cache walk", () => {
             viaFetchNext: "reachable",
             viaHeader: "reachable",
             plain: "not_reachable",
-            plainFetch: "not_reachable",
+            plainFetch: "limit",
         });
     });
 
@@ -335,7 +338,7 @@ describe("the resolver walk", () => {
                 "/api/body": "reachable",
                 "/api/query": "reachable",
                 "/api/params/[id]": "reachable",
-                "/api/none": "not_reachable",
+                "/api/none": "limit",
             });
         } finally {
             rmSync(dir, { recursive: true, force: true });

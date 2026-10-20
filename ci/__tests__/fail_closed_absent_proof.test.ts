@@ -168,6 +168,7 @@ describe("the cache walk fails closed", () => {
                     "export async function builtins() { return JSON.stringify({ a: [1, 2] }) + String(Math.max(1, 2)) + new Date(0).getTime(); }",
                     "export async function logs() { console.log('x'); }",
                     "export async function bodyOnly() { return Response.json({ status: 'ok', ts: Date.now() }); }",
+                    "export async function bodyStatus() { return Response.json({ a: 1 }, { status: 200 }); }",
                     "export async function urlOnly() { return new URL('http://x/y').pathname; }",
                 ]),
             },
@@ -178,6 +179,7 @@ describe("the cache walk fails closed", () => {
             builtins: "not_reachable",
             logs: "not_reachable",
             bodyOnly: "not_reachable",
+            bodyStatus: "not_reachable",
             urlOnly: "not_reachable",
         });
     });

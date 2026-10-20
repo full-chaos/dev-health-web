@@ -358,9 +358,10 @@ function duplicateCredentialClassViolations(credentialClassesDocument: unknown):
 
 /** "" / "   " / [] / {}: present on the row but saying nothing, which is absent in all but name. */
 function isEmptyValue(v: unknown): boolean {
+    if (v === null) return false;
     if (typeof v === "string") return v.trim() === "";
-    if (Array.isArray(v)) return v.length === 0;
-    if (v !== null && typeof v === "object") return Object.keys(v).length === 0;
+    if (Array.isArray(v)) return v.every((x) => x === null || isEmptyValue(x));
+    if (typeof v === "object") return Object.values(v).every((x) => x === null || isEmptyValue(x));
     return false;
 }
 
