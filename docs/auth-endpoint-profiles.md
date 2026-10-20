@@ -66,21 +66,26 @@ or params). Their values are prose the walk cannot derive, so a `null` with its
 "absent" needs the proof. `verifyCacheSymbols` and `verifyResolverSymbols` fail
 the gate when a listed name stops resolving. `action` and `disclosure_behavior`
 have no predicate yet: they may not be absent, and stay `null` with a
-`<field>:` gaps entry. A gate is verified live by `entitlementGateIsLive`, which is closed
-by construction: its body may only hold `const` declarations, awaited calls,
-`if` statements that throw on a condition built from values derived from the
-awaited named call (a chain, or a chain compared with a literal, joined by
-`!`, `&&`, `||`), and a final `return`. Any other form (`try`, `switch`, loops,
-labels, `let`, a reassignment, a self comparison, the same value in both
-polarities) is unproven, never live.
+`<field>:` gaps entry. A gate is verified live by `entitlementGateIsLive`, in one closed shape: a
+`const` from an awaited known call, then `if (<cond>) throw`, then an optional
+`return`, where `<cond>` is a `||` of leaves, each `!chain` or a chain compared
+with a literal, with every chain derived from that call. No `&&`, no `!` on
+anything but a chain, no bare truthiness, no `try`, `switch`, loop, label,
+`let` or reassignment: anything else is not live.
 
-The walk fails closed in the same way: a reference to a library symbol that is
-not an ES builtin or an inert global (`console`, `URL`, `URLSearchParams`,
-`Response.json(body, { status })`) gives `limit`, so an aliased `fetch`, a
-`Request`, `Headers` or any form the analyser does not model never proves
-absence. Request reads are decided by the type of the value (`Request`,
-`NextRequest`, `Headers`), and cache and request targets match by declaration
-identity, so a re-export under another name still counts.
+"Absent" rests on an allowlist, not on a list of hazards. A verdict is
+`not_reachable` only when the whole handler is provably inert: literals,
+`const` bindings of inert values, primitive parameters, plain object and array
+literals, operators on primitive operands, `if` / `else`, `return`, and
+`throw new Error(<inert>)`. It holds no call at all (a global or a dependency
+can be patched, so no builtin is trusted), no property read on a non-literal,
+no `await`, no spread and no getter. Anything else is `limit`, so an aliased
+`fetch`, a patched `console`, a `valueOf`, an interface-typed getter or a
+`Proxy` trap can never produce an absence. The call walk still finds
+`reachable`; request reads are decided by the type of the value (`Request`,
+`NextRequest`, `Headers`), and cache targets match by declaration identity.
+`GET /health` calls `NextResponse.json`, so its `token_shape` is `null` with a
+gaps entry (manual review), not absent.
 
 ## Coverage
 

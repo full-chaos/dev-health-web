@@ -182,6 +182,7 @@
             "public_rationale": "Liveness/readiness probe for the container HEALTHCHECK and load balancers, which cannot present a credential. Returns only {status, ts}: no organization, user, version or configuration state, so an unauthenticated caller learns nothing beyond the fact that the Next.js server is up.",
             "accepted_credential_classes": [],
             "primary_validator": null,
+            "token_shape": null,
             "reachable_validators": [],
             "action": null,
             "resource_resolver": null,
@@ -196,7 +197,8 @@
                 "action: searched the source from src/app/health/route.ts:12 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
                 "resource_resolver: searched the source from src/app/health/route.ts:12 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
                 "current_state_cache_behavior: searched the source from src/app/health/route.ts:12 to the next export for a cache directive (case-insensitive) (pattern (?i)Cache-Control|cache:|revalidate|no-store); not determined.",
-                "entitlement_requirement: searched the source from src/app/health/route.ts:12 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "entitlement_requirement: searched the source from src/app/health/route.ts:12 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined.",
+                "token_shape: the handler calls NextResponse.json and new Date(), so the absence proof (a handler holding no call at all) does not hold; the route reads no credential in the source, but that is not proven by the call walk. Manual review: absent was recorded before the proof required no call; not determined."
             ]
         },
         {

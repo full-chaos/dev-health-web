@@ -630,61 +630,6 @@ const isLibraryFile = (sf: ts.SourceFile) =>
 
 const isProjectDecl = (d: ts.Node) => !isLibraryFile(d.getSourceFile());
 
-// ES builtins are inert; so are these globals and their members. Every other
-// library symbol is code the walk cannot see into.
-const ES_LIB_RE = /\/typescript\/lib\/lib\.(?:es|decorators)[\w.]*\.d\.ts$/;
-const INERT_LIBRARY_NAMES = new Set(["console", "Console", "URL", "URLSearchParams"]);
-
-function isInertLibraryDecl(decl: ts.Node): boolean {
-    const sf = decl.getSourceFile();
-    if (ES_LIB_RE.test(sf.fileName.replace(/\\/g, "/"))) return true;
-    const name = (decl as ts.NamedDeclaration).name;
-    if (name && ts.isIdentifier(name) && INERT_LIBRARY_NAMES.has(name.text)) return true;
-    const parent = decl.parent as ts.NamedDeclaration | undefined;
-    return (
-        !!parent &&
-        !!parent.name &&
-        ts.isIdentifier(parent.name) &&
-        INERT_LIBRARY_NAMES.has(parent.name.text)
-    );
-}
-
-function inTypePosition(n: ts.Node): boolean {
-    for (let p: ts.Node | undefined = n.parent; p; p = p.parent) if (ts.isTypeNode(p)) return true;
-    return false;
-}
-
-/** `Response.json(body)` / `NextResponse.json(body, { status })`: no headers can ride along. */
-function isInertJsonCall(checker: ts.TypeChecker, n: ts.CallExpression): boolean {
-    const callee = n.expression;
-    if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== "json") return false;
-    if (n.arguments.length > 2 || !ts.isIdentifier(callee.expression)) return false;
-    // A second argument may only set the status: headers (and so Cache-Control) cannot ride along.
-    const init = n.arguments[1];
-    if (
-        init &&
-        !(
-            ts.isObjectLiteralExpression(init) &&
-            init.properties.every(
-                (p) =>
-                    ts.isPropertyAssignment(p) &&
-                    ts.isIdentifier(p.name) &&
-                    (p.name.text === "status" || p.name.text === "statusText"),
-            )
-        )
-    )
-        return false;
-    return resolveDeclarations(checker, callee.expression).some((d) => {
-        const dn = (d as ts.NamedDeclaration).name;
-        return (
-            isLibraryFile(d.getSourceFile()) &&
-            !!dn &&
-            ts.isIdentifier(dn) &&
-            (dn.text === "Response" || dn.text === "NextResponse")
-        );
-    });
-}
-
 const PRIMITIVE_FLAGS =
     ts.TypeFlags.StringLike |
     ts.TypeFlags.NumberLike |
@@ -856,23 +801,7 @@ function guardState(
     };
     // Dispatch and implicit execution the walk cannot resolve statically: a
     // proof of absence may not rest on them, so each gives limit.
-    const inertIds = new Set<ts.Node>();
     const strictChecks = (n: ts.Node) => {
-        // Fail closed: a reference to a library symbol the walk cannot see into
-        // (anything but an ES builtin or an inert global) makes the verdict limit.
-        if (ts.isCallExpression(n) && isInertJsonCall(checker, n)) {
-            const callee = n.expression as ts.PropertyAccessExpression;
-            inertIds.add(callee.expression);
-            inertIds.add(callee.name);
-        }
-        if (ts.isIdentifier(n) && !inertIds.has(n) && !inTypePosition(n)) {
-            // A symbol with an ES declaration is an ES builtin even when other lib
-            // files (scripthost, dom) add members to the same interface.
-            const libDecls = resolveDeclarations(checker, n).filter((d) =>
-                isLibraryFile(d.getSourceFile()),
-            );
-            if (libDecls.length > 0 && !libDecls.some(isInertLibraryDecl)) markLimit();
-        }
         if (ts.isCallExpression(n)) {
             // A method of a class can be overridden by a subclass.
             for (const decl of resolveDeclarations(checker, n.expression)) {
@@ -1089,13 +1018,6 @@ function calleeName(call: ts.CallExpression): string | undefined {
     return undefined;
 }
 
-const EQUALITY_NEGATED = new Map<ts.SyntaxKind, boolean>([
-    [ts.SyntaxKind.EqualsEqualsToken, false],
-    [ts.SyntaxKind.EqualsEqualsEqualsToken, false],
-    [ts.SyntaxKind.ExclamationEqualsToken, true],
-    [ts.SyntaxKind.ExclamationEqualsEqualsToken, true],
-]);
-
 const isLiteralOperand = (e: ts.Expression): boolean =>
     ts.isStringLiteralLike(e) ||
     ts.isNumericLiteral(e) ||
@@ -1120,42 +1042,38 @@ function chainText(e: ts.Expression, derived: Set<string>): string | undefined {
     return undefined;
 }
 
-type Leaf = { text: string; negated: boolean };
+const EQUALITY_OPS = new Set([
+    ts.SyntaxKind.EqualsEqualsToken,
+    ts.SyntaxKind.EqualsEqualsEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsEqualsToken,
+]);
 
 /**
- * The leaves of a rejecting condition, or undefined when it has any form
- * outside this closed grammar: `!`, `&&`, `||`, a derived chain, or a derived
- * chain compared with a literal. A call, a non-derived identifier, a chain
- * compared with itself or with another chain, all give undefined (unproven).
+ * Whether a rejecting condition is in the one closed shape: a `||` of leaves,
+ * each `!chain` or `chain ==|===|!=|!== literal`, every chain rooted in a
+ * derived value. No `&&` (a conjunction can be written so it never holds), no
+ * `!` on anything but a chain, no bare truthiness, no chain against a chain.
  */
-function conditionLeaves(
-    e: ts.Expression,
-    derived: Set<string>,
-    negated = false,
-): Leaf[] | undefined {
-    if (ts.isParenthesizedExpression(e)) return conditionLeaves(e.expression, derived, negated);
-    if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken)
-        return conditionLeaves(e.operand, derived, !negated);
+function isClosedCondition(e: ts.Expression, derived: Set<string>): boolean {
+    if (ts.isParenthesizedExpression(e)) return isClosedCondition(e.expression, derived);
     if (ts.isBinaryExpression(e)) {
         const op = e.operatorToken.kind;
-        if (op === ts.SyntaxKind.AmpersandAmpersandToken || op === ts.SyntaxKind.BarBarToken) {
-            const l = conditionLeaves(e.left, derived, negated);
-            const r = conditionLeaves(e.right, derived, negated);
-            return l && r ? [...l, ...r] : undefined;
-        }
-        const eq = EQUALITY_NEGATED.get(op);
-        if (eq !== undefined) {
+        if (op === ts.SyntaxKind.BarBarToken)
+            return isClosedCondition(e.left, derived) && isClosedCondition(e.right, derived);
+        if (EQUALITY_OPS.has(op)) {
             const lc = chainText(e.left, derived);
             const rc = chainText(e.right, derived);
-            if (lc !== undefined && isLiteralOperand(e.right))
-                return [{ text: `${lc}==${e.right.getText()}`, negated: negated !== eq }];
-            if (rc !== undefined && isLiteralOperand(e.left))
-                return [{ text: `${rc}==${e.left.getText()}`, negated: negated !== eq }];
+            return (
+                (lc !== undefined && rc === undefined && isLiteralOperand(e.right)) ||
+                (rc !== undefined && lc === undefined && isLiteralOperand(e.left))
+            );
         }
-        return undefined;
+        return false;
     }
-    const text = chainText(e, derived);
-    return text === undefined ? undefined : [{ text, negated }];
+    if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken)
+        return chainText(e.operand, derived) !== undefined;
+    return false;
 }
 
 const callsIn = (n: ts.Node): ts.CallExpression[] => {
@@ -1246,12 +1164,7 @@ function entitlementGateIsLive(
             if (!call) return false;
             if (named(call)) delegates = true;
         } else if (ts.isIfStatement(st)) {
-            const leaves = conditionLeaves(st.expression, derived);
-            if (!leaves || leaves.length === 0 || !throwsOutright(st)) return false;
-            if (
-                leaves.some((a) => leaves.some((b) => a.text === b.text && a.negated !== b.negated))
-            )
-                return false;
+            if (!isClosedCondition(st.expression, derived) || !throwsOutright(st)) return false;
             rejecting++;
         } else if (ts.isReturnStatement(st)) {
             if (idx !== statements.length - 1) return false;
@@ -1348,6 +1261,186 @@ function worst(states: GuardState[]): GuardState {
           : "unguarded";
 }
 
+const ARITHMETIC_OPS = new Set<ts.SyntaxKind>([
+    ts.SyntaxKind.PlusToken,
+    ts.SyntaxKind.MinusToken,
+    ts.SyntaxKind.AsteriskToken,
+    ts.SyntaxKind.SlashToken,
+    ts.SyntaxKind.PercentToken,
+    ts.SyntaxKind.LessThanToken,
+    ts.SyntaxKind.LessThanEqualsToken,
+    ts.SyntaxKind.GreaterThanToken,
+    ts.SyntaxKind.GreaterThanEqualsToken,
+    ts.SyntaxKind.EqualsEqualsToken,
+    ts.SyntaxKind.EqualsEqualsEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsToken,
+    ts.SyntaxKind.ExclamationEqualsEqualsToken,
+    ts.SyntaxKind.AmpersandAmpersandToken,
+    ts.SyntaxKind.BarBarToken,
+    ts.SyntaxKind.QuestionQuestionToken,
+]);
+
+function isPrimitiveType(type: ts.Type): boolean {
+    if (type.flags & PRIMITIVE_FLAGS) return true;
+    return type.isUnion() && type.types.every(isPrimitiveType);
+}
+
+/**
+ * The ALLOWLIST behind every "not_reachable". A handler is provably inert only
+ * when all of it is: literals; `const` bindings of inert values; primitive
+ * parameters; plain object and array literals; operators on primitive operands;
+ * `if` / `else`, `return`, blocks; and `throw new Error(<inert>)`. It holds no
+ * call (a global or a dependency can be patched, so no builtin is trusted), no
+ * property read on a non-literal, no `await`, no spread, no getter, and no
+ * operator on a non-primitive. Anything else is unproven.
+ */
+function isInertHandler(checker: ts.TypeChecker, fn: ts.Node): boolean {
+    if (!(
+        ts.isFunctionDeclaration(fn) ||
+        ts.isFunctionExpression(fn) ||
+        ts.isArrowFunction(fn) ||
+        ts.isMethodDeclaration(fn)
+    ))
+        return false;
+    const seen = new Set<ts.Node>();
+    const primitive = (e: ts.Expression) => isPrimitiveType(checker.getTypeAtLocation(e));
+    const inertExpr = (e: ts.Expression): boolean => {
+        if (
+            ts.isParenthesizedExpression(e) ||
+            ts.isAsExpression(e) ||
+            ts.isSatisfiesExpression(e) ||
+            ts.isNonNullExpression(e)
+        )
+            return inertExpr(e.expression);
+        if (
+            ts.isStringLiteralLike(e) ||
+            ts.isNumericLiteral(e) ||
+            ts.isBigIntLiteral(e) ||
+            e.kind === ts.SyntaxKind.TrueKeyword ||
+            e.kind === ts.SyntaxKind.FalseKeyword ||
+            e.kind === ts.SyntaxKind.NullKeyword
+        )
+            return true;
+        if (ts.isIdentifier(e)) {
+            if (e.text === "undefined") return true;
+            const decl = checker.getSymbolAtLocation(e)?.valueDeclaration;
+            if (!decl) return false;
+            if (ts.isParameter(decl))
+                return decl.parent === fn && isPrimitiveType(checker.getTypeAtLocation(decl));
+            if (
+                ts.isVariableDeclaration(decl) &&
+                ts.isVariableDeclarationList(decl.parent) &&
+                decl.parent.flags & ts.NodeFlags.Const &&
+                decl.initializer &&
+                decl.pos >= fn.pos &&
+                decl.end <= fn.end
+            ) {
+                if (seen.has(decl)) return false;
+                seen.add(decl);
+                const ok = inertExpr(decl.initializer);
+                seen.delete(decl);
+                return ok;
+            }
+            return false;
+        }
+        if (ts.isTemplateExpression(e))
+            return e.templateSpans.every(
+                (sp) => inertExpr(sp.expression) && primitive(sp.expression),
+            );
+        if (ts.isObjectLiteralExpression(e))
+            return e.properties.every(
+                (p) =>
+                    ts.isPropertyAssignment(p) &&
+                    (ts.isIdentifier(p.name) ||
+                        ts.isStringLiteralLike(p.name) ||
+                        ts.isNumericLiteral(p.name)) &&
+                    inertExpr(p.initializer),
+            );
+        if (ts.isArrayLiteralExpression(e))
+            return e.elements.every(
+                (x) => !ts.isSpreadElement(x) && !ts.isOmittedExpression(x) && inertExpr(x),
+            );
+        if (ts.isPrefixUnaryExpression(e))
+            return (
+                (e.operator === ts.SyntaxKind.ExclamationToken ||
+                    e.operator === ts.SyntaxKind.MinusToken ||
+                    e.operator === ts.SyntaxKind.PlusToken) &&
+                inertExpr(e.operand) &&
+                primitive(e.operand)
+            );
+        if (ts.isTypeOfExpression(e)) return inertExpr(e.expression);
+        if (ts.isBinaryExpression(e))
+            return (
+                ARITHMETIC_OPS.has(e.operatorToken.kind) &&
+                inertExpr(e.left) &&
+                inertExpr(e.right) &&
+                primitive(e.left) &&
+                primitive(e.right)
+            );
+        if (ts.isConditionalExpression(e))
+            return (
+                inertExpr(e.condition) &&
+                primitive(e.condition) &&
+                inertExpr(e.whenTrue) &&
+                inertExpr(e.whenFalse)
+            );
+        return false;
+    };
+    const inertStmt = (st: ts.Statement): boolean => {
+        if (ts.isBlock(st)) return st.statements.every(inertStmt);
+        if (ts.isEmptyStatement(st)) return true;
+        if (ts.isReturnStatement(st)) return !st.expression || inertExpr(st.expression);
+        if (ts.isVariableStatement(st))
+            return (
+                !!(st.declarationList.flags & ts.NodeFlags.Const) &&
+                st.declarationList.declarations.every(
+                    (d) => ts.isIdentifier(d.name) && !!d.initializer && inertExpr(d.initializer),
+                )
+            );
+        if (ts.isIfStatement(st))
+            return (
+                inertExpr(st.expression) &&
+                primitive(st.expression) &&
+                inertStmt(st.thenStatement) &&
+                (!st.elseStatement || inertStmt(st.elseStatement))
+            );
+        if (ts.isThrowStatement(st)) {
+            const x = st.expression;
+            if (
+                !ts.isNewExpression(x) ||
+                !ts.isIdentifier(x.expression) ||
+                x.expression.text !== "Error"
+            )
+                return false;
+            const decls = checker.getSymbolAtLocation(x.expression)?.declarations ?? [];
+            if (
+                !decls.some((d) =>
+                    /\/typescript\/lib\/lib\.es[\w.]*\.d\.ts$/.test(
+                        d.getSourceFile().fileName.replace(/\\/g, "/"),
+                    ),
+                )
+            )
+                return false;
+            const args = x.arguments ?? [];
+            return args.length <= 1 && args.every((a) => inertExpr(a) && primitive(a));
+        }
+        return false;
+    };
+    const f = fn as ts.FunctionLikeDeclaration;
+    if (
+        !f.parameters.every(
+            (p) =>
+                ts.isIdentifier(p.name) &&
+                !p.initializer &&
+                !p.dotDotDotToken &&
+                isPrimitiveType(checker.getTypeAtLocation(p)),
+        )
+    )
+        return false;
+    if (!f.body) return false;
+    return ts.isBlock(f.body) ? inertStmt(f.body) : inertExpr(f.body);
+}
+
 /** Every call-walk verdict for the function(s) behind one surface. */
 function walkFields(
     checker: ts.TypeChecker,
@@ -1360,12 +1453,18 @@ function walkFields(
     const takesInput =
         kind === "action" &&
         fns.some((fn) => ((fn as ts.FunctionLikeDeclaration).parameters?.length ?? 0) > 0);
+    // not_reachable needs the allowlist; a walk that found no hit proves nothing alone.
+    const inert = fns.every((fn) => isInertHandler(checker, fn));
+    const verdict = (s: GuardState): Reach => {
+        const r = toReach(s);
+        return r === "not_reachable" && !inert ? "limit" : r;
+    };
     return {
         ...toGuardFields(run()),
-        entitlement: toReach(run(ENTITLEMENT_PROBE)),
-        credential: toReach(run(CREDENTIAL_PROBE)),
-        cache: toReach(run(CACHE_PROBE)),
-        resolver: toReach(takesInput ? "guarded" : run(RESOLVER_PROBE)),
+        entitlement: verdict(run(ENTITLEMENT_PROBE)),
+        credential: verdict(run(CREDENTIAL_PROBE)),
+        cache: verdict(run(CACHE_PROBE)),
+        resolver: verdict(takesInput ? "guarded" : run(RESOLVER_PROBE)),
     };
 }
 
