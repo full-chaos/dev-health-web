@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchLLMModels, LLM_MODELS_PATH } from "./llmModelsClient";
+import { fetchLLMModels, LLM_MODELS_PATH } from "../llmModelsClient";
 
 afterEach(() => {
     vi.unstubAllGlobals();
