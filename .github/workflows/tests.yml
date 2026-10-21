@@ -174,7 +174,7 @@ jobs:
             # ops's main would change what this job validates against with
             # no web commit recording that it happened. Pin instead: the
             # exact ops commit this repo trusts lives in ONE place
-            # (ci/ops-contract.pin), a sparse checkout fetches ONLY the two
+            # (ci/ops-contract.pin), a sparse checkout fetches ONLY the listed
             # contract paths at that pin (not the whole ops repo), and
             # bumping the pin is the web-side commit that makes a contract
             # change visible and re-runs this gate against it. Both repos
@@ -247,7 +247,7 @@ jobs:
                   exit 1
             # actions/checkout, same pin as every other checkout step in this
             # repo -- public repo, no token needed. Sparse, non-cone mode:
-            # fetches exactly the two listed file paths, not a directory tree.
+            # fetches exactly the listed file paths, not a directory tree.
             - name: Checkout pinned ops-owned auth contract
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
@@ -259,6 +259,8 @@ jobs:
                       contracts/auth/v1/endpoint-profile.schema.json
                       contracts/auth/v1/credential-classes.json
                       contracts/auth/v1/credential-classes.schema.json
+                      contracts/auth/v1/jsonschema/endpoint-auth-profile.v1.schema.json
+                      contracts/auth/v1/jsonschema/principal.v1.schema.json
                   sparse-checkout-cone-mode: false
             # credential-classes.schema.json joined this list at the
             # merge-gate round: the gate harvested class ids from the
@@ -267,6 +269,10 @@ jobs:
             # lifecycle authority and allowed route set still passed.
             # Validating it needs its schema present, so a missing entry here
             # turns a real check back into an absent one.
+            # credential-classes.schema.json `$ref`s jsonschema/endpoint-auth-profile.v1.schema.json, which `$ref`s
+            # endpoint-profile.schema.json (above) and jsonschema/principal.v1.schema.json: the gate registers every
+            # jsonschema/*.schema.json beside it with ajv before compiling, so that closure is listed here and a
+            # file missing from it is a compile failure naming the reference, not a skipped check.
             - name: Run the web auth-profile CI gate (CHAOS-3273 guardrail G-1)
               env:
                   WEB_ENDPOINT_PROFILE_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/endpoint-profile.schema.json

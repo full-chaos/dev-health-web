@@ -99,8 +99,8 @@
  * exits 0 is a green build nobody reads the warning on.
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 // The 2020 entry point, NOT ajv's default export: the ops-owned schemas
 // declare Draft 2020-12 and the default export implements draft-07.
 import Ajv2020 from "ajv/dist/2020";
@@ -268,6 +268,12 @@ export interface GateInputs {
     credentialClassesDocument: unknown | null;
     /** The whole ops-owned credential-classes.schema.json document. */
     credentialClassesSchemaDocument: unknown | null;
+    /**
+     * The ops-owned schemas the credential-classes schema reaches through `$ref` (the endpoint-profile schema and the
+     * files under jsonschema/ beside it), registered with ajv by their `$id` before it is compiled. Absent or empty
+     * means no reference can resolve, and a schema that has one fails to compile -- a hard stop, never a skip.
+     */
+    referencedSchemaDocuments?: unknown[];
     /** Reads `line`..`lineEnd` (1-indexed, inclusive) of `path`, relative to `webRoot`. Returns null if unreadable. */
     readSource: (path: string, line: number, lineEnd: number) => string | null;
 }
@@ -295,11 +301,18 @@ function validateAgainstSchema(
     document: unknown,
     rule: Violation["rule"],
     label: string,
+    referencedSchemas: unknown[] = [],
 ): Violation[] {
     const ajv = new Ajv2020({ strict: false, allErrors: true });
     addFormats(ajv);
     let validate;
     try {
+        // Registered before the compile: ajv resolves a `$ref` to another schema file only through the registry, by
+        // the referenced schema's `$id`. A registration that fails (a duplicate or invalid `$id`) is as much a stop as
+        // a compile that fails.
+        for (const referenced of referencedSchemas) {
+            ajv.addSchema(referenced as object);
+        }
         validate = ajv.compile(schemaDocument as object);
     } catch (e) {
         // A schema this gate cannot compile is a hard stop, never a skip: a
@@ -398,6 +411,7 @@ export function runGate(input: GateInputs): Violation[] {
         schemaDocument,
         credentialClassesDocument,
         credentialClassesSchemaDocument,
+        referencedSchemaDocuments = [],
         readSource,
     } = input;
 
@@ -427,6 +441,7 @@ export function runGate(input: GateInputs): Violation[] {
                 credentialClassesDocument,
                 "closed_vocabulary",
                 "credential-classes.json",
+                referencedSchemaDocuments,
             ),
         );
     }
@@ -816,6 +831,49 @@ function loadJSONDocument(pathArg: string | null): unknown | null {
     }
 }
 
+/**
+ * Loads the ops-owned schemas the credential-classes schema reaches through `$ref`: every `*.schema.json` in the
+ * `jsonschema/` directory beside it. A file that cannot be read or parsed is a problem to report, never a file to
+ * leave out: leaving it out turns "a reference that resolves" into "a reference that silently does not". A missing
+ * directory is not a problem here (a schema without references needs none); a reference that then fails to resolve
+ * surfaces as the compile failure of validateAgainstSchema.
+ */
+export function loadReferencedSchemaDocuments(credentialClassesSchemaPath: string | null): {
+    documents: unknown[];
+    problems: string[];
+} {
+    const documents: unknown[] = [];
+    const problems: string[] = [];
+    if (!credentialClassesSchemaPath) return { documents, problems };
+    const dir = join(dirname(credentialClassesSchemaPath), "jsonschema");
+    if (!existsSync(dir)) return { documents, problems };
+    let names: string[];
+    try {
+        names = readdirSync(dir)
+            .filter((n) => n.endsWith(".schema.json"))
+            .sort();
+    } catch (e) {
+        return {
+            documents,
+            problems: [`${dir}: cannot list (${e instanceof Error ? e.message : String(e)})`],
+        };
+    }
+    for (const name of names) {
+        const path = join(dir, name);
+        try {
+            const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+            if (!isPlainObject(parsed)) {
+                problems.push(`${path}: not a JSON object`);
+                continue;
+            }
+            documents.push(parsed);
+        } catch (e) {
+            problems.push(`${path}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }
+    return { documents, problems };
+}
+
 function credentialClassIds(credentialClassesDocument: unknown): string[] | null {
     if (!isPlainObject(credentialClassesDocument)) return null;
     const classes = credentialClassesDocument.classes;
@@ -940,6 +998,16 @@ function main() {
     const schemaDocument = loadJSONDocument(schema);
     const credentialClassesDocument = loadJSONDocument(credentialClasses);
     const credentialClassesSchemaDocument = loadJSONDocument(credentialClassesSchema);
+    const referenced = loadReferencedSchemaDocuments(credentialClassesSchema);
+    if (referenced.problems.length > 0) {
+        process.stderr.write(
+            `FAIL: referenced ops-owned schema(s) unreadable, so the credential-classes schema cannot be compiled with its references resolved:\n  ${referenced.problems.join("\n  ")}\n`,
+        );
+        process.exit(1);
+    }
+    const referencedSchemaDocuments = isPlainObject(schemaDocument)
+        ? [schemaDocument, ...referenced.documents]
+        : referenced.documents;
     const classes = credentialClassIds(credentialClassesDocument);
     const serviceVocabulary = serviceVocabularyFrom(schemaDocument);
 
@@ -970,6 +1038,7 @@ function main() {
         schemaDocument,
         credentialClassesDocument,
         credentialClassesSchemaDocument,
+        referencedSchemaDocuments,
         readSource: (p, l, le) => readSourceFromDisk(root, p, l, le),
     });
 
