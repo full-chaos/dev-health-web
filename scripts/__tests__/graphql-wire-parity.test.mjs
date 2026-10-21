@@ -465,6 +465,36 @@ describe("the Go toolchain registrydump runs with", () => {
             "go1.30.2",
         ],
         ["a go line without a patch version", "module x\n\ngo 1.27\n", "auto"],
+        [
+            "a stale toolchain line under a newer go line",
+            "module x\n\ngo 1.27.3\ntoolchain go1.27.0\n",
+            "go1.27.3",
+        ],
+        [
+            "a stale toolchain line before a newer go line",
+            "module x\ntoolchain go1.27.0\ngo 1.27.3\n",
+            "go1.27.3",
+        ],
+        [
+            "a toolchain line equal to the go line",
+            "module x\n\ngo 1.27.3\ntoolchain go1.27.3\n",
+            "go1.27.3",
+        ],
+        [
+            "a newer pre-release toolchain line",
+            "module x\n\ngo 1.27.3\ntoolchain go1.28rc1\n",
+            "go1.28rc1",
+        ],
+        [
+            "a toolchain line above a go line without a patch version",
+            "module x\n\ngo 1.27\ntoolchain go1.27.2\n",
+            "go1.27.2",
+        ],
+        [
+            "a toolchain line below a go line without a patch version",
+            "module x\n\ngo 1.27\ntoolchain go1.26.4\n",
+            "auto",
+        ],
         ["toolchain default", "module x\n\ngo 1.27\ntoolchain default\n", "auto"],
         ["no go.mod at all", null, "auto"],
     ])("is derived from the checkout's go.mod: %s", (_name, goMod, want) => {

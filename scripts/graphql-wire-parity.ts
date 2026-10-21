@@ -292,29 +292,48 @@ export function resolveOpsPath(opsRoot: string, candidates: readonly string[]): 
 }
 
 /**
- * The GOTOOLCHAIN value for running ops code inside opsRoot: the `toolchain` line of its go.mod,
- * else its `go` line when that names a full version (go 1.27.3 -> go1.27.3), else "auto" (the go
- * command's own default: pick the toolchain go.mod asks for). Read from the pinned checkout so a
- * toolchain bump in ops cannot break this gate, whichever version it moves to.
+ * The GOTOOLCHAIN value for running ops code inside opsRoot, from its go.mod. Go's own rule: the `go`
+ * line is the minimum version and the `toolchain` line only a suggestion, so the higher of the two wins
+ * (a stale suggestion under a bumped `go` line must not pin an older toolchain, which the go command
+ * rejects). A `go` line without a patch version is the floor X.Y.0; when it is all there is, or the
+ * suggestion is below it, the answer is "auto" (the go command's own default: the toolchain go.mod asks
+ * for). Read from the pinned checkout so a toolchain bump in ops cannot break this gate.
  */
 export function goToolchainFor(opsRoot: string): string {
     const goMod = path.join(opsRoot, "go.mod");
     if (!existsSync(goMod)) {
         return "auto";
     }
-    let goLine = "";
+    let floor: number[] | null = null;
+    let floorHasPatch = false;
+    let suggestion: { name: string; version: number[] } | null = null;
     for (const raw of readFileSync(goMod, "utf8").split(/\r?\n/)) {
         const line = raw.replace(/\/\/.*$/, "").trim();
-        const toolchain = /^toolchain\s+(go\d+(?:\.\d+){1,2}\S*)$/.exec(line);
-        if (toolchain) {
-            return toolchain[1];
+        const toolchain = /^toolchain\s+(go(\d+)\.(\d+)(?:\.(\d+))?\S*)$/.exec(line);
+        if (toolchain && !suggestion) {
+            suggestion = {
+                name: toolchain[1],
+                version: [Number(toolchain[2]), Number(toolchain[3]), Number(toolchain[4] ?? 0)],
+            };
         }
-        const go = /^go\s+(\d+\.\d+\.\d+)$/.exec(line);
-        if (go && !goLine) {
-            goLine = `go${go[1]}`;
+        const go = /^go\s+(\d+)\.(\d+)(?:\.(\d+))?$/.exec(line);
+        if (go && !floor) {
+            floor = [Number(go[1]), Number(go[2]), Number(go[3] ?? 0)];
+            floorHasPatch = go[3] !== undefined;
         }
     }
-    return goLine || "auto";
+    const atLeast = (a: number[], b: number[]) => {
+        for (let k = 0; k < 3; k++) {
+            if (a[k] !== b[k]) {
+                return a[k] > b[k];
+            }
+        }
+        return true;
+    };
+    if (suggestion && (!floor || atLeast(suggestion.version, floor))) {
+        return suggestion.name;
+    }
+    return floor && floorHasPatch ? `go${floor.join(".")}` : "auto";
 }
 
 /** Runs registrydump (see REGISTRYDUMP_PATHS) inside opsRoot and parses its JSON. */
