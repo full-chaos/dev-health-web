@@ -72,7 +72,7 @@ describe("ByoLlmSettings model picker", () => {
         });
         renderForm();
         await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
-        expect(mockLoadModels).not.toHaveBeenCalled();
+        await waitFor(() => expect(mockLoadModels).toHaveBeenCalledTimes(1));
 
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
 
@@ -121,7 +121,7 @@ describe("ByoLlmSettings model picker", () => {
         expect(document.getElementById("byo-model-options")).toBeNull();
         expect(screen.getByLabelText("Model")).not.toHaveAttribute("list");
         expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
-            "Save an API key to load the provider's models. Any model name still works.",
+            "Models load once an API key is saved. Any model name still works.",
         );
     });
 
@@ -177,7 +177,7 @@ describe("ByoLlmSettings model picker", () => {
 
         expect(document.getElementById("byo-model-options")).toBeNull();
         expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
-            "Save the provider change, then reopen the form to load that provider's models.",
+            "Save the provider change to load that provider's models. Any model name still works.",
         );
     });
 
@@ -213,7 +213,7 @@ describe("ByoLlmSettings model picker", () => {
         await waitFor(() => expect(document.getElementById("byo-model-options")).toBeNull());
         expect(screen.getByLabelText("Model")).not.toHaveAttribute("list");
         expect(screen.getByTestId("byo-model-hint")).toHaveTextContent(
-            "Save an API key to load the provider's models.",
+            "Models load once an API key is saved.",
         );
     });
 
@@ -247,22 +247,6 @@ describe("ByoLlmSettings model picker", () => {
         expect(document.getElementById("byo-model-options")).toBeNull();
     });
 
-    it("drops the suggestions when the form is cancelled and reopened before the new read ends", async () => {
-        mockLoad.mockResolvedValue({ data: SAVED });
-        mockLoadModels.mockResolvedValueOnce({
-            data: { models: [{ id: "gpt-4o" }], source: "live", reason: null, fetched_at: null },
-        });
-        renderForm();
-        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
-        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-        await waitFor(() => expect(optionValues()).toEqual(["gpt-4o"]));
-        mockLoadModels.mockReturnValue(new Promise(() => {}));
-
-        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-
-        expect(document.getElementById("byo-model-options")).toBeNull();
-    });
     it("shows the unavailable sentence and keeps free text when the list action rejects", async () => {
         const unhandled: unknown[] = [];
         const onUnhandled = (reason: unknown) => unhandled.push(reason);
@@ -356,7 +340,7 @@ describe("ByoLlmSettings model picker", () => {
         );
     });
 
-    it("gives the list read an abort signal and aborts it when the form closes or unmounts", async () => {
+    it("gives the list read an abort signal and aborts it when the component unmounts", async () => {
         mockLoad.mockResolvedValue({ data: SAVED });
         const signals: AbortSignal[] = [];
         mockLoadModels.mockImplementation((signal) => {
@@ -365,18 +349,45 @@ describe("ByoLlmSettings model picker", () => {
         });
         const view = renderForm();
         await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
-        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
         await waitFor(() => expect(signals).toHaveLength(1));
         expect(signals[0].aborted).toBe(false);
-
-        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        view.unmount();
         expect(signals[0].aborted).toBe(true);
+    });
+
+    it("loads the list in view mode without opening the form", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValue({
+            data: { models: [{ id: "gpt-4o" }], source: "live", reason: null, fetched_at: null },
+        });
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await waitFor(() => expect(mockLoadModels).toHaveBeenCalledTimes(1));
+        expect(screen.queryByLabelText("Model")).toBeNull();
+    });
+
+    it("reads the list again after a save, and the saved provider's list shows when the form reopens", async () => {
+        mockLoad.mockResolvedValue({ data: SAVED });
+        mockLoadModels.mockResolvedValueOnce({
+            data: { models: [{ id: "gpt-4o" }], source: "live", reason: null, fetched_at: null },
+        });
+        mockSave.mockResolvedValue({
+            data: { ...SAVED, provider: "anthropic", model: "claude-x" },
+        });
+        mockLoadModels.mockResolvedValueOnce({
+            data: { models: [{ id: "claude-x" }], source: "live", reason: null, fetched_at: null },
+        });
+        renderForm();
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await waitFor(() => expect(optionValues()).toEqual(["gpt-4o"]));
+        await userEvent.selectOptions(screen.getByLabelText("Provider"), "anthropic");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockSave).toHaveBeenCalled());
+        await waitFor(() => expect(mockLoadModels).toHaveBeenCalledTimes(2));
 
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-        await waitFor(() => expect(signals).toHaveLength(2));
-        expect(signals[1].aborted).toBe(false);
-        view.unmount();
-        expect(signals[1].aborted).toBe(true);
+        await waitFor(() => expect(optionValues()).toEqual(["claude-x"]));
     });
 
     it("lets a save run while the list read is still pending", async () => {
