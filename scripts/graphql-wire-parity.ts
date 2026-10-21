@@ -292,13 +292,15 @@ export function resolveOpsPath(opsRoot: string, candidates: readonly string[]): 
 }
 
 /** Runs registrydump (see REGISTRYDUMP_PATHS) inside opsRoot and parses its JSON. */
-function runRegistrydump(opsRoot: string): RegistryEntry[] {
+export function runRegistrydump(opsRoot: string): RegistryEntry[] {
     const tool = resolveOpsPath(opsRoot, REGISTRYDUMP_PATHS);
     const routeFile = resolveOpsPath(opsRoot, QUERY_ROUTE_PATHS);
     const result = spawnSync("go", ["run", `./${tool}`, "-file", routeFile], {
         cwd: opsRoot,
         encoding: "utf8",
-        env: { ...process.env, GOTOOLCHAIN: "go1.27.2" },
+        // auto: the go command applies its own go/toolchain rules to the pinned ops checkout's go.mod, so a
+        // toolchain bump in ops cannot break this gate (a fixed name, or a parent GOTOOLCHAIN=local, can).
+        env: { ...process.env, GOTOOLCHAIN: "auto" },
     });
     if (result.status !== 0) {
         throw new Error(
