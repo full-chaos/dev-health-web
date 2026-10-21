@@ -1,7 +1,13 @@
 import express from "express";
 import { createMiddleware } from "@mswjs/http-middleware";
 import { setEntitlementScenario } from "./entitlementScenario";
-import { handlers, setMockAdminRows, setMockServiceModel, type MockAdminRowSeed } from "./handlers";
+import {
+    handlers,
+    setMockAdminRows,
+    setMockOwnModel,
+    setMockServiceModel,
+    type MockAdminRowSeed,
+} from "./handlers";
 import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
 import { hardenMockServer } from "./serverSockets";
@@ -149,6 +155,17 @@ app.post("/__test/service-model", (req, res) => {
         return;
     }
     setMockServiceModel({ override, managed: seed.managed });
+    res.status(204).end();
+});
+
+// CHAOS-10283: the own-model toggle, back to on or seeded off.
+app.post("/__test/own-model", (req, res) => {
+    const seed = req.body as { enabled?: unknown } | undefined;
+    if (!seed || typeof seed.enabled !== "boolean") {
+        res.status(400).json({ error: "Expected { enabled: boolean }" });
+        return;
+    }
+    setMockOwnModel({ enabled: seed.enabled });
     res.status(204).end();
 });
 
