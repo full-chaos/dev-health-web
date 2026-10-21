@@ -930,10 +930,14 @@ export interface LLMSettingsActionResult<T> {
 }
 
 /** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */
-export type LLMModelListSource = "live" | "cache" | "unavailable";
+export type LLMModelListSource = "live" | "cache" | "catalog" | "unavailable";
+
+export type LLMModelEntrySource = "live" | "catalog" | "saved";
 
 export interface LLMModelListResponse {
-    models: { id: string }[];
+    /** The provider the list answers for; absent on an older route that answers for the saved provider only. */
+    provider?: string | null;
+    models: { id: string; source?: LLMModelEntrySource; verified?: boolean }[];
     source: LLMModelListSource;
     /** Safe reason code when source is "unavailable" (for example not_configured, provider_rejected). */
     reason: string | null;
