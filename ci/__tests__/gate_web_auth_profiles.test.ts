@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import {
     runGate,
     checkContractInputsPresent,
+    loadReferencedSchemaDocuments,
     type EndpointProfileDoc,
     type EndpointProfileRow,
     type GateInputs,
@@ -1793,5 +1794,420 @@ describe("gate_web_auth_profiles: proof binding (polarity, callee binding, casts
             expect(detail, field).toContain(field);
         const ok = baseline();
         expect(runGate(makeInputs(ok)).filter((x) => x.rule === "schema_violation")).toEqual([]);
+    });
+});
+
+describe("gate_web_auth_profiles: the credential-classes schema is compiled with the schemas it references", () => {
+    // ops credential-classes.schema.json `$ref`s jsonschema/endpoint-auth-profile.v1.schema.json, which `$ref`s the
+    // endpoint-profile schema and jsonschema/principal.v1.schema.json. ajv resolves a `$ref` to another file only
+    // through the schemas registered with it, by `$id`; a missing one is "can't resolve reference", a compile failure
+    // that the gate reports as NOTHING validated. These fixtures keep that shape (a root, a referenced file under
+    // jsonschema/, and a sibling that the referenced file reaches with `../`) without vendoring the ops files.
+    const BASE = "https://example.test/contracts/auth/v1";
+    const ROOT_SCHEMA = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: `${BASE}/credential-classes.schema.json`,
+        type: "object",
+        properties: {
+            kind: { $ref: "jsonschema/target.v1.schema.json#/properties/kind" },
+        },
+    };
+    const TARGET_SCHEMA = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: `${BASE}/jsonschema/target.v1.schema.json`,
+        type: "object",
+        properties: {
+            kind: { $ref: "../sibling.schema.json#/$defs/kind" },
+        },
+    };
+    const SIBLING_SCHEMA = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: `${BASE}/sibling.schema.json`,
+        $defs: { kind: { enum: ["a", "b"] } },
+    };
+
+    function closedVocabulary(referenced: unknown[] | undefined, kind: string) {
+        const b = baseline();
+        return runGate(
+            makeInputs(b, {
+                credentialClassesDocument: { classes: [], kind },
+                credentialClassesSchemaDocument: ROOT_SCHEMA,
+                referencedSchemaDocuments: referenced,
+            }),
+        )
+            .filter((v) => v.rule === "closed_vocabulary")
+            .map((v) => v.detail)
+            .join("\n");
+    }
+
+    it("compiles and validates once the referenced schemas are registered", () => {
+        expect(closedVocabulary([SIBLING_SCHEMA, TARGET_SCHEMA], "a")).toBe("");
+        expect(closedVocabulary([TARGET_SCHEMA, SIBLING_SCHEMA], "b")).toBe("");
+    });
+
+    it("the registered schemas are enforced, not just resolved: a value outside the referenced enum fails", () => {
+        expect(closedVocabulary([SIBLING_SCHEMA, TARGET_SCHEMA], "z")).toContain(
+            "must be equal to one of the allowed values",
+        );
+    });
+
+    it("RED: nothing registered, the credential-classes schema cannot be compiled and says so", () => {
+        const detail = closedVocabulary(undefined, "a");
+        expect(detail).toContain(
+            "schema could not be compiled, so NOTHING was validated against it",
+        );
+        expect(detail).toContain("jsonschema/target.v1.schema.json");
+    });
+
+    it("RED: the referenced file is registered but the file it reaches with ../ is not", () => {
+        const detail = closedVocabulary([TARGET_SCHEMA], "a");
+        expect(detail).toContain("NOTHING was validated");
+        expect(detail).toContain("sibling.schema.json");
+    });
+
+    it("RED: the sibling is registered but the file under jsonschema/ is not", () => {
+        const detail = closedVocabulary([SIBLING_SCHEMA], "a");
+        expect(detail).toContain("NOTHING was validated");
+        expect(detail).toContain("jsonschema/target.v1.schema.json");
+    });
+
+    it("RED: a schema registered twice is a stop, not a silent pick", () => {
+        expect(closedVocabulary([SIBLING_SCHEMA, TARGET_SCHEMA, TARGET_SCHEMA], "a")).toContain(
+            "NOTHING was validated",
+        );
+    });
+
+    describe("loadReferencedSchemaDocuments reads jsonschema/ beside the credential-classes schema", () => {
+        function withTree(files: Record<string, string>, run: (schemaPath: string) => void) {
+            const dir = mkdtempSync(join(tmpdir(), "ref-schemas-"));
+            try {
+                for (const [rel, body] of Object.entries(files)) {
+                    mkdirSync(join(dir, rel, ".."), { recursive: true });
+                    writeFileSync(join(dir, rel), body);
+                }
+                run(join(dir, "credential-classes.schema.json"));
+            } finally {
+                rmSync(dir, { recursive: true, force: true });
+            }
+        }
+
+        it("returns every *.schema.json under jsonschema/, sorted, and ignores other files", () => {
+            withTree(
+                {
+                    "jsonschema/b.schema.json": JSON.stringify({ $id: "b" }),
+                    "jsonschema/a.schema.json": JSON.stringify({ $id: "a" }),
+                    "jsonschema/README.md": "not a schema",
+                },
+                (schemaPath) => {
+                    const { documents, problems } = loadReferencedSchemaDocuments(schemaPath);
+                    expect(problems).toEqual([]);
+                    expect(documents).toEqual([{ $id: "a" }, { $id: "b" }]);
+                },
+            );
+        });
+
+        it("RED: a file that is not JSON, or not an object, is a problem naming it, never skipped", () => {
+            withTree(
+                {
+                    "jsonschema/ok.schema.json": JSON.stringify({ $id: "ok" }),
+                    "jsonschema/broken.schema.json": "{ not json",
+                    "jsonschema/array.schema.json": "[1]",
+                },
+                (schemaPath) => {
+                    const { documents, problems } = loadReferencedSchemaDocuments(schemaPath);
+                    expect(documents).toEqual([{ $id: "ok" }]);
+                    expect(problems.join("\n")).toContain("broken.schema.json");
+                    expect(problems.join("\n")).toContain("array.schema.json: not a JSON object");
+                },
+            );
+        });
+
+        it("no jsonschema/ directory, or no schema path, is an empty set (a schema without references needs none)", () => {
+            withTree({ "credential-classes.schema.json": "{}" }, (schemaPath) => {
+                expect(loadReferencedSchemaDocuments(schemaPath)).toEqual({
+                    documents: [],
+                    problems: [],
+                });
+            });
+            expect(loadReferencedSchemaDocuments(null)).toEqual({ documents: [], problems: [] });
+        });
+    });
+
+    describe("main() reads the referenced schemas from disk (spawns the real script)", () => {
+        const scriptPath = resolve(WEB_ROOT, "ci/gate_web_auth_profiles.ts");
+        const tsxBin = resolve(WEB_ROOT, "node_modules/.bin/tsx");
+
+        // The gate is run on the real web inventory with an ops-shaped contract directory: only the credential-classes
+        // schema is supplied (the other inputs are skipped by the explicit opt-out, which lists them), so the exit
+        // status is decided by compiling that schema with its references. The class ids of the inventory are listed
+        // so the closed-vocabulary check on the rows has nothing to say.
+        function runCli(
+            omit: string[],
+            opts: { schemaFlag?: boolean; script?: string } = {},
+        ): ReturnType<typeof spawnSync> {
+            const doc = JSON.parse(
+                readFileSync(
+                    resolve(WEB_ROOT, "contracts/auth/v1/endpoint-profiles.web.json"),
+                    "utf8",
+                ),
+            ) as { rows: { accepted_credential_classes?: unknown[] }[] };
+            const ids = new Set<string>();
+            for (const row of doc.rows) {
+                for (const c of row.accepted_credential_classes ?? []) {
+                    if (typeof c === "string") ids.add(c);
+                    else if (
+                        c &&
+                        typeof c === "object" &&
+                        typeof (c as { class_id?: unknown }).class_id === "string"
+                    )
+                        ids.add((c as { class_id: string }).class_id);
+                }
+            }
+            const dir = mkdtempSync(join(tmpdir(), "cli-ref-"));
+            try {
+                const files: Record<string, unknown> = {
+                    "credential-classes.schema.json": ROOT_SCHEMA,
+                    "jsonschema/target.v1.schema.json": TARGET_SCHEMA,
+                    [opts.schemaFlag
+                        ? "endpoint-profile.schema.json"
+                        : "jsonschema/sibling.schema.json"]: {
+                        ...SIBLING_SCHEMA,
+                        $id: `${BASE}/sibling.schema.json`,
+                    },
+                    "credential-classes.json": {
+                        kind: "a",
+                        classes: [...ids].map((class_id) => ({ class_id })),
+                    },
+                };
+                for (const [rel, body] of Object.entries(files)) {
+                    if (omit.includes(rel)) continue;
+                    mkdirSync(join(dir, rel, ".."), { recursive: true });
+                    writeFileSync(join(dir, rel), JSON.stringify(body));
+                }
+                const env = envWithout("CI", "GITHUB_ACTIONS");
+                return spawnSync(
+                    tsxBin,
+                    [
+                        opts.script ?? scriptPath,
+                        "--root",
+                        WEB_ROOT,
+                        "--credential-classes",
+                        join(dir, "credential-classes.json"),
+                        "--credential-classes-schema",
+                        join(dir, "credential-classes.schema.json"),
+                        ...(opts.schemaFlag
+                            ? ["--schema", join(dir, "endpoint-profile.schema.json")]
+                            : []),
+                        "--allow-missing-contract-inputs",
+                    ],
+                    { cwd: WEB_ROOT, encoding: "utf8", env },
+                );
+            } finally {
+                rmSync(dir, { recursive: true, force: true });
+            }
+        }
+
+        it("exits 0 when the schema's references resolve from jsonschema/ beside it", () => {
+            const result = runCli([]);
+            expect(result.stderr).not.toContain("NOTHING was validated");
+            expect(result.status).toBe(0);
+        }, 60_000);
+
+        it("RED: exits 1 naming the reference when the file under jsonschema/ is missing", () => {
+            const result = runCli(["jsonschema/target.v1.schema.json"]);
+            expect(result.status).toBe(1);
+            expect(result.stderr).toContain("NOTHING was validated");
+            expect(result.stderr).toContain("jsonschema/target.v1.schema.json");
+        }, 60_000);
+
+        it("RED: exits 1 naming the reference when the file the referenced schema reaches is missing", () => {
+            const result = runCli(["jsonschema/sibling.schema.json"]);
+            expect(result.status).toBe(1);
+            expect(result.stderr).toContain("NOTHING was validated");
+            expect(result.stderr).toContain("sibling.schema.json");
+        }, 60_000);
+
+        it("exits 0 with --schema: the endpoint-profile schema the schema reaches is registered from that flag", () => {
+            const result = runCli(["jsonschema/sibling.schema.json"], { schemaFlag: true });
+            expect(result.stderr).not.toContain("NOTHING was validated");
+            expect(result.status).toBe(0);
+        }, 60_000);
+
+        it("RED: without the --schema file the same run exits 1 naming the sibling", () => {
+            const result = runCli(
+                ["endpoint-profile.schema.json", "jsonschema/sibling.schema.json"],
+                {
+                    schemaFlag: true,
+                },
+            );
+            expect(result.status).toBe(1);
+            expect(result.stderr).toContain("NOTHING was validated");
+            expect(result.stderr).toContain("sibling.schema.json");
+        }, 60_000);
+
+        it("RED: a gate that does not register the --schema document fails the --schema run", () => {
+            const registration = "? [schemaDocument, ...referenced.documents]";
+            const source = readFileSync(resolve(WEB_ROOT, "ci/gate_web_auth_profiles.ts"), "utf8");
+            expect(
+                source,
+                "the registration line this plant removes is gone: re-derive the plant",
+            ).toContain(registration);
+            const mutated = resolve(
+                WEB_ROOT,
+                `ci/.gate_web_auth_profiles.mutated-${process.pid}.ts`,
+            );
+            writeFileSync(mutated, source.replace(registration, "? [...referenced.documents]"));
+            try {
+                const result = runCli(["jsonschema/sibling.schema.json"], {
+                    schemaFlag: true,
+                    script: mutated,
+                });
+                expect(result.status).toBe(1);
+                expect(result.stderr).toContain("NOTHING was validated");
+                expect(result.stderr).toContain("sibling.schema.json");
+            } finally {
+                rmSync(mutated, { force: true });
+            }
+        }, 60_000);
+    });
+});
+
+describe("tests.yml: the ops contract sparse checkout lists the schema closure of credential-classes.schema.json", () => {
+    // The gate compiles credential-classes.schema.json with every jsonschema/*.schema.json beside it registered. A
+    // file the sparse checkout does not fetch is not registered, and once the pin reaches a schema that `$ref`s it,
+    // the compile fails. Listing the closure here is what keeps a re-pin from being the first place that is noticed.
+    const REQUIRED = [
+        "contracts/auth/v1/endpoint-profile.schema.json",
+        "contracts/auth/v1/credential-classes.json",
+        "contracts/auth/v1/credential-classes.schema.json",
+        "contracts/auth/v1/jsonschema/endpoint-auth-profile.v1.schema.json",
+        "contracts/auth/v1/jsonschema/principal.v1.schema.json",
+    ];
+
+    function sparseCheckoutPaths(workflow: string): string[] {
+        const lines = workflow.split("\n");
+        const step = lines.findIndex((l) =>
+            l.includes("name: Checkout pinned ops-owned auth contract"),
+        );
+        if (step === -1) return [];
+        const start = lines.findIndex((l, i) => i > step && /^\s+sparse-checkout: \|\s*$/.test(l));
+        if (start === -1) return [];
+        const out: string[] = [];
+        for (const line of lines.slice(start + 1)) {
+            const m = /^\s+(contracts\/\S+)\s*$/.exec(line);
+            if (!m) break;
+            out.push(m[1]);
+        }
+        return out;
+    }
+
+    const workflowText = readFileSync(resolve(WEB_ROOT, ".github/workflows/tests.yml"), "utf8");
+
+    it("lists every file of the closure", () => {
+        expect(sparseCheckoutPaths(workflowText)).toEqual(expect.arrayContaining(REQUIRED));
+    });
+
+    it.each(REQUIRED)("RED: the same assertion fails when %s is dropped from the list", (path) => {
+        const mutated = workflowText
+            .split("\n")
+            .filter((l) => l.trim() !== path)
+            .join("\n");
+        const listed = sparseCheckoutPaths(mutated);
+        expect(listed.length).toBeGreaterThan(0);
+        expect(REQUIRED.filter((p) => !listed.includes(p))).toEqual([path]);
+    });
+});
+
+describe("tests.yml: the ops contract checkout is the ops repository at the pinned ref", () => {
+    // A sparse list proves which files are fetched, not from where. The same step must check out
+    // full-chaos/dev-health-ops at the sha the pin step read from ci/ops-contract.pin, into .ops-contract.
+    const workflowText = readFileSync(resolve(WEB_ROOT, ".github/workflows/tests.yml"), "utf8");
+
+    function checkoutProblems(workflow: string): string[] {
+        const lines = workflow.split("\n");
+        const stepIdx = lines.findIndex((l) =>
+            l.includes("name: Checkout pinned ops-owned auth contract"),
+        );
+        if (stepIdx === -1) return ["the checkout step is missing"];
+        const stepLines: string[] = [];
+        for (const line of lines.slice(stepIdx + 1)) {
+            if (/^\s+- /.test(line)) break;
+            stepLines.push(line);
+        }
+        const withValue = (key: string): string | null => {
+            const line = stepLines.find((l) => new RegExp(`^\\s+${key}:\\s`).test(l));
+            return line ? line.replace(new RegExp(`^\\s+${key}:\\s*`), "").trim() : null;
+        };
+        const problems: string[] = [];
+        if (withValue("repository") !== "full-chaos/dev-health-ops") {
+            problems.push(
+                `repository is ${withValue("repository")}, want full-chaos/dev-health-ops`,
+            );
+        }
+        if (withValue("ref") !== "${{ steps.ops-contract-pin.outputs.sha }}") {
+            problems.push(`ref is ${withValue("ref")}, want the pin step's sha output`);
+        }
+        if (withValue("path") !== ".ops-contract") {
+            problems.push(`path is ${withValue("path")}, want .ops-contract`);
+        }
+        const pinStep = lines.findIndex((l) => /^\s+id: ops-contract-pin\s*$/.test(l));
+        const pinRun = pinStep === -1 ? "" : lines.slice(pinStep, pinStep + 4).join("\n");
+        if (!pinRun.includes("ci/ops-contract.pin")) {
+            problems.push("the pin step does not read ci/ops-contract.pin");
+        }
+        return problems;
+    }
+
+    it("checks out full-chaos/dev-health-ops at the pin's sha into .ops-contract", () => {
+        expect(checkoutProblems(workflowText)).toEqual([]);
+    });
+
+    it.each([
+        [
+            "the repository is another one",
+            "repository: full-chaos/dev-health-ops",
+            "repository: someone/else",
+            "repository is someone/else",
+            "name: Checkout pinned ops-owned auth contract",
+        ],
+        [
+            "the ref floats on main",
+            "ref: ${{ steps.ops-contract-pin.outputs.sha }}",
+            "ref: main",
+            "ref is main",
+            "name: Checkout pinned ops-owned auth contract",
+        ],
+        [
+            "the checkout path changes",
+            "path: .ops-contract",
+            "path: .ops-other",
+            "path is .ops-other",
+            "name: Checkout pinned ops-owned auth contract",
+        ],
+        [
+            "the pin step reads another file",
+            "ci/ops-contract.pin",
+            "ci/other.pin",
+            "the pin step does not read ci/ops-contract.pin",
+            "id: ops-contract-pin",
+        ],
+    ])("RED: %s", (_label, from, to, expected, marker) => {
+        const at = workflowText.indexOf(marker);
+        const edit = workflowText.indexOf(from, at);
+        expect(edit, `the line this plant edits is gone from the step: ${from}`).toBeGreaterThan(
+            at,
+        );
+        const problems = checkoutProblems(
+            workflowText.slice(0, edit) + to + workflowText.slice(edit + from.length),
+        );
+        expect(problems.join("\n")).toContain(expected);
+    });
+
+    it("RED: a checkout step without a ref line is reported", () => {
+        const mutated = workflowText
+            .split("\n")
+            .filter((l) => l.trim() !== "ref: ${{ steps.ops-contract-pin.outputs.sha }}")
+            .join("\n");
+        expect(checkoutProblems(mutated).join("\n")).toContain("ref is null");
     });
 });

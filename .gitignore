@@ -50,3 +50,6 @@ playwright-report-onboarding/
 .omo/evidence/
 # Use pnpm-lock.yaml as the canonical lockfile; npm lockfile is rejected.
 package-lock.json
+
+# Review-round PR body the codex launcher writes into the worktree; never committed.
+.codex-review-context.md

@@ -379,20 +379,20 @@ export function ByoLlmSettings({
         }
     }, [loadModelsAction, savedSettings]);
 
-    const editingSavedKey = mode === "edit" && hasStoredKey && hasSavedSettings;
+    const hasSavedKey = hasStoredKey && hasSavedSettings;
     useEffect(() => {
-        if (editingSavedKey) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchModels reads the provider's model list once the saved-key form opens.
+        if (hasSavedKey) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchModels reads the provider's model list whenever a saved key exists.
             void fetchModels();
         } else {
-            // The form closed or the saved key is gone: drop the list and any read still in flight.
+            // The saved key is gone: drop the list and any read still in flight.
             modelListRequest.current += 1;
             modelListAbort.current?.abort();
             setModelOptions([]);
             setModelListNote(null);
             setModelListProvider(null);
         }
-    }, [editingSavedKey, fetchModels]);
+    }, [hasSavedKey, fetchModels]);
 
     useEffect(() => {
         const abort = modelListAbort;
@@ -405,13 +405,14 @@ export function ByoLlmSettings({
         if (modelListMatchesProvider) {
             modelListHint = `${modelOptions.length} models from your provider. Any model name still works.`;
         } else if (!hasStoredKey) {
-            modelListHint =
-                "Save an API key to load the provider's models. Any model name still works.";
+            modelListHint = "Models load once an API key is saved. Any model name still works.";
         } else if (savedSettings?.provider && savedSettings.provider !== provider) {
             modelListHint =
-                "Save the provider change, then reopen the form to load that provider's models.";
+                "Save the provider change to load that provider's models. Any model name still works.";
         } else if (modelListNote) {
             modelListHint = `${modelListNote} Any model name still works.`;
+        } else {
+            modelListHint = "Loading the provider's models. Any model name still works.";
         }
     }
 
