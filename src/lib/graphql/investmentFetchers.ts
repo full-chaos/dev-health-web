@@ -39,8 +39,13 @@ export function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
     throw new Error(AuthErrors.OrgIdRequiredFromContext);
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
- * Build a date range from MetricFilter.
+ * Build the investment window from MetricFilter. A relative range is the N full
+ * UTC days that end yesterday (inclusive): today's partial day is never read,
+ * matching the server's endExclusive = min(end+1, today). Explicit dates pass
+ * through unchanged. Every investment reader (chart and explain) uses this one.
  */
 export function buildDateRange(filters: MetricFilter): {
     startDate: string;
@@ -52,9 +57,10 @@ export function buildDateRange(filters: MetricFilter): {
         return { startDate: start_date, endDate: end_date };
     }
 
-    // Calculate dates from range_days
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - range_days * 24 * 60 * 60 * 1000);
+    const now = Date.now();
+    const todayStart = now - (now % DAY_MS);
+    const endDate = new Date(todayStart - DAY_MS);
+    const startDate = new Date(endDate.getTime() - (range_days - 1) * DAY_MS);
 
     return {
         startDate: startDate.toISOString().split("T")[0],

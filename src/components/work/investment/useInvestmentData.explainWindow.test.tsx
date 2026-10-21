@@ -54,7 +54,7 @@ describe("useInvestmentData explain window", () => {
             vi.useRealTimers();
         }
         const mixRange = h.mixOptions.at(-1)?.dateRange;
-        expect(mixRange).toEqual({ startDate: "2026-09-18", endDate: "2026-10-18" });
+        expect(mixRange).toEqual({ startDate: "2026-09-18", endDate: "2026-10-17" });
         expect(h.explain).toHaveBeenCalledWith(expect.objectContaining({ dateRange: mixRange }));
     });
 
@@ -78,7 +78,7 @@ describe("useInvestmentData explain window", () => {
         expect(h.explain).toHaveBeenCalledTimes(2);
         expect(h.explain).toHaveBeenLastCalledWith(
             expect.objectContaining({
-                dateRange: { startDate: "2026-09-19", endDate: "2026-10-19" },
+                dateRange: { startDate: "2026-09-19", endDate: "2026-10-18" },
             }),
         );
     });
