@@ -14,7 +14,8 @@ import { InvestmentCharts } from "./InvestmentCharts";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 
-const { treemapSpy, sankeySpy, sunburstSpy } = vi.hoisted(() => ({
+const { treemapSpy, sankeySpy, sunburstSpy, chordSpy } = vi.hoisted(() => ({
+    chordSpy: vi.fn(),
     treemapSpy: vi.fn(),
     sankeySpy: vi.fn(),
     sunburstSpy: vi.fn(),
@@ -66,8 +67,16 @@ vi.mock("@/components/charts/InvestmentMixSunburst", () => ({
     },
 }));
 
+vi.mock("next/navigation", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("next/navigation")>()),
+    useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/lib/graphql/hooks/useChordFlow", () => ({
-    useChordFlow: () => ({ data: null, fetching: false, error: undefined }),
+    useChordFlow: (args: unknown) => {
+        chordSpy(args);
+        return { data: null, fetching: false, error: undefined };
+    },
 }));
 
 const baseFilters: MetricFilter = {
@@ -108,6 +117,7 @@ type Props = Parameters<typeof InvestmentCharts>[0];
 function baseProps(overrides: Partial<Props> = {}): Props {
     return {
         filters: baseFilters,
+        dateRange: { startDate: "2026-09-19", endDate: "2026-10-18" },
         workUnits: [sampleWorkUnit],
         isLoading: false,
         investmentMix: null,
@@ -277,6 +287,15 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             expect(screen.getByRole("radio", { name: /sunburst/i })).toBeInTheDocument();
             expect(screen.getByRole("radio", { name: /sankey/i })).toBeInTheDocument();
             expect(screen.getByRole("radio", { name: /chord/i })).toBeInTheDocument();
+        });
+    });
+
+    describe("window", () => {
+        it("reads the chord over the range it is given, not one it computes itself", () => {
+            const dateRange = { startDate: "2020-01-01", endDate: "2020-01-30" };
+            render(<InvestmentCharts {...baseProps({ dateRange, section: "flows" })} />);
+            fireEvent.click(screen.getByRole("radio", { name: /chord/i }));
+            expect(chordSpy).toHaveBeenCalledWith(expect.objectContaining({ dateRange }));
         });
     });
 

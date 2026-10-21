@@ -41,7 +41,6 @@ describe("buildDateRange", () => {
         for (const file of [
             "investmentHydration.ts",
             "hooks/useInvestment.ts",
-            "../../components/work/investment/InvestmentCharts.tsx",
             "../../components/work/investment/useInvestmentData.ts",
         ]) {
             const source = readFileSync(join(__dirname, "..", file), "utf8");
@@ -51,5 +50,19 @@ describe("buildDateRange", () => {
                 /buildDateRange[^;]*from "(\.\/|\.\.\/|@\/lib\/graphql\/)investmentFetchers"/,
             );
         }
+    });
+
+    it("computes the window once: InvestmentCharts takes it as a prop and reads no clock", () => {
+        const source = readFileSync(
+            join(__dirname, "../../../components/work/investment/InvestmentCharts.tsx"),
+            "utf8",
+        );
+        expect(source).not.toMatch(/new Date\(|Date\.now\(|buildDateRange/);
+        expect(source).toMatch(/dateRange: \{ startDate: string; endDate: string \}/);
+        const view = readFileSync(
+            join(__dirname, "../../../components/work/InvestmentView.tsx"),
+            "utf8",
+        );
+        expect(view).toMatch(/dateRange: data\.mixDateRange/);
     });
 });
