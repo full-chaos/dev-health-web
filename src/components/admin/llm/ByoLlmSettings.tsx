@@ -488,7 +488,7 @@ export function ByoLlmSettings({
         if (result.status === 400) {
             if (parsedBudget !== null && result.error?.toLowerCase().includes("budget")) {
                 setBudgetInputError(result.error);
-            } else if (result.error && /^model\b/i.test(result.error)) {
+            } else if (result.error && result.code === "model_required") {
                 setModelError(result.error);
             } else {
                 setBaseUrlError(result.error ?? "The base URL is invalid.");

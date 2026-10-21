@@ -737,6 +737,7 @@ describe("ByoLlmSettings", () => {
         mockSave.mockResolvedValue({
             error: "model is required when a BYO LLM provider is saved",
             status: 400,
+            code: "model_required",
         });
         renderForm();
 
@@ -749,6 +750,20 @@ describe("ByoLlmSettings", () => {
         ).toBeInTheDocument();
         expect(screen.getByLabelText("Model")).toHaveAttribute("aria-invalid", "true");
         expect(screen.getByLabelText("Base URL")).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("maps a 400 by its code, not by message text that starts with model", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+        mockSave.mockResolvedValue({ error: "model gateway rejected the base url", status: 400 });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(await screen.findByText("model gateway rejected the base url")).toBeInTheDocument();
+        expect(screen.getByLabelText("Model")).not.toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByLabelText("Base URL")).toHaveAttribute("aria-invalid", "true");
     });
 
     it("submits an exact micro-USD budget and supports an explicit zero hard stop", async () => {

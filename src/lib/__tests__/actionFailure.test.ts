@@ -76,6 +76,24 @@ describe("rate limit and missing detail (CHAOS-8436)", () => {
 });
 
 describe("failureFromError", () => {
+    it("passes the served error code of a validation answer of an action", () => {
+        expect(
+            failureFromError(
+                "op",
+                new AdminApiError(400, "Bad Request", "model is required", "PUT", "model_required"),
+            ),
+        ).toEqual({ error: "model is required", status: 400, code: "model_required" });
+    });
+
+    it("drops the code when the answer is not shown", () => {
+        expect(
+            failureFromError(
+                "op",
+                new AdminApiError(500, "Server Error", "boom", "PUT", "internal"),
+            ).code,
+        ).toBeUndefined();
+    });
+
     it("treats a GET AdminApiError as a read and a PATCH one as an action", () => {
         expect(
             failureFromError("op", new AdminApiError(404, "Not Found", HOSTILE, "GET")).error,

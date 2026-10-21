@@ -927,6 +927,8 @@ export interface LLMSettingsActionResult<T> {
     data?: T;
     error?: string;
     status?: number;
+    /** The served `detail.error` code of a 4xx answer, when the backend names one. */
+    code?: string;
 }
 
 /** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */
