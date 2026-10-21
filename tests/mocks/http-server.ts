@@ -1,7 +1,13 @@
 import express from "express";
 import { createMiddleware } from "@mswjs/http-middleware";
 import { setEntitlementScenario } from "./entitlementScenario";
-import { handlers, setMockAdminRows, type MockAdminRowSeed } from "./handlers";
+import {
+    handlers,
+    setMockAdminRows,
+    setMockOwnModel,
+    setMockServiceModel,
+    type MockAdminRowSeed,
+} from "./handlers";
 import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
 import { hardenMockServer } from "./serverSockets";
@@ -133,6 +139,33 @@ app.post("/__test/admin-rows", (req, res) => {
         return;
     }
     setMockAdminRows(seed);
+    res.status(204).end();
+});
+
+// CHAOS-10243: the ACR AI features override, self-service or managed by billing/support.
+app.post("/__test/service-model", (req, res) => {
+    const seed = req.body as { override?: unknown; managed?: unknown } | undefined;
+    const override = seed?.override;
+    if (
+        !seed ||
+        (override !== null && typeof override !== "boolean") ||
+        typeof seed.managed !== "boolean"
+    ) {
+        res.status(400).json({ error: "Expected { override: boolean | null, managed: boolean }" });
+        return;
+    }
+    setMockServiceModel({ override, managed: seed.managed });
+    res.status(204).end();
+});
+
+// CHAOS-10283: the own-model toggle, back to on or seeded off.
+app.post("/__test/own-model", (req, res) => {
+    const seed = req.body as { enabled?: unknown } | undefined;
+    if (!seed || typeof seed.enabled !== "boolean") {
+        res.status(400).json({ error: "Expected { enabled: boolean }" });
+        return;
+    }
+    setMockOwnModel({ enabled: seed.enabled });
     res.status(204).end();
 });
 

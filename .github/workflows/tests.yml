@@ -89,7 +89,7 @@ jobs:
               with:
                   fetch-depth: 0
             - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
               with:
                   node-version: 22
                   cache: pnpm
@@ -150,7 +150,7 @@ jobs:
                   path: dev-health-ops-parity
                   persist-credentials: false
             - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
               with:
                   node-version: 22
                   cache: pnpm
@@ -174,7 +174,7 @@ jobs:
             # ops's main would change what this job validates against with
             # no web commit recording that it happened. Pin instead: the
             # exact ops commit this repo trusts lives in ONE place
-            # (ci/ops-contract.pin), a sparse checkout fetches ONLY the two
+            # (ci/ops-contract.pin), a sparse checkout fetches ONLY the listed
             # contract paths at that pin (not the whole ops repo), and
             # bumping the pin is the web-side commit that makes a contract
             # change visible and re-runs this gate against it. Both repos
@@ -247,7 +247,7 @@ jobs:
                   exit 1
             # actions/checkout, same pin as every other checkout step in this
             # repo -- public repo, no token needed. Sparse, non-cone mode:
-            # fetches exactly the two listed file paths, not a directory tree.
+            # fetches exactly the listed file paths, not a directory tree.
             - name: Checkout pinned ops-owned auth contract
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
@@ -259,6 +259,8 @@ jobs:
                       contracts/auth/v1/endpoint-profile.schema.json
                       contracts/auth/v1/credential-classes.json
                       contracts/auth/v1/credential-classes.schema.json
+                      contracts/auth/v1/jsonschema/endpoint-auth-profile.v1.schema.json
+                      contracts/auth/v1/jsonschema/principal.v1.schema.json
                   sparse-checkout-cone-mode: false
             # credential-classes.schema.json joined this list at the
             # merge-gate round: the gate harvested class ids from the
@@ -267,6 +269,10 @@ jobs:
             # lifecycle authority and allowed route set still passed.
             # Validating it needs its schema present, so a missing entry here
             # turns a real check back into an absent one.
+            # credential-classes.schema.json `$ref`s jsonschema/endpoint-auth-profile.v1.schema.json, which `$ref`s
+            # endpoint-profile.schema.json (above) and jsonschema/principal.v1.schema.json: the gate registers every
+            # jsonschema/*.schema.json beside it with ajv before compiling, so that closure is listed here and a
+            # file missing from it is a compile failure naming the reference, not a skipped check.
             - name: Run the web auth-profile CI gate (CHAOS-3273 guardrail G-1)
               env:
                   WEB_ENDPOINT_PROFILE_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/endpoint-profile.schema.json
@@ -291,7 +297,7 @@ jobs:
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
               with:
                   node-version: 22
                   cache: pnpm
@@ -307,7 +313,7 @@ jobs:
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
               with:
                   node-version: 22
                   cache: pnpm
@@ -322,7 +328,7 @@ jobs:
               run: node scripts/ci-baseline-diagnostics.mjs parse "${{ runner.temp }}/unit.log"
             - name: Upload coverage lcov
               if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
                   name: coverage-lcov-${{ github.run_id }}-${{ github.run_attempt }}
                   path: coverage/lcov.info
@@ -342,7 +348,7 @@ jobs:
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
               with:
                   node-version: 22
                   cache: pnpm
@@ -350,7 +356,7 @@ jobs:
             - run: bash ci/run_tests.sh e2e-default ${{ matrix.shard }}/3
             - name: Upload Playwright report
               if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
                   name: playwright-report-default-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright-html/
@@ -358,7 +364,7 @@ jobs:
                   retention-days: 90
             - name: Upload Playwright raw results and JUnit
               if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
                   name: playwright-results-default-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright/
@@ -378,7 +384,7 @@ jobs:
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
               with:
                   node-version: 22
                   cache: pnpm
@@ -389,7 +395,7 @@ jobs:
             - run: bash ci/run_tests.sh e2e-context-fabric
             - name: Upload Playwright report
               if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
                   name: playwright-report-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright-html/
@@ -397,7 +403,7 @@ jobs:
                   retention-days: 90
             - name: Upload Playwright raw results and JUnit
               if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
               with:
                   name: playwright-results-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright/
@@ -413,7 +419,7 @@ jobs:
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
               with:
                   node-version: 22
                   cache: pnpm

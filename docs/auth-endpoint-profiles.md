@@ -15,9 +15,12 @@ it rather than duplicating it: read `auth-system.md` first.
   proven by [`../ci/__tests__/gate_web_auth_profiles.test.ts`](../ci/__tests__/gate_web_auth_profiles.test.ts).
   Wired into CI as a step of the `quality` job in
   `.github/workflows/tests.yml`, on every pull request; a run with no ops
-  contract input (see next bullet) SKIPS the closed-vocabulary checks
-  locally but FAILS in CI (`checkContractInputsPresent`) -- a skip that
-  still exits 0 is a green build nobody reads the warning on.
+  contract input (see next bullet) FAILS, in CI and locally
+  (`checkContractInputsPresent`): a measurement that did not happen must
+  fail. A local run that cannot supply the inputs passes
+  `--allow-missing-contract-inputs` (or sets `WEB_ALLOW_MISSING_CONTRACT_INPUTS=1`
+  for `ci/run_tests.sh`); the gate then lists the checks it skipped. CI has
+  no opt-out.
 - Shared schema (owned by ops, reused as-is): `contracts/auth/v1/endpoint-profile.schema.json`.
   The "service" closed vocabulary is read LIVE from this schema's
   `$defs.endpointProfile.properties.service.enum`, never hardcoded.
@@ -38,6 +41,64 @@ begins with `<field>:` and says what was searched. Never write `null` for
 (`docs/reference/auth/endpoint-profiles.md` in dev-health-ops, ACP decision
 sheet B10 shape b). The gate that enforces it on every advisory field is a
 separate change; this inventory already satisfies it.
+
+The gate now enforces "absent" for two fields. A row may leave
+`entitlement_requirement` or `token_shape` absent only when the type-checker
+call walk in `ci/discover_web_routes.ts` proves it: the walk follows every call
+from the handler and reaches no member of `ENTITLEMENT_SYMBOLS` (entitlement
+gates) or `GUARD_SYMBOLS` (credential reads). A call the walk cannot resolve to
+a body (a parameter callback, an interface member) makes the verdict `limit`,
+and `limit` never proves absence. So does anything the walk cannot resolve
+statically: a call to an overridable class method, a read that may run a getter
+(property, element, spread, destructuring, `for...in`), a string conversion of a
+project object, and a library call that receives a project object with methods
+or accessors (`JSON.stringify` runs `toJSON`). A present field that is empty
+(`""`, `[]`, `{}`) counts as absent. `ENTITLEMENT_SYMBOLS` entries are verified
+as live gates: each must still call what it delegates to and, for a rejecting
+gate, throw on a condition computed from that call's result. Rule `absent_without_proof` rejects an absent
+field without a `not_reachable` verdict. Rule `reach_contradicts_row` rejects a
+null or absent field whose gate or credential read is reachable, and a recorded
+`entitlement_requirement` on a surface that reaches no gate.
+`current_state_cache_behavior` and `resource_resolver` have the same absent
+proof, with their own symbol sets: `CACHE_SYMBOLS` (`next/cache` revalidation
+and `unstable_cache`, React `cache`, a `fetch` with a `cache` or `next` option,
+a `Cache-Control` string) and `RESOLVER_SYMBOLS` (the session and org helpers,
+plus request input: a server action parameter, a route reading its body, query
+or params). Their values are prose the walk cannot derive, so a `null` with its
+`<field>:` gaps entry stays allowed even when the walk reaches a symbol; only
+"absent" needs the proof. `verifyCacheSymbols` and `verifyResolverSymbols` fail
+the gate when a listed name stops resolving. `action` and `disclosure_behavior`
+have no predicate yet: they may not be absent, and stay `null` with a
+`<field>:` gaps entry. A gate is verified live by `entitlementGateIsLive`, in one closed shape: a
+`const` from an awaited known call, then `if (<cond>) throw`, then an optional
+`return`, where `<cond>` is a `||` of leaves, each `!chain` or a chain compared
+with a literal, with every chain derived from that call. No `&&`, no `!` on
+anything but a chain, no bare truthiness, no `try`, `switch`, loop, label,
+`let` or reassignment: anything else is not live. The polarity is bound to the
+refusal: a leaf is true exactly when the value is disabled or unset (`!chain`,
+`!(chain ?? false)`, `chain !== <positive literal>`, `chain === <falsy
+literal>`); `enabled === true` throws on an enabled entitlement and is not a
+closed condition. A callee is bound by declaration, not by name: it must be a
+top-level function or const of the gate's own module, or an import from the
+module the gate lists (`fetchBoundedJson` from `./http`), and never a name the
+gate declares locally.
+
+"Absent" rests on an allowlist, not on a list of hazards. A verdict is
+`not_reachable` only when the whole handler is provably inert: literals,
+`const` bindings of inert values, primitive parameters, plain object and array
+literals, operators on primitive operands, `if` / `else`, `return`, and
+`throw new Error(<inert>)`. It holds no call at all (a global or a dependency
+can be patched, so no builtin is trusted), no property read on a non-literal,
+no `await`, no spread, no getter, and no cast (`as`, `satisfies`, `!`), since
+a cast overrides the static type the proof trusts. Anything else is `limit`, so an aliased
+`fetch`, a patched `console`, a `valueOf`, an interface-typed getter or a
+`Proxy` trap can never produce an absence. The call walk still finds
+`reachable`; request reads are decided by the type of the value (`Request`,
+`NextRequest`, `Headers`), and cache targets match by declaration identity.
+The model is a static lint over honest code: patching `Object.prototype` or
+replacing a global such as `Error` from another module is outside it (it is
+not a defence against a malicious committer). `GET /health` calls `NextResponse.json`, so its `token_shape` is `null` with a
+gaps entry (manual review), not absent.
 
 ## Coverage
 

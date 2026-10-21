@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -11,6 +11,7 @@ import {
     checkSummary,
     compareRegistry,
     resolveOpsPath,
+    runRegistrydump,
     sha256Trim,
     wireForm,
 } from "../graphql-wire-parity.ts";
@@ -425,4 +426,56 @@ describe("resolveOpsPath", () => {
             rmSync(root, { recursive: true, force: true });
         }
     });
+});
+
+describe("the Go toolchain registrydump runs with", () => {
+    /** An ops checkout stand-in: a go.mod, the registrydump and route paths, and nothing else. */
+    function opsWithGoMod(goMod) {
+        const root = mkdtempSync(path.join(tmpdir(), "wire-parity-gomod-"));
+        writeFileSync(path.join(root, "go.mod"), goMod);
+        mkdirSync(path.join(root, REGISTRYDUMP_PATHS[0]), { recursive: true });
+        mkdirSync(path.dirname(path.join(root, QUERY_ROUTE_PATHS[0])), { recursive: true });
+        writeFileSync(path.join(root, QUERY_ROUTE_PATHS[0]), "package x\n");
+        return root;
+    }
+
+    it.each([
+        ["a version no literal in this repository names", "module x\n\ngo 1.99.7\n"],
+        [
+            "a stale toolchain line under a newer go line",
+            "module x\n\ngo 1.27.3\ntoolchain go1.27.0\n",
+        ],
+        ["a pre-release toolchain line", "module x\n\ngo 1.27.3\ntoolchain go1.28rc1\n"],
+        ["a pre-release go line", "module x\n\ngo 1.27rc1\ntoolchain go1.27rc3\n"],
+        ["a go line without a patch version", "module x\n\ngo 1.27\n"],
+    ])(
+        "is left to the go command (GOTOOLCHAIN=auto), even with a parent GOTOOLCHAIN=local: %s",
+        (_name, goMod) => {
+            const root = opsWithGoMod(goMod);
+            const bin = mkdtempSync(path.join(tmpdir(), "wire-parity-bin-"));
+            const seen = path.join(bin, "toolchain.txt");
+            writeFileSync(
+                path.join(bin, "go"),
+                `#!/bin/sh\nprintf '%s' "$GOTOOLCHAIN" > "${seen}"\necho '[]'\n`,
+                { mode: 0o755 },
+            );
+            const savedPath = process.env.PATH;
+            const savedToolchain = process.env.GOTOOLCHAIN;
+            process.env.PATH = `${bin}${path.delimiter}${savedPath}`;
+            process.env.GOTOOLCHAIN = "local";
+            try {
+                expect(runRegistrydump(root)).toEqual([]);
+                expect(readFileSync(seen, "utf8")).toBe("auto");
+            } finally {
+                process.env.PATH = savedPath;
+                if (savedToolchain === undefined) {
+                    delete process.env.GOTOOLCHAIN;
+                } else {
+                    process.env.GOTOOLCHAIN = savedToolchain;
+                }
+                rmSync(root, { recursive: true, force: true });
+                rmSync(bin, { recursive: true, force: true });
+            }
+        },
+    );
 });

@@ -895,10 +895,47 @@ let mockLlmDefault: Record<string, string | undefined> | null = {
     api_key: "sk-d…1234",
 };
 const mockLlmPurposes: Record<string, Record<string, string | undefined>> = {};
+function mockOwnModelBody() {
+    return {
+        enabled: mockOwnModelEnabled,
+        configured: mockLlmDefault !== null || Object.keys(mockLlmPurposes).length > 0,
+    };
+}
 function mockLlmSettingsBody() {
     return {
         ...(mockLlmDefault ?? {}),
         ...(Object.keys(mockLlmPurposes).length > 0 ? { purposes: mockLlmPurposes } : {}),
+    };
+}
+
+// ACR AI features toggle (CHAOS-10243): one stateful org override, eligible team org.
+let mockServiceModelOverride: boolean | null = null;
+let mockServiceModelManaged = false;
+// Own-model toggle (CHAOS-10283): one stateful flag; "configured" follows the saved BYO config below.
+let mockOwnModelEnabled = true;
+/** `/__test/own-model`: back to on, or a seeded off. */
+export function setMockOwnModel(seed: { enabled: boolean }): void {
+    mockOwnModelEnabled = seed.enabled;
+}
+/** `/__test/service-model`: a managed (billing or support) override, or back to self-service. */
+export function setMockServiceModel(seed: { override: boolean | null; managed: boolean }): void {
+    mockServiceModelOverride = seed.override;
+    mockServiceModelManaged = seed.managed;
+}
+function mockServiceModelControl() {
+    if (mockServiceModelOverride === null) return "none";
+    return mockServiceModelManaged ? "managed" : "self_service";
+}
+function mockServiceModelBody() {
+    return {
+        feature: "acr_service_model",
+        enabled: mockServiceModelOverride ?? mockLlmDefault !== null,
+        eligible: true,
+        ineligible_reason: null,
+        control: mockServiceModelControl(),
+        override: mockServiceModelOverride,
+        required_tier: "team",
+        current_tier: "team",
     };
 }
 
@@ -3623,6 +3660,53 @@ export const handlers = [
         }
         mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
         return HttpResponse.json(mockLlmSettingsBody());
+    }),
+    // The provider's model ids for the saved key; a removed setting answers unavailable.
+    http.get("*/api/v1/admin/llm-settings/models", () =>
+        HttpResponse.json(
+            mockLlmDefault
+                ? {
+                      models: [
+                          { id: "gpt-4o" },
+                          { id: "gpt-4o-mini" },
+                          { id: "gpt-5" },
+                          { id: "o4-mini" },
+                      ],
+                      source: "live",
+                      reason: null,
+                      fetched_at: "2026-10-20T12:00:00Z",
+                  }
+                : { models: [], source: "unavailable", reason: "not_configured", fetched_at: null },
+        ),
+    ),
+    http.get("*/api/v1/admin/llm-settings/service-model", () =>
+        HttpResponse.json(mockServiceModelBody()),
+    ),
+    http.put("*/api/v1/admin/llm-settings/service-model", async ({ request }) => {
+        const body = (await request.json()) as { enabled?: unknown };
+        if (typeof body.enabled !== "boolean")
+            return HttpResponse.json({ detail: "enabled required" }, { status: 422 });
+        if (mockServiceModelManaged)
+            return HttpResponse.json(
+                {
+                    detail: {
+                        error: "override_managed",
+                        message:
+                            "This setting is managed by your plan or support. Contact support to change it.",
+                    },
+                },
+                { status: 409 },
+            );
+        mockServiceModelOverride = body.enabled;
+        return HttpResponse.json(mockServiceModelBody());
+    }),
+    http.get("*/api/v1/admin/llm-settings/own-model", () => HttpResponse.json(mockOwnModelBody())),
+    http.put("*/api/v1/admin/llm-settings/own-model", async ({ request }) => {
+        const body = (await request.json()) as { enabled?: unknown };
+        if (typeof body.enabled !== "boolean")
+            return HttpResponse.json({ detail: "enabled required" }, { status: 422 });
+        mockOwnModelEnabled = body.enabled;
+        return HttpResponse.json(mockOwnModelBody());
     }),
     http.delete("*/api/v1/admin/llm-settings", ({ request }) => {
         const purpose = new URL(request.url).searchParams.get("purpose");

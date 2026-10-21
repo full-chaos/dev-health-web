@@ -10,6 +10,26 @@ import type {
     LLMSpendSummaryResponse,
 } from "../types";
 
+/** GET/PUT /llm-settings/own-model: whether the saved BYO config is in use; `configured` = a config is saved. */
+export interface OwnModelSetting {
+    enabled: boolean;
+    configured: boolean;
+}
+
+/** GET/PUT /llm-settings/service-model: the org's on/off for ACR AI features (acr_service_model). */
+export interface ServiceModelSetting {
+    feature: "acr_service_model";
+    enabled: boolean;
+    eligible: boolean;
+    ineligible_reason:
+        "feature_not_registered" | "tier_required" | "agent_context_runtime_required" | null;
+    /** "managed": billing or support set it; the toggle answers 409 and only support can change it. */
+    control: "none" | "self_service" | "managed";
+    override: boolean | null;
+    required_tier: string;
+    current_tier: string;
+}
+
 // Admin BYO-LLM settings endpoints. The backend force-encrypts and masks the
 // api_key, and tier/flag gates GET/PUT (402/403) while always allowing DELETE
 // cleanup. See ops admin/routers/settings.py for the contract.
@@ -71,4 +91,26 @@ export const llmSettingsApi = {
     // participate in admission before provider calls complete.
     budget: (token?: string, orgId?: string) =>
         request<LLMBudgetResponse>("/llm-settings/budget", {}, token, orgId),
+
+    ownModel: (token?: string, orgId?: string) =>
+        request<OwnModelSetting>("/llm-settings/own-model", {}, token, orgId),
+
+    setOwnModel: (enabled: boolean, token?: string, orgId?: string) =>
+        request<OwnModelSetting>(
+            "/llm-settings/own-model",
+            { method: "PUT", body: JSON.stringify({ enabled }) },
+            token,
+            orgId,
+        ),
+
+    serviceModel: (token?: string, orgId?: string) =>
+        request<ServiceModelSetting>("/llm-settings/service-model", {}, token, orgId),
+
+    setServiceModel: (enabled: boolean, token?: string, orgId?: string) =>
+        request<ServiceModelSetting>(
+            "/llm-settings/service-model",
+            { method: "PUT", body: JSON.stringify({ enabled }) },
+            token,
+            orgId,
+        ),
 };

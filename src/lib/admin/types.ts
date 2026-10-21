@@ -929,6 +929,17 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
 }
 
+/** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */
+export type LLMModelListSource = "live" | "cache" | "unavailable";
+
+export interface LLMModelListResponse {
+    models: { id: string }[];
+    source: LLMModelListSource;
+    /** Safe reason code when source is "unavailable" (for example not_configured, provider_rejected). */
+    reason: string | null;
+    fetched_at: string | null;
+}
+
 // ---- BYO LLM Organization Budget (CHAOS-3238) ----
 
 export type LLMBudgetReason =
@@ -980,36 +991,32 @@ export interface LLMSpendRunSummary {
 }
 
 /**
- * A pre-run_id `llm_token_usage` row — spend recorded before `run_id` was
- * threaded through the sink (plan §7 C1). `run_id` is always the empty
- * string here (`marker: "legacy_empty_run_id"` flags it); the UI must never
- * present these as per-run data (plan §6.3, §7 C4).
+ * Spend made with the organization's own provider credentials that carries no
+ * run id (explanations and reports), grouped by source, provider, model and
+ * UTC day. Never platform spend: the API serves only the organization's own
+ * credential rows.
  */
-export interface LLMSpendLegacyRow {
-    run_id: "";
-    marker: "legacy_empty_run_id";
+export interface LLMSpendUnattributedRow {
+    source: string;
     provider: string | null;
     model: string | null;
+    day: string;
     calls: number;
     input_tokens: number;
     output_tokens: number;
-    computed_at: string | null;
 }
 
 /**
  * `GET /admin/llm-settings/spend` response. Org-scoped; `runs` defaults to
  * the latest ~20 non-empty `run_id`s within the last 30 days (`since`),
- * capped at `limit`, ordered by `max(computed_at) DESC` (CHAOS-2349 plan
- * §6.3). `legacy` holds pre-run_id rows excluded from `runs` — spend
- * happened but can't be attributed to a specific run; the UI must render an
- * explicit legacy state for them and never fold them into per-run data
- * (plan §6.3, §7 C4).
+ * capped at `limit`, ordered by `max(computed_at) DESC`. `unattributed` holds
+ * the organization's own-credential spend that has no run id.
  */
 export interface LLMSpendSummaryResponse {
     since: string;
     limit: number;
     runs: LLMSpendRunSummary[];
-    legacy: LLMSpendLegacyRow[];
+    unattributed: LLMSpendUnattributedRow[];
 }
 
 /**

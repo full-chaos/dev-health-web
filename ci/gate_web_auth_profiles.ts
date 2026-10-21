@@ -35,6 +35,12 @@
  *                           "public" (or non-null while "protected"); a
  *                           protected row's primary_validator is null/
  *                           non-rejecting with no gaps entry explaining it
+ *   - absent_without_proof      an advisory field left absent without a call-walk not_reachable
+ *                           verdict (entitlement_requirement, token_shape), or absent on a
+ *                           field with no predicate
+ *   - reach_contradicts_row   a null or absent field whose entitlement gate or credential
+ *                           read the call walk reaches; or a recorded entitlement_requirement
+ *                           on a surface that reaches no gate
  *   - degrades_silently     ★ the corrected predicate (2026-09-01): a
  *                           protected server_action row whose primary_validator
  *                           anchor does not demonstrably contain a call to a
@@ -93,8 +99,8 @@
  * exits 0 is a green build nobody reads the warning on.
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 // The 2020 entry point, NOT ajv's default export: the ops-owned schemas
 // declare Draft 2020-12 and the default export implements draft-07.
 import Ajv2020 from "ajv/dist/2020";
@@ -111,6 +117,10 @@ import {
     discoverServerActionFiles,
     isDemonstrablyRejecting,
     verifyGuardSymbols,
+    verifyEntitlementSymbols,
+    verifyCacheSymbols,
+    verifyResolverSymbols,
+    type Reach,
     type RouteRecord,
     type ServerActionRecord,
 } from "./discover_web_routes";
@@ -164,7 +174,11 @@ export type Violation = {
         | "surface_kind_mismatch"
         | "claim_contradicts_source"
         | "guard_unresolved"
-        | "guard_symbol_unverified";
+        | "guard_symbol_unverified"
+        | "absent_without_proof"
+        | "reach_contradicts_row"
+        | "entitlement_symbol_unverified"
+        | "probe_symbol_unverified";
     id?: string;
     detail: string;
 };
@@ -220,6 +234,10 @@ function gapsDiscloseMissingValidator(gapsText: string): boolean {
 export interface GateInputs {
     /** GUARD_SYMBOLS entries whose declaration is missing or no longer rejects (verifyGuardSymbols). */
     unverifiedGuardSymbols?: string[];
+    /** ENTITLEMENT_SYMBOLS entries that are missing or no longer exit (verifyEntitlementSymbols). */
+    unverifiedEntitlementSymbols?: string[];
+    /** CACHE_SYMBOLS and RESOLVER_SYMBOLS entries that no longer resolve (verifyCacheSymbols, verifyResolverSymbols). */
+    unverifiedProbeSymbols?: string[];
     discoveredRoutes: RouteRecord[];
     discoveredActions: ServerActionRecord[];
     doc: unknown;
@@ -250,6 +268,12 @@ export interface GateInputs {
     credentialClassesDocument: unknown | null;
     /** The whole ops-owned credential-classes.schema.json document. */
     credentialClassesSchemaDocument: unknown | null;
+    /**
+     * The ops-owned schemas the credential-classes schema reaches through `$ref` (the endpoint-profile schema and the
+     * files under jsonschema/ beside it), registered with ajv by their `$id` before it is compiled. Absent or empty
+     * means no reference can resolve, and a schema that has one fails to compile -- a hard stop, never a skip.
+     */
+    referencedSchemaDocuments?: unknown[];
     /** Reads `line`..`lineEnd` (1-indexed, inclusive) of `path`, relative to `webRoot`. Returns null if unreadable. */
     readSource: (path: string, line: number, lineEnd: number) => string | null;
 }
@@ -277,11 +301,18 @@ function validateAgainstSchema(
     document: unknown,
     rule: Violation["rule"],
     label: string,
+    referencedSchemas: unknown[] = [],
 ): Violation[] {
     const ajv = new Ajv2020({ strict: false, allErrors: true });
     addFormats(ajv);
     let validate;
     try {
+        // Registered before the compile: ajv resolves a `$ref` to another schema file only through the registry, by
+        // the referenced schema's `$id`. A registration that fails (a duplicate or invalid `$id`) is as much a stop as
+        // a compile that fails.
+        for (const referenced of referencedSchemas) {
+            ajv.addSchema(referenced as object);
+        }
         validate = ajv.compile(schemaDocument as object);
     } catch (e) {
         // A schema this gate cannot compile is a hard stop, never a skip: a
@@ -338,6 +369,15 @@ function duplicateCredentialClassViolations(credentialClassesDocument: unknown):
     return violations;
 }
 
+/** "" / "   " / [] / {}: present on the row but saying nothing, which is absent in all but name. */
+function isEmptyValue(v: unknown): boolean {
+    if (v === null) return false;
+    if (typeof v === "string") return v.trim() === "";
+    if (Array.isArray(v)) return v.every((x) => x === null || isEmptyValue(x));
+    if (typeof v === "object") return Object.values(v).every((x) => x === null || isEmptyValue(x));
+    return false;
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -371,6 +411,7 @@ export function runGate(input: GateInputs): Violation[] {
         schemaDocument,
         credentialClassesDocument,
         credentialClassesSchemaDocument,
+        referencedSchemaDocuments = [],
         readSource,
     } = input;
 
@@ -400,6 +441,7 @@ export function runGate(input: GateInputs): Violation[] {
                 credentialClassesDocument,
                 "closed_vocabulary",
                 "credential-classes.json",
+                referencedSchemaDocuments,
             ),
         );
     }
@@ -455,6 +497,26 @@ export function runGate(input: GateInputs): Violation[] {
             detail: `guard function ${name} is missing or its body no longer rejects on a missing session, so surfaces that call it are not proven guarded`,
         });
     }
+    for (const name of input.unverifiedProbeSymbols ?? []) {
+        violations.push({
+            rule: "probe_symbol_unverified",
+            detail: `${name} no longer resolves, so a call walk that does not reach it proves nothing for cache or resource_resolver`,
+        });
+    }
+    for (const name of input.unverifiedEntitlementSymbols ?? []) {
+        violations.push({
+            rule: "entitlement_symbol_unverified",
+            detail: `entitlement gate ${name} is missing or no longer rejects, so a call walk that does not reach it proves nothing`,
+        });
+    }
+    // Call-walk verdicts per surface: the only evidence an advisory field may
+    // be absent. A surface with no verdict (handler not resolved) proves nothing.
+    const reachById = new Map<
+        string,
+        { entitlement?: Reach; credential?: Reach; cache?: Reach; resolver?: Reach }
+    >();
+    for (const r of discoveredRoutes) reachById.set(`${r.method} ${r.route} [dev-health-web]`, r);
+    for (const a of discoveredActions) reachById.set(a.id, a);
     const unresolvedGuard = new Set<string>();
     for (const r of discoveredRoutes)
         if (r.guardUnresolved) unresolvedGuard.add(`${r.method} ${r.route} [dev-health-web]`);
@@ -595,6 +657,68 @@ export function runGate(input: GateInputs): Violation[] {
             }
         }
 
+        // Absent needs a proof. entitlement_requirement and token_shape have a
+        // call-walk predicate (cache and resolver need only the absent proof);
+        // action and disclosure_behavior have none yet, so a row may not leave
+        // them absent.
+        {
+            const reach = reachById.get(row.id);
+            const predicate: Record<string, Reach | undefined> = {
+                entitlement_requirement: reach?.entitlement,
+                token_shape: reach?.credential,
+                current_state_cache_behavior: reach?.cache,
+                resource_resolver: reach?.resolver,
+            };
+            for (const field of ADVISORY_FIELDS) {
+                const absent = !(field in row) || isEmptyValue(row[field]);
+                const unset = absent || row[field] === null;
+                const verdict = predicate[field];
+                if (absent && verdict !== "not_reachable") {
+                    violations.push({
+                        rule: "absent_without_proof",
+                        id: row.id,
+                        detail: !(field in predicate)
+                            ? `${field} is absent but no call-walk predicate exists for it; record null with a "${field}:" gaps entry`
+                            : `${field} is absent but the call walk says ${verdict ?? "unresolved"}, not not_reachable; absent needs that proof`,
+                    });
+                }
+                // cache and resolver values are prose the walk cannot derive: null
+                // (undetermined, with its gaps entry) stays allowed when reachable.
+                if (
+                    unset &&
+                    verdict === "reachable" &&
+                    (field === "entitlement_requirement" || field === "token_shape")
+                ) {
+                    violations.push({
+                        rule: "reach_contradicts_row",
+                        id: row.id,
+                        detail: `${field} is ${absent ? "absent" : "null"} but the call walk reaches its ${field === "token_shape" ? "credential read" : "entitlement gate"}; record the real value`,
+                    });
+                }
+                if (field === "entitlement_requirement" && !unset && verdict === "not_reachable") {
+                    violations.push({
+                        rule: "reach_contradicts_row",
+                        id: row.id,
+                        detail: `entitlement_requirement is recorded but the call walk reaches no entitlement gate; the claim is unproven`,
+                    });
+                }
+            }
+        }
+
+        // Advisory scalars are type-checked here, not left to the ops schema: a run
+        // without the schema input must not accept `resource_resolver: 0`.
+        for (const field of ADVISORY_FIELDS) {
+            if (!(field in row) || row[field] === null) continue;
+            const v = row[field];
+            const ok = field === "token_shape" ? isPlainObject(v) : typeof v === "string";
+            if (!ok)
+                violations.push({
+                    rule: "schema_violation",
+                    id: row.id,
+                    detail: `${field} must be ${field === "token_shape" ? "an object" : "a string"} or null (the schema's own type), got ${Array.isArray(v) ? "array" : typeof v}`,
+                });
+        }
+
         // degrades_silently / unstated-null-primary_validator, only for the
         // surface kind + service this pass verified by hand: web server_actions.
         if (
@@ -707,6 +831,49 @@ function loadJSONDocument(pathArg: string | null): unknown | null {
     }
 }
 
+/**
+ * Loads the ops-owned schemas the credential-classes schema reaches through `$ref`: every `*.schema.json` in the
+ * `jsonschema/` directory beside it. A file that cannot be read or parsed is a problem to report, never a file to
+ * leave out: leaving it out turns "a reference that resolves" into "a reference that silently does not". A missing
+ * directory is not a problem here (a schema without references needs none); a reference that then fails to resolve
+ * surfaces as the compile failure of validateAgainstSchema.
+ */
+export function loadReferencedSchemaDocuments(credentialClassesSchemaPath: string | null): {
+    documents: unknown[];
+    problems: string[];
+} {
+    const documents: unknown[] = [];
+    const problems: string[] = [];
+    if (!credentialClassesSchemaPath) return { documents, problems };
+    const dir = join(dirname(credentialClassesSchemaPath), "jsonschema");
+    if (!existsSync(dir)) return { documents, problems };
+    let names: string[];
+    try {
+        names = readdirSync(dir)
+            .filter((n) => n.endsWith(".schema.json"))
+            .sort();
+    } catch (e) {
+        return {
+            documents,
+            problems: [`${dir}: cannot list (${e instanceof Error ? e.message : String(e)})`],
+        };
+    }
+    for (const name of names) {
+        const path = join(dir, name);
+        try {
+            const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+            if (!isPlainObject(parsed)) {
+                problems.push(`${path}: not a JSON object`);
+                continue;
+            }
+            documents.push(parsed);
+        } catch (e) {
+            problems.push(`${path}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }
+    return { documents, problems };
+}
+
 function credentialClassIds(credentialClassesDocument: unknown): string[] | null {
     if (!isPlainObject(credentialClassesDocument)) return null;
     const classes = credentialClassesDocument.classes;
@@ -759,6 +926,7 @@ function schemaEnumFrom(schemaDocument: unknown, field: string): string[] | null
 export function checkContractInputsPresent(
     inCI: boolean,
     missing: string[],
+    allowMissing = false,
 ): { fatal: boolean; message: string | null } {
     if (missing.length === 0) {
         return { fatal: false, message: null };
@@ -770,17 +938,27 @@ export function checkContractInputsPresent(
             message:
                 `FAIL: missing ops-owned contract input(s) in CI: ${detail}. ` +
                 "CI must supply these via the pinned sparse checkout (see ci/ops-contract.pin and " +
-                ".github/workflows/tests.yml) -- a skip is only acceptable in a local run where " +
-                "they were not passed. There is no implicit fallback path.",
+                ".github/workflows/tests.yml) -- there is no opt-out in CI and no implicit fallback path.",
+        };
+    }
+    if (!allowMissing) {
+        return {
+            fatal: true,
+            message:
+                `FAIL: missing ops-owned contract input(s): ${detail}. A measurement that did not ` +
+                "happen must fail, so a local run fails too. Pass the inputs " +
+                "(--schema, --credential-classes, --credential-classes-schema), or pass " +
+                "--allow-missing-contract-inputs to skip those checks and have them listed.",
         };
     }
     return {
         fatal: false,
         message:
-            `WARN: missing ops-owned contract input(s), closed-vocabulary check(s) for them are ` +
-            `SKIPPED, not passed: ${detail}. Every other check still ran. Checked --schema/` +
-            "--schema / --credential-classes / --credential-classes-schema; there is no implicit fallback path, deliberately. " +
-            "This is fatal in CI; CI/GITHUB_ACTIONS is unset here, so this is a local run.",
+            `WARN: missing ops-owned contract input(s): ${detail}. SKIPPED, not passed, by ` +
+            "--allow-missing-contract-inputs: the closed-vocabulary checks for accepted_credential_classes, " +
+            "service and surface_kind, the endpoint-profile schema validation, and the " +
+            "credential-classes document validation. Every other check still ran. " +
+            "This is fatal in CI.",
     };
 }
 
@@ -790,26 +968,28 @@ function parseArgs(argv: string[]): {
     credentialClasses: string | null;
     credentialClassesSchema: string | null;
     schema: string | null;
+    allowMissing: boolean;
 } {
     let root = process.cwd();
     let profile = join(root, "contracts/auth/v1/endpoint-profiles.web.json");
     let credentialClasses: string | null = null;
     let credentialClassesSchema: string | null = null;
     let schema: string | null = null;
+    let allowMissing = false;
     for (let i = 0; i < argv.length; i++) {
         if (argv[i] === "--root") root = argv[++i];
         else if (argv[i] === "--profile") profile = argv[++i];
         else if (argv[i] === "--credential-classes") credentialClasses = argv[++i];
         else if (argv[i] === "--credential-classes-schema") credentialClassesSchema = argv[++i];
         else if (argv[i] === "--schema") schema = argv[++i];
+        else if (argv[i] === "--allow-missing-contract-inputs") allowMissing = true;
     }
-    return { root, profile, credentialClasses, credentialClassesSchema, schema };
+    return { root, profile, credentialClasses, credentialClassesSchema, schema, allowMissing };
 }
 
 function main() {
-    const { root, profile, credentialClasses, credentialClassesSchema, schema } = parseArgs(
-        process.argv.slice(2),
-    );
+    const { root, profile, credentialClasses, credentialClassesSchema, schema, allowMissing } =
+        parseArgs(process.argv.slice(2));
     const inCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
     const discoveredRoutes = discoverRoutes(root);
@@ -818,6 +998,16 @@ function main() {
     const schemaDocument = loadJSONDocument(schema);
     const credentialClassesDocument = loadJSONDocument(credentialClasses);
     const credentialClassesSchemaDocument = loadJSONDocument(credentialClassesSchema);
+    const referenced = loadReferencedSchemaDocuments(credentialClassesSchema);
+    if (referenced.problems.length > 0) {
+        process.stderr.write(
+            `FAIL: referenced ops-owned schema(s) unreadable, so the credential-classes schema cannot be compiled with its references resolved:\n  ${referenced.problems.join("\n  ")}\n`,
+        );
+        process.exit(1);
+    }
+    const referencedSchemaDocuments = isPlainObject(schemaDocument)
+        ? [schemaDocument, ...referenced.documents]
+        : referenced.documents;
     const classes = credentialClassIds(credentialClassesDocument);
     const serviceVocabulary = serviceVocabularyFrom(schemaDocument);
 
@@ -828,7 +1018,7 @@ function main() {
         missingInputs.push("credential-classes.schema.json (--credential-classes-schema)");
     }
 
-    const { fatal, message } = checkContractInputsPresent(inCI, missingInputs);
+    const { fatal, message } = checkContractInputsPresent(inCI, missingInputs, allowMissing);
     if (message) {
         process.stderr.write(message + "\n");
     }
@@ -838,6 +1028,8 @@ function main() {
 
     const violations = runGate({
         unverifiedGuardSymbols: verifyGuardSymbols(root),
+        unverifiedEntitlementSymbols: verifyEntitlementSymbols(root),
+        unverifiedProbeSymbols: [...verifyCacheSymbols(root), ...verifyResolverSymbols(root)],
         discoveredRoutes,
         discoveredActions,
         doc,
@@ -846,6 +1038,7 @@ function main() {
         schemaDocument,
         credentialClassesDocument,
         credentialClassesSchemaDocument,
+        referencedSchemaDocuments,
         readSource: (p, l, le) => readSourceFromDisk(root, p, l, le),
     });
 

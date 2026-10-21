@@ -2,18 +2,20 @@
 
 import { isPlanGateMessage } from "@/lib/actionFailure";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { DataState } from "@/components/ui/DataState";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
+import { fetchLLMModels } from "@/lib/admin/llmModelsClient";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
     type LLMBudgetResponse,
+    type LLMModelListResponse,
     type LLMProvider,
     type LLMSettingsActionResult,
     type LLMSettingsResponse,
@@ -61,6 +63,27 @@ export type ByoLlmSettingsProps = {
      * which is applied directly rather than re-fetching status.
      */
     runReadinessAction: () => Promise<LLMSettingsActionResult<LLMSettingsStatusResponse>>;
+    /**
+     * Reads the model ids the saved provider offers (ops calls the provider with the saved key).
+     * Read only: the picker only suggests names, the model field stays free text.
+     */
+    loadModelsAction?: (
+        signal: AbortSignal,
+    ) => Promise<LLMSettingsActionResult<LLMModelListResponse>>;
+    /** Turns the picker on with the default browser read (a GET, never a Server Action). */
+    modelPicker?: boolean;
+};
+
+const MODEL_LIST_UNAVAILABLE_FALLBACK = "The provider's model list is not available right now.";
+
+const MODEL_LIST_UNAVAILABLE_TEXT: Record<string, string> = {
+    not_configured: "Save a provider and API key to load its models.",
+    api_key_required: "Save an API key to load the provider's models.",
+    base_url_required: "Add a base URL and save to load the provider's models.",
+    invalid_base_url: "The saved base URL cannot be used to load models.",
+    provider_rejected: "The provider rejected the saved key, so its models could not be loaded.",
+    provider_unavailable: "The provider's model list could not be reached.",
+    invalid_response: "The provider returned a model list this page cannot use.",
 };
 
 const inputClass =
@@ -191,6 +214,12 @@ function formatCheckedAt(value: string | null): string {
     return Number.isNaN(date.getTime()) ? "Not checked" : date.toLocaleString();
 }
 
+const DEFAULT_BASE_URL_HELP = "Optional. Custom provider endpoint.";
+const BASE_URL_HELP: Record<string, string> = {
+    openai: "Optional. OpenAI-compatible endpoints.",
+    anthropic: "Optional. Anthropic API endpoint. Leave empty for the default.",
+};
+
 /** The one-line description of the BYO LLM card (design: "Bring your own model provider for AI explanations and reports."). */
 const BYO_DESCRIPTION = "Bring your own model provider for AI explanations and reports.";
 
@@ -201,6 +230,8 @@ export function ByoLlmSettings({
     saveSettingsAction,
     removeSettingsAction,
     runReadinessAction,
+    loadModelsAction: loadModelsProp,
+    modelPicker,
 }: ByoLlmSettingsProps) {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
@@ -221,6 +252,12 @@ export function ByoLlmSettings({
     const [hasStoredKey, setHasStoredKey] = useState(false);
     const [maskedKey, setMaskedKey] = useState<string | null>(null);
     const [hasSavedSettings, setHasSavedSettings] = useState(false);
+    const [modelOptions, setModelOptions] = useState<string[]>([]);
+    const [modelListNote, setModelListNote] = useState<string | null>(null);
+    const [modelListProvider, setModelListProvider] = useState<string | null>(null);
+    const modelListRequest = useRef(0);
+    const modelListAbort = useRef<AbortController | null>(null);
+    const loadModelsAction = loadModelsProp ?? (modelPicker ? fetchLLMModels : undefined);
 
     const [saving, setSaving] = useState(false);
     const [checkingReadiness, setCheckingReadiness] = useState(false);
@@ -296,6 +333,86 @@ export function ByoLlmSettings({
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSettings coordinates async loading state after mount.
         fetchSettings();
     }, [fetchSettings]);
+
+    const fetchModels = useCallback(async () => {
+        if (!loadModelsAction) return;
+        const request = ++modelListRequest.current;
+        modelListAbort.current?.abort();
+        const controller = new AbortController();
+        modelListAbort.current = controller;
+        try {
+            const result = await loadModelsAction(controller.signal);
+            if (request !== modelListRequest.current) return;
+            const list = result.data;
+            const ids =
+                list && list.source !== "unavailable" && Array.isArray(list.models)
+                    ? Array.from(
+                          new Set(
+                              list.models
+                                  .map((m) => (m as { id?: unknown } | null)?.id)
+                                  .filter(
+                                      (id): id is string => typeof id === "string" && id !== "",
+                                  ),
+                          ),
+                      )
+                    : [];
+            if (ids.length > 0) {
+                setModelOptions(ids);
+                setModelListNote(null);
+            } else {
+                setModelOptions([]);
+                setModelListNote(
+                    typeof list?.reason === "string" &&
+                        Object.hasOwn(MODEL_LIST_UNAVAILABLE_TEXT, list.reason)
+                        ? MODEL_LIST_UNAVAILABLE_TEXT[list.reason]
+                        : MODEL_LIST_UNAVAILABLE_FALLBACK,
+                );
+            }
+            setModelListProvider(list ? (savedSettings?.provider ?? null) : null);
+        } catch {
+            if (request !== modelListRequest.current) return;
+            setModelOptions([]);
+            setModelListNote(MODEL_LIST_UNAVAILABLE_FALLBACK);
+            setModelListProvider(null);
+        }
+    }, [loadModelsAction, savedSettings]);
+
+    const hasSavedKey = hasStoredKey && hasSavedSettings;
+    useEffect(() => {
+        if (hasSavedKey) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchModels reads the provider's model list whenever a saved key exists.
+            void fetchModels();
+        } else {
+            // The saved key is gone: drop the list and any read still in flight.
+            modelListRequest.current += 1;
+            modelListAbort.current?.abort();
+            setModelOptions([]);
+            setModelListNote(null);
+            setModelListProvider(null);
+        }
+    }, [hasSavedKey, fetchModels]);
+
+    useEffect(() => {
+        const abort = modelListAbort;
+        return () => abort.current?.abort();
+    }, []);
+
+    const modelListMatchesProvider = modelOptions.length > 0 && modelListProvider === provider;
+    let modelListHint: string | null = null;
+    if (loadModelsAction) {
+        if (modelListMatchesProvider) {
+            modelListHint = `${modelOptions.length} models from your provider. Any model name still works.`;
+        } else if (!hasStoredKey) {
+            modelListHint = "Models load once an API key is saved. Any model name still works.";
+        } else if (savedSettings?.provider && savedSettings.provider !== provider) {
+            modelListHint =
+                "Save the provider change to load that provider's models. Any model name still works.";
+        } else if (modelListNote) {
+            modelListHint = `${modelListNote} Any model name still works.`;
+        } else {
+            modelListHint = "Loading the provider's models. Any model name still works.";
+        }
+    }
 
     const handleEdit = () => {
         setFormError(null);
@@ -764,9 +881,22 @@ export function ByoLlmSettings({
                                 type="text"
                                 value={model}
                                 placeholder="Model name"
+                                list={modelListMatchesProvider ? "byo-model-options" : undefined}
                                 onChange={(e) => setModel(e.target.value)}
                                 className={inputClass}
                             />
+                            {modelListMatchesProvider ? (
+                                <datalist id="byo-model-options" data-testid="byo-model-options">
+                                    {modelOptions.map((id) => (
+                                        <option key={id} value={id} />
+                                    ))}
+                                </datalist>
+                            ) : null}
+                            {modelListHint ? (
+                                <p className={captionClass} data-testid="byo-model-hint">
+                                    {modelListHint}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div>
@@ -805,8 +935,8 @@ export function ByoLlmSettings({
                             {baseUrlError ? (
                                 <p className="mt-1 text-xs text-(--negative)">{baseUrlError}</p>
                             ) : (
-                                <p className={captionClass}>
-                                    Optional. OpenAI-compatible endpoints.
+                                <p className={captionClass} data-testid="byo-base-url-help">
+                                    {BASE_URL_HELP[provider] ?? DEFAULT_BASE_URL_HELP}
                                 </p>
                             )}
                         </div>

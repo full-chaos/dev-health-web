@@ -71,6 +71,8 @@ const CANONICAL = [
             "                      contracts/auth/v1/endpoint-profile.schema.json",
             "                      contracts/auth/v1/credential-classes.json",
             "                      contracts/auth/v1/credential-classes.schema.json",
+            "                      contracts/auth/v1/jsonschema/endpoint-auth-profile.v1.schema.json",
+            "                      contracts/auth/v1/jsonschema/principal.v1.schema.json",
             "                  sparse-checkout-cone-mode: false",
         ],
     },
