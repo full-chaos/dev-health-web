@@ -10,6 +10,12 @@ import type {
     LLMSpendSummaryResponse,
 } from "../types";
 
+/** GET/PUT /llm-settings/own-model: whether the saved BYO config is in use; `configured` = a config is saved. */
+export interface OwnModelSetting {
+    enabled: boolean;
+    configured: boolean;
+}
+
 /** GET/PUT /llm-settings/service-model: the org's on/off for ACR AI features (acr_service_model). */
 export interface ServiceModelSetting {
     feature: "acr_service_model";
@@ -85,6 +91,17 @@ export const llmSettingsApi = {
     // participate in admission before provider calls complete.
     budget: (token?: string, orgId?: string) =>
         request<LLMBudgetResponse>("/llm-settings/budget", {}, token, orgId),
+
+    ownModel: (token?: string, orgId?: string) =>
+        request<OwnModelSetting>("/llm-settings/own-model", {}, token, orgId),
+
+    setOwnModel: (enabled: boolean, token?: string, orgId?: string) =>
+        request<OwnModelSetting>(
+            "/llm-settings/own-model",
+            { method: "PUT", body: JSON.stringify({ enabled }) },
+            token,
+            orgId,
+        ),
 
     serviceModel: (token?: string, orgId?: string) =>
         request<ServiceModelSetting>("/llm-settings/service-model", {}, token, orgId),

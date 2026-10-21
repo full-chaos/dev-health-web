@@ -929,7 +929,7 @@ function mockServiceModelControl() {
 function mockServiceModelBody() {
     return {
         feature: "acr_service_model",
-        enabled: mockServiceModelOverride === true,
+        enabled: mockServiceModelOverride ?? mockLlmDefault !== null,
         eligible: true,
         ineligible_reason: null,
         control: mockServiceModelControl(),
