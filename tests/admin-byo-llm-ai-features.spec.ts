@@ -21,13 +21,7 @@ test("an org admin turns ACR AI features on and off from AI Setup", async ({ pag
     await expect(card.getByRole("heading", { name: "ACR AI features" })).toBeVisible();
     await expect(card.getByText(DESCRIPTION)).toBeVisible();
     const state = card.getByTestId("ai-features-state");
-    await expect(state).toHaveText("Off");
-
-    await card.getByRole("button", { name: "Turn on" }).click();
-    await expect(state).toHaveText("On");
-    await expect(page.getByText("ACR AI features turned on")).toBeVisible();
-    // A reload reads the stored value back and leaves no toast over the card.
-    await page.reload();
+    // A saved BYO key and no override: ops serves the effective value, which is on.
     await expect(state).toHaveText("On");
     await card.screenshot({ path: testInfo.outputPath("byo-ai-features-on.png") });
 
@@ -36,6 +30,13 @@ test("an org admin turns ACR AI features on and off from AI Setup", async ({ pag
     await page.reload();
     await expect(state).toHaveText("Off");
     await card.screenshot({ path: testInfo.outputPath("byo-ai-features-off.png") });
+
+    await card.getByRole("button", { name: "Turn on" }).click();
+    await expect(state).toHaveText("On");
+    await expect(page.getByText("ACR AI features turned on")).toBeVisible();
+    // A reload reads the stored value back and leaves no toast over the card.
+    await page.reload();
+    await expect(state).toHaveText("On");
 });
 
 test("a setting managed by billing or support is read-only", async ({

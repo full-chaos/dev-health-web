@@ -21,6 +21,9 @@ vi.mock("@/components/admin/llm/ByoLlmSpendSummary", () => ({
 vi.mock("@/components/admin/llm/ByoLlmAiFeaturesToggle", () => ({
     ByoLlmAiFeaturesToggle: () => <section>ACR AI features toggle</section>,
 }));
+vi.mock("@/components/admin/llm/ByoLlmOwnModelToggle", () => ({
+    ByoLlmOwnModelToggle: () => <section>Own model toggle</section>,
+}));
 vi.mock("@/components/admin/llm/ByoLlmErrorStates", () => ({
     ByoLlmErrorStates: () => <section>BYO error guidance</section>,
 }));
@@ -31,8 +34,10 @@ vi.mock("@/lib/admin/server", () => ({
     getLLMSettings: vi.fn(),
     getLLMSettingsStatus: vi.fn(),
     getLLMSpendSummary: vi.fn(),
+    getOwnModelSetting: vi.fn(),
     getServiceModelSetting: vi.fn(),
     runLLMSettingsReadiness: vi.fn(),
+    setOwnModelSetting: vi.fn(),
     setServiceModelSetting: vi.fn(),
     upsertLLMPurpose: vi.fn(),
     upsertLLMSettings: vi.fn(),
@@ -46,6 +51,7 @@ describe("ByoLlmAISetupPage", () => {
 
         expect(screen.getByText("BYO provider settings")).toBeInTheDocument();
         expect(screen.getByText("ACR AI features toggle")).toBeInTheDocument();
+        expect(screen.getByText("Own model toggle")).toBeInTheDocument();
         expect(screen.getByText("BYO purpose models")).toBeInTheDocument();
         expect(screen.getByText("BYO spend summary")).toBeInTheDocument();
         expect(screen.getByText("BYO error guidance")).toBeInTheDocument();

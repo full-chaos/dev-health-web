@@ -20,6 +20,9 @@ vi.mock("@/components/admin/llm/ByoLlmPurposeOverrides", () => ({
 vi.mock("@/components/admin/llm/ByoLlmSpendSummary", () => ({
     ByoLlmSpendSummary: () => <section>BYO spend summary</section>,
 }));
+vi.mock("@/components/admin/llm/ByoLlmOwnModelToggle", () => ({
+    ByoLlmOwnModelToggle: () => <section>Own model toggle</section>,
+}));
 vi.mock("@/components/admin/llm/ByoLlmAiFeaturesToggle", () => ({
     ByoLlmAiFeaturesToggle: () => <section>ACR AI features toggle</section>,
 }));
@@ -33,8 +36,10 @@ vi.mock("@/lib/admin/server", () => ({
     getLLMSettings: vi.fn(),
     getLLMSettingsStatus: vi.fn(),
     getLLMSpendSummary: vi.fn(),
+    getOwnModelSetting: vi.fn(),
     getServiceModelSetting: vi.fn(),
     runLLMSettingsReadiness: vi.fn(),
+    setOwnModelSetting: vi.fn(),
     setServiceModelSetting: vi.fn(),
     upsertLLMPurpose: vi.fn(),
     upsertLLMSettings: vi.fn(),

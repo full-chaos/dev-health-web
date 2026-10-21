@@ -1,6 +1,7 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AISetupTabs } from "@/components/admin/ai/AISetupTabs";
 import { ByoLlmAiFeaturesToggle } from "@/components/admin/llm/ByoLlmAiFeaturesToggle";
+import { ByoLlmOwnModelToggle } from "@/components/admin/llm/ByoLlmOwnModelToggle";
 import { ByoLlmErrorStates } from "@/components/admin/llm/ByoLlmErrorStates";
 import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
 import { ByoLlmPurposeOverrides } from "@/components/admin/llm/ByoLlmPurposeOverrides";
@@ -12,8 +13,10 @@ import {
     getLLMSettings,
     getLLMSettingsStatus,
     getLLMSpendSummary,
+    getOwnModelSetting,
     getServiceModelSetting,
     runLLMSettingsReadiness,
+    setOwnModelSetting,
     setServiceModelSetting,
     upsertLLMPurpose,
     upsertLLMSettings,
@@ -38,6 +41,7 @@ export default function ByoLlmAISetupPage() {
                 runReadinessAction={runLLMSettingsReadiness}
                 modelPicker
             />
+            <ByoLlmOwnModelToggle loadAction={getOwnModelSetting} saveAction={setOwnModelSetting} />
             <ByoLlmAiFeaturesToggle
                 loadAction={getServiceModelSetting}
                 saveAction={setServiceModelSetting}
