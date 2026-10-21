@@ -10,7 +10,6 @@ import {
     REGISTRYDUMP_PATHS,
     checkSummary,
     compareRegistry,
-    goToolchainFor,
     resolveOpsPath,
     runRegistrydump,
     sha256Trim,
@@ -433,9 +432,7 @@ describe("the Go toolchain registrydump runs with", () => {
     /** An ops checkout stand-in: a go.mod, the registrydump and route paths, and nothing else. */
     function opsWithGoMod(goMod) {
         const root = mkdtempSync(path.join(tmpdir(), "wire-parity-gomod-"));
-        if (goMod !== null) {
-            writeFileSync(path.join(root, "go.mod"), goMod);
-        }
+        writeFileSync(path.join(root, "go.mod"), goMod);
         mkdirSync(path.join(root, REGISTRYDUMP_PATHS[0]), { recursive: true });
         mkdirSync(path.dirname(path.join(root, QUERY_ROUTE_PATHS[0])), { recursive: true });
         writeFileSync(path.join(root, QUERY_ROUTE_PATHS[0]), "package x\n");
@@ -443,87 +440,42 @@ describe("the Go toolchain registrydump runs with", () => {
     }
 
     it.each([
-        ["a full go line", "module x\n\ngo 1.27.3\n", "go1.27.3"],
-        [
-            "a version newer than any literal in this repository",
-            "module x\n\ngo 1.99.7\n",
-            "go1.99.7",
-        ],
-        [
-            "a toolchain line over the go line",
-            "module x\n\ngo 1.27.3\ntoolchain go1.28.1\n",
-            "go1.28.1",
-        ],
-        [
-            "a toolchain line before the go line",
-            "module x\ntoolchain go1.28.1\ngo 1.27.3\n",
-            "go1.28.1",
-        ],
-        [
-            "CRLF line endings and a trailing comment",
-            "module x\r\n\r\ngo 1.30.2 // pinned\r\n",
-            "go1.30.2",
-        ],
-        ["a go line without a patch version", "module x\n\ngo 1.27\n", "auto"],
+        ["a version no literal in this repository names", "module x\n\ngo 1.99.7\n"],
         [
             "a stale toolchain line under a newer go line",
             "module x\n\ngo 1.27.3\ntoolchain go1.27.0\n",
-            "go1.27.3",
         ],
-        [
-            "a stale toolchain line before a newer go line",
-            "module x\ntoolchain go1.27.0\ngo 1.27.3\n",
-            "go1.27.3",
-        ],
-        [
-            "a toolchain line equal to the go line",
-            "module x\n\ngo 1.27.3\ntoolchain go1.27.3\n",
-            "go1.27.3",
-        ],
-        [
-            "a newer pre-release toolchain line",
-            "module x\n\ngo 1.27.3\ntoolchain go1.28rc1\n",
-            "go1.28rc1",
-        ],
-        [
-            "a toolchain line above a go line without a patch version",
-            "module x\n\ngo 1.27\ntoolchain go1.27.2\n",
-            "go1.27.2",
-        ],
-        [
-            "a toolchain line below a go line without a patch version",
-            "module x\n\ngo 1.27\ntoolchain go1.26.4\n",
-            "auto",
-        ],
-        ["toolchain default", "module x\n\ngo 1.27\ntoolchain default\n", "auto"],
-        ["no go.mod at all", null, "auto"],
-    ])("is derived from the checkout's go.mod: %s", (_name, goMod, want) => {
-        const root = opsWithGoMod(goMod);
-        try {
-            expect(goToolchainFor(root)).toBe(want);
-        } finally {
-            rmSync(root, { recursive: true, force: true });
-        }
-    });
-
-    it("reaches the go command: a go.mod bump to a version no literal names still runs registrydump", () => {
-        const root = opsWithGoMod("module x\n\ngo 1.99.7\n");
-        const bin = mkdtempSync(path.join(tmpdir(), "wire-parity-bin-"));
-        const seen = path.join(bin, "toolchain.txt");
-        writeFileSync(
-            path.join(bin, "go"),
-            `#!/bin/sh\nprintf '%s' "$GOTOOLCHAIN" > "${seen}"\nif [ "$GOTOOLCHAIN" != "go1.99.7" ]; then echo "go: go.mod requires go >= 1.99.7 (running go; GOTOOLCHAIN=$GOTOOLCHAIN)" >&2; exit 1; fi\necho '[]'\n`,
-            { mode: 0o755 },
-        );
-        const savedPath = process.env.PATH;
-        process.env.PATH = `${bin}${path.delimiter}${savedPath}`;
-        try {
-            expect(runRegistrydump(root)).toEqual([]);
-            expect(readFileSync(seen, "utf8")).toBe("go1.99.7");
-        } finally {
-            process.env.PATH = savedPath;
-            rmSync(root, { recursive: true, force: true });
-            rmSync(bin, { recursive: true, force: true });
-        }
-    });
+        ["a pre-release toolchain line", "module x\n\ngo 1.27.3\ntoolchain go1.28rc1\n"],
+        ["a pre-release go line", "module x\n\ngo 1.27rc1\ntoolchain go1.27rc3\n"],
+        ["a go line without a patch version", "module x\n\ngo 1.27\n"],
+    ])(
+        "is left to the go command (GOTOOLCHAIN=auto), even with a parent GOTOOLCHAIN=local: %s",
+        (_name, goMod) => {
+            const root = opsWithGoMod(goMod);
+            const bin = mkdtempSync(path.join(tmpdir(), "wire-parity-bin-"));
+            const seen = path.join(bin, "toolchain.txt");
+            writeFileSync(
+                path.join(bin, "go"),
+                `#!/bin/sh\nprintf '%s' "$GOTOOLCHAIN" > "${seen}"\necho '[]'\n`,
+                { mode: 0o755 },
+            );
+            const savedPath = process.env.PATH;
+            const savedToolchain = process.env.GOTOOLCHAIN;
+            process.env.PATH = `${bin}${path.delimiter}${savedPath}`;
+            process.env.GOTOOLCHAIN = "local";
+            try {
+                expect(runRegistrydump(root)).toEqual([]);
+                expect(readFileSync(seen, "utf8")).toBe("auto");
+            } finally {
+                process.env.PATH = savedPath;
+                if (savedToolchain === undefined) {
+                    delete process.env.GOTOOLCHAIN;
+                } else {
+                    process.env.GOTOOLCHAIN = savedToolchain;
+                }
+                rmSync(root, { recursive: true, force: true });
+                rmSync(bin, { recursive: true, force: true });
+            }
+        },
+    );
 });

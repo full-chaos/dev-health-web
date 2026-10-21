@@ -50,7 +50,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -291,51 +291,6 @@ export function resolveOpsPath(opsRoot: string, candidates: readonly string[]): 
     throw new Error(`none of ${candidates.join(", ")} exists under --ops-root ${opsRoot}`);
 }
 
-/**
- * The GOTOOLCHAIN value for running ops code inside opsRoot, from its go.mod. Go's own rule: the `go`
- * line is the minimum version and the `toolchain` line only a suggestion, so the higher of the two wins
- * (a stale suggestion under a bumped `go` line must not pin an older toolchain, which the go command
- * rejects). A `go` line without a patch version is the floor X.Y.0; when it is all there is, or the
- * suggestion is below it, the answer is "auto" (the go command's own default: the toolchain go.mod asks
- * for). Read from the pinned checkout so a toolchain bump in ops cannot break this gate.
- */
-export function goToolchainFor(opsRoot: string): string {
-    const goMod = path.join(opsRoot, "go.mod");
-    if (!existsSync(goMod)) {
-        return "auto";
-    }
-    let floor: number[] | null = null;
-    let floorHasPatch = false;
-    let suggestion: { name: string; version: number[] } | null = null;
-    for (const raw of readFileSync(goMod, "utf8").split(/\r?\n/)) {
-        const line = raw.replace(/\/\/.*$/, "").trim();
-        const toolchain = /^toolchain\s+(go(\d+)\.(\d+)(?:\.(\d+))?\S*)$/.exec(line);
-        if (toolchain && !suggestion) {
-            suggestion = {
-                name: toolchain[1],
-                version: [Number(toolchain[2]), Number(toolchain[3]), Number(toolchain[4] ?? 0)],
-            };
-        }
-        const go = /^go\s+(\d+)\.(\d+)(?:\.(\d+))?$/.exec(line);
-        if (go && !floor) {
-            floor = [Number(go[1]), Number(go[2]), Number(go[3] ?? 0)];
-            floorHasPatch = go[3] !== undefined;
-        }
-    }
-    const atLeast = (a: number[], b: number[]) => {
-        for (let k = 0; k < 3; k++) {
-            if (a[k] !== b[k]) {
-                return a[k] > b[k];
-            }
-        }
-        return true;
-    };
-    if (suggestion && (!floor || atLeast(suggestion.version, floor))) {
-        return suggestion.name;
-    }
-    return floor && floorHasPatch ? `go${floor.join(".")}` : "auto";
-}
-
 /** Runs registrydump (see REGISTRYDUMP_PATHS) inside opsRoot and parses its JSON. */
 export function runRegistrydump(opsRoot: string): RegistryEntry[] {
     const tool = resolveOpsPath(opsRoot, REGISTRYDUMP_PATHS);
@@ -343,7 +298,9 @@ export function runRegistrydump(opsRoot: string): RegistryEntry[] {
     const result = spawnSync("go", ["run", `./${tool}`, "-file", routeFile], {
         cwd: opsRoot,
         encoding: "utf8",
-        env: { ...process.env, GOTOOLCHAIN: goToolchainFor(opsRoot) },
+        // auto: the go command applies its own go/toolchain rules to the pinned ops checkout's go.mod, so a
+        // toolchain bump in ops cannot break this gate (a fixed name, or a parent GOTOOLCHAIN=local, can).
+        env: { ...process.env, GOTOOLCHAIN: "auto" },
     });
     if (result.status !== 0) {
         throw new Error(
