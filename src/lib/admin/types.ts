@@ -907,7 +907,7 @@ export interface LLMPurposeUpsert {
  */
 export interface LLMSettingsUpsert {
     provider: string;
-    model?: string | null;
+    model: string;
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;
