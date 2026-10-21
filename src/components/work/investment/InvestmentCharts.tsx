@@ -6,6 +6,7 @@ import {
     type InvestmentFlowChartType,
 } from "@/components/charts/ChartTypeToggle";
 import { ISSUE_SIZE_UNIT } from "@/lib/investment";
+import { buildDateRange } from "@/lib/graphql/investmentFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 import { InvestmentMixSection } from "./charts/InvestmentMixSection";
@@ -90,19 +91,7 @@ export function InvestmentCharts({
 
     const flowUnit = ISSUE_SIZE_UNIT;
 
-    const dateRange = useMemo(() => {
-        const { start_date, end_date, range_days } = filters.time;
-        if (start_date && end_date) {
-            return { startDate: start_date, endDate: end_date };
-        }
-
-        const endDate = new Date();
-        const startDate = new Date(endDate.getTime() - range_days * 24 * 60 * 60 * 1000);
-        return {
-            startDate: startDate.toISOString().split("T")[0],
-            endDate: endDate.toISOString().split("T")[0],
-        };
-    }, [filters.time]);
+    const dateRange = useMemo(() => buildDateRange(filters), [filters]);
 
     const mixSection = (
         <InvestmentMixSection

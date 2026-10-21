@@ -9,12 +9,23 @@ const filters = (time: Record<string, unknown>) => ({ time }) as unknown as Metr
 describe("buildDateRange", () => {
     afterEach(() => vi.useRealTimers());
 
-    it("is the trailing window [today-N, today) for a relative range", () => {
+    it.each(["2026-10-19T00:30:00Z", "2026-10-19T23:30:00Z"])(
+        "ends yesterday (inclusive, UTC) and holds N full days for a relative range at %s",
+        (now) => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date(now));
+            const range = buildDateRange(filters({ range_days: 30, compare_days: 30 }));
+            expect(range).toEqual({ startDate: "2026-09-19", endDate: "2026-10-18" });
+            expect(range.endDate).not.toBe("2026-10-19");
+        },
+    );
+
+    it("holds one day for range_days = 1", () => {
         vi.useFakeTimers();
-        vi.setSystemTime(new Date("2026-10-19T00:30:00Z"));
-        expect(buildDateRange(filters({ range_days: 30, compare_days: 30 }))).toEqual({
-            startDate: "2026-09-19",
-            endDate: "2026-10-19",
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        expect(buildDateRange(filters({ range_days: 1 }))).toEqual({
+            startDate: "2026-10-18",
+            endDate: "2026-10-18",
         });
     });
 
@@ -27,10 +38,18 @@ describe("buildDateRange", () => {
     });
 
     it("has no second copy: every reader of the investment mix imports this one", () => {
-        for (const file of ["investmentHydration.ts", "hooks/useInvestment.ts"]) {
+        for (const file of [
+            "investmentHydration.ts",
+            "hooks/useInvestment.ts",
+            "../../components/work/investment/InvestmentCharts.tsx",
+            "../../components/work/investment/useInvestmentData.ts",
+        ]) {
             const source = readFileSync(join(__dirname, "..", file), "utf8");
             expect(source).not.toMatch(/function buildDateRange/);
-            expect(source).toMatch(/buildDateRange[^;]*from "(\.\/|\.\.\/)investmentFetchers"/);
+            expect(source).not.toMatch(/range_days \* 24/);
+            expect(source).toMatch(
+                /buildDateRange[^;]*from "(\.\/|\.\.\/|@\/lib\/graphql\/)investmentFetchers"/,
+            );
         }
     });
 });
