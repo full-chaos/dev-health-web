@@ -50,7 +50,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -291,14 +291,40 @@ export function resolveOpsPath(opsRoot: string, candidates: readonly string[]): 
     throw new Error(`none of ${candidates.join(", ")} exists under --ops-root ${opsRoot}`);
 }
 
+/**
+ * The GOTOOLCHAIN value for running ops code inside opsRoot: the `toolchain` line of its go.mod,
+ * else its `go` line when that names a full version (go 1.27.3 -> go1.27.3), else "auto" (the go
+ * command's own default: pick the toolchain go.mod asks for). Read from the pinned checkout so a
+ * toolchain bump in ops cannot break this gate, whichever version it moves to.
+ */
+export function goToolchainFor(opsRoot: string): string {
+    const goMod = path.join(opsRoot, "go.mod");
+    if (!existsSync(goMod)) {
+        return "auto";
+    }
+    let goLine = "";
+    for (const raw of readFileSync(goMod, "utf8").split(/\r?\n/)) {
+        const line = raw.replace(/\/\/.*$/, "").trim();
+        const toolchain = /^toolchain\s+(go\d+(?:\.\d+){1,2}\S*)$/.exec(line);
+        if (toolchain) {
+            return toolchain[1];
+        }
+        const go = /^go\s+(\d+\.\d+\.\d+)$/.exec(line);
+        if (go && !goLine) {
+            goLine = `go${go[1]}`;
+        }
+    }
+    return goLine || "auto";
+}
+
 /** Runs registrydump (see REGISTRYDUMP_PATHS) inside opsRoot and parses its JSON. */
-function runRegistrydump(opsRoot: string): RegistryEntry[] {
+export function runRegistrydump(opsRoot: string): RegistryEntry[] {
     const tool = resolveOpsPath(opsRoot, REGISTRYDUMP_PATHS);
     const routeFile = resolveOpsPath(opsRoot, QUERY_ROUTE_PATHS);
     const result = spawnSync("go", ["run", `./${tool}`, "-file", routeFile], {
         cwd: opsRoot,
         encoding: "utf8",
-        env: { ...process.env, GOTOOLCHAIN: "go1.27.3" },
+        env: { ...process.env, GOTOOLCHAIN: goToolchainFor(opsRoot) },
     });
     if (result.status !== 0) {
         throw new Error(
