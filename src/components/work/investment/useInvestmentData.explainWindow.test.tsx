@@ -5,6 +5,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 const h = vi.hoisted(() => ({
     mixOptions: [] as Array<{ dateRange?: { startDate: string; endDate: string } }>,
     explain: vi.fn(() => new Promise(() => {})),
+    workUnits: vi.fn(() => new Promise(() => {})),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -16,7 +17,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api/investment", () => ({
     explainInvestmentMix: h.explain,
     getWorkUnitExplanation: vi.fn(() => new Promise(() => {})),
-    getWorkUnits: vi.fn(() => new Promise(() => {})),
+    getWorkUnits: h.workUnits,
 }));
 
 vi.mock("@/lib/graphql/hooks", () => ({
@@ -56,6 +57,23 @@ describe("useInvestmentData explain window", () => {
         const mixRange = h.mixOptions.at(-1)?.dateRange;
         expect(mixRange).toEqual({ startDate: "2026-09-18", endDate: "2026-10-17" });
         expect(h.explain).toHaveBeenCalledWith(expect.objectContaining({ dateRange: mixRange }));
+    });
+
+    it("reads the work-unit table over the same range as the mix", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-18T23:59:00Z"));
+        h.workUnits.mockClear();
+        try {
+            renderHook(() => useInvestmentData({ filters }));
+        } finally {
+            vi.useRealTimers();
+        }
+        expect(h.workUnits).toHaveBeenCalledTimes(1);
+        expect(h.workUnits).toHaveBeenCalledWith(
+            expect.objectContaining({
+                dateRange: { startDate: "2026-09-18", endDate: "2026-10-17" },
+            }),
+        );
     });
 
     it("asks again after UTC midnight for an equivalent filters object, so the explanation follows the mix's new window", async () => {

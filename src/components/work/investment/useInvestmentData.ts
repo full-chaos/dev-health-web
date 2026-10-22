@@ -264,6 +264,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                     filters,
                     include_textual: includeTextual,
                     limit: 200,
+                    dateRange: mixDateRange,
                 });
                 if (active) {
                     setWorkUnits(Array.isArray(data) ? data : []);
@@ -283,7 +284,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [filters, includeTextual]);
+    }, [filters, includeTextual, mixDateRange]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;

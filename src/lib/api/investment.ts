@@ -9,9 +9,21 @@ import type {
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { apiClient } from "@/lib/apiClient";
-import { getInvestmentViaGraphQL } from "@/lib/graphql/investmentFetchers";
+import { buildDateRange, getInvestmentViaGraphQL } from "@/lib/graphql/investmentFetchers";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { getAuth, normalizeFilters, postJson } from "./_shared";
+
+// The REST investment readers name their window: the one investment range (ends yesterday, UTC), never the
+// server's own default and never today. The named range also keys the cache, so a day change is a new key.
+function withInvestmentWindow(
+    filters: MetricFilter,
+    dateRange: { startDate: string; endDate: string } = buildDateRange(filters),
+): MetricFilter {
+    return {
+        ...filters,
+        time: { ...filters.time, start_date: dateRange.startDate, end_date: dateRange.endDate },
+    };
+}
 
 export async function getInvestment(filters: MetricFilter) {
     const normalized = normalizeFilters(filters);
@@ -24,8 +36,9 @@ export async function getInvestment(filters: MetricFilter) {
         return getInvestmentViaGraphQL(normalized, orgId);
     }
 
-    return postJson<InvestmentResponse>("/api/v1/investment", { filters: normalized }, 300, {
-        f: encodeFilterParam(normalized),
+    const windowed = withInvestmentWindow(normalized);
+    return postJson<InvestmentResponse>("/api/v1/investment", { filters: windowed }, 300, {
+        f: encodeFilterParam(windowed),
     });
 }
 
@@ -68,18 +81,20 @@ export async function getWorkUnits(params: {
     filters: MetricFilter;
     limit?: number;
     include_textual?: boolean;
+    dateRange?: { startDate: string; endDate: string };
 }) {
     const normalized = normalizeFilters(params.filters);
+    const windowed = withInvestmentWindow(normalized, params.dateRange);
     return postJson<WorkUnitInvestment[]>(
         "/api/v1/work-units",
         {
-            filters: normalized,
+            filters: windowed,
             limit: params.limit,
             include_textual: params.include_textual,
         },
         30,
         {
-            f: encodeFilterParam(normalized),
+            f: encodeFilterParam(windowed),
             include_textual: params.include_textual ? "true" : "false",
         },
     );
