@@ -78,23 +78,25 @@ is_ci() {
 }
 
 playwright_launch_probe() {
-  node -e 'const { chromium } = require("@playwright/test"); chromium.launch().then((b) => b.close()).catch((e) => { console.error(e.message); process.exit(1); })'
+  timeout --kill-after=5 60 node -e 'const { chromium } = require("@playwright/test"); chromium.launch().then((b) => b.close()).catch((e) => { console.error(e.message); process.exit(1); })'
 }
 
 # GitHub-hosted Ubuntu runners already carry Chromium's system libraries, and
 # `--with-deps` spent up to 546 s in a slow apt mirror to confirm that. Install
-# the browser only, prove it launches, and fall back to apt only if it cannot.
+# the browser only, prove it launches (60 s cap, so a hung launch also falls
+# back), and run apt only if it cannot. Every failure returns its own status so
+# timed and direct callers see the same result.
 install_playwright_browser_ci_linux() {
   echo "==> npx playwright install chromium (download)"
-  run_timed "playwright browser download" npx playwright install chromium
+  run_timed "playwright browser download" npx playwright install chromium || return $?
 
   if run_timed "playwright launch probe" playwright_launch_probe; then
-    return
+    return 0
   fi
 
   echo "==> launch probe failed; falling back to npx playwright install-deps chromium"
-  run_timed "playwright install-deps fallback" npx playwright install-deps chromium
-  run_timed "playwright launch probe after install-deps" playwright_launch_probe
+  run_timed "playwright install-deps fallback" npx playwright install-deps chromium || return $?
+  run_timed "playwright launch probe after install-deps" playwright_launch_probe || return $?
 }
 
 install_playwright_browser() {
