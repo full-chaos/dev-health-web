@@ -24,7 +24,7 @@ type UseInvestmentDataArgs = {
 };
 
 /** The GraphQL reads of the Investment view. */
-type InvestmentRead = "mix" | "flow" | "baselineFlow" | "repoTeamFlow";
+type InvestmentRead = "mix" | "flow" | "baselineFlow" | "repoTeamFlow" | "workUnits" | "explain";
 
 /**
  * The reads each tab draws (consumers: `InvestmentView.tsx` tab branches).
@@ -34,15 +34,23 @@ type InvestmentRead = "mix" | "flow" | "baselineFlow" | "repoTeamFlow";
  *                see `FALLBACK_READS`). Nothing reads the baseline flow.
  *  - allocation: the three flows (`TeamCategorySankeySection` with its baseline delta,
  *                `RepoTeamSankeySection`, `AllocationCoverage`). No mix.
- *  - evidence:   none (work units, evidence quality and attributions have their own reads).
+ *  - evidence:   none of the GraphQL reads; the work units (`InvestmentEvidenceTable`).
  *  - confidence: mix (`evidence_quality_stats`), plus the team-category flow for the coverage
  *                cards (the repository-team flow is the same fallback as on overview).
+ *
+ * Two REST reads ride beside them (CHAOS-10711: each runs several ClickHouse statements one after
+ * another, so a tab that does not draw them must not start them):
+ *  - workUnits: the mix section (overview), the low-confidence list (confidence) and the evidence
+ *               table. Allocation draws them only to name a subcategory node, so it starts them
+ *               once a theme is selected (`showSubcategories`).
+ *  - explain:   the mix explanation (`ReadWithContextCard`, `InvestmentExplainer` on overview;
+ *               `ConfidencePanel`). No other tab draws it.
  */
 export const INVESTMENT_TAB_READS: Record<InvestmentTab, readonly InvestmentRead[]> = {
-    overview: ["mix", "flow"],
+    overview: ["mix", "flow", "workUnits", "explain"],
     allocation: ["flow", "baselineFlow", "repoTeamFlow"],
-    evidence: [],
-    confidence: ["mix", "flow"],
+    evidence: ["workUnits"],
+    confidence: ["mix", "flow", "workUnits", "explain"],
 };
 
 /** Tabs that draw coverage only: the repository-team flow is there a fallback, not a first read. */
@@ -71,6 +79,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
     const mixDateRange = useMemo(() => buildDateRange(filters), [filters]);
     const runs = (read: InvestmentRead) =>
         needed.includes(read) || (started.key === filtersKey && started.reads.includes(read));
+    const explainOn = runs("explain");
 
     const {
         data: mixData,
@@ -106,6 +115,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [focusedTeam, setFocusedTeam] = useState<string | null>(null);
     const showSubcategories = Boolean(selectedCategory);
+    const unitsOn = runs("workUnits") || (activeTab === "allocation" && showSubcategories);
     const selectedThemeKey = useMemo(() => normalizeThemeKey(selectedCategory), [selectedCategory]);
 
     const baselineFilters = useMemo(() => getBaselineFilters(filters), [filters]);
@@ -245,7 +255,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
             }
         };
 
-        if (mixExplanation.filtersKey === mixExplainKey) {
+        if (!explainOn || mixExplanation.filtersKey === mixExplainKey) {
             return;
         }
 
@@ -253,9 +263,10 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [filters, mixDateRange, mixExplainKey, mixExplanation.filtersKey]);
+    }, [explainOn, filters, mixDateRange, mixExplainKey, mixExplanation.filtersKey]);
 
     useEffect(() => {
+        if (!unitsOn) return;
         let active = true;
         const fetchUnits = async () => {
             setIsLoading(true);
@@ -284,7 +295,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [filters, includeTextual, mixDateRange]);
+    }, [unitsOn, filters, includeTextual, mixDateRange]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
