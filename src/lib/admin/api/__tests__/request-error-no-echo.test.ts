@@ -36,6 +36,39 @@ describe("admin request errors", () => {
     });
 });
 
+describe("admin request error code", () => {
+    it("carries the served detail.error code of an object detail", async () => {
+        fetchMock.mockResolvedValue({
+            ok: false,
+            status: 400,
+            statusText: "Bad Request",
+            json: async () => ({
+                detail: {
+                    error: "model_required",
+                    feature: "byo_llm",
+                    message: "model is required",
+                },
+            }),
+        });
+        const error = await request("/llm-settings", { method: "PUT", body: "{}" }).catch(
+            (e: { code?: string; message: string }) => e,
+        );
+        expect((error as { code?: string }).code).toBe("model_required");
+        expect((error as Error).message).toBe("model is required");
+    });
+
+    it("has no code for a string or list detail", async () => {
+        fetchMock.mockResolvedValue({
+            ok: false,
+            status: 404,
+            statusText: "Not Found",
+            json: async () => ({ detail: "LLM settings not found" }),
+        });
+        const error = await request("/llm-settings", { method: "DELETE" }).catch((e: Error) => e);
+        expect((error as { code?: string }).code).toBeUndefined();
+    });
+});
+
 describe("setPassword contract", () => {
     it("sends admin_password and password, the names the ops API requires", async () => {
         fetchMock.mockResolvedValue({ ok: true, status: 204 });
