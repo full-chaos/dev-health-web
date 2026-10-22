@@ -23,6 +23,9 @@
  *                           use a value outside the closed vocabulary
  *   - anchor_drift          a row's source.file:line does not match what was
  *                           independently (re-)discovered for that id
+ *   - anchor_stale          a row anchor into a file listed in ANCHOR_MARKERS
+ *                           (src/proxy.ts) whose range no longer contains that
+ *                           file's marker (the session gate moved)
  *   - schema_violation      stray top-level document keys (the schema's own
  *                           top-level additionalProperties:false), or a row
  *                           missing one of the schema's required fields
@@ -100,7 +103,7 @@
  */
 
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, posix, resolve } from "node:path";
 // The 2020 entry point, NOT ajv's default export: the ops-owned schemas
 // declare Draft 2020-12 and the default export implements draft-07.
 import Ajv2020 from "ajv/dist/2020";
@@ -161,6 +164,29 @@ export type EndpointProfileDoc = {
     [key: string]: unknown;
 };
 
+// File -> text its anchored range must contain. Add a row to cover another anchored file.
+const ANCHOR_MARKERS: Record<string, string> = {
+    "src/proxy.ts": "boundedProxyAuth(",
+};
+
+function collectAnchors(
+    value: unknown,
+    out: { path: string; line: number; line_end?: number }[],
+): void {
+    if (Array.isArray(value)) {
+        for (const v of value) collectAnchors(v, out);
+    } else if (isPlainObject(value)) {
+        if (typeof value.path === "string" && typeof value.line === "number") {
+            out.push({
+                path: value.path,
+                line: value.line,
+                line_end: typeof value.line_end === "number" ? value.line_end : undefined,
+            });
+        }
+        for (const v of Object.values(value)) collectAnchors(v, out);
+    }
+}
+
 export type Violation = {
     rule:
         | "unowned_surface"
@@ -168,6 +194,7 @@ export type Violation = {
         | "duplicate_id"
         | "closed_vocabulary"
         | "anchor_drift"
+        | "anchor_stale"
         | "schema_violation"
         | "unstated_null"
         | "degrades_silently"
@@ -748,6 +775,24 @@ export function runGate(input: GateInputs): Violation[] {
                         detail: `primary_validator.anchor (${path}:${line}) does not contain a call to a known-rejecting guard (${REJECTING_GUARD_NAMES.join(", ")}), and gaps does not disclose that this action degrades silently instead of rejecting`,
                     });
                 }
+            }
+        }
+    }
+
+    for (const row of rows) {
+        if (!isPlainObject(row) || !row.id) continue;
+        const anchors: { path: string; line: number; line_end?: number }[] = [];
+        collectAnchors(row, anchors);
+        for (const a of anchors) {
+            const marker = ANCHOR_MARKERS[posix.normalize(a.path)];
+            if (marker === undefined) continue;
+            const snippet = readSource(a.path, a.line, a.line_end ?? a.line);
+            if (snippet === null || !snippet.includes(marker)) {
+                violations.push({
+                    rule: "anchor_stale",
+                    id: row.id,
+                    detail: `anchor ${a.path}:${a.line}-${a.line_end ?? a.line} does not contain \`${marker}\`; the anchored code moved`,
+                });
             }
         }
     }

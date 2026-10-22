@@ -399,6 +399,61 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
         expect(violations.some((v) => v.rule === "anchor_drift")).toBe(true);
     });
 
+    describe("anchor_stale: an anchored file must still contain its marker in the anchored range", () => {
+        const withProxyAnchor = (src: string, line: number, lineEnd: number) => {
+            const b = baseline();
+            b.sources["src/proxy.ts"] = src;
+            (b.doc.rows[0] as EndpointProfileRow).reachable_validators = [
+                {
+                    description: "proxy.ts's session gate also runs ahead.",
+                    anchor: { path: "src/proxy.ts", line, line_end: lineEnd },
+                    is_intended_validator: false,
+                    reachable_but_not_owner: true,
+                },
+            ];
+            return b;
+        };
+        const proxySrc = (gateAtLine: number) =>
+            Array.from({ length: 30 }, (_, i) =>
+                i + 1 === gateAtLine
+                    ? "    const bounded = await boundedProxyAuth();"
+                    : "    // filler",
+            ).join("\n");
+
+        it("fails when a src/proxy.ts anchor range no longer holds boundedProxyAuth(", () => {
+            const b = withProxyAnchor(proxySrc(20), 5, 10);
+            const violations = runGate(makeInputs(b));
+            expect(violations.some((v) => v.rule === "anchor_stale")).toBe(true);
+        });
+
+        it.each(["./src/proxy.ts", "src/./proxy.ts", "src//proxy.ts", "src/x/../proxy.ts"])(
+            "fails for the path alias %s on a stale range",
+            (alias) => {
+                const b = withProxyAnchor(proxySrc(20), 5, 10);
+                const anchor = (b.doc.rows[0] as EndpointProfileRow).reachable_validators as {
+                    anchor: { path: string };
+                }[];
+                anchor[0].anchor.path = alias;
+                b.sources[alias] = b.sources["src/proxy.ts"];
+                const violations = runGate(makeInputs(b));
+                expect(violations.some((v) => v.rule === "anchor_stale")).toBe(true);
+            },
+        );
+
+        it("fails when the anchored file is unreadable", () => {
+            const b = withProxyAnchor(proxySrc(7), 5, 10);
+            delete b.sources["src/proxy.ts"];
+            const violations = runGate(makeInputs(b));
+            expect(violations.some((v) => v.rule === "anchor_stale")).toBe(true);
+        });
+
+        it("passes when the range holds boundedProxyAuth(", () => {
+            const b = withProxyAnchor(proxySrc(7), 5, 10);
+            const violations = runGate(makeInputs(b));
+            expect(violations.filter((v) => v.rule === "anchor_stale")).toEqual([]);
+        });
+    });
+
     it("schema_violation: a stray top-level document key fails (schema's additionalProperties:false)", () => {
         const b = baseline();
         (b.doc as unknown as Record<string, unknown>).unexpected_field = "surprise";

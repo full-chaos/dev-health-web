@@ -10,7 +10,7 @@ it rather than duplicating it: read `auth-system.md` first.
 - Discovery script (independent re-derivation): [`../ci/discover_web_routes.ts`](../ci/discover_web_routes.ts)
 - CI gate (diffs discovery against the inventory; fails on an unowned
   surface, a stale row, a duplicate id, a closed-vocabulary violation,
-  anchor drift, a schema violation, an unstated null, or a claimed-protected
+  anchor drift, a stale anchor (a `src/proxy.ts` anchor range without `boundedProxyAuth(`), a schema violation, an unstated null, or a claimed-protected
   action whose validator can't be shown to reject): [`../ci/gate_web_auth_profiles.ts`](../ci/gate_web_auth_profiles.ts),
   proven by [`../ci/__tests__/gate_web_auth_profiles.test.ts`](../ci/__tests__/gate_web_auth_profiles.test.ts).
   Wired into CI as a step of the `quality` job in
