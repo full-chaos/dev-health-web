@@ -42,6 +42,11 @@ export function recordHarnessPackageCommands(args, { failScript, environment = {
         fs.writeFileSync(path.join(temporaryDirectory, command), recorder, { mode: 0o755 });
     }
 
+    // The CI Linux browser probe runs `timeout ... node`; no browser exists in the unit job.
+    fs.writeFileSync(path.join(temporaryDirectory, "timeout"), "#!/usr/bin/env bash\nexit 0\n", {
+        mode: 0o755,
+    });
+
     const artifactRoot = `test-results/chaos-3017-contract-${process.pid}`;
     try {
         const result = runHarness(args, {
