@@ -56,3 +56,10 @@ overrides:
 
 patchedDependencies:
     next-auth@5.0.0-beta.32: patches/next-auth@5.0.0-beta.32.patch
+
+# Bounded registry requests: a slow registry fails a request fast and retries, instead of
+# holding a job until its time limit. Worst case per request is about 3 x 30 s plus back-off.
+fetchTimeout: 30000
+fetchRetries: 3
+fetchRetryMintimeout: 2000
+fetchRetryMaxtimeout: 10000
