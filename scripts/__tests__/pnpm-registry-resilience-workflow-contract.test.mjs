@@ -31,18 +31,27 @@ describe("pnpm registry resilience (slow npm registry must not eat job limits)",
 
         it(`${file}: every install restores and saves the lockfile-keyed pnpm store, with no second cache`, () => {
             expect(text).not.toMatch(/^\s+cache: ["']?pnpm["']?$/mu);
-            expect(count(text, "uses: actions/cache/restore@")).toBe(installs);
+            expect(count(text, "name: Restore pnpm store")).toBe(installs);
             expect(count(text, "name: Save pnpm store")).toBe(installs);
             expect(count(text, "name: Save partial pnpm store")).toBe(installs);
             expect(count(text, "hashFiles('pnpm-lock.yaml')")).toBe(installs * 4);
         });
 
-        it(`${file}: the pnpm bootstrap step is time-bounded`, () => {
-            const setups = count(text, "uses: pnpm/action-setup@");
-            expect(setups).toBe(installs);
-            expect(
-                text.match(/uses: pnpm\/action-setup@[^\n]*\n\s+timeout-minutes: 3\n/gu) ?? [],
-            ).toHaveLength(setups);
+        it(`${file}: pnpm itself is cached (action-setup only on a miss) and its step is time-bounded`, () => {
+            expect(count(text, "uses: pnpm/action-setup@")).toBe(installs);
+            expect(count(text, "id: pnpm-bin")).toBe(installs);
+            expect(count(text, "name: Save pnpm binary")).toBe(installs);
+            expect(count(text, "name: Use cached pnpm binary")).toBe(installs);
+            const setups =
+                text.match(/uses: pnpm\/action-setup@[^\n]*\n\s+timeout-minutes: 3\n/gu) ?? [];
+            expect(setups).toHaveLength(installs);
+            for (const m of text.matchAll(
+                /name: Setup pnpm\n((?: {14}.*\n){1,3}?) {14}uses: pnpm\/action-setup@/gu,
+            )) {
+                expect(m[1]).toContain("steps.pnpm-bin.outputs.cache-hit != 'true'");
+            }
+            expect(count(text, "steps.pnpm-bin.outputs.cache-hit == 'true'")).toBe(installs);
+            expect(count(text, 'test "$(pnpm --version)" = "$PNPM_VERSION"')).toBe(installs);
         });
     }
 
