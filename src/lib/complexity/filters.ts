@@ -1,4 +1,5 @@
 import type { MetricFilter } from "@/lib/filters/types";
+import { buildDateRange } from "@/lib/filters/window";
 
 export type ComplexityScopeInput = {
     repoIds?: string[] | null;
@@ -9,19 +10,10 @@ export function complexityWindowFromFilter(time: MetricFilter["time"]): {
     sinceUtc: string;
     untilUtc: string;
 } {
-    if (time.start_date && time.end_date) {
-        return {
-            sinceUtc: `${time.start_date}T00:00:00Z`,
-            untilUtc: `${time.end_date}T23:59:59Z`,
-        };
-    }
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(end.getDate() - (time.range_days - 1));
-    const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+    const { startDate, endDate } = buildDateRange({ time } as MetricFilter);
     return {
-        sinceUtc: `${isoDate(start)}T00:00:00Z`,
-        untilUtc: `${isoDate(end)}T23:59:59Z`,
+        sinceUtc: `${startDate}T00:00:00Z`,
+        untilUtc: `${endDate}T23:59:59Z`,
     };
 }
 

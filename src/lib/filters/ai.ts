@@ -1,6 +1,7 @@
 import { AI_BUCKETS } from "@/components/ai/utils";
 import { isServer } from "@/lib/env";
 import type { MetricFilter } from "@/lib/filters/types";
+import { buildDateRange } from "@/lib/filters/window";
 import type { AiAttributionBucketInput } from "@/lib/graphql/__generated__/types";
 
 type AIAttributionBucket = AiAttributionBucketInput;
@@ -51,13 +52,8 @@ const stableStringify = (input: unknown): string => {
     return JSON.stringify(input);
 };
 
-const isoDate = (date: Date) => date.toISOString().slice(0, 10);
-
 export function defaultAIFilter(): AIFilter {
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(end.getDate() - 29);
-    return { startDate: isoDate(start), endDate: isoDate(end) };
+    return buildDateRange({ time: { range_days: 30, compare_days: 30 } } as MetricFilter);
 }
 
 export function encodeAIFilter(filter: AIFilter): string {
@@ -117,18 +113,10 @@ export const encodeAIFilterParam = encodeAIFilter;
 export function metricFilterToAIFilter(metric: MetricFilter): AIFilter {
     const fallback = defaultAIFilter();
 
-    let startDate = fallback.startDate;
-    let endDate = fallback.endDate;
-    if (metric.time?.start_date && metric.time?.end_date) {
-        startDate = metric.time.start_date;
-        endDate = metric.time.end_date;
-    } else if (typeof metric.time?.range_days === "number" && metric.time.range_days > 0) {
-        const end = new Date();
-        const start = new Date(end);
-        start.setDate(end.getDate() - (metric.time.range_days - 1));
-        startDate = isoDate(start);
-        endDate = isoDate(end);
-    }
+    const hasWindow =
+        Boolean(metric.time?.start_date && metric.time?.end_date) ||
+        (typeof metric.time?.range_days === "number" && metric.time.range_days > 0);
+    const { startDate, endDate } = hasWindow ? buildDateRange(metric) : fallback;
 
     const teamId =
         metric.scope?.level === "team" && metric.scope.ids?.length

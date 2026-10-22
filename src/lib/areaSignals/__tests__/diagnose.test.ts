@@ -444,13 +444,13 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
                 time: { range_days: 14, compare_days: 14 },
             };
             await getDiagnoseSignals(presetFilter);
-            // range_days - 1 = 13 days back → 14 inclusive calendar dates.
+            // 14 full UTC days ending yesterday (today's partial day is never read).
             expect(mockGraphql).toHaveBeenCalledWith(
                 expect.any(String),
                 {
                     input: expect.objectContaining({
-                        sinceUtc: "2026-05-26T00:00:00Z",
-                        untilUtc: "2026-06-08T23:59:59Z",
+                        sinceUtc: "2026-05-25T00:00:00Z",
+                        untilUtc: "2026-06-07T23:59:59Z",
                     }),
                 },
                 expect.any(Object),

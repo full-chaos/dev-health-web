@@ -20,12 +20,12 @@ describe("complexity filter helpers", () => {
         });
     });
 
-    it("derives a range_days window without dropping the current day", () => {
+    it("derives a range_days window of full UTC days ending yesterday", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-06-08T12:00:00Z"));
         expect(complexityWindowFromFilter({ range_days: 3, compare_days: 3 })).toEqual({
-            sinceUtc: "2026-06-06T00:00:00Z",
-            untilUtc: "2026-06-08T23:59:59Z",
+            sinceUtc: "2026-06-05T00:00:00Z",
+            untilUtc: "2026-06-07T23:59:59Z",
         });
         vi.useRealTimers();
     });
