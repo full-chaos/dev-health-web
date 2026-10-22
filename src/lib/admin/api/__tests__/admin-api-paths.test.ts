@@ -128,7 +128,7 @@ describe("llmSettingsApi budget contract", () => {
 
     it("preserves an explicit zero hard stop in the settings payload", async () => {
         await llmSettingsApi.upsert(
-            { provider: "openai", budget_limit_micro_usd: 0 },
+            { provider: "openai", model: "gpt-4o", budget_limit_micro_usd: 0 },
             "token",
             "org-1",
         );
@@ -137,7 +137,11 @@ describe("llmSettingsApi budget contract", () => {
             "/llm-settings",
             {
                 method: "PUT",
-                body: JSON.stringify({ provider: "openai", budget_limit_micro_usd: 0 }),
+                body: JSON.stringify({
+                    provider: "openai",
+                    model: "gpt-4o",
+                    budget_limit_micro_usd: 0,
+                }),
             },
             "token",
             "org-1",
@@ -158,6 +162,17 @@ describe("llmSettingsApi own-model contract", () => {
         expect(mockRequest).toHaveBeenCalledWith(
             "/llm-settings/own-model",
             { method: "PUT", body: JSON.stringify({ enabled: false }) },
+            "token",
+            "org-1",
+        );
+    });
+
+    it("writes an explicit on as enabled true", async () => {
+        await llmSettingsApi.setOwnModel(true, "token", "org-1");
+
+        expect(mockRequest).toHaveBeenCalledWith(
+            "/llm-settings/own-model",
+            { method: "PUT", body: JSON.stringify({ enabled: true }) },
             "token",
             "org-1",
         );

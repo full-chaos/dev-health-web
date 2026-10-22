@@ -46,7 +46,7 @@ export function kindOfMethod(method: string | undefined): FailureKind {
     return method?.toUpperCase() === "GET" ? "read" : "action";
 }
 
-export type FailureResult = { error: string; status?: number };
+export type FailureResult = { error: string; status?: number; code?: string };
 
 /**
  * The failed result of a server action or a server read. The served text (`served`) survives only
@@ -57,7 +57,13 @@ export type FailureResult = { error: string; status?: number };
 export function failureResult(
     kind: FailureKind,
     operation: string,
-    detail: { status?: number; served?: unknown; error?: unknown; userFacing?: boolean },
+    detail: {
+        status?: number;
+        served?: unknown;
+        error?: unknown;
+        userFacing?: boolean;
+        code?: string;
+    },
 ): FailureResult {
     const served = typeof detail.served === "string" ? detail.served : undefined;
     const status = detail.status;
@@ -72,7 +78,7 @@ export function failureResult(
         return { error: served, ...(status !== undefined ? { status } : {}) };
     }
     if (kind === "action" && served && isValidationStatus(status)) {
-        return { error: served, status };
+        return { error: served, status, ...(detail.code ? { code: detail.code } : {}) };
     }
     logger.error({ err: detail.error ?? served, status, operation }, "Server call failed");
     return {
@@ -102,7 +108,13 @@ export function failureFromError(operation: string, err: unknown): FailureResult
         // The deadline line is already written by the shared place. A write is not retried.
         return { error: WRITE_TIMED_OUT_MESSAGE };
     }
-    const e = err as { name?: unknown; status?: unknown; detail?: unknown; method?: unknown };
+    const e = err as {
+        name?: unknown;
+        status?: unknown;
+        detail?: unknown;
+        method?: unknown;
+        code?: unknown;
+    };
     const isApi = err instanceof Error && e.name === "AdminApiError";
     const isUserFacing = err instanceof UserFacingActionError;
     const status = (isApi || isUserFacing) && typeof e.status === "number" ? e.status : undefined;
@@ -120,6 +132,7 @@ export function failureFromError(operation: string, err: unknown): FailureResult
             served,
             userFacing: isUserFacing,
             error: err,
+            code: isApi && typeof e.code === "string" ? e.code : undefined,
         },
     );
 }

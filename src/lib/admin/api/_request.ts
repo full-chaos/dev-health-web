@@ -7,10 +7,17 @@ export class AdminApiError extends Error {
         public statusText: string,
         public detail?: string,
         public method?: string,
+        public code?: string,
     ) {
         super(detail || `${status} ${statusText}`);
         this.name = "AdminApiError";
     }
+}
+
+function errorCodeOf(raw: unknown): string | undefined {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const code = (raw as Record<string, unknown>).error;
+    return typeof code === "string" ? code : undefined;
 }
 
 function formatErrorDetail(raw: unknown): string | undefined {
@@ -88,9 +95,11 @@ export async function request<T>(
 
     if (!response.ok) {
         let detail: string | undefined;
+        let code: string | undefined;
         try {
             const errorData = await response.json();
             detail = formatErrorDetail(errorData.detail || errorData.message);
+            code = errorCodeOf(errorData.detail);
         } catch {
             detail = undefined;
         }
@@ -99,6 +108,7 @@ export async function request<T>(
             response.statusText,
             detail,
             options.method ?? "GET",
+            code,
         );
     }
 
