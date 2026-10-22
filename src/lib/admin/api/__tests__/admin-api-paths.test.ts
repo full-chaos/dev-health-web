@@ -162,6 +162,17 @@ describe("llmSettingsApi own-model contract", () => {
             "org-1",
         );
     });
+
+    it("writes an explicit on as enabled true", async () => {
+        await llmSettingsApi.setOwnModel(true, "token", "org-1");
+
+        expect(mockRequest).toHaveBeenCalledWith(
+            "/llm-settings/own-model",
+            { method: "PUT", body: JSON.stringify({ enabled: true }) },
+            "token",
+            "org-1",
+        );
+    });
 });
 
 describe("llmSettingsApi service-model contract", () => {

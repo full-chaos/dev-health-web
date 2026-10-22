@@ -40,6 +40,16 @@ describe("ByoLlmOwnModelToggle", () => {
         expect(screen.queryByText(OWN_MODEL_TITLE)).toBeNull();
     });
 
+    it("renders no card, no retry and makes no further read when the member is refused with 403", async () => {
+        load.mockResolvedValue({ error: "Forbidden", status: 403 });
+        renderIt();
+        await waitFor(() => expect(load).toHaveBeenCalled());
+        await Promise.resolve();
+        expect(screen.queryByText(OWN_MODEL_TITLE)).toBeNull();
+        expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+        expect(load).toHaveBeenCalledTimes(1);
+    });
+
     it("shows a failed read with a retry that loads again", async () => {
         load.mockResolvedValueOnce({ error: "boom", status: 500 });
         load.mockResolvedValueOnce({ data: setting() });
@@ -56,6 +66,12 @@ describe("ByoLlmOwnModelToggle", () => {
         expect(screen.getByText(OWN_MODEL_DIAGNOSTICS_NOTE)).toBeInTheDocument();
         expect(OWN_MODEL_DESCRIPTION).toMatch(/without deleting it/);
         expect(OWN_MODEL_DESCRIPTION).toMatch(/platform model fallback/);
+        expect(screen.getByTestId("ai-panel-own-model")).toHaveTextContent(
+            "other than categorization",
+        );
+        expect(screen.getByTestId("ai-panel-own-model")).toHaveTextContent(
+            "otherwise they are refused",
+        );
         expect(OWN_MODEL_DIAGNOSTICS_NOTE).toMatch(/readiness check and the model list/);
         expect(screen.getByTestId("own-model-state")).toHaveTextContent("On");
     });
