@@ -77,13 +77,32 @@ is_ci() {
   [[ "${CI:-}" == "true" || "${CI:-}" == "1" ]]
 }
 
+playwright_launch_probe() {
+  node -e 'const { chromium } = require("@playwright/test"); chromium.launch().then((b) => b.close()).catch((e) => { console.error(e.message); process.exit(1); })'
+}
+
+# GitHub-hosted Ubuntu runners already carry Chromium's system libraries, and
+# `--with-deps` spent up to 546 s in a slow apt mirror to confirm that. Install
+# the browser only, prove it launches, and fall back to apt only if it cannot.
+install_playwright_browser_ci_linux() {
+  echo "==> npx playwright install chromium (download)"
+  run_timed "playwright browser download" npx playwright install chromium
+
+  if run_timed "playwright launch probe" playwright_launch_probe; then
+    return
+  fi
+
+  echo "==> launch probe failed; falling back to npx playwright install-deps chromium"
+  run_timed "playwright install-deps fallback" npx playwright install-deps chromium
+  run_timed "playwright launch probe after install-deps" playwright_launch_probe
+}
+
 install_playwright_browser() {
   local os_name
   os_name="$(uname -s)"
 
   if is_ci && [[ "${os_name}" == "Linux" ]]; then
-    echo "==> npx playwright install --with-deps chromium"
-    npx playwright install --with-deps chromium
+    install_playwright_browser_ci_linux
     return
   fi
 
