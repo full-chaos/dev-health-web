@@ -53,6 +53,8 @@ export const INVESTMENT_TAB_READS: Record<InvestmentTab, readonly InvestmentRead
     confidence: ["mix", "flow", "workUnits", "explain"],
 };
 
+const NO_UNITS: WorkUnitInvestment[] = [];
+
 /** Tabs that draw coverage only: the repository-team flow is there a fallback, not a first read. */
 const COVERAGE_FALLBACK_TABS: readonly InvestmentTab[] = ["overview", "confidence"];
 
@@ -60,7 +62,10 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
+    const [fetchedUnits, setFetchedUnits] = useState<{ key: string; units: WorkUnitInvestment[] }>({
+        key: "",
+        units: [],
+    });
     const [isLoading, setIsLoading] = useState(true);
 
     // A read starts when a tab that draws it is first shown, and stays on for the same filters, so
@@ -278,11 +283,11 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                     dateRange: mixDateRange,
                 });
                 if (active) {
-                    setWorkUnits(Array.isArray(data) ? data : []);
+                    setFetchedUnits({ key: filtersKey, units: Array.isArray(data) ? data : [] });
                 }
             } catch {
                 if (active) {
-                    setWorkUnits([]);
+                    setFetchedUnits({ key: filtersKey, units: [] });
                 }
             } finally {
                 if (active) {
@@ -295,7 +300,14 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [unitsOn, filters, includeTextual, mixDateRange]);
+    }, [unitsOn, filters, filtersKey, includeTextual, mixDateRange]);
+
+    // Units of earlier filters are never served: a gated tab would start an explanation from the
+    // selected unit, and the next tab to draw them would show them while it loads.
+    const workUnits = useMemo(
+        () => (fetchedUnits.key === filtersKey ? fetchedUnits.units : NO_UNITS),
+        [fetchedUnits, filtersKey],
+    );
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;

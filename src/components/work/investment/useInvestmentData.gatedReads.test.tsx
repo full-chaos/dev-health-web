@@ -9,19 +9,21 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentTab } from "./types";
 
 const h = vi.hoisted(() => ({
-    getWorkUnits: vi.fn(() => new Promise(() => {})),
+    search: "",
+    getWorkUnits: vi.fn((..._args: unknown[]): Promise<unknown> => new Promise(() => {})),
+    getWorkUnitExplanation: vi.fn((..._args: unknown[]): Promise<unknown> => new Promise(() => {})),
     explainInvestmentMix: vi.fn(() => new Promise(() => {})),
 }));
 
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ replace: vi.fn() }),
     usePathname: () => "/investment",
-    useSearchParams: () => new URLSearchParams(),
+    useSearchParams: () => new URLSearchParams(h.search),
 }));
 
 vi.mock("@/lib/api/investment", () => ({
     explainInvestmentMix: h.explainInvestmentMix,
-    getWorkUnitExplanation: vi.fn(() => new Promise(() => {})),
+    getWorkUnitExplanation: h.getWorkUnitExplanation,
     getWorkUnits: h.getWorkUnits,
 }));
 
@@ -54,6 +56,8 @@ describe("useInvestmentData REST reads per tab (CHAOS-10711)", () => {
     beforeEach(() => {
         h.getWorkUnits.mockClear();
         h.explainInvestmentMix.mockClear();
+        h.getWorkUnitExplanation.mockClear();
+        h.search = "";
     });
 
     const expected: Record<InvestmentTab, { units: number; explain: number }> = {
@@ -89,5 +93,26 @@ describe("useInvestmentData REST reads per tab (CHAOS-10711)", () => {
         act(() => rerender({ tab: "allocation" }));
         act(() => rerender({ tab: "overview" }));
         expect(calls()).toEqual({ units: 1, explain: 1 });
+    });
+
+    it("drops the units of earlier filters on a tab that does not read them (no explanation, no stale table)", async () => {
+        h.search = "work_unit_id=wu-1";
+        h.getWorkUnits.mockResolvedValueOnce([
+            { work_unit_id: "wu-1", evidence_quality: { value: 0.5, band: "medium" } },
+        ]);
+        const other: MetricFilter = { ...filters, time: { range_days: 7, compare_days: 7 } };
+        const { result, rerender } = renderHook(
+            ({ tab, f }: { tab: InvestmentTab; f: MetricFilter }) =>
+                useInvestmentData({ filters: f, activeTab: tab }),
+            { initialProps: { tab: "overview" as InvestmentTab, f: filters } },
+        );
+        await act(async () => {});
+        expect(result.current.workUnits).toHaveLength(1);
+        const explanationCalls = h.getWorkUnitExplanation.mock.calls.length;
+        await act(async () => rerender({ tab: "allocation", f: other }));
+        expect(result.current.workUnits).toHaveLength(0);
+        expect(h.getWorkUnitExplanation.mock.calls.length).toBe(explanationCalls);
+        await act(async () => rerender({ tab: "evidence", f: other }));
+        expect(result.current.workUnits).toHaveLength(0);
     });
 });
