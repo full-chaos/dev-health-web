@@ -264,6 +264,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                     filters,
                     include_textual: includeTextual,
                     limit: 200,
+                    dateRange: mixDateRange,
                 });
                 if (active) {
                     setWorkUnits(Array.isArray(data) ? data : []);
@@ -283,7 +284,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [filters, includeTextual]);
+    }, [filters, includeTextual, mixDateRange]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
@@ -309,6 +310,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                 const data = await getWorkUnitExplanation({
                     workUnitId: selectedId,
                     filters,
+                    dateRange: mixDateRange,
                 });
                 if (active) {
                     setExplanation(data);
@@ -328,7 +330,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [selectedId, selectedUnit, filters]);
+    }, [selectedId, selectedUnit, filters, mixDateRange]);
 
     const handleSelect = useCallback(
         (workUnitId: string) => {

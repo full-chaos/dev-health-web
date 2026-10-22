@@ -136,6 +136,7 @@ describe("buildDateRange", () => {
         for (const file of [
             "investmentHydration.ts",
             "hooks/useInvestment.ts",
+            "../api/investment.ts",
             "../../components/work/investment/useInvestmentData.ts",
         ]) {
             const source = readFileSync(join(__dirname, "..", file), "utf8");

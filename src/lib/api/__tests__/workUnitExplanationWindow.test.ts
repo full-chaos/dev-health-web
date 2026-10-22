@@ -1,0 +1,82 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MetricFilter } from "@/lib/filters/types";
+
+const postJson = vi.hoisted(() => vi.fn(async () => ({})));
+vi.mock("@/lib/apiClient", () => ({ apiClient: { postJson } }));
+
+import { getWorkUnitExplanation } from "../investment";
+
+const filters = (time: Record<string, unknown>) =>
+    ({
+        time,
+        scope: { level: "org", ids: ["acme"] },
+        who: {},
+        what: {},
+        why: {},
+        how: {},
+    }) as unknown as MetricFilter;
+
+const sentParams = () => {
+    const [path, , , params] = postJson.mock.calls.at(-1) as unknown as [
+        string,
+        unknown,
+        unknown,
+        Record<string, string | number>,
+    ];
+    return { path, params };
+};
+
+describe("getWorkUnitExplanation window", () => {
+    beforeEach(() => {
+        postJson.mockClear();
+        vi.useFakeTimers();
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it.each(["2026-10-19T00:30:00Z", "2026-10-19T23:30:00Z"])(
+        "names N full UTC days that end yesterday for a relative range at %s",
+        async (now) => {
+            vi.setSystemTime(new Date(now));
+            await getWorkUnitExplanation({
+                workUnitId: "unit-1",
+                filters: filters({ range_days: 30, compare_days: 14 }),
+            });
+            const { path, params } = sentParams();
+            expect(path).toBe("/api/v1/work-units/unit-1/explain");
+            expect(params).toEqual({
+                scope_type: "org",
+                scope_id: "acme",
+                range_days: 30,
+                start_date: "2026-09-19",
+                end_date: "2026-10-18",
+                llm_provider: "auto",
+            });
+        },
+    );
+
+    it("sends an explicit end later than yesterday as yesterday and keeps the start", async () => {
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        await getWorkUnitExplanation({
+            workUnitId: "unit-1",
+            filters: filters({
+                range_days: 30,
+                compare_days: 30,
+                start_date: "2026-10-01",
+                end_date: "2026-10-20",
+            }),
+        });
+        const { params } = sentParams();
+        expect([params.start_date, params.end_date]).toEqual(["2026-10-01", "2026-10-18"]);
+    });
+
+    it("sends the range the caller reads the table over, not a second clock read", async () => {
+        vi.setSystemTime(new Date("2026-10-20T00:01:00Z"));
+        await getWorkUnitExplanation({
+            workUnitId: "unit-1",
+            filters: filters({ range_days: 30, compare_days: 30 }),
+            dateRange: { startDate: "2026-09-19", endDate: "2026-10-18" },
+        });
+        const { params } = sentParams();
+        expect([params.start_date, params.end_date]).toEqual(["2026-09-19", "2026-10-18"]);
+    });
+});
