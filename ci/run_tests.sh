@@ -186,8 +186,8 @@ run_wire_parity() {
 }
 
 run_audit() {
-  echo "==> pnpm audit --audit-level=high --prod"
-  pnpm audit --audit-level=high --prod
+  echo "==> pnpm audit --audit-level=high --prod (retried on registry errors only)"
+  node ci/pnpm-audit-retry.mjs
 }
 
 # CHAOS-3595: every quality step runs, and each verdict is printed. One red step
