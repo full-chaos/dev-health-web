@@ -179,6 +179,30 @@ describe("llmSettingsApi own-model contract", () => {
     });
 });
 
+describe("llmSettingsApi prompt-cache contract", () => {
+    it("reads the prompt-cache opt-in from the v1 admin path", async () => {
+        await llmSettingsApi.promptCache("token", "org-1");
+
+        expect(mockRequest).toHaveBeenCalledWith(
+            "/llm-settings/prompt-cache",
+            {},
+            "token",
+            "org-1",
+        );
+    });
+
+    it("writes an explicit on as enabled true", async () => {
+        await llmSettingsApi.setPromptCache(true, "token", "org-1");
+
+        expect(mockRequest).toHaveBeenCalledWith(
+            "/llm-settings/prompt-cache",
+            { method: "PUT", body: JSON.stringify({ enabled: true }) },
+            "token",
+            "org-1",
+        );
+    });
+});
+
 describe("llmSettingsApi service-model contract", () => {
     it("reads the ACR AI features toggle from the v1 admin path", async () => {
         await llmSettingsApi.serviceModel("token", "org-1");

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Section } from "@/components/ui/Section";
+import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import {
     LLM_PROVIDERS,
@@ -165,6 +166,7 @@ function PurposeForm({
         toast.success(`${LLM_PURPOSE_LABELS[purpose]} model saved.`);
         setEditing(false);
         await onChanged();
+        notifyByoLlmConfigChanged();
     }
 
     async function remove() {
@@ -178,6 +180,7 @@ function PurposeForm({
         toast.success(`${LLM_PURPOSE_LABELS[purpose]} now uses the default.`);
         setEditing(false);
         await onChanged();
+        notifyByoLlmConfigChanged();
     }
 
     return (

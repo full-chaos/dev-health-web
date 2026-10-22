@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
+import { BYO_LLM_CONFIG_CHANGED } from "@/lib/admin/byoLlmConfigChanges";
 import { ByoLlmPurposeOverrides, type ByoLlmPurposeOverridesProps } from "./ByoLlmPurposeOverrides";
 
 const load = vi.fn<ByoLlmPurposeOverridesProps["loadSettingsAction"]>();
@@ -50,6 +51,8 @@ describe("ByoLlmPurposeOverrides", () => {
         load.mockResolvedValue({ data: { provider: "anthropic", api_key: "sk-a…1234" } });
         save.mockResolvedValue({ data: { purpose: "explain", provider: "anthropic", model: "m" } });
         renderIt();
+        const changed = vi.fn();
+        window.addEventListener(BYO_LLM_CONFIG_CHANGED, changed);
         const buttons = await screen.findAllByRole("button", { name: "Set model" });
         await userEvent.click(buttons[1]);
         await userEvent.type(screen.getByLabelText("Model"), "small-model");
@@ -61,6 +64,9 @@ describe("ByoLlmPurposeOverrides", () => {
                 model: "small-model",
             }),
         );
+        // The saved Anthropic model can change with an override: dependent cards read it again.
+        await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+        window.removeEventListener(BYO_LLM_CONFIG_CHANGED, changed);
     });
 
     it("requires a model and, for another provider, a key", async () => {
@@ -88,7 +94,11 @@ describe("ByoLlmPurposeOverrides", () => {
         });
         remove.mockResolvedValue({ data: { deleted: true, purpose: "investigate" } });
         renderIt();
+        const changed = vi.fn();
+        window.addEventListener(BYO_LLM_CONFIG_CHANGED, changed);
         await userEvent.click(await screen.findByRole("button", { name: "Use default" }));
         await waitFor(() => expect(remove).toHaveBeenCalledWith("investigate"));
+        await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+        window.removeEventListener(BYO_LLM_CONFIG_CHANGED, changed);
     });
 });
