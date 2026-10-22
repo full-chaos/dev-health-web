@@ -7,6 +7,8 @@ vi.mock("next/link", () => ({
     ),
 }));
 
+import { BYO_LLM_CONFIG_CHANGED } from "@/lib/admin/byoLlmConfigChanges";
+import { ByoLlmPromptCacheToggle, PROMPT_CACHE_TITLE } from "./ByoLlmPromptCacheToggle";
 import { ByoLlmSettings, type ByoLlmSettingsProps } from "./ByoLlmSettings";
 import { ByoLlmSpendSummary } from "./ByoLlmSpendSummary";
 
@@ -510,6 +512,8 @@ describe("ByoLlmSettings", () => {
             },
         });
         renderForm();
+        const changed = vi.fn();
+        window.addEventListener(BYO_LLM_CONFIG_CHANGED, changed);
 
         await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         expect(screen.getByText("gpt-4o")).toBeInTheDocument();
@@ -519,6 +523,7 @@ describe("ByoLlmSettings", () => {
         expect(modelInput.value).toBe("gpt-4o");
         await userEvent.clear(modelInput);
         await userEvent.type(modelInput, "gpt-4o-mini");
+        expect(changed).not.toHaveBeenCalled();
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         expect(mockSave).toHaveBeenCalledWith(
@@ -527,6 +532,9 @@ describe("ByoLlmSettings", () => {
         await waitFor(() => {
             expect(screen.getByText("BYO-LLM settings saved.")).toBeInTheDocument();
         });
+        // Cards that read the saved config (the prompt cache) are told to read it again.
+        expect(changed).toHaveBeenCalledTimes(1);
+        window.removeEventListener(BYO_LLM_CONFIG_CHANGED, changed);
         // Reverts to the read-only summary after a successful save.
         expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
         expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument();
@@ -684,6 +692,49 @@ describe("ByoLlmSettings", () => {
         await waitFor(() => {
             expect(screen.getByText("BYO-LLM settings saved.")).toBeInTheDocument();
         });
+    });
+
+    it("a first Anthropic save makes the prompt cache card appear on the same page, and a delete takes it away", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        mockSave.mockResolvedValue({ data: { provider: "anthropic", model: "claude-haiku-5-5" } });
+        mockRemove.mockResolvedValue({ data: { deleted: true } });
+        const loadPromptCache = vi.fn();
+        loadPromptCache.mockResolvedValueOnce({
+            data: { enabled: false, configured: false, anthropic: false },
+        });
+        renderWithToaster(
+            <>
+                <ByoLlmSettings
+                    loadSettingsAction={mockLoad}
+                    loadBudgetAction={mockLoadBudget}
+                    loadStatusAction={mockLoadStatus}
+                    saveSettingsAction={mockSave}
+                    removeSettingsAction={mockRemove}
+                    runReadinessAction={mockRunReadiness}
+                />
+                <ByoLlmPromptCacheToggle loadAction={loadPromptCache} saveAction={vi.fn()} />
+            </>,
+        );
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await waitFor(() => expect(loadPromptCache).toHaveBeenCalledTimes(1));
+        expect(screen.queryByText(PROMPT_CACHE_TITLE)).toBeNull();
+
+        loadPromptCache.mockResolvedValueOnce({
+            data: { enabled: false, configured: true, anthropic: true },
+        });
+        await userEvent.selectOptions(screen.getByLabelText("Provider"), "anthropic");
+        await userEvent.type(screen.getByLabelText("Model"), "claude-haiku-5-5");
+        await userEvent.type(screen.getByLabelText("API Key"), "sk-ant-secret");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByText(PROMPT_CACHE_TITLE)).toBeInTheDocument();
+
+        loadPromptCache.mockResolvedValueOnce({
+            data: { enabled: false, configured: false, anthropic: false },
+        });
+        await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+        await userEvent.click(screen.getByRole("button", { name: "Confirm delete?" }));
+        await waitFor(() => expect(screen.queryByText(PROMPT_CACHE_TITLE)).toBeNull());
+        expect(loadPromptCache).toHaveBeenCalledTimes(3);
     });
 
     it("refuses to save a blank model and names the field, without calling the backend", async () => {
@@ -896,10 +947,14 @@ describe("ByoLlmSettings", () => {
         await userEvent.click(screen.getByRole("button", { name: "Delete" }));
         expect(mockRemove).not.toHaveBeenCalled();
 
+        const changed = vi.fn();
+        window.addEventListener(BYO_LLM_CONFIG_CHANGED, changed);
         await userEvent.click(screen.getByRole("button", { name: "Confirm delete?" }));
         expect(mockRemove).toHaveBeenCalledTimes(1);
         await waitFor(() => {
             expect(screen.getByText("BYO-LLM settings removed.")).toBeInTheDocument();
         });
+        expect(changed).toHaveBeenCalledTimes(1);
+        window.removeEventListener(BYO_LLM_CONFIG_CHANGED, changed);
     });
 });

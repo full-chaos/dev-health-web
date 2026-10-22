@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { PromptCacheSetting } from "@/lib/admin/api/llm-settings";
 import type { LLMSettingsActionResult } from "@/lib/admin/types";
@@ -44,6 +45,9 @@ export function ByoLlmPromptCacheToggle({ loadAction, saveAction }: ByoLlmPrompt
         // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
         void load();
     }, [load]);
+
+    // The card follows the saved config: a save or delete on this page can add or remove the Anthropic model.
+    useEffect(() => onByoLlmConfigChanged(() => void load()), [load]);
 
     if (loadError) {
         return (

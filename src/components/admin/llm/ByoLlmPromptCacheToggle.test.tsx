@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
+import { act, renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
 import type { PromptCacheSetting } from "@/lib/admin/api/llm-settings";
+import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import {
     ByoLlmPromptCacheToggle,
     PROMPT_CACHE_COST_NOTE,
@@ -95,11 +96,40 @@ describe("ByoLlmPromptCacheToggle", () => {
         expect(screen.getByTestId("prompt-cache-state")).toHaveTextContent("Off");
     });
 
-    it("reloads when a save is refused with 409", async () => {
-        load.mockResolvedValue({ data: setting() });
+    it("shows the reloaded state when a save is refused with 409", async () => {
+        load.mockResolvedValueOnce({ data: setting() });
+        load.mockResolvedValueOnce({ data: setting({ enabled: true }) });
         save.mockResolvedValue({ error: "The setting changed while saving", status: 409 });
         renderIt();
         await userEvent.click(await screen.findByRole("button", { name: "Turn on" }));
-        await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+        await waitFor(() =>
+            expect(screen.getByTestId("prompt-cache-state")).toHaveTextContent("On"),
+        );
+        expect(screen.getByRole("button", { name: "Turn off" })).toBeInTheDocument();
+    });
+
+    it("follows the saved config: it appears when an Anthropic model is saved and goes when the provider changes", async () => {
+        load.mockResolvedValueOnce({ data: setting({ configured: false, anthropic: false }) });
+        renderIt();
+        await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+        expect(screen.queryByText(PROMPT_CACHE_TITLE)).toBeNull();
+
+        load.mockResolvedValueOnce({ data: setting() });
+        act(() => notifyByoLlmConfigChanged());
+        expect(await screen.findByText(PROMPT_CACHE_TITLE)).toBeInTheDocument();
+
+        load.mockResolvedValueOnce({ data: setting({ anthropic: false }) });
+        act(() => notifyByoLlmConfigChanged());
+        await waitFor(() => expect(screen.queryByText(PROMPT_CACHE_TITLE)).toBeNull());
+        expect(load).toHaveBeenCalledTimes(3);
+    });
+
+    it("stops listening when it unmounts", async () => {
+        load.mockResolvedValue({ data: setting() });
+        const view = renderIt();
+        await screen.findByText(PROMPT_CACHE_TITLE);
+        view.unmount();
+        notifyByoLlmConfigChanged();
+        expect(load).toHaveBeenCalledTimes(1);
     });
 });

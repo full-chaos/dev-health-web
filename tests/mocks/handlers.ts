@@ -906,6 +906,7 @@ function mockPromptCacheBody() {
         enabled: mockPromptCacheEnabled,
         configured: mockLlmDefault !== null || Object.keys(mockLlmPurposes).length > 0,
         anthropic:
+            mockPromptCacheAnthropic ??
             (mockLlmPurposes.investigate?.provider ?? mockLlmDefault?.provider) === "anthropic",
     };
 }
@@ -925,13 +926,13 @@ let mockOwnModelEnabled = true;
 export function setMockOwnModel(seed: { enabled: boolean }): void {
     mockOwnModelEnabled = seed.enabled;
 }
-// Prompt-cache opt-in: one stateful flag, off by default; "anthropic" follows the saved default provider.
+// Prompt-cache opt-in: one stateful flag, off by default; `anthropic` follows the saved provider unless a test seeds it.
 let mockPromptCacheEnabled = false;
-/** `/__test/prompt-cache`: back to off, or a seeded state; `provider` swaps the saved default provider. */
-export function setMockPromptCache(seed: { enabled: boolean; provider?: string }): void {
+let mockPromptCacheAnthropic: boolean | null = null;
+/** `/__test/prompt-cache`: back to off and to following the saved provider, or a seeded state. */
+export function setMockPromptCache(seed: { enabled: boolean; anthropic?: boolean }): void {
     mockPromptCacheEnabled = seed.enabled;
-    if (seed.provider && mockLlmDefault)
-        mockLlmDefault = { ...mockLlmDefault, provider: seed.provider };
+    mockPromptCacheAnthropic = seed.anthropic ?? null;
 }
 /** `/__test/service-model`: a managed (billing or support) override, or back to self-service. */
 export function setMockServiceModel(seed: { override: boolean | null; managed: boolean }): void {

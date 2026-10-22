@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { DataState } from "@/components/ui/DataState";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
+import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
 import { fetchLLMModels } from "@/lib/admin/llmModelsClient";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -507,6 +508,7 @@ export function ByoLlmSettings({
             void fetchStatus();
             void fetchBudget();
         }
+        notifyByoLlmConfigChanged();
         toast.success("BYO-LLM settings saved.");
     };
 
@@ -535,6 +537,7 @@ export function ByoLlmSettings({
         setSavedSettings(null);
         setStatus(null);
         setMode("edit");
+        notifyByoLlmConfigChanged();
         toast.success("BYO-LLM settings removed.");
     };
 

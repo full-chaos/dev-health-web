@@ -5,9 +5,7 @@ const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 test.describe.configure({ mode: "serial" });
 
 test.afterEach(async ({ request }) => {
-    await request.post(`${MOCK}/__test/prompt-cache`, {
-        data: { enabled: false, provider: "anthropic" },
-    });
+    await request.post(`${MOCK}/__test/prompt-cache`, { data: { enabled: false } });
 });
 
 // Tall enough that the card is on screen without scrolling under the sticky top bar.
@@ -42,7 +40,7 @@ test("the card is not shown when the saved model is not on Anthropic", async ({
     request,
 }) => {
     const seeded = await request.post(`${MOCK}/__test/prompt-cache`, {
-        data: { enabled: false, provider: "openai" },
+        data: { enabled: false, anthropic: false },
     });
     expect(seeded.status()).toBe(204);
     await page.goto("/org/admin/ai/byo-llm");
