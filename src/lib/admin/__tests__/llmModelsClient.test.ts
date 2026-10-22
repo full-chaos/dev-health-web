@@ -39,6 +39,17 @@ describe("fetchLLMModels", () => {
         );
     });
 
+    it("sends no provider param when the provider is blank", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(new Response(JSON.stringify({ models: [], source: "catalog" })));
+        vi.stubGlobal("fetch", fetchMock);
+
+        await fetchLLMModels(new AbortController().signal, "");
+
+        expect(fetchMock).toHaveBeenCalledWith(LLM_MODELS_PATH, expect.any(Object));
+    });
+
     it("answers an error and the status for a refused read, without the served body", async () => {
         vi.stubGlobal(
             "fetch",
