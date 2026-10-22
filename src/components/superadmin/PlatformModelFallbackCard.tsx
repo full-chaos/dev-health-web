@@ -36,7 +36,7 @@ export function PlatformModelFallbackCard({
             if (error || !data) {
                 toast.error(`${failure}: ${error ?? "no result"}`);
             } else {
-                toast.success(data.message);
+                toast.success(data.notice);
             }
         } catch {
             toast.error("An unexpected error occurred");

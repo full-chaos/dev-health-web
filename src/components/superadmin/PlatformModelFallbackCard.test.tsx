@@ -68,7 +68,7 @@ describe("PlatformModelFallbackCard", () => {
 
     it("confirms with the cost sentence, then calls grant for the org", async () => {
         grantMock.mockResolvedValue({
-            data: { changed: true, message: "Platform admin grant saved." },
+            data: { changed: true, notice: "Platform admin grant saved." },
         });
         render(<PlatformModelFallbackCard orgId="org-1" granted={false} isPlatformAdmin />);
 
@@ -93,7 +93,7 @@ describe("PlatformModelFallbackCard", () => {
 
     it("calls revoke for the org without a cost confirm", async () => {
         revokeMock.mockResolvedValue({
-            data: { changed: true, message: "Platform admin grant removed." },
+            data: { changed: true, notice: "Platform admin grant removed." },
         });
         render(<PlatformModelFallbackCard orgId="org-1" granted isPlatformAdmin />);
 
