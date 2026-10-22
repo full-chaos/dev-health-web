@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SAVE_FAILED_MESSAGE } from "@/lib/readFailure";
 import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
 import type { OwnModelSetting } from "@/lib/admin/api/llm-settings";
 import {
@@ -76,27 +77,38 @@ describe("ByoLlmOwnModelToggle", () => {
         expect(screen.getByTestId("own-model-state")).toHaveTextContent("On");
     });
 
+    it("shows a switch, not a Turn off button, reflecting the saved state", async () => {
+        load.mockResolvedValue({ data: setting() });
+        renderIt();
+        expect(await screen.findByRole("switch", { name: OWN_MODEL_TITLE })).toHaveAttribute(
+            "aria-checked",
+            "true",
+        );
+        expect(screen.queryByRole("button", { name: /Turn (on|off)/ })).toBeNull();
+    });
+
     it("turns it off, then on, sending an explicit value each time", async () => {
         load.mockResolvedValue({ data: setting() });
         save.mockResolvedValueOnce({ data: setting({ enabled: false }) });
         save.mockResolvedValueOnce({ data: setting({ enabled: true }) });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+        await userEvent.click(await screen.findByRole("switch", { name: OWN_MODEL_TITLE }));
         expect(save).toHaveBeenLastCalledWith(false);
         expect(await screen.findByText("Own model turned off")).toBeInTheDocument();
         await waitFor(() => expect(screen.getByTestId("own-model-state")).toHaveTextContent("Off"));
 
-        await userEvent.click(screen.getByRole("button", { name: "Turn on" }));
+        await userEvent.click(screen.getByRole("switch", { name: OWN_MODEL_TITLE }));
         expect(save).toHaveBeenLastCalledWith(true);
         await waitFor(() => expect(screen.getByTestId("own-model-state")).toHaveTextContent("On"));
     });
 
     it("keeps the shown state and names the error when the save fails", async () => {
         load.mockResolvedValue({ data: setting() });
-        save.mockResolvedValue({ error: "Could not save", status: 500 });
+        save.mockResolvedValue({ error: "Backend: key vault exploded", status: 500 });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Could not save");
+        await userEvent.click(await screen.findByRole("switch", { name: OWN_MODEL_TITLE }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(SAVE_FAILED_MESSAGE);
+        expect(screen.queryByText(/key vault exploded/)).toBeNull();
         expect(screen.getByTestId("own-model-state")).toHaveTextContent("On");
     });
 
@@ -104,7 +116,7 @@ describe("ByoLlmOwnModelToggle", () => {
         load.mockResolvedValue({ data: setting() });
         save.mockResolvedValue({ error: "Nothing saved to turn off", status: 409 });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+        await userEvent.click(await screen.findByRole("switch", { name: OWN_MODEL_TITLE }));
         await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
     });
 });

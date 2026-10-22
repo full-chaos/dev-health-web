@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
+import { SAVE_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { ServiceModelSetting } from "@/lib/admin/api/llm-settings";
 import {
     AI_FEATURES_DESCRIPTION,
     AI_FEATURES_MANAGED_NOTE,
+    AI_FEATURES_TITLE,
     ByoLlmAiFeaturesToggle,
     type ByoLlmAiFeaturesToggleProps,
 } from "./ByoLlmAiFeaturesToggle";
@@ -69,11 +71,11 @@ describe("ByoLlmAiFeaturesToggle", () => {
             data: setting({ enabled: false, control: "self_service", override: false }),
         });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn on" }));
+        await userEvent.click(await screen.findByRole("switch", { name: AI_FEATURES_TITLE }));
         expect(save).toHaveBeenLastCalledWith(true);
         expect(await screen.findByTestId("ai-features-state")).toHaveTextContent("On");
 
-        await userEvent.click(screen.getByRole("button", { name: "Turn off" }));
+        await userEvent.click(screen.getByRole("switch", { name: AI_FEATURES_TITLE }));
         expect(save).toHaveBeenLastCalledWith(false);
         await waitFor(() =>
             expect(screen.getByTestId("ai-features-state")).toHaveTextContent("Off"),
@@ -87,7 +89,7 @@ describe("ByoLlmAiFeaturesToggle", () => {
         renderIt();
         expect(await screen.findByText(AI_FEATURES_MANAGED_NOTE)).toBeInTheDocument();
         expect(screen.getByTestId("ai-features-state")).toHaveTextContent("On");
-        expect(screen.queryByRole("button", { name: /Turn (on|off)/ })).toBeNull();
+        expect(screen.queryByRole("switch")).toBeNull();
     });
 
     it("shows the refusal and reloads when billing took the setting over (409)", async () => {
@@ -95,10 +97,19 @@ describe("ByoLlmAiFeaturesToggle", () => {
         load.mockResolvedValueOnce({ data: setting({ enabled: true, control: "managed" }) });
         save.mockResolvedValue({ error: AI_FEATURES_MANAGED_NOTE, status: 409 });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+        await userEvent.click(await screen.findByRole("switch", { name: AI_FEATURES_TITLE }));
         expect(await screen.findByRole("alert")).toHaveTextContent(AI_FEATURES_MANAGED_NOTE);
         await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
-        expect(screen.queryByRole("button", { name: /Turn (on|off)/ })).toBeNull();
+        expect(screen.queryByRole("switch")).toBeNull();
+    });
+
+    it("renders the fixed message, never backend text, when a save fails", async () => {
+        load.mockResolvedValue({ data: setting({ enabled: true, control: "self_service" }) });
+        save.mockResolvedValue({ error: "Backend: key vault exploded", status: 500 });
+        renderIt();
+        await userEvent.click(await screen.findByRole("switch", { name: AI_FEATURES_TITLE }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(SAVE_FAILED_MESSAGE);
+        expect(screen.queryByText(/key vault exploded/)).toBeNull();
     });
 
     it("offers a retry when the read fails", async () => {

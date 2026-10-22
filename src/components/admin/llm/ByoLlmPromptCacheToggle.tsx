@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/shared/Button";
+import { Switch } from "@/components/shared/Switch";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
-import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { READ_FAILED_MESSAGE, SAVE_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { PromptCacheSetting } from "@/lib/admin/api/llm-settings";
 import type { LLMSettingsActionResult } from "@/lib/admin/types";
 
@@ -73,7 +74,7 @@ export function ByoLlmPromptCacheToggle({ loadAction, saveAction }: ByoLlmPrompt
             toast.success(next ? "Prompt cache turned on" : "Prompt cache turned off");
             return;
         }
-        setSaveError(result.error ?? READ_FAILED_MESSAGE);
+        setSaveError(SAVE_FAILED_MESSAGE);
         if (result.status === 409) void load();
     }
 
@@ -93,14 +94,12 @@ export function ByoLlmPromptCacheToggle({ loadAction, saveAction }: ByoLlmPrompt
                     >
                         {setting.enabled ? "On" : "Off"}
                     </span>
-                    <Button
-                        variant={setting.enabled ? "secondary" : "primary"}
+                    <Switch
+                        checked={setting.enabled}
                         disabled={busy}
-                        aria-pressed={setting.enabled}
-                        onClick={() => void flip()}
-                    >
-                        {setting.enabled ? "Turn off" : "Turn on"}
-                    </Button>
+                        aria-label={PROMPT_CACHE_TITLE}
+                        onChange={() => void flip()}
+                    />
                 </div>
                 {saveError ? (
                     <p className="text-sm text-(--negative)" role="alert">

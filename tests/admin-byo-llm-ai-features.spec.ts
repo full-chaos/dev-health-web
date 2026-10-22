@@ -25,13 +25,13 @@ test("an org admin turns ACR AI features on and off from AI Setup", async ({ pag
     await expect(state).toHaveText("On");
     await card.screenshot({ path: testInfo.outputPath("byo-ai-features-on.png") });
 
-    await card.getByRole("button", { name: "Turn off" }).click();
+    await card.getByRole("switch").click();
     await expect(state).toHaveText("Off");
     await page.reload();
     await expect(state).toHaveText("Off");
     await card.screenshot({ path: testInfo.outputPath("byo-ai-features-off.png") });
 
-    await card.getByRole("button", { name: "Turn on" }).click();
+    await card.getByRole("switch").click();
     await expect(state).toHaveText("On");
     await expect(page.getByText("ACR AI features turned on")).toBeVisible();
     // A reload reads the stored value back and leaves no toast over the card.
