@@ -41,7 +41,7 @@ export type ScopeBarClientProps = Pick<
      * with no `f` in the URL the scope is the organization, as the page reads it.
      */
     writeDefaultFilter?: boolean;
-    /** Leave the window group (7d/30d/90d) out of the bar: display only, the window itself is unchanged. */
+    /** Leave the window group (7d/14d/30d/90d) out of the bar: display only, the window itself is unchanged. */
     hideWindow?: boolean;
     /** Page-control rows, in the card below the scope row. */
     children?: ReactNode;

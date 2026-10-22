@@ -23,7 +23,7 @@ type ScopeBarProps = {
      * and the actions, with no filter drawer, no scope lock and no default `f`.
      */
     pageFilters?: boolean;
-    /** Leave the window group (7d/30d/90d) out of the bar: display only, the window itself is unchanged. */
+    /** Leave the window group (7d/14d/30d/90d) out of the bar: display only, the window itself is unchanged. */
     hideWindow?: boolean;
     /**
      * Page-control rows (the page's own filter pills, for example). They render
