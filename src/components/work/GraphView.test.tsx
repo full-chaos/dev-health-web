@@ -865,7 +865,6 @@ describe("GraphView", () => {
             ["Summarized outside the canvas", "50"],
             ["More in the backend (narrower filters)", "400"],
             ["Edges", "800"],
-            ["Window", "30 days"],
             ["Connection type", expect.any(String)],
         ]);
     });
@@ -1804,20 +1803,38 @@ describe("GraphView", () => {
                 ...extra,
             });
 
-        it("names the window, the connection type and the edges shown; nothing else", () => {
+        it("names the connection type and the edges shown; no window", () => {
             withEdges();
             render(<GraphView filters={filters} />);
             const card = screen.getByTestId("graph-context");
-            expect(screen.getByTestId("context-window")).toHaveTextContent("30 days");
+            expect(screen.queryByTestId("context-window")).toBeNull();
+            expect(card).not.toHaveTextContent(/window|30 days/i);
             expect(screen.getByTestId("context-connection")).toHaveTextContent("Work → PRs");
             expect(screen.getByTestId("context-edges")).toHaveTextContent("1");
             expect(card).not.toHaveTextContent("org-1");
         });
 
+        it.each(["overview", "dependencies"] as const)(
+            "shows no window on the %s tab, preset or explicit dates",
+            (activeTab) => {
+                withEdges();
+                const explicit = {
+                    ...filters,
+                    time: { ...filters.time, start_date: "2026-10-01", end_date: "2026-10-14" },
+                } as unknown as MetricFilter;
+                for (const f of [filters, explicit]) {
+                    const { unmount } = render(<GraphView filters={f} activeTab={activeTab} />);
+                    const card = screen.getByTestId("graph-context");
+                    expect(screen.queryByTestId("context-window")).toBeNull();
+                    expect(card).not.toHaveTextContent(/window|30 days|2026-10-01|2026-10-14/i);
+                    unmount();
+                }
+            },
+        );
+
         it("a fact with no value says unavailable", () => {
             withEdges({ loading: true });
             render(<GraphView filters={{ ...filters, time: {} } as unknown as MetricFilter} />);
-            expect(screen.getByTestId("context-window")).toHaveTextContent("unavailable");
             expect(screen.getByTestId("context-edges")).toHaveTextContent("unavailable");
         });
 

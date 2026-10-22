@@ -461,7 +461,6 @@ export function GraphView({
                   shownCount: displayEdges.length,
                   hiddenCount: hiddenEdgeCount,
                   backendMore: Math.max(0, totalCount - edges.length),
-                  window: filters.time,
                   connection: activeTab === "overview" ? activeConnectionSlice.label : null,
               })
             : null,
@@ -620,17 +619,10 @@ export function GraphView({
         : "";
     const emptyCopy =
         activeTab === "dependencies"
-            ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
+            ? `No dependency links between work items${themeFilterSuffix} in this scope.`
             : `No ${activeConnectionSlice.label} relationships${themeFilterSuffix} in the active connection slice. Try switching Connection type to ${CONNECTION_SLICES[1].label} to inspect PRs, commits, and files.`;
 
     // Graph context facts: only what the page can name. A fact with no value is "unavailable".
-    const { start_date: windowStart, end_date: windowEnd, range_days: windowDays } = filters.time;
-    const windowLabel =
-        windowStart && windowEnd
-            ? `${windowStart} to ${windowEnd}`
-            : windowDays
-              ? `${formatNumber(windowDays)} days`
-              : "unavailable";
     const edgesShownLabel = loading
         ? "unavailable"
         : hiddenEdgeCount > 0
@@ -823,7 +815,6 @@ export function GraphView({
                     <h3 className="text-lg font-medium">Graph context</h3>
                     <dl className="mt-3">
                         {[
-                            ["Window", windowLabel, "context-window"],
                             ...(showConnectionSelector
                                 ? [
                                       [
@@ -911,12 +902,8 @@ export function graphEvidenceFacts(input: {
     shownCount: number;
     hiddenCount: number;
     backendMore: number;
-    window: MetricFilter["time"];
     connection: string | null;
 }): PageFact[] {
-    const { start_date: start, end_date: end, range_days: days } = input.window;
-    const windowLabel =
-        start && end ? `${start} to ${end}` : days ? `${formatNumber(days)} days` : undefined;
     return [
         ...(input.hiddenCount > 0 || input.backendMore > 0
             ? [
@@ -943,7 +930,6 @@ export function graphEvidenceFacts(input: {
               ]
             : []),
         { label: "Edges", value: formatNumber(input.tabEdgeCount) },
-        { label: "Window", value: windowLabel },
         ...(input.connection ? [{ label: "Connection type", value: input.connection }] : []),
     ];
 }
