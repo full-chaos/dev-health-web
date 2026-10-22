@@ -131,6 +131,49 @@ describe("ScopeBar — one row", () => {
     });
 });
 
+describe("ScopeBar — hideWindow", () => {
+    it("shows the Window group by default", () => {
+        renderBar({ orgName: "Test" });
+
+        const group = within(row()).getByRole("group", { name: "Window" });
+        expect(
+            within(group)
+                .getAllByRole("button")
+                .map((b) => b.textContent),
+        ).toEqual(["7d", "14d", "30d", "90d"]);
+    });
+
+    it("leaves the Window group out when hideWindow is set, and keeps the other controls", () => {
+        renderBar({ orgName: "Test", hideWindow: true });
+
+        const inRow = within(row());
+        expect(inRow.queryByRole("group", { name: "Window" })).toBeNull();
+        expect(inRow.queryByText("Window")).toBeNull();
+        expect(inRow.getByRole("button", { name: "Test" })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: /Team/ })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: /Repo/ })).toBeInTheDocument();
+    });
+
+    it("does not change the URL window: the filter in the URL is untouched", () => {
+        renderBar({ orgName: "Test", hideWindow: true });
+
+        expect(new URLSearchParams(window.location.search).get("f")).toBe(DEFAULT_F);
+    });
+
+    it("the server wrapper passes hideWindow through to the bar", () => {
+        render(<ScopeBar view="work" orgName="Test" hideWindow />);
+
+        expect(within(row()).queryByRole("group", { name: "Window" })).toBeNull();
+        expect(within(row()).getByRole("button", { name: "Test" })).toBeInTheDocument();
+    });
+
+    it("the server wrapper shows the group when it is not set", () => {
+        render(<ScopeBar view="work" orgName="Test" />);
+
+        expect(within(row()).getByRole("group", { name: "Window" })).toBeInTheDocument();
+    });
+});
+
 describe("ScopeBar — each action writes the same `f` the old bars wrote", () => {
     it("adds the default `f` when the URL has none, and keeps the other params", () => {
         scopeBarUrl.reset("role=em");

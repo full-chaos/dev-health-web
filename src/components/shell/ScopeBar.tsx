@@ -23,6 +23,8 @@ type ScopeBarProps = {
      * and the actions, with no filter drawer, no scope lock and no default `f`.
      */
     pageFilters?: boolean;
+    /** Leave the window group (7d/30d/90d) out of the bar: display only, the window itself is unchanged. */
+    hideWindow?: boolean;
     /**
      * Page-control rows (the page's own filter pills, for example). They render
      * inside the scope bar card, below the scope row.
@@ -30,7 +32,15 @@ type ScopeBarProps = {
     children?: ReactNode;
 };
 
-export function ScopeBar({ view, tab, origin, orgName, pageFilters, children }: ScopeBarProps) {
+export function ScopeBar({
+    view,
+    tab,
+    origin,
+    orgName,
+    pageFilters,
+    hideWindow,
+    children,
+}: ScopeBarProps) {
     const { resolvedVisibility, resolvedScopeLock, writeDefaultFilter } = resolveScopeBarConfig(
         view,
         tab,
@@ -49,6 +59,7 @@ export function ScopeBar({ view, tab, origin, orgName, pageFilters, children }: 
                 writeDefaultFilter={writeDefaultFilter}
                 origin={origin}
                 orgName={orgName}
+                hideWindow={hideWindow}
             >
                 {children}
             </ScopeBarClient>

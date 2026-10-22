@@ -9,7 +9,11 @@ vi.mock("next/navigation", () => ({
     usePathname: () => "/diagnose/work-graph",
     useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <div data-testid="scope-bar" /> }));
+vi.mock("@/components/shell/ScopeBar", () => ({
+    ScopeBar: ({ hideWindow }: { hideWindow?: boolean }) => (
+        <div data-testid="scope-bar" data-hide-window={String(Boolean(hideWindow))} />
+    ),
+}));
 vi.mock("@/components/navigation/ViewSet", () => ({
     ViewSet: () => <div data-testid="view-set" />,
 }));
@@ -70,6 +74,19 @@ describe("Work Graph page header", () => {
         await renderPage(tab);
 
         expect(within(screen.getByTestId("page-header")).getByText(subtitle)).toBeInTheDocument();
+    });
+
+    it.each([
+        [undefined, "true"],
+        ["overview", "true"],
+        ["dependencies", "true"],
+        ["review-network", "false"],
+        ["inflow-outflow", "false"],
+        ["artifacts", "false"],
+    ])("tab %s: the scope bar hides its Window group = %s", async (tab, hidden) => {
+        await renderPage(tab);
+
+        expect(screen.getByTestId("scope-bar")).toHaveAttribute("data-hide-window", hidden);
     });
 
     it("Review Network has a View evidence action with the served totals and no names", async () => {
