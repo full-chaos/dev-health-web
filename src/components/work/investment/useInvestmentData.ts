@@ -192,6 +192,8 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
     const repoTeamFlowFailed = Boolean(repoFlowError);
 
     const includeTextual = true;
+    // Every input of the units read: units of other inputs are never served.
+    const unitsKey = `${filtersKey}|${includeTextual}|${mixDateRange.startDate}|${mixDateRange.endDate}`;
     const selectedId = searchParams.get("work_unit_id");
 
     useEffect(() => {
@@ -283,11 +285,11 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                     dateRange: mixDateRange,
                 });
                 if (active) {
-                    setFetchedUnits({ key: filtersKey, units: Array.isArray(data) ? data : [] });
+                    setFetchedUnits({ key: unitsKey, units: Array.isArray(data) ? data : [] });
                 }
             } catch {
                 if (active) {
-                    setFetchedUnits({ key: filtersKey, units: [] });
+                    setFetchedUnits({ key: unitsKey, units: [] });
                 }
             } finally {
                 if (active) {
@@ -300,13 +302,13 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [unitsOn, filters, filtersKey, includeTextual, mixDateRange]);
+    }, [unitsOn, filters, includeTextual, mixDateRange, unitsKey]);
 
     // Units of earlier filters are never served: a gated tab would start an explanation from the
     // selected unit, and the next tab to draw them would show them while it loads.
     const workUnits = useMemo(
-        () => (fetchedUnits.key === filtersKey ? fetchedUnits.units : NO_UNITS),
-        [fetchedUnits, filtersKey],
+        () => (fetchedUnits.key === unitsKey ? fetchedUnits.units : NO_UNITS),
+        [fetchedUnits, unitsKey],
     );
 
     const selectedUnit = useMemo(() => {

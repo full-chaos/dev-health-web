@@ -115,4 +115,29 @@ describe("useInvestmentData REST reads per tab (CHAOS-10711)", () => {
         await act(async () => rerender({ tab: "evidence", f: other }));
         expect(result.current.workUnits).toHaveLength(0);
     });
+
+    it("drops the units when only the date window changes (a UTC-day change with equal filters)", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        try {
+            vi.setSystemTime(new Date("2026-10-20T12:00:00Z"));
+            h.search = "work_unit_id=wu-1";
+            h.getWorkUnits.mockResolvedValueOnce([
+                { work_unit_id: "wu-1", evidence_quality: { value: 0.5, band: "medium" } },
+            ]);
+            const { result, rerender } = renderHook(
+                ({ f }: { f: MetricFilter }) =>
+                    useInvestmentData({ filters: f, activeTab: "overview" }),
+                { initialProps: { f: filters } },
+            );
+            await act(async () => {});
+            expect(result.current.workUnits).toHaveLength(1);
+            const explanationCalls = h.getWorkUnitExplanation.mock.calls.length;
+            vi.setSystemTime(new Date("2026-10-21T12:00:00Z"));
+            await act(async () => rerender({ f: { ...filters } }));
+            expect(result.current.workUnits).toHaveLength(0);
+            expect(h.getWorkUnitExplanation.mock.calls.length).toBe(explanationCalls);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });
