@@ -37,6 +37,101 @@ describe("buildDateRange", () => {
         ).toEqual({ startDate: "2026-09-30", endDate: "2026-10-14" });
     });
 
+    describe.each(["2026-10-19T00:30:00Z", "2026-10-19T23:30:00Z"])(
+        "explicit end_date is never later than yesterday (UTC) at %s",
+        (now) => {
+            const run = (start_date: string, end_date: string) => {
+                vi.useFakeTimers();
+                vi.setSystemTime(new Date(now));
+                return buildDateRange(filters({ start_date, end_date, range_days: 14 }));
+            };
+
+            it("clamps end = today to yesterday", () => {
+                expect(run("2026-10-05", "2026-10-19")).toEqual({
+                    startDate: "2026-10-05",
+                    endDate: "2026-10-18",
+                });
+            });
+
+            it("clamps end = tomorrow to yesterday", () => {
+                expect(run("2026-10-05", "2026-10-20")).toEqual({
+                    startDate: "2026-10-05",
+                    endDate: "2026-10-18",
+                });
+            });
+
+            it("leaves end = yesterday unchanged", () => {
+                expect(run("2026-10-05", "2026-10-18")).toEqual({
+                    startDate: "2026-10-05",
+                    endDate: "2026-10-18",
+                });
+            });
+
+            it("leaves an end before yesterday unchanged", () => {
+                expect(run("2026-10-05", "2026-10-10")).toEqual({
+                    startDate: "2026-10-05",
+                    endDate: "2026-10-10",
+                });
+            });
+
+            it("clamps start to the clamped end when start is later than it", () => {
+                expect(run("2026-10-19", "2026-10-19")).toEqual({
+                    startDate: "2026-10-18",
+                    endDate: "2026-10-18",
+                });
+                expect(run("2026-10-25", "2026-10-30")).toEqual({
+                    startDate: "2026-10-18",
+                    endDate: "2026-10-18",
+                });
+            });
+
+            it("keeps a start equal to the clamped end", () => {
+                expect(run("2026-10-18", "2026-10-19")).toEqual({
+                    startDate: "2026-10-18",
+                    endDate: "2026-10-18",
+                });
+            });
+
+            it("compares the date part when a URL param carries a time part", () => {
+                expect(run("2026-10-05T00:00:00Z", "2026-10-19T08:00:00Z")).toEqual({
+                    startDate: "2026-10-05T00:00:00Z",
+                    endDate: "2026-10-18",
+                });
+                expect(run("2026-10-19T08:00:00Z", "2026-10-19T09:00:00Z")).toEqual({
+                    startDate: "2026-10-18",
+                    endDate: "2026-10-18",
+                });
+                expect(run("2026-10-05", "2026-10-18T23:59:59Z")).toEqual({
+                    startDate: "2026-10-05",
+                    endDate: "2026-10-18T23:59:59Z",
+                });
+            });
+
+            it("passes an impossible calendar end through unchanged", () => {
+                for (const end of ["2026-13-01", "2026-02-30", "2026-10-32", "2026-00-10"]) {
+                    expect(run("2026-10-05", end)).toEqual({
+                        startDate: "2026-10-05",
+                        endDate: end,
+                    });
+                }
+            });
+
+            it("keeps an impossible start when the end is clamped", () => {
+                expect(run("2026-13-45", "2026-10-19")).toEqual({
+                    startDate: "2026-13-45",
+                    endDate: "2026-10-18",
+                });
+            });
+
+            it("passes an unparseable end through unchanged", () => {
+                expect(run("2026-10-05", "not-a-date")).toEqual({
+                    startDate: "2026-10-05",
+                    endDate: "not-a-date",
+                });
+            });
+        },
+    );
+
     it("has no second copy: every reader of the investment mix imports this one", () => {
         for (const file of [
             "investmentHydration.ts",
