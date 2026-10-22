@@ -369,4 +369,20 @@ describe("ByoLlmSettings model picker", () => {
 
         await waitFor(() => expect(mockSave).toHaveBeenCalled());
     });
+
+    it("asks for a model before saving when the select has none chosen", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        mockLoadModels.mockResolvedValue({ data: catalogBody("openai", ["gpt-4o"]) });
+        renderForm();
+        await waitFor(() => expect(optionValues()).toEqual(["gpt-4o"]));
+
+        await userEvent.type(screen.getByLabelText("API Key"), "sk-test-12345678");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(screen.getByRole("alert")).toHaveTextContent("Enter a model before saving.");
+        expect(screen.getByLabelText("Model")).toHaveAttribute("aria-invalid", "true");
+        expect(mockSave).not.toHaveBeenCalled();
+        await userEvent.selectOptions(screen.getByLabelText("Model"), "gpt-4o");
+        expect(screen.queryByRole("alert")).toBeNull();
+    });
 });

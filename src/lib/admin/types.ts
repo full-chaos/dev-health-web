@@ -907,7 +907,7 @@ export interface LLMPurposeUpsert {
  */
 export interface LLMSettingsUpsert {
     provider: string;
-    model?: string | null;
+    model: string;
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;
@@ -927,6 +927,8 @@ export interface LLMSettingsActionResult<T> {
     data?: T;
     error?: string;
     status?: number;
+    /** The served `detail.error` code of a 4xx answer, when the backend names one. */
+    code?: string;
 }
 
 /** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */

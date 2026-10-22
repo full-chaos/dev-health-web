@@ -128,7 +128,7 @@ describe("llmSettingsApi budget contract", () => {
 
     it("preserves an explicit zero hard stop in the settings payload", async () => {
         await llmSettingsApi.upsert(
-            { provider: "openai", budget_limit_micro_usd: 0 },
+            { provider: "openai", model: "gpt-4o", budget_limit_micro_usd: 0 },
             "token",
             "org-1",
         );
@@ -137,7 +137,11 @@ describe("llmSettingsApi budget contract", () => {
             "/llm-settings",
             {
                 method: "PUT",
-                body: JSON.stringify({ provider: "openai", budget_limit_micro_usd: 0 }),
+                body: JSON.stringify({
+                    provider: "openai",
+                    model: "gpt-4o",
+                    budget_limit_micro_usd: 0,
+                }),
             },
             "token",
             "org-1",

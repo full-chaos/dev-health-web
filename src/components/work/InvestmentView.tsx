@@ -191,6 +191,7 @@ export function InvestmentView({
     // ── Shared chart props ────────────────────────────────────────────────────
     const sharedChartProps = {
         filters: data.filters,
+        dateRange: data.mixDateRange,
         activeRole,
         workUnits: data.workUnits,
         isLoading: data.isLoading,

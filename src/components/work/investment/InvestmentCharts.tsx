@@ -1,5 +1,5 @@
 import { Section } from "@/components/ui/Section";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
     ChartTypeToggle,
     INVESTMENT_SANKEY_CHORD_OPTIONS,
@@ -15,6 +15,8 @@ import { useInvestmentColorMaps } from "./charts/useInvestmentColorMaps";
 
 type InvestmentChartsProps = {
     filters: MetricFilter;
+    /** The one window the mix is read over (from useInvestmentData); never recomputed here. */
+    dateRange: { startDate: string; endDate: string };
     activeRole?: string;
     workUnits: WorkUnitInvestment[];
     isLoading: boolean;
@@ -50,6 +52,7 @@ type InvestmentChartsProps = {
 
 export function InvestmentCharts({
     filters,
+    dateRange,
     activeRole,
     workUnits,
     isLoading,
@@ -89,20 +92,6 @@ export function InvestmentCharts({
     });
 
     const flowUnit = ISSUE_SIZE_UNIT;
-
-    const dateRange = useMemo(() => {
-        const { start_date, end_date, range_days } = filters.time;
-        if (start_date && end_date) {
-            return { startDate: start_date, endDate: end_date };
-        }
-
-        const endDate = new Date();
-        const startDate = new Date(endDate.getTime() - range_days * 24 * 60 * 60 * 1000);
-        return {
-            startDate: startDate.toISOString().split("T")[0],
-            endDate: endDate.toISOString().split("T")[0],
-        };
-    }, [filters.time]);
 
     const mixSection = (
         <InvestmentMixSection

@@ -340,6 +340,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
     );
 
     return {
+        mixDateRange,
         workUnits,
         isLoading,
         investmentMix,
