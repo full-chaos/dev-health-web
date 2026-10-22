@@ -73,7 +73,7 @@ describe("platform model fallback actions", () => {
             const result = await grantPlatformModelFallback("org-9");
 
             expect(result.error).toBeUndefined();
-            expect(result.data).toEqual({ changed: true, notice: "Platform admin grant saved." });
+            expect(result.data).toEqual({ changed: true, message: "Platform admin grant saved." });
             const posts = writes(calls);
             expect(posts).toHaveLength(1);
             expect(posts[0].method).toBe("POST");
@@ -171,7 +171,7 @@ describe("platform model fallback actions", () => {
 
             expect(result.data).toEqual({
                 changed: true,
-                notice: "Platform admin grant removed.",
+                message: "Platform admin grant removed.",
             });
             const deletes = writes(calls);
             expect(deletes).toHaveLength(1);
@@ -189,7 +189,7 @@ describe("platform model fallback actions", () => {
             expect(result.error).toBeUndefined();
             expect(result.data).toEqual({
                 changed: false,
-                notice: "No platform admin grant exists for this org.",
+                message: "No platform admin grant exists for this org.",
             });
             expect(writes(calls)).toHaveLength(0);
             expect(revalidatePath).toHaveBeenCalledWith("/superadmin/licensing/org-9");
