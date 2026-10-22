@@ -55,6 +55,6 @@ test("a setting managed by billing or support is read-only", async ({
             "This setting is managed by your plan or support. Contact support to change it.",
         ),
     ).toBeVisible();
-    await expect(card.getByRole("button", { name: /Turn (on|off)/ })).toHaveCount(0);
+    await expect(card.getByRole("switch")).toHaveCount(0);
     await card.screenshot({ path: testInfo.outputPath("byo-ai-features-managed.png") });
 });
