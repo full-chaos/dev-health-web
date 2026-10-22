@@ -310,6 +310,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
                 const data = await getWorkUnitExplanation({
                     workUnitId: selectedId,
                     filters,
+                    dateRange: mixDateRange,
                 });
                 if (active) {
                     setExplanation(data);
@@ -329,7 +330,7 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
         return () => {
             active = false;
         };
-    }, [selectedId, selectedUnit, filters]);
+    }, [selectedId, selectedUnit, filters, mixDateRange]);
 
     const handleSelect = useCallback(
         (workUnitId: string) => {

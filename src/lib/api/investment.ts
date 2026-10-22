@@ -131,8 +131,10 @@ export async function getWorkUnitExplanation(params: {
     workUnitId: string;
     filters: MetricFilter;
     llmProvider?: string;
+    dateRange?: { startDate: string; endDate: string };
 }) {
     const normalized = normalizeFilters(params.filters);
+    const { startDate, endDate } = params.dateRange ?? buildDateRange(normalized);
     return apiClient.postJson<WorkUnitExplanation>(
         `/api/v1/work-units/${params.workUnitId}/explain`,
         {},
@@ -141,6 +143,8 @@ export async function getWorkUnitExplanation(params: {
             scope_type: normalized.scope.level,
             scope_id: normalized.scope.ids[0] ?? "",
             range_days: normalized.time.range_days,
+            start_date: startDate,
+            end_date: endDate,
             llm_provider: params.llmProvider ?? "auto",
         },
     );
