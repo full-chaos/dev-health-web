@@ -17,7 +17,9 @@ test("the model field is a select from the platform catalog and still takes a ty
             await page.getByRole("button", { name: "Edit" }).click({ timeout: 2000 });
         }
         await expect(select).toBeVisible({ timeout: 3000 });
-        await expect(select.locator("option[value='gpt-4o']")).toHaveCount(1, { timeout: 2000 });
+        await expect(select.locator("option[value='claude-haiku-5-5']")).toHaveCount(1, {
+            timeout: 2000,
+        });
         await expect(hint).toContainText("models", { timeout: 2000 });
         await card.screenshot({
             path: testInfo.outputPath("byo-model-select.png"),
@@ -47,10 +49,9 @@ test("changing the provider refreshes the select without a key", async ({ page }
         if (!(await card.isVisible())) {
             await page.getByRole("button", { name: "Edit" }).click({ timeout: 2000 });
         }
-        await page.getByLabel("Provider").selectOption("anthropic", { timeout: 3000 });
-        await expect(page.locator("select#byo-model option[value='claude-haiku-5-5']")).toHaveCount(
-            1,
-            { timeout: 3000 },
-        );
+        await page.getByLabel("Provider").selectOption("openai", { timeout: 3000 });
+        await expect(page.locator("select#byo-model option[value='gpt-4o']")).toHaveCount(1, {
+            timeout: 3000,
+        });
     }).toPass({ timeout: 30_000 });
 });
