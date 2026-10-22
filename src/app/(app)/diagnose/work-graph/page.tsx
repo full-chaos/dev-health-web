@@ -9,6 +9,7 @@ import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { teamIdsForScope } from "@/lib/filters/capacityScope";
+import { buildDateRange } from "@/lib/graphql/investmentFetchers";
 import {
     getReviewEdgesViaGraphQL,
     type ReviewEdgesResult,
@@ -24,22 +25,6 @@ import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
 type WorkGraphPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-/** Derive ISO date strings from a MetricFilter's time block (mirrors cognitive-load page). */
-function dateRangeFromFilter(time: {
-    range_days: number;
-    start_date?: string;
-    end_date?: string;
-}): { sinceDate: string; untilDate: string } {
-    if (time.start_date && time.end_date) {
-        return { sinceDate: time.start_date, untilDate: time.end_date };
-    }
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(end.getDate() - (time.range_days - 1));
-    const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-    return { sinceDate: isoDate(start), untilDate: isoDate(end) };
-}
 
 /** One line per tab, as the approved prototype words it (views 13 to 16). */
 const TAB_SUBTITLES: Record<string, string> = {
@@ -95,7 +80,7 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     // result as a prop and renders it without a client-side round-trip.
     const session = await requireSession();
     const orgId = session.user.org_id ?? "";
-    const { sinceDate, untilDate } = dateRangeFromFilter(filters.time);
+    const { startDate: sinceDate, endDate: untilDate } = buildDateRange(filters);
     const repoIds = filters.what?.repos?.length ? filters.what.repos : null;
     // A team scope narrows the review edges to the repositories the team owns (CHAOS-7785).
     const teamIds = teamIdsForScope(filters) ?? null;
