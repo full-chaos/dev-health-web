@@ -426,6 +426,20 @@ describe("gate_web_auth_profiles: each failure class fires on a seeded violation
             expect(violations.some((v) => v.rule === "anchor_stale")).toBe(true);
         });
 
+        it.each(["./src/proxy.ts", "src/./proxy.ts", "src//proxy.ts", "src/x/../proxy.ts"])(
+            "fails for the path alias %s on a stale range",
+            (alias) => {
+                const b = withProxyAnchor(proxySrc(20), 5, 10);
+                const anchor = (b.doc.rows[0] as EndpointProfileRow).reachable_validators as {
+                    anchor: { path: string };
+                }[];
+                anchor[0].anchor.path = alias;
+                b.sources[alias] = b.sources["src/proxy.ts"];
+                const violations = runGate(makeInputs(b));
+                expect(violations.some((v) => v.rule === "anchor_stale")).toBe(true);
+            },
+        );
+
         it("fails when the anchored file is unreadable", () => {
             const b = withProxyAnchor(proxySrc(7), 5, 10);
             delete b.sources["src/proxy.ts"];

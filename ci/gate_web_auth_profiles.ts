@@ -103,7 +103,7 @@
  */
 
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, posix, resolve } from "node:path";
 // The 2020 entry point, NOT ajv's default export: the ops-owned schemas
 // declare Draft 2020-12 and the default export implements draft-07.
 import Ajv2020 from "ajv/dist/2020";
@@ -784,7 +784,7 @@ export function runGate(input: GateInputs): Violation[] {
         const anchors: { path: string; line: number; line_end?: number }[] = [];
         collectAnchors(row, anchors);
         for (const a of anchors) {
-            const marker = ANCHOR_MARKERS[a.path];
+            const marker = ANCHOR_MARKERS[posix.normalize(a.path)];
             if (marker === undefined) continue;
             const snippet = readSource(a.path, a.line, a.line_end ?? a.line);
             if (snippet === null || !snippet.includes(marker)) {
