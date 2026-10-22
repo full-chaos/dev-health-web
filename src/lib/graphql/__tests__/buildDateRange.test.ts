@@ -107,6 +107,22 @@ describe("buildDateRange", () => {
                 });
             });
 
+            it("passes an impossible calendar end through unchanged", () => {
+                for (const end of ["2026-13-01", "2026-02-30", "2026-10-32", "2026-00-10"]) {
+                    expect(run("2026-10-05", end)).toEqual({
+                        startDate: "2026-10-05",
+                        endDate: end,
+                    });
+                }
+            });
+
+            it("keeps an impossible start when the end is clamped", () => {
+                expect(run("2026-13-45", "2026-10-19")).toEqual({
+                    startDate: "2026-13-45",
+                    endDate: "2026-10-18",
+                });
+            });
+
             it("passes an unparseable end through unchanged", () => {
                 expect(run("2026-10-05", "not-a-date")).toEqual({
                     startDate: "2026-10-05",

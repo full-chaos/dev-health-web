@@ -42,6 +42,12 @@ export function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+function isCalendarDay(day: string): boolean {
+    if (!ISO_DAY.test(day)) return false;
+    const parsed = new Date(`${day}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(day);
+}
+
 /**
  * Build the investment window from MetricFilter. A relative range is the N full
  * UTC days that end yesterday (inclusive): today's partial day is never read,
@@ -63,12 +69,12 @@ export function buildDateRange(filters: MetricFilter): {
     if (start_date && end_date) {
         // URL params reach here unvalidated and may carry a time part: compare the date part.
         const endDay = end_date.slice(0, 10);
-        if (!ISO_DAY.test(endDay) || endDay <= yesterday) {
+        if (!isCalendarDay(endDay) || endDay <= yesterday) {
             return { startDate: start_date, endDate: end_date };
         }
         const startDay = start_date.slice(0, 10);
         return {
-            startDate: ISO_DAY.test(startDay) && startDay > yesterday ? yesterday : start_date,
+            startDate: isCalendarDay(startDay) && startDay > yesterday ? yesterday : start_date,
             endDate: yesterday,
         };
     }
