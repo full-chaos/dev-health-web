@@ -4,7 +4,6 @@
 // with no audit result, and that error's code/message names a network failure. Advisory data,
 // unparseable output and every other error fail at once with pnpm's exit code.
 import { spawnSync } from "node:child_process";
-import { writeSync } from "node:fs";
 
 const NETWORK_CODES =
     /^(ERR_PNPM_AUDIT_BAD_RESPONSE|ERR_PNPM_FETCH_\d+|ERR_PNPM_META_FETCH_FAIL|ERR_PNPM_NO_OFFLINE_META)$/u;
@@ -36,8 +35,8 @@ export function run({ bin, args, attempts, backoffMs, log }) {
         const verdict = classify(stdout, result.status);
         if (verdict === "pass" || verdict === "fail") {
             // Human-readable report of the same audit (no second network call needed on a failure).
-            writeSync(1, stdout);
-            writeSync(2, result.stderr ?? "");
+            process.stdout.write(stdout);
+            process.stderr.write(result.stderr ?? "");
             return last;
         }
         log(
@@ -60,6 +59,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         args: ["audit", "--audit-level=high", "--prod", "--json"],
         attempts,
         backoffMs,
-        log: (line) => writeSync(2, `==> ${line}\n`),
+        log: (line) => console.error(`==> ${line}`),
     });
 }

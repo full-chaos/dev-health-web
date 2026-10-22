@@ -66,6 +66,7 @@ exit "\${1:-1}"
     chmodSync(bin, 0o755);
     const result = spawnSync("node", [SCRIPT], {
         encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
         env: {
             ...process.env,
             PNPM_AUDIT_BIN: bin,
@@ -116,6 +117,19 @@ describe("pnpm audit retry wrapper", () => {
         const r = runWith([NETWORK_ERROR, ADVISORY], [1, 1]);
         expect(r.status).toBe(1);
         expect(r.calls).toBe(2);
+    });
+
+    it("a large advisory report (about 1 MB) passes through intact with pnpm's exit code", () => {
+        const advisories = {};
+        for (let i = 0; i < 3000; i++) {
+            advisories[i] = { id: i, severity: "high", title: `advisory ${i} ${"x".repeat(300)}` };
+        }
+        const big = JSON.stringify({ advisories, metadata: { vulnerabilities: { high: 3000 } } });
+        expect(big.length).toBeGreaterThan(900_000);
+        const r = runWith([big], [1]);
+        expect(r.status).toBe(1);
+        expect(r.calls).toBe(1);
+        expect(r.stdout).toBe(big);
     });
 
     it("a non-network pnpm error fails at once", () => {
