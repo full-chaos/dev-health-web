@@ -32,6 +32,7 @@ import { getInvestment } from "@/lib/api/investment";
 import { getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
 import { normalizeThemeKey, THEME_LABELS, titleCase } from "@/lib/investment/transforms";
 import { graphqlFetch } from "@/lib/graphql/server";
+import { buildDateRange } from "@/lib/graphql/investmentFetchers";
 import { COMPLEXITY_TIMESERIES_QUERY } from "@/lib/graphql/queries";
 import type { ComplexityTimeseriesResult } from "@/lib/graphql/__generated__/types";
 import {
@@ -266,12 +267,12 @@ export async function getDiagnoseSignals(
     const byId = new Map(diagnose.hubItems.map((item) => [item.id, item]));
     const descriptor = (id: string): NavAreaHubItem | undefined => byId.get(id);
 
-    // Shared date window for the complexity and cognitive-load GraphQL calls.
-    // complexityWindowFromFilter uses `range_days - 1` so a 14-day preset covers
-    // exactly 14 inclusive calendar days, matching the /complexity page.
+    // The complexity call keeps the /complexity page's own window: complexityWindowFromFilter
+    // uses `range_days - 1` so a 14-day preset covers exactly 14 inclusive calendar days.
     const { sinceUtc, untilUtc } = complexityWindowFromFilter(filters.time);
-    const sinceDate = sinceUtc.slice(0, 10);
-    const untilDate = untilUtc.slice(0, 10);
+    // The cognitive-load call takes the shared window (N full UTC days that end yesterday),
+    // the one the /cognitive-load page asks for.
+    const { startDate: sinceDate, endDate: untilDate } = buildDateRange(filters);
 
     // Resolve the org scope server-side (the complexity GraphQL call needs it
     // threaded in as a variable AND as the `X-Org-Id` header).

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mock every Diagnose source at the module boundary ─────────────────────────
 // The resolver fans out to these; we drive each independently to assert the
@@ -789,5 +789,62 @@ describe("getDiagnoseSignals — org scope comes from the session (CHAOS-8272)",
     it("sends the session org when present", async () => {
         await getDiagnoseSignals(defaultMetricFilter);
         expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
+    });
+});
+
+describe("getDiagnoseSignals — Cognitive Load window", () => {
+    afterEach(() => vi.useRealTimers());
+
+    const asked = () => {
+        const [params] = mockGetCognitiveLoad.mock.calls.at(-1) as unknown as [
+            { sinceDate: string; untilDate: string },
+        ];
+        return [params.sinceDate, params.untilDate];
+    };
+    const filterWith = (time: Record<string, unknown>) => ({
+        ...defaultMetricFilter,
+        time: { range_days: 3, compare_days: 3, ...time },
+    });
+
+    it.each(["2026-10-19T00:30:00Z", "2026-10-19T23:30:00Z"])(
+        "asks for N full UTC days that end yesterday for a relative range at %s",
+        async (now) => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date(now));
+            await getDiagnoseSignals(filterWith({}));
+            expect(asked()).toEqual(["2026-10-16", "2026-10-18"]);
+        },
+    );
+
+    it.each([
+        ["today", "2026-10-19"],
+        ["tomorrow", "2026-10-20"],
+    ])("clamps an explicit end of %s to yesterday", async (_label, end) => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        await getDiagnoseSignals(filterWith({ start_date: "2026-10-01", end_date: end }));
+        expect(asked()).toEqual(["2026-10-01", "2026-10-18"]);
+    });
+
+    it("sends an explicit end at or before yesterday unchanged", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        await getDiagnoseSignals(filterWith({ start_date: "2026-09-30", end_date: "2026-10-14" }));
+        expect(asked()).toEqual(["2026-09-30", "2026-10-14"]);
+    });
+
+    it("keeps the team scope on the same query", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        await getDiagnoseSignals({
+            ...filterWith({}),
+            scope: { level: "team", ids: ["team-1"] },
+        });
+        expect(mockGetCognitiveLoad).toHaveBeenLastCalledWith({
+            orgId: "org-test",
+            sinceDate: "2026-10-16",
+            untilDate: "2026-10-18",
+            teamId: "team-1",
+        });
     });
 });

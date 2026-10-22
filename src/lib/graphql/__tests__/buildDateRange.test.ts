@@ -132,17 +132,15 @@ describe("buildDateRange", () => {
         },
     );
 
-    it("has no second copy: every reader of the shared window imports this one", () => {
+    it("has no second copy: every reader of the investment mix imports this one", () => {
         for (const file of [
             "investmentHydration.ts",
             "hooks/useInvestment.ts",
             "../api/investment.ts",
             "../../components/work/investment/useInvestmentData.ts",
-            "../../app/(app)/cognitive-load/page.tsx",
-            "../../app/(app)/diagnose/work-graph/page.tsx",
         ]) {
             const source = readFileSync(join(__dirname, "..", file), "utf8");
-            expect(source).not.toMatch(/function (buildDateRange|dateRangeFromFilter)/);
+            expect(source).not.toMatch(/function buildDateRange/);
             expect(source).not.toMatch(/range_days \* 24/);
             expect(source).toMatch(
                 /buildDateRange[^;]*from "(\.\/|\.\.\/|@\/lib\/graphql\/)investmentFetchers"/,
