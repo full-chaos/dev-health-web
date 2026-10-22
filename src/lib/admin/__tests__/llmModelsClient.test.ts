@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchLLMModels, LLM_MODELS_PATH } from "./llmModelsClient";
+import { fetchLLMModels, LLM_MODELS_PATH } from "../llmModelsClient";
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -23,6 +23,31 @@ describe("fetchLLMModels", () => {
             expect.objectContaining({ signal: controller.signal, cache: "no-store" }),
         );
         expect(result.data?.models).toEqual([{ id: "gpt-4o" }]);
+    });
+
+    it("asks for the chosen provider with a provider query param", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(new Response(JSON.stringify({ models: [], source: "catalog" })));
+        vi.stubGlobal("fetch", fetchMock);
+
+        await fetchLLMModels(new AbortController().signal, "anthropic");
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            `${LLM_MODELS_PATH}?provider=anthropic`,
+            expect.any(Object),
+        );
+    });
+
+    it("sends no provider param when the provider is blank", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(new Response(JSON.stringify({ models: [], source: "catalog" })));
+        vi.stubGlobal("fetch", fetchMock);
+
+        await fetchLLMModels(new AbortController().signal, "");
+
+        expect(fetchMock).toHaveBeenCalledWith(LLM_MODELS_PATH, expect.any(Object));
     });
 
     it("answers an error and the status for a refused read, without the served body", async () => {

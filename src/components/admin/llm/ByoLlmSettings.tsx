@@ -66,11 +66,12 @@ export type ByoLlmSettingsProps = {
      */
     runReadinessAction: () => Promise<LLMSettingsActionResult<LLMSettingsStatusResponse>>;
     /**
-     * Reads the model ids the saved provider offers (ops calls the provider with the saved key).
-     * Read only: the picker only suggests names, the model field stays free text.
+     * Reads the model ids offered for a provider: the platform catalog, merged with the provider's
+     * own list when a key is saved for that provider. Read only; any model name can still be typed.
      */
     loadModelsAction?: (
         signal: AbortSignal,
+        provider?: string,
     ) => Promise<LLMSettingsActionResult<LLMModelListResponse>>;
     /** Turns the picker on with the default browser read (a GET, never a Server Action). */
     modelPicker?: boolean;
@@ -87,6 +88,35 @@ const MODEL_LIST_UNAVAILABLE_TEXT: Record<string, string> = {
     provider_unavailable: "The provider's model list could not be reached.",
     invalid_response: "The provider returned a model list this page cannot use.",
 };
+
+type ModelEntry = { id: string; source: "live" | "catalog" | "saved" | null };
+
+const MODEL_OTHER_VALUE = "__other__";
+
+function parseModelEntries(list: LLMModelListResponse | undefined): ModelEntry[] {
+    if (!list || list.source === "unavailable" || !Array.isArray(list.models)) return [];
+    const seen = new Set<string>();
+    const entries: ModelEntry[] = [];
+    for (const raw of list.models) {
+        const item = raw as { id?: unknown; source?: unknown } | null;
+        const id = item?.id;
+        if (typeof id !== "string" || id === "" || seen.has(id)) continue;
+        seen.add(id);
+        const source = item?.source;
+        entries.push({
+            id,
+            source: source === "live" || source === "catalog" || source === "saved" ? source : null,
+        });
+    }
+    return entries;
+}
+
+const MODEL_GROUPS: { source: ModelEntry["source"]; label: string }[] = [
+    { source: "live", label: "Verified with your key" },
+    { source: "catalog", label: "Platform catalog" },
+    { source: "saved", label: "Saved model" },
+    { source: null, label: "Models" },
+];
 
 const inputClass =
     "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent-2) focus:outline-none";
@@ -254,7 +284,8 @@ export function ByoLlmSettings({
     const [hasStoredKey, setHasStoredKey] = useState(false);
     const [maskedKey, setMaskedKey] = useState<string | null>(null);
     const [hasSavedSettings, setHasSavedSettings] = useState(false);
-    const [modelOptions, setModelOptions] = useState<string[]>([]);
+    const [modelEntries, setModelEntries] = useState<ModelEntry[]>([]);
+    const [modelOther, setModelOther] = useState(false);
     const [modelListNote, setModelListNote] = useState<string | null>(null);
     const [modelListProvider, setModelListProvider] = useState<string | null>(null);
     const modelListRequest = useRef(0);
@@ -298,6 +329,7 @@ export function ByoLlmSettings({
         setHasStoredKey(Boolean(data.api_key));
         setHasSavedSettings(Boolean(data.provider));
         setApiKey("");
+        setModelOther(false);
         setMode(data.provider ? "view" : "edit");
     }, []);
 
@@ -343,27 +375,27 @@ export function ByoLlmSettings({
         modelListAbort.current?.abort();
         const controller = new AbortController();
         modelListAbort.current = controller;
+        const requested = provider;
         try {
-            const result = await loadModelsAction(controller.signal);
+            const result = await loadModelsAction(controller.signal, requested);
             if (request !== modelListRequest.current) return;
             const list = result.data;
-            const ids =
-                list && list.source !== "unavailable" && Array.isArray(list.models)
-                    ? Array.from(
-                          new Set(
-                              list.models
-                                  .map((m) => (m as { id?: unknown } | null)?.id)
-                                  .filter(
-                                      (id): id is string => typeof id === "string" && id !== "",
-                                  ),
-                          ),
-                      )
-                    : [];
-            if (ids.length > 0) {
-                setModelOptions(ids);
-                setModelListNote(null);
+            // An older route ignores the provider param and answers for the saved provider only.
+            const answeredFor =
+                typeof list?.provider === "string"
+                    ? list.provider
+                    : (savedSettings?.provider ?? null);
+            const entries = answeredFor === requested ? parseModelEntries(list) : [];
+            if (entries.length > 0) {
+                setModelEntries(entries);
+                setModelListNote(
+                    typeof list?.reason === "string" &&
+                        Object.hasOwn(MODEL_LIST_UNAVAILABLE_TEXT, list.reason)
+                        ? MODEL_LIST_UNAVAILABLE_TEXT[list.reason]
+                        : null,
+                );
             } else {
-                setModelOptions([]);
+                setModelEntries([]);
                 setModelListNote(
                     typeof list?.reason === "string" &&
                         Object.hasOwn(MODEL_LIST_UNAVAILABLE_TEXT, list.reason)
@@ -371,49 +403,46 @@ export function ByoLlmSettings({
                         : MODEL_LIST_UNAVAILABLE_FALLBACK,
                 );
             }
-            setModelListProvider(list ? (savedSettings?.provider ?? null) : null);
+            setModelListProvider(requested);
         } catch {
             if (request !== modelListRequest.current) return;
-            setModelOptions([]);
+            setModelEntries([]);
             setModelListNote(MODEL_LIST_UNAVAILABLE_FALLBACK);
             setModelListProvider(null);
         }
-    }, [loadModelsAction, savedSettings]);
+    }, [loadModelsAction, provider, savedSettings]);
 
-    const hasSavedKey = hasStoredKey && hasSavedSettings;
     useEffect(() => {
-        if (hasSavedKey) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchModels reads the provider's model list whenever a saved key exists.
-            void fetchModels();
-        } else {
-            // The saved key is gone: drop the list and any read still in flight.
-            modelListRequest.current += 1;
-            modelListAbort.current?.abort();
-            setModelOptions([]);
-            setModelListNote(null);
-            setModelListProvider(null);
-        }
-    }, [hasSavedKey, fetchModels]);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchModels reads the model list for the chosen provider and again after each save.
+        void fetchModels();
+    }, [fetchModels]);
 
     useEffect(() => {
         const abort = modelListAbort;
         return () => abort.current?.abort();
     }, []);
 
-    const modelListMatchesProvider = modelOptions.length > 0 && modelListProvider === provider;
+    const modelListMatchesProvider = modelEntries.length > 0 && modelListProvider === provider;
+    const modelListEntries: ModelEntry[] =
+        modelListMatchesProvider && model.trim() && !modelEntries.some((e) => e.id === model)
+            ? [...modelEntries, { id: model, source: "saved" }]
+            : modelEntries;
+    const showModelSelect = modelListMatchesProvider;
+    const modelOtherOpen = showModelSelect && modelOther;
+    const modelFieldClass = `${inputClass} ${modelError ? "border-(--negative)/60" : ""}`;
+    const verifiedCount = modelEntries.filter((e) => e.source === "live").length;
     let modelListHint: string | null = null;
     if (loadModelsAction) {
         if (modelListMatchesProvider) {
-            modelListHint = `${modelOptions.length} models from your provider. Any model name still works.`;
-        } else if (!hasStoredKey) {
-            modelListHint = "Models load once an API key is saved. Any model name still works.";
-        } else if (savedSettings?.provider && savedSettings.provider !== provider) {
-            modelListHint =
-                "Save the provider change to load that provider's models. Any model name still works.";
+            const base =
+                verifiedCount > 0
+                    ? `${modelEntries.length} models, ${verifiedCount} verified with your key.`
+                    : `${modelEntries.length} models from the platform catalog. Save an API key to verify them with your provider.`;
+            modelListHint = `${modelListNote ? `${modelListNote} ` : ""}${base} Choose Other to type any model name.`;
         } else if (modelListNote) {
             modelListHint = `${modelListNote} Any model name still works.`;
         } else {
-            modelListHint = "Loading the provider's models. Any model name still works.";
+            modelListHint = "Loading models. Any model name still works.";
         }
     }
 
@@ -891,30 +920,82 @@ export function ByoLlmSettings({
                             <label htmlFor="byo-model" className={labelClass}>
                                 Model
                             </label>
-                            <input
-                                id="byo-model"
-                                type="text"
-                                value={model}
-                                placeholder="Model name"
-                                list={modelListMatchesProvider ? "byo-model-options" : undefined}
-                                onChange={(e) => {
-                                    setModel(e.target.value);
-                                    setModelError(null);
-                                }}
-                                className={`${inputClass} ${modelError ? "border-(--negative)/60" : ""}`}
-                                aria-invalid={modelError ? true : undefined}
-                            />
+                            {showModelSelect ? (
+                                <>
+                                    <select
+                                        id="byo-model"
+                                        value={
+                                            modelOtherOpen
+                                                ? MODEL_OTHER_VALUE
+                                                : modelListEntries.some((e) => e.id === model)
+                                                  ? model
+                                                  : ""
+                                        }
+                                        onChange={(e) => {
+                                            if (e.target.value === MODEL_OTHER_VALUE) {
+                                                setModelOther(true);
+                                            } else {
+                                                setModelOther(false);
+                                                setModel(e.target.value);
+                                            }
+                                            setModelError(null);
+                                        }}
+                                        className={modelFieldClass}
+                                        aria-invalid={modelError ? true : undefined}
+                                    >
+                                        <option value="">Choose a model</option>
+                                        {MODEL_GROUPS.map(({ source, label }) => {
+                                            const group = modelListEntries.filter(
+                                                (e) => e.source === source,
+                                            );
+                                            return group.length > 0 ? (
+                                                <optgroup key={label} label={label}>
+                                                    {group.map((e) => (
+                                                        <option key={e.id} value={e.id}>
+                                                            {e.id}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            ) : null;
+                                        })}
+                                        <option value={MODEL_OTHER_VALUE}>
+                                            Other (type a name)
+                                        </option>
+                                    </select>
+                                    {modelOtherOpen ? (
+                                        <input
+                                            id="byo-model-other"
+                                            type="text"
+                                            aria-label="Other model name"
+                                            value={model}
+                                            placeholder="Model name"
+                                            onChange={(e) => {
+                                                setModel(e.target.value);
+                                                setModelError(null);
+                                            }}
+                                            className={`${modelFieldClass} mt-2`}
+                                            aria-invalid={modelError ? true : undefined}
+                                        />
+                                    ) : null}
+                                </>
+                            ) : (
+                                <input
+                                    id="byo-model"
+                                    type="text"
+                                    value={model}
+                                    placeholder="Model name"
+                                    onChange={(e) => {
+                                        setModel(e.target.value);
+                                        setModelError(null);
+                                    }}
+                                    className={modelFieldClass}
+                                    aria-invalid={modelError ? true : undefined}
+                                />
+                            )}
                             {modelError ? (
                                 <p role="alert" className="mt-1 text-xs text-(--negative)">
                                     {modelError}
                                 </p>
-                            ) : null}
-                            {modelListMatchesProvider ? (
-                                <datalist id="byo-model-options" data-testid="byo-model-options">
-                                    {modelOptions.map((id) => (
-                                        <option key={id} value={id} />
-                                    ))}
-                                </datalist>
                             ) : null}
                             {modelListHint ? (
                                 <p className={captionClass} data-testid="byo-model-hint">

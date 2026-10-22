@@ -3678,24 +3678,38 @@ export const handlers = [
         mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
         return HttpResponse.json(mockLlmSettingsBody());
     }),
-    // The provider's model ids for the saved key; a removed setting answers unavailable.
-    http.get("*/api/v1/admin/llm-settings/models", () =>
-        HttpResponse.json(
-            mockLlmDefault
-                ? {
-                      models: [
-                          { id: "gpt-4o" },
-                          { id: "gpt-4o-mini" },
-                          { id: "gpt-5" },
-                          { id: "o4-mini" },
-                      ],
-                      source: "live",
-                      reason: null,
-                      fetched_at: "2026-10-20T12:00:00Z",
-                  }
-                : { models: [], source: "unavailable", reason: "not_configured", fetched_at: null },
-        ),
-    ),
+    // The platform catalog for the asked provider (no key needed), plus the provider's live list for the saved one.
+    http.get("*/api/v1/admin/llm-settings/models", ({ request }) => {
+        const asked =
+            new URL(request.url).searchParams.get("provider") ??
+            mockLlmDefault?.provider ??
+            "openai";
+        const catalog: Record<string, string[]> = {
+            openai: ["gpt-4o", "gpt-4o-mini", "gpt-5", "o4-mini"],
+            anthropic: ["claude-haiku-5-5", "claude-opus-5-5", "claude-sonnet-5-5"],
+        };
+        if (!(asked in catalog))
+            return HttpResponse.json(
+                { detail: { error: "unknown_provider", feature: "byo_llm" } },
+                { status: 400 },
+            );
+        const live =
+            mockLlmDefault && mockLlmDefault.provider === asked ? catalog[asked].slice(0, 2) : [];
+        const ids = Array.from(new Set([...live, ...catalog[asked]])).sort();
+        return HttpResponse.json({
+            provider: asked,
+            models: ids
+                .map((id) => ({
+                    id,
+                    source: live.includes(id) ? "live" : "catalog",
+                    verified: live.includes(id),
+                }))
+                .sort((x, y) => Number(y.verified) - Number(x.verified)),
+            source: live.length > 0 ? "live" : "catalog",
+            reason: null,
+            fetched_at: live.length > 0 ? "2026-10-20T12:00:00Z" : null,
+        });
+    }),
     http.get("*/api/v1/admin/llm-settings/service-model", () =>
         HttpResponse.json(mockServiceModelBody()),
     ),
