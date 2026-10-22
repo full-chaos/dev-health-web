@@ -105,8 +105,8 @@ export async function getDrilldown(
     filters: MetricFilter,
     limit = 50,
 ) {
-    const normalized = normalizeFilters(filters);
-    return postJson<DrilldownResponse>(path, { filters: normalized, limit }, 30);
+    const windowed = withInvestmentWindow(normalizeFilters(filters));
+    return postJson<DrilldownResponse>(path, { filters: windowed, limit }, 30);
 }
 
 /**
@@ -117,7 +117,7 @@ export async function getDrilldown(
 export async function getBlockedWorkIssues(filters: MetricFilter, limit = 50) {
     const normalized = normalizeFilters(filters);
     const blockedFilters = {
-        ...normalized,
+        ...withInvestmentWindow(normalized),
         how: { ...normalized.how, blocked: true as const },
     };
     return postJson<BlockedWorkIssuesResponse>(
