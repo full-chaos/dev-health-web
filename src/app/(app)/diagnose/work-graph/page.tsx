@@ -145,7 +145,11 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                     }
                 />
 
-                <ScopeBar view="work" origin={activeOrigin} />
+                <ScopeBar
+                    view="work"
+                    origin={activeOrigin}
+                    hideWindow={activeTab === "overview" || activeTab === "dependencies"}
+                />
                 <ViewSet
                     orientation="tabs"
                     items={tabs}

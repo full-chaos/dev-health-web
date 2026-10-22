@@ -41,6 +41,8 @@ export type ScopeBarClientProps = Pick<
      * with no `f` in the URL the scope is the organization, as the page reads it.
      */
     writeDefaultFilter?: boolean;
+    /** Leave the window group (7d/14d/30d/90d) out of the bar: display only, the window itself is unchanged. */
+    hideWindow?: boolean;
     /** Page-control rows, in the card below the scope row. */
     children?: ReactNode;
 };
@@ -63,6 +65,7 @@ export function ScopeBarClient({
     origin,
     orgName,
     writeDefaultFilter,
+    hideWindow = false,
     children,
 }: ScopeBarClientProps) {
     const {
@@ -234,35 +237,39 @@ export function ScopeBarClient({
                     toggleValue={toggleValue}
                     value={formatSelection(repoLabels.selected, "All")}
                 />,
-                <div key="window" className="flex items-center gap-2">
-                    <span id="scope-bar-window-label" className={LABEL_CLASS}>
-                        Window
-                    </span>
-                    <div
-                        role="group"
-                        aria-labelledby="scope-bar-window-label"
-                        className="flex items-center gap-1"
-                    >
-                        {WINDOW_OPTIONS.map((days) => {
-                            const active = filters.time.range_days === days;
-                            return (
-                                <button
-                                    key={days}
-                                    type="button"
-                                    onClick={() => setWindow(days)}
-                                    aria-pressed={active}
-                                    className={`rounded-(--radius-sm) px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
-                                        active
-                                            ? "bg-(--accent-wash) font-semibold text-(--accent-ink)"
-                                            : "text-(--text-secondary) hover:text-(--text-primary)"
-                                    }`}
-                                >
-                                    {days}d
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>,
+                ...(hideWindow
+                    ? []
+                    : [
+                          <div key="window" className="flex items-center gap-2">
+                              <span id="scope-bar-window-label" className={LABEL_CLASS}>
+                                  Window
+                              </span>
+                              <div
+                                  role="group"
+                                  aria-labelledby="scope-bar-window-label"
+                                  className="flex items-center gap-1"
+                              >
+                                  {WINDOW_OPTIONS.map((days) => {
+                                      const active = filters.time.range_days === days;
+                                      return (
+                                          <button
+                                              key={days}
+                                              type="button"
+                                              onClick={() => setWindow(days)}
+                                              aria-pressed={active}
+                                              className={`rounded-(--radius-sm) px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
+                                                  active
+                                                      ? "bg-(--accent-wash) font-semibold text-(--accent-ink)"
+                                                      : "text-(--text-secondary) hover:text-(--text-primary)"
+                                              }`}
+                                          >
+                                              {days}d
+                                          </button>
+                                      );
+                                  })}
+                              </div>
+                          </div>,
+                      ]),
             ]}
             rowExtras={
                 <>
