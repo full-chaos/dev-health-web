@@ -427,6 +427,10 @@ export const CTA_LABELS = {
     provenance: "Provenance",
     apply: "Apply",
     saveOverride: "Save Override",
+    /** Licensing detail: a platform admin grants the platform model fallback to an org. */
+    grantPlatformModelFallback: "Grant as platform admin",
+    /** Licensing detail: a platform admin revokes the platform model fallback from an org. */
+    revokePlatformModelFallback: "Revoke as platform admin",
     /** BYO LLM spend summary, no budget configured: go to the monthly budget field (CHAOS-9030). */
     setupBudget: "Setup Budget",
     manageEntitlements: "Manage Entitlements",
