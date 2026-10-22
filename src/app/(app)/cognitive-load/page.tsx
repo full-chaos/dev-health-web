@@ -5,6 +5,7 @@ import { HeatmapView } from "@/components/work/HeatmapView";
 import { requireSession } from "@/lib/auth";
 import { withFilterParam } from "@/lib/filters/url";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
+import { buildDateRange } from "@/lib/graphql/investmentFetchers";
 import { cognitiveLoadRepoIdFromFilter } from "@/lib/cognitiveLoad/filters";
 import { getHeatmap } from "@/lib/api/visuals";
 import {
@@ -46,22 +47,6 @@ function formatPct(ratio: number | null | undefined): string {
 /** Format a float signal value, rounding to nearest integer for display. */
 function formatLoad(value: number): string {
     return String(Math.round(value));
-}
-
-/** Derive ISO date strings from a MetricFilter's time block. */
-function dateRangeFromFilter(time: {
-    range_days: number;
-    start_date?: string;
-    end_date?: string;
-}): { sinceDate: string; untilDate: string } {
-    if (time.start_date && time.end_date) {
-        return { sinceDate: time.start_date, untilDate: time.end_date };
-    }
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(end.getDate() - (time.range_days - 1));
-    const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-    return { sinceDate: isoDate(start), untilDate: isoDate(end) };
 }
 
 /** One line per tab, as the approved prototype words it (views 22 to 26). */
@@ -112,7 +97,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             ? filters.scope.ids[0]
             : null;
     const repoId = cognitiveLoadRepoIdFromFilter(filters);
-    const { sinceDate, untilDate } = dateRangeFromFilter(filters.time);
+    const { startDate: sinceDate, endDate: untilDate } = buildDateRange(filters);
 
     let cognitiveLoadData: Awaited<ReturnType<typeof getCognitiveLoadViaGraphQL>> | null = null;
     let fetchError: string | null = null;
@@ -144,8 +129,8 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 scope_type: filters.scope.level,
                 scope_id: scopeId,
                 range_days: filters.time.range_days,
-                start_date: filters.time.start_date,
-                end_date: filters.time.end_date,
+                start_date: sinceDate,
+                end_date: untilDate,
                 filters,
             });
         } catch {

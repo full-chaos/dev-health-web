@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render as renderTree } from "@/test/utils";
 
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -151,5 +151,49 @@ describe("work graph page: review edges", () => {
         graphViewProps.mockReset();
         await render(filterWith({}), "overview");
         expect(graphViewProps.mock.calls[0][0].reviewEdgesTotalCount).toBeNull();
+    });
+});
+
+describe("work graph page: review edges window", () => {
+    beforeEach(() => {
+        fetchMock.mockReset();
+        fetchMock.mockResolvedValue({ edges: [], totalCount: 0 });
+        vi.useFakeTimers();
+    });
+    afterEach(() => vi.useRealTimers());
+
+    const asked = () => {
+        const [params] = fetchMock.mock.calls.at(-1) as unknown as [
+            { sinceDate: string; untilDate: string },
+        ];
+        return [params.sinceDate, params.untilDate];
+    };
+    const relative = (time: Partial<MetricFilter["time"]>): MetricFilter => ({
+        ...defaultMetricFilter,
+        time: { range_days: 30, compare_days: 30, ...time },
+    });
+
+    it.each(["2026-10-19T00:30:00Z", "2026-10-19T23:30:00Z"])(
+        "asks for N full UTC days that end yesterday for a relative range at %s",
+        async (now) => {
+            vi.setSystemTime(new Date(now));
+            await render(relative({}));
+            expect(asked()).toEqual(["2026-09-19", "2026-10-18"]);
+        },
+    );
+
+    it.each([
+        ["today", "2026-10-19"],
+        ["tomorrow", "2026-10-20"],
+    ])("clamps an explicit end of %s to yesterday", async (_label, end) => {
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        await render(relative({ start_date: "2026-10-01", end_date: end }));
+        expect(asked()).toEqual(["2026-10-01", "2026-10-18"]);
+    });
+
+    it("sends an explicit end at or before yesterday unchanged", async () => {
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        await render(relative({ start_date: "2026-09-30", end_date: "2026-10-14" }));
+        expect(asked()).toEqual(["2026-09-30", "2026-10-14"]);
     });
 });

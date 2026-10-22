@@ -8,6 +8,7 @@
 import type { WorkUnitInvestment } from "@/lib/types";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
+import { buildDateRange } from "@/lib/filters/window";
 import { titleCase as sharedTitleCase } from "@/lib/stringUtils";
 import { UNRESOLVED } from "@/lib/labels/unresolved";
 
@@ -430,7 +431,8 @@ export const getBaselineFilters = (filters: MetricFilter): MetricFilter => {
         baselineStart = bStart.toISOString().split("T")[0];
         baselineEnd = bEnd.toISOString().split("T")[0];
     } else {
-        const bEnd = new Date(new Date().getTime() - range_days * 24 * 60 * 60 * 1000);
+        const shownStart = new Date(`${buildDateRange(filters).startDate}T00:00:00Z`).getTime();
+        const bEnd = new Date(shownStart - 24 * 60 * 60 * 1000);
         const bStart = new Date(bEnd.getTime() - (range_days - 1) * 24 * 60 * 60 * 1000);
         baselineStart = bStart.toISOString().split("T")[0];
         baselineEnd = bEnd.toISOString().split("T")[0];

@@ -22,7 +22,7 @@ describe("static build change filtering", () => {
         const buildJob = workflow.match(/\n    build:\n([\s\S]*?)\n    test-e2e:/)?.[1];
 
         expect(buildJob).toMatch(
-            /- name: Setup pnpm\n\s+if: env\.SHOULD_BUILD == 'true'\n\s+uses: pnpm\/action-setup/,
+            /- name: Setup pnpm\n\s+if: env\.SHOULD_BUILD == 'true'( && [^\n]+)?\n\s+uses: pnpm\/action-setup/,
         );
     });
 });

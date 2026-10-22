@@ -1,4 +1,7 @@
 import type { MetricFilter } from "@/lib/filters/types";
+import { buildDateRange } from "@/lib/graphql/investmentFetchers";
+
+const INVESTMENT_PATH = "/api/v1/investment";
 
 /**
  * The evidence reference of a Home thread: the API path plus the page's scope and window.
@@ -16,8 +19,14 @@ export const buildThreadApiUrl = (path: string, filters: MetricFilter, thread?: 
 
     const [scopeId] = filters.scope.ids;
     if (scopeId) params.set("scope_id", scopeId);
-    if (filters.time.start_date) params.set("start_date", filters.time.start_date);
-    if (filters.time.end_date) params.set("end_date", filters.time.end_date);
+    if (path === INVESTMENT_PATH) {
+        const { startDate, endDate } = buildDateRange(filters);
+        params.set("start_date", startDate);
+        params.set("end_date", endDate);
+    } else {
+        if (filters.time.start_date) params.set("start_date", filters.time.start_date);
+        if (filters.time.end_date) params.set("end_date", filters.time.end_date);
+    }
 
     return `${path}?${params.toString()}`;
 };

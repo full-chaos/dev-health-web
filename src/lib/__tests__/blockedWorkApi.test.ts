@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { postJson } from "@/lib/api/_shared";
 import { getBlockedWorkIssues } from "@/lib/api/investment";
@@ -21,7 +21,10 @@ const FILTERS: MetricFilter = {
 describe("getBlockedWorkIssues", () => {
     beforeEach(() => {
         vi.mocked(postJson).mockReset();
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
     });
+    afterEach(() => vi.useRealTimers());
 
     it("posts the endpoint-only blocked selector without changing the shared filter", async () => {
         vi.mocked(postJson).mockResolvedValue({ items: [], count: 0 });
@@ -33,6 +36,11 @@ describe("getBlockedWorkIssues", () => {
             {
                 filters: {
                     ...FILTERS,
+                    time: {
+                        ...FILTERS.time,
+                        start_date: "2026-09-19",
+                        end_date: "2026-10-18",
+                    },
                     how: { wip_state: ["review"], blocked: true },
                 },
                 limit: 50,

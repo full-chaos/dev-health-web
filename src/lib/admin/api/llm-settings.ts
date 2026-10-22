@@ -16,6 +16,13 @@ export interface OwnModelSetting {
     configured: boolean;
 }
 
+/** GET/PUT /llm-settings/prompt-cache: the org's opt-in to the Anthropic prompt cache; `anthropic` = the saved config Ask Dev uses is on that provider. */
+export interface PromptCacheSetting {
+    enabled: boolean;
+    configured: boolean;
+    anthropic: boolean;
+}
+
 /** GET/PUT /llm-settings/service-model: the org's on/off for ACR AI features (acr_service_model). */
 export interface ServiceModelSetting {
     feature: "acr_service_model";
@@ -98,6 +105,17 @@ export const llmSettingsApi = {
     setOwnModel: (enabled: boolean, token?: string, orgId?: string) =>
         request<OwnModelSetting>(
             "/llm-settings/own-model",
+            { method: "PUT", body: JSON.stringify({ enabled }) },
+            token,
+            orgId,
+        ),
+
+    promptCache: (token?: string, orgId?: string) =>
+        request<PromptCacheSetting>("/llm-settings/prompt-cache", {}, token, orgId),
+
+    setPromptCache: (enabled: boolean, token?: string, orgId?: string) =>
+        request<PromptCacheSetting>(
+            "/llm-settings/prompt-cache",
             { method: "PUT", body: JSON.stringify({ enabled }) },
             token,
             orgId,

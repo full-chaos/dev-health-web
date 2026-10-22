@@ -136,6 +136,7 @@ describe("buildDateRange", () => {
         for (const file of [
             "investmentHydration.ts",
             "hooks/useInvestment.ts",
+            "../api/investment.ts",
             "../../components/work/investment/useInvestmentData.ts",
         ]) {
             const source = readFileSync(join(__dirname, "..", file), "utf8");
@@ -145,6 +146,16 @@ describe("buildDateRange", () => {
                 /buildDateRange[^;]*from "(\.\/|\.\.\/|@\/lib\/graphql\/)investmentFetchers"/,
             );
         }
+    });
+
+    it("the landscape page reads the hotspots window from the shared helper, not its own clock", () => {
+        const source = readFileSync(
+            join(__dirname, "../../../app/(app)/landscape/page.tsx"),
+            "utf8",
+        );
+        expect(source).not.toMatch(/new Date\(|Date\.now\(|setDate\(/);
+        expect(source).toMatch(/complexityWindowFromFilter[^;]*from "@\/lib\/complexity\/filters"/);
+        expect(source).toMatch(/complexityWindowFromFilter\(filters\.time\)/);
     });
 
     it("computes the window once: InvestmentCharts takes it as a prop and reads no clock", () => {

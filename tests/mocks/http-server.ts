@@ -5,6 +5,7 @@ import {
     handlers,
     setMockAdminRows,
     setMockOwnModel,
+    setMockPromptCache,
     setMockServiceModel,
     type MockAdminRowSeed,
 } from "./handlers";
@@ -166,6 +167,21 @@ app.post("/__test/own-model", (req, res) => {
         return;
     }
     setMockOwnModel({ enabled: seed.enabled });
+    res.status(204).end();
+});
+
+// The prompt-cache opt-in, back to off or seeded; `anthropic` overrides what the saved provider says for this route only.
+app.post("/__test/prompt-cache", (req, res) => {
+    const seed = req.body as { enabled?: unknown; anthropic?: unknown } | undefined;
+    if (
+        !seed ||
+        typeof seed.enabled !== "boolean" ||
+        (seed.anthropic !== undefined && typeof seed.anthropic !== "boolean")
+    ) {
+        res.status(400).json({ error: "Expected { enabled: boolean, anthropic?: boolean }" });
+        return;
+    }
+    setMockPromptCache({ enabled: seed.enabled, anthropic: seed.anthropic });
     res.status(204).end();
 });
 
