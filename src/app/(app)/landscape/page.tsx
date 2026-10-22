@@ -15,6 +15,7 @@ import { getQuadrant } from "@/lib/api/visuals";
 import { getBusFactorData } from "@/lib/api/code";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
+import { complexityWindowFromFilter } from "@/lib/complexity/filters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { getLensFromSearchParams, getLandscapePrimaryType } from "@/lib/lensContext";
@@ -102,9 +103,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     const canQuery = scopeType !== "person" || Boolean(scopeId);
     const orgId = session.user?.org_id ?? scopeId;
 
-    const until = new Date();
-    const since = new Date(until);
-    since.setDate(since.getDate() - (filters.time.range_days ?? 90));
+    const { sinceUtc, untilUtc } = complexityWindowFromFilter(filters.time);
 
     const quadrantPromises = canQuery
         ? QUADRANT_CARDS.map((card) =>
@@ -145,9 +144,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
 
     const [health, hotspots, busFactor, teamChurn, ...quadrantData] = await Promise.all([
         checkApiHealth(),
-        orgId
-            ? fetchHotspots(orgId, since.toISOString(), until.toISOString())
-            : Promise.resolve([]),
+        orgId ? fetchHotspots(orgId, sinceUtc, untilUtc) : Promise.resolve([]),
         fetchOrNull(getBusFactorData(filters), "landscape/bus-factor"),
         teamChurnPromise,
         ...quadrantPromises,

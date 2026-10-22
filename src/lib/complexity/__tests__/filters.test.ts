@@ -20,6 +20,20 @@ describe("complexity filter helpers", () => {
         });
     });
 
+    it("uses the date part of explicit bounds that carry a time part", () => {
+        expect(
+            complexityWindowFromFilter({
+                range_days: 90,
+                compare_days: 90,
+                start_date: "2026-10-01T12:00:00Z",
+                end_date: "2026-10-02T18:00:00Z",
+            }),
+        ).toEqual({
+            sinceUtc: "2026-10-01T00:00:00Z",
+            untilUtc: "2026-10-02T23:59:59Z",
+        });
+    });
+
     it("derives a range_days window of full UTC days ending yesterday", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-06-08T12:00:00Z"));
