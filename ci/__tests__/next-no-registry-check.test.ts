@@ -50,6 +50,9 @@ const outcome = `
 describe("next-no-registry-check preload", () => {
     it("exports the URL it blocks", () => {
         expect(NEXT_NO_REGISTRY_CHECK_URL).toBe(DIST_TAGS_URL);
+        expect(readFileSync(PRELOAD_PATH, "utf8")).toContain(
+            `export const BLOCKED_URL = "${DIST_TAGS_URL}";`,
+        );
     });
 
     it("rejects the dist-tags URL at once in its string, URL and Request forms", () => {

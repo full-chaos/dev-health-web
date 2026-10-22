@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { nextDevNodeOptions } from "./ci/next-dev-env";
 
 const isCI = process.env.CI === "true" || process.env.CI === "1";
 const resultsDirectory = process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/navigation";
@@ -51,6 +52,7 @@ export default defineConfig({
             reuseExistingServer: false,
             timeout: 120_000,
             env: {
+                NODE_OPTIONS: nextDevNodeOptions(),
                 NEXT_DIST_DIR: ".next/navigation",
                 PLAYWRIGHT_TEST: "true",
                 DEV_HEALTH_TEST_MODE: "true",
