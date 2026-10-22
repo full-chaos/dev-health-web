@@ -102,8 +102,9 @@ export const encodeAIFilterParam = encodeAIFilter;
  * the canonical filter so they share the same chrome as the rest of the app.
  *
  * Mapping:
- * - startDate/endDate <- time.start_date/time.end_date (custom range) or a
- *   window of `time.range_days` ending today (preset).
+ * - startDate/endDate <- time.start_date/time.end_date (custom range) or the
+ *   shared window of `time.range_days` full UTC days ending yesterday (preset);
+ *   a custom end later than yesterday is clamped to yesterday.
  * - teamId  <- scope.ids[0] when scope.level === "team".
  * - repoId  <- what.repos[0].
  * - workType<- why.work_category[0].
