@@ -1150,7 +1150,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/billing.ts",
-                "line": 108
+                "line": 109
             },
             "classification": "protected",
             "public_rationale": null,
@@ -1189,10 +1189,10 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to requireSuperuserToken() is at src/lib/admin/server/billing.ts:112, added with the platform model fallback grant/revoke actions. action/resource_resolver not independently re-derived beyond the function signature -- declared gap, see lane report.",
-                "action: searched the source from src/lib/admin/server/billing.ts:108 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
-                "resource_resolver: searched the source from src/lib/admin/server/billing.ts:108 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
-                "entitlement_requirement: searched the source from src/lib/admin/server/billing.ts:108 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "This action's own call to requireSuperuserToken() is at src/lib/admin/server/billing.ts:113, added with the platform model fallback grant/revoke actions. action/resource_resolver not independently re-derived beyond the function signature -- declared gap, see lane report.",
+                "action: searched the source from src/lib/admin/server/billing.ts:109 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
+                "resource_resolver: searched the source from src/lib/admin/server/billing.ts:109 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/admin/server/billing.ts:109 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ],
             "exposure": {
                 "reachability": "public_via_edge",

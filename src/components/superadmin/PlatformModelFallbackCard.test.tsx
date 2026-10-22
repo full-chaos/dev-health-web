@@ -19,6 +19,9 @@ import { PlatformModelFallbackCard } from "./PlatformModelFallbackCard";
 const COST_SENTENCE =
     "Granting this means the platform pays for this org's AI calls when it has no saved model config.";
 
+const SCOPE_SENTENCE =
+    "It takes effect only while the ACR service model is on for this org; an org with it off is still refused.";
+
 describe("PlatformModelFallbackCard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -51,6 +54,7 @@ describe("PlatformModelFallbackCard", () => {
 
         expect(screen.getByText(COST_SENTENCE)).toBeVisible();
         expect(screen.getByText(/Only a platform admin can grant or revoke/)).toBeVisible();
+        expect(screen.getByText(SCOPE_SENTENCE)).toBeVisible();
         expect(document.body.textContent).not.toMatch(/superuser|super admin|superadmin grant/i);
     });
 

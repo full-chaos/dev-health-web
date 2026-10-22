@@ -94,6 +94,7 @@ describe("platform model fallback actions", () => {
 
             expect(result.data?.changed).toBe(false);
             expect(writes(calls)).toHaveLength(0);
+            expect(revalidatePath).toHaveBeenCalledWith("/superadmin/licensing/org-9");
         });
 
         it("replaces a disabled grant row: DELETE it, then POST", async () => {
@@ -191,7 +192,7 @@ describe("platform model fallback actions", () => {
                 message: "No platform admin grant exists for this org.",
             });
             expect(writes(calls)).toHaveLength(0);
-            expect(revalidatePath).not.toHaveBeenCalled();
+            expect(revalidatePath).toHaveBeenCalledWith("/superadmin/licensing/org-9");
         });
 
         it("refuses a non-platform-admin session with zero ops calls", async () => {

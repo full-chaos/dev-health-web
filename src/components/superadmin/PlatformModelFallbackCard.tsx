@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { grantPlatformModelFallback, revokePlatformModelFallback } from "@/lib/admin/server";
 
+export const PLATFORM_MODEL_FALLBACK_SCOPE_TEXT =
+    "It takes effect only while the ACR service model is on for this org; an org with it off is still refused.";
+
 export const PLATFORM_MODEL_FALLBACK_COST_TEXT =
     "Granting this means the platform pays for this org's AI calls when it has no saved model config.";
 
@@ -61,6 +64,9 @@ export function PlatformModelFallbackCard({
                         Only a platform admin can grant or revoke this for an org.
                     </p>
                     <p className="mt-2 text-sm">{PLATFORM_MODEL_FALLBACK_COST_TEXT}</p>
+                    <p className="mt-1 text-sm text-(--ink-muted)">
+                        {PLATFORM_MODEL_FALLBACK_SCOPE_TEXT}
+                    </p>
                 </div>
                 <span
                     className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${

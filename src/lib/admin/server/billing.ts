@@ -78,6 +78,7 @@ export async function grantPlatformModelFallback(
             existing?.is_enabled &&
             (!existing.expires_at || new Date(existing.expires_at) > new Date());
         if (existing && active) {
+            revalidatePath(`/superadmin/licensing/${orgId}`);
             return {
                 changed: false,
                 message: "A platform admin grant already exists for this org.",
@@ -113,6 +114,7 @@ export async function revokePlatformModelFallback(
         const overrides = await adminApi.licensing.overrides.list(orgId, token);
         const existing = overrides.find((o) => o.feature_key === PLATFORM_MODEL_FALLBACK_KEY);
         if (!existing) {
+            revalidatePath(`/superadmin/licensing/${orgId}`);
             return { changed: false, message: "No platform admin grant exists for this org." };
         }
         await adminApi.licensing.overrides.delete(orgId, existing.id, token);
