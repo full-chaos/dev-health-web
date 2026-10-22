@@ -5,6 +5,7 @@ import {
     handlers,
     setMockAdminRows,
     setMockOwnModel,
+    setMockPromptCache,
     setMockServiceModel,
     type MockAdminRowSeed,
 } from "./handlers";
@@ -166,6 +167,21 @@ app.post("/__test/own-model", (req, res) => {
         return;
     }
     setMockOwnModel({ enabled: seed.enabled });
+    res.status(204).end();
+});
+
+// The prompt-cache opt-in, back to off or seeded; provider swaps the saved default provider.
+app.post("/__test/prompt-cache", (req, res) => {
+    const seed = req.body as { enabled?: unknown; provider?: unknown } | undefined;
+    if (
+        !seed ||
+        typeof seed.enabled !== "boolean" ||
+        (seed.provider !== undefined && typeof seed.provider !== "string")
+    ) {
+        res.status(400).json({ error: "Expected { enabled: boolean, provider?: string }" });
+        return;
+    }
+    setMockPromptCache({ enabled: seed.enabled, provider: seed.provider });
     res.status(204).end();
 });
 

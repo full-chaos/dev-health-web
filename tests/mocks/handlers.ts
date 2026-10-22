@@ -901,6 +901,14 @@ function mockOwnModelBody() {
         configured: mockLlmDefault !== null || Object.keys(mockLlmPurposes).length > 0,
     };
 }
+function mockPromptCacheBody() {
+    return {
+        enabled: mockPromptCacheEnabled,
+        configured: mockLlmDefault !== null || Object.keys(mockLlmPurposes).length > 0,
+        anthropic:
+            (mockLlmPurposes.investigate?.provider ?? mockLlmDefault?.provider) === "anthropic",
+    };
+}
 function mockLlmSettingsBody() {
     return {
         ...(mockLlmDefault ?? {}),
@@ -916,6 +924,14 @@ let mockOwnModelEnabled = true;
 /** `/__test/own-model`: back to on, or a seeded off. */
 export function setMockOwnModel(seed: { enabled: boolean }): void {
     mockOwnModelEnabled = seed.enabled;
+}
+// Prompt-cache opt-in: one stateful flag, off by default; "anthropic" follows the saved default provider.
+let mockPromptCacheEnabled = false;
+/** `/__test/prompt-cache`: back to off, or a seeded state; `provider` swaps the saved default provider. */
+export function setMockPromptCache(seed: { enabled: boolean; provider?: string }): void {
+    mockPromptCacheEnabled = seed.enabled;
+    if (seed.provider && mockLlmDefault)
+        mockLlmDefault = { ...mockLlmDefault, provider: seed.provider };
 }
 /** `/__test/service-model`: a managed (billing or support) override, or back to self-service. */
 export function setMockServiceModel(seed: { override: boolean | null; managed: boolean }): void {
@@ -3708,6 +3724,16 @@ export const handlers = [
         mockOwnModelEnabled = body.enabled;
         return HttpResponse.json(mockOwnModelBody());
     }),
+    http.get("*/api/v1/admin/llm-settings/prompt-cache", () =>
+        HttpResponse.json(mockPromptCacheBody()),
+    ),
+    http.put("*/api/v1/admin/llm-settings/prompt-cache", async ({ request }) => {
+        const body = (await request.json()) as { enabled?: unknown };
+        if (typeof body.enabled !== "boolean")
+            return HttpResponse.json({ detail: "enabled required" }, { status: 422 });
+        mockPromptCacheEnabled = body.enabled;
+        return HttpResponse.json(mockPromptCacheBody());
+    }),
     http.delete("*/api/v1/admin/llm-settings", ({ request }) => {
         const purpose = new URL(request.url).searchParams.get("purpose");
         if (purpose) {
@@ -3715,6 +3741,7 @@ export const handlers = [
             return HttpResponse.json({ deleted: true, purpose });
         }
         mockLlmDefault = null;
+        mockPromptCacheEnabled = false;
         return HttpResponse.json({ deleted: true });
     }),
 
