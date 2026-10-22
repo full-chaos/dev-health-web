@@ -1,6 +1,6 @@
 "use server";
 
-import { adminApi } from "../api";
+import { adminApi, AdminApiError } from "../api";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/result";
 import type {
@@ -60,5 +60,63 @@ export async function deleteFeatureOverride(
         const result = await adminApi.licensing.overrides.delete(orgId, overrideId, token);
         revalidatePath(`/superadmin/licensing/${orgId}`);
         return result;
+    });
+}
+
+const PLATFORM_MODEL_FALLBACK_KEY = "platform_model_fallback";
+
+export type PlatformModelFallbackChange = { changed: boolean; message: string };
+
+export async function grantPlatformModelFallback(
+    orgId: string,
+): Promise<ActionResult<PlatformModelFallbackChange>> {
+    return withErrorHandling(async () => {
+        const token = await requireSuperuserToken();
+        const overrides = await adminApi.licensing.overrides.list(orgId, token);
+        const existing = overrides.find((o) => o.feature_key === PLATFORM_MODEL_FALLBACK_KEY);
+        const active =
+            existing?.is_enabled &&
+            (!existing.expires_at || new Date(existing.expires_at) > new Date());
+        if (existing && active) {
+            return {
+                changed: false,
+                message: "A platform admin grant already exists for this org.",
+            };
+        }
+        const flags = await adminApi.licensing.featureFlags(token);
+        const flag = flags.find((f) => f.key === PLATFORM_MODEL_FALLBACK_KEY);
+        if (!flag) {
+            throw new AdminApiError(
+                404,
+                "Not Found",
+                "Platform model fallback is not in the feature catalog",
+            );
+        }
+        if (existing) {
+            await adminApi.licensing.overrides.delete(orgId, existing.id, token);
+        }
+        await adminApi.licensing.overrides.create(
+            orgId,
+            { feature_id: flag.id, is_enabled: true, reason: "Platform admin grant" },
+            token,
+        );
+        revalidatePath(`/superadmin/licensing/${orgId}`);
+        return { changed: true, message: "Platform admin grant saved." };
+    });
+}
+
+export async function revokePlatformModelFallback(
+    orgId: string,
+): Promise<ActionResult<PlatformModelFallbackChange>> {
+    return withErrorHandling(async () => {
+        const token = await requireSuperuserToken();
+        const overrides = await adminApi.licensing.overrides.list(orgId, token);
+        const existing = overrides.find((o) => o.feature_key === PLATFORM_MODEL_FALLBACK_KEY);
+        if (!existing) {
+            return { changed: false, message: "No platform admin grant exists for this org." };
+        }
+        await adminApi.licensing.overrides.delete(orgId, existing.id, token);
+        revalidatePath(`/superadmin/licensing/${orgId}`);
+        return { changed: true, message: "Platform admin grant removed." };
     });
 }
