@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { nextDevNodeOptions } from "./ci/next-dev-env";
 
 const liveBackendUrl =
     process.env.PLAYWRIGHT_LIVE_BACKEND_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
@@ -28,6 +29,7 @@ export default defineConfig({
             reuseExistingServer: !process.env.CI,
             timeout: 120_000,
             env: {
+                NODE_OPTIONS: nextDevNodeOptions(),
                 PLAYWRIGHT_TEST: "true",
                 BACKEND_URL: liveBackendUrl,
             },
