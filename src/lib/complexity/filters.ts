@@ -12,8 +12,8 @@ export function complexityWindowFromFilter(time: MetricFilter["time"]): {
 } {
     const { startDate, endDate } = buildDateRange({ time } as MetricFilter);
     return {
-        sinceUtc: `${startDate}T00:00:00Z`,
-        untilUtc: `${endDate}T23:59:59Z`,
+        sinceUtc: `${startDate.slice(0, 10)}T00:00:00Z`,
+        untilUtc: `${endDate.slice(0, 10)}T23:59:59Z`,
     };
 }
 

@@ -52,4 +52,15 @@ describe("Landscape hotspots window", () => {
         expect(input.sinceUtc).toBe("2026-10-01T00:00:00Z");
         expect(input.untilUtc).toBe("2026-10-18T23:59:59Z");
     });
+
+    it("takes the date part of an explicit bound that carries a time part", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date("2026-10-19T12:00:00Z"));
+        const input = await hotspotsInput({
+            start_date: "2026-10-01T12:00:00Z",
+            end_date: "2026-10-02T18:00:00Z",
+        });
+        expect(input.sinceUtc).toBe("2026-10-01T00:00:00Z");
+        expect(input.untilUtc).toBe("2026-10-02T23:59:59Z");
+    });
 });
