@@ -66,6 +66,10 @@ const ALLOW: Record<string, Allowed> = {
         reason: "a commit message shown as data, not an error",
         reads: { commit: 1 },
     },
+    "components/superadmin/PlatformModelFallbackCard.tsx": {
+        reason: "web-authored notice from the grant/revoke actions (fixed strings in billing.ts), not backend text",
+        reads: { data: 1 },
+    },
 };
 
 const SRC = join(process.cwd(), "src");

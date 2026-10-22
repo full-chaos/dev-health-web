@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent } from "@/test/utils";
+import { mockAuth } from "@/test/mocks/auth";
 import type {
     FeatureFlag,
     FeatureOverride,
@@ -24,7 +25,10 @@ vi.mock("next/navigation", () => ({
     notFound: vi.fn(),
     usePathname: () => "/superadmin/licensing/org-1",
 }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/admin/server", () => ({
+    grantPlatformModelFallback: vi.fn(),
+    revokePlatformModelFallback: vi.fn(),
     getOrganization: getOrganizationMock,
     getOrgEntitlements: getOrgEntitlementsMock,
     listFeatureOverrides: listFeatureOverridesMock,
@@ -91,6 +95,7 @@ const existingOverride: FeatureOverride = {
 describe("LicensingDetailPage feature override catalog", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockAuth({ user: { is_superuser: true } });
         getOrganizationMock.mockResolvedValue({ data: organization });
         getOrgEntitlementsMock.mockResolvedValue({ data: entitlements });
         listFeatureOverridesMock.mockResolvedValue({ data: [existingOverride] });
@@ -133,5 +138,31 @@ describe("LicensingDetailPage feature override catalog", () => {
         expect(screen.getByRole("button", { name: "Add Override" })).toBeDisabled();
         expect(screen.getByText("existing_feature")).toBeVisible();
         expect(screen.getByText("Existing access")).toBeVisible();
+    });
+
+    it("shows the platform model fallback card to a platform admin, not granted by default", async () => {
+        render(await LicensingDetailPage({ params: Promise.resolve({ orgId: "org-1" }) }));
+
+        expect(screen.getByRole("heading", { name: "Platform model fallback" })).toBeVisible();
+        expect(screen.getByText("Not granted")).toBeVisible();
+    });
+
+    it("shows Granted when the entitlement reports platform_model_fallback on", async () => {
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: { ...entitlements, features: { platform_model_fallback: true } },
+        });
+
+        render(await LicensingDetailPage({ params: Promise.resolve({ orgId: "org-1" }) }));
+
+        expect(screen.getByText("Granted")).toBeVisible();
+    });
+
+    it("hides the card from an org admin who is not a platform admin", async () => {
+        mockAuth({ user: { is_superuser: false } });
+
+        render(await LicensingDetailPage({ params: Promise.resolve({ orgId: "org-1" }) }));
+
+        expect(screen.queryByRole("heading", { name: "Platform model fallback" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Grant as platform admin" })).toBeNull();
     });
 });
