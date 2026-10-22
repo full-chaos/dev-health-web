@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/shared/Button";
+import { Switch } from "@/components/shared/Switch";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { READ_FAILED_MESSAGE, SAVE_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { ServiceModelSetting } from "@/lib/admin/api/llm-settings";
 import type { LLMSettingsActionResult } from "@/lib/admin/types";
 
@@ -71,7 +72,7 @@ export function ByoLlmAiFeaturesToggle({ loadAction, saveAction }: ByoLlmAiFeatu
             toast.success(next ? "ACR AI features turned on" : "ACR AI features turned off");
             return;
         }
-        setSaveError(result.error ?? READ_FAILED_MESSAGE);
+        setSaveError(result.status === 409 ? AI_FEATURES_MANAGED_NOTE : SAVE_FAILED_MESSAGE);
         // A 409 means billing or support took the setting over: show its current state.
         if (result.status === 409) void load();
     }
@@ -93,14 +94,12 @@ export function ByoLlmAiFeaturesToggle({ loadAction, saveAction }: ByoLlmAiFeatu
                         {setting.enabled ? "On" : "Off"}
                     </span>
                     {managed ? null : (
-                        <Button
-                            variant={setting.enabled ? "secondary" : "primary"}
+                        <Switch
+                            checked={setting.enabled}
                             disabled={busy}
-                            aria-pressed={setting.enabled}
-                            onClick={() => void flip()}
-                        >
-                            {setting.enabled ? "Turn off" : "Turn on"}
-                        </Button>
+                            aria-label={AI_FEATURES_TITLE}
+                            onChange={() => void flip()}
+                        />
                     )}
                 </div>
                 {managed ? (

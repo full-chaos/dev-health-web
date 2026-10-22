@@ -24,7 +24,7 @@ test("an org admin turns the saved own model off and on from AI Setup", async ({
     await expect(state).toHaveText("On");
     await card.screenshot({ path: testInfo.outputPath("byo-own-model-on.png") });
 
-    await card.getByRole("button", { name: "Turn off" }).click();
+    await card.getByRole("switch").click();
     await expect(state).toHaveText("Off");
     await expect(page.getByText("Own model turned off")).toBeVisible();
     // A reload reads the stored value back; the saved provider settings stay on the page.
@@ -33,7 +33,7 @@ test("an org admin turns the saved own model off and on from AI Setup", async ({
     await expect(page.getByTestId("ai-panel-own-model")).toBeVisible();
     await card.screenshot({ path: testInfo.outputPath("byo-own-model-off.png") });
 
-    await card.getByRole("button", { name: "Turn on" }).click();
+    await card.getByRole("switch").click();
     await expect(state).toHaveText("On");
     await page.reload();
     await expect(state).toHaveText("On");

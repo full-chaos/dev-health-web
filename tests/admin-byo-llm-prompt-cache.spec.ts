@@ -21,7 +21,7 @@ test("an org admin turns the prompt cache on and off from AI Setup", async ({ pa
     await expect(state).toHaveText("Off");
     await card.screenshot({ path: testInfo.outputPath("byo-prompt-cache-off.png") });
 
-    await card.getByRole("button", { name: "Turn on" }).click();
+    await card.getByRole("switch").click();
     await expect(state).toHaveText("On");
     await expect(page.getByText("Prompt cache turned on")).toBeVisible();
     // A reload reads the stored value back.
@@ -29,7 +29,7 @@ test("an org admin turns the prompt cache on and off from AI Setup", async ({ pa
     await expect(state).toHaveText("On");
     await card.screenshot({ path: testInfo.outputPath("byo-prompt-cache-on.png") });
 
-    await card.getByRole("button", { name: "Turn off" }).click();
+    await card.getByRole("switch").click();
     await expect(state).toHaveText("Off");
     await page.reload();
     await expect(state).toHaveText("Off");

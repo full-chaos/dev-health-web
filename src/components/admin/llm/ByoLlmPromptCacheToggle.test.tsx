@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
+import { SAVE_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { PromptCacheSetting } from "@/lib/admin/api/llm-settings";
 import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import {
@@ -65,7 +66,7 @@ describe("ByoLlmPromptCacheToggle", () => {
         expect(PROMPT_CACHE_DESCRIPTION).toMatch(/Anthropic models only/);
         expect(PROMPT_CACHE_COST_NOTE).toMatch(/25% more/);
         expect(screen.getByTestId("prompt-cache-state")).toHaveTextContent("Off");
-        expect(screen.getByRole("button", { name: "Turn on" })).toBeInTheDocument();
+        expect(screen.getByRole("switch", { name: PROMPT_CACHE_TITLE })).toBeInTheDocument();
     });
 
     it("turns it on, then off, sending an explicit value each time", async () => {
@@ -73,14 +74,14 @@ describe("ByoLlmPromptCacheToggle", () => {
         save.mockResolvedValueOnce({ data: setting({ enabled: true }) });
         save.mockResolvedValueOnce({ data: setting({ enabled: false }) });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn on" }));
+        await userEvent.click(await screen.findByRole("switch", { name: PROMPT_CACHE_TITLE }));
         expect(save).toHaveBeenLastCalledWith(true);
         expect(await screen.findByText("Prompt cache turned on")).toBeInTheDocument();
         await waitFor(() =>
             expect(screen.getByTestId("prompt-cache-state")).toHaveTextContent("On"),
         );
 
-        await userEvent.click(screen.getByRole("button", { name: "Turn off" }));
+        await userEvent.click(screen.getByRole("switch", { name: PROMPT_CACHE_TITLE }));
         expect(save).toHaveBeenLastCalledWith(false);
         await waitFor(() =>
             expect(screen.getByTestId("prompt-cache-state")).toHaveTextContent("Off"),
@@ -89,10 +90,11 @@ describe("ByoLlmPromptCacheToggle", () => {
 
     it("keeps the shown state and names the error when the save fails", async () => {
         load.mockResolvedValue({ data: setting() });
-        save.mockResolvedValue({ error: "Could not save", status: 500 });
+        save.mockResolvedValue({ error: "Backend: key vault exploded", status: 500 });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn on" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Could not save");
+        await userEvent.click(await screen.findByRole("switch", { name: PROMPT_CACHE_TITLE }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(SAVE_FAILED_MESSAGE);
+        expect(screen.queryByText(/key vault exploded/)).toBeNull();
         expect(screen.getByTestId("prompt-cache-state")).toHaveTextContent("Off");
     });
 
@@ -101,11 +103,11 @@ describe("ByoLlmPromptCacheToggle", () => {
         load.mockResolvedValueOnce({ data: setting({ enabled: true }) });
         save.mockResolvedValue({ error: "The setting changed while saving", status: 409 });
         renderIt();
-        await userEvent.click(await screen.findByRole("button", { name: "Turn on" }));
+        await userEvent.click(await screen.findByRole("switch", { name: PROMPT_CACHE_TITLE }));
         await waitFor(() =>
             expect(screen.getByTestId("prompt-cache-state")).toHaveTextContent("On"),
         );
-        expect(screen.getByRole("button", { name: "Turn off" })).toBeInTheDocument();
+        expect(screen.getByRole("switch", { name: PROMPT_CACHE_TITLE })).toBeInTheDocument();
     });
 
     it("follows the saved config: it appears when an Anthropic model is saved and goes when the provider changes", async () => {

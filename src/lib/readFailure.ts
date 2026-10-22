@@ -3,6 +3,9 @@ import { logger } from "@/lib/logger";
 /** The one sentence a failed READ shows. Never the backend text (ruling 107). */
 export const READ_FAILED_MESSAGE = "Could not be read";
 
+/** The one sentence a failed SAVE shows. Never the backend text (ruling 107). */
+export const SAVE_FAILED_MESSAGE = "Could not be saved";
+
 /**
  * The plain message for a FAILED read in a SERVER loader (a server component that catches a thrown
  * error): the error goes to the server log with the operation name, once per request, and the
