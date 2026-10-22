@@ -104,12 +104,45 @@ describe("PlatformModelFallbackCard", () => {
         expect(confirm).not.toHaveBeenCalled();
     });
 
-    it("shows the error from a refused action", async () => {
-        revokeMock.mockResolvedValue({ error: "Forbidden" });
+    it("shows only the fixed failure sentence for a failed revoke, never the served error text", async () => {
+        revokeMock.mockResolvedValue({ error: "secret backend detail" });
         render(<PlatformModelFallbackCard orgId="org-1" granted isPlatformAdmin />);
 
         await userEvent.click(screen.getByRole("button", { name: "Revoke as platform admin" }));
 
-        await waitFor(() => expect(toastError).toHaveBeenCalledWith("Failed to revoke: Forbidden"));
+        await waitFor(() =>
+            expect(toastError).toHaveBeenCalledExactlyOnceWith(
+                "The platform admin grant was not removed. Try again.",
+            ),
+        );
+        expect(JSON.stringify(toastError.mock.calls)).not.toContain("secret backend detail");
+    });
+
+    it("shows only the fixed failure sentence for a failed grant, never the served error text", async () => {
+        grantMock.mockResolvedValue({ error: "secret backend detail" });
+        render(<PlatformModelFallbackCard orgId="org-1" granted={false} isPlatformAdmin />);
+
+        await userEvent.click(screen.getByRole("button", { name: "Grant as platform admin" }));
+
+        await waitFor(() =>
+            expect(toastError).toHaveBeenCalledExactlyOnceWith(
+                "The platform admin grant was not saved. Try again.",
+            ),
+        );
+        expect(JSON.stringify(toastError.mock.calls)).not.toContain("secret backend detail");
+    });
+
+    it("shows the fixed failure sentence when the action throws", async () => {
+        grantMock.mockRejectedValue(new Error("secret thrown detail"));
+        render(<PlatformModelFallbackCard orgId="org-1" granted={false} isPlatformAdmin />);
+
+        await userEvent.click(screen.getByRole("button", { name: "Grant as platform admin" }));
+
+        await waitFor(() =>
+            expect(toastError).toHaveBeenCalledExactlyOnceWith(
+                "The platform admin grant was not saved. Try again.",
+            ),
+        );
+        expect(JSON.stringify(toastError.mock.calls)).not.toContain("secret thrown detail");
     });
 });

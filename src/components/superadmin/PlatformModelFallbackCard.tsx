@@ -8,6 +8,9 @@ import { grantPlatformModelFallback, revokePlatformModelFallback } from "@/lib/a
 export const PLATFORM_MODEL_FALLBACK_SCOPE_TEXT =
     "It takes effect only while the ACR service model is on for this org; an org with it off is still refused.";
 
+const GRANT_FAILED_TEXT = "The platform admin grant was not saved. Try again.";
+const REVOKE_FAILED_TEXT = "The platform admin grant was not removed. Try again.";
+
 export const PLATFORM_MODEL_FALLBACK_COST_TEXT =
     "Granting this means the platform pays for this org's AI calls when it has no saved model config.";
 
@@ -34,12 +37,12 @@ export function PlatformModelFallbackCard({
         try {
             const { data, error } = await action(orgId);
             if (error || !data) {
-                toast.error(`${failure}: ${error ?? "no result"}`);
+                toast.error(failure);
             } else {
                 toast.success(data.message);
             }
         } catch {
-            toast.error("An unexpected error occurred");
+            toast.error(failure);
         } finally {
             setBusy(false);
         }
@@ -47,7 +50,7 @@ export function PlatformModelFallbackCard({
 
     const handleGrant = () => {
         if (!confirm(PLATFORM_MODEL_FALLBACK_COST_TEXT)) return;
-        void run(grantPlatformModelFallback, "Failed to grant");
+        void run(grantPlatformModelFallback, GRANT_FAILED_TEXT);
     };
 
     return (
@@ -89,7 +92,7 @@ export function PlatformModelFallbackCard({
                 </button>
                 <button
                     type="button"
-                    onClick={() => void run(revokePlatformModelFallback, "Failed to revoke")}
+                    onClick={() => void run(revokePlatformModelFallback, REVOKE_FAILED_TEXT)}
                     disabled={busy || !granted}
                     className="rounded-lg border border-(--card-stroke) px-3 py-1.5 text-sm font-medium text-(--negative) hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
                 >

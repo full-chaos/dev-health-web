@@ -1129,7 +1129,7 @@
             "current_state_cache_behavior": "Calls revalidatePath(`/superadmin/licensing/${orgId}`) after a successful grant (none when an active grant already exists); no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
-            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) returns failureFromError: the served ops detail survives only for a validation 4xx (not 401/403/429), every other failure is one fixed sentence; PlatformModelFallbackCard shows only its own fixed failure sentence and never renders the returned error text.",
             "gaps": [
                 "This action's own call to requireSuperuserToken() is at src/lib/admin/server/billing.ts:74, added with the platform model fallback grant/revoke actions. action/resource_resolver not independently re-derived beyond the function signature -- declared gap, see lane report.",
                 "action: searched the source from src/lib/admin/server/billing.ts:70 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
@@ -1187,7 +1187,7 @@
             "current_state_cache_behavior": "Calls revalidatePath(`/superadmin/licensing/${orgId}`) after a successful revoke (none when no grant row exists); no explicit fetch-level cache directive otherwise -- Server Actions are not cached, response reflects live backend state at invocation.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
-            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
+            "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) returns failureFromError: the served ops detail survives only for a validation 4xx (not 401/403/429), every other failure is one fixed sentence; PlatformModelFallbackCard shows only its own fixed failure sentence and never renders the returned error text.",
             "gaps": [
                 "This action's own call to requireSuperuserToken() is at src/lib/admin/server/billing.ts:113, added with the platform model fallback grant/revoke actions. action/resource_resolver not independently re-derived beyond the function signature -- declared gap, see lane report.",
                 "action: searched the source from src/lib/admin/server/billing.ts:109 to the next export for a permission, scope, role or authorize call (pattern (?i)permission|\\bscope|authoriz|\\bcan[A-Z]|requireRole|isAllowed); not determined.",
