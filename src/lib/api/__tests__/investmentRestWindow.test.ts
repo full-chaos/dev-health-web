@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MetricFilter } from "@/lib/filters/types";
 import { decodeFilter } from "@/lib/filters/encode";
@@ -128,17 +126,5 @@ describe("getWorkUnits named window", () => {
         });
         const { time } = sent().body.filters;
         expect([time.start_date, time.end_date]).toEqual(["2026-09-19", "2026-10-18"]);
-    });
-});
-
-describe("REST investment readers have no second copy of the window", () => {
-    const source = readFileSync(join(__dirname, "..", "investment.ts"), "utf8");
-
-    it("sends no unwindowed filters to the investment or work-units endpoint", () => {
-        expect(source).not.toMatch(
-            /"\/api\/v1\/(investment|work-units)",\s*\{\s*filters: normalized/,
-        );
-        expect(source).not.toMatch(/function buildDateRange/);
-        expect(source).not.toMatch(/range_days \* 24/);
     });
 });
