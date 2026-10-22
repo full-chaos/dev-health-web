@@ -24,6 +24,7 @@ import {
 } from "@/lib/admin/types";
 
 const DEFAULT_PROVIDER: LLMProvider = "openai";
+const MODEL_REQUIRED_MESSAGE = "Enter a model before saving.";
 const BYO_REQUIRED_TIER_LABEL = "Team";
 
 type LockState = {
@@ -264,6 +265,7 @@ export function ByoLlmSettings({
     const [deleting, setDeleting] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
+    const [modelError, setModelError] = useState<string | null>(null);
     const [budgetInputError, setBudgetInputError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
 
@@ -417,6 +419,7 @@ export function ByoLlmSettings({
     const handleEdit = () => {
         setFormError(null);
         setBaseUrlError(null);
+        setModelError(null);
         setBudgetInputError(null);
         setConfirmingDelete(false);
         setMode("edit");
@@ -432,6 +435,7 @@ export function ByoLlmSettings({
         }
         setFormError(null);
         setBaseUrlError(null);
+        setModelError(null);
         setBudgetInputError(null);
         setConfirmingDelete(false);
         setMode("view");
@@ -440,6 +444,11 @@ export function ByoLlmSettings({
     const handleSave = async () => {
         if (!provider.trim()) {
             setFormError("Select a provider before saving.");
+            return;
+        }
+        const trimmedModel = model.trim();
+        if (!trimmedModel) {
+            setModelError(MODEL_REQUIRED_MESSAGE);
             return;
         }
         const parsedBudget = parseMicroUsdInput(budgetUsd);
@@ -458,10 +467,11 @@ export function ByoLlmSettings({
         setSaving(true);
         setFormError(null);
         setBaseUrlError(null);
+        setModelError(null);
         setBudgetInputError(null);
         const payload: LLMSettingsUpsert = {
             provider: provider.trim(),
-            model: model.trim() ? model.trim() : null,
+            model: trimmedModel,
             base_url: baseUrl.trim() ? baseUrl.trim() : null,
         };
         // Only send the api_key when the admin actually typed a new one; leaving
@@ -479,6 +489,8 @@ export function ByoLlmSettings({
         if (result.status === 400) {
             if (parsedBudget !== null && result.error?.toLowerCase().includes("budget")) {
                 setBudgetInputError(result.error);
+            } else if (result.error && result.code === "model_required") {
+                setModelError(result.error);
             } else {
                 setBaseUrlError(result.error ?? "The base URL is invalid.");
             }
@@ -882,9 +894,18 @@ export function ByoLlmSettings({
                                 value={model}
                                 placeholder="Model name"
                                 list={modelListMatchesProvider ? "byo-model-options" : undefined}
-                                onChange={(e) => setModel(e.target.value)}
-                                className={inputClass}
+                                onChange={(e) => {
+                                    setModel(e.target.value);
+                                    setModelError(null);
+                                }}
+                                className={`${inputClass} ${modelError ? "border-(--negative)/60" : ""}`}
+                                aria-invalid={modelError ? true : undefined}
                             />
+                            {modelError ? (
+                                <p role="alert" className="mt-1 text-xs text-(--negative)">
+                                    {modelError}
+                                </p>
+                            ) : null}
                             {modelListMatchesProvider ? (
                                 <datalist id="byo-model-options" data-testid="byo-model-options">
                                     {modelOptions.map((id) => (

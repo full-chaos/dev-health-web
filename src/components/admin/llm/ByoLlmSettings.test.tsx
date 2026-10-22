@@ -686,12 +686,93 @@ describe("ByoLlmSettings", () => {
         });
     });
 
-    it("submits an exact micro-USD budget and supports an explicit zero hard stop", async () => {
+    it("refuses to save a blank model and names the field, without calling the backend", async () => {
         mockLoad.mockResolvedValue({ data: {} });
-        mockSave.mockResolvedValue({ data: { provider: "openai" } });
         renderForm();
 
         await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.type(screen.getByLabelText("API Key"), "sk-secret");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(mockSave).not.toHaveBeenCalled();
+        expect(screen.getByRole("alert")).toHaveTextContent("Enter a model before saving.");
+        expect(screen.getByLabelText("Model")).toHaveAttribute("aria-invalid", "true");
+
+        await userEvent.type(screen.getByLabelText("Model"), "gpt-4o");
+        expect(screen.queryByText("Enter a model before saving.")).not.toBeInTheDocument();
+    });
+
+    it("refuses a whitespace-only model", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.type(screen.getByLabelText("Model"), "   ");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(mockSave).not.toHaveBeenCalled();
+        expect(screen.getByText("Enter a model before saving.")).toBeInTheDocument();
+    });
+
+    it("re-sends the stored model on a key rotation", async () => {
+        mockLoad.mockResolvedValue({
+            data: { provider: "openai", model: "gpt-4o", api_key: "sk-1…last" },
+        });
+        mockSave.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.type(screen.getByLabelText("API Key"), "sk-rotated");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(1));
+        expect(mockSave.mock.calls[0][0]).toEqual(
+            expect.objectContaining({ model: "gpt-4o", api_key: "sk-rotated" }),
+        );
+    });
+
+    it("shows a backend model_required rejection on the model field, not the base URL", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+        mockSave.mockResolvedValue({
+            error: "model is required when a BYO LLM provider is saved",
+            status: 400,
+            code: "model_required",
+        });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(
+            await screen.findByText("model is required when a BYO LLM provider is saved"),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText("Model")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByLabelText("Base URL")).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("maps a 400 by its code, not by message text that starts with model", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+        mockSave.mockResolvedValue({ error: "model gateway rejected the base url", status: 400 });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(await screen.findByText("model gateway rejected the base url")).toBeInTheDocument();
+        expect(screen.getByLabelText("Model")).not.toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByLabelText("Base URL")).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("submits an exact micro-USD budget and supports an explicit zero hard stop", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        mockSave.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.type(screen.getByLabelText("Model"), "gpt-4o");
         const budgetInput = screen.getByLabelText("Monthly organization budget (USD)");
         await userEvent.type(budgetInput, "12.345678");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -716,6 +797,7 @@ describe("ByoLlmSettings", () => {
         renderForm();
 
         await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.type(screen.getByLabelText("Model"), "gpt-4o");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         const payload = mockSave.mock.calls[0][0];
@@ -740,6 +822,7 @@ describe("ByoLlmSettings", () => {
         renderForm();
 
         await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+        await userEvent.type(screen.getByLabelText("Model"), "gpt-4o");
         const input = screen.getByLabelText("Monthly organization budget (USD)");
         await userEvent.type(input, "1.0000001");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -754,7 +837,7 @@ describe("ByoLlmSettings", () => {
     });
 
     it("surfaces a backend budget maximum rejection on the budget field", async () => {
-        mockLoad.mockResolvedValue({ data: { provider: "openai" } });
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
         mockSave.mockResolvedValue({
             error: "budget_limit_micro_usd must be between 0 and 5000000",
             status: 400,
@@ -788,7 +871,7 @@ describe("ByoLlmSettings", () => {
     });
 
     it("surfaces a 400 base_url validation error inline", async () => {
-        mockLoad.mockResolvedValue({ data: { provider: "openai" } });
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
         mockSave.mockResolvedValue({ error: "invalid_base_url", status: 400 });
         renderForm();
 
