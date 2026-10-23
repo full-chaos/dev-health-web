@@ -97,11 +97,30 @@ describe("reasonStates", () => {
         expect(reasonToState(input).state).toBe("unavailable");
     });
 
-    it("never echoes the code in the message", () => {
-        const probe = "secret_probe_code";
-        expect(JSON.stringify(reasonToState(probe))).not.toContain(probe);
-        for (const code of PINNED_DECISION_CODES) {
-            expect(reasonToState(code).message).not.toContain(code);
+    it("never echoes any mapped code or the unknown probe in the message", () => {
+        const mapped = [
+            "allowed_by_repository_grant",
+            "grant_absent",
+            "repository_not_granted",
+            "platform_role_absent",
+            "denied_policy",
+            "denied_no_grant",
+            "denied_no_membership",
+            "not_found",
+            "credential_missing",
+            "expired",
+            "principal_deactivated",
+            "rate_limited",
+            "current_state_unavailable",
+            "authority_unavailable",
+            "upstream_unavailable",
+            "internal_error",
+        ];
+        for (const code of [...mapped, "secret_probe_code"]) {
+            for (const ctx of [{}, { hidden: true }, { entitlement: true }]) {
+                const r = reasonToState(code, ctx);
+                expect(JSON.stringify(r)).not.toContain(code);
+            }
         }
     });
 
