@@ -41,7 +41,7 @@ export function boundTelemetryString(value: string): string | null {
 }
 
 /**
- * Fail closed: a string or number outside the bounds rejects the whole event (`ok: false`, the
+ * Fail closed: a string or number outside the bounds, or any other value (undefined, an object, an array, a function), rejects the whole event (`ok: false`, the
  * offending key only, never the value), so a typed event never loses a required field.
  */
 export function sanitizeTelemetryPayload(
@@ -58,6 +58,8 @@ export function sanitizeTelemetryPayload(
             sanitized[key] = value;
         } else if (typeof value === "boolean" || value === null) {
             sanitized[key] = value;
+        } else {
+            return { ok: false, key };
         }
     }
     return { ok: true, payload: sanitized };

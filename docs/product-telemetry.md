@@ -9,7 +9,7 @@ Full Chaos Dev Health respects your privacy. Product telemetry is designed to be
 - **Do Not Track (DNT):** If your browser's "Do Not Track" setting is enabled, no product telemetry is emitted.
 - **Local Opt-out:** You can disable product telemetry at any time in the **Settings > Preferences** section of the application. This setting is stored in your browser's local storage under the key `devhealth-product-telemetry-opt-out`.
 - **Environment Flag:** The `NEXT_PUBLIC_TELEMETRY_ENABLED` environment variable can be used to disable telemetry globally for a deployment.
-- **Bounded values:** every string in an event is a short id: letters, digits and `_ . / : [ ] -` only, at most 128 characters, no UUID and no unbroken run of 24 or more letters or digits. A number must be finite and a key must be a plain identifier. An event with a value outside these bounds is not sent; the browser console notes the event name and the key, never the value. The same bounds apply to the route pattern of the event envelope (out of bounds becomes `null`).
+- **Bounded values:** every string in an event payload is a short id: letters, digits and `_ . / : [ ] -` only, at most 128 characters, no UUID and no unbroken run of 24 or more letters or digits. A number must be finite and a key must be a plain identifier. A payload value that is not a bounded string, a finite number, a boolean or `null` (for example `undefined` or an object) is outside the bounds too. An event with a value outside the bounds is not sent; the browser console notes the event name and the key, never the value. The same bounds apply to the route pattern of the event envelope (out of bounds becomes `null`).
 
 ## Event Catalog
 

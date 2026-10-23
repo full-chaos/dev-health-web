@@ -18,17 +18,32 @@ describe("sanitizeTelemetryPayload", () => {
         });
     });
 
-    it("drops unsafe keys and non-primitives", () => {
+    it("drops denylisted keys whatever their value", () => {
         expect(
             accepted({
                 email: "a@example.com",
                 name: "Ada",
                 stack: "trace",
+                orgId: undefined,
+                userId: { a: 1 },
                 ok: "yes",
-                nested: { a: 1 },
-                skipped: undefined,
             }),
         ).toEqual({ ok: "yes" });
+    });
+
+    it.each([
+        ["undefined", undefined],
+        ["an object", { a: 1 }],
+        ["an array", ["a"]],
+        ["a Date", new Date(0)],
+        ["a function", () => "x"],
+        ["a symbol", Symbol("x")],
+        ["a bigint", BigInt(1)],
+    ])("rejects %s (fail closed, never omitted)", (_label, value) => {
+        expect(sanitizeTelemetryPayload({ ok: "fine", view: value })).toEqual({
+            ok: false,
+            key: "view",
+        });
     });
 
     it("drops a key that is not a plain identifier", () => {

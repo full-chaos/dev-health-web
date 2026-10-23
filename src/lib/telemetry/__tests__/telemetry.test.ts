@@ -160,6 +160,34 @@ describe("product telemetry", () => {
         expect(sent[0]?.payload).toMatchObject({ view: "work_graph" });
     });
 
+    it("sends nothing for an event whose required field is undefined", async () => {
+        const sent: TelemetryEvent[] = [];
+        configureTelemetry({
+            adapters: [
+                {
+                    name: "test",
+                    enabled: () => true,
+                    send: async (events) => {
+                        sent.push(...events);
+                    },
+                },
+            ],
+            maxBatchSize: 1,
+            flushIntervalMs: 60_000,
+        });
+
+        trackTelemetryEvent("filter_changed", {
+            view: undefined,
+            filterKey: "scope",
+            valueCount: 1,
+            isCustomDateRange: null,
+        } as unknown as TelemetryPayloadByName["filter_changed"]);
+        trackTelemetryEvent("session_started", { entryRoutePattern: "/" });
+
+        await vi.waitFor(() => expect(sent).toHaveLength(1));
+        expect(sent[0]?.name).toBe("session_started");
+    });
+
     it("sets the envelope route pattern to null when it is out of bounds", async () => {
         const sent: TelemetryEvent[] = [];
         configureTelemetry({
