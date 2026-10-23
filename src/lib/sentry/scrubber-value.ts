@@ -29,8 +29,24 @@ const URL_IN_TEXT_PATTERN = /(?:https?:\/\/|\/)[^\s"'<>]+/g;
 const SENSITIVE_QUERY_VALUE_PATTERN =
     /(^|[?&])((?:code|state|error|error[_-]?description|error[_-]?reason|error[_-]?uri|client[_-]?secret|api[_-]?token|access[_-]?token|refresh[_-]?token|authorization|password|cookie|x[_-]?csrf[_-]?token)=)[^&#\s]*/gi;
 const SENSITIVE_ASSIGNMENT_PATTERN =
-    /\b((?:client[_-]?secret|api[_-]?token|access[_-]?token|refresh[_-]?token|authorization|password|cookie|x[_-]?csrf[_-]?token)\s*[:=]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s&,;]+)/gi;
+    /\b((?:client[_-]?secret|api[_-]?token|access[_-]?token|refresh[_-]?token|authorization|password|cookie|x[_-]?csrf[_-]?token)\s*[:=]\s*(?:(?:bearer|basic)\s+)?)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s&,;]+)/gi;
 const FILTERED = "[Filtered]";
+// Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
+// linear on a 16 KB scalar.
+const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string]> = [
+    [
+        /-----BEGIN [A-Z ]{0,24}PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]{0,24}PRIVATE KEY-----|$)/g,
+        FILTERED,
+    ],
+    [/\bbearer\s+[\w.~+/=-]{8,}/gi, `Bearer ${FILTERED}`],
+    [/\beyJ[\w-]{4,}\.[\w-]{4,}\.[\w-]*/g, FILTERED],
+    [
+        /\b(?:gh[pousr]_|github_pat_|sk-|rk_live_|sk_live_|xox[abprs]-|svc_worker_)[\w-]{8,}/g,
+        FILTERED,
+    ],
+    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:[^\s/@]{0,256}@/gi, `$1${FILTERED}@`],
+    [/\b((?:__Secure-|__Host-)?(?:authjs|next-auth)\.[\w.-]{0,64}=)[^;\s]+/gi, `$1${FILTERED}`],
+];
 const MAX_DEPTH = 32;
 const MAX_NODES = 4_096;
 const MAX_CONTAINER_ITEMS = 1_000;
@@ -128,7 +144,11 @@ export function scrubTelemetryUrl(value: string, nesting = 0): string {
 
 export function scrubTelemetryText(value: string, nesting = 0): string {
     if (value.length > MAX_SCALAR_LENGTH) return FILTERED;
-    return value
+    let shaped = value;
+    for (const [pattern, replacement] of CREDENTIAL_SHAPES) {
+        shaped = shaped.replace(pattern, replacement);
+    }
+    return shaped
         .replace(URL_IN_TEXT_PATTERN, (url) => scrubTelemetryUrl(url, nesting))
         .replace(SENSITIVE_QUERY_VALUE_PATTERN, `$1$2${FILTERED}`)
         .replace(SENSITIVE_ASSIGNMENT_PATTERN, `$1${FILTERED}`);

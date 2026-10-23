@@ -16,14 +16,10 @@ type AliasSuggestion = {
 };
 
 export function AliasSuggestionRow({ suggestion }: { suggestion: AliasSuggestion }) {
-    const { unmappedIdentity, suggestedCanonicalId, confidence } = suggestion;
+    const { unmappedIdentity, confidence } = suggestion;
 
     const handleConfirm = () => {
         // TODO: implement mutation to map alias
-        console.log("TODO: Confirm mapping", {
-            unmappedIdentity,
-            suggestedCanonicalId,
-        });
         alert("Mapping identity is not yet implemented.");
     };
 

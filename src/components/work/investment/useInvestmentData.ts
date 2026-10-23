@@ -11,6 +11,7 @@ import { explainInvestmentMix, getWorkUnitExplanation, getWorkUnits } from "@/li
 import { formatWorkUnitTypeLabel, getBaselineFilters } from "@/lib/investment";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import { buildDateRange } from "@/lib/graphql/investmentFetchers";
+import { logger } from "@/lib/logger";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { WorkUnitExplanation, WorkUnitInvestment } from "@/lib/types";
 import { TOP_N_REPOS, isNonCountUnit, normalizeThemeKey } from "@/lib/investment";
@@ -95,9 +96,10 @@ export function useInvestmentData({ filters, activeTab = "overview" }: UseInvest
     const mixServedNonCount = isNonCountUnit(mixUnitClass);
     useEffect(() => {
         if (mixServedNonCount) {
-            console.debug("[investment] mix dropped: served unit is not a work-unit count", {
-                unitClass: mixUnitClass,
-            });
+            logger.debug(
+                { unitClass: mixUnitClass },
+                "[investment] mix dropped: served unit is not a work-unit count",
+            );
         }
     }, [mixServedNonCount, mixUnitClass]);
     const investmentMix = useMemo(

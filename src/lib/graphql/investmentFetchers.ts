@@ -7,6 +7,7 @@
  */
 
 import { AuthErrors } from "@/lib/constants/errors";
+import { logger } from "@/lib/logger";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse, SankeyNode, SankeyLink } from "@/lib/types";
 import { formatSubcategoryLabel } from "@/lib/investmentMix";
@@ -154,11 +155,10 @@ export function adaptSankeyResult(
         graphqlSankey.unit !== "WORK_UNITS" &&
         graphqlSankey.unit !== "ISSUE_SIZE"
     ) {
-        console.debug("[investment] flow dropped: served unit is not a work-unit count", {
-            unitClass: graphqlSankey.unit,
-            mode,
-            nodes: graphqlSankey.nodes.length,
-        });
+        logger.debug(
+            { unitClass: graphqlSankey.unit, mode, nodes: graphqlSankey.nodes.length },
+            "[investment] flow dropped: served unit is not a work-unit count",
+        );
         return { mode: mode as SankeyResponse["mode"], nodes: [], links: [] };
     }
 

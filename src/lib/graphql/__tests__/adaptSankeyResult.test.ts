@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+
+const { debug } = vi.hoisted(() => ({ debug: vi.fn() }));
+vi.mock("@/lib/logger", () => ({ logger: { debug } }));
+
 import type { SankeyResult } from "../types";
 import { adaptSankeyResult } from "../investmentFetchers";
 
@@ -121,7 +125,7 @@ describe("adaptSankeyResult", () => {
         });
 
         it("never draws a flow served in another unit as work units: it is the empty flow, and the unit class is logged", () => {
-            const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
+            debug.mockClear();
             const input = minimalSankey({ unit: "HOURS" as never });
 
             const result = adaptSankeyResult(input, "investment");
@@ -130,10 +134,9 @@ describe("adaptSankeyResult", () => {
             expect(result.links).toEqual([]);
             expect(result.unit).toBeUndefined();
             expect(debug).toHaveBeenCalledWith(
-                expect.stringContaining("not a work-unit count"),
                 expect.objectContaining({ unitClass: "HOURS" }),
+                expect.stringContaining("not a work-unit count"),
             );
-            debug.mockRestore();
         });
 
         it("omits result.unit when the backend returns no unit field", () => {
