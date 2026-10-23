@@ -25,6 +25,7 @@ import type {
 } from "@/components/complexity/ComplexityDashboard";
 import { FlameView } from "@/components/work/FlameView";
 import { requireSession } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getExplainData } from "@/lib/api/home";
 import { getHeatmap } from "@/lib/api/visuals";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
@@ -95,7 +96,7 @@ async function fetchComplexityTimeseries(
         return data.complexityTimeseries?.points ?? [];
     } catch (err) {
         // Surface as empty state rather than crashing — the dashboard owns the UX.
-        console.warn("complexityTimeseries query failed", err);
+        logger.warn({ err }, "complexityTimeseries query failed");
         return [];
     }
 }
@@ -122,7 +123,7 @@ async function fetchHotspots(
         );
         return data.hotspots?.rows ?? [];
     } catch (err) {
-        console.warn("hotspots query failed", err);
+        logger.warn({ err }, "hotspots query failed");
         return [];
     }
 }
@@ -141,7 +142,7 @@ async function fetchHotspotHeatmap(
         const data = await getHeatmap({ ...request, filters });
         return { state: data ? "ok" : "unavailable", data: data ?? null };
     } catch (err) {
-        console.warn("hotspot heatmap read failed", err);
+        logger.warn({ err }, "hotspot heatmap read failed");
         return { state: "failed", data: null };
     }
 }
@@ -160,7 +161,7 @@ async function fetchHotspotSummary(
             ? `Leading hotspots: ${names.join(", ")}. Higher values lean toward concentrated change and ownership load — open a cell to trace the files, PRs, and commits behind it.`
             : undefined;
     } catch (err) {
-        console.warn("hotspot summary read failed", err);
+        logger.warn({ err }, "hotspot summary read failed");
         return undefined;
     }
 }

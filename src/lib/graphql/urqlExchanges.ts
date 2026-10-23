@@ -25,24 +25,33 @@ function operationLabel(operation: Operation): string {
  * - Network errors (fetch failures, non-200 responses)
  * - GraphQL protocol errors in the `errors` array
  */
-export const errorExchange = mapExchange({
-    onError(error: OperationResult["error"], operation: Operation) {
-        if (!error) return;
+export function logOperationError(error: OperationResult["error"], operation: Operation): void {
+    if (!error) return;
 
-        const label = operationLabel(operation);
+    const label = operationLabel(operation);
 
-        if (error.networkError) {
-            logger.error({ err: error.networkError, operation: label }, "urql: network error");
-        }
+    if (error.networkError) {
+        logger.error({ err: error.networkError, operation: label }, "urql: network error");
+    }
 
-        if (error.graphQLErrors?.length) {
-            logger.warn(
-                { graphQLErrors: error.graphQLErrors, operation: label },
-                "urql: GraphQL errors",
-            );
-        }
-    },
-});
+    if (error.graphQLErrors?.length) {
+        // Served text and extensions can echo request values: only the count and the codes are logged.
+        const codes = error.graphQLErrors
+            .map((e) => e.extensions?.code)
+            .filter((code): code is string => typeof code === "string")
+            .slice(0, 10);
+        logger.warn(
+            {
+                operation: label,
+                graphQLErrorCount: error.graphQLErrors.length,
+                graphQLErrorCodes: codes,
+            },
+            "urql: GraphQL errors",
+        );
+    }
+}
+
+export const errorExchange = mapExchange({ onError: logOperationError });
 
 /**
  * timingExchange — records per-operation wall-clock time.

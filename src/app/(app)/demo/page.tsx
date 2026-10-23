@@ -40,6 +40,7 @@ import {
     toWorkItemTypeDonutData,
 } from "@/lib/chartTransforms";
 import { buildChordDataset } from "@/lib/chord";
+import { logger } from "@/lib/logger";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { FlameFrame, HeatmapResponse, QuadrantResponse } from "@/lib/types";
@@ -82,7 +83,7 @@ export default function Home() {
                 setWorkItemTypeByScopeSample(m.workItemTypeByScopeSample);
             })
             .catch((err: unknown) => {
-                console.warn("[demo/page] Failed to load sample data", err);
+                logger.warn({ err }, "[demo/page] Failed to load sample data");
             });
     }, []);
 

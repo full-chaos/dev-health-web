@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
 import { isServerDeadlineError, withDeadline } from "@/lib/serverDeadline";
+import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 
 const log = logger.child({ module: "proxy" });
 
@@ -269,7 +270,12 @@ export async function proxy(request: NextRequest) {
     }
 
     log.info(
-        { method, path: pathname, status: response.status, duration_ms: Date.now() - start },
+        {
+            method,
+            route: routePatternForPathname(pathname),
+            status: response.status,
+            duration_ms: Date.now() - start,
+        },
         "request",
     );
 

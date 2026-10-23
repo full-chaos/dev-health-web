@@ -11,6 +11,9 @@ const h = vi.hoisted(() => ({
     mix: null as Record<string, unknown> | null,
 }));
 
+const { debug } = vi.hoisted(() => ({ debug: vi.fn() }));
+vi.mock("@/lib/logger", () => ({ logger: { debug } }));
+
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ replace: vi.fn() }),
     usePathname: () => "/investment",
@@ -56,14 +59,14 @@ describe("useInvestmentData mix unit guard (CHAOS-9688)", () => {
 
     for (const unit of ["loc", "LOC", "lines_changed", "active_hours", "churn_loc", "effort"]) {
         it(`drops a mix served in "${unit}" and logs the unit class`, () => {
-            const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
+            debug.mockClear();
             h.mix = mixWith(unit);
             const { result } = renderHook(() => useInvestmentData({ filters }));
             expect(result.current.investmentMix).toBeNull();
             expect(result.current.mixFailed).toBe(true);
             expect(debug).toHaveBeenCalledWith(
-                expect.stringContaining("not a work-unit count"),
                 expect.objectContaining({ unitClass: unit }),
+                expect.stringContaining("not a work-unit count"),
             );
         });
     }

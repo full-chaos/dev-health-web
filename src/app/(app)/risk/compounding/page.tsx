@@ -24,6 +24,7 @@ import {
     type CompoundingRiskTrendPointView,
 } from "@/components/risk/CompoundingRiskDashboard";
 import { requireSession } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPOUNDING_RISK_QUERY } from "@/lib/graphql/queries";
 
@@ -126,7 +127,7 @@ async function fetchCompoundingRisk(
     } catch (error) {
         // Surface as empty state rather than crashing the surface; the dashboard
         // already shows a populated empty-state message.
-        console.warn("compoundingRisk query failed", error);
+        logger.warn({ err: error }, "compoundingRisk query failed");
         return null;
     }
 }

@@ -1,0 +1,258 @@
+{
+    "sentry.server.config.ts": {
+        "log": 0,
+        "sentry": 1
+    },
+    "src/app/(app)/agent-context/context-packet/_components/evidenceRequestRegistry.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/complexity/page.tsx": {
+        "log": 4,
+        "sentry": 0
+    },
+    "src/app/(app)/data-health/_components/IdentityGapsTable.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/data-health/connectors/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/data-health/mapping/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/data-health/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/demo/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/incident-correlation/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/landscape/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/operating-review/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/audit-logs/page.tsx": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/identities/page.tsx": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/integrations/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/ip-allowlist/page.tsx": {
+        "log": 3,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/retention/RetentionRunConfirm.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/retention/page.tsx": {
+        "log": 4,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/sync/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/teams/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/users/new/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/org/admin/users/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/plan/backlog-risk/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/reports/[id]/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/risk/compounding/page.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/(app)/security/error.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/api/acr/authorize/route.ts": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/app/api/auth/change-password/route.ts": {
+        "log": 6,
+        "sentry": 0
+    },
+    "src/app/error.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/app/global-error.tsx": {
+        "log": 1,
+        "sentry": 1
+    },
+    "src/components/admin/llm/ByoLlmSpendSummary.tsx": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/components/admin/sync/useSyncTrigger.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/components/evidence/EvidencePanel.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/components/filters/useFilterOptions.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/components/shared/ErrorView.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/components/work/investment/useInvestmentData.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/actionFailure.ts": {
+        "log": 3,
+        "sentry": 0
+    },
+    "src/lib/api/filterOptions.ts": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/lib/api/system.ts": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/lib/areaSignals/ai.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/areaSignals/diagnose.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/areaSignals/govern.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/areaSignals/improve.ts": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/lib/auth.ts": {
+        "log": 6,
+        "sentry": 0
+    },
+    "src/lib/authSessionLog.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/billing/actions/subscription.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/feature-flags/fetchers.ts": {
+        "log": 6,
+        "sentry": 0
+    },
+    "src/lib/fetchOrNull.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/graphql/homeFetchers.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/graphql/investmentFetchers.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/graphql/urqlExchanges.ts": {
+        "log": 4,
+        "sentry": 0
+    },
+    "src/lib/investmentMix.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/onboarding/track.ts": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/lib/rate-limit.ts": {
+        "log": 1,
+        "sentry": 7
+    },
+    "src/lib/readFailure.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/redis.ts": {
+        "log": 3,
+        "sentry": 0
+    },
+    "src/lib/reports/fetchers.ts": {
+        "log": 4,
+        "sentry": 0
+    },
+    "src/lib/sentry/scrubber.ts": {
+        "log": 0,
+        "sentry": 1
+    },
+    "src/lib/serverDeadline.ts": {
+        "log": 4,
+        "sentry": 0
+    },
+    "src/lib/serverSession.default.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/telemetry/adapters.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/telemetry/queue.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/testops/fetchers.ts": {
+        "log": 12,
+        "sentry": 0
+    },
+    "src/lib/webVitals.ts": {
+        "log": 3,
+        "sentry": 0
+    },
+    "src/proxy.ts": {
+        "log": 1,
+        "sentry": 0
+    }
+}

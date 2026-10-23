@@ -20,6 +20,7 @@
 
 import { isServer } from "@/lib/env";
 import { publicEnv, getServerEnv } from "@/lib/config";
+import { scrubLogCall, scrubLogFields, scrubLogText, scrubbedText } from "@/lib/logScrub";
 
 type LogFormat = "json" | "pretty";
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
@@ -87,12 +88,13 @@ function createBrowserLogger(bindings: Record<string, unknown> = {}): Logger {
         (level: LogLevel, consoleFn: (...args: unknown[]) => void): LogFn =>
         (objOrMsg: object | string, msg?: string) => {
             if (levels.indexOf(level) < minIdx) return;
+            const text = String(scrubbedText(msg ?? ""));
             if (typeof objOrMsg === "string") {
-                consoleFn(`[${level}]`, objOrMsg, bindings);
+                consoleFn(`[${level}]`, scrubLogText(objOrMsg), scrubLogFields(bindings));
             } else if (objOrMsg instanceof Error) {
-                consoleFn(`[${level}]`, msg ?? "", serializeErrors({ ...bindings, err: objOrMsg }));
+                consoleFn(`[${level}]`, text, scrubLogFields({ ...bindings, err: objOrMsg }));
             } else {
-                consoleFn(`[${level}]`, msg ?? "", serializeErrors({ ...bindings, ...objOrMsg }));
+                consoleFn(`[${level}]`, text, scrubLogFields({ ...bindings, ...objOrMsg }));
             }
         };
 
@@ -108,24 +110,38 @@ function createBrowserLogger(bindings: Record<string, unknown> = {}): Logger {
 }
 
 /** Lazily initialise pino on the server side only. */
-function createServerLogger(): Logger {
+export function createServerLogger(destination?: { write(line: string): void }): Logger {
     // Dynamic require so bundlers don't try to bundle pino for the client.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pino = require("pino");
-    return pino({
-        level: LOG_LEVEL,
-        formatters: {
-            level: (label: string) => ({ level: label }),
+    const root = pino(
+        {
+            level: LOG_LEVEL,
+            serializers: { err: (err: unknown) => err },
+            hooks: { logMethod: scrubLogCall },
+            formatters: {
+                level: (label: string) => ({ level: label }),
+                log: scrubLogFields,
+            },
+            ...(LOG_FORMAT === "pretty" && !destination
+                ? {
+                      transport: {
+                          target: "pino-pretty",
+                          options: { colorize: true, ignore: "pid,hostname" },
+                      },
+                  }
+                : {}),
         },
-        ...(LOG_FORMAT === "pretty"
-            ? {
-                  transport: {
-                      target: "pino-pretty",
-                      options: { colorize: true, ignore: "pid,hostname" },
-                  },
-              }
-            : {}),
-    }) as Logger;
+        destination,
+    ) as Logger;
+    return scrubChildBindings(root);
+}
+
+// pino does not run the log formatter over child bindings, so the bindings are scrubbed here.
+function scrubChildBindings(instance: Logger): Logger {
+    const child = instance.child.bind(instance);
+    instance.child = (bindings) => scrubChildBindings(child(scrubLogFields(bindings)));
+    return instance;
 }
 
 let _logger: Logger | null = null;
