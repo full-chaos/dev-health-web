@@ -2,8 +2,8 @@
  * Build check: server-only code and secret values stay out of client bundles.
  *
  * `import "server-only"` makes the build refuse a client import of a marked module. This check is
- * the second line, on the build OUTPUT: it reads every JavaScript file the browser can get
- * (`<dist>/static`) and fails when one holds text of a registered server-only module, or the
+ * the second line, on the build OUTPUT: it reads every file the browser can get
+ * (`<dist>/static`: JavaScript, source maps, CSS, JSON and the rest) and fails when one holds text of a registered server-only module, or the
  * value of a secret environment variable.
  *
  * A check that cannot measure fails; it never passes by default:
@@ -87,7 +87,7 @@ export const PATTERN_RULES = [
     {
         id: "K4",
         what: "JWT-shaped text",
-        pattern: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/,
+        pattern: /eyJ[A-Za-z0-9_-]{10,512}\.eyJ[A-Za-z0-9_-]{10,16384}\.[A-Za-z0-9_-]{10,1024}/,
         seed: "eyJhbGciOiJFZERTQSJ9.eyJzdWIiOiJ4eHh4eHh4eHgifQ.c2lnbmF0dXJlLWJ5dGVz",
         benign: "eyJhbGciOiJFZERTQSJ9",
         value: true,
@@ -147,7 +147,9 @@ function filesWithExtension(directory, extensions) {
     for (const name of readdirSync(directory)) {
         const path = join(directory, name);
         if (statSync(path).isDirectory()) found.push(...filesWithExtension(path, extensions));
-        else if (extensions.some((extension) => name.endsWith(extension))) found.push(path);
+        else if (extensions === null || extensions.some((extension) => name.endsWith(extension))) {
+            found.push(path);
+        }
     }
     return found;
 }
@@ -221,9 +223,10 @@ export function checkClientBundle({
         }
     }
 
-    const clientFiles = javascriptFiles(join(dist, "static"));
+    // Every file in `static` reaches the browser (source maps, CSS, JSON, text), not only `.js`.
+    const clientFiles = filesWithExtension(join(dist, "static"), null);
     const serverFiles = javascriptFiles(join(dist, "server"));
-    if (clientFiles.length === 0) {
+    if (javascriptFiles(join(dist, "static")).length === 0) {
         failures.push(`${join(dist, "static")}: no client JavaScript file (did the build run?)`);
     }
     if (serverFiles.length === 0) {
@@ -273,13 +276,14 @@ export function checkClientBundle({
     let markerHits = 0;
     let secretHits = 0;
     let ruleHits = 0;
+    let prerenderedHits = 0;
     for (const path of prerenderedFiles) {
         const text = readFileSync(path, "utf8");
         const name = relative(dist, path);
         for (const rule of rules.filter((candidate) => candidate.value)) {
             const hit = rule.pattern.exec(text);
             if (hit) {
-                ruleHits += 1;
+                prerenderedHits += 1;
                 failures.push(
                     `${name}: prerendered file matches rule ${rule.id} (${rule.what}) at offset ${hit.index}`,
                 );
@@ -287,7 +291,7 @@ export function checkClientBundle({
         }
         for (const secret of secrets) {
             if (text.includes(secret.value)) {
-                secretHits += 1;
+                prerenderedHits += 1;
                 failures.push(`${name}: prerendered file holds the value of ${secret.name}`);
             }
         }
@@ -340,6 +344,7 @@ export function checkClientBundle({
             rules: rules.length,
             ruleHits,
             prerenderedFiles: prerenderedFiles.length,
+            prerenderedHits,
         },
     };
 }
@@ -368,7 +373,7 @@ export function main(argv = process.argv.slice(2), env = process.env, log = cons
             `${s.markers} markers (${s.markerHits} client hits), ` +
             `${s.envNames} server variable names (${s.envNameHits} client hits), ` +
             `${s.secretsChecked} of ${s.secretNames} secret values looked for (${s.secretHits} client hits), ` +
-            `${s.rules} pattern rules (${s.ruleHits} hits), ${s.prerenderedFiles} prerendered files`,
+            `${s.rules} pattern rules (${s.ruleHits} hits), ${s.prerenderedFiles} prerendered files (${s.prerenderedHits} hits)`,
     );
     if (!result.ok) {
         for (const failure of result.failures) log.error(`FAIL ${failure}`);

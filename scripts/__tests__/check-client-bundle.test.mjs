@@ -338,6 +338,56 @@ describe("the pattern rules", () => {
         ]);
     });
 
+    it.each(["app.js.map", "style.css", "data.json", "notes.txt", "page.html"])(
+        "run on %s in static, not only on .js files",
+        (name) => {
+            const paths = tree({ extra: { [`static/chunks/${name}`]: `"${byId.K1.seed}"` } });
+
+            expect(check(paths).failures).toEqual([
+                `static/chunks/${name}: client file matches rule K1 (private key header) at offset 1`,
+            ]);
+        },
+    );
+
+    it("also look for markers, server names and secret values in files that are not .js", () => {
+        const paths = tree({
+            extra: {
+                "static/chunks/a.js.map": 'x="/api/private/marker" HIDDEN_NAME',
+                "static/media/b.txt": SECRET,
+            },
+        });
+
+        expect(check(paths, { env: { A_SECRET: SECRET } }).failures).toEqual([
+            'static/chunks/a.js.map: client file holds text of src/lib/secretLogic.ts ("/api/private/marker")',
+            "static/chunks/a.js.map: client file holds the name of server variable HIDDEN_NAME",
+            "static/media/b.txt: client file holds the value of A_SECRET",
+        ]);
+    });
+
+    it("still fails when static has no .js file, even with other files in it", () => {
+        const result = check(tree({ client: null, extra: { "static/chunks/a.js.map": "{}" } }));
+
+        expect(result.failures.join("\n")).toContain("no client JavaScript file");
+    });
+
+    it("K4 runs in linear time on long runs of near matches (no backtracking blow-up)", () => {
+        const near = "eyJAAAAAAAAAA".repeat(30000);
+        const dotted = `${"eyJ" + "A".repeat(500)}.eyJAAAAAAAAAA#`.repeat(500);
+        const started = Date.now();
+        const result = check(tree({ client: `var a="${near}";var b="${dotted}"` }));
+
+        expect(result.failures).toEqual([]);
+        expect(Date.now() - started).toBeLessThan(10000);
+    });
+
+    it("K4 still matches a JWT with a long payload and a long signature", () => {
+        const jwt = `eyJ${"A".repeat(40)}.eyJ${"B".repeat(8000)}.${"C".repeat(600)}`;
+
+        expect(check(tree({ client: `x="${jwt}"` })).failures).toEqual([
+            "static/chunks/a.js: client file matches rule K4 (JWT-shaped text) at offset 3",
+        ]);
+    });
+
     it("run on a client file in a nested folder and name the file", () => {
         const paths = tree({
             extra: { "static/chunks/app/deep/b.js": `y="${byId.K3.seed}"` },
@@ -377,6 +427,24 @@ describe("prerendered output the server sends as is", () => {
             `${name}: prerendered file matches rule ${id} (${byId[id].what}) at offset 3`,
         ]);
         expect(result.failures.join("\n")).not.toContain(byId[id].seed);
+    });
+
+    it("counts prerendered hits apart from client hits in the summary", () => {
+        const result = check(
+            tree({
+                client: `"${byId.K2.seed}"`,
+                extra: { "server/app/page.html": byId.K4.seed },
+            }),
+        );
+
+        expect(result.summary).toMatchObject({ ruleHits: 1, secretHits: 0, prerenderedHits: 1 });
+        const lines = [];
+        const log = { log: (line) => lines.push(line), error: () => {} };
+        const paths = tree({ extra: { "server/app/page.html": `<p>${SECRET}</p>` } });
+        const env = Object.fromEntries(SECRET_ENV_NAMES.map((name) => [name, SECRET]));
+        main(["--root", paths.root, "--dist", paths.dist], env, log);
+        expect(lines[0]).toContain("(0 client hits)");
+        expect(lines[0]).toContain("1 prerendered files (6 hits)");
     });
 
     it("fails when a prerendered file holds the value of a secret, and does not print it", () => {
