@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { ROOT, scanSinks } from "./telemetrySinks.scan";
+import { ROOT, scanSinks, scanSource } from "./telemetrySinks.scan";
 
 const TABLE_PATH = path.join(ROOT, "src/lib/__tests__/telemetry-sinks.table.json");
 
@@ -30,5 +30,42 @@ describe("telemetry sink guard", () => {
 
     it("scans a plausible number of files (fail closed on an empty walk)", () => {
         expect(Object.keys(scan.table).length).toBeGreaterThan(30);
+    });
+});
+
+describe("telemetry sink guard: call shapes", () => {
+    const scan = (text: string) => scanSource("src/x.ts", text);
+
+    it("counts an aliased logger, a child of a child and an import alias", () => {
+        const result = scan(
+            [
+                'import { logger as appLog } from "@/lib/logger";',
+                'const a = appLog.child({ m: "a" });',
+                "const b = a.child({});",
+                "const c = (b);",
+                'c.info({ ok: 1 }, "x");',
+                'appLog.warn("y");',
+            ].join("\n"),
+        );
+        expect(result.row.log).toBe(2);
+        expect(result.violations).toEqual([]);
+    });
+
+    it("flags a forbidden field behind an alias, a spread argument and a computed call", () => {
+        const result = scan(
+            [
+                'import { logger } from "@/lib/logger";',
+                "const routeLogger = logger.child({});",
+                "declare const args: unknown[];",
+                'routeLogger.error({ headers: 1 }, "x");',
+                "logger.error(...args);",
+                'logger["error"]("z");',
+            ].join("\n"),
+        );
+        expect(result.violations.map((v) => v.split(" ")[0])).toEqual(["R2", "R2", "R2"]);
+    });
+
+    it("fails closed on source that does not parse", () => {
+        expect(scan("const = ;").violations[0]).toMatch(/^P1 /);
     });
 });

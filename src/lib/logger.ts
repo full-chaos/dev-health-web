@@ -20,7 +20,7 @@
 
 import { isServer } from "@/lib/env";
 import { publicEnv, getServerEnv } from "@/lib/config";
-import { scrubLogFields, scrubLogText } from "@/lib/logScrub";
+import { scrubLogCall, scrubLogFields, scrubLogText } from "@/lib/logScrub";
 
 type LogFormat = "json" | "pretty";
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
@@ -88,12 +88,13 @@ function createBrowserLogger(bindings: Record<string, unknown> = {}): Logger {
         (level: LogLevel, consoleFn: (...args: unknown[]) => void): LogFn =>
         (objOrMsg: object | string, msg?: string) => {
             if (levels.indexOf(level) < minIdx) return;
+            const text = scrubLogText(msg ?? "");
             if (typeof objOrMsg === "string") {
                 consoleFn(`[${level}]`, scrubLogText(objOrMsg), scrubLogFields(bindings));
             } else if (objOrMsg instanceof Error) {
-                consoleFn(`[${level}]`, msg ?? "", scrubLogFields({ ...bindings, err: objOrMsg }));
+                consoleFn(`[${level}]`, text, scrubLogFields({ ...bindings, err: objOrMsg }));
             } else {
-                consoleFn(`[${level}]`, msg ?? "", scrubLogFields({ ...bindings, ...objOrMsg }));
+                consoleFn(`[${level}]`, text, scrubLogFields({ ...bindings, ...objOrMsg }));
             }
         };
 
@@ -117,6 +118,7 @@ export function createServerLogger(destination?: { write(line: string): void }):
         {
             level: LOG_LEVEL,
             serializers: { err: (err: unknown) => err },
+            hooks: { logMethod: scrubLogCall },
             formatters: {
                 level: (label: string) => ({ level: label }),
                 log: scrubLogFields,

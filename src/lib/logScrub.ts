@@ -20,3 +20,21 @@ export function scrubLogFields<T extends object>(fields: T): T {
     );
     return scrubTelemetryPayload(flat) as T;
 }
+
+/**
+ * pino `logMethod` hook: the message and its format arguments are scrubbed here, because the log
+ * formatter only sees the merged fields. An error-first call becomes `{ err }` plus its message.
+ */
+export function scrubLogCall(
+    this: unknown,
+    args: unknown[],
+    method: (...rest: unknown[]) => void,
+): void {
+    const scrub = (arg: unknown) => (typeof arg === "string" ? scrubTelemetryText(arg) : arg);
+    const [first, second, ...rest] = args;
+    if (first instanceof Error) {
+        method.apply(this, [{ err: first }, scrub(second ?? first.message), ...rest.map(scrub)]);
+        return;
+    }
+    method.apply(this, args.map(scrub));
+}

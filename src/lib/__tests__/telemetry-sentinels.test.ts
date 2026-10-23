@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ErrorEvent } from "@sentry/nextjs";
 
 import { createServerLogger } from "../logger";
-import { scrubTelemetryText } from "../sentry/scrubber-value";
+import { scrubTelemetryText, scrubTelemetryUrl } from "../sentry/scrubber-value";
 import { attachBeforeSend } from "../sentry/scrubber";
 
 // Sentinels are built at run time from random text. They are never printed.
@@ -97,6 +97,69 @@ describe("telemetry hygiene: log lines", () => {
         expect(lines).toHaveLength(rounds);
         console.info(`scrub cost per log line: ${perLineMs.toFixed(3)} ms`);
         expect(perLineMs).toBeLessThan(5);
+    });
+});
+
+describe("telemetry hygiene: message strings and long userinfo", () => {
+    it("scrubs the message string of an object call, a string call and an error-first call", () => {
+        const { lines, logger } = capture();
+        const value = token();
+        logger.error({ operation: "x" }, `call failed with Bearer ${value}`);
+        logger.error(`call failed with Bearer ${value}`);
+        logger.error(new Error(`call failed with Bearer ${value}`));
+        (logger.error as (...args: unknown[]) => void)(
+            { operation: "x" },
+            "failed %s",
+            `Bearer ${value}`,
+        );
+        expect(lines).toHaveLength(4);
+        for (const line of lines) expect(line).not.toContain(value);
+    });
+
+    it("keeps an error-first call readable", () => {
+        const { lines, logger } = capture();
+        logger.error(new TypeError("fetch failed"));
+        const row = JSON.parse(lines[0]) as { msg: string; err: { type: string } };
+        expect(row.msg).toBe("fetch failed");
+        expect(row.err.type).toBe("TypeError");
+    });
+
+    it("scrubs the message of the browser shim in every overload", async () => {
+        vi.resetModules();
+        vi.stubGlobal("window", {});
+        const calls: unknown[][] = [];
+        const spy = vi
+            .spyOn(console, "error")
+            .mockImplementation((...args) => void calls.push(args));
+        try {
+            const { logger } = await import("../logger");
+            const value = token();
+            logger.error({ operation: "x" }, `failed Bearer ${value}`);
+            logger.error(new Error("e"), `failed Bearer ${value}`);
+            logger.error(`failed Bearer ${value}`);
+            expect(calls).toHaveLength(3);
+            for (const call of calls) expect(JSON.stringify(call)).not.toContain(value);
+        } finally {
+            spy.mockRestore();
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it.each([
+        ["a long password", (v: string) => `https://svc:${v.repeat(60)}@api.example/x`],
+        ["a username only", (v: string) => `https://${v}@api.example/x`],
+        [
+            "a long password, other scheme",
+            (v: string) => `postgres://svc:${v.repeat(60)}@db.internal/d`,
+        ],
+    ])("removes userinfo from text and from a URL: %s", (_name, build) => {
+        const value = token();
+        const text = build(value);
+        expect(scrubTelemetryText(`connect ${text} failed`)).not.toContain(value);
+        expect(scrubTelemetryUrl(text)).not.toContain(value);
+        const config = attachBeforeSend({});
+        const event = { request: { url: text }, message: text } as unknown as ErrorEvent;
+        expect(JSON.stringify(config.beforeSend?.(event, {}))).not.toContain(value);
     });
 });
 

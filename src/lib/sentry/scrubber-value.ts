@@ -44,7 +44,7 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string]> = [
         /\b(?:gh[pousr]_|github_pat_|sk-|rk_live_|sk_live_|xox[abprs]-|svc_worker_)[\w-]{8,}/g,
         FILTERED,
     ],
-    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:[^\s/@]{0,256}@/gi, `$1${FILTERED}@`],
+    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b((?:__Secure-|__Host-)?(?:authjs|next-auth)\.[\w.-]{0,64}=)[^;\s]+/gi, `$1${FILTERED}`],
 ];
 const MAX_DEPTH = 32;
@@ -135,6 +135,8 @@ export function scrubTelemetryUrl(value: string, nesting = 0): string {
                 );
             }
         }
+        url.username = "";
+        url.password = "";
         url.hash = "";
         return isAbsoluteUrl(value) ? url.toString() : `${url.pathname}${url.search}`;
     } catch {

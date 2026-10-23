@@ -103,6 +103,10 @@
         "log": 2,
         "sentry": 0
     },
+    "src/app/api/auth/change-password/route.ts": {
+        "log": 6,
+        "sentry": 0
+    },
     "src/app/error.tsx": {
         "log": 1,
         "sentry": 0
@@ -110,6 +114,14 @@
     "src/app/global-error.tsx": {
         "log": 1,
         "sentry": 1
+    },
+    "src/components/admin/llm/ByoLlmSpendSummary.tsx": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/components/admin/sync/useSyncTrigger.ts": {
+        "log": 1,
+        "sentry": 0
     },
     "src/components/evidence/EvidencePanel.tsx": {
         "log": 1,
@@ -153,6 +165,10 @@
     },
     "src/lib/areaSignals/improve.ts": {
         "log": 2,
+        "sentry": 0
+    },
+    "src/lib/auth.ts": {
+        "log": 6,
         "sentry": 0
     },
     "src/lib/authSessionLog.ts": {
