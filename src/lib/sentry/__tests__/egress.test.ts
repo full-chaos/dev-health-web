@@ -127,11 +127,15 @@ describe("telemetry egress", () => {
         });
         await Sentry.flush(1000);
 
-        const items = sent
-            .flatMap((envelope) => (JSON.parse(envelope) as [unknown, unknown[][]])[1])
-            .filter((item) =>
-                ["event", "transaction"].includes((item[0] as { type?: string }).type ?? ""),
-            )
+        const all = sent.flatMap((envelope) => (JSON.parse(envelope) as [unknown, unknown[][]])[1]);
+        const isEventItem = (item: unknown[]) =>
+            ["event", "transaction"].includes((item[0] as { type?: string }).type ?? "");
+        for (const item of all.filter((entry) => !isEventItem(entry))) {
+            const user = (item[1] as { user?: unknown } | null)?.user;
+            if (user !== undefined) expect(user).toEqual({ id: "user-id-1" });
+        }
+        const items = all
+            .filter(isEventItem)
             .map((item) => item[1] as { user?: unknown; type?: string });
         const kinds = items.map((item) => (item.type === "transaction" ? "transaction" : "event"));
         expect(kinds).toEqual(expect.arrayContaining(["transaction", "event"]));
