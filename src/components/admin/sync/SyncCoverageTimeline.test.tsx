@@ -395,3 +395,39 @@ describe("SyncCoverageTimeline", () => {
         });
     });
 });
+
+describe("SyncCoverageTimeline shift-click range select", () => {
+    const windows = ["02", "03", "04", "05"].map((day) => ({
+        since: `2026-01-${day}T00:00:00Z`,
+        before: `2026-01-${String(Number(day) + 1).padStart(2, "0")}T00:00:00Z`,
+        source_ids: ["src-repo"],
+        dataset_keys: ["commits"],
+        reasons: ["gap"] as const,
+    }));
+
+    it("selects every listed window between two clicks and leaves single clicks unchanged", async () => {
+        const user = userEvent.setup();
+        render(
+            <SyncCoverageTimeline
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, backfill_windows: windows }}
+                onBackfillWindowAction={vi.fn()}
+                onBackfillWindowsAction={vi.fn()}
+            />,
+        );
+        const list = within(screen.getByTestId("coverage-backfill-windows"));
+        const boxes = () => list.getAllByRole("checkbox") as HTMLInputElement[];
+
+        await user.click(boxes()[0]);
+        expect(boxes().map((box) => box.checked)).toEqual([true, false, false, false]);
+
+        await user.keyboard("{Shift>}");
+        await user.click(boxes()[2]);
+        await user.keyboard("{/Shift}");
+        expect(boxes().map((box) => box.checked)).toEqual([true, true, true, false]);
+
+        await user.keyboard("{Shift>}");
+        await user.click(boxes()[1]);
+        await user.keyboard("{/Shift}");
+        expect(boxes().map((box) => box.checked)).toEqual([true, false, false, false]);
+    });
+});

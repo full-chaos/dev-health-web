@@ -1,10 +1,11 @@
 "use client";
 
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatDateUTC } from "@/lib/formatters";
+import { applyRowSelection } from "@/lib/admin/rangeSelection";
 import type {
     SyncCoverageBackfillWindow,
     SyncCoverageDataset,
@@ -268,6 +269,24 @@ export function SyncCoverageTimeline({
         );
     }, [coverage?.backfill_windows, selectedBackfillWindowKeys]);
 
+    const listAnchorRef = useRef<string | null>(null);
+    const listShiftRef = useRef(false);
+
+    const selectListedWindow = (window: SyncCoverageBackfillWindow) => {
+        const key = backfillWindowKey(window);
+        const shift = listShiftRef.current;
+        listShiftRef.current = false;
+        const result = applyRowSelection({
+            selected: selectedBackfillWindowKeys,
+            order: (coverage?.backfill_windows ?? []).map(backfillWindowKey),
+            anchor: listAnchorRef.current,
+            key,
+            shift,
+        });
+        listAnchorRef.current = result.anchor;
+        setSelectedBackfillWindowKeys(result.selected);
+    };
+
     const toggleBackfillWindow = (window: SyncCoverageBackfillWindow) => {
         const key = backfillWindowKey(window);
         setSelectedBackfillWindowKeys((current) =>
@@ -398,7 +417,10 @@ export function SyncCoverageTimeline({
                                         checked={selectedBackfillWindowKeys.includes(
                                             backfillWindowKey(window),
                                         )}
-                                        onChange={() => toggleBackfillWindow(window)}
+                                        onClick={(event) => {
+                                            listShiftRef.current = event.shiftKey;
+                                        }}
+                                        onChange={() => selectListedWindow(window)}
                                         className="mt-0.5"
                                     />
                                     <span>
