@@ -17,6 +17,14 @@ function isSensitiveRequestHeaderName(value: string): boolean {
 
 type QueryString = NonNullable<NonNullable<ErrorEvent["request"]>["query_string"]>;
 
+// D6247: user ID only, no PII. E-mail, name, IP address and every other user key are dropped here, in
+// every environment; the id is kept and still goes through the text scrub.
+function keepUserIdOnly(event: { user?: object | undefined }): void {
+    if (!event.user) return;
+    const { id } = event.user as { id?: unknown };
+    event.user = id === undefined ? {} : { id };
+}
+
 function scrubQueryString(queryString: QueryString): QueryString {
     if (typeof queryString === "string") return scrubTelemetryText(queryString);
 
@@ -66,12 +74,7 @@ export function scrubEvent(event: ErrorEvent, _hint?: EventHint): ErrorEvent | n
         }
     }
 
-    const isProduction = process.env.NODE_ENV === "production";
-    const includeIp = process.env.SENTRY_INCLUDE_IP === "true";
-    if (isProduction && !includeIp && event.user) {
-        delete event.user.ip_address;
-    }
-
+    keepUserIdOnly(event);
     return scrubTelemetryPayload(event);
 }
 
@@ -83,6 +86,7 @@ type StaticSpanHook = Parameters<typeof Sentry.withStaticSpan>[0];
 type SentrySpan = Parameters<StaticSpanHook>[0];
 
 function scrubTransaction(event: SentryTransactionEvent): SentryTransactionEvent {
+    keepUserIdOnly(event);
     return scrubTelemetryPayload(event);
 }
 

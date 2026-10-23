@@ -42,6 +42,12 @@ function filterSlashedUserinfo(token: string): string {
     if (!/^[^\s/@:]+:/.test(userinfo) || /^[^\s/@:]+:\d*\//.test(userinfo)) return token;
     return `${token.slice(0, schemeEnd)}${FILTERED}${token.slice(at)}`;
 }
+// One address shape for every sink. The local part is anchored by a lookbehind and bounded, labels end in a
+// literal dot, and the host ends in letters, so the rule stays linear on a 16 KB scalar. A first label of
+// digits or `Nx` (`pkg@1.2.3`, `logo@2x.png`), an asset or script extension as the last label, and a
+// colon plus a path character after the host (`git@host:repo`) are not addresses.
+const EMAIL_SHAPE =
+    /(?<![\w.%+-])[\w.%+-]{1,128}(?:@|%40)(?!\d+x?\.)(?:[a-z\d][a-z\d-]{0,62}\.){1,12}(?!(?:png|jpe?g|gif|svg|webp|avif|ico|css|m?js|cjs|tsx?|jsx|json|map|woff2?)(?![a-z\d_-]))[a-z]{2,24}(?![a-z\d_-])(?!:[\w~./-])/gi;
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
 // linear on a 16 KB scalar.
 const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: string) => string)]> = [
@@ -65,6 +71,8 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
         (match) => (/^mailto:/i.test(match) ? match : FILTERED),
     ],
     [/\b((?:__Secure-|__Host-)?(?:authjs|next-auth)\.[\w.-]{0,64}=)[^;\s]+/gi, `$1${FILTERED}`],
+    // Last, so the userinfo rules above keep their own shapes.
+    [EMAIL_SHAPE, FILTERED],
 ];
 const MAX_DEPTH = 32;
 const MAX_NODES = 4_096;
@@ -168,7 +176,8 @@ export function scrubTelemetryUrl(value: string, nesting = 0): string {
         url.username = "";
         url.password = "";
         url.hash = "";
-        return isAbsoluteUrl(value) ? url.toString() : `${url.pathname}${url.search}`;
+        const scrubbed = isAbsoluteUrl(value) ? url.toString() : `${url.pathname}${url.search}`;
+        return scrubbed.replace(EMAIL_SHAPE, FILTERED);
     } catch {
         return scrubCredentialShapes(value).replace(
             SENSITIVE_QUERY_VALUE_PATTERN,

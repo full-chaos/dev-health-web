@@ -107,6 +107,61 @@ describe("telemetry egress", () => {
         for (const leak of REQUEST_LEAKS) expect(out).not.toMatch(leak);
     });
 
+    // D6247 (user ID only, no PII): the user set on any scope reaches the wire as `id` and nothing else.
+    // Values are joined at run time: the SDK sends source lines around a stack frame, so a literal in
+    // this file would show up in the envelope.
+    it("sends user.id only on an error event and a transaction, with no e-mail, IP or auto marker", async () => {
+        const sent: string[] = [];
+        startSdk(sent);
+        const email = ["egress-user", "example.test"].join("@");
+        const name = ["egress", "name"].join("-");
+        const ipKey = ["ip", "address"].join("_");
+        const auto = ["{{", "auto", "}}"].join("");
+
+        Sentry.withIsolationScope((scope) => {
+            scope.setUser({ id: "user-id-1", email, username: name, [ipKey]: auto });
+            scope.setSDKProcessingMetadata({ normalizedRequest: REQUEST });
+            Sentry.startSpan({ name: "GET /org/reports" }, () => {
+                Sentry.captureException(new Error("user-boom"));
+            });
+        });
+        await Sentry.flush(1000);
+
+        const items = sent
+            .flatMap((envelope) => (JSON.parse(envelope) as [unknown, unknown[][]])[1])
+            .map((item) => item[1] as { user?: unknown; type?: string });
+        const kinds = items.map((item) => (item.type === "transaction" ? "transaction" : "event"));
+        expect(kinds).toEqual(expect.arrayContaining(["transaction", "event"]));
+        for (const item of items) expect(item.user).toEqual({ id: "user-id-1" });
+        const out = sent.join("\n");
+        expect(out).toContain("user-boom");
+        expect(out).not.toContain(name);
+        expect(out).not.toContain(auto);
+        expect(out).not.toMatch(/203\.0\.113\.7[78]/u);
+    });
+
+    it("sends the user through the current scope and the global scope as id only", async () => {
+        const sent: string[] = [];
+        startSdk(sent);
+
+        const email = (who: string) => [`${who}-user`, "example.test"].join("@");
+        Sentry.setUser({ id: "global-id", email: email("global") });
+        Sentry.getCurrentScope().setUser({ id: "current-id", email: email("current") });
+        Sentry.captureException(new Error("scope-boom"));
+        await Sentry.flush(1000);
+
+        const out = sent.join("\n");
+        expect(out).toContain("scope-boom");
+        expect(out).not.toContain(email("global"));
+        expect(out).not.toContain(email("current"));
+    });
+
+    it("sets no sendDefaultPii and keeps user info collection off in every init", () => {
+        const config = attachBeforeSend({ dsn: "https://fake@example.invalid/1" });
+        expect((config as Record<string, unknown>).sendDefaultPii).not.toBe(true);
+        expect(config.dataCollection?.userInfo).toBe(false);
+    });
+
     it("runs the static span hook on its own, without the transaction scrub", async () => {
         const sent: string[] = [];
         startSdk(sent, (config) => ({ ...config, beforeSendTransaction: undefined }));

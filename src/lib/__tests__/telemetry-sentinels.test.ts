@@ -349,9 +349,9 @@ describe("telemetry hygiene: userinfo without a scheme or with spaces", () => {
     });
 
     it.each([
-        "see https://example.com for details, mail me@x.example",
+        "see https://example.com for details, mail the team",
         "took 12:30 at db.internal",
-        "mailto:me@x.example",
+        "mailto:",
     ])("leaves %s readable", (text) => {
         expect(scrubTelemetryText(text)).not.toContain("[Filtered]");
     });
@@ -388,8 +388,8 @@ describe("telemetry hygiene: error reporter chain", () => {
 
 describe("telemetry hygiene: userinfo rule keeps ordinary URLs", () => {
     it.each([
-        "http://host:8080/path?e=a@b.example",
-        "https://example.com/p?email=a@b.example",
+        "http://host:8080/path?e=a",
+        "https://example.com/p?name=a",
         "https://example.com/a/b",
     ])("leaves %s readable", (text) => {
         expect(scrubTelemetryText(text)).not.toContain("[Filtered]");
@@ -408,11 +408,194 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
         "repeated at": "x@".repeat(8_000),
         "repeated scheme and colon": "ab://c:".repeat(2_000),
         "scheme then many at": `a://${"@".repeat(15_000)}`,
+        "at after a long local part": `${"a".repeat(15_000)}@b.example`,
+        "local part with dots then at": `${"a.".repeat(7_000)}@`,
+        "repeated address start": "a@b.".repeat(4_000),
+        "repeated label run": `x@${"a.".repeat(7_000)}`,
+        "repeated encoded at": "a%40".repeat(4_000),
+        "many addresses": "ab@cd.example ".repeat(1_100),
+        "dots only after at": `x@${".".repeat(15_000)}`,
+        "hyphen run after at": `x@${"-".repeat(15_000)}.com`,
     };
 
     it.each(Object.entries(hostile))("scrubs %s in under 250 ms", (_name, text) => {
         const start = performance.now();
         scrubTelemetryText(text);
         expect(performance.now() - start).toBeLessThan(250);
+    });
+});
+
+// Address shapes are built at run time from random text and never printed.
+function address(): { local: string; domain: string; text: string } {
+    const local = `${token()}`;
+    const domain = `h${Math.random().toString(36).slice(2, 8)}.example`;
+    return { local, domain, text: `${local}@${domain}` };
+}
+
+describe("telemetry hygiene: e-mail shapes", () => {
+    const forms: Array<[string, (a: string) => string]> = [
+        ["plain", (a) => a],
+        ["in a sentence", (a) => `failed for ${a}, retry later`],
+        ["upper case", (a) => a.toUpperCase()],
+        ["in parentheses", (a) => `user (${a}) not found`],
+        ["with a plus tag", (a) => a.replace("@", "+tag@")],
+        ["with dots", (a) => `first.last.${a}`],
+        ["with a trailing period", (a) => `sent to ${a}.`],
+        ["after a colon", (a) => `to: ${a}`],
+        ["two on one line", (a) => `${a} and ${a.replace("@", "2@")}`],
+        ["in a url query", (a) => `GET /search?q=${a}&x=1`],
+        ["in an encoded url query", (a) => `GET /search?q=${encodeURIComponent(a)}`],
+        ["in a url path", (a) => `GET /users/${a}/settings`],
+        ["in an encoded url path", (a) => `GET /users/${a.replace("@", "%40")}/settings`],
+        ["in an absolute url path", (a) => `https://app.example/users/${a}/x`],
+        ["after a mailto scheme", (a) => `mailto:${a}`],
+        ["in a json string", (a) => JSON.stringify({ to: a })],
+    ];
+
+    it.each(forms)("removes an address from text: %s", (_name, build) => {
+        const a = address();
+        const out = scrubTelemetryText(build(a.text));
+        expect(out).not.toContain(a.local);
+        expect(out).not.toContain(a.domain);
+        expect(out).toMatch(/\[Filtered\]|%5BFiltered%5D/u);
+    });
+
+    it.each(forms)("removes an address from a request url: %s", (_name, build) => {
+        const a = address();
+        const out = scrubTelemetryUrl(
+            `https://app.example/x/${build(a.text).replace(/\s+/g, ",")}`,
+        );
+        expect(out).not.toContain(a.local);
+        expect(out.toLowerCase()).not.toContain(a.domain);
+    });
+
+    it("keeps the words around an address", () => {
+        const a = address();
+        expect(scrubTelemetryText(`user ${a.text} not found`)).toBe("user [Filtered] not found");
+    });
+
+    it("keeps the userinfo rules first: a connection string stays one filtered span", () => {
+        expect(scrubTelemetryText("see https://fake@sentry.io/1")).toBe("see https://sentry.io/1");
+        expect(scrubTelemetryText("x svc:pw@db.internal:5432/app y")).toBe(
+            "x [Filtered]:5432/app y",
+        );
+    });
+
+    it("keeps an address out of a log field, an error, a nested object, a binding and a message", () => {
+        const { lines, logger } = capture();
+        const a = address();
+        logger.error({ detail: `for ${a.text}` }, "a field");
+        logger.error({ err: new Error(`for ${a.text}`) }, "an error");
+        logger.error({ nested: { deep: [a.text] } }, "a nested value");
+        logger.child({ who: a.text }).info("a binding");
+        logger.error({ operation: "x" }, `failed for ${a.text}`);
+        logger.error(`failed for ${a.text}`);
+        (logger.error as (...args: unknown[]) => void)({ operation: "x" }, "failed %s", a.text);
+        expect(lines).toHaveLength(7);
+        for (const line of lines) {
+            expect(line).not.toContain(a.local);
+            expect(line).not.toContain(a.domain);
+        }
+    });
+
+    it("keeps an address out of an event, a breadcrumb, a span and a transaction", async () => {
+        const config = attachBeforeSend({});
+        const a = address();
+        const event = {
+            message: `for ${a.text}`,
+            exception: { values: [{ type: "Error", value: `for ${a.text}` }] },
+            request: { url: `https://app.example/users/${a.text}/x?q=${a.text}`, data: a.text },
+            breadcrumbs: [{ message: a.text, data: { note: a.text } }],
+            extra: { who: a.text },
+            tags: { who: a.text },
+        } as unknown as ErrorEvent;
+        const out = await config.beforeSend?.(event, {});
+        const crumb = config.beforeBreadcrumb?.({ message: a.text, data: { note: a.text } });
+        const tx = await config.beforeSendTransaction?.(
+            {
+                type: "transaction",
+                transaction: `GET /users/${a.text}`,
+                spans: [{ description: a.text }],
+            } as never,
+            {},
+        );
+        for (const part of [out, crumb, tx]) {
+            expect(JSON.stringify(part)).not.toContain(a.local);
+            expect(JSON.stringify(part)).not.toContain(a.domain);
+        }
+    });
+
+    it("keeps an address out of the browser shim", async () => {
+        vi.resetModules();
+        vi.stubGlobal("window", {});
+        const calls: unknown[][] = [];
+        const spy = vi
+            .spyOn(console, "error")
+            .mockImplementation((...args) => void calls.push(args));
+        try {
+            const { logger } = await import("../logger");
+            const a = address();
+            logger.error({ operation: "x", who: a.text }, `failed for ${a.text}`);
+            logger.error(`failed for ${a.text}`);
+            expect(calls).toHaveLength(2);
+            for (const call of calls) expect(JSON.stringify(call)).not.toContain(a.local);
+        } finally {
+            spy.mockRestore();
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it.each([
+        "install @scope/pkg now",
+        "resolved @types/node@20.1.0 and pkg@1.2.3",
+        "resolved pkg@1.2.3-rc.next and pkg@latest and eslint@^8.0.0",
+        "ping @bob and @alice about it",
+        "clone git@github.com:org/repo.git first",
+        "ssh git@host.example:repo",
+        "assets logo@2x.png and icon@hd.png and a.b@c.js",
+        "GET https://registry.example/@scope/pkg/-/pkg-1.0.0.tgz",
+        "GET https://example.com/@user/page",
+        "GET https://example.com/a@b/c",
+        "listening on host:8080 at 12:30",
+        "a@b.c is too short to be a host",
+        "user@localhost and user@host",
+        "email me",
+    ])("leaves %s readable", (text) => {
+        expect(scrubTelemetryText(text)).toBe(text);
+    });
+
+    it("keeps a scoped package url readable as a request url", () => {
+        expect(scrubTelemetryUrl("https://registry.example/@scope/pkg")).toBe(
+            "https://registry.example/@scope/pkg",
+        );
+        expect(scrubTelemetryUrl("/packages/@scope/pkg@1.2.3")).toBe("/packages/@scope/pkg@1.2.3");
+    });
+});
+
+describe("telemetry hygiene: e-mail rule cost", () => {
+    it("scrubs a log line that holds an address within the per-line limit", () => {
+        const { lines, logger } = capture();
+        const a = address();
+        const rounds = 300;
+        const start = performance.now();
+        for (let i = 0; i < rounds; i += 1) {
+            logger.error(
+                { err: new Error(`upstream answered 502 for ${a.text}`), operation: "sample" },
+                `Server call failed for ${a.text}`,
+            );
+        }
+        const perLineMs = (performance.now() - start) / rounds;
+        expect(lines).toHaveLength(rounds);
+        console.info(`scrub cost per log line with an address: ${perLineMs.toFixed(3)} ms`);
+        expect(perLineMs).toBeLessThan(5);
+    });
+
+    it("scrubs 16 KB of mixed text and addresses in under 250 ms", () => {
+        const chunk = "request failed for someone@mail.example and pkg@1.2.3 at /x/y?q=1 ";
+        const text = chunk.repeat(Math.floor(16_000 / chunk.length));
+        const start = performance.now();
+        const out = scrubTelemetryText(text);
+        expect(performance.now() - start).toBeLessThan(250);
+        expect(out).not.toContain("someone@mail.example");
     });
 });

@@ -99,39 +99,38 @@ describe("scrubEvent", () => {
         });
     });
 
-    it("strips user.ip_address in production", () => {
-        vi.stubEnv("NODE_ENV", "production");
-        vi.stubEnv("SENTRY_INCLUDE_IP", "");
+    // D6247 (user ID only, no PII): these three tests used to pin e-mail and IP kept on purpose
+    // in some environments. They now pin the opposite, on purpose, in every environment.
+    it.each([
+        ["production", ""],
+        ["production", "true"],
+        ["development", ""],
+        ["test", "true"],
+    ])("keeps user.id only on an event: NODE_ENV=%s SENTRY_INCLUDE_IP=%s", (nodeEnv, includeIp) => {
+        vi.stubEnv("NODE_ENV", nodeEnv);
+        vi.stubEnv("SENTRY_INCLUDE_IP", includeIp);
 
         const event = makeEvent({
-            user: { id: "user-123", email: "test@example.com", ip_address: "1.2.3.4" },
+            user: {
+                id: "user-123",
+                email: "test@example.com",
+                username: "sample-name",
+                ip_address: "{{auto}}",
+                segment: "sample",
+            } as ErrorEvent["user"],
         });
         const result = scrubEvent(event);
-        expect(result?.user?.ip_address).toBeUndefined();
-        expect(result?.user?.id).toBe("user-123");
-        expect(result?.user?.email).toBe("test@example.com");
+        expect(result?.user).toEqual({ id: "user-123" });
+        expect(JSON.stringify(result)).not.toContain("{{auto}}");
     });
 
-    it("preserves user.ip_address in production when SENTRY_INCLUDE_IP=true", () => {
-        vi.stubEnv("NODE_ENV", "production");
-        vi.stubEnv("SENTRY_INCLUDE_IP", "true");
-
-        const event = makeEvent({
-            user: { id: "user-123", ip_address: "1.2.3.4" },
-        });
-        const result = scrubEvent(event);
-        expect(result?.user?.ip_address).toBe("1.2.3.4");
+    it("drops a user with no id to an empty user", () => {
+        const event = makeEvent({ user: { email: "test@example.com", ip_address: "1.2.3.4" } });
+        expect(scrubEvent(event)?.user).toEqual({});
     });
 
-    it("preserves user.ip_address in non-production environments", () => {
-        vi.stubEnv("NODE_ENV", "development");
-        vi.stubEnv("SENTRY_INCLUDE_IP", "");
-
-        const event = makeEvent({
-            user: { id: "user-123", ip_address: "1.2.3.4" },
-        });
-        const result = scrubEvent(event);
-        expect(result?.user?.ip_address).toBe("1.2.3.4");
+    it("leaves an event with no user without a user", () => {
+        expect(scrubEvent(makeEvent({ message: "x" }))).not.toHaveProperty("user");
     });
 
     it("handles events with no request gracefully", () => {
