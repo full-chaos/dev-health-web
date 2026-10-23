@@ -426,6 +426,9 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
         "version with a long pre-release": `a@1.2.3-${"a.".repeat(7_000)}`,
         "version with a long build": `a@1.2.3+${"b.".repeat(7_000)}`,
         "mixed escape runs": "%41%42".repeat(2_600),
+        "version suffix runs": "a@1.2.3.min.".repeat(1_300),
+        "retina name runs": "a@2x.".repeat(3_000),
+        "address then extension runs": "ab@cd.example.json ".repeat(840),
         "repeated escapes": "%41".repeat(5_000),
         "long token then an escape": `${"a".repeat(15_900)}%41`,
         "percent signs only": "%".repeat(16_000),
@@ -567,6 +570,28 @@ describe("telemetry hygiene: e-mail shapes", () => {
         expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}/x`)).not.toContain(a.local);
     });
 
+    it.each([
+        ["a json file name", (a: AddressParts) => `${a.text}.json`],
+        [
+            "a png file name in a url path",
+            (a: AddressParts) => `https://app.example/u/${a.text}.png`,
+        ],
+        ["a pdf file name", (a: AddressParts) => `report for ${a.text}.pdf done`],
+        ["a txt file name", (a: AddressParts) => `${a.text}.txt`],
+        ["a min.js file name", (a: AddressParts) => `${a.text}.min.js`],
+        [
+            "a numeric suffix in a query value",
+            (a: AddressParts) => `https://app.example/x?q=${a.text}.2`,
+        ],
+        ["a css map name", (a: AddressParts) => `${a.text}.css.map`],
+        ["a tar.gz name", (a: AddressParts) => `${a.text}.tar.gz`],
+        ["a version-like suffix", (a: AddressParts) => `${a.text}.1.2.3`],
+    ])("removes an address followed by %s", (_name, build) => {
+        const a = address();
+        expect(scrubTelemetryText(build(a))).not.toContain(a.local);
+        expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}`)).not.toContain(a.local);
+    });
+
     it("removes an address whose host is not exactly version text", () => {
         const a = address();
         const local = a.local;
@@ -655,17 +680,17 @@ describe("telemetry hygiene: e-mail shapes", () => {
         "install @scope/pkg now",
         "resolved @types/node@20.1.0 and pkg@1.2.3",
         "resolved pkg@1.2.3-rc.next and pkg@latest and eslint@^8.0.0",
-        "resolved pkg@1.0.0-beta.next and tool@10.2.png",
+        "resolved pkg@1.0.0-beta.next and tool@2x.png",
         "resolved lib@2.0.0-rc.1+build.5 and lib@1.2.3-alpha.beta.1 and lib@1.2.3+meta.next",
         "loading jquery@3.7.1.min.js and app@1.4.0.min.css and vendor@1.2.3.js.map",
-        "loading name@x.y.z.min.js and a.b@c.d.min.js",
+        "loading lib@1.2.3-beta.1.min.js and lib@1.2.3.css.map",
         "resolved pkg@v1.2.3-rc.next and pkg@v2.0.0-beta.1.next. Done",
         "took 100% of 50%25 budget",
         "path /a/b%20c/d and q=a%2Fb",
         "ping @bob and @alice about it",
         "clone git@github.com:org/repo.git first",
         "ssh git@host.example:repo",
-        "assets logo@2x.png and icon@hd.png and a.b@c.js",
+        "assets logo@2x.png and bg@3x.webp",
         "GET https://registry.example/@scope/pkg/-/pkg-1.0.0.tgz",
         "GET https://example.com/@user/page",
         "GET https://example.com/a@b/c",

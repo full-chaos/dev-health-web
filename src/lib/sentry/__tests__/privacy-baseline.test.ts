@@ -101,6 +101,9 @@ describe("v10 privacy baseline", () => {
                 "user.id": { value: "u1", type: "string" },
                 "user.email": { value: email, type: "string" },
                 "user.name": { value: "n", type: "string" },
+                "enduser.email": { value: email, type: "string" },
+                "enduser.id": { value: "e1", type: "string" },
+                "enduser.pseudo_id": { value: "e2", type: "string" },
                 who: { value: email, type: "string" },
             },
         } as never);
@@ -111,6 +114,8 @@ describe("v10 privacy baseline", () => {
             attributes: {
                 "user.id": { value: "u1", type: "string" },
                 "user.email": { value: email, type: "string" },
+                "enduser.email": { value: email, type: "string" },
+                "enduser.id": { value: "e1", type: "string" },
                 who: { value: email, type: "string" },
             },
         } as never);
@@ -118,6 +123,7 @@ describe("v10 privacy baseline", () => {
             expect(JSON.stringify(out)).not.toContain(email);
             expect(JSON.stringify(out)).not.toContain("user.email");
             expect(JSON.stringify(out)).not.toContain("user.name");
+            expect(JSON.stringify(out)).not.toContain("enduser");
             expect(JSON.stringify(out)).toContain("user.id");
         }
         expect(seenLog).toHaveLength(1);

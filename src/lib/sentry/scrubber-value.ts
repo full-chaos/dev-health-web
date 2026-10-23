@@ -45,24 +45,23 @@ function filterSlashedUserinfo(token: string): string {
 // One address shape for every sink. The local part is anchored by a lookbehind and bounded, labels end in a
 // literal dot, and the host ends in letters (or a punycode label), so the rule stays linear on a 16 KB
 // scalar. Letters and digits of any script count, and a full width at sign or full stop is read as the
-// ASCII one. Not addresses: a host that is exactly version text (`pkg@v1.2.3-rc.next`), an asset, script or
-// document extension as the last label (`logo@2x.png`, `lib@1.2.3.min.js`), and a colon plus a path
-// character after the host (`git@host:repo`). The host must end at the last label: a label that is
-// followed by a dot and more text is not a complete host.
+// ASCII one. Every `@` followed by a host is filtered, whatever follows the host (a file suffix, a
+// number). Three readable exemptions apply only when the text after the `@` matches from its FIRST
+// character: exact version text (`pkg@v1.2.3-rc.next`, `lib@1.2.3.min.js`), a retina image name
+// (`logo@2x.png`), and a colon plus a path character after the host (`git@host:repo`).
 const WORD = "\\p{L}\\p{M}\\p{N}_";
 const LOCAL_CLASS = `[${WORD}.%+-]`;
-const ASSET_EXTENSIONS =
-    "png|jpe?g|gif|svg|webp|avif|ico|css|m?js|cjs|tsx?|jsx|json|map|woff2?|pdf|txt|t?gz|html?|ya?ml|wasm";
-// Version text (semver: three numbers, a dotted pre-release, a dotted build) that ends the host.
 const VERSION_IDENTIFIERS = "[a-z\\d-]{1,62}(?:\\.[a-z\\d-]{1,62}){0,12}";
 const VERSION_TEXT = `v?\\d+\\.\\d+\\.\\d+(?:-${VERSION_IDENTIFIERS})?(?:\\+${VERSION_IDENTIFIERS})?`;
+const VERSION_FILE_SUFFIX =
+    "(?:\\.min)?(?:\\.(?:m?js|cjs|css|(?:js|css)\\.map|map|d\\.ts|tgz|gz))?";
+const RETINA_IMAGE = "\\d{1,2}x\\.(?:png|jpe?g|gif|webp|avif|svg)";
 const HOST_END = "(?![\\p{L}\\p{N}_-]|\\.[\\p{L}\\p{N}])";
 const EMAIL_SHAPE = new RegExp(
     `(?<!${LOCAL_CLASS})${LOCAL_CLASS}{1,128}(?:[@\\uFF20]|%40)` +
-        `(?!${VERSION_TEXT}${HOST_END})` +
+        `(?!(?:${VERSION_TEXT}${VERSION_FILE_SUFFIX}|${RETINA_IMAGE})${HOST_END})` +
         `(?:[\\p{L}\\p{M}\\p{N}][\\p{L}\\p{M}\\p{N}-]{0,62}[.\\uFF0E\\u3002\\uFF61]){1,12}` +
-        `(?!(?:${ASSET_EXTENSIONS})(?![\\p{L}\\p{N}_-]))` +
-        `(?:xn--[a-z\\d-]{2,59}|[\\p{L}\\p{M}]{2,24})${HOST_END}(?!:[\\w~./-])`,
+        `(?:xn--[a-z\\d-]{2,59}|[\\p{L}\\p{M}]{2,24})(?![\\p{L}\\p{N}_-])(?!:[\\w~./-])`,
     "giu",
 );
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule

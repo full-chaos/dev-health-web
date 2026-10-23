@@ -80,7 +80,7 @@ function dropUserAttributes<Item extends { attributes?: object }>(item: Item): I
     if (!item.attributes) return item;
     const attributes = Object.fromEntries(
         Object.entries(item.attributes).filter(
-            ([key]) => !/^user[._]/iu.test(key) || key.toLowerCase() === "user.id",
+            ([key]) => !/^(?:end)?user[._]/iu.test(key) || key.toLowerCase() === "user.id",
         ),
     );
     return { ...item, attributes };
