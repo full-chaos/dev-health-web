@@ -68,4 +68,17 @@ describe("telemetry sink guard: call shapes", () => {
     it("fails closed on source that does not parse", () => {
         expect(scan("const = ;").violations[0]).toMatch(/^P1 /);
     });
+
+    it("counts a logger reached through a namespace import and flags a spread call of headers", () => {
+        const result = scan(
+            [
+                'import * as telemetry from "@/lib/telemetry";',
+                "declare function getHeaders(): object;",
+                'telemetry.logger.error({ ok: 1 }, "x");',
+                'telemetry.logger.warn({ ...getHeaders() }, "y");',
+            ].join("\n"),
+        );
+        expect(result.row.log).toBe(2);
+        expect(result.violations.map((v) => v.split(" ")[0])).toEqual(["R2"]);
+    });
 });

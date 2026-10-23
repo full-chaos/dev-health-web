@@ -63,10 +63,19 @@ function fieldName(prop: ts.ObjectLiteralElementLike): string | null {
     return null;
 }
 
+// A spread of a variable or a property is risky; so is a spread of a call that names a forbidden field.
+function spreadIsRisky(expression: ts.Expression): boolean {
+    if (ts.isIdentifier(expression) || ts.isPropertyAccessExpression(expression)) return true;
+    if (!ts.isCallExpression(expression)) return false;
+    const callee = normalize(expression.expression.getText());
+    return [...FORBIDDEN_FIELDS].some((field) => field.length >= 4 && callee.includes(field));
+}
+
 export type SourceScan = { row: SinkRow; violations: string[]; consoleRefs: number };
 
 function isLoggerExpression(node: ts.Expression, names: Set<string>): boolean {
     if (ts.isIdentifier(node)) return names.has(node.text);
+    if (ts.isPropertyAccessExpression(node)) return node.name.text === "logger";
     if (ts.isParenthesizedExpression(node)) return isLoggerExpression(node.expression, names);
     return (
         ts.isCallExpression(node) &&
@@ -143,11 +152,7 @@ export function scanSource(rel: string, text: string): SourceScan {
                         const name = fieldName(prop);
                         if (name !== null && FORBIDDEN_FIELDS.has(normalize(name)))
                             violations.push(`R2 ${at(prop)}`);
-                        if (
-                            ts.isSpreadAssignment(prop) &&
-                            (ts.isIdentifier(prop.expression) ||
-                                ts.isPropertyAccessExpression(prop.expression))
-                        )
+                        if (ts.isSpreadAssignment(prop) && spreadIsRisky(prop.expression))
                             violations.push(`R2 ${at(prop)}`);
                     }
                 } else if (

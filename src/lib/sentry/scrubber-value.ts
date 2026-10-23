@@ -57,6 +57,16 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     ],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b[a-z][a-z\d+.-]{0,31}:\/\/\S+/gi, filterSlashedUserinfo],
+    // A password that holds a space. A `host:port` followed by words is left alone.
+    [
+        /\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{1,128}:(?!\d+\s)[^/@\r\n]{1,256}@/gi,
+        `$1${FILTERED}@`,
+    ],
+    // `user:pass@host` with no scheme.
+    [
+        /(?<![\w@:/.~%+-])[\w.~%+-]{1,64}:[^\s/@:]{1,256}@[a-z\d][\w.-]{0,253}/gi,
+        (match) => (/^mailto:/i.test(match) ? match : FILTERED),
+    ],
     [/\b((?:__Secure-|__Host-)?(?:authjs|next-auth)\.[\w.-]{0,64}=)[^;\s]+/gi, `$1${FILTERED}`],
 ];
 const MAX_DEPTH = 32;

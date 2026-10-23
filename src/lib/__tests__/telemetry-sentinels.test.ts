@@ -164,6 +164,113 @@ describe("telemetry hygiene: message strings and long userinfo", () => {
     });
 });
 
+describe("telemetry hygiene: format arguments and nested errors", () => {
+    const leaky = (value: string) => ({ toString: () => `Bearer ${value}${value}` });
+
+    it("scrubs a non-string format argument: an object, an error, a symbol", () => {
+        const { lines, logger } = capture();
+        const value = token();
+        const call = logger.error as (...args: unknown[]) => void;
+        call.call(logger, { operation: "x" }, "failed %s", leaky(value));
+        call.call(logger, { operation: "x" }, "failed %s", new Error(`Bearer ${value}${value}`));
+        call.call(logger, { operation: "x" }, "failed %s", Symbol(`Bearer ${value}${value}`));
+        call.call(logger, "failed %s", leaky(value));
+        call.call(logger, { operation: "x" }, leaky(value));
+        expect(lines).toHaveLength(5);
+        for (const line of lines) expect(line).not.toContain(value);
+    });
+
+    it("keeps a number and a boolean format argument", () => {
+        const { lines, logger } = capture();
+        (logger.error as (...args: unknown[]) => void).call(logger, "took %d ms ok=%s", 12, true);
+        expect((JSON.parse(lines[0]) as { msg: string }).msg).toBe("took 12 ms ok=true");
+    });
+
+    it("drops the own properties of an error nested in a field, an array and a binding", () => {
+        const { lines, logger } = capture();
+        const value = token();
+        const nested = () =>
+            Object.assign(new Error("call failed"), {
+                config: { headers: { a: value } },
+                cause: { note: value },
+            });
+        logger.error({ wrap: { deep: [{ e: nested() }] } }, "w");
+        logger
+            .child({ wrap: { e: nested() } })
+            .child({ more: { e: nested() } })
+            .info("c");
+        expect(lines).toHaveLength(2);
+        for (const line of lines) expect(line).not.toContain(value);
+        expect(lines[0]).toContain("call failed");
+    });
+
+    it("drops the own properties of a nested error in the browser shim", async () => {
+        vi.resetModules();
+        vi.stubGlobal("window", {});
+        const calls: unknown[][] = [];
+        const spy = vi
+            .spyOn(console, "error")
+            .mockImplementation((...args) => void calls.push(args));
+        try {
+            const { logger } = await import("../logger");
+            const value = token();
+            const nested = Object.assign(new Error("e"), { config: { headers: { a: value } } });
+            logger.error({ wrap: { e: nested } }, "w");
+            logger.child({ wrap: { e: nested } }).error("c");
+            expect(calls).toHaveLength(2);
+            for (const call of calls) expect(JSON.stringify(call)).not.toContain(value);
+        } finally {
+            spy.mockRestore();
+            vi.unstubAllGlobals();
+        }
+    });
+});
+
+describe("telemetry hygiene: values with their own printers", () => {
+    it("never lets an own toJSON or a function property print unscrubbed text", () => {
+        const { lines, logger } = capture();
+        const value = token();
+        logger.error(
+            {
+                x: { toJSON: () => `Bearer ${value}${value}` },
+                y: () => value,
+                z: [{ toJSON: () => value }],
+            },
+            "m",
+        );
+        expect(lines[0]).not.toContain(value);
+    });
+
+    it("keeps a date as an ISO string", () => {
+        const { lines, logger } = capture();
+        logger.info({ since: new Date("2026-10-01T00:00:00.000Z") }, "m");
+        expect((JSON.parse(lines[0]) as { since: string }).since).toBe("2026-10-01T00:00:00.000Z");
+    });
+});
+
+describe("telemetry hygiene: userinfo without a scheme or with spaces", () => {
+    it.each([
+        ["a password with a space", (v: string) => `https://svc:${v} abc${v}@api.example/x`],
+        ["no scheme", (v: string) => `svc:${v}@db.internal:5432/app`],
+        ["no scheme, with a dot in the user", (v: string) => `svc.user:${v}@cache.internal`],
+    ])("removes userinfo from text: %s", (_name, build) => {
+        const value = token();
+        expect(scrubTelemetryText(`connect ${build(value)} failed`)).not.toContain(value);
+        const config = attachBeforeSend({});
+        const event = { message: build(value) } as unknown as ErrorEvent;
+        expect(JSON.stringify(config.beforeSend?.(event, {}))).not.toContain(value);
+    });
+
+    it.each([
+        "see https://example.com for details, mail me@x.example",
+        "http://host:8080 and then me@x.example",
+        "took 12:30 at db.internal",
+        "mailto:me@x.example",
+    ])("leaves %s readable", (text) => {
+        expect(scrubTelemetryText(text)).not.toContain("[Filtered]");
+    });
+});
+
 describe("telemetry hygiene: error reporter chain", () => {
     it.each(shapes().map((s) => [s.rule, s] as const))(
         "keeps the %s shape out of an event, a span and a breadcrumb",
