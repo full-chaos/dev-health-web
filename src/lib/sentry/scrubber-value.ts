@@ -43,12 +43,23 @@ function filterSlashedUserinfo(token: string): string {
     return `${token.slice(0, schemeEnd)}${FILTERED}${token.slice(at)}`;
 }
 // One address shape for every sink. The local part is anchored by a lookbehind and bounded, labels end in a
-// literal dot, and the host ends in letters, so the rule stays linear on a 16 KB scalar. A first label of
-// digits followed by another digit label (`pkg@1.2.3-rc.next`), an asset, script or document extension as the
-// last label (`logo@2x.png`), and a colon plus a path character after the host (`git@host:repo`) are not
-// addresses.
-const EMAIL_SHAPE =
-    /(?<![\w.%+-])[\w.%+-]{1,128}(?:@|%40)(?!\d+\.\d)(?:[a-z\d][a-z\d-]{0,62}\.){1,12}(?!(?:png|jpe?g|gif|svg|webp|avif|ico|css|m?js|cjs|tsx?|jsx|json|map|woff2?|pdf|txt|t?gz|html?|ya?ml|wasm)(?![a-z\d_-]))[a-z]{2,24}(?![a-z\d_-])(?!:[\w~./-])/gi;
+// literal dot, and the host ends in letters (or a punycode label), so the rule stays linear on a 16 KB
+// scalar. Letters and digits of any script count, and a full width at sign or full stop is read as the
+// ASCII one. Not addresses: a host that is version text (digit labels, then one letter label, as in
+// `pkg@v1.2.3-rc.next`), an asset, script or document extension as the last label (`logo@2x.png`), and a
+// colon plus a path character after the host (`git@host:repo`).
+const WORD = "\\p{L}\\p{M}\\p{N}_";
+const LOCAL_CLASS = `[${WORD}.%+-]`;
+const ASSET_EXTENSIONS =
+    "png|jpe?g|gif|svg|webp|avif|ico|css|m?js|cjs|tsx?|jsx|json|map|woff2?|pdf|txt|t?gz|html?|ya?ml|wasm";
+const EMAIL_SHAPE = new RegExp(
+    `(?<!${LOCAL_CLASS})${LOCAL_CLASS}{1,128}(?:[@\\uFF20]|%40)` +
+        `(?!v?\\d+(?:\\.\\d[a-z\\d-]{0,62}){1,11}\\.[a-z]{2,24}(?![a-z\\d_-]|\\.[a-z\\d]))` +
+        `(?:[\\p{L}\\p{M}\\p{N}][\\p{L}\\p{M}\\p{N}-]{0,62}[.\\uFF0E\\u3002\\uFF61]){1,12}` +
+        `(?!(?:${ASSET_EXTENSIONS})(?![\\p{L}\\p{N}_-]))` +
+        `(?:xn--[a-z\\d-]{2,59}|[\\p{L}\\p{M}]{2,24})(?![\\p{L}\\p{N}_-])(?!:[\\w~./-])`,
+    "giu",
+);
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
 // linear on a 16 KB scalar.
 const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: string) => string)]> = [
@@ -78,7 +89,11 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
 // A token that holds a percent escape is decoded before the address rule runs on it, so an address that
 // is written with %40 and %2E (or twice encoded) does not slip past. A token that cannot be decoded
 // is dropped whole.
-const ENCODED_TOKEN = /(?<![\w.%+-])[\w.%+-]{0,1536}%[\da-f]{2}[\w.%+-]{0,1536}/gi;
+const TOKEN_CLASS = `[${WORD}.%+@\\uFF20-]`;
+const ENCODED_TOKEN = new RegExp(
+    `(?<!${TOKEN_CLASS})${TOKEN_CLASS}{0,1536}%[\\da-f]{2}${TOKEN_CLASS}{0,1536}`,
+    "giu",
+);
 const MAX_DEPTH = 32;
 const MAX_NODES = 4_096;
 const MAX_CONTAINER_ITEMS = 1_000;
@@ -148,25 +163,32 @@ function decodePercent(value: string): string {
     return /%[\da-f]{2}/iu.test(decoded) ? FILTERED : decoded;
 }
 
-// Decodes as far as it can: a stray `%` (a literal percent sign) ends the loop, it does not hide the token.
-function decodeAsFarAsPossible(token: string): string {
+// Decodes round by round. A malformed escape in the token does not stop it: the valid ASCII escapes are
+// still decoded. A token that still changes after the last round is hostile nesting: null.
+const MAX_ESCAPE_ROUNDS = 8;
+function decodeEscapes(token: string): string | null {
     let decoded = token;
-    for (let round = 0; round < MAX_PERCENT_DECODE_ROUNDS; round += 1) {
+    for (let round = 0; round < MAX_ESCAPE_ROUNDS; round += 1) {
+        let next: string;
         try {
-            const candidate = decodeURIComponent(decoded);
-            if (candidate === decoded) break;
-            decoded = candidate;
+            next = decodeURIComponent(decoded);
         } catch {
-            break;
+            next = decoded.replace(/%([0-7][\da-f])/gi, (_match, hex: string) =>
+                String.fromCharCode(Number.parseInt(hex, 16)),
+            );
         }
+        if (next === decoded) return decoded;
+        decoded = next;
     }
-    return decoded;
+    return null;
 }
 
 function scrubEncodedAddresses(value: string): string {
     return value.replace(ENCODED_TOKEN, (token) => {
-        const decoded = decodeAsFarAsPossible(token);
-        return decoded.replace(EMAIL_SHAPE, FILTERED) !== decoded ? FILTERED : token;
+        const decoded = decodeEscapes(token);
+        return decoded === null || decoded.replace(EMAIL_SHAPE, FILTERED) !== decoded
+            ? FILTERED
+            : token;
     });
 }
 

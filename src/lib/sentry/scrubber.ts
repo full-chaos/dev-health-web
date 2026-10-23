@@ -25,6 +25,37 @@ function keepUserIdOnly(event: { user?: object | undefined }): void {
     event.user = id === undefined ? {} : { id };
 }
 
+// The SDK builds a session item from the scope user (distinct id from id, then e-mail, then username; the
+// IP address) and does not run the event hooks on it. The item is cut here: no distinct id, no IP address.
+type SessionItem = { did?: unknown; ipAddress?: unknown; attrs?: Record<string, unknown> };
+
+function dropSessionUser(session: SessionItem): void {
+    delete session.did;
+    delete session.ipAddress;
+    if (session.attrs) delete session.attrs.ip_address;
+}
+
+const SESSION_PRIVACY_INTEGRATION: SentryIntegration = {
+    name: "SessionUserPrivacy",
+    setup(client) {
+        client.on("beforeSendSession", (session) => dropSessionUser(session as SessionItem));
+    },
+};
+
+type SentryInitOptions = Parameters<typeof Sentry.init>[0];
+type IntegrationsOption = SentryInitOptions["integrations"];
+type SentryIntegration = Exclude<
+    NonNullable<IntegrationsOption>,
+    (...args: never[]) => unknown
+>[number];
+
+function withSessionPrivacy(integrations: IntegrationsOption): IntegrationsOption {
+    if (typeof integrations === "function") {
+        return (defaults) => [...integrations(defaults), SESSION_PRIVACY_INTEGRATION];
+    }
+    return [...(integrations ?? []), SESSION_PRIVACY_INTEGRATION];
+}
+
 function scrubQueryString(queryString: QueryString): QueryString {
     if (typeof queryString === "string") return scrubTelemetryText(queryString);
 
@@ -78,7 +109,6 @@ export function scrubEvent(event: ErrorEvent, _hint?: EventHint): ErrorEvent | n
     return scrubTelemetryPayload(event);
 }
 
-type SentryInitOptions = Parameters<typeof Sentry.init>[0];
 type SentryTransactionEvent = Parameters<
     NonNullable<SentryInitOptions["beforeSendTransaction"]>
 >[0];
@@ -125,6 +155,7 @@ export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
         ...config,
         // Deep merge: a partial caller dataCollection must not drop the v10 defaults for the rest.
         dataCollection: { ...V10_PRIVACY_BASELINE.dataCollection, ...config.dataCollection },
+        integrations: withSessionPrivacy(config.integrations),
         beforeSend(event: ErrorEvent, hint: EventHint) {
             const scrubbed = scrubEvent(event, hint);
             if (scrubbed === null) return null;

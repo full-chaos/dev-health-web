@@ -415,6 +415,13 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
         "repeated encoded at": "a%40".repeat(4_000),
         "many addresses": "ab@cd.example ".repeat(1_100),
         "dots only after at": `x@${".".repeat(15_000)}`,
+        "unicode letters": "\u00e4".repeat(16_000),
+        "unicode dotted local part": "\u00e4.".repeat(8_000) + "@",
+        "unicode label run": `x@${"\u00e4.".repeat(7_000)}`,
+        "full width at signs": "a\uFF20".repeat(8_000),
+        "nested escapes": "%25".repeat(5_000) + "40",
+        "unicode escapes": "%C3%A4".repeat(2_500),
+        "numeric then letter labels": `a@${"1.2.".repeat(3_500)}x`,
         "repeated escapes": "%41".repeat(5_000),
         "long token then an escape": `${"a".repeat(15_900)}%41`,
         "percent signs only": "%".repeat(16_000),
@@ -468,6 +475,14 @@ describe("telemetry hygiene: e-mail shapes", () => {
         ["encoded in a url path", (a) => `GET /u/${encodeAll(a)}/x`],
         ["encoded in an absolute url path", (a) => `https://app.example/u/${encodeAll(a)}/x`],
         ["encoded in a url query", (a) => `GET /search?q=${encodeAll(a)}`],
+        ["encoded four times", (a) => encodeAll(encodeAll(encodeAll(encodeAll(a))))],
+        [
+            "encoded eight times",
+            (a) => Array.from({ length: 8 }).reduce<string>((v) => encodeAll(v), a),
+        ],
+        ["encoded with a bad escape after", (a) => `${encodeAll(a)}%ZZ`],
+        ["encoded with a bad escape before", (a) => `%ZZ${encodeAll(a)}`],
+        ["encoded after a stray percent sign", (a) => `100%${encodeAll(a)}`],
     ];
 
     it.each(forms)("removes an address from text: %s", (_name, build) => {
@@ -499,6 +514,25 @@ describe("telemetry hygiene: e-mail shapes", () => {
         const a = address();
         const out = scrubTelemetryText(build(a));
         expect(out).not.toContain(a.local);
+        expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}/x`)).not.toContain(a.local);
+    });
+
+    it.each([
+        ["two numeric labels, then a name", (a: AddressParts) => `${a.local}@123.456.${a.domain}`],
+        ["three numeric labels, then a name", (a: AddressParts) => `${a.local}@1.2.3.${a.domain}`],
+        ["a unicode host", (a: AddressParts) => `${a.local}@ex\u00e4mple-${a.domain}`],
+        ["a unicode local part", (a: AddressParts) => `r\u00e9${a.local}@${a.domain}`],
+        ["an escaped unicode host", (a: AddressParts) => `${a.local}@ex%C3%A4mple-${a.domain}`],
+        [
+            "a punycode host",
+            (a: AddressParts) => `${a.local}@${a.domain.replace("example", "xn--mnchen-3ya")}`,
+        ],
+        ["a punycode last label", (a: AddressParts) => `${a.local}@mail.xn--p1ai`],
+        ["a full width at sign", (a: AddressParts) => `${a.local}\uFF20${a.domain}`],
+        ["an ideographic full stop", (a: AddressParts) => `${a.local}@mail\u3002${a.domain}`],
+    ])("removes an address with %s", (_name, build) => {
+        const a = address();
+        expect(scrubTelemetryText(`for ${build(a)} now`)).not.toContain(a.local);
         expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}/x`)).not.toContain(a.local);
     });
 
@@ -583,6 +617,7 @@ describe("telemetry hygiene: e-mail shapes", () => {
         "resolved @types/node@20.1.0 and pkg@1.2.3",
         "resolved pkg@1.2.3-rc.next and pkg@latest and eslint@^8.0.0",
         "resolved pkg@1.0.0-beta.next and tool@10.2.png",
+        "resolved pkg@v1.2.3-rc.next and pkg@v2.0.0-beta.1.next. Done",
         "took 100% of 50%25 budget",
         "path /a/b%20c/d and q=a%2Fb",
         "ping @bob and @alice about it",

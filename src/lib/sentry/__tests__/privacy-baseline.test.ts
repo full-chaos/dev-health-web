@@ -66,6 +66,26 @@ describe("v10 privacy baseline", () => {
         expect(config.dataCollection).toEqual(V10_PRIVACY_BASELINE.dataCollection);
     });
 
+    it("adds the session privacy integration and keeps the caller integrations", () => {
+        const own = { name: "Own" };
+        const asArray = attachBeforeSend({ integrations: [own] as never });
+        const names = (asArray.integrations as Array<{ name: string }>).map((i) => i.name);
+        expect(names).toEqual(["Own", "SessionUserPrivacy"]);
+
+        const asFunction = attachBeforeSend({
+            integrations: ((defaults: unknown[]) => [...defaults, own]) as never,
+        });
+        const fromFunction = (asFunction.integrations as (d: unknown[]) => Array<{ name: string }>)(
+            [{ name: "Default" }],
+        ).map((i) => i.name);
+        expect(fromFunction).toEqual(["Default", "Own", "SessionUserPrivacy"]);
+
+        const bare = attachBeforeSend({});
+        expect((bare.integrations as Array<{ name: string }>).map((i) => i.name)).toEqual([
+            "SessionUserPrivacy",
+        ]);
+    });
+
     it("keeps the remaining baseline keys when a caller sets a partial dataCollection", () => {
         const config = attachBeforeSend({
             dsn: "https://fake@example.invalid/1",

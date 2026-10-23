@@ -188,6 +188,33 @@ describe("telemetry egress", () => {
         expect(out).not.toContain(local);
     });
 
+    // The SDK builds session items from the scope user and does not run the event hooks on them.
+    it("sends no e-mail, name or IP address in a session item", async () => {
+        const sent: string[] = [];
+        startSdk(sent, (config) => ({ ...config, release: "egress-release" }));
+        const email = ["session-user", "example.test"].join("@");
+        const name = ["session", "name"].join("-");
+        const ipKey = ["ip", "address"].join("_");
+
+        Sentry.withIsolationScope((scope) => {
+            scope.setUser({ email, username: name, [ipKey]: "203.0.113.90" });
+            Sentry.startSession();
+            Sentry.captureException(new Error("session-boom"));
+            Sentry.endSession();
+        });
+        await Sentry.flush(1000);
+
+        const sessions = sent
+            .flatMap((envelope) => (JSON.parse(envelope) as [unknown, unknown[][]])[1])
+            .filter((item) => (item[0] as { type?: string }).type === "session");
+        expect(sessions.length).toBeGreaterThan(0);
+        const out = JSON.stringify(sessions);
+        expect(out).not.toContain(email);
+        expect(out).not.toContain(name);
+        expect(out).not.toContain("203.0.113.90");
+        expect(out).not.toContain(ipKey);
+    });
+
     it("runs the static span hook on its own, without the transaction scrub", async () => {
         const sent: string[] = [];
         startSdk(sent, (config) => ({ ...config, beforeSendTransaction: undefined }));
