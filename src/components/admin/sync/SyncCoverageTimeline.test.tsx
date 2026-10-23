@@ -431,3 +431,65 @@ describe("SyncCoverageTimeline shift-click range select", () => {
         expect(boxes().map((box) => box.checked)).toEqual([true, false, false, false]);
     });
 });
+
+describe("SyncCoverageTimeline shift-click range select in the timeline table", () => {
+    const day = (n: number) => `2026-01-${String(n).padStart(2, "0")}T00:00:00Z`;
+    const ranges = [2, 3, 4, 5].map((n) => ({
+        since: day(n),
+        before: day(n + 1),
+        source_ids: ["src-repo"],
+        run_ids: ["run-coverage"],
+    }));
+    const windows = ranges.map((range) => ({
+        since: range.since,
+        before: range.before,
+        source_ids: ["src-repo"],
+        dataset_keys: ["commits"],
+        reasons: ["gap"] as const,
+    }));
+    const coverage = {
+        ...PARTIAL_COVERAGE_SUMMARY,
+        datasets: [{ ...PARTIAL_COVERAGE_SUMMARY.datasets[0], gaps: ranges }],
+        backfill_windows: windows,
+    };
+
+    const renderTimeline = () =>
+        render(
+            <SyncCoverageTimeline
+                coverage={coverage}
+                onBackfillWindowAction={vi.fn()}
+                onBackfillWindowsAction={vi.fn()}
+            />,
+        );
+    const tableBoxes = () =>
+        within(screen.getByRole("table")).getAllByRole("checkbox") as HTMLInputElement[];
+    const availableBoxes = () =>
+        within(screen.getByTestId("coverage-backfill-windows")).getAllByRole(
+            "checkbox",
+        ) as HTMLInputElement[];
+
+    it("selects the rows between two clicks in visible row order, backward too", async () => {
+        const user = userEvent.setup();
+        renderTimeline();
+
+        await user.click(tableBoxes()[3]);
+        await user.keyboard("{Shift>}");
+        await user.click(tableBoxes()[1]);
+        await user.keyboard("{/Shift}");
+
+        expect(tableBoxes().map((box) => box.checked)).toEqual([false, true, true, true]);
+    });
+
+    it("does not range across lists", async () => {
+        const user = userEvent.setup();
+        renderTimeline();
+
+        await user.click(availableBoxes()[0]);
+        await user.keyboard("{Shift>}");
+        await user.click(tableBoxes()[3]);
+        await user.keyboard("{/Shift}");
+
+        expect(tableBoxes().map((box) => box.checked)).toEqual([true, false, false, true]);
+        expect(availableBoxes().map((box) => box.checked)).toEqual([true, false, false, true]);
+    });
+});
