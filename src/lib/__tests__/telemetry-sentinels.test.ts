@@ -422,6 +422,10 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
         "nested escapes": "%25".repeat(5_000) + "40",
         "unicode escapes": "%C3%A4".repeat(2_500),
         "numeric then letter labels": `a@${"1.2.".repeat(3_500)}x`,
+        "repeated version starts": "a@1.2.3-".repeat(2_000),
+        "version with a long pre-release": `a@1.2.3-${"a.".repeat(7_000)}`,
+        "version with a long build": `a@1.2.3+${"b.".repeat(7_000)}`,
+        "mixed escape runs": "%41%42".repeat(2_600),
         "repeated escapes": "%41".repeat(5_000),
         "long token then an escape": `${"a".repeat(15_900)}%41`,
         "percent signs only": "%".repeat(16_000),
@@ -483,6 +487,19 @@ describe("telemetry hygiene: e-mail shapes", () => {
         ["encoded with a bad escape after", (a) => `${encodeAll(a)}%ZZ`],
         ["encoded with a bad escape before", (a) => `%ZZ${encodeAll(a)}`],
         ["encoded after a stray percent sign", (a) => `100%${encodeAll(a)}`],
+        [
+            "a utf-8 host with a bad escape after",
+            (a) => `${a.replace("example", "ex%C3%A4mple")}%ZZ`,
+        ],
+        [
+            "a utf-8 host with a stray percent sign",
+            (a) => `100%${a.replace("example", "ex%C3%A4mple")}`,
+        ],
+        [
+            "a full width at sign as escapes with a bad escape",
+            (a) => `${a.replace("@", "%EF%BC%A0")}%ZZ`,
+        ],
+        ["a cut utf-8 escape before a valid address", (a) => `%C3${encodeAll(a)}`],
     ];
 
     it.each(forms)("removes an address from text: %s", (_name, build) => {
@@ -529,11 +546,33 @@ describe("telemetry hygiene: e-mail shapes", () => {
         ],
         ["a punycode last label", (a: AddressParts) => `${a.local}@mail.xn--p1ai`],
         ["a full width at sign", (a: AddressParts) => `${a.local}\uFF20${a.domain}`],
+        [
+            "a host label that starts with a digit and letters",
+            (a: AddressParts) => `${a.local}@2xx.${a.domain}`,
+        ],
+        [
+            "a host label made of a digit and a name",
+            (a: AddressParts) => `${a.local}@1password.${a.domain}`,
+        ],
+        ["two numeric labels then a name", (a: AddressParts) => `${a.local}@1.2.${a.domain}`],
+        ["three numeric labels then a name", (a: AddressParts) => `${a.local}@1.2.3.${a.domain}`],
+        [
+            "numeric labels with letters and more labels",
+            (a: AddressParts) => `${a.local}@123.45.${a.domain}`,
+        ],
         ["an ideographic full stop", (a: AddressParts) => `${a.local}@mail\u3002${a.domain}`],
     ])("removes an address with %s", (_name, build) => {
         const a = address();
         expect(scrubTelemetryText(`for ${build(a)} now`)).not.toContain(a.local);
         expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}/x`)).not.toContain(a.local);
+    });
+
+    it("removes an address whose host is not exactly version text", () => {
+        const a = address();
+        const local = a.local;
+        for (const host of ["1.2xx.example", "1.2.example", "2xx.example", "1password.example"]) {
+            expect(scrubTelemetryText(`for ${local}@${host} now`)).not.toContain(local);
+        }
     });
 
     it("keeps the words around an address", () => {
@@ -617,6 +656,9 @@ describe("telemetry hygiene: e-mail shapes", () => {
         "resolved @types/node@20.1.0 and pkg@1.2.3",
         "resolved pkg@1.2.3-rc.next and pkg@latest and eslint@^8.0.0",
         "resolved pkg@1.0.0-beta.next and tool@10.2.png",
+        "resolved lib@2.0.0-rc.1+build.5 and lib@1.2.3-alpha.beta.1 and lib@1.2.3+meta.next",
+        "loading jquery@3.7.1.min.js and app@1.4.0.min.css and vendor@1.2.3.js.map",
+        "loading name@x.y.z.min.js and a.b@c.d.min.js",
         "resolved pkg@v1.2.3-rc.next and pkg@v2.0.0-beta.1.next. Done",
         "took 100% of 50%25 budget",
         "path /a/b%20c/d and q=a%2Fb",

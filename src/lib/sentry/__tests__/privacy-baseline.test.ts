@@ -66,11 +66,11 @@ describe("v10 privacy baseline", () => {
         expect(config.dataCollection).toEqual(V10_PRIVACY_BASELINE.dataCollection);
     });
 
-    it("adds the session privacy integration and keeps the caller integrations", () => {
+    it("adds the user privacy integration and keeps the caller integrations", () => {
         const own = { name: "Own" };
         const asArray = attachBeforeSend({ integrations: [own] as never });
         const names = (asArray.integrations as Array<{ name: string }>).map((i) => i.name);
-        expect(names).toEqual(["Own", "SessionUserPrivacy"]);
+        expect(names).toEqual(["Own", "UserPrivacy"]);
 
         const asFunction = attachBeforeSend({
             integrations: ((defaults: unknown[]) => [...defaults, own]) as never,
@@ -78,12 +78,50 @@ describe("v10 privacy baseline", () => {
         const fromFunction = (asFunction.integrations as (d: unknown[]) => Array<{ name: string }>)(
             [{ name: "Default" }],
         ).map((i) => i.name);
-        expect(fromFunction).toEqual(["Default", "Own", "SessionUserPrivacy"]);
+        expect(fromFunction).toEqual(["Default", "Own", "UserPrivacy"]);
 
         const bare = attachBeforeSend({});
         expect((bare.integrations as Array<{ name: string }>).map((i) => i.name)).toEqual([
-            "SessionUserPrivacy",
+            "UserPrivacy",
         ]);
+    });
+
+    it("scrubs a log and a metric and runs the caller hooks after the scrub", () => {
+        const seenLog: unknown[] = [];
+        const seenMetric: unknown[] = [];
+        const config = attachBeforeSend({
+            beforeSendLog: (log) => (seenLog.push(log), log),
+            beforeSendMetric: (metric) => (seenMetric.push(metric), metric),
+        });
+        const email = ["hook-user", "example.test"].join("@");
+        const log = config.beforeSendLog?.({
+            level: "info",
+            message: `for ${email}`,
+            attributes: {
+                "user.id": { value: "u1", type: "string" },
+                "user.email": { value: email, type: "string" },
+                "user.name": { value: "n", type: "string" },
+                who: { value: email, type: "string" },
+            },
+        } as never);
+        const metric = config.beforeSendMetric?.({
+            name: "m",
+            value: 1,
+            type: "counter",
+            attributes: {
+                "user.id": { value: "u1", type: "string" },
+                "user.email": { value: email, type: "string" },
+                who: { value: email, type: "string" },
+            },
+        } as never);
+        for (const out of [log, metric, ...seenLog, ...seenMetric]) {
+            expect(JSON.stringify(out)).not.toContain(email);
+            expect(JSON.stringify(out)).not.toContain("user.email");
+            expect(JSON.stringify(out)).not.toContain("user.name");
+            expect(JSON.stringify(out)).toContain("user.id");
+        }
+        expect(seenLog).toHaveLength(1);
+        expect(seenMetric).toHaveLength(1);
     });
 
     it("keeps the remaining baseline keys when a caller sets a partial dataCollection", () => {

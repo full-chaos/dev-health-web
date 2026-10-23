@@ -215,6 +215,55 @@ describe("telemetry egress", () => {
         expect(out).not.toContain(ipKey);
     });
 
+    // One probe through every envelope item type the SDK can build from the scope user: an event, a
+    // transaction, a session, a log, a metric and a feedback item.
+    it("sends no e-mail, name or IP address in any envelope item", async () => {
+        const sent: string[] = [];
+        startSdk(sent, (config) => ({
+            ...config,
+            release: "probe-release",
+            enableLogs: true,
+        }));
+        const email = ["probe-user", "example.test"].join("@");
+        const name = ["probe", "name"].join("-");
+        const ipKey = ["ip", "address"].join("_");
+        const ip = ["203", "0", "113", "91"].join(".");
+        const bodyAddress = ["body-user", "example.test"].join("@");
+        const feedbackEmail = ["feedback-user", "example.test"].join("@");
+        const feedbackName = ["feedback", "person"].join("-");
+
+        Sentry.withIsolationScope((scope) => {
+            scope.setUser({ id: "probe-id", email, username: name, [ipKey]: ip });
+            Sentry.startSession();
+            Sentry.startSpan({ name: "GET /probe" }, () => {
+                Sentry.captureException(new Error("probe-boom"));
+                Sentry.logger.info(`log for ${bodyAddress}`, { who: bodyAddress });
+                Sentry.metrics.count("probe_count", 1, { attributes: { who: bodyAddress } });
+            });
+            Sentry.captureFeedback({
+                message: `feedback from ${bodyAddress}`,
+                email: feedbackEmail,
+                name: feedbackName,
+            });
+            Sentry.endSession();
+        });
+        await Sentry.flush(1000);
+
+        const items = sent.flatMap(
+            (envelope) => (JSON.parse(envelope) as [unknown, unknown[][]])[1],
+        );
+        const types = new Set(items.map((item) => (item[0] as { type?: string }).type));
+        for (const type of ["event", "transaction", "session", "log", "trace_metric", "feedback"]) {
+            expect(types, `item type ${type}`).toContain(type);
+        }
+        const out = JSON.stringify(items);
+        for (const leak of [email, name, ip, bodyAddress, feedbackEmail, feedbackName]) {
+            expect(out).not.toContain(leak);
+        }
+        expect(out).not.toContain(ipKey);
+        expect(out).toContain("probe-id");
+    });
+
     it("runs the static span hook on its own, without the transaction scrub", async () => {
         const sent: string[] = [];
         startSdk(sent, (config) => ({ ...config, beforeSendTransaction: undefined }));

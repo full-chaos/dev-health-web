@@ -45,19 +45,24 @@ function filterSlashedUserinfo(token: string): string {
 // One address shape for every sink. The local part is anchored by a lookbehind and bounded, labels end in a
 // literal dot, and the host ends in letters (or a punycode label), so the rule stays linear on a 16 KB
 // scalar. Letters and digits of any script count, and a full width at sign or full stop is read as the
-// ASCII one. Not addresses: a host that is version text (digit labels, then one letter label, as in
-// `pkg@v1.2.3-rc.next`), an asset, script or document extension as the last label (`logo@2x.png`), and a
-// colon plus a path character after the host (`git@host:repo`).
+// ASCII one. Not addresses: a host that is exactly version text (`pkg@v1.2.3-rc.next`), an asset, script or
+// document extension as the last label (`logo@2x.png`, `lib@1.2.3.min.js`), and a colon plus a path
+// character after the host (`git@host:repo`). The host must end at the last label: a label that is
+// followed by a dot and more text is not a complete host.
 const WORD = "\\p{L}\\p{M}\\p{N}_";
 const LOCAL_CLASS = `[${WORD}.%+-]`;
 const ASSET_EXTENSIONS =
     "png|jpe?g|gif|svg|webp|avif|ico|css|m?js|cjs|tsx?|jsx|json|map|woff2?|pdf|txt|t?gz|html?|ya?ml|wasm";
+// Version text (semver: three numbers, a dotted pre-release, a dotted build) that ends the host.
+const VERSION_IDENTIFIERS = "[a-z\\d-]{1,62}(?:\\.[a-z\\d-]{1,62}){0,12}";
+const VERSION_TEXT = `v?\\d+\\.\\d+\\.\\d+(?:-${VERSION_IDENTIFIERS})?(?:\\+${VERSION_IDENTIFIERS})?`;
+const HOST_END = "(?![\\p{L}\\p{N}_-]|\\.[\\p{L}\\p{N}])";
 const EMAIL_SHAPE = new RegExp(
     `(?<!${LOCAL_CLASS})${LOCAL_CLASS}{1,128}(?:[@\\uFF20]|%40)` +
-        `(?!v?\\d+(?:\\.\\d[a-z\\d-]{0,62}){1,11}\\.[a-z]{2,24}(?![a-z\\d_-]|\\.[a-z\\d]))` +
+        `(?!${VERSION_TEXT}${HOST_END})` +
         `(?:[\\p{L}\\p{M}\\p{N}][\\p{L}\\p{M}\\p{N}-]{0,62}[.\\uFF0E\\u3002\\uFF61]){1,12}` +
         `(?!(?:${ASSET_EXTENSIONS})(?![\\p{L}\\p{N}_-]))` +
-        `(?:xn--[a-z\\d-]{2,59}|[\\p{L}\\p{M}]{2,24})(?![\\p{L}\\p{N}_-])(?!:[\\w~./-])`,
+        `(?:xn--[a-z\\d-]{2,59}|[\\p{L}\\p{M}]{2,24})${HOST_END}(?!:[\\w~./-])`,
     "giu",
 );
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
@@ -166,17 +171,23 @@ function decodePercent(value: string): string {
 // Decodes round by round. A malformed escape in the token does not stop it: the valid ASCII escapes are
 // still decoded. A token that still changes after the last round is hostile nesting: null.
 const MAX_ESCAPE_ROUNDS = 8;
+const ESCAPE_RUN = /(?:%[\da-f]{2}){1,512}/gi;
+// Every run of valid escapes is decoded on its own, multi-byte text included. A run that is not valid
+// UTF-8 keeps its ASCII escapes decoded and the rest literal; a stray percent sign stays as it is.
+function decodeEscapeRun(run: string): string {
+    try {
+        return decodeURIComponent(run);
+    } catch {
+        return run.replace(/%([0-7][\da-f])/gi, (_match, hex: string) =>
+            String.fromCharCode(Number.parseInt(hex, 16)),
+        );
+    }
+}
+
 function decodeEscapes(token: string): string | null {
     let decoded = token;
     for (let round = 0; round < MAX_ESCAPE_ROUNDS; round += 1) {
-        let next: string;
-        try {
-            next = decodeURIComponent(decoded);
-        } catch {
-            next = decoded.replace(/%([0-7][\da-f])/gi, (_match, hex: string) =>
-                String.fromCharCode(Number.parseInt(hex, 16)),
-            );
-        }
+        const next = decoded.replace(ESCAPE_RUN, decodeEscapeRun);
         if (next === decoded) return decoded;
         decoded = next;
     }

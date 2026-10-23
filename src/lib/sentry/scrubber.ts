@@ -35,25 +35,67 @@ function dropSessionUser(session: SessionItem): void {
     if (session.attrs) delete session.attrs.ip_address;
 }
 
-const SESSION_PRIVACY_INTEGRATION: SentryIntegration = {
-    name: "SessionUserPrivacy",
+// A feedback event skips beforeSend: the user and the contact fields are cut here, the text is scrubbed.
+function scrubFeedbackEvent(event: ErrorEvent): ErrorEvent {
+    keepUserIdOnly(event);
+    const feedback = (
+        event.contexts as Record<string, Record<string, unknown> | undefined> | undefined
+    )?.feedback;
+    if (feedback) {
+        delete feedback.contact_email;
+        delete feedback.name;
+    }
+    return scrubTelemetryPayload(event);
+}
+
+const USER_PRIVACY_INTEGRATION: SentryIntegration = {
+    name: "UserPrivacy",
     setup(client) {
         client.on("beforeSendSession", (session) => dropSessionUser(session as SessionItem));
+    },
+    processEvent(event) {
+        return event.type === "feedback" ? scrubFeedbackEvent(event as ErrorEvent) : event;
     },
 };
 
 type SentryInitOptions = Parameters<typeof Sentry.init>[0];
+type LogItem = Parameters<NonNullable<SentryInitOptions["beforeSendLog"]>>[0];
+type MetricItem = Parameters<NonNullable<SentryInitOptions["beforeSendMetric"]>>[0];
 type IntegrationsOption = SentryInitOptions["integrations"];
 type SentryIntegration = Exclude<
     NonNullable<IntegrationsOption>,
     (...args: never[]) => unknown
 >[number];
 
-function withSessionPrivacy(integrations: IntegrationsOption): IntegrationsOption {
+function withUserPrivacy(integrations: IntegrationsOption): IntegrationsOption {
     if (typeof integrations === "function") {
-        return (defaults) => [...integrations(defaults), SESSION_PRIVACY_INTEGRATION];
+        return (defaults) => [...integrations(defaults), USER_PRIVACY_INTEGRATION];
     }
-    return [...(integrations ?? []), SESSION_PRIVACY_INTEGRATION];
+    return [...(integrations ?? []), USER_PRIVACY_INTEGRATION];
+}
+
+// The SDK adds the scope user to log and metric attributes (`user.email`, `user.name`) before the hooks run.
+// Only `user.id` stays; the message, the name and every attribute value go through the text scrub.
+function dropUserAttributes<Item extends { attributes?: object }>(item: Item): Item {
+    if (!item.attributes) return item;
+    const attributes = Object.fromEntries(
+        Object.entries(item.attributes).filter(
+            ([key]) => !/^user[._]/iu.test(key) || key.toLowerCase() === "user.id",
+        ),
+    );
+    return { ...item, attributes };
+}
+
+function scrubLog<Log extends { message?: unknown; attributes?: object }>(log: Log): Log {
+    const withMessage =
+        log.message === undefined
+            ? log
+            : { ...log, message: scrubTelemetryText(String(log.message)) };
+    return scrubTelemetryPayload(dropUserAttributes(withMessage));
+}
+
+function scrubMetric<Metric extends { attributes?: object }>(metric: Metric): Metric {
+    return scrubTelemetryPayload(dropUserAttributes(metric));
 }
 
 function scrubQueryString(queryString: QueryString): QueryString {
@@ -148,6 +190,8 @@ export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
     const existingBeforeSend = config.beforeSend;
     const existingBeforeSendTransaction = config.beforeSendTransaction;
     const existingBeforeBreadcrumb = config.beforeBreadcrumb;
+    const existingBeforeSendLog = config.beforeSendLog;
+    const existingBeforeSendMetric = config.beforeSendMetric;
     const existingBeforeSendSpan = config.beforeSendSpan as StaticSpanHook | undefined;
 
     return {
@@ -155,7 +199,7 @@ export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
         ...config,
         // Deep merge: a partial caller dataCollection must not drop the v10 defaults for the rest.
         dataCollection: { ...V10_PRIVACY_BASELINE.dataCollection, ...config.dataCollection },
-        integrations: withSessionPrivacy(config.integrations),
+        integrations: withUserPrivacy(config.integrations),
         beforeSend(event: ErrorEvent, hint: EventHint) {
             const scrubbed = scrubEvent(event, hint);
             if (scrubbed === null) return null;
@@ -171,6 +215,14 @@ export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
             const scrubbed = scrubSpan(span);
             return existingBeforeSendSpan ? existingBeforeSendSpan(scrubbed) : scrubbed;
         }),
+        beforeSendLog(log: LogItem) {
+            const scrubbed = scrubLog(log);
+            return existingBeforeSendLog ? existingBeforeSendLog(scrubbed) : scrubbed;
+        },
+        beforeSendMetric(metric: MetricItem) {
+            const scrubbed = scrubMetric(metric);
+            return existingBeforeSendMetric ? existingBeforeSendMetric(scrubbed) : scrubbed;
+        },
         beforeBreadcrumb(breadcrumb: Breadcrumb, hint?: BreadcrumbHint) {
             const scrubbed = scrubBreadcrumb(breadcrumb);
             return existingBeforeBreadcrumb ? existingBeforeBreadcrumb(scrubbed, hint) : scrubbed;
