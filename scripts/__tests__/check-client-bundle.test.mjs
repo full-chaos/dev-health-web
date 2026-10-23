@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
     MIN_SECRET_LENGTH,
+    PATTERN_RULES,
     SECRET_ENV_NAMES,
     SERVER_ONLY_MODULES,
     checkClientBundle,
@@ -40,6 +41,7 @@ function tree({
     source = 'import "server-only";\nexport const path = "/api/private/marker";\n',
     client = 'console.log("public code")',
     server = 'fetch("/api/private/marker");x={HIDDEN_NAME:1,PUBLIC_ISH:2}',
+    extra = {},
 } = {}) {
     const root = mkdtempSync(join(tmpdir(), "client-bundle-check-"));
     write(join(root, "src/lib/secretLogic.ts"), source);
@@ -47,6 +49,7 @@ function tree({
     if (envClient !== null) write(join(root, "src/lib/envClient.ts"), envClient);
     if (client !== null) write(join(root, ".next/static/chunks/a.js"), client);
     if (server !== null) write(join(root, ".next/server/chunks/b.js"), server);
+    for (const [name, text] of Object.entries(extra)) write(join(root, ".next", name), text);
     return { root, dist: join(root, ".next") };
 }
 
@@ -238,7 +241,190 @@ describe("client bundle check", () => {
     });
 });
 
+describe("the pattern rules", () => {
+    const byId = Object.fromEntries(PATTERN_RULES.map((rule) => [rule.id, rule]));
+
+    it("are these five, and a rule is never added or dropped without this test", () => {
+        expect(PATTERN_RULES.map((rule) => rule.id)).toEqual(["K1", "K2", "K3", "K4", "K5"]);
+        expect(PATTERN_RULES.filter((rule) => rule.value).map((rule) => rule.id)).toEqual([
+            "K1",
+            "K4",
+        ]);
+    });
+
+    it.each(PATTERN_RULES)("$id matches its seed and none of its benign text", (rule) => {
+        expect(rule.pattern.test(rule.seed)).toBe(true);
+        for (const text of [rule.benign, ...(rule.benigns ?? [])]) {
+            expect(rule.pattern.test(text), text).toBe(false);
+        }
+    });
+
+    it.each(PATTERN_RULES)(
+        "$id fails a client file that holds its seed, with the id and an offset, never the text",
+        (rule) => {
+            const result = check(tree({ client: `x=1;var k="${rule.seed}";` }));
+
+            expect(result.ok).toBe(false);
+            expect(result.summary.ruleHits).toBe(1);
+            expect(result.failures).toEqual([
+                `static/chunks/a.js: client file matches rule ${rule.id} (${rule.what}) at offset 11`,
+            ]);
+            expect(result.failures.join("\n")).not.toContain(rule.seed);
+        },
+    );
+
+    it.each(PATTERN_RULES)("$id does not fail a client file that holds its benign text", (rule) => {
+        for (const text of [rule.benign, ...(rule.benigns ?? [])]) {
+            expect(check(tree({ client: `x=${JSON.stringify(text)}` })).failures, text).toEqual([]);
+        }
+    });
+
+    it("does not fail a client file with a bare token field name or a bearer header", () => {
+        const client =
+            "a={access_token:s.access_token,refresh_token:d.refresh_token};h={Authorization:`Bearer ${t}`}";
+
+        expect(check(tree({ client })).failures).toEqual([]);
+    });
+
+    it("K1 does not fail the placeholder of the private key field of a form (header only)", () => {
+        for (const client of [
+            'placeholder:"-----BEGIN PRIVATE KEY-----"})})]}),',
+            'rows:6,placeholder:"-----BEGIN RSA PRIVATE KEY-----"',
+            'x="-----BEGIN PRIVATE KEY-----\\n-----END PRIVATE KEY-----"',
+        ]) {
+            expect(check(tree({ client })).failures, client).toEqual([]);
+        }
+    });
+
+    describe("K1 fails a fake key (random base64 body, never a real key)", () => {
+        const BODY = "q83vEjRWeJq3zF0u7H1pN4cYtB2kLmD9aXoS6gUiVbT5nZyW8Rf3Qw8mZp2LxK9d";
+        const BODY_LINES = `${BODY}\nT3pQ9zXw1Lk=`;
+
+        it.each([
+            [
+                "JS-escaped newline",
+                `"-----BEGIN PRIVATE KEY-----\\n${BODY}\\n-----END PRIVATE KEY-----"`,
+            ],
+            ["JS-escaped CRLF", `"-----BEGIN PRIVATE KEY-----\\r\\n${BODY}"`],
+            [
+                "real newline",
+                `\`-----BEGIN PRIVATE KEY-----\n${BODY_LINES}\n-----END PRIVATE KEY-----\``,
+            ],
+            ["real CRLF", `"-----BEGIN PRIVATE KEY-----\r\n${BODY}"`],
+            ["RSA header", `"-----BEGIN RSA PRIVATE KEY-----\\n${BODY}"`],
+            ["EC header", `"-----BEGIN EC PRIVATE KEY-----\\n${BODY}"`],
+            ["DSA header", `"-----BEGIN DSA PRIVATE KEY-----\\n${BODY}"`],
+            ["OPENSSH header", `"-----BEGIN OPENSSH PRIVATE KEY-----\\n${BODY}"`],
+            ["ENCRYPTED header", `"-----BEGIN ENCRYPTED PRIVATE KEY-----\\n${BODY}"`],
+        ])("%s", (_name, literal) => {
+            const result = check(tree({ client: `var k=${literal};` }));
+
+            expect(result.failures).toEqual([
+                "static/chunks/a.js: client file matches rule K1 (private key header) at offset 7",
+            ]);
+            expect(result.failures.join("\n")).not.toContain(BODY);
+        });
+    });
+
+    it("fails a rule that does not match its own seed, and a rule that matches its benign text", () => {
+        const dead = [{ ...byId.K2, pattern: /never-in-any-file/ }];
+        const wide = [{ ...byId.K2, pattern: /api/ }];
+
+        expect(check(tree(), { rules: dead }).failures).toEqual([
+            "rule K2: does not match its own seed text",
+        ]);
+        expect(check(tree(), { rules: wide }).failures).toEqual([
+            "rule K2: matches its own benign text",
+        ]);
+    });
+
+    it("run on a client file in a nested folder and name the file", () => {
+        const paths = tree({
+            extra: { "static/chunks/app/deep/b.js": `y="${byId.K3.seed}"` },
+        });
+
+        expect(check(paths).failures).toEqual([
+            "static/chunks/app/deep/b.js: client file matches rule K3 (session cookie name) at offset 3",
+        ]);
+    });
+
+    it("main returns 1 and prints the rule id, not the matched text", () => {
+        const paths = tree({ client: `var k="${byId.K2.seed}"` });
+        const lines = [];
+        const log = { log: (line) => lines.push(line), error: (line) => lines.push(line) };
+
+        const code = main(["--root", paths.root, "--dist", paths.dist], {}, log);
+
+        expect(code).toBe(1);
+        expect(lines.join("\n")).toContain("client file matches rule K2");
+        expect(lines.join("\n")).not.toContain(byId.K2.seed);
+    });
+});
+
+describe("prerendered output the server sends as is", () => {
+    const byId = Object.fromEntries(PATTERN_RULES.map((rule) => [rule.id, rule]));
+
+    it.each([
+        ["server/app/page.html", "K1"],
+        ["server/app/page.rsc", "K4"],
+        ["server/app/x/page.segments/_tree.segment.rsc", "K4"],
+        ["server/app/y.body", "K1"],
+    ])("fails when %s holds the value rule %s", (name, id) => {
+        const result = check(tree({ extra: { [name]: `<p>${byId[id].seed}</p>` } }));
+
+        expect(result.ok).toBe(false);
+        expect(result.failures).toEqual([
+            `${name}: prerendered file matches rule ${id} (${byId[id].what}) at offset 3`,
+        ]);
+        expect(result.failures.join("\n")).not.toContain(byId[id].seed);
+    });
+
+    it("fails when a prerendered file holds the value of a secret, and does not print it", () => {
+        const result = check(tree({ extra: { "server/app/page.html": `<p>${SECRET}</p>` } }), {
+            env: { A_SECRET: SECRET },
+        });
+
+        expect(result.failures).toEqual([
+            "server/app/page.html: prerendered file holds the value of A_SECRET",
+        ]);
+        expect(result.failures.join("\n")).not.toContain(SECRET);
+    });
+
+    it("does not run the endpoint, cookie and signing rules on it", () => {
+        const text = ["K2", "K3", "K5"].map((id) => byId[id].seed).join(" ");
+        const result = check(tree({ extra: { "server/app/page.html": text } }));
+
+        expect(result.failures).toEqual([]);
+        expect(result.summary.prerenderedFiles).toBe(1);
+    });
+
+    it("does not read a file of another kind in the server output as served text", () => {
+        const result = check(
+            tree({
+                extra: { "server/app/page.js": byId.K1.seed, "server/app/m.json": byId.K4.seed },
+            }),
+        );
+
+        expect(result.failures).toEqual([]);
+        expect(result.summary.prerenderedFiles).toBe(0);
+    });
+});
+
 describe("the registry of server-only modules", () => {
+    it("names the auth, key, signing and session-memo modules", () => {
+        expect(SERVER_ONLY_MODULES.map((entry) => entry.file)).toEqual([
+            "src/lib/auth.ts",
+            "src/lib/authValidationMemo.ts",
+            "src/lib/impersonationStatusMemo.ts",
+            "src/lib/serverEnv.server.ts",
+            "src/lib/acr/assertion.ts",
+            "src/lib/acr/config.ts",
+            "src/lib/acr/client.ts",
+            "src/lib/acr/ops.ts",
+            "src/lib/acr/service.ts",
+        ]);
+    });
+
     it.each(SERVER_ONLY_MODULES)("$file has the server-only import and its markers", (entry) => {
         const source = readFileSync(join(repositoryRoot, entry.file), "utf8");
 

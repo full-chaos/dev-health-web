@@ -14,7 +14,18 @@
  *  - the names of the server environment variables (the keys of the schema in
  *    `src/lib/serverEnv.server.ts`, minus the few the client-graph reader may hold) are looked for
  *    in client files too; a schema with no key, or a name that is not in the server output, fails;
- *  - with `--require-secrets`, a secret variable with no value to look for: fail.
+ *  - with `--require-secrets`, a secret variable with no value to look for: fail;
+ *  - the pattern rules (`PATTERN_RULES`: key material, refresh and token-exchange endpoints, the
+ *    session cookie name, JWT-shaped text, signing code) are looked for in every client file; a rule
+ *    that does not match its own seed text, or matches its own benign text, fails (a dead or
+ *    over-wide rule is not a pass);
+ *  - the value rules (key material, JWT-shaped text) and the secret values are also looked for in
+ *    the prerendered output the server sends as is (`.html`, `.rsc`, `.body`).
+ *
+ * There is no allowlist and no exemption by file. A false positive is fixed by a narrower rule
+ * and a benign sample that must not match. Bare `access_token` / `refresh_token` field names and
+ * `Authorization: Bearer` are NOT rules: client code that holds them today (CHAOS-3280 wave 7)
+ * would fail on a rule that has no way to tell it from key or signing code.
  *
  * Output: file names, marker texts and variable NAMES only. A secret value is never printed.
  *
@@ -36,7 +47,63 @@ export const SERVER_ONLY_MODULES = [
     { file: "src/lib/authValidationMemo.ts", markers: ["authValidationMemo"] },
     { file: "src/lib/impersonationStatusMemo.ts", markers: ["impersonationStatusShared"] },
     { file: "src/lib/serverEnv.server.ts", markers: ["TRUSTED_PROXY_HOPS"] },
+    { file: "src/lib/acr/assertion.ts", markers: ["EdDSA"] },
+    { file: "src/lib/acr/config.ts", markers: ["Agent Context Runtime is not configured."] },
+    { file: "src/lib/acr/client.ts", markers: ["/api/v1/agent-context/capabilities"] },
+    { file: "src/lib/acr/ops.ts", markers: ["/api/v1/licensing/entitlements/"] },
+    { file: "src/lib/acr/service.ts", markers: ["Approval is unavailable while impersonating."] },
 ];
+
+/**
+ * Text that must not be in a client file. `seed` must match `pattern`; `benign` (and each of `benigns`) must not. `value`
+ * rules also run on prerendered output. A hit prints the rule id, the file and the offset, never the text.
+ */
+export const PATTERN_RULES = [
+    {
+        id: "K1",
+        what: "private key header",
+        pattern: /-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----(?:\s|\\[nr]){0,8}[A-Za-z0-9+/]{40,}/,
+        seed: "-----BEGIN PRIVATE KEY-----\\nZmFrZS1rZXktYm9keS1mb3ItdGVzdHMtb25seS1ub3QtYS1rZXk=",
+        benign: 'placeholder:"-----BEGIN PRIVATE KEY-----"',
+        benigns: ["-----BEGIN CERTIFICATE-----", "-----BEGIN PRIVATE KEY-----\\n"],
+        value: true,
+    },
+    {
+        id: "K2",
+        what: "refresh or token-exchange endpoint",
+        pattern: /\/api\/v1\/auth\/(?:refresh|social-login)/,
+        seed: "/api/v1/auth/refresh",
+        benign: "/api/v1/auth/session",
+        value: false,
+    },
+    {
+        id: "K3",
+        what: "session cookie name",
+        pattern: /(?:__Secure-|__Host-)?(?:authjs|next-auth)\.session-token/,
+        seed: "__Secure-authjs.session-token",
+        benign: "authjs.callback-url",
+        value: false,
+    },
+    {
+        id: "K4",
+        what: "JWT-shaped text",
+        pattern: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/,
+        seed: "eyJhbGciOiJFZERTQSJ9.eyJzdWIiOiJ4eHh4eHh4eHgifQ.c2lnbmF0dXJlLWJ5dGVz",
+        benign: "eyJhbGciOiJFZERTQSJ9",
+        value: true,
+    },
+    {
+        id: "K5",
+        what: "signing code",
+        pattern: /createPrivateKey|EdDSA/,
+        seed: "createPrivateKey",
+        benign: "createHash",
+        value: false,
+    },
+];
+
+/** Prerendered files the server sends as is; they reach the browser although they are not in `static`. */
+export const PRERENDERED_EXTENSIONS = [".html", ".rsc", ".body"];
 
 /** The schema of the server environment variables, and the reader a client graph gets instead. */
 export const SERVER_ENV_FILE = "src/lib/serverEnv.server.ts";
@@ -74,16 +141,18 @@ export const MIN_SECRET_LENGTH = 8;
 
 const SERVER_ONLY_IMPORT = /^\s*import\s+["']server-only["'];?\s*$/m;
 
-function javascriptFiles(directory) {
+function filesWithExtension(directory, extensions) {
     if (!existsSync(directory)) return [];
     const found = [];
     for (const name of readdirSync(directory)) {
         const path = join(directory, name);
-        if (statSync(path).isDirectory()) found.push(...javascriptFiles(path));
-        else if (name.endsWith(".js")) found.push(path);
+        if (statSync(path).isDirectory()) found.push(...filesWithExtension(path, extensions));
+        else if (extensions.some((extension) => name.endsWith(extension))) found.push(path);
     }
     return found;
 }
+
+const javascriptFiles = (directory) => filesWithExtension(directory, [".js"]);
 
 /**
  * @returns {{ ok: boolean, failures: string[], summary: Record<string, number> }}
@@ -98,8 +167,18 @@ export function checkClientBundle({
     serverEnvFile = SERVER_ENV_FILE,
     clientEnvFile = CLIENT_ENV_FILE,
     thirdPartyEnvNames = THIRD_PARTY_ENV_NAMES,
+    rules = PATTERN_RULES,
 }) {
     const failures = [];
+
+    for (const rule of rules) {
+        if (!rule.pattern.test(rule.seed)) {
+            failures.push(`rule ${rule.id}: does not match its own seed text`);
+        }
+        if ([rule.benign, ...(rule.benigns ?? [])].some((text) => rule.pattern.test(text))) {
+            failures.push(`rule ${rule.id}: matches its own benign text`);
+        }
+    }
 
     const markers = [];
     for (const entry of modules) {
@@ -189,12 +268,42 @@ export function checkClientBundle({
         }
     }
 
+    const prerenderedFiles = filesWithExtension(join(dist, "server"), PRERENDERED_EXTENSIONS);
     let envNameHits = 0;
     let markerHits = 0;
     let secretHits = 0;
+    let ruleHits = 0;
+    for (const path of prerenderedFiles) {
+        const text = readFileSync(path, "utf8");
+        const name = relative(dist, path);
+        for (const rule of rules.filter((candidate) => candidate.value)) {
+            const hit = rule.pattern.exec(text);
+            if (hit) {
+                ruleHits += 1;
+                failures.push(
+                    `${name}: prerendered file matches rule ${rule.id} (${rule.what}) at offset ${hit.index}`,
+                );
+            }
+        }
+        for (const secret of secrets) {
+            if (text.includes(secret.value)) {
+                secretHits += 1;
+                failures.push(`${name}: prerendered file holds the value of ${secret.name}`);
+            }
+        }
+    }
     for (const path of clientFiles) {
         const text = readFileSync(path, "utf8");
         const name = relative(dist, path);
+        for (const rule of rules) {
+            const hit = rule.pattern.exec(text);
+            if (hit) {
+                ruleHits += 1;
+                failures.push(
+                    `${name}: client file matches rule ${rule.id} (${rule.what}) at offset ${hit.index}`,
+                );
+            }
+        }
         for (const { file, marker } of markers) {
             if (text.includes(marker)) {
                 markerHits += 1;
@@ -228,6 +337,9 @@ export function checkClientBundle({
             secretsChecked: secrets.length,
             secretNames: secretNames.length,
             secretHits,
+            rules: rules.length,
+            ruleHits,
+            prerenderedFiles: prerenderedFiles.length,
         },
     };
 }
@@ -255,7 +367,8 @@ export function main(argv = process.argv.slice(2), env = process.env, log = cons
         `client bundle check: ${s.clientFiles} client files, ${s.serverFiles} server files, ` +
             `${s.markers} markers (${s.markerHits} client hits), ` +
             `${s.envNames} server variable names (${s.envNameHits} client hits), ` +
-            `${s.secretsChecked} of ${s.secretNames} secret values looked for (${s.secretHits} client hits)`,
+            `${s.secretsChecked} of ${s.secretNames} secret values looked for (${s.secretHits} client hits), ` +
+            `${s.rules} pattern rules (${s.ruleHits} hits), ${s.prerenderedFiles} prerendered files`,
     );
     if (!result.ok) {
         for (const failure of result.failures) log.error(`FAIL ${failure}`);
