@@ -57,11 +57,8 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     ],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b[a-z][a-z\d+.-]{0,31}:\/\/\S+/gi, filterSlashedUserinfo],
-    // A password that holds a space. A `host:port` followed by a word is left alone.
-    [
-        /\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:(?!\d{1,5}\s+[a-z]{2,}\b)[^/@\r\n]{1,256}@/gi,
-        `$1${FILTERED}@`,
-    ],
+    // A password that holds a space. Prose such as `host:8080 word me@x` is removed too: fail safe.
+    [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:[^/@\r\n]{1,256}@/gi, `$1${FILTERED}@`],
     // `user:pass@host` with no scheme.
     [
         /(?<![\w@:/.~%+-])[\w.~%+-]{1,64}:[^\s/@:]{1,256}@[a-z\d][\w.-]{0,253}/gi,

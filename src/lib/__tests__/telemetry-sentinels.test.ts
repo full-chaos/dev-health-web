@@ -335,8 +335,21 @@ describe("telemetry hygiene: userinfo without a scheme or with spaces", () => {
     });
 
     it.each([
+        ["postgres://admin:1234 secretword@db.internal/x", "secretword"],
+        ["postgres://admin:1234 Hunter@db.internal/x", "Hunter"],
+        ["postgres://admin:99999 hunter two@db.internal/x", "hunter"],
+        ["postgres://admin:12 secretword@db.internal/x", "secretword"],
+        ["redis://:1234 secretword@cache.internal", "secretword"],
+        ["https://svc:123 more@api.example/x", "more"],
+    ])("removes %s whatever the words after the digits are", (text, word) => {
+        expect(scrubTelemetryText(`connect ${text} failed`)).not.toContain(word);
+        const config = attachBeforeSend({});
+        const event = { message: text } as unknown as ErrorEvent;
+        expect(JSON.stringify(config.beforeSend?.(event, {}))).not.toContain(word);
+    });
+
+    it.each([
         "see https://example.com for details, mail me@x.example",
-        "http://host:8080 and then me@x.example",
         "took 12:30 at db.internal",
         "mailto:me@x.example",
     ])("leaves %s readable", (text) => {
