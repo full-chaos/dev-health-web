@@ -279,8 +279,29 @@ describe("telemetry egress", () => {
             }
         };
         walk(items);
+        // The envelope header (and its trace header) is walked too, not only the items.
+        const headers = sent.map((envelope) => (JSON.parse(envelope) as [unknown])[0]);
+        expect(headers.length).toBeGreaterThan(0);
+        walk(headers);
+        const headerText = JSON.stringify(headers);
+        for (const leak of [
+            email,
+            name,
+            ip,
+            bodyAddress,
+            feedbackEmail,
+            feedbackName,
+            "{{auto}}",
+        ]) {
+            expect(headerText).not.toContain(leak);
+        }
+        for (const leak of REQUEST_LEAKS) expect(headerText).not.toMatch(leak);
+        expect(headerText).not.toContain("probe-id");
         for (const key of ["remote_addr", "ip_address", "ipaddress", "env", "client_ip"]) {
             expect(keys.has(key), `key ${key}`).toBe(false);
+        }
+        for (const header of headers) {
+            expect(Object.keys(header as object).filter((k) => /user/i.test(k))).toEqual([]);
         }
         const requests = items
             .map((item) => (item[1] as { request?: Record<string, unknown> }).request)
