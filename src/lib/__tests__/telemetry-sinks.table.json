@@ -204,7 +204,7 @@
         "sentry": 0
     },
     "src/lib/onboarding/track.ts": {
-        "log": 2,
+        "log": 3,
         "sentry": 0
     },
     "src/lib/rate-limit.ts": {
@@ -232,6 +232,10 @@
         "sentry": 0
     },
     "src/lib/serverSession.default.ts": {
+        "log": 1,
+        "sentry": 0
+    },
+    "src/lib/telemetry.ts": {
         "log": 1,
         "sentry": 0
     },

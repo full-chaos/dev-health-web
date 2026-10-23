@@ -1,4 +1,5 @@
 import { getLocalStorage, getWindow } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 import {
     consoleTelemetryAdapter,
@@ -9,7 +10,7 @@ import { TELEMETRY_INTERACTION_EVENT } from "./telemetry/interaction";
 import { canTrackProductTelemetry } from "./telemetry/config";
 import { createTelemetryQueue, type TelemetryQueue } from "./telemetry/queue";
 import { routePatternForPathname } from "./telemetry/routePatterns";
-import { sanitizeTelemetryPayload } from "./telemetry/sanitize";
+import { boundTelemetryString, sanitizeTelemetryPayload } from "./telemetry/sanitize";
 import type { TelemetryEvent, TelemetryEventName, TelemetryPayloadByName } from "./telemetry/types";
 
 const DEFAULT_SESSION_ID_KEY = "devhealth-product-telemetry-session-id";
@@ -193,6 +194,15 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         win.dispatchEvent(new Event(TELEMETRY_INTERACTION_EVENT));
     }
 
+    const sanitized = sanitizeTelemetryPayload(payload);
+    if (!sanitized.ok) {
+        logger.debug(
+            { event: name, key: sanitized.key },
+            "Telemetry event dropped: a payload value is out of bounds",
+        );
+        return;
+    }
+
     const now = Date.now();
     const event: TelemetryEvent<Name> = {
         name,
@@ -203,9 +213,10 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         anonymousUserId:
             telemetryContext.anonymousUserId ?? storedId(DEFAULT_ANONYMOUS_USER_ID_KEY),
         orgIdHash: telemetryContext.orgIdHash ?? null,
-        routePattern:
+        routePattern: boundTelemetryString(
             telemetryContext.routePattern ?? routePatternForPathname(win.location.pathname),
-        payload: sanitizeTelemetryPayload(payload) as TelemetryPayloadByName[Name],
+        ),
+        payload: sanitized.payload as TelemetryPayloadByName[Name],
     };
 
     getTelemetryQueue().enqueue(event);

@@ -3,7 +3,7 @@ const NUMERIC_OR_HEX_ID_RE = /^(?:\d{4,}|[0-9a-f]{16,})$/i;
 
 // Most specific first. A route matches when the path starts with every segment of its template;
 // `[x]` matches any one segment. A static sibling of a dynamic route is listed before it.
-const ROUTE_TEMPLATES: readonly string[] = [
+export const ROUTE_TEMPLATES: readonly string[] = [
     "/people/[person_id]/metrics/[metric]",
     "/people/[person_id]",
     "/reports/new",
