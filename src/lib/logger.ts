@@ -20,7 +20,7 @@
 
 import { isServer } from "@/lib/env";
 import { publicEnv, getServerEnv } from "@/lib/config";
-import { scrubLogCall, scrubLogFields, scrubLogText } from "@/lib/logScrub";
+import { scrubLogCall, scrubLogFields, scrubLogText, scrubbedText } from "@/lib/logScrub";
 
 type LogFormat = "json" | "pretty";
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
@@ -88,7 +88,7 @@ function createBrowserLogger(bindings: Record<string, unknown> = {}): Logger {
         (level: LogLevel, consoleFn: (...args: unknown[]) => void): LogFn =>
         (objOrMsg: object | string, msg?: string) => {
             if (levels.indexOf(level) < minIdx) return;
-            const text = scrubLogText(msg ?? "");
+            const text = String(scrubbedText(msg ?? ""));
             if (typeof objOrMsg === "string") {
                 consoleFn(`[${level}]`, scrubLogText(objOrMsg), scrubLogFields(bindings));
             } else if (objOrMsg instanceof Error) {

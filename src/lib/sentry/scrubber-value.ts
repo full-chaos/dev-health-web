@@ -57,9 +57,9 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     ],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b[a-z][a-z\d+.-]{0,31}:\/\/\S+/gi, filterSlashedUserinfo],
-    // A password that holds a space. A `host:port` followed by words is left alone.
+    // A password that holds a space. A `host:port` followed by a word is left alone.
     [
-        /\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{1,128}:(?!\d+\s)[^/@\r\n]{1,256}@/gi,
+        /\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@:]{0,128}:(?!\d{1,5}\s+[a-z]{2,}\b)[^/@\r\n]{1,256}@/gi,
         `$1${FILTERED}@`,
     ],
     // `user:pass@host` with no scheme.

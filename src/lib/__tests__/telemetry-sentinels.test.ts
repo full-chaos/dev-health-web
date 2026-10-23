@@ -248,9 +248,82 @@ describe("telemetry hygiene: values with their own printers", () => {
     });
 });
 
+describe("telemetry hygiene: cycles, depth and own printers", () => {
+    const withConfig = (value: string) =>
+        Object.assign(new Error("call failed"), { config: { headers: { a: value } } });
+    const nest = (depth: number, leaf: unknown): unknown =>
+        depth === 0 ? leaf : { k: nest(depth - 1, leaf) };
+
+    it("never prints an error that is reached again through a cycle", () => {
+        const { lines, logger } = capture();
+        const value = token();
+        const a: Record<string, unknown> = { e: withConfig(value) };
+        a.self = a;
+        const list: unknown[] = [withConfig(value)];
+        list.push(list);
+        logger.error({ a }, "m");
+        logger.error({ list }, "m");
+        logger.child({ a }).info("c");
+        expect(lines).toHaveLength(3);
+        for (const line of lines) expect(line).not.toContain(value);
+    });
+
+    it.each([7, 8, 9, 10, 12, 20, 31])(
+        "never prints an error or an own toJSON at depth %i",
+        (depth) => {
+            const { lines, logger } = capture();
+            const value = token();
+            logger.error({ a: nest(depth, withConfig(value)) }, "m");
+            logger.error({ a: nest(depth, [withConfig(value)]) }, "m");
+            logger.error({ a: nest(depth, { toJSON: () => `Bearer ${value}${value}` }) }, "m");
+            logger.child({ a: nest(depth, withConfig(value)) }).info("c");
+            expect(lines).toHaveLength(4);
+            for (const line of lines) expect(line).not.toContain(value);
+        },
+    );
+
+    it("never prints an own toJSON reached through a cycle", () => {
+        const { lines, logger } = capture();
+        const value = token();
+        const a: Record<string, unknown> = { t: { toJSON: () => `Bearer ${value}${value}` } };
+        a.self = a;
+        logger.error({ a }, "m");
+        expect(lines[0]).not.toContain(value);
+    });
+
+    it("keeps the browser shim safe on a cycle, a deep error and a non-string message", async () => {
+        vi.resetModules();
+        vi.stubGlobal("window", {});
+        const calls: unknown[][] = [];
+        const spy = vi
+            .spyOn(console, "error")
+            .mockImplementation((...args) => void calls.push(args));
+        try {
+            const { logger } = await import("../logger");
+            const value = token();
+            const a: Record<string, unknown> = { e: withConfig(value) };
+            a.self = a;
+            logger.error({ a }, "m");
+            logger.error({ a: nest(12, withConfig(value)) }, "m");
+            (logger.error as (...args: unknown[]) => void)(
+                { x: 1 },
+                { toString: () => `Bearer ${value}${value}` },
+            );
+            (logger.error as (...args: unknown[]) => void)({ x: 1 }, 42);
+            expect(calls).toHaveLength(4);
+            for (const call of calls) expect(JSON.stringify(call)).not.toContain(value);
+        } finally {
+            spy.mockRestore();
+            vi.unstubAllGlobals();
+        }
+    });
+});
+
 describe("telemetry hygiene: userinfo without a scheme or with spaces", () => {
     it.each([
         ["a password with a space", (v: string) => `https://svc:${v} abc${v}@api.example/x`],
+        ["digits then a space", (v: string) => `postgres://svc:123 ${v}@db.internal/x`],
+        ["an empty user and a space", (v: string) => `redis://:${v} x@cache.internal:6379`],
         ["no scheme", (v: string) => `svc:${v}@db.internal:5432/app`],
         ["no scheme, with a dot in the user", (v: string) => `svc.user:${v}@cache.internal`],
     ])("removes userinfo from text: %s", (_name, build) => {

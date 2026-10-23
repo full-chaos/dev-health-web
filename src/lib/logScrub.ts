@@ -2,7 +2,7 @@ import { scrubTelemetryPayload, scrubTelemetryText } from "@/lib/sentry/scrubber
 
 export { scrubTelemetryText as scrubLogText };
 
-const MAX_PLAIN_DEPTH = 8;
+const MAX_PLAIN_DEPTH = 16;
 
 function plainError(error: Error): Record<string, string | undefined> {
     return { type: error.name, message: error.message, stack: error.stack };
@@ -14,10 +14,11 @@ function plainify(value: unknown, depth: number, active: WeakSet<object>): unkno
     if (value instanceof Error) return plainError(value);
     // A function is never printed, and an own `toJSON` would let pino print what the scrubber never saw.
     if (typeof value === "function") return undefined;
+    if (typeof value !== "object" || value === null) return value;
     if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
-    if (typeof value !== "object" || value === null || depth >= MAX_PLAIN_DEPTH) return value;
-    if (active.has(value)) return value;
     if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value;
+    // A value that is not walked is never passed on raw: past the limit and on a cycle it is dropped.
+    if (depth >= MAX_PLAIN_DEPTH || active.has(value)) return "[Filtered]";
     active.add(value);
     try {
         if (Array.isArray(value)) return value.map((item) => plainify(item, depth + 1, active));
@@ -38,7 +39,7 @@ export function scrubLogFields<T extends object>(fields: T): T {
 
 // A message or a format argument that is not a string is turned into scrubbed text here, because
 // pino prints it with String() after the hook has run. Numbers and booleans stay as they are.
-function scrubbedText(arg: unknown): unknown {
+export function scrubbedText(arg: unknown): unknown {
     if (typeof arg === "string") return scrubTelemetryText(arg);
     if (
         arg === null ||
