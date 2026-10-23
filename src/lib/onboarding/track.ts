@@ -58,6 +58,15 @@ export function trackOnboardingEvent(
         return;
     }
 
+    const sanitized = sanitizeTelemetryPayload(payload);
+    if (!sanitized.ok) {
+        logger.debug(
+            { event: name, key: sanitized.key },
+            "Onboarding event dropped: a payload value is out of bounds",
+        );
+        return;
+    }
+
     const orgIdHash = payload.orgId ? fallbackHash(payload.orgId) : null;
 
     const body = JSON.stringify({
@@ -68,7 +77,7 @@ export function trackOnboardingEvent(
                 name,
                 schemaVersion: SCHEMA_VERSION,
                 ts: new Date().toISOString(),
-                payload: sanitizeTelemetryPayload(payload),
+                payload: sanitized.payload,
             },
         ],
     });

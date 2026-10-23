@@ -133,6 +133,54 @@ describe("product telemetry", () => {
         expect(sent[0]?.payload).not.toHaveProperty("message");
     });
 
+    it("sends nothing for an event with an out-of-bounds string and drops the event", async () => {
+        const sent: TelemetryEvent[] = [];
+        const adapter: TelemetryAdapter = {
+            name: "test",
+            enabled: () => true,
+            send: async (events) => {
+                sent.push(...events);
+            },
+        };
+        configureTelemetry({ adapters: [adapter], maxBatchSize: 1, flushIntervalMs: 60_000 });
+        trackTelemetryEvent("filter_changed", {
+            view: "ada@example.com",
+            filterKey: "scope",
+            valueCount: 1,
+            isCustomDateRange: null,
+        });
+        trackTelemetryEvent("filter_changed", {
+            view: "work_graph",
+            filterKey: "scope",
+            valueCount: 1,
+            isCustomDateRange: null,
+        });
+
+        await vi.waitFor(() => expect(sent).toHaveLength(1));
+        expect(sent[0]?.payload).toMatchObject({ view: "work_graph" });
+    });
+
+    it("sets the envelope route pattern to null when it is out of bounds", async () => {
+        const sent: TelemetryEvent[] = [];
+        configureTelemetry({
+            adapters: [
+                {
+                    name: "test",
+                    enabled: () => true,
+                    send: async (events) => {
+                        sent.push(...events);
+                    },
+                },
+            ],
+            maxBatchSize: 1,
+            flushIntervalMs: 60_000,
+        });
+        setTelemetryContext({ routePattern: "/people/ada@example.com" });
+        trackTelemetryEvent("session_started", { entryRoutePattern: "/" });
+        await vi.waitFor(() => expect(sent).toHaveLength(1));
+        expect(sent[0]?.routePattern).toBeNull();
+    });
+
     it("uses crypto-backed fallback ids when randomUUID is unavailable", async () => {
         vi.restoreAllMocks();
         Object.defineProperty(crypto, "randomUUID", { configurable: true, value: undefined });

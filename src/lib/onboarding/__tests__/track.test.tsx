@@ -52,6 +52,16 @@ describe("trackOnboardingEvent", () => {
         expect(request).not.toHaveBeenCalled();
     });
 
+    it("sends nothing for an out-of-bounds value and drops the event", () => {
+        process.env[TELEMETRY_FLAG] = "true";
+        trackOnboardingEvent("workspace_created", { step: "ada@example.com" });
+
+        expect(sendBeacon).not.toHaveBeenCalled();
+        expect(request).not.toHaveBeenCalled();
+        trackOnboardingEvent("workspace_created", { step: "name_org" });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+    });
+
     it("falls back to a keep-alive POST when sendBeacon is unavailable", () => {
         sendBeacon.mockReturnValue(false);
 
