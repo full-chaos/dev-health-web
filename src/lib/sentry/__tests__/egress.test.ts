@@ -162,6 +162,32 @@ describe("telemetry egress", () => {
         expect(config.dataCollection?.userInfo).toBe(false);
     });
 
+    it.each([
+        ["an encoded address in the request url", (a: string) => `https://app.example/u/${a}/x`],
+        ["an address with a numeric first label", (a: string) => `https://app.example/u/${a}/x`],
+    ])("sends no address from %s", async (name, build) => {
+        const sent: string[] = [];
+        startSdk(sent);
+        const encoded = name.startsWith("an encoded");
+        // Joined at run time: the SDK sends source lines around a stack frame.
+        const local = ["alice", "egress"].join("-");
+        const text = encoded
+            ? `${local}%40${["mail", "example"].join("%2E")}`
+            : `${local}@${["123", "mail", "example", "com"].join(".")}`;
+
+        Sentry.withIsolationScope((scope) => {
+            scope.setSDKProcessingMetadata({
+                normalizedRequest: { url: build(text), method: "GET", headers: {} },
+            });
+            Sentry.captureException(new Error("address-boom"));
+        });
+        await Sentry.flush(1000);
+
+        const out = sent.join("\n");
+        expect(out).toContain("address-boom");
+        expect(out).not.toContain(local);
+    });
+
     it("runs the static span hook on its own, without the transaction scrub", async () => {
         const sent: string[] = [];
         startSdk(sent, (config) => ({ ...config, beforeSendTransaction: undefined }));

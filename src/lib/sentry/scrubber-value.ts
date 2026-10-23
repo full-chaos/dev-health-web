@@ -44,10 +44,11 @@ function filterSlashedUserinfo(token: string): string {
 }
 // One address shape for every sink. The local part is anchored by a lookbehind and bounded, labels end in a
 // literal dot, and the host ends in letters, so the rule stays linear on a 16 KB scalar. A first label of
-// digits or `Nx` (`pkg@1.2.3`, `logo@2x.png`), an asset or script extension as the last label, and a
-// colon plus a path character after the host (`git@host:repo`) are not addresses.
+// digits followed by another digit label (`pkg@1.2.3-rc.next`), an asset, script or document extension as the
+// last label (`logo@2x.png`), and a colon plus a path character after the host (`git@host:repo`) are not
+// addresses.
 const EMAIL_SHAPE =
-    /(?<![\w.%+-])[\w.%+-]{1,128}(?:@|%40)(?!\d+x?\.)(?:[a-z\d][a-z\d-]{0,62}\.){1,12}(?!(?:png|jpe?g|gif|svg|webp|avif|ico|css|m?js|cjs|tsx?|jsx|json|map|woff2?)(?![a-z\d_-]))[a-z]{2,24}(?![a-z\d_-])(?!:[\w~./-])/gi;
+    /(?<![\w.%+-])[\w.%+-]{1,128}(?:@|%40)(?!\d+\.\d)(?:[a-z\d][a-z\d-]{0,62}\.){1,12}(?!(?:png|jpe?g|gif|svg|webp|avif|ico|css|m?js|cjs|tsx?|jsx|json|map|woff2?|pdf|txt|t?gz|html?|ya?ml|wasm)(?![a-z\d_-]))[a-z]{2,24}(?![a-z\d_-])(?!:[\w~./-])/gi;
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
 // linear on a 16 KB scalar.
 const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: string) => string)]> = [
@@ -74,6 +75,10 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     // Last, so the userinfo rules above keep their own shapes.
     [EMAIL_SHAPE, FILTERED],
 ];
+// A token that holds a percent escape is decoded before the address rule runs on it, so an address that
+// is written with %40 and %2E (or twice encoded) does not slip past. A token that cannot be decoded
+// is dropped whole.
+const ENCODED_TOKEN = /(?<![\w.%+-])[\w.%+-]{0,1536}%[\da-f]{2}[\w.%+-]{0,1536}/gi;
 const MAX_DEPTH = 32;
 const MAX_NODES = 4_096;
 const MAX_CONTAINER_ITEMS = 1_000;
@@ -143,6 +148,28 @@ function decodePercent(value: string): string {
     return /%[\da-f]{2}/iu.test(decoded) ? FILTERED : decoded;
 }
 
+// Decodes as far as it can: a stray `%` (a literal percent sign) ends the loop, it does not hide the token.
+function decodeAsFarAsPossible(token: string): string {
+    let decoded = token;
+    for (let round = 0; round < MAX_PERCENT_DECODE_ROUNDS; round += 1) {
+        try {
+            const candidate = decodeURIComponent(decoded);
+            if (candidate === decoded) break;
+            decoded = candidate;
+        } catch {
+            break;
+        }
+    }
+    return decoded;
+}
+
+function scrubEncodedAddresses(value: string): string {
+    return value.replace(ENCODED_TOKEN, (token) => {
+        const decoded = decodeAsFarAsPossible(token);
+        return decoded.replace(EMAIL_SHAPE, FILTERED) !== decoded ? FILTERED : token;
+    });
+}
+
 function scrubCredentialShapes(value: string): string {
     let shaped = value;
     for (const [pattern, replacement] of CREDENTIAL_SHAPES) {
@@ -151,7 +178,7 @@ function scrubCredentialShapes(value: string): string {
                 ? shaped.replace(pattern, replacement)
                 : shaped.replace(pattern, replacement);
     }
-    return shaped;
+    return scrubEncodedAddresses(shaped);
 }
 
 export function scrubTelemetryUrl(value: string, nesting = 0): string {
@@ -177,7 +204,7 @@ export function scrubTelemetryUrl(value: string, nesting = 0): string {
         url.password = "";
         url.hash = "";
         const scrubbed = isAbsoluteUrl(value) ? url.toString() : `${url.pathname}${url.search}`;
-        return scrubbed.replace(EMAIL_SHAPE, FILTERED);
+        return scrubEncodedAddresses(scrubbed.replace(EMAIL_SHAPE, FILTERED));
     } catch {
         return scrubCredentialShapes(value).replace(
             SENSITIVE_QUERY_VALUE_PATTERN,

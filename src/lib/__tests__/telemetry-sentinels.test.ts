@@ -415,6 +415,12 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
         "repeated encoded at": "a%40".repeat(4_000),
         "many addresses": "ab@cd.example ".repeat(1_100),
         "dots only after at": `x@${".".repeat(15_000)}`,
+        "repeated escapes": "%41".repeat(5_000),
+        "long token then an escape": `${"a".repeat(15_900)}%41`,
+        "percent signs only": "%".repeat(16_000),
+        "bad escapes in words": "a%zz ".repeat(3_000),
+        "escape and dot runs": "a%2E".repeat(4_000),
+        "escapes split by spaces": "x%40y ".repeat(2_500),
         "hyphen run after at": `x@${"-".repeat(15_000)}.com`,
     };
 
@@ -426,6 +432,7 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
 });
 
 // Address shapes are built at run time from random text and never printed.
+type AddressParts = { local: string; domain: string; text: string };
 function address(): { local: string; domain: string; text: string } {
     const local = `${token()}`;
     const domain = `h${Math.random().toString(36).slice(2, 8)}.example`;
@@ -433,6 +440,10 @@ function address(): { local: string; domain: string; text: string } {
 }
 
 describe("telemetry hygiene: e-mail shapes", () => {
+    const encodeAll = (text: string): string =>
+        [...text]
+            .map((c) => (/[a-z\d]/i.test(c) ? c : `%${c.charCodeAt(0).toString(16)}`))
+            .join("");
     const forms: Array<[string, (a: string) => string]> = [
         ["plain", (a) => a],
         ["in a sentence", (a) => `failed for ${a}, retry later`],
@@ -450,6 +461,13 @@ describe("telemetry hygiene: e-mail shapes", () => {
         ["in an absolute url path", (a) => `https://app.example/users/${a}/x`],
         ["after a mailto scheme", (a) => `mailto:${a}`],
         ["in a json string", (a) => JSON.stringify({ to: a })],
+        ["fully encoded", (a) => encodeAll(a)],
+        ["encoded at and dots", (a) => a.replace("@", "%40").replace(/\./g, "%2E")],
+        ["encoded in lower case", (a) => a.replace("@", "%40").replace(/\./g, "%2e")],
+        ["encoded twice", (a) => encodeAll(encodeAll(a))],
+        ["encoded in a url path", (a) => `GET /u/${encodeAll(a)}/x`],
+        ["encoded in an absolute url path", (a) => `https://app.example/u/${encodeAll(a)}/x`],
+        ["encoded in a url query", (a) => `GET /search?q=${encodeAll(a)}`],
     ];
 
     it.each(forms)("removes an address from text: %s", (_name, build) => {
@@ -467,6 +485,21 @@ describe("telemetry hygiene: e-mail shapes", () => {
         );
         expect(out).not.toContain(a.local);
         expect(out.toLowerCase()).not.toContain(a.domain);
+    });
+
+    it.each([
+        ["a numeric first label", (a: AddressParts) => `${a.local}@123.${a.domain}`],
+        ["a digit then letters", (a: AddressParts) => `${a.local}@1${a.domain}`],
+        ["a short numeric host name", (a: AddressParts) => `${a.local}@3m.example`],
+        [
+            "a numeric label and a long path",
+            (a: AddressParts) => `GET https://x.example/u/${a.local}@123.${a.domain}/x`,
+        ],
+    ])("removes an address with %s", (_name, build) => {
+        const a = address();
+        const out = scrubTelemetryText(build(a));
+        expect(out).not.toContain(a.local);
+        expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}/x`)).not.toContain(a.local);
     });
 
     it("keeps the words around an address", () => {
@@ -549,6 +582,9 @@ describe("telemetry hygiene: e-mail shapes", () => {
         "install @scope/pkg now",
         "resolved @types/node@20.1.0 and pkg@1.2.3",
         "resolved pkg@1.2.3-rc.next and pkg@latest and eslint@^8.0.0",
+        "resolved pkg@1.0.0-beta.next and tool@10.2.png",
+        "took 100% of 50%25 budget",
+        "path /a/b%20c/d and q=a%2Fb",
         "ping @bob and @alice about it",
         "clone git@github.com:org/repo.git first",
         "ssh git@host.example:repo",
