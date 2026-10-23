@@ -234,6 +234,7 @@ describe("telemetry egress", () => {
 
         Sentry.withIsolationScope((scope) => {
             scope.setUser({ id: "probe-id", email, username: name, [ipKey]: ip });
+            scope.setSDKProcessingMetadata({ normalizedRequest: REQUEST, ipAddress: ip });
             Sentry.startSession();
             Sentry.startSpan({ name: "GET /probe" }, () => {
                 Sentry.captureException(new Error("probe-boom"));
@@ -262,6 +263,30 @@ describe("telemetry egress", () => {
         }
         expect(out).not.toContain(ipKey);
         expect(out).toContain("probe-id");
+
+        // The backend (BugSink) stores the address of the sender of an envelope on its own; the SDK
+        // never puts a client address, the auto marker or a request environment into an item.
+        expect(out).not.toContain("{{auto}}");
+        for (const leak of REQUEST_LEAKS) expect(out).not.toMatch(leak);
+        const keys = new Set<string>();
+        const walk = (value: unknown): void => {
+            if (Array.isArray(value)) value.forEach(walk);
+            else if (typeof value === "object" && value !== null) {
+                for (const [key, nested] of Object.entries(value)) {
+                    keys.add(key.toLowerCase());
+                    walk(nested);
+                }
+            }
+        };
+        walk(items);
+        for (const key of ["remote_addr", "ip_address", "ipaddress", "env", "client_ip"]) {
+            expect(keys.has(key), `key ${key}`).toBe(false);
+        }
+        const requests = items
+            .map((item) => (item[1] as { request?: Record<string, unknown> }).request)
+            .filter((request) => request !== undefined);
+        expect(requests.length).toBeGreaterThan(0);
+        for (const request of requests) expect(request).not.toHaveProperty("env");
     });
 
     it("runs the static span hook on its own, without the transaction scrub", async () => {
