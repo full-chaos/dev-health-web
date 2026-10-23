@@ -26,6 +26,7 @@ import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { requireSession } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { WORK_GRAPH_EDGES_QUERY } from "@/lib/graphql/queries";
@@ -69,7 +70,7 @@ async function fetchEdges(
     } catch (err) {
         // Surface as empty state rather than crashing; the dashboard already shows
         // a populated empty-state message.
-        console.warn("workGraphEdges query failed", { edgeType }, err);
+        logger.warn({ edgeType, err }, "workGraphEdges query failed");
         return [];
     }
 }

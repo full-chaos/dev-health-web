@@ -11,6 +11,7 @@
 
 import { logger } from "@/lib/logger";
 import { publicEnv } from "@/lib/config";
+import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 
 export type WebVitalsMetric = {
     id: string;
@@ -35,7 +36,10 @@ function reportToEndpoint(metric: WebVitalsMetric): void {
         id: metric.id,
         navigation_type: metric.navigationType,
         ts: Date.now(),
-        url: typeof window !== "undefined" ? window.location.pathname : undefined,
+        url:
+            typeof window !== "undefined"
+                ? routePatternForPathname(window.location.pathname)
+                : undefined,
     });
 
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {

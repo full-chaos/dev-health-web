@@ -15,6 +15,7 @@ import { getQuadrant } from "@/lib/api/visuals";
 import { getBusFactorData } from "@/lib/api/code";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { complexityWindowFromFilter } from "@/lib/complexity/filters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchOrNull } from "@/lib/fetchOrNull";
@@ -67,7 +68,7 @@ async function fetchHotspots(
         );
         return data.hotspots?.rows ?? [];
     } catch (err) {
-        console.warn("landscape hotspots query failed", err);
+        logger.warn({ err }, "landscape hotspots query failed");
         return [];
     }
 }
