@@ -99,39 +99,38 @@ describe("scrubEvent", () => {
         });
     });
 
-    it("strips user.ip_address in production", () => {
-        vi.stubEnv("NODE_ENV", "production");
-        vi.stubEnv("SENTRY_INCLUDE_IP", "");
+    // D6247 (user ID only, no PII): these three tests used to pin e-mail and IP kept on purpose
+    // in some environments. They now pin the opposite, on purpose, in every environment.
+    it.each([
+        ["production", ""],
+        ["production", "true"],
+        ["development", ""],
+        ["test", "true"],
+    ])("keeps user.id only on an event: NODE_ENV=%s SENTRY_INCLUDE_IP=%s", (nodeEnv, includeIp) => {
+        vi.stubEnv("NODE_ENV", nodeEnv);
+        vi.stubEnv("SENTRY_INCLUDE_IP", includeIp);
 
         const event = makeEvent({
-            user: { id: "user-123", email: "test@example.com", ip_address: "1.2.3.4" },
+            user: {
+                id: "user-123",
+                email: "test@example.com",
+                username: "sample-name",
+                ip_address: "{{auto}}",
+                segment: "sample",
+            } as ErrorEvent["user"],
         });
         const result = scrubEvent(event);
-        expect(result?.user?.ip_address).toBeUndefined();
-        expect(result?.user?.id).toBe("user-123");
-        expect(result?.user?.email).toBe("test@example.com");
+        expect(result?.user).toEqual({ id: "user-123" });
+        expect(JSON.stringify(result)).not.toContain("{{auto}}");
     });
 
-    it("preserves user.ip_address in production when SENTRY_INCLUDE_IP=true", () => {
-        vi.stubEnv("NODE_ENV", "production");
-        vi.stubEnv("SENTRY_INCLUDE_IP", "true");
-
-        const event = makeEvent({
-            user: { id: "user-123", ip_address: "1.2.3.4" },
-        });
-        const result = scrubEvent(event);
-        expect(result?.user?.ip_address).toBe("1.2.3.4");
+    it("drops a user with no id to an empty user", () => {
+        const event = makeEvent({ user: { email: "test@example.com", ip_address: "1.2.3.4" } });
+        expect(scrubEvent(event)?.user).toEqual({});
     });
 
-    it("preserves user.ip_address in non-production environments", () => {
-        vi.stubEnv("NODE_ENV", "development");
-        vi.stubEnv("SENTRY_INCLUDE_IP", "");
-
-        const event = makeEvent({
-            user: { id: "user-123", ip_address: "1.2.3.4" },
-        });
-        const result = scrubEvent(event);
-        expect(result?.user?.ip_address).toBe("1.2.3.4");
+    it("leaves an event with no user without a user", () => {
+        expect(scrubEvent(makeEvent({ message: "x" }))).not.toHaveProperty("user");
     });
 
     it("handles events with no request gracefully", () => {
@@ -232,5 +231,91 @@ describe("attachBeforeSend", () => {
             syntheticException: null,
         }) as ErrorEvent | null;
         expect(result?.tags?.chained).toBe("yes");
+    });
+});
+
+// D6247 (user ID only, no PII): user data that rides on other fields is dropped the same way as the user
+// object. `user.id` is the only user key that stays; `enduser.*` goes entirely.
+describe("user keys on other event fields", () => {
+    const email = ["field-user", "example.test"].join("@");
+    const userKeys = () => ({
+        "user.id": "u1",
+        "user.email": email,
+        "user.name": "n",
+        "user.ip_address": "1.2.3.4",
+        user_email: email,
+        "enduser.id": "e1",
+        "enduser.pseudo_id": "e2",
+        keep: "k",
+    });
+    const only = (record: unknown) => Object.keys(record as object).sort();
+
+    it("drops them from span attributes", () => {
+        const config = attachBeforeSend({});
+        const span = config.beforeSendSpan?.({
+            data: userKeys(),
+            description: "d",
+        } as never) as unknown as {
+            data: Record<string, unknown>;
+        };
+        expect(only(span.data)).toEqual(["keep", "user.id"]);
+    });
+
+    it("drops them from tags, extra and the root span data of an event and a transaction", () => {
+        const config = attachBeforeSend({});
+        const make = () =>
+            ({
+                tags: userKeys(),
+                extra: userKeys(),
+                contexts: { trace: { data: userKeys() } },
+                spans: [{ data: userKeys() }],
+            }) as never;
+        for (const out of [
+            config.beforeSend?.(make(), {}),
+            config.beforeSendTransaction?.(make(), {}),
+        ] as Array<{
+            tags: object;
+            extra: object;
+            contexts: { trace: { data: object } };
+            spans: Array<{ data: object }>;
+        }>) {
+            expect(only(out.tags)).toEqual(["keep", "user.id"]);
+            expect(only(out.extra)).toEqual(["keep", "user.id"]);
+            expect(only(out.contexts.trace.data)).toEqual(["keep", "user.id"]);
+            expect(only(out.spans[0].data)).toEqual(["keep", "user.id"]);
+        }
+    });
+
+    it("cuts the user and enduser contexts: user keeps the id, enduser goes", () => {
+        const config = attachBeforeSend({});
+        const out = config.beforeSend?.(
+            {
+                contexts: {
+                    user: { id: "u1", email, name: "n" },
+                    enduser: { id: "e1", email },
+                    other: { note: "x" },
+                },
+            } as never,
+            {},
+        ) as { contexts: Record<string, unknown> };
+        expect(out.contexts.user).toEqual({ id: "u1" });
+        expect(out.contexts).not.toHaveProperty("enduser");
+        expect(out.contexts.other).toEqual({ note: "x" });
+    });
+
+    it("drops them from breadcrumb data, in the hook and inside an event", () => {
+        const config = attachBeforeSend({});
+        const crumb = config.beforeBreadcrumb?.({
+            message: "m",
+            data: { ...userKeys(), user: { id: "u1", email } },
+        } as never) as { data: Record<string, unknown> };
+        expect(only(crumb.data)).toEqual(["keep", "user", "user.id"]);
+        expect(crumb.data.user).toEqual({ id: "u1" });
+
+        const out = config.beforeSend?.(
+            { breadcrumbs: [{ message: "m", data: userKeys() }] } as never,
+            {},
+        ) as { breadcrumbs: Array<{ data: object }> };
+        expect(only(out.breadcrumbs[0].data)).toEqual(["keep", "user.id"]);
     });
 });
