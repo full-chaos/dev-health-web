@@ -148,6 +148,7 @@ describe("telemetry hygiene: message strings and long userinfo", () => {
     it.each([
         ["a long password", (v: string) => `https://svc:${v.repeat(60)}@api.example/x`],
         ["a username only", (v: string) => `https://${v}@api.example/x`],
+        ["a password with a raw slash", (v: string) => `https://svc:${v}/abc${v}@api.example/x`],
         [
             "a long password, other scheme",
             (v: string) => `postgres://svc:${v.repeat(60)}@db.internal/d`,
@@ -192,6 +193,16 @@ describe("telemetry hygiene: error reporter chain", () => {
     );
 });
 
+describe("telemetry hygiene: userinfo rule keeps ordinary URLs", () => {
+    it.each([
+        "http://host:8080/path?e=a@b.example",
+        "https://example.com/p?email=a@b.example",
+        "https://example.com/a/b",
+    ])("leaves %s readable", (text) => {
+        expect(scrubTelemetryText(text)).not.toContain("[Filtered]");
+    });
+});
+
 describe("telemetry hygiene: scrubber cost on hostile text", () => {
     const filler = "a".repeat(16_000);
     const hostile: Record<string, string> = {
@@ -202,6 +213,8 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
         "repeated jwt start": "eyJabcd".repeat(2_000),
         "repeated bearer": "Bearer ".repeat(2_000),
         "repeated at": "x@".repeat(8_000),
+        "repeated scheme and colon": "ab://c:".repeat(2_000),
+        "scheme then many at": `a://${"@".repeat(15_000)}`,
     };
 
     it.each(Object.entries(hostile))("scrubs %s in under 250 ms", (_name, text) => {
