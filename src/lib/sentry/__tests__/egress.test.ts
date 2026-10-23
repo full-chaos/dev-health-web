@@ -386,3 +386,45 @@ describe("telemetry egress", () => {
         expect(out).not.toContain(SECRET);
     });
 });
+
+describe("telemetry egress of residual address forms", () => {
+    it("sends no address written with a reference, a compat sign, a format char or an IP host", async () => {
+        const sent: string[] = [];
+        startSdk(sent, (config) => ({ ...config, release: "forms-release", enableLogs: true }));
+        const local = ["forms", Math.random().toString(36).slice(2, 10)].join("-");
+        const host = `h${Math.random().toString(36).slice(2, 8)}.example`;
+        const ip = ["192", "0", "2", "9"].join(".");
+        const built = [
+            `${local}&#64;${host}`,
+            `${local}&commat;${host}`,
+            `${local}@${host.replace(".", "&#46;")}`,
+            `${local}﹫${host}`,
+            `${local}@${host.replace(".", "﹒")}`,
+            `${local}@${host.replace("example", "exa‍mple")}`,
+            `${local}@‍${host}`,
+            `${local}@${ip}`,
+            `${local}@[2001:db8::9]`,
+        ];
+        const text = built.join(" ; ");
+
+        Sentry.withIsolationScope((scope) => {
+            scope.setTag("who", built[0]);
+            Sentry.startSpan(
+                { name: `GET /forms ${built[1]}`, attributes: { who: built[2] } },
+                () => {
+                    Sentry.addBreadcrumb({ message: built[3], data: { note: built[4] } });
+                    Sentry.logger.info(`log for ${text}`, { who: built[5] });
+                    Sentry.captureException(new Error(`forms-boom ${text}`), {
+                        extra: { who: built[6], also: built[7], more: built[8] },
+                    });
+                },
+            );
+        });
+        await Sentry.flush(1000);
+
+        const out = JSON.stringify(sent.map((envelope) => JSON.parse(envelope)));
+        expect(out).toContain("forms-boom");
+        expect(out.replace(/\\u(?:200d|200c|200b|2060|feff|00ad)/giu, "")).not.toContain(local);
+        for (const leak of [local, "2001:db8::9", `@${ip}`]) expect(out).not.toContain(leak);
+    });
+});
