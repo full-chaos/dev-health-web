@@ -289,6 +289,58 @@ describe("telemetry egress", () => {
         for (const request of requests) expect(request).not.toHaveProperty("env");
     });
 
+    it("sends no user fields from tags, contexts, breadcrumbs or span attributes", async () => {
+        const sent: string[] = [];
+        startSdk(sent);
+        const email = ["field-user", "example.test"].join("@");
+        const key = (name: string) => ["user", name].join(".");
+        const endKey = (name: string) => ["enduser", name].join(".");
+        // Joined at run time: the SDK sends source lines around a stack frame.
+        const value = (name: string) => ["leak", name].join("-");
+
+        Sentry.withIsolationScope((scope) => {
+            scope.setTag(key("email"), email);
+            scope.setTag(endKey("id"), value("e1"));
+            scope.setTag(key("id"), "keep-id");
+            scope.setContext("enduser", { id: value("e2"), note: email });
+            scope.setContext("user", { id: "ctx-id", name: value("ctx") });
+            Sentry.addBreadcrumb({
+                message: "crumb",
+                data: { [key("name")]: value("crumb"), [endKey("id")]: value("e3"), ok: "yes" },
+            });
+            Sentry.startSpan(
+                {
+                    name: "GET /fields",
+                    attributes: { [key("email")]: email, [endKey("id")]: value("e4"), ok: "yes" },
+                },
+                () => {
+                    Sentry.startSpan(
+                        { name: "child", attributes: { [endKey("id")]: value("e5") } },
+                        () => Sentry.captureException(new Error("field-boom")),
+                    );
+                },
+            );
+        });
+        await Sentry.flush(1000);
+
+        const out = sent.join("\n");
+        expect(out).toContain("field-boom");
+        expect(out).toContain("keep-id");
+        expect(out).toContain("ctx-id");
+        for (const leak of [
+            email,
+            value("e1"),
+            value("e2"),
+            value("e3"),
+            value("e4"),
+            value("e5"),
+            value("crumb"),
+            value("ctx"),
+        ]) {
+            expect(out).not.toContain(leak);
+        }
+    });
+
     it("runs the static span hook on its own, without the transaction scrub", async () => {
         const sent: string[] = [];
         startSdk(sent, (config) => ({ ...config, beforeSendTransaction: undefined }));

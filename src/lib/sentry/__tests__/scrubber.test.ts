@@ -233,3 +233,89 @@ describe("attachBeforeSend", () => {
         expect(result?.tags?.chained).toBe("yes");
     });
 });
+
+// D6247 (user ID only, no PII): user data that rides on other fields is dropped the same way as the user
+// object. `user.id` is the only user key that stays; `enduser.*` goes entirely.
+describe("user keys on other event fields", () => {
+    const email = ["field-user", "example.test"].join("@");
+    const userKeys = () => ({
+        "user.id": "u1",
+        "user.email": email,
+        "user.name": "n",
+        "user.ip_address": "1.2.3.4",
+        user_email: email,
+        "enduser.id": "e1",
+        "enduser.pseudo_id": "e2",
+        keep: "k",
+    });
+    const only = (record: unknown) => Object.keys(record as object).sort();
+
+    it("drops them from span attributes", () => {
+        const config = attachBeforeSend({});
+        const span = config.beforeSendSpan?.({
+            data: userKeys(),
+            description: "d",
+        } as never) as unknown as {
+            data: Record<string, unknown>;
+        };
+        expect(only(span.data)).toEqual(["keep", "user.id"]);
+    });
+
+    it("drops them from tags, extra and the root span data of an event and a transaction", () => {
+        const config = attachBeforeSend({});
+        const make = () =>
+            ({
+                tags: userKeys(),
+                extra: userKeys(),
+                contexts: { trace: { data: userKeys() } },
+                spans: [{ data: userKeys() }],
+            }) as never;
+        for (const out of [
+            config.beforeSend?.(make(), {}),
+            config.beforeSendTransaction?.(make(), {}),
+        ] as Array<{
+            tags: object;
+            extra: object;
+            contexts: { trace: { data: object } };
+            spans: Array<{ data: object }>;
+        }>) {
+            expect(only(out.tags)).toEqual(["keep", "user.id"]);
+            expect(only(out.extra)).toEqual(["keep", "user.id"]);
+            expect(only(out.contexts.trace.data)).toEqual(["keep", "user.id"]);
+            expect(only(out.spans[0].data)).toEqual(["keep", "user.id"]);
+        }
+    });
+
+    it("cuts the user and enduser contexts: user keeps the id, enduser goes", () => {
+        const config = attachBeforeSend({});
+        const out = config.beforeSend?.(
+            {
+                contexts: {
+                    user: { id: "u1", email, name: "n" },
+                    enduser: { id: "e1", email },
+                    other: { note: "x" },
+                },
+            } as never,
+            {},
+        ) as { contexts: Record<string, unknown> };
+        expect(out.contexts.user).toEqual({ id: "u1" });
+        expect(out.contexts).not.toHaveProperty("enduser");
+        expect(out.contexts.other).toEqual({ note: "x" });
+    });
+
+    it("drops them from breadcrumb data, in the hook and inside an event", () => {
+        const config = attachBeforeSend({});
+        const crumb = config.beforeBreadcrumb?.({
+            message: "m",
+            data: { ...userKeys(), user: { id: "u1", email } },
+        } as never) as { data: Record<string, unknown> };
+        expect(only(crumb.data)).toEqual(["keep", "user", "user.id"]);
+        expect(crumb.data.user).toEqual({ id: "u1" });
+
+        const out = config.beforeSend?.(
+            { breadcrumbs: [{ message: "m", data: userKeys() }] } as never,
+            {},
+        ) as { breadcrumbs: Array<{ data: object }> };
+        expect(only(out.breadcrumbs[0].data)).toEqual(["keep", "user.id"]);
+    });
+});

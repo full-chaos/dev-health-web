@@ -25,20 +25,29 @@ function sourceFiles(): string[] {
     return files;
 }
 
-const NAMESPACE_CALL =
-    /\bSentry\s*\.\s*(?:logger|metrics|setUser|setAttributes?|captureFeedback|startSession)\b/u;
-const SCOPE_CALL = /\.\s*(?:setUser|setAttributes?)\s*\(/u;
-const NAMED_IMPORT =
-    /import\s*(?:type\s*)?\{[^}]*\b(?:logger|metrics|setUser|setAttributes?|captureFeedback|startSession)\b[^}]*\}\s*from\s*["']@sentry\//u;
+const SDK_PATH = /@sentry\/|\bSentry\b/u;
+// Names that set or send scope user data. In a file that reaches the SDK by any route (import, re-export,
+// dynamic import, require) these are forbidden whatever the alias is called.
+const SCOPE_DATA_CALL = /\b(?:setUser|setAttributes?|captureFeedback|startSession)\b/u;
+// `.logger`, `?.logger`, `["logger"]` on any receiver.
+const SDK_MEMBER = /(?:\?\.|\.|\[\s*["'`])\s*(?:logger|metrics)\b/u;
+// `const { logger } = Sentry` and `import / export { logger } from "@sentry/..."`.
+const SDK_DESTRUCTURE = /\{[^{}]*\b(?:logger|metrics)\b[^{}]*\}\s*=(?!=)/u;
+const SDK_NAMED_IMPORT =
+    /\{[^{}]*\b(?:logger|metrics|setUser|setAttributes?|captureFeedback|startSession)\b[^{}]*\}\s*from\s*["'][^"']*sentry[^"']*["']/iu;
+const SCOPE_UPDATE_ATTRIBUTES = /\.\s*update\s*\(\s*\{[^}]*\battributes\b/u;
 
 // The SDK adds the scope user and the scope attributes to log, metric, session and feedback items on
 // its own, partly after the scrub hooks run. A call that sets or sends them is only allowed inside
 // src/lib/sentry, where the hooks and their tests live. A new call site fails here first.
 export function sentryUserCallsites(source: string): string[] {
     const found: string[] = [];
-    if (NAMESPACE_CALL.test(source)) found.push("namespace call");
-    if (NAMED_IMPORT.test(source)) found.push("named import");
-    if (/\bSentry\b|@sentry\//u.test(source) && SCOPE_CALL.test(source)) found.push("scope call");
+    if (SDK_NAMED_IMPORT.test(source)) found.push("named import or re-export");
+    if (!SDK_PATH.test(source)) return found;
+    if (SCOPE_DATA_CALL.test(source)) found.push("scope data call");
+    if (SDK_MEMBER.test(source)) found.push("logger or metrics member");
+    if (SDK_DESTRUCTURE.test(source)) found.push("destructured logger or metrics");
+    if (SCOPE_UPDATE_ATTRIBUTES.test(source)) found.push("scope update with attributes");
     return found;
 }
 
@@ -61,7 +70,28 @@ describe("Sentry call sites outside src/lib/sentry", () => {
             'import * as Sentry from "@sentry/nextjs";\nSentry.withScope((s) => s.setAttribute("a", 1))',
             1,
         ],
+        ['import * as S from "@sentry/nextjs";\nS.logger.info("x")', 1],
+        ['import * as sentry from "@sentry/nextjs";\nsentry.metrics.count("x", 1)', 1],
+        ['import * as S from "@sentry/nextjs";\nS.captureFeedback({ message: "x" })', 1],
+        ['import * as S from "@sentry/nextjs";\nS.startSession()', 1],
+        ['import * as Sentry from "@sentry/nextjs";\nconst { setUser, logger } = Sentry;', 1],
+        ['import * as Sentry from "@sentry/nextjs";\nconst { logger: log } = Sentry;', 1],
+        ['export { logger } from "@sentry/nextjs";', 1],
+        ['import { logger } from "@/lib/sentry/reexport";', 1],
+        ['const S = await import("@sentry/nextjs");\nS.logger.info("x")', 1],
+        ['const S = require("@sentry/nextjs");\nS.metrics.count("x", 1)', 1],
+        ['import * as Sentry from "@sentry/nextjs";\nSentry?.logger.info("x")', 1],
+        ['import * as Sentry from "@sentry/nextjs";\nSentry["logger"].info("x")', 1],
+        [
+            'import * as Sentry from "@sentry/nextjs";\nSentry.withScope((s) => s.update({ attributes: { a: 1 } }))',
+            1,
+        ],
         ['import * as Sentry from "@sentry/nextjs";\nSentry.captureException(e)', 0],
+        [
+            'import * as Sentry from "@sentry/nextjs";\nimport { logger } from "@/lib/logger";\nlogger.error("x")',
+            0,
+        ],
+        ['import * as Sentry from "@sentry/nextjs";\nscope.update({ tags: { a: "b" } })', 0],
         ['import * as Sentry from "@sentry/nextjs";\nscope.setTag("a", "b")', 0],
         ["element.setAttribute('a', 'b')", 0],
         ["await setUserPassword(id, password)", 0],

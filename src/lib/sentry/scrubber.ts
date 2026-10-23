@@ -25,6 +25,54 @@ function keepUserIdOnly(event: { user?: object | undefined }): void {
     event.user = id === undefined ? {} : { id };
 }
 
+// The same rule for user data that rides on other fields (tags, contexts, extra, breadcrumb data, span
+// attributes, log and metric attributes). `user.id` stays; `enduser.*` and every other `user.*` key,
+// and the flat `user_email` style names, go. `user_agent` is not user data.
+const DROPPED_USER_KEY =
+    /^(?:enduser\.|user\.(?!id$)|enduser_|user_(?:email|name|username|ip|ip_address|ipaddress|full_name|phone)$)/iu;
+const USER_OBJECT_KEY = /^(?:end)?user$/iu;
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function dropUserKeys<Value>(record: Value): Value {
+    if (!isPlainRecord(record)) return record;
+    const kept: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(record)) {
+        if (DROPPED_USER_KEY.test(key)) continue;
+        if (USER_OBJECT_KEY.test(key)) {
+            const id = isPlainRecord(value) && !/^enduser$/iu.test(key) ? value.id : undefined;
+            if (id !== undefined) kept[key] = { id };
+            continue;
+        }
+        kept[key] = value;
+    }
+    return kept as Value;
+}
+
+function cutUserData(event: object): void {
+    const target = event as Record<string, unknown>;
+    keepUserIdOnly(target);
+    for (const field of ["tags", "extra", "contexts"]) {
+        if (field in target) target[field] = dropUserKeys(target[field]);
+    }
+    const contexts = target.contexts;
+    if (isPlainRecord(contexts) && isPlainRecord(contexts.trace)) {
+        contexts.trace = { ...contexts.trace, data: dropUserKeys(contexts.trace.data) };
+    }
+    for (const field of ["spans", "breadcrumbs"]) {
+        const items = target[field];
+        if (Array.isArray(items)) {
+            target[field] = items.map((item) =>
+                isPlainRecord(item) && "data" in item
+                    ? { ...item, data: dropUserKeys(item.data) }
+                    : item,
+            );
+        }
+    }
+}
+
 // The SDK builds a session item from the scope user (distinct id from id, then e-mail, then username; the
 // IP address) and does not run the event hooks on it. The item is cut here: no distinct id, no IP address.
 type SessionItem = { did?: unknown; ipAddress?: unknown; attrs?: Record<string, unknown> };
@@ -37,7 +85,7 @@ function dropSessionUser(session: SessionItem): void {
 
 // A feedback event skips beforeSend: the user and the contact fields are cut here, the text is scrubbed.
 function scrubFeedbackEvent(event: ErrorEvent): ErrorEvent {
-    keepUserIdOnly(event);
+    cutUserData(event);
     const feedback = (
         event.contexts as Record<string, Record<string, unknown> | undefined> | undefined
     )?.feedback;
@@ -79,9 +127,7 @@ function withUserPrivacy(integrations: IntegrationsOption): IntegrationsOption {
 function dropUserAttributes<Item extends { attributes?: object }>(item: Item): Item {
     if (!item.attributes) return item;
     const attributes = Object.fromEntries(
-        Object.entries(item.attributes).filter(
-            ([key]) => !/^(?:end)?user[._]/iu.test(key) || key.toLowerCase() === "user.id",
-        ),
+        Object.entries(item.attributes).filter(([key]) => !DROPPED_USER_KEY.test(key)),
     );
     return { ...item, attributes };
 }
@@ -121,7 +167,7 @@ function scrubQueryString(queryString: QueryString): QueryString {
 }
 
 export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
-    return scrubTelemetryPayload(breadcrumb);
+    return scrubTelemetryPayload({ ...breadcrumb, data: dropUserKeys(breadcrumb.data) });
 }
 
 export function scrubReplayRecordingEvent<RecordingEvent extends object>(
@@ -147,7 +193,7 @@ export function scrubEvent(event: ErrorEvent, _hint?: EventHint): ErrorEvent | n
         }
     }
 
-    keepUserIdOnly(event);
+    cutUserData(event);
     return scrubTelemetryPayload(event);
 }
 
@@ -158,12 +204,12 @@ type StaticSpanHook = Parameters<typeof Sentry.withStaticSpan>[0];
 type SentrySpan = Parameters<StaticSpanHook>[0];
 
 function scrubTransaction(event: SentryTransactionEvent): SentryTransactionEvent {
-    keepUserIdOnly(event);
+    cutUserData(event);
     return scrubTelemetryPayload(event);
 }
 
 function scrubSpan(span: SentrySpan): SentrySpan {
-    return scrubTelemetryPayload(span);
+    return scrubTelemetryPayload({ ...span, data: dropUserKeys(span.data) });
 }
 
 const V10_DENY = ["forwarded", "-ip", "remote-", "via", "-user"];
