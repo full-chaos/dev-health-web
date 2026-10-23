@@ -54,8 +54,9 @@ function filterSlashedUserinfo(token: string): string {
 const WORD = "\\p{L}\\p{M}\\p{N}_";
 const FORMAT = "\\p{Cf}";
 const LOCAL_CLASS = `[${WORD}${FORMAT}.%+-]`;
-const AT_SIGN = "(?:[@\\uFF20\\uFE6B]|%40|&#0{0,6}64;|&#x0{0,6}40;|&commat;)";
-const DOT = "(?:[.\\uFF0E\\u3002\\uFF61\\uFE52\\u2024]|&#0{0,6}46;|&#x0{0,6}2e;|&period;)";
+const AT_SIGN = "(?:[@\\uFF20\\uFE6B]|%40|&#0*64(?!\\d);?|&#x0*40(?![\\da-f]);?|&commat;)";
+const DOT =
+    "(?:[.\\uFF0E\\u3002\\uFF61\\uFE52\\u2024]|&#0*46(?!\\d);?|&#x0*2e(?![\\da-f]);?|&period;)";
 const VERSION_IDENTIFIERS = "[a-z\\d-]{1,62}(?:\\.[a-z\\d-]{1,62}){0,12}";
 const VERSION_TEXT = `v?\\d+\\.\\d+\\.\\d+(?:-${VERSION_IDENTIFIERS})?(?:\\+${VERSION_IDENTIFIERS})?`;
 const VERSION_FILE_SUFFIX =
@@ -63,15 +64,17 @@ const VERSION_FILE_SUFFIX =
 const RETINA_IMAGE = "\\d{1,2}x\\.(?:png|jpe?g|gif|webp|avif|svg)";
 const HOST_END = `(?![\\p{L}\\p{N}${FORMAT}_-]|${DOT}[\\p{L}\\p{N}])`;
 const OCTET = "(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)";
+const LABEL_CHAR = "\\p{L}\\p{M}\\p{N}";
+const LABEL = `${FORMAT}*[${LABEL_CHAR}]${FORMAT}*(?:[${LABEL_CHAR}-]${FORMAT}*){0,62}`;
 const HOST_NAME =
-    `(?:${FORMAT}{0,8}[\\p{L}\\p{M}\\p{N}][\\p{L}\\p{M}\\p{N}${FORMAT}-]{0,62}${DOT}){1,12}` +
-    `${FORMAT}{0,8}(?:xn--[a-z\\d-]{2,59}|[\\p{L}\\p{M}][\\p{L}\\p{M}${FORMAT}]{1,23})${FORMAT}*`;
+    `(?:${LABEL}${DOT}){1,12}` +
+    `${FORMAT}*(?:xn--[a-z\\d-]{2,59}${FORMAT}*|(?:[\\p{L}\\p{M}]${FORMAT}*){2,24})`;
 const HOST_IPV4 = `(?:${OCTET}${DOT}){3}${OCTET}`;
-const HOST_IP_LITERAL = "\\[[\\w%-]{0,44}[:.][\\w%:.-]{0,44}\\]";
+const HOST_IP_LITERAL = "\\[(?:IPv6:)?(?=[\\da-f]*[:.])[\\da-f:.]{2,45}(?:%[\\w.-]{1,16})?\\]";
 const EMAIL_SHAPE = new RegExp(
     `(?<!${LOCAL_CLASS})${LOCAL_CLASS}{1,128}${AT_SIGN}` +
         `(?!(?:${VERSION_TEXT}${VERSION_FILE_SUFFIX}|${RETINA_IMAGE})${HOST_END})` +
-        `(?:${HOST_NAME}|${FORMAT}{0,8}(?:${HOST_IPV4}|${HOST_IP_LITERAL}))` +
+        `(?:${HOST_NAME}|${FORMAT}*(?:${HOST_IPV4}|${HOST_IP_LITERAL}))` +
         `(?![\\p{L}\\p{N}_-])(?!:[\\w~./-])`,
     "giu",
 );

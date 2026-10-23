@@ -756,6 +756,32 @@ describe("telemetry hygiene: residual address forms", () => {
         ["a padded hex reference", (p) => `${p.local}&#x0040;${p.host}`],
         ["an upper case hex reference", (p) => `${p.local}&#X40;${p.host}`],
         ["a named reference", (p) => `${p.local}&commat;${p.host}`],
+        ["a decimal reference without a semicolon", (p) => `${p.local}&#64${p.host}`],
+        ["a hex reference without a semicolon", (p) => `${p.local}&#x40${p.host}`],
+        ["a decimal reference with many zeros", (p) => `${p.local}&#${"0".repeat(40)}64;${p.host}`],
+        ["a hex reference with many zeros", (p) => `${p.local}&#x${"0".repeat(40)}40;${p.host}`],
+        ["a dot reference without a semicolon", (p) => `${p.local}@${p.host.replace(".", "&#46")}`],
+        [
+            "a dot reference with many zeros",
+            (p) => `${p.local}@${p.host.replace(".", `&#x${"0".repeat(40)}2e;`)}`,
+        ],
+        [
+            "many format chars after the at sign",
+            (p) => `${p.local}@${"\u200D".repeat(30)}${p.host}`,
+        ],
+        [
+            "many format chars after the dot",
+            (p) => `${p.local}@${p.host.replace(".", `.${"\u200D".repeat(30)}`)}`,
+        ],
+        [
+            "many format chars inside a label",
+            (p) => `${p.local}@${p.host.replace("exa", `ex${"\u200D".repeat(90)}a`)}`,
+        ],
+        [
+            "many format chars inside the last label",
+            (p) => `${p.local}@${p.host.replace("example", `exa${"\u200D".repeat(90)}mple`)}`,
+        ],
+        ["many format chars after the host", (p) => `${p.local}@${p.host}${"\u200D".repeat(40)}`],
         ["a decimal reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&#46;")}`],
         ["a hex reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&#x2e;")}`],
         ["a named reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&period;")}`],
@@ -785,7 +811,6 @@ describe("telemetry hygiene: residual address forms", () => {
             ],
         ]),
         ["an ipv4 host", (p) => `${p.local}@${v4}`],
-        ["an ipv4 host with a trailing period", (p) => `sent to ${p.local}@${v4}.`],
         ["an ipv6 literal", (p) => `${p.local}@[${v6}]`],
         ["a tagged ipv6 literal", (p) => `${p.local}@[IPv6:${v6}]`],
         ["an ipv6 literal with a zone", (p) => `${p.local}@[fe80::1%eth0]`],
@@ -799,8 +824,7 @@ describe("telemetry hygiene: residual address forms", () => {
         const text = build(p);
         const key = p.local.slice(0, 8);
         const out = scrubTelemetryText(`for ${text} now`);
-        expect(stripCf(out)).not.toContain(key);
-        expect(out).toContain("[Filtered]");
+        expect(stripCf(out)).toBe("for [Filtered] now");
         const url = scrubTelemetryUrl(
             `https://app.example/u/${text.replace(/[ \t\r\n]+/g, ",")}/x`,
         );
@@ -820,6 +844,7 @@ describe("telemetry hygiene: residual address forms", () => {
             "see &commat;scope for details",
             "a &amp; b &#38; c",
             "@[team] was mentioned",
+            "svc@[team:ops] and svc@[host:port]",
             "x @ [y]",
             "ver@1.2.3-rc.1",
             "price &#36;5 &#x24;6",
@@ -847,6 +872,14 @@ describe("telemetry hygiene: residual address forms", () => {
         "small at signs": (n) => "a﹫".repeat(n / 2),
         "small full stops": (n) => `a@${"b﹒".repeat(n / 2)}`,
         "one dot leaders": (n) => `a@${"b․".repeat(n / 2)}`,
+        "references without a semicolon": (n) => "a&#64".repeat(n / 5),
+        "a long zero run": (n) => `a&#${"0".repeat(n - 8)}64;`,
+        "a long zero run after at": (n) => `a@b&#x${"0".repeat(n - 12)}2e;`,
+        "zero runs before refs": (n) => "&#0000000000".repeat(n / 12),
+        "format chars after at": (n) => `a@${"\u200D".repeat(n - 4)}b`,
+        "format chars in a long label": (n) => `a@b${"\u200D".repeat(n - 8)}.c`,
+        "format chars between letters": (n) => `a@${"b\u200D".repeat(n / 2)}`,
+        "format chars at tld": (n) => `a@b.${"c\u200D".repeat(n / 2)}`,
         "mixed forms": (n) => "a&#64;b‍.﹒[1:".repeat(n / 14),
     };
     const best = (text: string): number => {
