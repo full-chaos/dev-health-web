@@ -18,6 +18,7 @@ import {
     liveBackendUrl,
     loginUser,
     testEmail,
+    userIdByEmail,
     verifyUser,
 } from "./helpers";
 
@@ -61,7 +62,7 @@ async function listCredentialIds(
 // Registration & Login (2 tests — independent, no serial needed)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("POST /register \u2192 201 with user_id and org_id", async ({ request }) => {
+test("POST /register \u2192 accepted (201 or 202)", async ({ request }) => {
     const email = testEmail("reg");
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
         data: { email, password: "TestPass123!", full_name: "Reg User" },
@@ -71,10 +72,24 @@ test("POST /register \u2192 201 with user_id and org_id", async ({ request }) =>
         test.skip(true, "Register rate-limited (429)");
         return;
     }
-    expect(res.status()).toBe(201);
+    expect([201, 202]).toContain(res.status());
 
-    const data = (await res.json()) as Record<string, unknown>;
-    expect(typeof data.user_id === "string" || typeof data.id === "string").toBe(true);
+    // From 202 on, the answer is one message with no ids, and a taken address gets the same status and body.
+    if (res.status() === 202) {
+        const data = (await res.json()) as Record<string, unknown>;
+        expect(typeof data.message).toBe("string");
+        expect(data.user_id).toBeUndefined();
+        expect(data.org_id).toBeUndefined();
+
+        const again = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
+            data: { email, password: "TestPass123!", full_name: "Reg User" },
+            headers: { Origin: liveBackendUrl },
+        });
+        if (again.status() !== 429) {
+            expect(again.status()).toBe(202);
+            expect(await again.text()).toBe(JSON.stringify(data));
+        }
+    }
 });
 
 test("POST /login after fresh registration \u2192 needs_onboarding true", async ({ request }) => {
@@ -93,9 +108,8 @@ test("POST /login after fresh registration \u2192 needs_onboarding true", async 
     }
 
     // Verify the user's email via superuser so login returns tokens
-    const regData = (await regRes.json()) as Record<string, unknown>;
-    const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
+    const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
     if (!suToken || !userId) {
         test.skip(true, "Cannot verify user \u2014 superuser unavailable");
         return;
@@ -133,9 +147,8 @@ test.describe("onboarding journey", () => {
         if (!regRes.ok()) return;
 
         // Verify the user's email so login returns tokens
-        const regData = (await regRes.json()) as Record<string, unknown>;
-        const userId = (regData.user_id ?? regData.id ?? "") as string;
         const suToken = await getSuperuserToken(request);
+        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
         if (suToken && userId) await verifyUser(request, userId, suToken);
 
         const loginData = (await loginUser(request, email, password)) as { access_token?: string };
@@ -206,9 +219,8 @@ test.describe("credentials journey", () => {
         if (!regRes.ok()) return;
 
         // Verify the user's email so login returns tokens
-        const regData = (await regRes.json()) as Record<string, unknown>;
-        const userId = (regData.user_id ?? regData.id ?? "") as string;
         const suToken = await getSuperuserToken(request);
+        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
         if (suToken && userId) await verifyUser(request, userId, suToken);
 
         const loginData = (await loginUser(request, email, password)) as { access_token?: string };
@@ -344,9 +356,8 @@ test.describe("sync journey", () => {
         if (!regRes.ok()) return;
 
         // Verify the user's email so login returns tokens
-        const regData = (await regRes.json()) as Record<string, unknown>;
-        const userId = (regData.user_id ?? regData.id ?? "") as string;
         const suToken = await getSuperuserToken(request);
+        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
         if (suToken && userId) await verifyUser(request, userId, suToken);
 
         const loginData = (await loginUser(request, email, password)) as { access_token?: string };

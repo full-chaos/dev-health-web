@@ -8,7 +8,7 @@
  * Run with playwright.live.config.ts (baseURL = http://127.0.0.1:3002).
  */
 import { expect, test } from "@playwright/test";
-import { getSuperuserToken, liveBackendUrl, testEmail, verifyUser } from "./helpers";
+import { getSuperuserToken, liveBackendUrl, testEmail, userIdByEmail, verifyUser } from "./helpers";
 
 // The orgless guided journey (registration creates an identity only, then
 // routes into /auth/onboard) only holds when the live backend runs with
@@ -52,10 +52,9 @@ test("signup form submits successfully and redirects with registered banner", as
         test.skip(true, "Register rate-limited (429) \u2014 skipping browser signup test");
         return;
     }
-    expect(
+    expect([201, 202], `Unexpected register status: ${await registerResponse.text()}`).toContain(
         registerResponse.status(),
-        `Unexpected register status: ${await registerResponse.text()}`,
-    ).toBe(201);
+    );
 
     // Should redirect to signin with registered=true banner
     await expect(page).toHaveURL(/\/auth\/signin\?registered=true/, { timeout: 15_000 });
@@ -87,9 +86,8 @@ test("fresh verified user lands on onboarding, not the dashboard", async ({ page
 
     // Verify the email so login succeeds. Requires the seeded superuser admin,
     // which is kept distinct from this orgless test user.
-    const regData = (await regRes.json()) as Record<string, unknown>;
-    const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
+    const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
     if (!suToken || !userId) {
         test.skip(true, "Superuser credentials not usable \u2014 cannot verify the test user");
         return;
@@ -138,9 +136,8 @@ test("full signup then explicit workspace creation reaches dashboard", async ({
     }
 
     // Verify the email via the seeded superuser admin so login succeeds.
-    const regData = (await regRes.json()) as Record<string, unknown>;
-    const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
+    const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
     if (!suToken || !userId) {
         test.skip(true, "Superuser credentials not usable \u2014 cannot verify the test user");
         return;

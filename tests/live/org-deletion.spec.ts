@@ -6,6 +6,7 @@ import {
     loginUser,
     registerUser,
     testEmail,
+    userIdByEmail,
     verifyUser,
 } from "./helpers";
 
@@ -35,9 +36,8 @@ test.describe("organization deletion / offboarding", () => {
         });
         if (!regRes.ok()) return;
 
-        const regData = (await regRes.json()) as Record<string, unknown>;
-        const userId = (regData.user_id ?? regData.id ?? "") as string;
         superToken = (await getSuperuserToken(request)) ?? "";
+        const userId = superToken ? await userIdByEmail(request, email, superToken) : "";
         if (superToken && userId) await verifyUser(request, userId, superToken);
 
         const login = (await loginUser(request, email, password)) as {

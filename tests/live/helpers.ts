@@ -121,6 +121,27 @@ export async function getSuperuserToken(request: APIRequestContext): Promise<str
 }
 
 /**
+ * The id of the user registered with email, found through the admin API: the
+ * sign-up answer carries no id. Returns "" when the user is not found.
+ */
+export async function userIdByEmail(
+    request: APIRequestContext,
+    email: string,
+    superuserToken: string,
+): Promise<string> {
+    const res = await request.get(
+        `${liveBackendUrl}/api/v1/admin/users?q=${encodeURIComponent(email)}&limit=5`,
+        { headers: authHeaders(superuserToken) },
+    );
+    if (!res.ok()) return "";
+    const body = (await res.json()) as unknown;
+    const rows = (
+        Array.isArray(body) ? body : ((body as { items?: unknown[] }).items ?? [])
+    ) as Array<{ id?: string; email?: string }>;
+    return rows.find((row) => row.email?.toLowerCase() === email.toLowerCase())?.id ?? "";
+}
+
+/**
  * Mark a user as email-verified via the admin API.
  * Requires a superuser token. Returns true on success.
  */

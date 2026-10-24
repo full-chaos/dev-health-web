@@ -450,7 +450,7 @@ jobs:
                   echo "register status=${status}"
                   cat /tmp/reg.json || true
                   case "${status}" in
-                    201|400|409) ;;
+                    201|202|400|409) ;;
                     *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
                   esac
 
