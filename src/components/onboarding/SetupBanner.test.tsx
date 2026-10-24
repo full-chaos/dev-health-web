@@ -5,11 +5,11 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { FIRST_RUN_SYNC_PATH, connectGitHubHref } from "@/lib/onboarding/setupSurface";
 import type { SetupStatus } from "@/lib/onboarding/types";
 
-const emitOnboardingEvent = vi.fn();
-const emitOnboardingEventOnce = vi.fn();
-vi.mock("@/lib/onboarding/telemetry", () => ({
-    emitOnboardingEvent: (...args: unknown[]) => emitOnboardingEvent(...args),
-    emitOnboardingEventOnce: (...args: unknown[]) => emitOnboardingEventOnce(...args),
+const trackOnboardingEvent = vi.fn();
+const trackOnboardingEventOnce = vi.fn();
+vi.mock("@/lib/onboarding/track", () => ({
+    trackOnboardingEvent: (...args: unknown[]) => trackOnboardingEvent(...args),
+    trackOnboardingEventOnce: (...args: unknown[]) => trackOnboardingEventOnce(...args),
 }));
 
 import { SetupBanner } from "./SetupBanner";
@@ -35,8 +35,8 @@ const status = (overrides: Partial<SetupStatus>): SetupStatus => ({
 });
 
 afterEach(() => {
-    emitOnboardingEvent.mockClear();
-    emitOnboardingEventOnce.mockClear();
+    trackOnboardingEvent.mockClear();
+    trackOnboardingEventOnce.mockClear();
 });
 
 describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
@@ -52,10 +52,11 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(cta).toHaveTextContent(CTA_LABELS.connectGitHubApp);
         expect(cta).toHaveAttribute("href", connectGitHubHref());
 
-        expect(emitOnboardingEventOnce).toHaveBeenCalledWith(
-            "dashboard_viewed_without_integration:org-1",
+        expect(trackOnboardingEventOnce).toHaveBeenCalledWith(
             "dashboard_viewed_without_integration",
-            { orgId: "org-1" },
+            {
+                orgId: "org-1",
+            },
         );
     });
 
@@ -71,7 +72,7 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(cta).toHaveTextContent(CTA_LABELS.connectGitHubApp);
         expect(cta).toHaveAttribute("href", connectGitHubHref());
 
-        expect(emitOnboardingEventOnce).not.toHaveBeenCalled();
+        expect(trackOnboardingEventOnce).not.toHaveBeenCalled();
     });
 
     it("later running sync after first sync completed → renders nothing", () => {
@@ -114,7 +115,7 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(cta).toHaveTextContent(CTA_LABELS.continueSetup);
         expect(cta).toHaveAttribute("href", FIRST_RUN_SYNC_PATH);
 
-        expect(emitOnboardingEventOnce).not.toHaveBeenCalled();
+        expect(trackOnboardingEventOnce).not.toHaveBeenCalled();
     });
 
     it("failed → precise blocker from C2 with retry CTA to the sync surface", () => {

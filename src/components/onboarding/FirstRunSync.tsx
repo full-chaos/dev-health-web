@@ -7,7 +7,7 @@ import { DataState } from "@/components/ui/DataState";
 import { triggerSync } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { connectGitHubHref, repoSelectionHref } from "@/lib/onboarding/setupSurface";
-import { emitOnboardingEvent, emitOnboardingEventOnce } from "@/lib/onboarding/telemetry";
+import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 import type { SetupStatus } from "@/lib/onboarding/types";
 
 /** Result of a returning install callback, surfaced on the sync surface. */
@@ -59,23 +59,18 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const phase = derivePhase(status, started);
-    const orgKey = orgId ?? "none";
 
     useEffect(() => {
         if (arrival === "connected") {
-            emitOnboardingEventOnce(`github_app_connected:${orgKey}`, "github_app_connected", {
-                orgId: orgId ?? null,
-            });
+            trackOnboardingEventOnce("github_app_connected", { orgId: orgId ?? null });
         }
-    }, [arrival, orgId, orgKey]);
+    }, [arrival, orgId]);
 
     useEffect(() => {
         if (phase === "complete") {
-            emitOnboardingEventOnce(`onboarding_completed:${orgKey}`, "onboarding_completed", {
-                orgId: orgId ?? null,
-            });
+            trackOnboardingEventOnce("onboarding_completed", { orgId: orgId ?? null });
         }
-    }, [phase, orgId, orgKey]);
+    }, [phase, orgId]);
 
     const handleStartSync = useCallback(async () => {
         if (submitting) return;
@@ -96,7 +91,7 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
         }
         // Explicit confirmation that successfully submitted the backend trigger
         // is the only path that emits first_sync_started.
-        emitOnboardingEvent("first_sync_started", { orgId: orgId ?? null });
+        trackOnboardingEvent("first_sync_started", { orgId: orgId ?? null });
         setStarted(true);
     }, [submitting, status.can_start_sync, status.sync_config_id, orgId]);
 

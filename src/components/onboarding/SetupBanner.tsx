@@ -11,7 +11,7 @@ import {
     setupSurfaceCta,
     type SetupSurfaceVariant,
 } from "@/lib/onboarding/setupSurface";
-import { emitOnboardingEventOnce } from "@/lib/onboarding/telemetry";
+import { trackOnboardingEventOnce } from "@/lib/onboarding/track";
 import type { SetupNextAction, SetupStatus } from "@/lib/onboarding/types";
 
 type SetupBannerProps = {
@@ -42,17 +42,14 @@ const CTA_CLASS =
 export function SetupBanner({ status, orgId }: SetupBannerProps) {
     const variant: SetupSurfaceVariant = deriveSetupSurface(status);
     const cta = setupSurfaceCta(status);
-    const orgKey = orgId ?? "none";
 
     useEffect(() => {
         if (variant === "no-integration") {
-            emitOnboardingEventOnce(
-                `dashboard_viewed_without_integration:${orgKey}`,
-                "dashboard_viewed_without_integration",
-                { orgId: orgId ?? null },
-            );
+            trackOnboardingEventOnce("dashboard_viewed_without_integration", {
+                orgId: orgId ?? null,
+            });
         }
-    }, [variant, orgId, orgKey]);
+    }, [variant, orgId]);
 
     if (variant === "ready") {
         return null;
