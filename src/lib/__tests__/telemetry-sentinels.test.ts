@@ -737,3 +737,166 @@ describe("telemetry hygiene: e-mail rule cost", () => {
         expect(out).not.toContain("someone@mail.example");
     });
 });
+
+describe("telemetry hygiene: residual address forms", () => {
+    type Parts = { local: string; host: string };
+    const parts = (): Parts => ({
+        local: token(),
+        host: `h${Math.random().toString(36).slice(2, 8)}.example`,
+    });
+    const octets = ["192", "0", "2", String(1 + Math.floor(Math.random() * 200))];
+    const v4 = octets.join(".");
+    const v6 = ["2001", "db8", "", String(1 + Math.floor(Math.random() * 90))].join(":");
+    const joiners = ["‍", "‌", "​", "⁠", "﻿", "­", "‎"];
+
+    const forms: Array<[string, (p: Parts) => string]> = [
+        ["a decimal reference", (p) => `${p.local}&#64;${p.host}`],
+        ["a padded decimal reference", (p) => `${p.local}&#0064;${p.host}`],
+        ["a hex reference", (p) => `${p.local}&#x40;${p.host}`],
+        ["a padded hex reference", (p) => `${p.local}&#x0040;${p.host}`],
+        ["an upper case hex reference", (p) => `${p.local}&#X40;${p.host}`],
+        ["a named reference", (p) => `${p.local}&commat;${p.host}`],
+        ["a decimal reference without a semicolon", (p) => `${p.local}&#64${p.host}`],
+        ["a hex reference without a semicolon", (p) => `${p.local}&#x40${p.host}`],
+        ["a decimal reference with many zeros", (p) => `${p.local}&#${"0".repeat(40)}64;${p.host}`],
+        ["a hex reference with many zeros", (p) => `${p.local}&#x${"0".repeat(40)}40;${p.host}`],
+        ["a dot reference without a semicolon", (p) => `${p.local}@${p.host.replace(".", "&#46")}`],
+        [
+            "a dot reference with many zeros",
+            (p) => `${p.local}@${p.host.replace(".", `&#x${"0".repeat(40)}2e;`)}`,
+        ],
+        [
+            "many format chars after the at sign",
+            (p) => `${p.local}@${"\u200D".repeat(30)}${p.host}`,
+        ],
+        [
+            "many format chars after the dot",
+            (p) => `${p.local}@${p.host.replace(".", `.${"\u200D".repeat(30)}`)}`,
+        ],
+        [
+            "many format chars inside a label",
+            (p) => `${p.local}@${p.host.replace("exa", `ex${"\u200D".repeat(90)}a`)}`,
+        ],
+        [
+            "many format chars inside the last label",
+            (p) => `${p.local}@${p.host.replace("example", `exa${"\u200D".repeat(90)}mple`)}`,
+        ],
+        ["many format chars after the host", (p) => `${p.local}@${p.host}${"\u200D".repeat(40)}`],
+        ["a decimal reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&#46;")}`],
+        ["a hex reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&#x2e;")}`],
+        ["a named reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&period;")}`],
+        ["references for both", (p) => `${p.local}&#64;${p.host.replace(".", "&#46;")}`],
+        ["a small at sign", (p) => `${p.local}﹫${p.host}`],
+        ["a small full stop", (p) => `${p.local}@${p.host.replace(".", "﹒")}`],
+        ["a one dot leader", (p) => `${p.local}@${p.host.replace(".", "․")}`],
+        ...joiners.flatMap((j, i): Array<[string, (p: Parts) => string]> => [
+            [
+                `format char ${i} inside a label`,
+                (p) => `${p.local}@${p.host.replace("exa", `ex${j}a`)}`,
+            ],
+            [
+                `format char ${i} before the dot`,
+                (p) => `${p.local}@${p.host.replace(".", `${j}.`)}`,
+            ],
+            [`format char ${i} after the dot`, (p) => `${p.local}@${p.host.replace(".", `.${j}`)}`],
+            [`format char ${i} before the host`, (p) => `${p.local}@${j}${p.host}`],
+            [`format char ${i} before the at sign`, (p) => `${p.local}${j}@${p.host}`],
+            [
+                `format char ${i} inside the local part`,
+                (p) => `${p.local.slice(0, 8)}${j}${p.local.slice(8)}@${p.host}`,
+            ],
+            [
+                `format char ${i} inside the last label`,
+                (p) => `${p.local}@${p.host.replace("example", `exa${j}mple`)}`,
+            ],
+        ]),
+        ["an ipv4 host", (p) => `${p.local}@${v4}`],
+        ["an ipv6 literal", (p) => `${p.local}@[${v6}]`],
+        ["a tagged ipv6 literal", (p) => `${p.local}@[IPv6:${v6}]`],
+        ["an ipv6 literal with a zone", (p) => `${p.local}@[fe80::1%eth0]`],
+        ["an encoded ipv4 host", (p) => `${p.local}%40${v4}`],
+    ];
+
+    const stripCf = (text: string): string => text.replace(/\p{Cf}/gu, "");
+
+    it.each(forms)("removes an address with %s", (_name, build) => {
+        const p = parts();
+        const text = build(p);
+        const key = p.local.slice(0, 8);
+        const out = scrubTelemetryText(`for ${text} now`);
+        expect(stripCf(out)).toBe("for [Filtered] now");
+        const url = scrubTelemetryUrl(
+            `https://app.example/u/${text.replace(/[ \t\r\n]+/g, ",")}/x`,
+        );
+        expect(stripCf(url)).not.toContain(key);
+    });
+
+    it.each(forms)("removes an address with %s in a nested value", (_name, build) => {
+        const p = parts();
+        const { lines, logger } = capture();
+        logger.error({ nested: { deep: [build(p)] } }, "a nested value");
+        expect(stripCf(lines[0])).not.toContain(p.local.slice(0, 8));
+    });
+
+    it("keeps text that is not an address", () => {
+        for (const text of [
+            "pkg@1.2.3 installed",
+            "see &commat;scope for details",
+            "a &amp; b &#38; c",
+            "@[team] was mentioned",
+            "svc@[team:ops] and svc@[host:port]",
+            "x @ [y]",
+            "ver@1.2.3-rc.1",
+            "price &#36;5 &#x24;6",
+            "ok‍ done",
+            "file name⁠ here",
+            "host 192.0.2.7 refused",
+            "at [fe80::1] listening",
+        ]) {
+            expect(scrubTelemetryText(text)).toBe(text);
+        }
+    });
+
+    const hostile: Record<string, (n: number) => string> = {
+        "decimal references": (n) => "&#64;".repeat(n / 5),
+        "padded hex references": (n) => "&#x00000040;".repeat(n / 12),
+        "references after a local part": (n) => "a&#64;b&#46;".repeat(n / 12),
+        "format chars only": (n) => "‍".repeat(n),
+        "a local part of format chars": (n) => `a${"‍".repeat(n - 2)}@`,
+        "format chars in a label run": (n) => `a@${"b‍.".repeat(n / 3)}`,
+        "format chars around dots": (n) => `a@${"‍.‍".repeat(n / 3)}`,
+        "ipv4 starts": (n) => "a@1.2.3.".repeat(n / 8),
+        "ipv4 runs": (n) => `a@${"1.".repeat(n / 2)}`,
+        "bracket starts": (n) => "a@[1:".repeat(n / 5),
+        "an open bracket run": (n) => `a@[${"1:".repeat(n / 2)}`,
+        "small at signs": (n) => "a﹫".repeat(n / 2),
+        "small full stops": (n) => `a@${"b﹒".repeat(n / 2)}`,
+        "one dot leaders": (n) => `a@${"b․".repeat(n / 2)}`,
+        "references without a semicolon": (n) => "a&#64".repeat(n / 5),
+        "a long zero run": (n) => `a&#${"0".repeat(n - 8)}64;`,
+        "a long zero run after at": (n) => `a@b&#x${"0".repeat(n - 12)}2e;`,
+        "zero runs before refs": (n) => "&#0000000000".repeat(n / 12),
+        "format chars after at": (n) => `a@${"\u200D".repeat(n - 4)}b`,
+        "format chars in a long label": (n) => `a@b${"\u200D".repeat(n - 8)}.c`,
+        "format chars between letters": (n) => `a@${"b\u200D".repeat(n / 2)}`,
+        "format chars at tld": (n) => `a@b.${"c\u200D".repeat(n / 2)}`,
+        "mixed forms": (n) => "a&#64;b‍.﹒[1:".repeat(n / 14),
+    };
+    const best = (text: string): number => {
+        let min = Infinity;
+        for (let i = 0; i < 5; i += 1) {
+            const start = performance.now();
+            scrubTelemetryText(text);
+            min = Math.min(min, performance.now() - start);
+        }
+        return min;
+    };
+
+    it.each(Object.entries(hostile))("scrubs %s in bounded and linear time", (_name, build) => {
+        const small = best(build(8_192));
+        const large = best(build(16_000));
+        expect(large).toBeLessThan(250);
+        // Twice the input may cost about twice the time: a quadratic rule grows about four times.
+        expect(large < 25 || large / Math.max(small, 0.5) < 3.2).toBe(true);
+    });
+});

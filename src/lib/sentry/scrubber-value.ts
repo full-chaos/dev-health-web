@@ -43,25 +43,39 @@ function filterSlashedUserinfo(token: string): string {
     return `${token.slice(0, schemeEnd)}${FILTERED}${token.slice(at)}`;
 }
 // One address shape for every sink. The local part is anchored by a lookbehind and bounded, labels end in a
-// literal dot, and the host ends in letters (or a punycode label), so the rule stays linear on a 16 KB
-// scalar. Letters and digits of any script count, and a full width at sign or full stop is read as the
-// ASCII one. Every `@` followed by a host is filtered, whatever follows the host (a file suffix, a
-// number). Three readable exemptions apply only when the text after the `@` matches from its FIRST
-// character: exact version text (`pkg@v1.2.3-rc.next`, `lib@1.2.3.min.js`), a retina image name
-// (`logo@2x.png`), and a colon plus a path character after the host (`git@host:repo`).
+// literal dot, and the host ends in letters (or a punycode label, or an IP literal), so the rule stays
+// linear on a 16 KB scalar. Letters and digits of any script count, and the compatibility forms of the at
+// sign and the full stop (full width, small, one dot leader) and HTML character references for both are read
+// as the ASCII ones. Invisible format characters (joiners, marks, soft hyphen) are allowed in every part, so
+// they cannot split a host. Every at sign followed by a host is filtered, whatever follows the host (a file
+// suffix, a number). Three readable exemptions apply only when the text after the at sign matches from its
+// FIRST character: exact version text, a retina image name, and a colon plus a path character after the host
+// (an scp style remote).
 const WORD = "\\p{L}\\p{M}\\p{N}_";
-const LOCAL_CLASS = `[${WORD}.%+-]`;
+const FORMAT = "\\p{Cf}";
+const LOCAL_CLASS = `[${WORD}${FORMAT}.%+-]`;
+const AT_SIGN = "(?:[@\\uFF20\\uFE6B]|%40|&#0*64(?!\\d);?|&#x0*40(?![\\da-f]);?|&commat;)";
+const DOT =
+    "(?:[.\\uFF0E\\u3002\\uFF61\\uFE52\\u2024]|&#0*46(?!\\d);?|&#x0*2e(?![\\da-f]);?|&period;)";
 const VERSION_IDENTIFIERS = "[a-z\\d-]{1,62}(?:\\.[a-z\\d-]{1,62}){0,12}";
 const VERSION_TEXT = `v?\\d+\\.\\d+\\.\\d+(?:-${VERSION_IDENTIFIERS})?(?:\\+${VERSION_IDENTIFIERS})?`;
 const VERSION_FILE_SUFFIX =
     "(?:\\.min)?(?:\\.(?:m?js|cjs|css|(?:js|css)\\.map|map|d\\.ts|tgz|gz))?";
 const RETINA_IMAGE = "\\d{1,2}x\\.(?:png|jpe?g|gif|webp|avif|svg)";
-const HOST_END = "(?![\\p{L}\\p{N}_-]|\\.[\\p{L}\\p{N}])";
+const HOST_END = `(?![\\p{L}\\p{N}${FORMAT}_-]|${DOT}[\\p{L}\\p{N}])`;
+const OCTET = "(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)";
+const LABEL_CHAR = "\\p{L}\\p{M}\\p{N}";
+const LABEL = `${FORMAT}*[${LABEL_CHAR}]${FORMAT}*(?:[${LABEL_CHAR}-]${FORMAT}*){0,62}`;
+const HOST_NAME =
+    `(?:${LABEL}${DOT}){1,12}` +
+    `${FORMAT}*(?:xn--[a-z\\d-]{2,59}${FORMAT}*|(?:[\\p{L}\\p{M}]${FORMAT}*){2,24})`;
+const HOST_IPV4 = `(?:${OCTET}${DOT}){3}${OCTET}`;
+const HOST_IP_LITERAL = "\\[(?:IPv6:)?(?=[\\da-f]*[:.])[\\da-f:.]{2,45}(?:%[\\w.-]{1,16})?\\]";
 const EMAIL_SHAPE = new RegExp(
-    `(?<!${LOCAL_CLASS})${LOCAL_CLASS}{1,128}(?:[@\\uFF20]|%40)` +
+    `(?<!${LOCAL_CLASS})${LOCAL_CLASS}{1,128}${AT_SIGN}` +
         `(?!(?:${VERSION_TEXT}${VERSION_FILE_SUFFIX}|${RETINA_IMAGE})${HOST_END})` +
-        `(?:[\\p{L}\\p{M}\\p{N}][\\p{L}\\p{M}\\p{N}-]{0,62}[.\\uFF0E\\u3002\\uFF61]){1,12}` +
-        `(?:xn--[a-z\\d-]{2,59}|[\\p{L}\\p{M}]{2,24})(?![\\p{L}\\p{N}_-])(?!:[\\w~./-])`,
+        `(?:${HOST_NAME}|${FORMAT}*(?:${HOST_IPV4}|${HOST_IP_LITERAL}))` +
+        `(?![\\p{L}\\p{N}_-])(?!:[\\w~./-])`,
     "giu",
 );
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
@@ -213,8 +227,10 @@ function scrubCredentialShapes(value: string): string {
     return scrubEncodedAddresses(shaped);
 }
 
-export function scrubTelemetryUrl(value: string, nesting = 0): string {
-    if (nesting >= MAX_URL_NESTING || value.length > MAX_SCALAR_LENGTH) return FILTERED;
+export function scrubTelemetryUrl(input: string, nesting = 0): string {
+    if (nesting >= MAX_URL_NESTING || input.length > MAX_SCALAR_LENGTH) return FILTERED;
+    // A character reference holds a number sign, so the URL parser would cut the address into path and hash.
+    const value = scrubCredentialShapes(input);
     try {
         const url = new URL(value, "https://sentry.invalid");
         if (CALLBACK_PATH_PATTERN.test(url.pathname)) {
