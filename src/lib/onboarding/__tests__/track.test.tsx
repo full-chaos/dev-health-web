@@ -197,4 +197,29 @@ describe("trackOnboardingEvent wire shape", () => {
         ]);
         expect(sendBeacon.mock.calls[0]?.[1]).not.toMatch(/org-123|user-456|org-789|o-1/);
     });
+
+    it.each([
+        ["org_id", "org-111"],
+        ["user_id", "user-222"],
+        ["orgId", "org-333"],
+        ["userId", "user-444"],
+        ["e-mail", "mail-555"],
+        ["ada@example.com", "mail-666"],
+        ["contact_email", "mail-777"],
+        ["tenant", "ten-888"],
+    ])("never sends the extra key %s", (key, value) => {
+        trackOnboardingEvent("workspace_created", { [key]: value, step: "intro" });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const body = sendBeacon.mock.calls[0]?.[1] as string;
+        expect(body).not.toContain(value);
+        expect(Object.keys(posted(0).events[0]?.payload ?? {})).not.toContain(key);
+    });
+
+    it("sends only the listed extra key for any key a caller passes", () => {
+        const extras: Record<string, string> = {};
+        for (let i = 0; i < 40; i += 1) extras[`key_${i}`] = `val-${i}`;
+        trackOnboardingEvent("first_sync_started", { ...extras, step: "intro" });
+        const keys = Object.keys(posted(0).events[0]?.payload ?? {}).sort();
+        expect(keys).toEqual(["feature", "routePattern", "step", "surface"]);
+    });
 });
