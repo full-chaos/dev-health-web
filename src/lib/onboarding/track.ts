@@ -16,10 +16,11 @@
  * the raw org id is never placed in the body. It is pseudonymised into the
  * top-level `orgIdHash` field and the per-event `payload` is run through the
  * shared {@link sanitizeTelemetryPayload} (which strips `orgId`/`userId` and any
- * other blocked PII keys). Hashing is synchronous (`fallbackHash`, the same
- * FNV-1a primitive the pipeline falls back to) because these events are emitted
- * from `sendBeacon` paths that must survive a full-page navigation (the GitHub
- * App install redirect) and therefore cannot await SubtleCrypto.
+ * other blocked PII keys). The digest is SHA-256, the same as the
+ * other events carry and the read side joins on. A cached digest keeps the send
+ * synchronous (the events fired just before a full-page navigation, such as the
+ * GitHub App install redirect, need that); the first event for an org waits for the
+ * digest. Without SubtleCrypto the org is left out: no weaker hash is made.
  */
 
 import { apiClient } from "@/lib/apiClient";
@@ -27,7 +28,7 @@ import { getWindow } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { canTrackProductTelemetry } from "@/lib/telemetry/config";
 import { telemetryEnvelopeIdentity } from "@/lib/telemetry";
-import { fallbackHash } from "@/lib/telemetry/hash";
+import { hashIdentifier } from "@/lib/telemetry/hash";
 import { sanitizeTelemetryPayload } from "@/lib/telemetry/sanitize";
 import { closeTelemetryEvent } from "@/lib/telemetry/schema";
 
@@ -57,6 +58,46 @@ const ONBOARDING_ROUTE_FALLBACK = "/onboarding";
  */
 const emittedOnceKeys = new Set<string>();
 
+/** SHA-256 digest per org id, so a repeat event for the same org can send synchronously. */
+const orgHashes = new Map<string, string>();
+
+type SendWithOrg = (orgIdHash: string | null) => void;
+type QueuedSend = { seq: number; send: SendWithOrg };
+
+/** Events waiting for an org's digest, in call order; one digest per org is in flight at a time. */
+const pendingSends = new Map<string, { sends: QueuedSend[]; flushed: boolean }>();
+let callSeq = 0;
+
+/**
+ * The page is going away (a full-page navigation such as the GitHub App install redirect, or a
+ * tab close): events still waiting for a digest are sent now, in call order, without an org
+ * value, so none is lost. They are marked flushed, so a digest that resolves later never
+ * sends them again.
+ */
+function flushPendingForPageExit(): void {
+    const queued: QueuedSend[] = [];
+    for (const [orgId, entry] of [...pendingSends]) {
+        entry.flushed = true;
+        pendingSends.delete(orgId);
+        queued.push(...entry.sends);
+    }
+    // Global call order, across orgs.
+    for (const { send } of queued.sort((x, y) => x.seq - y.seq)) send(null);
+}
+
+let exitListeners: { win: Window; onHide: () => void; onVisibility: () => void } | null = null;
+function installExitListeners(): void {
+    if (exitListeners) return;
+    const win = getWindow();
+    if (!win) return;
+    const onVisibility = (): void => {
+        if (win.document.visibilityState === "hidden") flushPendingForPageExit();
+    };
+    exitListeners = { win, onHide: flushPendingForPageExit, onVisibility };
+    win.addEventListener("pagehide", flushPendingForPageExit);
+    win.document.addEventListener("visibilitychange", onVisibility);
+}
+
 /** Emit a single onboarding funnel event.
  *
  * No-ops on the server, when product telemetry is disabled/opted-out, or when
@@ -85,60 +126,96 @@ export function trackOnboardingEvent(
         return;
     }
 
-    const orgIdHash = payload.orgId ? fallbackHash(payload.orgId) : null;
-
     const now = Date.now();
     const identity = telemetryEnvelopeIdentity(now);
     const routePattern = identity.routePattern ?? ONBOARDING_ROUTE_FALLBACK;
+    const extras = sanitized.payload;
 
-    // The intake accepts a fixed set of event names: every funnel event goes out as
-    // feature_viewed, with the funnel name as the surface.
-    const funnelEvent = closeTelemetryEvent({
-        name: "feature_viewed" as const,
-        schemaVersion: SCHEMA_VERSION,
-        eventId: identity.eventId,
-        ts: new Date(now).toISOString(),
-        sessionId: identity.sessionId,
-        anonymousUserId: identity.anonymousUserId,
-        orgIdHash,
-        routePattern,
-        payload: {
-            ...sanitized.payload,
-            feature: ONBOARDING_FEATURE,
-            surface: name,
+    const send = (orgIdHash: string | null): void => {
+        // The intake accepts a fixed set of event names: every funnel event goes out as
+        // feature_viewed, with the funnel name as the surface.
+        const funnelEvent = closeTelemetryEvent({
+            name: "feature_viewed" as const,
+            schemaVersion: SCHEMA_VERSION,
+            eventId: identity.eventId,
+            ts: new Date(now).toISOString(),
+            sessionId: identity.sessionId,
+            anonymousUserId: identity.anonymousUserId,
+            orgIdHash,
             routePattern,
-        },
-    });
-    if (!funnelEvent) {
-        logger.debug(
-            { event: name },
-            "Onboarding event dropped: an envelope value is outside its closed set",
-        );
-        return;
-    }
-    const body = JSON.stringify({
-        source: "dev-health-web",
-        orgIdHash: funnelEvent.orgIdHash,
-        events: [funnelEvent],
-    });
-
-    try {
-        if (apiClient.sendBeacon(TELEMETRY_ENDPOINT, body)) {
+            payload: {
+                ...extras,
+                feature: ONBOARDING_FEATURE,
+                surface: name,
+                routePattern,
+            },
+        });
+        if (!funnelEvent) {
+            logger.debug(
+                { event: name },
+                "Onboarding event dropped: an envelope value is outside its closed set",
+            );
             return;
         }
-        void apiClient
-            .request(TELEMETRY_ENDPOINT, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body,
-                keepalive: true,
-            })
-            .catch((err: unknown) => {
-                logger.debug({ err, event: name }, "Onboarding funnel event send failed");
-            });
-    } catch (err) {
-        logger.debug({ err, event: name }, "Onboarding funnel event send failed");
+        const body = JSON.stringify({
+            source: "dev-health-web",
+            orgIdHash: funnelEvent.orgIdHash,
+            events: [funnelEvent],
+        });
+        try {
+            if (apiClient.sendBeacon(TELEMETRY_ENDPOINT, body)) {
+                return;
+            }
+            void apiClient
+                .request(TELEMETRY_ENDPOINT, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body,
+                    keepalive: true,
+                })
+                .catch((err: unknown) => {
+                    logger.debug({ err, event: name }, "Onboarding funnel event send failed");
+                });
+        } catch (err) {
+            logger.debug({ err, event: name }, "Onboarding funnel event send failed");
+        }
+    };
+
+    // The org digest is SHA-256 like every other event's (the read side joins on it). A cached
+    // digest keeps the send synchronous, which the pre-navigation events need; the first event
+    // for an org waits for the digest and warms the cache. Without SubtleCrypto the org is
+    // simply absent: no weaker hash is made.
+    const orgId = typeof payload.orgId === "string" && payload.orgId ? payload.orgId : null;
+    if (orgId === null) {
+        send(null);
+        return;
     }
+    const waiting = pendingSends.get(orgId);
+    if (waiting !== undefined) {
+        // A digest for this org is in flight: queue behind the earlier events so the send
+        // order is the call order.
+        waiting.sends.push({ seq: callSeq++, send });
+        return;
+    }
+    const cached = orgHashes.get(orgId);
+    if (cached !== undefined) {
+        send(cached);
+        return;
+    }
+    const entry = { sends: [{ seq: callSeq++, send }] as QueuedSend[], flushed: false };
+    pendingSends.set(orgId, entry);
+    installExitListeners();
+    const settle = (digest: string | null): void => {
+        if (digest !== null) orgHashes.set(orgId, digest);
+        if (entry.flushed) return;
+        pendingSends.delete(orgId);
+        for (const queued of entry.sends) queued.send(digest);
+    };
+    hashIdentifier(orgId).then(settle, () => {
+        // A failed digest is not cached and its waiting events are dropped: never sent with a
+        // weaker value or the raw id. The next event for the org tries the digest again.
+        if (!entry.flushed) pendingSends.delete(orgId);
+    });
 }
 
 /**
@@ -163,4 +240,14 @@ export function trackOnboardingEventOnce(
 /** Test seam: clear the module-scoped one-shot dedupe set. */
 export function resetOnboardingOnceTracking(): void {
     emittedOnceKeys.clear();
+    orgHashes.clear();
+    pendingSends.clear();
+    if (exitListeners) {
+        exitListeners.win.removeEventListener("pagehide", exitListeners.onHide);
+        exitListeners.win.document.removeEventListener(
+            "visibilitychange",
+            exitListeners.onVisibility,
+        );
+        exitListeners = null;
+    }
 }

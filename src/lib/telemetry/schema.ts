@@ -378,7 +378,7 @@ function isGeneratedId(value: string): boolean {
     return millis >= MIN_FALLBACK_MS && millis < MAX_FALLBACK_MS;
 }
 /** hashIdentifier output: a SHA-256 hex digest or the FNV-1a fallback. */
-const HASHED_ID = /^(?:[0-9a-f]{64}|fnv1a-[0-9a-f]{8})$/;
+const HASHED_ID = /^[0-9a-f]{64}$/;
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 export const TELEMETRY_SCHEMA_VERSION = "2026-05-telemetry-v1";
 

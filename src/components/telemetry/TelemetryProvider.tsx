@@ -43,7 +43,9 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
                 orgId ? hashIdentifier(orgId) : Promise.resolve(null),
             ]);
             if (!cancelled) {
-                setTelemetryContext({ anonymousUserId, orgIdHash });
+                // No SubtleCrypto: no digest is made. The id then falls back to the stored random
+                // one (derived from nothing) and the org stays absent.
+                setTelemetryContext({ anonymousUserId: anonymousUserId ?? undefined, orgIdHash });
                 setIdentityReady(true);
             }
         }

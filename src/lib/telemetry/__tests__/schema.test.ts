@@ -394,11 +394,21 @@ describe("closeTelemetryEvent", () => {
     it("keeps a valid event unchanged", () => {
         expect(closeTelemetryEvent(validEnvelope())).toEqual(validEnvelope());
         expect(
-            closeTelemetryEvent({ ...validEnvelope(), orgIdHash: "fnv1a-0000000a" }),
+            closeTelemetryEvent({
+                ...validEnvelope(),
+                orgIdHash: "f7c764d921bf52ace2e849a2a08db5960177463e7a276629b8df6b3e170eef97",
+            }),
         ).not.toBeNull();
         expect(
             closeTelemetryEvent({ ...validEnvelope(), anonymousUserId: "a".repeat(64) }),
         ).not.toBeNull();
+    });
+
+    it("refuses the retired 32-bit org hash form", () => {
+        expect(closeTelemetryEvent({ ...validEnvelope(), orgIdHash: "fnv1a-0000000a" })).toBeNull();
+        expect(
+            closeTelemetryEvent({ ...validEnvelope(), anonymousUserId: "fnv1a-0000000a" }),
+        ).toBeNull();
     });
 
     it("drops unknown payload keys and closes the envelope route", () => {

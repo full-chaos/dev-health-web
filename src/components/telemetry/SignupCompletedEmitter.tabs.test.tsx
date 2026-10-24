@@ -15,10 +15,6 @@ vi.mock("@/lib/telemetry/hash", async (importOriginal) => {
             hashSpy(input);
             return actual.hashIdentifier(input);
         },
-        fallbackHash: (input: string) => {
-            hashSpy(input);
-            return actual.fallbackHash(input);
-        },
     };
 });
 

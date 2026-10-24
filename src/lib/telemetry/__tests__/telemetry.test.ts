@@ -55,7 +55,7 @@ describe("product telemetry", () => {
         setTelemetryContext({
             sessionId: "11111111-1111-4111-8111-111111111111",
             anonymousUserId: "22222222-2222-4222-8222-222222222222",
-            orgIdHash: "fnv1a-0000000a",
+            orgIdHash: "f7c764d921bf52ace2e849a2a08db5960177463e7a276629b8df6b3e170eef97",
             routePattern: "/metrics",
         });
     });
@@ -79,7 +79,7 @@ describe("product telemetry", () => {
                 ts: "2026-05-25T00:00:00.000Z",
                 sessionId: "11111111-1111-4111-8111-111111111111",
                 anonymousUserId: "22222222-2222-4222-8222-222222222222",
-                orgIdHash: "fnv1a-0000000a",
+                orgIdHash: "f7c764d921bf52ace2e849a2a08db5960177463e7a276629b8df6b3e170eef97",
                 routePattern: "/metrics",
                 payload: { feature: "metrics", surface: "route", routePattern: "/metrics" },
             },
@@ -122,7 +122,7 @@ describe("product telemetry", () => {
             eventId: "00000000-0000-4000-8000-000000000001",
             sessionId: "11111111-1111-4111-8111-111111111111",
             anonymousUserId: "22222222-2222-4222-8222-222222222222",
-            orgIdHash: "fnv1a-0000000a",
+            orgIdHash: "f7c764d921bf52ace2e849a2a08db5960177463e7a276629b8df6b3e170eef97",
             routePattern: "/metrics",
             payload: {
                 chart: "quadrant",
