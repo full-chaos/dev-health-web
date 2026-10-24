@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent } from "@testing-library/react";
 import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
 
 const mockPush = vi.fn();
@@ -385,6 +386,41 @@ describe("SignupForm", () => {
             expect(trackOnboardingEvent).toHaveBeenCalledTimes(1);
             expect(trackOnboardingEvent).toHaveBeenCalledWith("signup_completed");
             expect(order).toEqual(["track", "push"]);
+        });
+
+        it("is sent once when the form is submitted twice before and after the first success", async () => {
+            let release: (value: Response) => void = () => undefined;
+            const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(
+                () =>
+                    new Promise<Response>((resolve) => {
+                        release = resolve;
+                    }),
+            );
+            renderWithToaster(<SignupForm />);
+            const user = userEvent.setup();
+            await user.type(screen.getByLabelText("Email"), "test@example.com");
+            await user.type(screen.getByLabelText("Password"), "password12345");
+            await user.click(screen.getByRole("checkbox"));
+            const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+            if (!form) throw new Error("form not found");
+
+            fireEvent.submit(form);
+            fireEvent.submit(form);
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+            release(
+                new Response("{}", {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                }),
+            );
+            await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+            fireEvent.submit(form);
+            await waitFor(() => expect(screen.getByRole("button")).toBeDisabled());
+
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
+            expect(trackOnboardingEvent).toHaveBeenCalledTimes(1);
+            expect(mockPush).toHaveBeenCalledTimes(1);
         });
 
         it.each([
