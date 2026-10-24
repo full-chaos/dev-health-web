@@ -11,6 +11,7 @@ import {
     FILTER_VIEWS,
     isKnownRoutePattern,
     STATIC_ROUTE_SEGMENTS,
+    UNMATCHED_ROUTE,
     TELEMETRY_SCHEMA,
 } from "../schema";
 import type { TelemetryEventName, TelemetryPayloadByName } from "../types";
@@ -144,22 +145,30 @@ describe("route values", () => {
         null,
     ])("rejects %s", (value) => expect(isKnownRoutePattern(value)).toBe(false));
 
-    it("rejects page_viewed with an id-shaped route", () => {
-        expect(
-            applyTelemetrySchema("page_viewed", {
-                routePattern: "/people/usr_8f2a91c3b7d4",
-                page: "/metrics",
-                referrerRoutePattern: null,
-            }),
-        ).toEqual({ ok: false, key: "routePattern" });
+    it("sends an id-shaped page route as the fixed unmatched constant, with no path data", () => {
+        const payload = accepted("page_viewed", {
+            routePattern: "/people/usr_8f2a91c3b7d4",
+            page: "/org-123",
+            referrerRoutePattern: "/x/ada@example.com",
+        });
+        expect(payload).toEqual({
+            routePattern: UNMATCHED_ROUTE,
+            page: UNMATCHED_ROUTE,
+            referrerRoutePattern: UNMATCHED_ROUTE,
+        });
+        expect(JSON.stringify(payload)).not.toMatch(/usr_|org-123|ada/);
     });
 
-    it("drops an id-shaped referrer and keeps the page view", () => {
+    it("rejects a non-string route and keeps a null referrer", () => {
+        expect(applyTelemetrySchema("page_viewed", { routePattern: 5, page: "/metrics" })).toEqual({
+            ok: false,
+            key: "routePattern",
+        });
         const payload = accepted("page_viewed", {
             ...VALID.page_viewed,
-            referrerRoutePattern: "/org-123",
+            referrerRoutePattern: null,
         });
-        expect("referrerRoutePattern" in payload).toBe(false);
+        expect(payload.referrerRoutePattern).toBeNull();
     });
 });
 

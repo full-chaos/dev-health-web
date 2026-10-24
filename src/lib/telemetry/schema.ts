@@ -138,8 +138,12 @@ export const STATIC_ROUTE_SEGMENTS: ReadonlySet<string> = new Set([
 
 const PLACEHOLDER_SEGMENTS: ReadonlySet<string> = new Set([
     "[id]",
+    "[unmatched]",
     ...ROUTE_TEMPLATES.flatMap((template) => template.split("/").filter((s) => s.startsWith("["))),
 ]);
+
+/** The one value sent for a path outside the known routes (a 404, an injected path): no path data. */
+export const UNMATCHED_ROUTE = "/[unmatched]";
 
 /** "/" , a ROUTE_TEMPLATES entry, or a path of known static segments and known placeholders. */
 export function isKnownRoutePattern(value: unknown): value is string {
@@ -215,11 +219,24 @@ const oneOf = (values: readonly string[]) => (value: unknown) =>
 const intUpTo = (max: number) => (value: unknown) =>
     typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
 
-type Spec = { optional: boolean; accepts: (value: unknown) => boolean };
+type Spec = {
+    optional: boolean;
+    accepts: (value: unknown) => boolean;
+    coerce?: (value: unknown) => unknown;
+};
 const required = (accepts: Spec["accepts"]): Spec => ({ optional: false, accepts });
 const nullable = (accepts: Spec["accepts"]): Spec => ({
     optional: true,
     accepts: (value) => value === null || accepts(value),
+});
+
+/** A route field: a string outside the known routes becomes UNMATCHED_ROUTE; a non-string stays invalid. */
+const toUnmatched = (value: unknown) => (typeof value === "string" ? UNMATCHED_ROUTE : undefined);
+const route = (): Spec => ({ optional: false, accepts: isKnownRoutePattern, coerce: toUnmatched });
+const nullableRoute = (): Spec => ({
+    optional: true,
+    accepts: (value) => value === null || isKnownRoutePattern(value),
+    coerce: toUnmatched,
 });
 
 const feature = (value: unknown) =>
@@ -231,14 +248,14 @@ type Schema = {
 
 export const TELEMETRY_SCHEMA = {
     page_viewed: {
-        routePattern: required(isKnownRoutePattern),
-        page: required(isKnownRoutePattern),
-        referrerRoutePattern: nullable(isKnownRoutePattern),
+        routePattern: route(),
+        page: route(),
+        referrerRoutePattern: nullableRoute(),
     },
     feature_viewed: {
         feature: required(feature),
         surface: required(oneOf(SURFACES)),
-        routePattern: required(isKnownRoutePattern),
+        routePattern: route(),
     },
     filter_changed: {
         view: required(oneOf(FILTER_VIEWS)),
@@ -261,7 +278,7 @@ export const TELEMETRY_SCHEMA = {
         guide: required(oneOf(NO_VALUES)),
         surface: required(oneOf(SURFACES)),
     },
-    session_started: { entryRoutePattern: required(isKnownRoutePattern) },
+    session_started: { entryRoutePattern: route() },
     session_ended: {
         durationMs: required(intUpTo(86_400_000)),
         pagesViewed: required(intUpTo(10_000)),
@@ -271,7 +288,7 @@ export const TELEMETRY_SCHEMA = {
         boundary: required(oneOf(BOUNDARIES)),
         digest: nullable((value) => typeof value === "string" && /^[0-9]{1,20}$/.test(value)),
         errorClass: required(oneOf(ERROR_CLASSES)),
-        routePattern: nullable(isKnownRoutePattern),
+        routePattern: nullableRoute(),
     },
 } satisfies Schema;
 
@@ -291,8 +308,9 @@ export function applyTelemetrySchema(
     const out: Record<string, TelemetryPrimitive> = {};
     for (const [key, spec] of Object.entries(schema)) {
         const value = Object.hasOwn(payload, key) ? payload[key] : undefined;
-        if (value !== undefined && spec.accepts(value)) {
-            out[key] = value as TelemetryPrimitive;
+        const kept = value !== undefined && !spec.accepts(value) ? spec.coerce?.(value) : value;
+        if (kept !== undefined && spec.accepts(kept)) {
+            out[key] = kept as TelemetryPrimitive;
         } else if (!spec.optional) {
             return { ok: false, key };
         }
