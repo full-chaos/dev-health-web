@@ -130,9 +130,9 @@ describe("product telemetry session id idle timeout", () => {
     });
 
     it("keeps an id that has no stored activity time (written before this change)", async () => {
-        envMock.storage.values.set(SESSION_KEY, "legacy-id");
+        envMock.storage.values.set(SESSION_KEY, "11111111-1111-4111-8111-111111111111");
         await track();
-        expect(sent[0]?.sessionId).toBe("legacy-id");
+        expect(sent[0]?.sessionId).toBe("11111111-1111-4111-8111-111111111111");
         expect(envMock.storage.values.get(ACTIVITY_KEY)).toBeDefined();
     });
 

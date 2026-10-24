@@ -170,7 +170,7 @@ export const APP_ROUTES: readonly string[] = [
     "/work",
 ];
 
-const TEMPLATES: readonly (readonly string[])[] = [...new Set([...APP_ROUTES, ...ROUTE_TEMPLATES])]
+const TEMPLATES: readonly (readonly string[])[] = [...new Set([...ROUTE_TEMPLATES, ...APP_ROUTES])]
     .filter((route) => route !== "/")
     .map((route) => route.slice(1).split("/"));
 
@@ -185,22 +185,30 @@ const isPlaceholder = (segment: string) => /^\[[A-Za-z_.]+\]$/.test(segment);
 export const UNMATCHED_ROUTE = "/[unmatched]";
 
 /**
- * "/" or a path that matches one known route template segment for segment: a static segment must
- * be equal, a dynamic slot must hold a placeholder token such as "[id]". A mix of known segments
- * that is not a route ("/metrics/settings") is not known.
+ * The canonical form of a route: "/" or the first known template that the path matches segment for
+ * segment. A static segment must be equal. A dynamic slot must hold a bracketed token, and the
+ * output carries the template's OWN placeholder text there, never the input ("/people/[ada]" gives
+ * "/people/[person_id]"). Null for anything else, so a mix of known segments that is not a route
+ * ("/metrics/settings") is not known.
  */
-export function isKnownRoutePattern(value: unknown): value is string {
-    if (typeof value !== "string" || value.length > 256 || !value.startsWith("/")) return false;
-    if (value === "/") return true;
-    if (value === UNMATCHED_ROUTE) return true;
+export function canonicalRoute(value: unknown): string | null {
+    if (typeof value !== "string" || value.length > 256 || !value.startsWith("/")) return null;
+    if (value === "/") return "/";
+    if (value === UNMATCHED_ROUTE) return UNMATCHED_ROUTE;
     const segments = value.slice(1).split("/");
-    return TEMPLATES.some(
-        (template) =>
-            template.length === segments.length &&
-            template.every((part, index) =>
+    const template = TEMPLATES.find(
+        (candidate) =>
+            candidate.length === segments.length &&
+            candidate.every((part, index) =>
                 part.startsWith("[") ? isPlaceholder(segments[index]) : part === segments[index],
             ),
     );
+    return template ? "/" + template.join("/") : null;
+}
+
+/** True only for a value that is already canonical. */
+export function isKnownRoutePattern(value: unknown): value is string {
+    return typeof value === "string" && canonicalRoute(value) === value;
 }
 
 export const FILTER_VIEWS = [
@@ -283,7 +291,8 @@ const nullable = (accepts: Spec["accepts"]): Spec => ({
 });
 
 /** A route field: a string outside the known routes becomes UNMATCHED_ROUTE; a non-string stays invalid. */
-const toUnmatched = (value: unknown) => (typeof value === "string" ? UNMATCHED_ROUTE : undefined);
+const toUnmatched = (value: unknown) =>
+    typeof value === "string" ? (canonicalRoute(value) ?? UNMATCHED_ROUTE) : undefined;
 const route = (): Spec => ({ optional: false, accepts: isKnownRoutePattern, coerce: toUnmatched });
 const nullableRoute = (): Spec => ({
     optional: true,
@@ -293,6 +302,7 @@ const nullableRoute = (): Spec => ({
 
 const feature = (value: unknown) =>
     value === "home" ||
+    value === "unmatched" ||
     value === ONBOARDING_FEATURE ||
     (typeof value === "string" && STATIC_ROUTE_SEGMENTS.has(value));
 
@@ -310,6 +320,7 @@ export const TELEMETRY_SCHEMA = {
         feature: required(feature),
         surface: required(oneOf(FEATURE_SURFACES)),
         routePattern: route(),
+        step: nullable(intUpTo(99)),
     },
     filter_changed: {
         view: required(oneOf(FILTER_VIEWS)),
@@ -348,24 +359,65 @@ export const TELEMETRY_SCHEMA = {
 
 /** An envelope route: the pattern when known, else the fixed unmatched value. */
 export function closedRoutePattern(pattern: string): string {
-    return isKnownRoutePattern(pattern) ? pattern : UNMATCHED_ROUTE;
+    return canonicalRoute(pattern) ?? UNMATCHED_ROUTE;
 }
 
-/** An event with its payload closed and its envelope route closed, or null when the payload is rejected. */
-export function closeTelemetryEvent<
-    Event extends { name: TelemetryEventName; routePattern: string | null; payload: unknown },
->(event: Event): Event | null {
-    const payload =
-        typeof event.payload === "object" && event.payload !== null && !Array.isArray(event.payload)
-            ? (event.payload as Record<string, unknown>)
-            : null;
-    const closed = payload ? applyTelemetrySchema(event.name, payload) : null;
-    if (!closed?.ok) return null;
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+/** The id forms this module's own code generates (a UUID or the counter fallback in telemetry.ts). */
+const GENERATED_ID = new RegExp(`^(?:${UUID}|telemetry-[0-9a-z]{1,12}-[0-9a-z]{1,6})$`, "i");
+/** hashIdentifier output: a SHA-256 hex digest or the FNV-1a fallback. */
+const HASHED_ID = /^(?:[0-9a-f]{64}|fnv1a-[0-9a-f]{8})$/;
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+export const TELEMETRY_SCHEMA_VERSION = "2026-05-telemetry-v1";
+
+const isString = (value: unknown): value is string => typeof value === "string";
+
+/**
+ * The event as it may leave the browser, built from an explicit allowlist of envelope keys, each
+ * checked: an unknown envelope key is dropped, a malformed envelope value drops the event, the
+ * route goes through the template matcher, and the payload through its event schema. Null when
+ * anything required is not valid.
+ */
+export function closeTelemetryEvent<Event extends { name: TelemetryEventName }>(
+    event: Event,
+): Event | null {
+    const raw = event as unknown as Record<string, unknown>;
+    const name = raw.name;
+    if (!isString(name) || !Object.hasOwn(TELEMETRY_SCHEMA, name)) return null;
+    const payload = raw.payload;
+    if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return null;
+    const closed = applyTelemetrySchema(
+        name as TelemetryEventName,
+        payload as Record<string, unknown>,
+    );
+    if (!closed.ok) return null;
+    const { schemaVersion, eventId, ts, sessionId, anonymousUserId, orgIdHash, routePattern } = raw;
+    if (
+        schemaVersion !== TELEMETRY_SCHEMA_VERSION ||
+        !isString(eventId) ||
+        !GENERATED_ID.test(eventId) ||
+        !isString(ts) ||
+        !ISO_TIMESTAMP.test(ts) ||
+        !isString(sessionId) ||
+        !GENERATED_ID.test(sessionId) ||
+        !isString(anonymousUserId) ||
+        !(GENERATED_ID.test(anonymousUserId) || HASHED_ID.test(anonymousUserId)) ||
+        !(orgIdHash === null || (isString(orgIdHash) && HASHED_ID.test(orgIdHash))) ||
+        !(routePattern === null || isString(routePattern))
+    ) {
+        return null;
+    }
     return {
-        ...event,
-        routePattern: event.routePattern === null ? null : closedRoutePattern(event.routePattern),
+        name,
+        schemaVersion,
+        eventId,
+        ts,
+        sessionId,
+        anonymousUserId,
+        orgIdHash,
+        routePattern: routePattern === null ? null : closedRoutePattern(routePattern),
         payload: closed.payload,
-    };
+    } as unknown as Event;
 }
 
 export type SchemaResult =
@@ -379,8 +431,8 @@ export function applyTelemetrySchema(
     name: TelemetryEventName,
     payload: Record<string, unknown>,
 ): SchemaResult {
-    const schema = (TELEMETRY_SCHEMA as Record<string, Record<string, Spec> | undefined>)[name];
-    if (!schema) return { ok: false, key: "name" };
+    if (!Object.hasOwn(TELEMETRY_SCHEMA, name)) return { ok: false, key: "name" };
+    const schema = (TELEMETRY_SCHEMA as Record<string, Record<string, Spec>>)[name];
     const out: Record<string, TelemetryPrimitive> = {};
     for (const [key, spec] of Object.entries(schema)) {
         const value = Object.hasOwn(payload, key) ? payload[key] : undefined;

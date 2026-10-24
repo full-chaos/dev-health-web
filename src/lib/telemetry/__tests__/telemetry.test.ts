@@ -8,6 +8,7 @@ import {
     setTelemetryContext,
     trackTelemetryEvent,
 } from "../../telemetry";
+import { emitFeatureViewed } from "../emitters";
 import type { TelemetryAdapter } from "../adapters";
 import type { TelemetryEvent, TelemetryPayloadByName } from "../types";
 
@@ -52,9 +53,9 @@ describe("product telemetry", () => {
         vi.stubEnv("NEXT_PUBLIC_TELEMETRY_ENABLED", "true");
         vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
         setTelemetryContext({
-            sessionId: "session-1",
-            anonymousUserId: "anon-1",
-            orgIdHash: "org-hash-1",
+            sessionId: "11111111-1111-4111-8111-111111111111",
+            anonymousUserId: "22222222-2222-4222-8222-222222222222",
+            orgIdHash: "fnv1a-0000000a",
             routePattern: "/metrics",
         });
     });
@@ -74,11 +75,11 @@ describe("product telemetry", () => {
             {
                 name: "feature_viewed",
                 schemaVersion: "2026-05-telemetry-v1",
-                eventId: "event-1",
+                eventId: "33333333-3333-4333-8333-333333333333",
                 ts: "2026-05-25T00:00:00.000Z",
-                sessionId: "session-1",
-                anonymousUserId: "anon-1",
-                orgIdHash: "org-hash-1",
+                sessionId: "11111111-1111-4111-8111-111111111111",
+                anonymousUserId: "22222222-2222-4222-8222-222222222222",
+                orgIdHash: "fnv1a-0000000a",
                 routePattern: "/metrics",
                 payload: { feature: "metrics", surface: "route", routePattern: "/metrics" },
             },
@@ -119,9 +120,9 @@ describe("product telemetry", () => {
             name: "chart_interacted",
             schemaVersion: "2026-05-telemetry-v1",
             eventId: "00000000-0000-4000-8000-000000000001",
-            sessionId: "session-1",
-            anonymousUserId: "anon-1",
-            orgIdHash: "org-hash-1",
+            sessionId: "11111111-1111-4111-8111-111111111111",
+            anonymousUserId: "22222222-2222-4222-8222-222222222222",
+            orgIdHash: "fnv1a-0000000a",
             routePattern: "/metrics",
             payload: {
                 chart: "quadrant",
@@ -391,10 +392,10 @@ describe("telemetryEnvelopeIdentity", () => {
                 {
                     name: "session_started",
                     schemaVersion: "2026-05-telemetry-v1",
-                    eventId: "e",
+                    eventId: "33333333-3333-4333-8333-333333333333",
                     ts: "2026-10-24T00:00:00.000Z",
-                    sessionId: "s",
-                    anonymousUserId: "a",
+                    sessionId: "11111111-1111-4111-8111-111111111111",
+                    anonymousUserId: "22222222-2222-4222-8222-222222222222",
                     orgIdHash: null,
                     routePattern: "/metrics/settings",
                     payload: {
@@ -407,6 +408,21 @@ describe("telemetryEnvelopeIdentity", () => {
             expect(body[0]).not.toMatch(/owner-secret|settings/);
             apiClientMock.sendBeacon.mockReturnValue(false);
         });
+
+        it.each(["/metrics/settings", "/ada-lovelace/profile"])(
+            "counts a route view of the unknown path %s with feature unmatched and no path data",
+            async (path) => {
+                const sent = collect();
+                emitFeatureViewed(path);
+                await vi.waitFor(() => expect(sent).toHaveLength(1));
+                expect(sent[0]?.payload).toEqual({
+                    feature: "unmatched",
+                    surface: "route",
+                    routePattern: "/[unmatched]",
+                });
+                expect(JSON.stringify(sent)).not.toMatch(/settings|ada-lovelace/);
+            },
+        );
 
         it("admits the onboarding funnel feature_viewed shape", async () => {
             const sent = collect();

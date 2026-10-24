@@ -13,6 +13,7 @@ import {
     FILTER_VIEWS,
     isKnownRoutePattern,
     APP_ROUTES,
+    canonicalRoute,
     closeTelemetryEvent,
     STATIC_ROUTE_SEGMENTS,
     UNMATCHED_ROUTE,
@@ -129,7 +130,7 @@ describe("applyTelemetrySchema", () => {
 
 describe("onboarding funnel shape", () => {
     it.each(ONBOARDING_EVENTS)(
-        "admits feature_viewed onboarding_funnel / %s with no other key",
+        "admits feature_viewed onboarding_funnel / %s with only the step as an extra key",
         (surface) => {
             const payload = accepted("feature_viewed", {
                 feature: "onboarding_funnel",
@@ -141,6 +142,7 @@ describe("onboarding funnel shape", () => {
                 feature: "onboarding_funnel",
                 surface,
                 routePattern: "/auth/onboard",
+                step: 2,
             });
         },
     );
@@ -162,13 +164,32 @@ describe("onboarding funnel shape", () => {
     });
 });
 
+describe("the optional onboarding step", () => {
+    const base = {
+        feature: "onboarding_funnel",
+        surface: "workspace_created",
+        routePattern: "/auth/onboard",
+    };
+
+    it.each([0, 1, 99])("keeps step %s", (step) => {
+        expect(accepted("feature_viewed", { ...base, step }).step).toBe(step);
+    });
+
+    it.each([-1, 100, 1.5, 4815162342, "3", "ada@example.com", true, Number.NaN])(
+        "drops step %s and keeps the event",
+        (step) => {
+            const payload = accepted("feature_viewed", { ...base, step });
+            expect("step" in payload).toBe(false);
+        },
+    );
+});
+
 describe("route values", () => {
     it.each([
         "/",
         "/metrics",
         "/people/[person_id]",
         "/org/admin/sync/[configId]/runs/[runId]",
-        "/people/[id]",
         "/[unmatched]",
     ])("accepts %s", (value) => expect(isKnownRoutePattern(value)).toBe(true));
 
@@ -238,9 +259,10 @@ describe("closed sets are pinned to the code that feeds them", () => {
         expect([...APP_ROUTES].sort()).toEqual([...new Set(appRoutes(APP_ROOT))].sort());
     });
 
-    it("every known route is accepted with its dynamic slots as placeholders", () => {
+    it("every known route is accepted, with its own placeholders or another bracketed token", () => {
         for (const route of APP_ROUTES) {
-            expect(isKnownRoutePattern(route.replace(/\[[^\]]+\]/g, "[id]"))).toBe(true);
+            expect(canonicalRoute(route)).not.toBeNull();
+            expect(canonicalRoute(route.replace(/\[[^\]]+\]/g, "[x]"))).toBe(canonicalRoute(route));
         }
     });
 
@@ -295,23 +317,131 @@ describe("route combinations that are not routes", () => {
     });
 });
 
-describe("closeTelemetryEvent", () => {
-    const event = {
-        name: "session_started" as const,
-        routePattern: "/metrics/settings",
-        payload: { entryRoutePattern: "/metrics", ownerRef: "owner-secret", org_id: "org-123" },
-    };
+describe("dynamic slots never echo the input", () => {
+    it.each([
+        ["/people/[ada_lovelace]", "/people/[person_id]"],
+        ["/reports/[acme.corp.secret]", "/reports/[id]"],
+        ["/api/auth/[john.smith]", "/api/auth/[...nextauth]"],
+        ["/org/admin/sync/[a]/runs/[b]", "/org/admin/sync/[configId]/runs/[runId]"],
+    ])("%s is sent as %s", (input, output) => {
+        expect(canonicalRoute(input)).toBe(output);
+        const payload = accepted("page_viewed", {
+            routePattern: input,
+            page: input,
+            referrerRoutePattern: input,
+        });
+        expect(payload).toEqual({
+            routePattern: output,
+            page: output,
+            referrerRoutePattern: output,
+        });
+        expect(isKnownRoutePattern(input)).toBe(false);
+    });
 
-    it("drops unknown keys and closes the envelope route", () => {
-        const closed = closeTelemetryEvent(event);
+    it.each(["/people/ada_lovelace", "/people/[ada lovelace]", "/people/[]", "/people/[a]/x"])(
+        "%s is not a route",
+        (input) => expect(canonicalRoute(input)).toBeNull(),
+    );
+});
+
+describe("event names are own keys of the schema", () => {
+    it.each(["toString", "__proto__", "constructor", "hasOwnProperty"])("%s is refused", (name) => {
+        expect(applyTelemetrySchema(name as TelemetryEventName, {}).ok).toBe(false);
+        expect(closeTelemetryEvent({ ...validEnvelope(), name } as never)).toBeNull();
+    });
+});
+
+const SESSION = "11111111-1111-4111-8111-111111111111";
+const ANON = "22222222-2222-4222-8222-222222222222";
+const EVENT_ID = "33333333-3333-4333-8333-333333333333";
+
+function validEnvelope() {
+    return {
+        name: "session_started" as const,
+        schemaVersion: "2026-05-telemetry-v1",
+        eventId: EVENT_ID,
+        ts: "2026-10-24T00:00:00.000Z",
+        sessionId: SESSION,
+        anonymousUserId: ANON,
+        orgIdHash: null as string | null,
+        routePattern: "/metrics" as string | null,
+        payload: { entryRoutePattern: "/metrics" } as Record<string, unknown>,
+    };
+}
+
+describe("closeTelemetryEvent", () => {
+    it("keeps a valid event unchanged", () => {
+        expect(closeTelemetryEvent(validEnvelope())).toEqual(validEnvelope());
+        expect(
+            closeTelemetryEvent({ ...validEnvelope(), orgIdHash: "fnv1a-0000000a" }),
+        ).not.toBeNull();
+        expect(
+            closeTelemetryEvent({ ...validEnvelope(), anonymousUserId: "a".repeat(64) }),
+        ).not.toBeNull();
+    });
+
+    it("drops unknown payload keys and closes the envelope route", () => {
+        const closed = closeTelemetryEvent({
+            ...validEnvelope(),
+            routePattern: "/metrics/settings",
+            payload: { entryRoutePattern: "/metrics", ownerRef: "owner-secret", org_id: "org-123" },
+        });
         expect(closed?.payload).toEqual({ entryRoutePattern: "/metrics" });
         expect(closed?.routePattern).toBe(UNMATCHED_ROUTE);
         expect(JSON.stringify(closed)).not.toMatch(/owner-secret|org-123|settings/);
     });
 
+    it("drops unknown ENVELOPE keys (planted email and name)", () => {
+        const closed = closeTelemetryEvent({
+            ...validEnvelope(),
+            email: "ada@example.com",
+            fullName: "John Smith",
+            nested: { userId: "u-1" },
+        } as never);
+        expect(Object.keys(closed ?? {}).sort()).toEqual(
+            [
+                "anonymousUserId",
+                "eventId",
+                "name",
+                "orgIdHash",
+                "payload",
+                "routePattern",
+                "schemaVersion",
+                "sessionId",
+                "ts",
+            ].sort(),
+        );
+        expect(JSON.stringify(closed)).not.toMatch(/ada@|John|u-1/);
+    });
+
+    it.each([
+        ["a free-text sessionId", { sessionId: "John Smith" }],
+        ["an e-mail anonymousUserId", { anonymousUserId: "ada@example.com" }],
+        ["a name as eventId", { eventId: "Ada Lovelace" }],
+        ["a free-text orgIdHash", { orgIdHash: "Acme Corp" }],
+        ["a timestamp with text", { ts: "yesterday at Acme" }],
+        ["another schemaVersion", { schemaVersion: "v-ada" }],
+        ["a numeric route", { routePattern: 5 }],
+        ["an unknown name", { name: "order_placed" }],
+    ])("drops the event with %s", (_label, patch) => {
+        expect(closeTelemetryEvent({ ...validEnvelope(), ...patch } as never)).toBeNull();
+    });
+
     it("returns null for a payload that is not an object or misses a required field", () => {
-        expect(closeTelemetryEvent({ ...event, payload: [] })).toBeNull();
-        expect(closeTelemetryEvent({ ...event, payload: {} })).toBeNull();
-        expect(closeTelemetryEvent({ ...event, payload: "x" })).toBeNull();
+        expect(closeTelemetryEvent({ ...validEnvelope(), payload: [] as never })).toBeNull();
+        expect(closeTelemetryEvent({ ...validEnvelope(), payload: {} })).toBeNull();
+        expect(closeTelemetryEvent({ ...validEnvelope(), payload: "x" as never })).toBeNull();
+    });
+});
+
+describe("the unmatched feature", () => {
+    it("is in the closed feature set", () => {
+        expect(
+            applyTelemetrySchema("feature_viewed", {
+                feature: "unmatched",
+                surface: "route",
+                routePattern: UNMATCHED_ROUTE,
+            }).ok,
+        ).toBe(true);
     });
 });

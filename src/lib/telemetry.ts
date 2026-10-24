@@ -11,7 +11,7 @@ import { canTrackProductTelemetry } from "./telemetry/config";
 import { createTelemetryQueue, type TelemetryQueue } from "./telemetry/queue";
 import { routePatternForPathname } from "./telemetry/routePatterns";
 import { sanitizeTelemetryPayload } from "./telemetry/sanitize";
-import { applyTelemetrySchema, closedRoutePattern } from "./telemetry/schema";
+import { applyTelemetrySchema, closedRoutePattern, closeTelemetryEvent } from "./telemetry/schema";
 import type { TelemetryEvent, TelemetryEventName, TelemetryPayloadByName } from "./telemetry/types";
 
 const DEFAULT_SESSION_ID_KEY = "devhealth-product-telemetry-session-id";
@@ -248,7 +248,15 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         payload: sanitized.payload as TelemetryPayloadByName[Name],
     };
 
-    getTelemetryQueue().enqueue(event);
+    const closedEvent = closeTelemetryEvent(event);
+    if (!closedEvent) {
+        logger.debug(
+            { event: name },
+            "Telemetry event dropped: an envelope value is outside its closed set",
+        );
+        return;
+    }
+    getTelemetryQueue().enqueue(closedEvent);
 }
 
 export type { TelemetryAdapter, TelemetryEvent, TelemetryEventName, TelemetryPayloadByName };
