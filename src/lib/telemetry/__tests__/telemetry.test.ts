@@ -283,3 +283,17 @@ describe("product telemetry", () => {
         expect(envMock.window.dispatchEvent).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("telemetryEnvelopeIdentity", () => {
+    it("returns a fresh eventId and the shared session and anonymous ids", async () => {
+        const { telemetryEnvelopeIdentity, resetTelemetryForTests } =
+            await import("../../telemetry");
+        resetTelemetryForTests();
+        const a = telemetryEnvelopeIdentity(Date.now());
+        const b = telemetryEnvelopeIdentity(Date.now());
+        expect(a.eventId).not.toBe(b.eventId);
+        expect(a.sessionId).toBe(b.sessionId);
+        expect(a.anonymousUserId).toBe(b.anonymousUserId);
+        expect(a.sessionId).toBeTruthy();
+    });
+});

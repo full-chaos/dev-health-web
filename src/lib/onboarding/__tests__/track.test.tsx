@@ -10,6 +10,7 @@ vi.mock("@/lib/apiClient", () => ({
     },
 }));
 
+import { resetTelemetryForTests } from "@/lib/telemetry";
 import { fallbackHash } from "@/lib/telemetry/hash";
 
 import {
@@ -26,6 +27,7 @@ describe("trackOnboardingEvent", () => {
         request.mockReset().mockResolvedValue(new Response("{}"));
         delete process.env[TELEMETRY_FLAG];
         resetOnboardingOnceTracking();
+        resetTelemetryForTests();
     });
 
     afterEach(() => {
@@ -47,7 +49,7 @@ describe("trackOnboardingEvent", () => {
         // (matching the main telemetry pipeline) and stripped from the payload.
         expect(parsed.orgIdHash).toBe(fallbackHash("org-123"));
         expect(parsed.orgIdHash).not.toBe("org-123");
-        expect(parsed.events[0]?.name).toBe("workspace_created");
+        expect(parsed.events[0]?.name).toBe("feature_viewed");
         expect(parsed.events[0]?.payload.orgId).toBeUndefined();
         expect(request).not.toHaveBeenCalled();
     });
@@ -116,5 +118,64 @@ describe("trackOnboardingEvent", () => {
         resetOnboardingOnceTracking();
         trackOnboardingEventOnce("workspace_setup_started");
         expect(sendBeacon).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("trackOnboardingEvent wire shape", () => {
+    beforeEach(() => {
+        sendBeacon.mockReset().mockReturnValue(true);
+        request.mockReset().mockResolvedValue(new Response("{}"));
+        delete process.env[TELEMETRY_FLAG];
+        resetOnboardingOnceTracking();
+        resetTelemetryForTests();
+    });
+
+    type Posted = {
+        events: {
+            name: string;
+            eventId: string;
+            sessionId: string;
+            anonymousUserId: string;
+            routePattern: string | null;
+            payload: Record<string, unknown>;
+        }[];
+    };
+    const posted = (index: number): Posted =>
+        JSON.parse((sendBeacon.mock.calls[index] as [string, string])[1]) as Posted;
+
+    it("sends the funnel event as feature_viewed with the funnel name as the surface", () => {
+        trackOnboardingEvent("workspace_created", { orgId: "org-123", step: "intro" });
+        const event = posted(0).events[0];
+        expect(event?.name).toBe("feature_viewed");
+        expect(event?.payload.feature).toBe("onboarding_funnel");
+        expect(event?.payload.surface).toBe("workspace_created");
+        expect(typeof event?.payload.routePattern).toBe("string");
+        expect(event?.payload.step).toBe("intro");
+        expect(event?.payload.orgId).toBeUndefined();
+    });
+
+    it("carries a fresh eventId per event and one session and anonymous id across events", () => {
+        trackOnboardingEvent("workspace_created", {});
+        trackOnboardingEvent("first_sync_started", {});
+        const [a, b] = [posted(0).events[0], posted(1).events[0]];
+        expect(a?.eventId).toBeTruthy();
+        expect(a?.eventId).not.toBe(b?.eventId);
+        expect(a?.sessionId).toBeTruthy();
+        expect(a?.sessionId).toBe(b?.sessionId);
+        expect(a?.anonymousUserId).toBeTruthy();
+        expect(a?.anonymousUserId).toBe(b?.anonymousUserId);
+    });
+
+    it("treats an undefined payload value as absent instead of dropping the event", () => {
+        trackOnboardingEvent("integration_skipped", { reason: undefined, step: "intro" });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const event = posted(0).events[0];
+        expect("reason" in (event?.payload ?? {})).toBe(false);
+        expect(event?.payload.step).toBe("intro");
+    });
+
+    it("still drops the event for an out-of-bounds value", () => {
+        trackOnboardingEvent("integration_skipped", { step: "ada@example.com", other: undefined });
+        expect(sendBeacon).not.toHaveBeenCalled();
     });
 });
