@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, posix, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -13,7 +13,8 @@ const WEB_ROOT = join(SRC, "..");
 // it is skipped while it does not exist. src/ keeps its old scope and paths.
 const EXTRA_ROOTS = ["tests", "e2e", "scripts"];
 
-// Directory names never scanned, each with its reason.
+// Exclusions apply to the added roots only; the src scan has none, as before.
+// Directory names never scanned there, each with its reason.
 const EXCLUDED_DIRECTORIES = new Set([
     "node_modules", // vendored third-party code
     ".next", // build output
@@ -28,19 +29,21 @@ const EXCLUDED_FILES = [
     /\.generated\.[cm]?[jt]sx?$/, // generated code (codegen output)
 ];
 
-function sourceFiles(directory: string, extension: RegExp): string[] {
+function sourceFiles(directory: string, extension: RegExp, exclude: boolean): string[] {
     return readdirSync(directory).flatMap((entry) => {
         const path = join(directory, entry);
         if (statSync(path).isDirectory()) {
-            return EXCLUDED_DIRECTORIES.has(entry) ? [] : sourceFiles(path, extension);
+            return exclude && EXCLUDED_DIRECTORIES.has(entry)
+                ? []
+                : sourceFiles(path, extension, exclude);
         }
-        if (EXCLUDED_FILES.some((pattern) => pattern.test(entry))) return [];
+        if (exclude && EXCLUDED_FILES.some((pattern) => pattern.test(entry))) return [];
         return extension.test(entry) ? [path] : [];
     });
 }
 
-function scan(root: string, extension: RegExp, base: string) {
-    return sourceFiles(root, extension).map((path) => ({
+function scan(root: string, extension: RegExp, base: string, exclude: boolean) {
+    return sourceFiles(root, extension, exclude).map((path) => ({
         path: relative(base, path),
         text: readFileSync(path, "utf8"),
     }));
@@ -48,12 +51,20 @@ function scan(root: string, extension: RegExp, base: string) {
 
 // The guard names the bus on purpose, so it never scans itself.
 const THIS_FILE = "lib/onboarding/__tests__/no-dead-bus.test.ts";
-const files = scan(SRC, /\.(ts|tsx)$/, SRC).filter((file) => file.path !== THIS_FILE);
+const files = scan(SRC, /\.(ts|tsx)$/, SRC, false).filter((file) => file.path !== THIS_FILE);
 
 const extraRoots = EXTRA_ROOTS.filter((name) => existsSync(join(WEB_ROOT, name))).map((name) => ({
     name,
-    files: scan(join(WEB_ROOT, name), /\.(ts|tsx|js|jsx|mjs|cjs)$/, WEB_ROOT),
+    files: scan(join(WEB_ROOT, name), /\.(ts|tsx|js|jsx|mjs|cjs)$/, WEB_ROOT, true),
 }));
+
+// A specifier such as "../src/lib/onboarding/./telemetry" names the bus too, so
+// every quoted string is normalized before it is matched.
+function namesBusModule(text: string): boolean {
+    return [...text.matchAll(/["'`]([^"'`\n]+)["'`]/g)].some(([, specifier]) =>
+        /(^|\/)onboarding\/telemetry(\.[cm]?[jt]sx?)?$/.test(posix.normalize(specifier)),
+    );
+}
 
 describe("onboarding funnel events leave through track.ts only", () => {
     it("scans the source tree", () => {
@@ -72,6 +83,7 @@ describe("onboarding funnel events leave through track.ts only", () => {
             .filter(
                 (file) =>
                     /onboarding\/telemetry["']/.test(file.text) ||
+                    namesBusModule(file.text) ||
                     file.text.includes("devhealth:onboarding-event") ||
                     /\bemitOnboardingEvent(Once)?\b/.test(file.text),
             )
