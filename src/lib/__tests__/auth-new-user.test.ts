@@ -85,6 +85,34 @@ describe("jwt callback: is_new_user", () => {
         expect(token.is_new_user).toBeFalsy();
     });
 
+    it.each(["true", 1, "yes", {}])(
+        "does not set the flag for a non-boolean is_new_user (%j)",
+        async (value) => {
+            vi.stubGlobal(
+                "fetch",
+                vi.fn().mockResolvedValue(
+                    new Response(
+                        JSON.stringify({
+                            user: { id: "user-9" },
+                            needs_onboarding: true,
+                            access_token: "at",
+                            refresh_token: "rt",
+                            expires_in: 3600,
+                            is_new_user: value,
+                        }),
+                        { status: 200, headers: { "Content-Type": "application/json" } },
+                    ),
+                ),
+            );
+            const token = await callbacks().jwt({
+                token: {},
+                user: { id: "p" },
+                account: socialAccount,
+            });
+            expect(token.is_new_user).toBeFalsy();
+        },
+    );
+
     it("a new social sign-in replaces a flag left by an earlier one", async () => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(socialResponse(false)));
         const token = await callbacks().jwt({
