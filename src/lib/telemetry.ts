@@ -180,6 +180,26 @@ export function resetTelemetryForTests(): void {
     memorySession = null;
 }
 
+/** The ids every ingested event needs, from the same sources trackTelemetryEvent uses; synchronous, so a beacon path can call it. */
+export function telemetryEnvelopeIdentity(now: number): {
+    eventId: string;
+    sessionId: string;
+    anonymousUserId: string;
+    routePattern: string | null;
+} {
+    const win = getWindow();
+    const pattern =
+        telemetryContext.routePattern ??
+        (win ? routePatternForPathname(win.location.pathname) : null);
+    return {
+        eventId: randomId(),
+        sessionId: telemetryContext.sessionId ?? activeSessionId(now),
+        anonymousUserId:
+            telemetryContext.anonymousUserId ?? storedId(DEFAULT_ANONYMOUS_USER_ID_KEY),
+        routePattern: pattern === null ? null : boundTelemetryString(pattern),
+    };
+}
+
 export function trackTelemetryEvent<Name extends TelemetryEventName>(
     name: Name,
     payload: TelemetryPayloadByName[Name],
