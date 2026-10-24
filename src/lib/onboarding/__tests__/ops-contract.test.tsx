@@ -79,7 +79,7 @@ describe("onboarding funnel events against the ops intake rules", () => {
     });
 
     it.each(ONBOARDING_EVENTS)("%s is accepted by the intake validator", (name) => {
-        trackOnboardingEvent(name, { orgId: "org-123", step: "intro" });
+        trackOnboardingEvent(name, { orgId: "org-123", step: 2 });
         expect(sendBeacon).toHaveBeenCalledTimes(1);
         const body = JSON.parse((sendBeacon.mock.calls[0] as [string, string])[1]) as unknown;
         expect(opsProblems(body)).toEqual([]);

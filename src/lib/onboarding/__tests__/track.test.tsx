@@ -54,14 +54,21 @@ describe("trackOnboardingEvent", () => {
         expect(request).not.toHaveBeenCalled();
     });
 
-    it("sends nothing for an out-of-bounds value and drops the event", () => {
+    it("sends the event without a step value that is out of bounds", () => {
         process.env[TELEMETRY_FLAG] = "true";
         trackOnboardingEvent("workspace_created", { step: "ada@example.com" });
 
-        expect(sendBeacon).not.toHaveBeenCalled();
-        expect(request).not.toHaveBeenCalled();
-        trackOnboardingEvent("workspace_created", { step: "name_org" });
         expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const body = sendBeacon.mock.calls[0]?.[1] as string;
+        expect(body).not.toContain("ada@example.com");
+        expect("step" in JSON.parse(body).events[0].payload).toBe(false);
+        expect(request).not.toHaveBeenCalled();
+    });
+
+    it("keeps a small non-negative integer step", () => {
+        trackOnboardingEvent("workspace_created", { step: 3 });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(sendBeacon.mock.calls[0]?.[1] as string).events[0].payload.step).toBe(3);
     });
 
     it("falls back to a keep-alive POST when sendBeacon is unavailable", () => {
@@ -144,13 +151,13 @@ describe("trackOnboardingEvent wire shape", () => {
         JSON.parse((sendBeacon.mock.calls[index] as [string, string])[1]) as Posted;
 
     it("sends the funnel event as feature_viewed with the funnel name as the surface", () => {
-        trackOnboardingEvent("workspace_created", { orgId: "org-123", step: "intro" });
+        trackOnboardingEvent("workspace_created", { orgId: "org-123", step: 2 });
         const event = posted(0).events[0];
         expect(event?.name).toBe("feature_viewed");
         expect(event?.payload.feature).toBe("onboarding_funnel");
         expect(event?.payload.surface).toBe("workspace_created");
         expect(typeof event?.payload.routePattern).toBe("string");
-        expect(event?.payload.step).toBe("intro");
+        expect(event?.payload.step).toBe(2);
         expect(event?.payload.orgId).toBeUndefined();
     });
 
@@ -174,9 +181,23 @@ describe("trackOnboardingEvent wire shape", () => {
         expect("reason" in (event?.payload ?? {})).toBe(false);
     });
 
-    it("still drops the event for an out-of-bounds value", () => {
-        trackOnboardingEvent("integration_skipped", { step: "ada@example.com", other: undefined });
-        expect(sendBeacon).not.toHaveBeenCalled();
+    it.each([
+        ["an e-mail", "ada@example.com"],
+        ["a UUID", "123e4567-e89b-12d3-a456-426614174000"],
+        ["an id-like value", "usr_8f2a91c3b7d4"],
+        ["a plain word", "intro"],
+        ["a negative number", -1],
+        ["a large number", 100],
+        ["a fraction", 1.5],
+        ["a numeric id", 4815162342],
+        ["a boolean", true],
+        ["null", null],
+    ])("drops a step value that is %s and still sends the event", (_label, value) => {
+        trackOnboardingEvent("integration_skipped", { step: value as never, other: undefined });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const body = sendBeacon.mock.calls[0]?.[1] as string;
+        expect("step" in JSON.parse(body).events[0].payload).toBe(false);
+        if (typeof value === "string") expect(body).not.toContain(value);
     });
 
     it("drops every payload key that is not on the closed list, whatever its spelling", () => {
@@ -186,7 +207,7 @@ describe("trackOnboardingEvent wire shape", () => {
             OrgID: "org-789",
             ownerRef: "o-1",
             anything: "x",
-            step: "intro",
+            step: 2,
         });
         const event = posted(0).events[0];
         expect(Object.keys(event?.payload ?? {}).sort()).toEqual([
@@ -210,7 +231,7 @@ describe("trackOnboardingEvent wire shape", () => {
         ["email", "ada.lovelace@example.com"],
         ["user_email", "grace.hopper@example.com"],
     ])("never sends the extra key %s", (key, value) => {
-        trackOnboardingEvent("workspace_created", { [key]: value, step: "intro" });
+        trackOnboardingEvent("workspace_created", { [key]: value, step: 2 });
         expect(sendBeacon).toHaveBeenCalledTimes(1);
         const body = sendBeacon.mock.calls[0]?.[1] as string;
         expect(body).not.toContain(value);
@@ -220,7 +241,7 @@ describe("trackOnboardingEvent wire shape", () => {
     it("sends only the listed extra key for any key a caller passes", () => {
         const extras: Record<string, string> = {};
         for (let i = 0; i < 40; i += 1) extras[`key_${i}`] = `val-${i}`;
-        trackOnboardingEvent("first_sync_started", { ...extras, step: "intro" });
+        trackOnboardingEvent("first_sync_started", { ...extras, step: 2 });
         const keys = Object.keys(posted(0).events[0]?.payload ?? {}).sort();
         expect(keys).toEqual(["feature", "routePattern", "step", "surface"]);
     });

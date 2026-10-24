@@ -80,20 +80,21 @@ describe("a rejected telemetry value never reaches a log sink", () => {
     );
 
     it(
-        "onboarding events: nothing is sent and the debug line carries the event name and the key only",
+        "onboarding events: a rejected step value is dropped, the event is sent without it and no log carries it",
         async () => {
             const { spies, onboarding } = await withFreshModules();
 
             onboarding.trackOnboardingEvent("workspace_created", { step: REJECTED_VALUE });
 
-            expect(apiClientMock.sendBeacon).not.toHaveBeenCalled();
-            const calls = spies.flatMap((spy) => spy.mock.calls);
-            const text = JSON.stringify(calls);
+            expect(apiClientMock.sendBeacon).toHaveBeenCalledTimes(1);
+            const body = String(apiClientMock.sendBeacon.mock.calls[0]?.[1]);
+            expect(body).not.toContain("Lovelace");
+            expect(body).not.toContain("Countess");
+            expect(body).toContain("workspace_created");
+            expect(body).not.toContain('"step"');
+            const text = JSON.stringify(spies.flatMap((spy) => spy.mock.calls));
             expect(text).not.toContain("Lovelace");
             expect(text).not.toContain("Countess");
-            expect(text).toContain("workspace_created");
-            expect(text).toContain("step");
-            expect(calls).toHaveLength(1);
         },
         IMPORT_TIMEOUT_MS,
     );
