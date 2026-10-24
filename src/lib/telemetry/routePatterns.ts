@@ -51,8 +51,10 @@ export function routePatternForPathname(input: string): string {
         if (matches(parts, segments)) return template;
     }
 
-    const normalized = parts.map((part) =>
-        UUID_RE.test(part) || NUMERIC_OR_HEX_ID_RE.test(part) ? "[id]" : part,
-    );
+    const normalized = parts.map((part) => {
+        if (UUID_RE.test(part) || NUMERIC_OR_HEX_ID_RE.test(part)) return "[id]";
+        // A colon marks URL-shaped text, never a route name.
+        return part.includes(":") ? "[segment]" : part;
+    });
     return `/${normalized.join("/")}`;
 }
