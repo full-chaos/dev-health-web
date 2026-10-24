@@ -1,13 +1,14 @@
 "use client";
 
 import { isValidationStatus } from "@/lib/actionFailure";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
 import { appendCallbackUrl, safePostLoginRedirect } from "@/lib/post-login-redirect";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { trackOnboardingEvent } from "@/lib/onboarding/track";
 import { PasswordStrength } from "./PasswordStrength";
 
 type SignupFormProps = {
@@ -23,6 +24,10 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
     const [fullName, setFullName] = useState("");
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [completed, setCompleted] = useState(false);
+    // Refs, not state: a second submit can arrive before a re-render clears or sets the state.
+    const inFlight = useRef(false);
+    const completedRef = useRef(false);
 
     const normalizedPlan = plan?.toLowerCase();
     const isTeamTrialIntent = trialIntent && normalizedPlan === "team";
@@ -30,6 +35,10 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (inFlight.current || completedRef.current) {
+            return;
+        }
 
         if (password.length < 8) {
             toast.error("Password must be at least 8 characters");
@@ -41,6 +50,7 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
             return;
         }
 
+        inFlight.current = true;
         setLoading(true);
 
         try {
@@ -74,6 +84,9 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
                 return;
             }
 
+            completedRef.current = true;
+            setCompleted(true);
+            trackOnboardingEvent("signup_completed");
             router.push(
                 appendCallbackUrl(
                     isTeamTrialIntent
@@ -85,6 +98,7 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
         } catch {
             toast.error("An error occurred. Please try again.");
         } finally {
+            inFlight.current = false;
             setLoading(false);
         }
     };
@@ -171,7 +185,7 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
 
             <button
                 type="submit"
-                disabled={loading || !agreedToTerms}
+                disabled={loading || completed || !agreedToTerms}
                 className="w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
             >
                 {loading ? "Creating account..." : "Create account"}
