@@ -124,6 +124,10 @@ Emitted when a client-side error is caught by an error boundary, a window error 
 - **Page hide.** When the page is hidden or closed, the queue is sent at once. The newest events that fit a 56 KB budget are sent; older events stay queued and are sent by the timer if the page survives.
 - **Reader window.** The product telemetry pages in the platform admin area (`/superadmin/product-telemetry`) read a 30-day window by default that includes today.
 
+## Closed Value Sets
+
+Every payload field has a closed value set in `src/lib/telemetry/schema.ts`. A key that the event's schema does not name is dropped. A bad optional (nullable) field is dropped. A bad required field drops the whole event. A route outside the known routes is sent as `/[unmatched]`, with no path data. The blocklist below stays as a second layer.
+
 ## Forbidden Fields (Sanitizer Blocklist)
 
 The following fields are strictly forbidden and are automatically stripped from all telemetry payloads before emission:

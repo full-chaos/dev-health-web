@@ -30,6 +30,7 @@ import { canTrackProductTelemetry } from "@/lib/telemetry/config";
 import { telemetryEnvelopeIdentity } from "@/lib/telemetry";
 import { hashIdentifier } from "@/lib/telemetry/hash";
 import { sanitizeTelemetryPayload } from "@/lib/telemetry/sanitize";
+import { closeTelemetryEvent } from "@/lib/telemetry/schema";
 
 import { isOnboardingEvent, type OnboardingEventName, type OnboardingEventPayload } from "./events";
 
@@ -133,27 +134,33 @@ export function trackOnboardingEvent(
     const send = (orgIdHash: string | null): void => {
         // The intake accepts a fixed set of event names: every funnel event goes out as
         // feature_viewed, with the funnel name as the surface.
+        const funnelEvent = closeTelemetryEvent({
+            name: "feature_viewed" as const,
+            schemaVersion: SCHEMA_VERSION,
+            eventId: identity.eventId,
+            ts: new Date(now).toISOString(),
+            sessionId: identity.sessionId,
+            anonymousUserId: identity.anonymousUserId,
+            orgIdHash,
+            routePattern,
+            payload: {
+                ...extras,
+                feature: ONBOARDING_FEATURE,
+                surface: name,
+                routePattern,
+            },
+        });
+        if (!funnelEvent) {
+            logger.debug(
+                { event: name },
+                "Onboarding event dropped: an envelope value is outside its closed set",
+            );
+            return;
+        }
         const body = JSON.stringify({
             source: "dev-health-web",
-            orgIdHash,
-            events: [
-                {
-                    name: "feature_viewed",
-                    schemaVersion: SCHEMA_VERSION,
-                    eventId: identity.eventId,
-                    ts: new Date(now).toISOString(),
-                    sessionId: identity.sessionId,
-                    anonymousUserId: identity.anonymousUserId,
-                    orgIdHash,
-                    routePattern,
-                    payload: {
-                        ...extras,
-                        feature: ONBOARDING_FEATURE,
-                        surface: name,
-                        routePattern,
-                    },
-                },
-            ],
+            orgIdHash: funnelEvent.orgIdHash,
+            events: [funnelEvent],
         });
         try {
             if (apiClient.sendBeacon(TELEMETRY_ENDPOINT, body)) {

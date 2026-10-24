@@ -13,6 +13,7 @@ export type FilterBarView =
     | "landscape"
     | "testops"
     | "security"
+    | "security-repo"
     | "feature-flags"
     | "capacity-planning"
     | "complexity"

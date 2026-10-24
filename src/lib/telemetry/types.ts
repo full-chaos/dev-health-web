@@ -21,6 +21,8 @@ export type TelemetryPayloadByName = {
         feature: string;
         surface: string;
         routePattern: string;
+        /** Onboarding funnel step; absent for a route view. */
+        step?: number;
     };
     filter_changed: {
         view: string;
