@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { boundTelemetryString } from "../sanitize";
 import { routePatternForPathname } from "../routePatterns";
 
 describe("routePatternForPathname", () => {
@@ -61,5 +62,64 @@ describe("routePatternForPathname bounded labels", () => {
     it("maps numeric and long hex segments to [id] on an unlisted route", () => {
         expect(routePatternForPathname("/thing/123456")).toBe("/thing/[id]");
         expect(routePatternForPathname("/thing/0123456789abcdef0123")).toBe("/thing/[id]");
+    });
+});
+
+describe("routePatternForPathname masks a segment that holds a colon", () => {
+    it.each([
+        [
+            "a URL pasted into the path",
+            "/https://victim.example/path",
+            "/[segment]/victim.example/path",
+        ],
+        ["a URL with one slash", "/https:/victim.example/path", "/[segment]/victim.example/path"],
+        ["a script scheme", "/javascript:void", "/[segment]"],
+        ["a script scheme in mixed case", "/JaVaScRiPt:void", "/[segment]"],
+        ["a file scheme", "/x/file:/etc/passwd", "/x/[segment]/etc/passwd"],
+        ["a host and port", "/a/host:8080/b", "/a/[segment]/b"],
+        ["a colon in the last segment", "/a/b:c", "/a/[segment]"],
+        ["a colon in the first segment", "/a:b/c", "/[segment]/c"],
+    ])("%s", (_label, pathname, expected) => {
+        const pattern = routePatternForPathname(pathname);
+        expect(pattern).toBe(expected);
+        expect(pattern).not.toContain(":");
+        expect(boundTelemetryString(pattern)).toBe(pattern);
+    });
+
+    it("leaves a segment without a colon, a known template and an id unchanged", () => {
+        expect(routePatternForPathname("/investment/overview")).toBe("/investment/overview");
+        expect(routePatternForPathname("/people/abc-123")).toBe("/people/[person_id]");
+        expect(routePatternForPathname("/a/12345/b")).toBe("/a/[id]/b");
+    });
+
+    it("does not decode an encoded colon: the pattern keeps it and the value bound refuses it", () => {
+        const pattern = routePatternForPathname("/https%3A//victim.example/x");
+        expect(pattern).toBe("/https%3A/victim.example/x");
+        expect(boundTelemetryString(pattern)).toBeNull();
+    });
+
+    it("never returns a colon or a double slash for any input in a small fuzz set", () => {
+        const pieces = [
+            "",
+            "a",
+            "https:",
+            "x:y",
+            ":",
+            "//",
+            "/",
+            "[id]",
+            "1234",
+            "javascript:",
+            "%3A",
+        ];
+        for (const a of pieces) {
+            for (const b of pieces) {
+                for (const c of pieces) {
+                    const pattern = routePatternForPathname(`/${a}/${b}/${c}`);
+                    expect(pattern).not.toContain(":");
+                    expect(pattern).not.toContain("//");
+                }
+            }
+        }
     });
 });

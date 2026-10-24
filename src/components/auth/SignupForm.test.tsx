@@ -1,10 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent } from "@testing-library/react";
 import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
 
 const mockPush = vi.fn();
+const trackOnboardingEvent = vi.fn();
+const order: string[] = [];
 
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: mockPush }),
+}));
+
+vi.mock("@/lib/onboarding/track", () => ({
+    trackOnboardingEvent: (...args: unknown[]) => {
+        order.push("track");
+        trackOnboardingEvent(...args);
+    },
 }));
 
 vi.mock("@/lib/origin", () => ({
@@ -45,6 +55,8 @@ describe("SignupForm", () => {
     afterEach(() => {
         vi.restoreAllMocks();
         mockPush.mockReset();
+        trackOnboardingEvent.mockReset();
+        order.length = 0;
     });
 
     it("renders all form fields", () => {
@@ -352,6 +364,101 @@ describe("SignupForm", () => {
             expect(
                 screen.getByText(/Password must be at least 12 characters long/),
             ).toBeInTheDocument();
+        });
+    });
+
+    describe("signup_completed funnel event", () => {
+        const respond = (status: number, body: unknown = {}) =>
+            vi.spyOn(global, "fetch").mockResolvedValue(
+                new Response(JSON.stringify(body), {
+                    status,
+                    headers: { "Content-Type": "application/json" },
+                }),
+            );
+
+        it("is sent once, with no payload, before the redirect, when registration succeeds", async () => {
+            respond(200);
+            mockPush.mockImplementation(() => order.push("push"));
+            renderWithToaster(<SignupForm />);
+            await fillAndSubmit(userEvent.setup());
+
+            await waitFor(() => expect(mockPush).toHaveBeenCalled());
+            expect(trackOnboardingEvent).toHaveBeenCalledTimes(1);
+            expect(trackOnboardingEvent).toHaveBeenCalledWith("signup_completed");
+            expect(order).toEqual(["track", "push"]);
+        });
+
+        it("is sent once when the form is submitted twice before and after the first success", async () => {
+            let release: (value: Response) => void = () => undefined;
+            const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(
+                () =>
+                    new Promise<Response>((resolve) => {
+                        release = resolve;
+                    }),
+            );
+            renderWithToaster(<SignupForm />);
+            const user = userEvent.setup();
+            await user.type(screen.getByLabelText("Email"), "test@example.com");
+            await user.type(screen.getByLabelText("Password"), "password12345");
+            await user.click(screen.getByRole("checkbox"));
+            const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+            if (!form) throw new Error("form not found");
+
+            fireEvent.submit(form);
+            fireEvent.submit(form);
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+            release(
+                new Response("{}", {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                }),
+            );
+            await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+            fireEvent.submit(form);
+            await waitFor(() => expect(screen.getByRole("button")).toBeDisabled());
+
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
+            expect(trackOnboardingEvent).toHaveBeenCalledTimes(1);
+            expect(mockPush).toHaveBeenCalledTimes(1);
+        });
+
+        it.each([
+            ["a 429", 429, {}],
+            ["a validation failure", 422, { detail: "bad" }],
+            ["a server error", 500, {}],
+        ])("is not sent after %s", async (_label, status, body) => {
+            respond(status, body);
+            renderWithToaster(<SignupForm />);
+            await fillAndSubmit(userEvent.setup());
+
+            await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+            await waitFor(() => expect(screen.queryByText("Creating account...")).toBeNull());
+            expect(trackOnboardingEvent).not.toHaveBeenCalled();
+            expect(mockPush).not.toHaveBeenCalled();
+        });
+
+        it("is not sent after a network failure", async () => {
+            vi.spyOn(global, "fetch").mockRejectedValue(new Error("down"));
+            renderWithToaster(<SignupForm />);
+            await fillAndSubmit(userEvent.setup());
+
+            await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+            expect(trackOnboardingEvent).not.toHaveBeenCalled();
+        });
+
+        it("is not sent when the password is too short", async () => {
+            const fetchSpy = vi.spyOn(global, "fetch");
+            renderWithToaster(<SignupForm />);
+            await fillAndSubmit(userEvent.setup(), { password: "short" });
+
+            await waitFor(() =>
+                expect(
+                    screen.getByText("Password must be at least 8 characters"),
+                ).toBeInTheDocument(),
+            );
+            expect(fetchSpy).not.toHaveBeenCalled();
+            expect(trackOnboardingEvent).not.toHaveBeenCalled();
         });
     });
 });

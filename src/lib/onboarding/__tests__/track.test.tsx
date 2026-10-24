@@ -10,6 +10,7 @@ vi.mock("@/lib/apiClient", () => ({
     },
 }));
 
+import { resetTelemetryForTests } from "@/lib/telemetry";
 import { fallbackHash } from "@/lib/telemetry/hash";
 
 import {
@@ -26,6 +27,7 @@ describe("trackOnboardingEvent", () => {
         request.mockReset().mockResolvedValue(new Response("{}"));
         delete process.env[TELEMETRY_FLAG];
         resetOnboardingOnceTracking();
+        resetTelemetryForTests();
     });
 
     afterEach(() => {
@@ -47,19 +49,26 @@ describe("trackOnboardingEvent", () => {
         // (matching the main telemetry pipeline) and stripped from the payload.
         expect(parsed.orgIdHash).toBe(fallbackHash("org-123"));
         expect(parsed.orgIdHash).not.toBe("org-123");
-        expect(parsed.events[0]?.name).toBe("workspace_created");
+        expect(parsed.events[0]?.name).toBe("feature_viewed");
         expect(parsed.events[0]?.payload.orgId).toBeUndefined();
         expect(request).not.toHaveBeenCalled();
     });
 
-    it("sends nothing for an out-of-bounds value and drops the event", () => {
+    it("sends the event without a step value that is out of bounds", () => {
         process.env[TELEMETRY_FLAG] = "true";
         trackOnboardingEvent("workspace_created", { step: "ada@example.com" });
 
-        expect(sendBeacon).not.toHaveBeenCalled();
-        expect(request).not.toHaveBeenCalled();
-        trackOnboardingEvent("workspace_created", { step: "name_org" });
         expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const body = sendBeacon.mock.calls[0]?.[1] as string;
+        expect(body).not.toContain("ada@example.com");
+        expect("step" in JSON.parse(body).events[0].payload).toBe(false);
+        expect(request).not.toHaveBeenCalled();
+    });
+
+    it("keeps a small non-negative integer step", () => {
+        trackOnboardingEvent("workspace_created", { step: 3 });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(sendBeacon.mock.calls[0]?.[1] as string).events[0].payload.step).toBe(3);
     });
 
     it("falls back to a keep-alive POST when sendBeacon is unavailable", () => {
@@ -116,5 +125,124 @@ describe("trackOnboardingEvent", () => {
         resetOnboardingOnceTracking();
         trackOnboardingEventOnce("workspace_setup_started");
         expect(sendBeacon).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("trackOnboardingEvent wire shape", () => {
+    beforeEach(() => {
+        sendBeacon.mockReset().mockReturnValue(true);
+        request.mockReset().mockResolvedValue(new Response("{}"));
+        delete process.env[TELEMETRY_FLAG];
+        resetOnboardingOnceTracking();
+        resetTelemetryForTests();
+    });
+
+    type Posted = {
+        events: {
+            name: string;
+            eventId: string;
+            sessionId: string;
+            anonymousUserId: string;
+            routePattern: string | null;
+            payload: Record<string, unknown>;
+        }[];
+    };
+    const posted = (index: number): Posted =>
+        JSON.parse((sendBeacon.mock.calls[index] as [string, string])[1]) as Posted;
+
+    it("sends the funnel event as feature_viewed with the funnel name as the surface", () => {
+        trackOnboardingEvent("workspace_created", { orgId: "org-123", step: 2 });
+        const event = posted(0).events[0];
+        expect(event?.name).toBe("feature_viewed");
+        expect(event?.payload.feature).toBe("onboarding_funnel");
+        expect(event?.payload.surface).toBe("workspace_created");
+        expect(typeof event?.payload.routePattern).toBe("string");
+        expect(event?.payload.step).toBe(2);
+        expect(event?.payload.orgId).toBeUndefined();
+    });
+
+    it("carries a fresh eventId per event and one session and anonymous id across events", () => {
+        trackOnboardingEvent("workspace_created", {});
+        trackOnboardingEvent("first_sync_started", {});
+        const [a, b] = [posted(0).events[0], posted(1).events[0]];
+        expect(a?.eventId).toBeTruthy();
+        expect(a?.eventId).not.toBe(b?.eventId);
+        expect(a?.sessionId).toBeTruthy();
+        expect(a?.sessionId).toBe(b?.sessionId);
+        expect(a?.anonymousUserId).toBeTruthy();
+        expect(a?.anonymousUserId).toBe(b?.anonymousUserId);
+    });
+
+    it("treats an undefined payload value as absent instead of dropping the event", () => {
+        trackOnboardingEvent("integration_skipped", { step: undefined, reason: undefined });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const event = posted(0).events[0];
+        expect("step" in (event?.payload ?? {})).toBe(false);
+        expect("reason" in (event?.payload ?? {})).toBe(false);
+    });
+
+    it.each([
+        ["an e-mail", "ada@example.com"],
+        ["a UUID", "123e4567-e89b-12d3-a456-426614174000"],
+        ["an id-like value", "usr_8f2a91c3b7d4"],
+        ["a plain word", "intro"],
+        ["a negative number", -1],
+        ["a large number", 100],
+        ["a fraction", 1.5],
+        ["a numeric id", 4815162342],
+        ["a boolean", true],
+        ["null", null],
+    ])("drops a step value that is %s and still sends the event", (_label, value) => {
+        trackOnboardingEvent("integration_skipped", { step: value as never, other: undefined });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const body = sendBeacon.mock.calls[0]?.[1] as string;
+        expect("step" in JSON.parse(body).events[0].payload).toBe(false);
+        if (typeof value === "string") expect(body).not.toContain(value);
+    });
+
+    it("drops every payload key that is not on the closed list, whatever its spelling", () => {
+        trackOnboardingEvent("workspace_created", {
+            org_id: "org-123",
+            user_id: "user-456",
+            OrgID: "org-789",
+            ownerRef: "o-1",
+            anything: "x",
+            step: 2,
+        });
+        const event = posted(0).events[0];
+        expect(Object.keys(event?.payload ?? {}).sort()).toEqual([
+            "feature",
+            "routePattern",
+            "step",
+            "surface",
+        ]);
+        expect(sendBeacon.mock.calls[0]?.[1]).not.toMatch(/org-123|user-456|org-789|o-1/);
+    });
+
+    it.each([
+        ["org_id", "org-111"],
+        ["user_id", "user-222"],
+        ["orgId", "org-333"],
+        ["userId", "user-444"],
+        ["e-mail", "mail-555"],
+        ["ada@example.com", "mail-666"],
+        ["contact_email", "mail-777"],
+        ["tenant", "ten-888"],
+        ["email", "ada.lovelace@example.com"],
+        ["user_email", "grace.hopper@example.com"],
+    ])("never sends the extra key %s", (key, value) => {
+        trackOnboardingEvent("workspace_created", { [key]: value, step: 2 });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        const body = sendBeacon.mock.calls[0]?.[1] as string;
+        expect(body).not.toContain(value);
+        expect(Object.keys(posted(0).events[0]?.payload ?? {})).not.toContain(key);
+    });
+
+    it("sends only the listed extra key for any key a caller passes", () => {
+        const extras: Record<string, string> = {};
+        for (let i = 0; i < 40; i += 1) extras[`key_${i}`] = `val-${i}`;
+        trackOnboardingEvent("first_sync_started", { ...extras, step: 2 });
+        const keys = Object.keys(posted(0).events[0]?.payload ?? {}).sort();
+        expect(keys).toEqual(["feature", "routePattern", "step", "surface"]);
     });
 });

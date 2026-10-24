@@ -57,6 +57,16 @@ describe("sanitizeTelemetryPayload", () => {
         ["an e-mail shape", "ada@example.com"],
         ["text with a space", "Ada Lovelace"],
         ["a URL", "https://example.com/a"],
+        ["a scheme with one slash", "https:/host/p"],
+        ["a file scheme", "file:/etc/passwd"],
+        ["a script scheme", "javascript:void"],
+        ["a script scheme in mixed case", "JaVaScRiPt:void"],
+        ["a data scheme", "data:text"],
+        ["a host and port", "host:8080/path"],
+        ["a colon inside a path", "/https:/victim.example/path"],
+        ["a lone colon pair", "a:b"],
+        ["a trailing colon", "https:"],
+        ["an encoded colon", "https%3A/host"],
         ["a query string", "/people?q=ada"],
         ["a fragment", "/people#ada"],
         ["a percent escape", "/people/ada%40example.com"],
@@ -95,7 +105,7 @@ describe("sanitizeTelemetryPayload", () => {
         "1234567890",
         "a".repeat(23),
         "a-".repeat(64),
-        "feature.sub:name-1",
+        "feature.sub-name-1",
     ])("accepts %s", (value) => {
         expect(accepted({ view: value })).toEqual({ view: value });
     });
@@ -114,5 +124,29 @@ describe("boundTelemetryString", () => {
     it("returns the value or null", () => {
         expect(boundTelemetryString("/metrics")).toBe("/metrics");
         expect(boundTelemetryString("/people/ada@example.com")).toBeNull();
+    });
+});
+
+describe("the colon rule", () => {
+    it("refuses a colon in any position and in any string field", () => {
+        for (const value of [":", "a:", ":a", "a:b:c", "/a/b:c"]) {
+            expect(sanitizeTelemetryPayload({ view: value })).toEqual({ ok: false, key: "view" });
+            expect(boundTelemetryString(value)).toBeNull();
+        }
+    });
+
+    it("keeps the double slash refusal as a second guard", () => {
+        expect(boundTelemetryString("a//b")).toBeNull();
+        expect(boundTelemetryString("/a//b")).toBeNull();
+    });
+
+    it("does not decode an encoded colon: the percent sign is refused by its own rule", () => {
+        expect(boundTelemetryString("a%3Ab")).toBeNull();
+        expect(boundTelemetryString("a%3ab")).toBeNull();
+    });
+
+    it("still accepts a plain name and a route pattern", () => {
+        expect(boundTelemetryString("quadrant_panel")).toBe("quadrant_panel");
+        expect(boundTelemetryString("/people/[person_id]")).toBe("/people/[person_id]");
     });
 });

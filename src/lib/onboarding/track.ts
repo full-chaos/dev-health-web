@@ -26,6 +26,7 @@ import { apiClient } from "@/lib/apiClient";
 import { getWindow } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { canTrackProductTelemetry } from "@/lib/telemetry/config";
+import { telemetryEnvelopeIdentity } from "@/lib/telemetry";
 import { fallbackHash } from "@/lib/telemetry/hash";
 import { sanitizeTelemetryPayload } from "@/lib/telemetry/sanitize";
 
@@ -33,6 +34,19 @@ import { isOnboardingEvent, type OnboardingEventName, type OnboardingEventPayloa
 
 const TELEMETRY_ENDPOINT = "/api/v1/product-telemetry/events";
 const SCHEMA_VERSION = "2026-05-telemetry-v1";
+const ONBOARDING_FEATURE = "onboarding_funnel";
+/** Closed set of extra payload keys a funnel event may carry, each with a closed value rule; anything else is dropped, so no identifier leaves under any key or value. */
+const STEP_MAX = 99;
+function isAllowedExtra(key: string, value: unknown): boolean {
+    return (
+        key === "step" &&
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= STEP_MAX
+    );
+}
+const ONBOARDING_ROUTE_FALLBACK = "/onboarding";
 
 /**
  * One-shot dedupe set, keyed at module scope so it is stable across component
@@ -58,7 +72,10 @@ export function trackOnboardingEvent(
         return;
     }
 
-    const sanitized = sanitizeTelemetryPayload(payload);
+    const allowed = Object.fromEntries(
+        Object.entries(payload).filter(([key, value]) => isAllowedExtra(key, value)),
+    );
+    const sanitized = sanitizeTelemetryPayload(allowed);
     if (!sanitized.ok) {
         logger.debug(
             { event: name, key: sanitized.key },
@@ -69,15 +86,31 @@ export function trackOnboardingEvent(
 
     const orgIdHash = payload.orgId ? fallbackHash(payload.orgId) : null;
 
+    const now = Date.now();
+    const identity = telemetryEnvelopeIdentity(now);
+    const routePattern = identity.routePattern ?? ONBOARDING_ROUTE_FALLBACK;
+
+    // The intake accepts a fixed set of event names: every funnel event goes out as
+    // feature_viewed, with the funnel name as the surface.
     const body = JSON.stringify({
         source: "dev-health-web",
         orgIdHash,
         events: [
             {
-                name,
+                name: "feature_viewed",
                 schemaVersion: SCHEMA_VERSION,
-                ts: new Date().toISOString(),
-                payload: sanitized.payload,
+                eventId: identity.eventId,
+                ts: new Date(now).toISOString(),
+                sessionId: identity.sessionId,
+                anonymousUserId: identity.anonymousUserId,
+                orgIdHash,
+                routePattern,
+                payload: {
+                    ...sanitized.payload,
+                    feature: ONBOARDING_FEATURE,
+                    surface: name,
+                    routePattern,
+                },
             },
         ],
     });
