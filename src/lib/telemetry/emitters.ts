@@ -7,6 +7,7 @@
 import { trackTelemetryEvent } from "@/lib/telemetry";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 import type { MetricFilter } from "@/lib/filters/types";
+import { ERROR_CLASSES } from "./schema";
 import type { TelemetryPayloadByName } from "./types";
 
 function safely(emit: () => void): void {
@@ -78,10 +79,10 @@ export function resetClientErrorBudgetForTests(): void {
     clientErrorsSent = 0;
 }
 
-/** A class name only: `TypeError`, `ChunkLoadError`. The message and stack can hold user data. */
+/** A class name from the closed list (`TypeError`, `ChunkLoadError`), else `Error`. The message and stack can hold user data. */
 export function errorClassOf(error: unknown): string {
     const name = error instanceof Error ? error.name : "";
-    return /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name) ? name : "Error";
+    return (ERROR_CLASSES as readonly string[]).includes(name) ? name : "Error";
 }
 
 /** `boundary`: an error boundary (`route`) or a window-level handler / global boundary (`global`). */

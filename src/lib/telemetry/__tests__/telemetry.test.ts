@@ -108,7 +108,7 @@ describe("product telemetry", () => {
         const unsafePayload = {
             chart: "quadrant",
             action: "overlay_toggled",
-            surface: "metrics",
+            surface: "quadrant_panel",
             scope: "team",
             message: "must be dropped",
         } as TelemetryPayloadByName["chart_interacted"];
@@ -126,7 +126,7 @@ describe("product telemetry", () => {
             payload: {
                 chart: "quadrant",
                 action: "overlay_toggled",
-                surface: "metrics",
+                surface: "quadrant_panel",
                 scope: "team",
             },
         });
@@ -150,14 +150,14 @@ describe("product telemetry", () => {
             isCustomDateRange: null,
         });
         trackTelemetryEvent("filter_changed", {
-            view: "work_graph",
+            view: "work",
             filterKey: "scope",
             valueCount: 1,
             isCustomDateRange: null,
         });
 
         await vi.waitFor(() => expect(sent).toHaveLength(1));
-        expect(sent[0]?.payload).toMatchObject({ view: "work_graph" });
+        expect(sent[0]?.payload).toMatchObject({ view: "work" });
     });
 
     it("sends nothing for an event whose required field is undefined", async () => {
@@ -188,7 +188,7 @@ describe("product telemetry", () => {
         expect(sent[0]?.name).toBe("session_started");
     });
 
-    it("sets the envelope route pattern to null when it is out of bounds", async () => {
+    it("sends the fixed unmatched value as the envelope route when the route is not a known one", async () => {
         const sent: TelemetryEvent[] = [];
         configureTelemetry({
             adapters: [
@@ -206,7 +206,8 @@ describe("product telemetry", () => {
         setTelemetryContext({ routePattern: "/people/ada@example.com" });
         trackTelemetryEvent("session_started", { entryRoutePattern: "/" });
         await vi.waitFor(() => expect(sent).toHaveLength(1));
-        expect(sent[0]?.routePattern).toBeNull();
+        expect(sent[0]?.routePattern).toBe("/[unmatched]");
+        expect(JSON.stringify(sent[0])).not.toContain("ada@example.com");
     });
 
     it("uses crypto-backed fallback ids when randomUUID is unavailable", async () => {
@@ -238,7 +239,7 @@ describe("product telemetry", () => {
 
         trackTelemetryEvent("feature_viewed", {
             feature: "metrics",
-            surface: "metrics",
+            surface: "route",
             routePattern: "/metrics",
         });
 
@@ -257,7 +258,7 @@ describe("product telemetry", () => {
         envMock.storage.setItem(TELEMETRY_OPT_OUT_KEY, "true");
         trackTelemetryEvent("feature_viewed", {
             feature: "metrics",
-            surface: "metrics",
+            surface: "route",
             routePattern: "/metrics",
         });
         await new Promise((resolve) => setTimeout(resolve, 0));
@@ -295,5 +296,91 @@ describe("telemetryEnvelopeIdentity", () => {
         expect(a.sessionId).toBe(b.sessionId);
         expect(a.anonymousUserId).toBe(b.anonymousUserId);
         expect(a.sessionId).toBeTruthy();
+    });
+
+    describe("closed value sets", () => {
+        const collect = () => {
+            const sent: TelemetryEvent[] = [];
+            configureTelemetry({
+                adapters: [
+                    {
+                        name: "test",
+                        enabled: () => true,
+                        send: async (events) => {
+                            sent.push(...events);
+                        },
+                    },
+                ],
+                maxBatchSize: 1,
+                flushIntervalMs: 60_000,
+            });
+            return sent;
+        };
+
+        it('drops feature_viewed with surface "org-123" and sends the next valid event', async () => {
+            const sent = collect();
+            trackTelemetryEvent("feature_viewed", {
+                feature: "metrics",
+                surface: "org-123",
+                routePattern: "/metrics",
+            });
+            trackTelemetryEvent("session_started", { entryRoutePattern: "/metrics" });
+            await vi.waitFor(() => expect(sent).toHaveLength(1));
+            expect(sent[0]?.name).toBe("session_started");
+        });
+
+        it("drops an extra ownerRef key and every non-schema key before the event is queued", async () => {
+            const sent = collect();
+            trackTelemetryEvent("session_started", {
+                entryRoutePattern: "/metrics",
+                ownerRef: "o-1",
+                org_id: "org-123",
+            } as TelemetryPayloadByName["session_started"]);
+            await vi.waitFor(() => expect(sent).toHaveLength(1));
+            expect(sent[0]?.payload).toEqual({ entryRoutePattern: "/metrics" });
+            expect(JSON.stringify(sent[0])).not.toMatch(/ownerRef|o-1|org-123/);
+        });
+
+        it("drops usr_8f2a91c3b7d4 as a chart scope and keeps the event", async () => {
+            const sent = collect();
+            trackTelemetryEvent("chart_interacted", {
+                chart: "quadrant",
+                action: "zoom",
+                surface: "quadrant_panel",
+                scope: "usr_8f2a91c3b7d4",
+            });
+            await vi.waitFor(() => expect(sent).toHaveLength(1));
+            expect(JSON.stringify(sent[0])).not.toContain("usr_8f2a91c3b7d4");
+        });
+
+        it("sends an id-shaped page route as the unmatched value", async () => {
+            const sent = collect();
+            trackTelemetryEvent("page_viewed", {
+                routePattern: "/people/usr_8f2a91c3b7d4",
+                page: "/people/usr_8f2a91c3b7d4",
+                referrerRoutePattern: null,
+            });
+            await vi.waitFor(() => expect(sent).toHaveLength(1));
+            expect(sent[0]?.payload).toMatchObject({
+                routePattern: "/[unmatched]",
+                page: "/[unmatched]",
+            });
+            expect(JSON.stringify(sent[0])).not.toContain("usr_8f2a91c3b7d4");
+        });
+
+        it("admits the onboarding funnel feature_viewed shape", async () => {
+            const sent = collect();
+            trackTelemetryEvent("feature_viewed", {
+                feature: "onboarding_funnel",
+                surface: "signup_completed",
+                routePattern: "/auth/signup",
+            });
+            await vi.waitFor(() => expect(sent).toHaveLength(1));
+            expect(sent[0]?.payload).toEqual({
+                feature: "onboarding_funnel",
+                surface: "signup_completed",
+                routePattern: "/auth/signup",
+            });
+        });
     });
 });

@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { ONBOARDING_EVENTS } from "@/lib/onboarding/events";
+
 import { ROUTE_TEMPLATES } from "../routePatterns";
 import {
     applyTelemetrySchema,
@@ -120,6 +122,41 @@ describe("applyTelemetrySchema", () => {
                 errorClass: "CustomerAcmeError",
             }),
         ).toEqual({ ok: false, key: "errorClass" });
+    });
+});
+
+describe("onboarding funnel shape", () => {
+    it.each(ONBOARDING_EVENTS)(
+        "admits feature_viewed onboarding_funnel / %s with no other key",
+        (surface) => {
+            const payload = accepted("feature_viewed", {
+                feature: "onboarding_funnel",
+                surface,
+                routePattern: "/auth/onboard",
+                step: 2,
+            });
+            expect(payload).toEqual({
+                feature: "onboarding_funnel",
+                surface,
+                routePattern: "/auth/onboard",
+            });
+        },
+    );
+
+    it("rejects an onboarding surface under a chart or a non-funnel feature", () => {
+        expect(
+            applyTelemetrySchema("chart_interacted", {
+                ...VALID.chart_interacted,
+                surface: "signup_completed",
+            }),
+        ).toEqual({ ok: false, key: "surface" });
+        expect(
+            applyTelemetrySchema("feature_viewed", {
+                feature: "onboarding",
+                surface: "route",
+                routePattern: "/metrics",
+            }),
+        ).toEqual({ ok: false, key: "feature" });
     });
 });
 

@@ -10,7 +10,8 @@ import { TELEMETRY_INTERACTION_EVENT } from "./telemetry/interaction";
 import { canTrackProductTelemetry } from "./telemetry/config";
 import { createTelemetryQueue, type TelemetryQueue } from "./telemetry/queue";
 import { routePatternForPathname } from "./telemetry/routePatterns";
-import { boundTelemetryString, sanitizeTelemetryPayload } from "./telemetry/sanitize";
+import { sanitizeTelemetryPayload } from "./telemetry/sanitize";
+import { applyTelemetrySchema, closedRoutePattern } from "./telemetry/schema";
 import type { TelemetryEvent, TelemetryEventName, TelemetryPayloadByName } from "./telemetry/types";
 
 const DEFAULT_SESSION_ID_KEY = "devhealth-product-telemetry-session-id";
@@ -196,7 +197,7 @@ export function telemetryEnvelopeIdentity(now: number): {
         sessionId: telemetryContext.sessionId ?? activeSessionId(now),
         anonymousUserId:
             telemetryContext.anonymousUserId ?? storedId(DEFAULT_ANONYMOUS_USER_ID_KEY),
-        routePattern: pattern === null ? null : boundTelemetryString(pattern),
+        routePattern: pattern === null ? null : closedRoutePattern(pattern),
     };
 }
 
@@ -214,7 +215,15 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         win.dispatchEvent(new Event(TELEMETRY_INTERACTION_EVENT));
     }
 
-    const sanitized = sanitizeTelemetryPayload(payload);
+    const closed = applyTelemetrySchema(name, payload);
+    if (!closed.ok) {
+        logger.debug(
+            { event: name, key: closed.key },
+            "Telemetry event dropped: a payload value is outside its closed set",
+        );
+        return;
+    }
+    const sanitized = sanitizeTelemetryPayload(closed.payload);
     if (!sanitized.ok) {
         logger.debug(
             { event: name, key: sanitized.key },
@@ -233,7 +242,7 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         anonymousUserId:
             telemetryContext.anonymousUserId ?? storedId(DEFAULT_ANONYMOUS_USER_ID_KEY),
         orgIdHash: telemetryContext.orgIdHash ?? null,
-        routePattern: boundTelemetryString(
+        routePattern: closedRoutePattern(
             telemetryContext.routePattern ?? routePatternForPathname(win.location.pathname),
         ),
         payload: sanitized.payload as TelemetryPayloadByName[Name],

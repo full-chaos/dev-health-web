@@ -1,3 +1,5 @@
+import { ONBOARDING_EVENTS } from "@/lib/onboarding/events";
+
 import { ROUTE_TEMPLATES } from "./routePatterns";
 import type { TelemetryEventName, TelemetryPayloadByName, TelemetryPrimitive } from "./types";
 
@@ -197,7 +199,9 @@ export const CHART_ACTIONS = [
 export const SCOPES = ["org", "team", "repo", "person", "developer", "service"] as const;
 export const NAVIGATION_ACTIONS = ["group_expanded", "group_collapsed", "item_selected"] as const;
 export const BOUNDARIES = ["route", "global"] as const;
-export const SURFACES = ["route", "quadrant_panel"] as const;
+export const FEATURE_SURFACES = ["route", ...ONBOARDING_EVENTS] as const;
+export const SURFACES = ["quadrant_panel"] as const;
+export const ONBOARDING_FEATURE = "onboarding_funnel";
 export const ERROR_CLASSES = [
     "Error",
     "TypeError",
@@ -240,7 +244,9 @@ const nullableRoute = (): Spec => ({
 });
 
 const feature = (value: unknown) =>
-    value === "home" || (typeof value === "string" && STATIC_ROUTE_SEGMENTS.has(value));
+    value === "home" ||
+    value === ONBOARDING_FEATURE ||
+    (typeof value === "string" && STATIC_ROUTE_SEGMENTS.has(value));
 
 type Schema = {
     [Name in TelemetryEventName]: { [Key in keyof TelemetryPayloadByName[Name]]-?: Spec };
@@ -254,7 +260,7 @@ export const TELEMETRY_SCHEMA = {
     },
     feature_viewed: {
         feature: required(feature),
-        surface: required(oneOf(SURFACES)),
+        surface: required(oneOf(FEATURE_SURFACES)),
         routePattern: route(),
     },
     filter_changed: {
@@ -291,6 +297,11 @@ export const TELEMETRY_SCHEMA = {
         routePattern: nullableRoute(),
     },
 } satisfies Schema;
+
+/** An envelope route: the pattern when known, else the fixed unmatched value. */
+export function closedRoutePattern(pattern: string): string {
+    return isKnownRoutePattern(pattern) ? pattern : UNMATCHED_ROUTE;
+}
 
 export type SchemaResult =
     { ok: true; payload: Record<string, TelemetryPrimitive> } | { ok: false; key: string };

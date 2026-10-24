@@ -236,7 +236,7 @@
         "sentry": 0
     },
     "src/lib/telemetry.ts": {
-        "log": 1,
+        "log": 2,
         "sentry": 0
     },
     "src/lib/telemetry/adapters.ts": {

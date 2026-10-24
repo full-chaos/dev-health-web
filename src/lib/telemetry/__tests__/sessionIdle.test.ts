@@ -52,7 +52,7 @@ describe("product telemetry session id idle timeout", () => {
     const track = async () => {
         trackTelemetryEvent("feature_viewed", {
             feature: "metrics",
-            surface: "metrics",
+            surface: "route",
             routePattern: "/metrics",
         });
         await flushTelemetryEvents();
