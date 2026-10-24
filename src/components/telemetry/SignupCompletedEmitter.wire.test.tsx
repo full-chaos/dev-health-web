@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendBeacon = vi.fn();
@@ -22,10 +22,10 @@ describe("SignupCompletedEmitter on the wire", () => {
         delete process.env.NEXT_PUBLIC_TELEMETRY_ENABLED;
     });
 
-    it("posts one intake-shaped feature_viewed event for the new user and no identifier", () => {
+    it("posts one intake-shaped feature_viewed event for the new user and no identifier", async () => {
         render(<SignupCompletedEmitter isNewUser userId="user-123" />);
 
-        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1), { timeout: 5000 });
         const body = sendBeacon.mock.calls[0]?.[1] as string;
         expect(body).not.toContain("user-123");
         const parsed = JSON.parse(body) as {
@@ -45,9 +45,10 @@ describe("SignupCompletedEmitter on the wire", () => {
         expect(event?.anonymousUserId).toBeTruthy();
     });
 
-    it("posts nothing when telemetry is disabled", () => {
+    it("posts nothing when telemetry is disabled", async () => {
         process.env.NEXT_PUBLIC_TELEMETRY_ENABLED = "false";
         render(<SignupCompletedEmitter isNewUser userId="user-123" />);
+        await new Promise((resolve) => setTimeout(resolve, 50));
         expect(sendBeacon).not.toHaveBeenCalled();
     });
 });

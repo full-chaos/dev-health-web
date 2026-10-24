@@ -4,38 +4,38 @@ import { useEffect } from "react";
 
 import { getLocalStorage } from "@/lib/env";
 import { trackOnboardingEvent } from "@/lib/onboarding/track";
+import { hashIdentifier } from "@/lib/telemetry/hash";
 
 const STORAGE_KEY_PREFIX = "devhealth-signup-completed:";
-// Fallback when storage is missing or throws: still once per page life.
-const emittedThisPage = new Set<string>();
+// Domain separation: the digest cannot be joined to orgIdHash or the anonymous id.
+const HASH_DOMAIN = "devhealth:signup-completed:v1:";
+// Raw ids, in memory only and set before the async hash: a remount or StrictMode re-run
+// cannot start a second emission, and it is the fallback when storage throws.
+const handledThisPage = new Set<string>();
 
-function alreadyEmitted(userId: string): boolean {
-    if (emittedThisPage.has(userId)) return true;
-    try {
-        return getLocalStorage()?.getItem(STORAGE_KEY_PREFIX + userId) !== null;
-    } catch {
-        return false;
-    }
+/** Test seam: forget what this page life already handled. */
+export function resetSignupCompletedForTests(): void {
+    handledThisPage.clear();
 }
 
-function markEmitted(userId: string): void {
-    emittedThisPage.add(userId);
+async function emitOnce(userId: string): Promise<void> {
+    const key = STORAGE_KEY_PREFIX + (await hashIdentifier(HASH_DOMAIN + userId));
     try {
-        getLocalStorage()?.setItem(STORAGE_KEY_PREFIX + userId, "1");
+        const storage = getLocalStorage();
+        if (storage) {
+            if (storage.getItem(key) !== null) return;
+            storage.setItem(key, "1");
+        }
     } catch {
         // The in-memory set still holds for this page life.
     }
-}
-
-/** Test seam: forget what this page life already emitted. */
-export function resetSignupCompletedForTests(): void {
-    emittedThisPage.clear();
+    trackOnboardingEvent("signup_completed");
 }
 
 /**
  * Counts a social sign-up in the funnel: the sign-in that created the account carries
- * `isNewUser`, and the event goes out once per browser and user. The key holds the opaque
- * user id only.
+ * `isNewUser`, and the event goes out once per browser and user. Storage holds only a
+ * hash of the user id, never the id or an e-mail.
  */
 export function SignupCompletedEmitter({
     isNewUser,
@@ -45,9 +45,9 @@ export function SignupCompletedEmitter({
     readonly userId?: string | null;
 }) {
     useEffect(() => {
-        if (!isNewUser || !userId || alreadyEmitted(userId)) return;
-        markEmitted(userId);
-        trackOnboardingEvent("signup_completed");
+        if (!isNewUser || !userId || handledThisPage.has(userId)) return;
+        handledThisPage.add(userId);
+        emitOnce(userId).catch(() => undefined);
     }, [isNewUser, userId]);
     return null;
 }
