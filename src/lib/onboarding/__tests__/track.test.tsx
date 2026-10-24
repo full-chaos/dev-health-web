@@ -207,6 +207,8 @@ describe("trackOnboardingEvent wire shape", () => {
         ["ada@example.com", "mail-666"],
         ["contact_email", "mail-777"],
         ["tenant", "ten-888"],
+        ["email", "ada.lovelace@example.com"],
+        ["user_email", "grace.hopper@example.com"],
     ])("never sends the extra key %s", (key, value) => {
         trackOnboardingEvent("workspace_created", { [key]: value, step: "intro" });
         expect(sendBeacon).toHaveBeenCalledTimes(1);
