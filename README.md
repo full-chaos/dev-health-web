@@ -2,7 +2,7 @@
 
 Frontend for [dev-health-ops](https://github.com/full-chaos/dev-health-ops), the Dev Health backend (REST and GraphQL API). This app only shows data. The backend is the source of truth.
 
-A static demo build is published at <https://demo.fullchaos.studio>.
+A running dev-health-ops backend is required. The app cannot run on sample data without one. A static demo export (`DEMO_EXPORT=true`) is a build artifact published at <https://demo.fullchaos.studio>, not a development mode.
 
 ## Contents
 
@@ -163,8 +163,6 @@ Agent and contributor rules: [AGENTS.md](AGENTS.md).
 | Hosting the demo                       | [docs/hosting.md](docs/hosting.md)                                                                                                                             |
 | Telemetry                              | [docs/product-telemetry.md](docs/product-telemetry.md)                                                                                                         |
 | Security headers, rate limiting        | [docs/security-headers.md](docs/security-headers.md), [docs/rate-limiting.md](docs/rate-limiting.md)                                                           |
-
-<!-- TODO(owner): confirm whether the app can run with sample data and no backend outside the static demo export; the old README claimed it. -->
 
 ## License
 
