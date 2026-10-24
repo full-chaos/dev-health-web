@@ -50,6 +50,14 @@ vi.mock("@/lib/graphql/provider", () => ({
     GraphQLProvider: ({ children }: { readonly children: ReactNode }) => <>{children}</>,
 }));
 
+const signupEmitterSpy = vi.fn();
+vi.mock("@/components/telemetry/SignupCompletedEmitter", () => ({
+    SignupCompletedEmitter: (props: { isNewUser: boolean; userId?: string | null }) => {
+        signupEmitterSpy(props);
+        return null;
+    },
+}));
+
 vi.mock("@/components/telemetry/TelemetryProvider", () => ({
     TelemetryProvider: ({ children }: { readonly children: ReactNode }) => <>{children}</>,
 }));
@@ -85,6 +93,7 @@ describe("AppLayout entitlement wiring", () => {
     beforeEach(() => {
         adminTierProviderSpy.mockClear();
         shellSpy.mockClear();
+        signupEmitterSpy.mockClear();
         requireSessionMock.mockResolvedValue({
             user: { id: "user-1", org_id: "org-1", token: "secret-token" },
         });
@@ -110,6 +119,29 @@ describe("AppLayout entitlement wiring", () => {
             tier: "enterprise",
         });
     });
+
+    it.each([
+        [true, true],
+        [false, false],
+        [undefined, false],
+    ])(
+        "hands the session new-user flag (%s) to the sign-up emitter as %s",
+        async (flag, expected) => {
+            getOrgEntitlementsMock.mockResolvedValue({
+                data: { features: {}, is_valid: true, limits: {}, tier: "community" },
+            });
+            requireSessionMock.mockResolvedValue({
+                user: { id: "user-1", org_id: "org-1", is_new_user: flag },
+            });
+
+            render(await AppLayout({ children: <span>x</span> }));
+
+            expect(signupEmitterSpy).toHaveBeenCalledWith({
+                isNewUser: expected,
+                userId: "user-1",
+            });
+        },
+    );
 
     it("wraps every page in the shared app shell and gives it the theme toggle", async () => {
         getOrgEntitlementsMock.mockResolvedValue({
