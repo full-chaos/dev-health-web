@@ -1,6 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page, type Request, type Response } from "@playwright/test";
 
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
+
+const PROBE_ACTION_ID = "0".repeat(40);
+const STOP_DRAIN_TIMEOUT_MS = 10_000;
 
 const secretPattern =
     /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
@@ -14,13 +17,47 @@ test.beforeEach(async ({ request }) => {
     expect(response.ok()).toBe(true);
 });
 
-test("keeps ACR assertion material out of browser routes, network traffic, and client chunks", async ({
-    page,
-}) => {
+// Server actions are answered through page.route: the guard reads the FULL response body before the
+// page sees it. Chromium cancels the end of a server action's response stream once the action result is
+// decoded, and a cancelled response has no readable body, so reading it afterwards is not
+// possible; every other response is still read with response.text() and a read failure still fails.
+// Known limit: server-action responses are buffered in the guard spec.
+async function watchNetwork(
+    page: Page,
+    origin: string,
+    options: { mutateActionBody?: (body: string) => string } = {},
+) {
     const directAcrRequests: string[] = [];
     const networkRecords: string[] = [];
     const networkRecordTasks: Promise<void>[] = [];
-    page.on("request", (request) => {
+    const interceptedActions = new Set<Request>();
+    const actionCounts = { intercepted: 0, scanned: 0, pageOwn: 0 };
+    const pendingRequests = new Set<Request>();
+
+    await page.route(
+        (url) => url.origin === origin,
+        async (route) => {
+            const request = route.request();
+            if (request.method() !== "POST" || !("next-action" in request.headers())) {
+                await route.fallback();
+                return;
+            }
+            actionCounts.intercepted += 1;
+            interceptedActions.add(request);
+            const response = await route.fetch();
+            const body = await response.text();
+            networkRecords.push(
+                request.url(),
+                JSON.stringify(response.headers()),
+                options.mutateActionBody ? options.mutateActionBody(body) : body,
+            );
+            actionCounts.scanned += 1;
+            if (request.headers()["next-action"] !== PROBE_ACTION_ID) actionCounts.pageOwn += 1;
+            await route.fulfill({ response, body });
+        },
+    );
+    const onRequest = (request: Request) => {
+        pendingRequests.add(request);
         if (request.url().includes("/api/v1/agent-context")) directAcrRequests.push(request.url());
         networkRecords.push(request.postData() ?? "");
         networkRecordTasks.push(
@@ -28,13 +65,18 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
                 networkRecords.push(JSON.stringify(headers));
             }),
         );
-    });
-    page.on("response", (response) => {
+    };
+    const onRequestDone = (request: Request) => {
+        pendingRequests.delete(request);
+    };
+    const onResponse = (response: Response) => {
         networkRecordTasks.push(
             (async () => {
                 const headers = await response.allHeaders();
                 networkRecords.push(response.url(), JSON.stringify(headers));
 
+                // The body of an intercepted server action was scanned in full by the route handler.
+                if (interceptedActions.has(response.request())) return;
                 // Chromium does not expose redirect response bodies through CDP. Their
                 // browser-visible URL, Location, and other headers remain covered,
                 // while every non-redirect response body is still inspected below.
@@ -42,7 +84,57 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
                 networkRecords.push(await response.text());
             })(),
         );
+    };
+    page.on("request", onRequest);
+    page.on("response", onResponse);
+    page.on("requestfinished", onRequestDone);
+    page.on("requestfailed", onRequestDone);
+
+    // Stop recording: first let every request that is still in flight finish and be recorded while the
+    // listeners are attached (a response that arrives after the listener is removed would never be
+    // scanned), then detach and wait for the records already started. Requests that do not finish in
+    // time fail the guard instead of being skipped.
+    const stop = async () => {
+        const deadline = Date.now() + STOP_DRAIN_TIMEOUT_MS;
+        while (pendingRequests.size > 0 && Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        const unfinished = pendingRequests.size;
+        await Promise.all(networkRecordTasks);
+        page.off("request", onRequest);
+        page.off("response", onResponse);
+        page.off("requestfinished", onRequestDone);
+        page.off("requestfailed", onRequestDone);
+        await page.unrouteAll({ behavior: "wait" });
+        await Promise.all(networkRecordTasks);
+        expect(unfinished, "requests still in flight when the guard stopped").toBe(0);
+    };
+    return { directAcrRequests, networkRecords, stop, actionCounts };
+}
+
+const ACTION_PROBE = async ([path, cancelBody, actionId]: [string, boolean, string]) => {
+    const response = await fetch(path, {
+        body: "[]",
+        headers: { "content-type": "text/plain;charset=UTF-8", "next-action": actionId },
+        method: "POST",
     });
+    if (cancelBody && response.body) {
+        const reader = response.body.getReader();
+        await reader.cancel();
+        return response.status;
+    }
+    await response.text();
+    return response.status;
+};
+
+test("keeps ACR assertion material out of browser routes, network traffic, and client chunks", async ({
+    baseURL,
+    page,
+}) => {
+    const { directAcrRequests, networkRecords, stop, actionCounts } = await watchNetwork(
+        page,
+        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+    );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
     await expect(page).toHaveURL(new RegExp(`${CONTEXT_FABRIC_VALIDATION_PATH}$`));
@@ -70,6 +162,13 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
     expect(routeResult.body).not.toMatch(secretPattern);
     expect(directAcrRequests).toEqual([]);
 
+    // The page's own server action (the shell's subscription read) must be intercepted and scanned too,
+    // not only the probe below.
+    await expect.poll(() => actionCounts.pageOwn, { timeout: 20_000 }).toBeGreaterThan(0);
+
+    // One server action of this guard's own, so the interception is always exercised.
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID]);
+
     const clientChunks = await page.evaluate(async () => {
         const urls = performance
             .getEntriesByType("resource")
@@ -77,7 +176,69 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
             .filter((url) => url.includes("/_next/static/") && url.endsWith(".js"));
         return Promise.all(urls.map(async (url) => (await fetch(url)).text()));
     });
-    await Promise.all(networkRecordTasks);
+    await stop();
+    expect(actionCounts.intercepted).toBeGreaterThan(0);
+    expect(actionCounts.scanned).toBe(actionCounts.intercepted);
     expect(networkRecords.join("\n")).not.toMatch(secretPattern);
     expect(clientChunks.join("\n")).not.toMatch(clientChunkForbiddenPattern);
+});
+
+test("scans the full body of a server action response for secret material", async ({
+    baseURL,
+    page,
+}) => {
+    const { networkRecords, stop, actionCounts } = await watchNetwork(
+        page,
+        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        { mutateActionBody: (body) => `${body}\nfcacr_PLANTED0123456789` },
+    );
+
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID]);
+    await stop();
+
+    expect(actionCounts.intercepted).toBeGreaterThan(0);
+    expect(actionCounts.scanned).toBe(actionCounts.intercepted);
+    expect(networkRecords.join("\n")).toMatch(secretPattern);
+});
+
+test("a server action response the page cancels mid-stream is still scanned and does not fail the guard", async ({
+    baseURL,
+    page,
+}) => {
+    const { networkRecords, stop, actionCounts } = await watchNetwork(
+        page,
+        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+    );
+
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, true, PROBE_ACTION_ID]);
+    await stop();
+
+    expect(actionCounts.intercepted).toBeGreaterThan(0);
+    expect(actionCounts.scanned).toBe(actionCounts.intercepted);
+    expect(networkRecords.join("\n")).not.toMatch(secretPattern);
+});
+
+test("a non-action response still in flight when the guard stops is scanned", async ({
+    baseURL,
+    page,
+}) => {
+    // Registered before the guard's own route, so the guard sees the request first and falls back here.
+    await page.route("**/__late-response", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await route.fulfill({ body: "fcacr_LATE0123456789", contentType: "text/plain" });
+    });
+    const { networkRecords, stop } = await watchNetwork(
+        page,
+        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+    );
+
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await page.evaluate(() => {
+        void fetch("/__late-response").catch(() => undefined);
+    });
+    await stop();
+
+    expect(networkRecords.join("\n")).toMatch(secretPattern);
 });
