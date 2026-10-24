@@ -308,4 +308,91 @@ describe("trackOnboardingEvent org digest", () => {
         await new Promise((resolve) => setTimeout(resolve, 30));
         expect(sendBeacon).toHaveBeenCalledTimes(1);
     });
+
+    it("sends concurrent first events for one org in call order, from one digest", async () => {
+        const pending: Array<(digest: ArrayBuffer) => void> = [];
+        const digest = vi.fn(
+            () =>
+                new Promise<ArrayBuffer>((resolve) => {
+                    pending.push(resolve);
+                }),
+        );
+        vi.stubGlobal("crypto", {
+            randomUUID: () => "00000000-0000-4000-8000-000000000000",
+            subtle: { digest },
+        });
+        trackOnboardingEvent("integration_step_viewed", { orgId: "org-123" });
+        trackOnboardingEvent("github_app_install_started", { orgId: "org-123" });
+        trackOnboardingEvent("integration_skipped", { orgId: "org-123" });
+        // Resolve in reverse order: with one digest per call the last event would go first.
+        for (const resolve of [...pending].reverse()) resolve(new Uint8Array(32).buffer);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(3));
+        const surfaces = sendBeacon.mock.calls.map(
+            (call) => JSON.parse((call as [string, string])[1]).events[0].payload.surface,
+        );
+        expect(surfaces).toEqual([
+            "integration_step_viewed",
+            "github_app_install_started",
+            "integration_skipped",
+        ]);
+        expect(digest).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a cached-org event behind earlier events still waiting for the digest", async () => {
+        trackOnboardingEvent("integration_step_viewed", { orgId: "org-123" });
+        trackOnboardingEvent("github_app_install_started", { orgId: "org-123" });
+        expect(sendBeacon).not.toHaveBeenCalled();
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(2));
+        const surfaces = sendBeacon.mock.calls.map(
+            (call) => JSON.parse((call as [string, string])[1]).events[0].payload.surface,
+        );
+        expect(surfaces).toEqual(["integration_step_viewed", "github_app_install_started"]);
+    });
+
+    it("drops the events waiting on a rejected digest, caches nothing, and retries on the next call", async () => {
+        const digest = vi
+            .fn()
+            .mockRejectedValueOnce(new Error("digest failed"))
+            .mockResolvedValue(new Uint8Array(32).buffer);
+        vi.stubGlobal("crypto", {
+            randomUUID: () => "00000000-0000-4000-8000-000000000000",
+            subtle: { digest },
+        });
+        trackOnboardingEvent("integration_step_viewed", { orgId: "org-123" });
+        trackOnboardingEvent("github_app_install_started", { orgId: "org-123" });
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        expect(sendBeacon).not.toHaveBeenCalled();
+        expect(request).not.toHaveBeenCalled();
+
+        trackOnboardingEvent("integration_skipped", { orgId: "org-123" });
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        expect(digest).toHaveBeenCalledTimes(2);
+        const raw = (sendBeacon.mock.calls[0] as [string, string])[1];
+        expect(JSON.parse(raw).events[0].payload.surface).toBe("integration_skipped");
+        expect(JSON.parse(raw).orgIdHash).toMatch(/^[0-9a-f]{64}$/);
+        for (const call of sendBeacon.mock.calls) {
+            expect((call as [string, string])[1]).not.toContain("org-123");
+        }
+    });
+
+    it("never makes an event wait on another org's pending digest", async () => {
+        const resolvers: Array<(digest: ArrayBuffer) => void> = [];
+        const digest = vi.fn(
+            () =>
+                new Promise<ArrayBuffer>((resolve) => {
+                    resolvers.push(resolve);
+                }),
+        );
+        vi.stubGlobal("crypto", {
+            randomUUID: () => "00000000-0000-4000-8000-000000000000",
+            subtle: { digest },
+        });
+        trackOnboardingEvent("integration_step_viewed", { orgId: "org-a" });
+        trackOnboardingEvent("integration_step_viewed", { orgId: "org-b" });
+        expect(digest).toHaveBeenCalledTimes(2);
+        resolvers[1]?.(new Uint8Array(32).buffer);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        resolvers[0]?.(new Uint8Array(32).buffer);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(2));
+    });
 });

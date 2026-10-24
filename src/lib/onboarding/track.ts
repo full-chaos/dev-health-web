@@ -60,6 +60,9 @@ const emittedOnceKeys = new Set<string>();
 /** SHA-256 digest per org id, so a repeat event for the same org can send synchronously. */
 const orgHashes = new Map<string, string>();
 
+/** Events waiting for an org's digest, in call order; one digest per org is in flight at a time. */
+const pendingSends = new Map<string, Array<(orgIdHash: string | null) => void>>();
+
 /** Emit a single onboarding funnel event.
  *
  * No-ops on the server, when product telemetry is disabled/opted-out, or when
@@ -146,17 +149,30 @@ export function trackOnboardingEvent(
         send(null);
         return;
     }
+    const waiting = pendingSends.get(orgId);
+    if (waiting !== undefined) {
+        // A digest for this org is in flight: queue behind the earlier events so the send
+        // order is the call order.
+        waiting.push(send);
+        return;
+    }
     const cached = orgHashes.get(orgId);
     if (cached !== undefined) {
         send(cached);
         return;
     }
-    hashIdentifier(orgId)
-        .then((digest) => {
-            if (digest !== null) orgHashes.set(orgId, digest);
-            send(digest);
-        })
-        .catch(() => send(null));
+    const queue: Array<(orgIdHash: string | null) => void> = [send];
+    pendingSends.set(orgId, queue);
+    const flush = (digest: string | null): void => {
+        if (digest !== null) orgHashes.set(orgId, digest);
+        pendingSends.delete(orgId);
+        for (const queued of queue) queued(digest);
+    };
+    hashIdentifier(orgId).then(flush, () => {
+        // A failed digest is not cached and its waiting events are dropped: never sent with a
+        // weaker value or the raw id. The next event for the org tries the digest again.
+        pendingSends.delete(orgId);
+    });
 }
 
 /**
@@ -182,4 +198,5 @@ export function trackOnboardingEventOnce(
 export function resetOnboardingOnceTracking(): void {
     emittedOnceKeys.clear();
     orgHashes.clear();
+    pendingSends.clear();
 }
