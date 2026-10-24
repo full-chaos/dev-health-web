@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { logger } from "@/lib/logger";
 
+import { closeTelemetryEvent } from "./schema";
 import type { TelemetryEvent } from "./types";
 
 export type TelemetryAdapter = {
@@ -13,7 +14,10 @@ export type TelemetryAdapter = {
 export const firstPartyTelemetryAdapter: TelemetryAdapter = {
     name: "first-party",
     enabled: () => true,
-    async send(events) {
+    async send(input) {
+        // The sink closes every event itself, so a caller that skips trackTelemetryEvent cannot send an unknown key or path.
+        const events = input.flatMap((event) => closeTelemetryEvent(event) ?? []);
+        if (events.length === 0) return;
         const body = JSON.stringify({
             source: "dev-health-web",
             orgIdHash: events[0]?.orgIdHash ?? null,
