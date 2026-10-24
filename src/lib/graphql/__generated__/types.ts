@@ -962,6 +962,8 @@ export type EvidenceQualityStats = {
   mean?: Maybe<Scalars['Float']['output']>;
   stddev?: Maybe<Scalars['Float']['output']>;
   total: Scalars['Int']['output'];
+  /** Units of the window under the evidence gate (too little text); the theme mix leaves them out and total still counts them. Null when the window has no unit. */
+  uncategorizedCount?: Maybe<Scalars['Int']['output']>;
 };
 
 export type EvidenceRef = {
