@@ -18,8 +18,9 @@ const BLOCKED_KEYS = new Set([
 ]);
 
 const KEY_RE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
-// Ids, dotted names and route patterns ("/people/[person_id]"): no space, "@", "?", "#", "%", "+" or non-ASCII.
-const VALUE_RE = /^[A-Za-z0-9_./:[\]-]{1,128}$/;
+// Ids, dotted names and route patterns ("/people/[person_id]"): no space, ":", "@", "?", "#", "%", "+" or non-ASCII.
+// No ":" means no scheme, host:port or other URL-shaped text.
+const VALUE_RE = /^[A-Za-z0-9_./[\]-]{1,128}$/;
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 // A long unbroken letter/digit run reads as a token or an opaque id, never as a code-owned name.
 const TOKEN_RUN_RE = /[A-Za-z0-9]{24,}/;
