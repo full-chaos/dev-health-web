@@ -7,7 +7,7 @@
 import { trackTelemetryEvent } from "@/lib/telemetry";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 import type { MetricFilter } from "@/lib/filters/types";
-import { ERROR_CLASSES } from "./schema";
+import { closedRoutePattern, ERROR_CLASSES } from "./schema";
 import type { TelemetryPayloadByName } from "./types";
 
 function safely(emit: () => void): void {
@@ -21,7 +21,8 @@ function safely(emit: () => void): void {
 /** One per route view. `feature` is the first route segment (a stable id), never an id from the path. */
 export function emitFeatureViewed(routePattern: string): void {
     safely(() => {
-        const feature = routePattern.split("/").filter(Boolean)[0] ?? "home";
+        const first = closedRoutePattern(routePattern).split("/").filter(Boolean)[0] ?? "home";
+        const feature = first === "[unmatched]" ? "unmatched" : first;
         trackTelemetryEvent("feature_viewed", { feature, surface: "route", routePattern });
     });
 }

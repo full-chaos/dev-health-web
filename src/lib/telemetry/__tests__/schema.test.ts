@@ -12,6 +12,8 @@ import {
     FILTER_KEYS,
     FILTER_VIEWS,
     isKnownRoutePattern,
+    APP_ROUTES,
+    closeTelemetryEvent,
     STATIC_ROUTE_SEGMENTS,
     UNMATCHED_ROUTE,
     TELEMETRY_SCHEMA,
@@ -166,11 +168,16 @@ describe("route values", () => {
         "/metrics",
         "/people/[person_id]",
         "/org/admin/sync/[configId]/runs/[runId]",
-        "/[id]",
+        "/people/[id]",
+        "/[unmatched]",
     ])("accepts %s", (value) => expect(isKnownRoutePattern(value)).toBe(true));
 
     it.each([
         "/org-123",
+        "/metrics/settings",
+        "/people/metrics",
+        "/org/admin/people",
+        "/[id]",
         "/people/usr_8f2a91c3b7d4",
         "/metrics/ada@example.com",
         "metrics",
@@ -212,23 +219,35 @@ describe("route values", () => {
 describe("closed sets are pinned to the code that feeds them", () => {
     const APP_ROOT = path.resolve(__dirname, "../../../app");
 
-    function staticDirs(dir: string): string[] {
-        const found: string[] = [];
+    function appRoutes(dir: string, segments: string[] = []): string[] {
+        const names = fs.readdirSync(dir);
+        const found = names.some((n) => n === "page.tsx" || n === "route.ts")
+            ? ["/" + segments.join("/")]
+            : [];
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
             if (!entry.isDirectory() || entry.name === "__tests__") continue;
-            const isGroup = /^\(.+\)$/.test(entry.name);
-            const isDynamic = entry.name.startsWith("[");
-            const isPrivate = entry.name.startsWith("_") || entry.name.startsWith("@");
-            if (!isGroup && !isDynamic && !isPrivate) found.push(entry.name);
-            found.push(...staticDirs(path.join(dir, entry.name)));
+            if (/^\(.+\)$/.test(entry.name))
+                found.push(...appRoutes(path.join(dir, entry.name), segments));
+            else if (!entry.name.startsWith("_") && !entry.name.startsWith("@"))
+                found.push(...appRoutes(path.join(dir, entry.name), [...segments, entry.name]));
         }
         return found;
     }
 
-    it("STATIC_ROUTE_SEGMENTS equals the static directories of src/app", () => {
-        expect([...new Set(staticDirs(APP_ROOT))].sort()).toEqual(
-            [...STATIC_ROUTE_SEGMENTS].sort(),
-        );
+    it("APP_ROUTES equals the page and route-handler paths of src/app", () => {
+        expect([...APP_ROUTES].sort()).toEqual([...new Set(appRoutes(APP_ROOT))].sort());
+    });
+
+    it("every known route is accepted with its dynamic slots as placeholders", () => {
+        for (const route of APP_ROUTES) {
+            expect(isKnownRoutePattern(route.replace(/\[[^\]]+\]/g, "[id]"))).toBe(true);
+        }
+    });
+
+    it("STATIC_ROUTE_SEGMENTS holds only first segments of known routes", () => {
+        for (const segment of STATIC_ROUTE_SEGMENTS) {
+            expect(APP_ROUTES.some((route) => route.split("/")[1] === segment)).toBe(true);
+        }
     });
 
     it("every ROUTE_TEMPLATES entry is accepted", () => {
@@ -262,5 +281,37 @@ describe("closed sets are pinned to the code that feeds them", () => {
         const key: TelemetryPayloadByName["filter_changed"]["filterKey"][] = [...FILTER_KEYS];
         expect([chart.length, action.length, key.length]).toEqual([5, 5, 9]);
         for (const view of FILTER_VIEWS) expect(view).toMatch(/^[a-z-]+$/);
+    });
+});
+
+describe("route combinations that are not routes", () => {
+    it("sends /metrics/settings as the unmatched value in a page view", () => {
+        const payload = accepted("page_viewed", {
+            routePattern: "/metrics/settings",
+            page: "/metrics/settings",
+            referrerRoutePattern: null,
+        });
+        expect(payload).toMatchObject({ routePattern: UNMATCHED_ROUTE, page: UNMATCHED_ROUTE });
+    });
+});
+
+describe("closeTelemetryEvent", () => {
+    const event = {
+        name: "session_started" as const,
+        routePattern: "/metrics/settings",
+        payload: { entryRoutePattern: "/metrics", ownerRef: "owner-secret", org_id: "org-123" },
+    };
+
+    it("drops unknown keys and closes the envelope route", () => {
+        const closed = closeTelemetryEvent(event);
+        expect(closed?.payload).toEqual({ entryRoutePattern: "/metrics" });
+        expect(closed?.routePattern).toBe(UNMATCHED_ROUTE);
+        expect(JSON.stringify(closed)).not.toMatch(/owner-secret|org-123|settings/);
+    });
+
+    it("returns null for a payload that is not an object or misses a required field", () => {
+        expect(closeTelemetryEvent({ ...event, payload: [] })).toBeNull();
+        expect(closeTelemetryEvent({ ...event, payload: {} })).toBeNull();
+        expect(closeTelemetryEvent({ ...event, payload: "x" })).toBeNull();
     });
 });

@@ -80,7 +80,7 @@ describe("product telemetry", () => {
                 anonymousUserId: "anon-1",
                 orgIdHash: "org-hash-1",
                 routePattern: "/metrics",
-                payload: { feature: "metrics", surface: "metrics", routePattern: "/metrics" },
+                payload: { feature: "metrics", surface: "route", routePattern: "/metrics" },
             },
         ]);
 
@@ -366,6 +366,46 @@ describe("telemetryEnvelopeIdentity", () => {
                 page: "/[unmatched]",
             });
             expect(JSON.stringify(sent[0])).not.toContain("usr_8f2a91c3b7d4");
+        });
+
+        it("sends /metrics/settings (known segments that are not a route) as the unmatched value", async () => {
+            const sent = collect();
+            setTelemetryContext({ routePattern: "/metrics/settings" });
+            trackTelemetryEvent("page_viewed", {
+                routePattern: "/metrics/settings",
+                page: "/metrics/settings",
+                referrerRoutePattern: null,
+            });
+            await vi.waitFor(() => expect(sent).toHaveLength(1));
+            expect(JSON.stringify(sent[0])).not.toContain("settings");
+            expect(sent[0]?.routePattern).toBe("/[unmatched]");
+        });
+
+        it("the first-party sink closes an event handed to it directly", async () => {
+            const body: string[] = [];
+            apiClientMock.sendBeacon.mockImplementation((_url: string, payload: string) => {
+                body.push(payload);
+                return true;
+            });
+            await firstPartyTelemetryAdapter.send([
+                {
+                    name: "session_started",
+                    schemaVersion: "2026-05-telemetry-v1",
+                    eventId: "e",
+                    ts: "2026-10-24T00:00:00.000Z",
+                    sessionId: "s",
+                    anonymousUserId: "a",
+                    orgIdHash: null,
+                    routePattern: "/metrics/settings",
+                    payload: {
+                        entryRoutePattern: "/metrics",
+                        ownerRef: "owner-secret",
+                    } as TelemetryPayloadByName["session_started"],
+                },
+            ]);
+            expect(body).toHaveLength(1);
+            expect(body[0]).not.toMatch(/owner-secret|settings/);
+            apiClientMock.sendBeacon.mockReturnValue(false);
         });
 
         it("admits the onboarding funnel feature_viewed shape", async () => {
