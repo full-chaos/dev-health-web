@@ -35,6 +35,8 @@ import { isOnboardingEvent, type OnboardingEventName, type OnboardingEventPayloa
 const TELEMETRY_ENDPOINT = "/api/v1/product-telemetry/events";
 const SCHEMA_VERSION = "2026-05-telemetry-v1";
 const ONBOARDING_FEATURE = "onboarding_funnel";
+/** Closed set of extra payload keys a funnel event may carry; any other key is dropped, so an identifier under any spelling never leaves. */
+const ALLOWED_EXTRA_KEYS: readonly string[] = ["step"];
 const ONBOARDING_ROUTE_FALLBACK = "/onboarding";
 
 /**
@@ -61,10 +63,12 @@ export function trackOnboardingEvent(
         return;
     }
 
-    const present = Object.fromEntries(
-        Object.entries(payload).filter(([, value]) => value !== undefined),
+    const allowed = Object.fromEntries(
+        Object.entries(payload).filter(
+            ([key, value]) => ALLOWED_EXTRA_KEYS.includes(key) && value !== undefined,
+        ),
     );
-    const sanitized = sanitizeTelemetryPayload(present);
+    const sanitized = sanitizeTelemetryPayload(allowed);
     if (!sanitized.ok) {
         logger.debug(
             { event: name, key: sanitized.key },

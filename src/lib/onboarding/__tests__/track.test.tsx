@@ -167,15 +167,34 @@ describe("trackOnboardingEvent wire shape", () => {
     });
 
     it("treats an undefined payload value as absent instead of dropping the event", () => {
-        trackOnboardingEvent("integration_skipped", { reason: undefined, step: "intro" });
+        trackOnboardingEvent("integration_skipped", { step: undefined, reason: undefined });
         expect(sendBeacon).toHaveBeenCalledTimes(1);
         const event = posted(0).events[0];
+        expect("step" in (event?.payload ?? {})).toBe(false);
         expect("reason" in (event?.payload ?? {})).toBe(false);
-        expect(event?.payload.step).toBe("intro");
     });
 
     it("still drops the event for an out-of-bounds value", () => {
         trackOnboardingEvent("integration_skipped", { step: "ada@example.com", other: undefined });
         expect(sendBeacon).not.toHaveBeenCalled();
+    });
+
+    it("drops every payload key that is not on the closed list, whatever its spelling", () => {
+        trackOnboardingEvent("workspace_created", {
+            org_id: "org-123",
+            user_id: "user-456",
+            OrgID: "org-789",
+            ownerRef: "o-1",
+            anything: "x",
+            step: "intro",
+        });
+        const event = posted(0).events[0];
+        expect(Object.keys(event?.payload ?? {}).sort()).toEqual([
+            "feature",
+            "routePattern",
+            "step",
+            "surface",
+        ]);
+        expect(sendBeacon.mock.calls[0]?.[1]).not.toMatch(/org-123|user-456|org-789|o-1/);
     });
 });
