@@ -7,6 +7,8 @@ export type InvestmentMixAggregate = {
         mean?: number | null;
         stddev?: number | null;
         band_counts?: Record<string, number>;
+        total?: number;
+        uncategorized_count?: number | null;
     };
 };
 
@@ -104,7 +106,17 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
                                 ]),
                             )
                           : undefined;
-                      return { mean, stddev, band_counts };
+                      const total =
+                          typeof s.total === "number" && Number.isFinite(s.total) && s.total >= 0
+                              ? s.total
+                              : undefined;
+                      const uncategorized_count =
+                          typeof s.uncategorized_count === "number" &&
+                          Number.isFinite(s.uncategorized_count) &&
+                          s.uncategorized_count >= 0
+                              ? s.uncategorized_count
+                              : null;
+                      return { mean, stddev, band_counts, total, uncategorized_count };
                   })()
                 : undefined,
         };
