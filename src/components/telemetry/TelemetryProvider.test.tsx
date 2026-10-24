@@ -178,6 +178,45 @@ describe("TelemetryProvider", () => {
         }
     });
 
+    it("sets SHA-256 digests as the identity when SubtleCrypto is available", async () => {
+        render(
+            <TelemetryProvider orgId="org-raw" userId="user-raw">
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        await waitFor(() =>
+            expect(telemetryMock.setTelemetryContext).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    anonymousUserId: expect.stringMatching(/^[0-9a-f]{64}$/),
+                    orgIdHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+                }),
+            ),
+        );
+    });
+
+    it("makes no digest without SubtleCrypto: the org is absent, the user id is left unset, events still go out", async () => {
+        vi.stubGlobal("crypto", { randomUUID: () => "00000000-0000-4000-8000-000000000000" });
+        render(
+            <TelemetryProvider orgId="org-raw" userId="user-raw">
+                <div>App</div>
+            </TelemetryProvider>,
+        );
+        await waitFor(() =>
+            expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+                "session_started",
+                expect.any(Object),
+            ),
+        );
+        const identity = telemetryMock.setTelemetryContext.mock.calls.find(
+            ([ctx]) => ctx && "anonymousUserId" in ctx && "orgIdHash" in ctx,
+        )?.[0];
+        expect(identity).toEqual({ anonymousUserId: undefined, orgIdHash: null });
+        expect(JSON.stringify(telemetryMock.setTelemetryContext.mock.calls)).not.toMatch(
+            /fnv1a|user-raw|org-raw/,
+        );
+        vi.unstubAllGlobals();
+    });
+
     describe("session_ended once per visible period", () => {
         const endedCalls = () =>
             telemetryMock.trackTelemetryEvent.mock.calls.filter(

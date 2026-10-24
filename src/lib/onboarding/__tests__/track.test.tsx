@@ -1,3 +1,4 @@
+import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendBeacon = vi.fn();
@@ -11,7 +12,6 @@ vi.mock("@/lib/apiClient", () => ({
 }));
 
 import { resetTelemetryForTests } from "@/lib/telemetry";
-import { fallbackHash } from "@/lib/telemetry/hash";
 
 import {
     resetOnboardingOnceTracking,
@@ -20,6 +20,8 @@ import {
 } from "../track";
 
 const TELEMETRY_FLAG = "NEXT_PUBLIC_TELEMETRY_ENABLED";
+// sha256("org-123"), lowercase hex: the recipe the ops read side joins on.
+const ORG_123_SHA256 = "83e582565905f7e5bc0074cd776abd13d7ca413991011906c51d96696b92c199";
 
 describe("trackOnboardingEvent", () => {
     beforeEach(() => {
@@ -35,10 +37,10 @@ describe("trackOnboardingEvent", () => {
         delete process.env[TELEMETRY_FLAG];
     });
 
-    it("hashes the org id into orgIdHash and sanitizes the raw id out of the payload", () => {
+    it("hashes the org id into orgIdHash and sanitizes the raw id out of the payload", async () => {
         trackOnboardingEvent("workspace_created", { orgId: "org-123" });
 
-        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
         const [path, body] = sendBeacon.mock.calls[0] as [string, string];
         expect(path).toBe("/api/v1/product-telemetry/events");
         const parsed = JSON.parse(body) as {
@@ -47,7 +49,7 @@ describe("trackOnboardingEvent", () => {
         };
         // The raw org id is never emitted: it is pseudonymised into orgIdHash
         // (matching the main telemetry pipeline) and stripped from the payload.
-        expect(parsed.orgIdHash).toBe(fallbackHash("org-123"));
+        expect(parsed.orgIdHash).toBe(ORG_123_SHA256);
         expect(parsed.orgIdHash).not.toBe("org-123");
         expect(parsed.events[0]?.name).toBe("feature_viewed");
         expect(parsed.events[0]?.payload.orgId).toBeUndefined();
@@ -103,19 +105,21 @@ describe("trackOnboardingEvent", () => {
         expect(request).not.toHaveBeenCalled();
     });
 
-    it("trackOnboardingEventOnce emits only once across repeated calls (StrictMode/remount safe)", () => {
+    it("trackOnboardingEventOnce emits only once across repeated calls (StrictMode/remount safe)", async () => {
         trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-1" });
         trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-1" });
         trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-1" });
 
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        await new Promise((resolve) => setTimeout(resolve, 30));
         expect(sendBeacon).toHaveBeenCalledTimes(1);
     });
 
-    it("trackOnboardingEventOnce keys on org id so distinct orgs each emit once", () => {
+    it("trackOnboardingEventOnce keys on org id so distinct orgs each emit once", async () => {
         trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-1" });
         trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-2" });
 
-        expect(sendBeacon).toHaveBeenCalledTimes(2);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(2));
     });
 
     it("resetOnboardingOnceTracking clears the one-shot guard", () => {
@@ -150,8 +154,9 @@ describe("trackOnboardingEvent wire shape", () => {
     const posted = (index: number): Posted =>
         JSON.parse((sendBeacon.mock.calls[index] as [string, string])[1]) as Posted;
 
-    it("sends the funnel event as feature_viewed with the funnel name as the surface", () => {
+    it("sends the funnel event as feature_viewed with the funnel name as the surface", async () => {
         trackOnboardingEvent("workspace_created", { orgId: "org-123", step: 2 });
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
         const event = posted(0).events[0];
         expect(event?.name).toBe("feature_viewed");
         expect(event?.payload.feature).toBe("onboarding_funnel");
@@ -230,9 +235,9 @@ describe("trackOnboardingEvent wire shape", () => {
         ["tenant", "ten-888"],
         ["email", "ada.lovelace@example.com"],
         ["user_email", "grace.hopper@example.com"],
-    ])("never sends the extra key %s", (key, value) => {
+    ])("never sends the extra key %s", async (key, value) => {
         trackOnboardingEvent("workspace_created", { [key]: value, step: 2 });
-        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
         const body = sendBeacon.mock.calls[0]?.[1] as string;
         expect(body).not.toContain(value);
         expect(Object.keys(posted(0).events[0]?.payload ?? {})).not.toContain(key);
@@ -244,5 +249,63 @@ describe("trackOnboardingEvent wire shape", () => {
         trackOnboardingEvent("first_sync_started", { ...extras, step: 2 });
         const keys = Object.keys(posted(0).events[0]?.payload ?? {}).sort();
         expect(keys).toEqual(["feature", "routePattern", "step", "surface"]);
+    });
+});
+
+describe("trackOnboardingEvent org digest", () => {
+    beforeEach(() => {
+        sendBeacon.mockReset().mockReturnValue(true);
+        request.mockReset().mockResolvedValue(new Response("{}"));
+        delete process.env[TELEMETRY_FLAG];
+        resetOnboardingOnceTracking();
+        resetTelemetryForTests();
+    });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    const bodyOf = (
+        index: number,
+    ): { orgIdHash: string | null; events: { orgIdHash: string | null }[] } =>
+        JSON.parse((sendBeacon.mock.calls[index] as [string, string])[1]);
+
+    it("sends the SHA-256 org digest at the top level and on the event", async () => {
+        trackOnboardingEvent("integration_step_viewed", { orgId: "org-123" });
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        expect(bodyOf(0).orgIdHash).toBe(ORG_123_SHA256);
+        expect(bodyOf(0).events[0]?.orgIdHash).toBe(ORG_123_SHA256);
+    });
+
+    it("sends synchronously once the org digest is cached", async () => {
+        trackOnboardingEvent("integration_step_viewed", { orgId: "org-123" });
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        trackOnboardingEvent("github_app_install_started", { orgId: "org-123" });
+        expect(sendBeacon).toHaveBeenCalledTimes(2);
+        expect(bodyOf(1).orgIdHash).toBe(ORG_123_SHA256);
+    });
+
+    it("sends with no org digest when there is no org", () => {
+        trackOnboardingEvent("workspace_setup_started", { orgId: null });
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        expect(bodyOf(0).orgIdHash).toBeNull();
+    });
+
+    it("sends the event with a null org digest and no fnv value without SubtleCrypto", async () => {
+        vi.stubGlobal("crypto", { randomUUID: () => "00000000-0000-4000-8000-000000000000" });
+        trackOnboardingEvent("workspace_created", { orgId: "org-123" });
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        const raw = (sendBeacon.mock.calls[0] as [string, string])[1];
+        expect(bodyOf(0).orgIdHash).toBeNull();
+        expect(bodyOf(0).events[0]?.orgIdHash).toBeNull();
+        expect(raw).not.toMatch(/fnv1a/);
+        expect(raw).not.toContain("org-123");
+    });
+
+    it("keeps the once-per-page dedupe across the async first send", async () => {
+        trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-123" });
+        trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-123" });
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        expect(sendBeacon).toHaveBeenCalledTimes(1);
     });
 });

@@ -16,10 +16,11 @@
  * the raw org id is never placed in the body. It is pseudonymised into the
  * top-level `orgIdHash` field and the per-event `payload` is run through the
  * shared {@link sanitizeTelemetryPayload} (which strips `orgId`/`userId` and any
- * other blocked PII keys). Hashing is synchronous (`fallbackHash`, the same
- * FNV-1a primitive the pipeline falls back to) because these events are emitted
- * from `sendBeacon` paths that must survive a full-page navigation (the GitHub
- * App install redirect) and therefore cannot await SubtleCrypto.
+ * other blocked PII keys). The digest is SHA-256, the same as the
+ * other events carry and the read side joins on. A cached digest keeps the send
+ * synchronous (the events fired just before a full-page navigation, such as the
+ * GitHub App install redirect, need that); the first event for an org waits for the
+ * digest. Without SubtleCrypto the org is left out: no weaker hash is made.
  */
 
 import { apiClient } from "@/lib/apiClient";
@@ -27,7 +28,7 @@ import { getWindow } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { canTrackProductTelemetry } from "@/lib/telemetry/config";
 import { telemetryEnvelopeIdentity } from "@/lib/telemetry";
-import { fallbackHash } from "@/lib/telemetry/hash";
+import { hashIdentifier } from "@/lib/telemetry/hash";
 import { sanitizeTelemetryPayload } from "@/lib/telemetry/sanitize";
 
 import { isOnboardingEvent, type OnboardingEventName, type OnboardingEventPayload } from "./events";
@@ -55,6 +56,9 @@ const ONBOARDING_ROUTE_FALLBACK = "/onboarding";
  * effect-fired funnel events emit at most once per page load.
  */
 const emittedOnceKeys = new Set<string>();
+
+/** SHA-256 digest per org id, so a repeat event for the same org can send synchronously. */
+const orgHashes = new Map<string, string>();
 
 /** Emit a single onboarding funnel event.
  *
@@ -84,54 +88,75 @@ export function trackOnboardingEvent(
         return;
     }
 
-    const orgIdHash = payload.orgId ? fallbackHash(payload.orgId) : null;
-
     const now = Date.now();
     const identity = telemetryEnvelopeIdentity(now);
     const routePattern = identity.routePattern ?? ONBOARDING_ROUTE_FALLBACK;
+    const extras = sanitized.payload;
 
-    // The intake accepts a fixed set of event names: every funnel event goes out as
-    // feature_viewed, with the funnel name as the surface.
-    const body = JSON.stringify({
-        source: "dev-health-web",
-        orgIdHash,
-        events: [
-            {
-                name: "feature_viewed",
-                schemaVersion: SCHEMA_VERSION,
-                eventId: identity.eventId,
-                ts: new Date(now).toISOString(),
-                sessionId: identity.sessionId,
-                anonymousUserId: identity.anonymousUserId,
-                orgIdHash,
-                routePattern,
-                payload: {
-                    ...sanitized.payload,
-                    feature: ONBOARDING_FEATURE,
-                    surface: name,
+    const send = (orgIdHash: string | null): void => {
+        // The intake accepts a fixed set of event names: every funnel event goes out as
+        // feature_viewed, with the funnel name as the surface.
+        const body = JSON.stringify({
+            source: "dev-health-web",
+            orgIdHash,
+            events: [
+                {
+                    name: "feature_viewed",
+                    schemaVersion: SCHEMA_VERSION,
+                    eventId: identity.eventId,
+                    ts: new Date(now).toISOString(),
+                    sessionId: identity.sessionId,
+                    anonymousUserId: identity.anonymousUserId,
+                    orgIdHash,
                     routePattern,
+                    payload: {
+                        ...extras,
+                        feature: ONBOARDING_FEATURE,
+                        surface: name,
+                        routePattern,
+                    },
                 },
-            },
-        ],
-    });
-
-    try {
-        if (apiClient.sendBeacon(TELEMETRY_ENDPOINT, body)) {
-            return;
+            ],
+        });
+        try {
+            if (apiClient.sendBeacon(TELEMETRY_ENDPOINT, body)) {
+                return;
+            }
+            void apiClient
+                .request(TELEMETRY_ENDPOINT, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body,
+                    keepalive: true,
+                })
+                .catch((err: unknown) => {
+                    logger.debug({ err, event: name }, "Onboarding funnel event send failed");
+                });
+        } catch (err) {
+            logger.debug({ err, event: name }, "Onboarding funnel event send failed");
         }
-        void apiClient
-            .request(TELEMETRY_ENDPOINT, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body,
-                keepalive: true,
-            })
-            .catch((err: unknown) => {
-                logger.debug({ err, event: name }, "Onboarding funnel event send failed");
-            });
-    } catch (err) {
-        logger.debug({ err, event: name }, "Onboarding funnel event send failed");
+    };
+
+    // The org digest is SHA-256 like every other event's (the read side joins on it). A cached
+    // digest keeps the send synchronous, which the pre-navigation events need; the first event
+    // for an org waits for the digest and warms the cache. Without SubtleCrypto the org is
+    // simply absent: no weaker hash is made.
+    const orgId = typeof payload.orgId === "string" && payload.orgId ? payload.orgId : null;
+    if (orgId === null) {
+        send(null);
+        return;
     }
+    const cached = orgHashes.get(orgId);
+    if (cached !== undefined) {
+        send(cached);
+        return;
+    }
+    hashIdentifier(orgId)
+        .then((digest) => {
+            if (digest !== null) orgHashes.set(orgId, digest);
+            send(digest);
+        })
+        .catch(() => send(null));
 }
 
 /**
@@ -156,4 +181,5 @@ export function trackOnboardingEventOnce(
 /** Test seam: clear the module-scoped one-shot dedupe set. */
 export function resetOnboardingOnceTracking(): void {
     emittedOnceKeys.clear();
+    orgHashes.clear();
 }

@@ -59,8 +59,8 @@ async function emitOnce(userId: string): Promise<void> {
     // Without SubtleCrypto no identifier-derived string is made or stored: the in-memory
     // guard alone keeps this page life to one event.
     if (globalThis.crypto?.subtle) {
-        const key = STORAGE_KEY_PREFIX + (await hashIdentifier(HASH_DOMAIN + userId));
-        if (!(await claimExclusively(key))) return;
+        const digest = await hashIdentifier(HASH_DOMAIN + userId);
+        if (digest !== null && !(await claimExclusively(STORAGE_KEY_PREFIX + digest))) return;
     }
     trackOnboardingEvent("signup_completed");
 }

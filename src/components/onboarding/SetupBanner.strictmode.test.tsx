@@ -9,7 +9,7 @@ vi.mock("@/lib/apiClient", () => ({
     },
 }));
 
-import { render } from "@/test/utils";
+import { render, waitFor } from "@/test/utils";
 import { resetOnboardingOnceTracking } from "@/lib/onboarding/track";
 import { resetTelemetryForTests } from "@/lib/telemetry";
 import type { SetupStatus } from "@/lib/onboarding/types";
@@ -54,7 +54,7 @@ describe("SetupBanner telemetry under React StrictMode (CHAOS-2683)", () => {
         resetOnboardingOnceTracking();
     });
 
-    it("sends dashboard_viewed_without_integration exactly once across a StrictMode remount", () => {
+    it("sends dashboard_viewed_without_integration exactly once across a StrictMode remount", async () => {
         // This test environment does not double-invoke effects, so the remount that
         // StrictMode performs in development is done by hand: mount, unmount, mount.
         const tree = (
@@ -66,6 +66,8 @@ describe("SetupBanner telemetry under React StrictMode (CHAOS-2683)", () => {
         first.unmount();
         render(tree);
 
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+        await new Promise((resolve) => setTimeout(resolve, 30));
         expect(sendBeacon).toHaveBeenCalledTimes(1);
         const [url, raw] = sendBeacon.mock.calls[0] as [string, string];
         expect(url).toBe("/api/v1/product-telemetry/events");
@@ -76,7 +78,7 @@ describe("SetupBanner telemetry under React StrictMode (CHAOS-2683)", () => {
         expect(body.events).toHaveLength(1);
         expect(body.events[0].name).toBe("feature_viewed");
         expect(body.events[0].payload.surface).toBe("dashboard_viewed_without_integration");
-        expect(body.orgIdHash).toMatch(/^fnv1a-[0-9a-f]{8}$/);
+        expect(body.orgIdHash).toMatch(/^[0-9a-f]{64}$/);
         expect(raw).not.toContain("org-1");
     });
 });

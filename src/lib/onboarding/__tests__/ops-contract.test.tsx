@@ -1,6 +1,7 @@
 // Pinned copy of the ops product-telemetry intake rules.
 // Source: dev-health-ops internal/api/producttelemetry/producttelemetry.go
 // (blob 364d64313e3c at origin/main d09b1bc002074324f610752d7c1c116a741662c9).
+import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendBeacon = vi.fn();
@@ -78,9 +79,9 @@ describe("onboarding funnel events against the ops intake rules", () => {
         vi.restoreAllMocks();
     });
 
-    it.each(ONBOARDING_EVENTS)("%s is accepted by the intake validator", (name) => {
+    it.each(ONBOARDING_EVENTS)("%s is accepted by the intake validator", async (name) => {
         trackOnboardingEvent(name, { orgId: "org-123", step: 2 });
-        expect(sendBeacon).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
         const body = JSON.parse((sendBeacon.mock.calls[0] as [string, string])[1]) as unknown;
         expect(opsProblems(body)).toEqual([]);
     });
