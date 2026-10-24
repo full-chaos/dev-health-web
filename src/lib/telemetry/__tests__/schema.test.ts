@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -240,11 +241,11 @@ describe("route values", () => {
 describe("closed sets are pinned to the code that feeds them", () => {
     const APP_ROOT = path.resolve(__dirname, "../../../app");
 
+    const ROUTE_FILE = /^(page|route)(\.demo)?\.(tsx|ts|jsx|js)$/;
+
     function appRoutes(dir: string, segments: string[] = []): string[] {
         const names = fs.readdirSync(dir);
-        const found = names.some((n) => n === "page.tsx" || n === "route.ts")
-            ? ["/" + segments.join("/")]
-            : [];
+        const found = names.some((n) => ROUTE_FILE.test(n)) ? ["/" + segments.join("/")] : [];
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
             if (!entry.isDirectory() || entry.name === "__tests__") continue;
             if (/^\(.+\)$/.test(entry.name))
@@ -254,6 +255,26 @@ describe("closed sets are pinned to the code that feeds them", () => {
         }
         return found;
     }
+
+    it("the walker finds a planted page or route file of every extension", () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "routes-"));
+        try {
+            const plant = (dir: string, file: string) => {
+                fs.mkdirSync(path.join(root, dir), { recursive: true });
+                fs.writeFileSync(path.join(root, dir, file), "");
+            };
+            plant("a", "page.js");
+            plant("b", "route.tsx");
+            plant("(group)/c", "page.jsx");
+            plant("d", "route.ts");
+            plant("e", "page.demo.ts");
+            plant("f", "layout.tsx");
+            plant("[slug]", "page.js");
+            expect(appRoutes(root).sort()).toEqual(["/[slug]", "/a", "/b", "/c", "/d", "/e"]);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
 
     it("APP_ROUTES equals the page and route-handler paths of src/app", () => {
         expect([...APP_ROUTES].sort()).toEqual([...new Set(appRoutes(APP_ROOT))].sort());
@@ -389,6 +410,31 @@ describe("closeTelemetryEvent", () => {
         expect(closed?.payload).toEqual({ entryRoutePattern: "/metrics" });
         expect(closed?.routePattern).toBe(UNMATCHED_ROUTE);
         expect(JSON.stringify(closed)).not.toMatch(/owner-secret|org-123|settings/);
+    });
+
+    it.each([
+        ["a name shaped like the fallback", "telemetry-adalovelace-smith"],
+        ["a short name", "telemetry-ada-smith"],
+        ["an upper-case fallback", "TELEMETRY-MGXXXXXX-1"],
+        ["a UUID in upper case", "11111111-1111-4111-8111-11111111111A"],
+        ["a UUID that is not version 4", "11111111-1111-1111-8111-111111111111"],
+        ["a UUID with a trailing name", "11111111-1111-4111-8111-111111111111 Ada"],
+        ["a fallback with a newline", "telemetry-mgxxxxxx-1\nAda"],
+        ["a fallback with a timestamp before 2020", "telemetry-aaaaaaaa-1"],
+        ["a fallback with a long counter", "telemetry-mgxxxxxx-smith"],
+    ])("drops the event for sessionId, eventId and anonymousUserId with %s", (_label, id) => {
+        for (const key of ["sessionId", "eventId", "anonymousUserId"]) {
+            expect(closeTelemetryEvent({ ...validEnvelope(), [key]: id } as never)).toBeNull();
+        }
+    });
+
+    it("keeps the exact ids the generator produces, including the no-crypto fallback", () => {
+        const fallback = `telemetry-${Date.now().toString(36)}-${(7).toString(36)}`;
+        for (const id of [SESSION, fallback]) {
+            expect(
+                closeTelemetryEvent({ ...validEnvelope(), sessionId: id, eventId: id }),
+            ).not.toBeNull();
+        }
     });
 
     it("drops unknown ENVELOPE keys (planted email and name)", () => {

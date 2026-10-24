@@ -362,9 +362,21 @@ export function closedRoutePattern(pattern: string): string {
     return canonicalRoute(pattern) ?? UNMATCHED_ROUTE;
 }
 
-const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-/** The id forms this module's own code generates (a UUID or the counter fallback in telemetry.ts). */
-const GENERATED_ID = new RegExp(`^(?:${UUID}|telemetry-[0-9a-z]{1,12}-[0-9a-z]{1,6})$`, "i");
+/** crypto.randomUUID() and uuidFromRandomBytes() in telemetry.ts: lowercase, version 4, variant 8-b. */
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+/** The no-crypto fallback in telemetry.ts: `telemetry-${Date.now().toString(36)}-${counter.toString(36)}`. */
+const FALLBACK_ID = /^telemetry-([0-9a-z]{8,9})-([0-9a-z]{1,3})$/;
+const MIN_FALLBACK_MS = Date.UTC(2020, 0, 1);
+const MAX_FALLBACK_MS = Date.UTC(2100, 0, 1);
+
+/** Exactly the shapes randomId() can return; a name or word of another shape or length does not pass. */
+function isGeneratedId(value: string): boolean {
+    if (UUID_V4.test(value)) return true;
+    const match = FALLBACK_ID.exec(value);
+    if (!match) return false;
+    const millis = Number.parseInt(match[1], 36);
+    return millis >= MIN_FALLBACK_MS && millis < MAX_FALLBACK_MS;
+}
 /** hashIdentifier output: a SHA-256 hex digest or the FNV-1a fallback. */
 const HASHED_ID = /^(?:[0-9a-f]{64}|fnv1a-[0-9a-f]{8})$/;
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
@@ -395,13 +407,13 @@ export function closeTelemetryEvent<Event extends { name: TelemetryEventName }>(
     if (
         schemaVersion !== TELEMETRY_SCHEMA_VERSION ||
         !isString(eventId) ||
-        !GENERATED_ID.test(eventId) ||
+        !isGeneratedId(eventId) ||
         !isString(ts) ||
         !ISO_TIMESTAMP.test(ts) ||
         !isString(sessionId) ||
-        !GENERATED_ID.test(sessionId) ||
+        !isGeneratedId(sessionId) ||
         !isString(anonymousUserId) ||
-        !(GENERATED_ID.test(anonymousUserId) || HASHED_ID.test(anonymousUserId)) ||
+        !(isGeneratedId(anonymousUserId) || HASHED_ID.test(anonymousUserId)) ||
         !(orgIdHash === null || (isString(orgIdHash) && HASHED_ID.test(orgIdHash))) ||
         !(routePattern === null || isString(routePattern))
     ) {
