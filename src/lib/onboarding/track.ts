@@ -60,8 +60,42 @@ const emittedOnceKeys = new Set<string>();
 /** SHA-256 digest per org id, so a repeat event for the same org can send synchronously. */
 const orgHashes = new Map<string, string>();
 
+type SendWithOrg = (orgIdHash: string | null) => void;
+type QueuedSend = { seq: number; send: SendWithOrg };
+
 /** Events waiting for an org's digest, in call order; one digest per org is in flight at a time. */
-const pendingSends = new Map<string, Array<(orgIdHash: string | null) => void>>();
+const pendingSends = new Map<string, { sends: QueuedSend[]; flushed: boolean }>();
+let callSeq = 0;
+
+/**
+ * The page is going away (a full-page navigation such as the GitHub App install redirect, or a
+ * tab close): events still waiting for a digest are sent now, in call order, without an org
+ * value, so none is lost. They are marked flushed, so a digest that resolves later never
+ * sends them again.
+ */
+function flushPendingForPageExit(): void {
+    const queued: QueuedSend[] = [];
+    for (const [orgId, entry] of [...pendingSends]) {
+        entry.flushed = true;
+        pendingSends.delete(orgId);
+        queued.push(...entry.sends);
+    }
+    // Global call order, across orgs.
+    for (const { send } of queued.sort((x, y) => x.seq - y.seq)) send(null);
+}
+
+let exitListeners: { win: Window; onHide: () => void; onVisibility: () => void } | null = null;
+function installExitListeners(): void {
+    if (exitListeners) return;
+    const win = getWindow();
+    if (!win) return;
+    const onVisibility = (): void => {
+        if (win.document.visibilityState === "hidden") flushPendingForPageExit();
+    };
+    exitListeners = { win, onHide: flushPendingForPageExit, onVisibility };
+    win.addEventListener("pagehide", flushPendingForPageExit);
+    win.document.addEventListener("visibilitychange", onVisibility);
+}
 
 /** Emit a single onboarding funnel event.
  *
@@ -153,7 +187,7 @@ export function trackOnboardingEvent(
     if (waiting !== undefined) {
         // A digest for this org is in flight: queue behind the earlier events so the send
         // order is the call order.
-        waiting.push(send);
+        waiting.sends.push({ seq: callSeq++, send });
         return;
     }
     const cached = orgHashes.get(orgId);
@@ -161,17 +195,19 @@ export function trackOnboardingEvent(
         send(cached);
         return;
     }
-    const queue: Array<(orgIdHash: string | null) => void> = [send];
-    pendingSends.set(orgId, queue);
-    const flush = (digest: string | null): void => {
+    const entry = { sends: [{ seq: callSeq++, send }] as QueuedSend[], flushed: false };
+    pendingSends.set(orgId, entry);
+    installExitListeners();
+    const settle = (digest: string | null): void => {
         if (digest !== null) orgHashes.set(orgId, digest);
+        if (entry.flushed) return;
         pendingSends.delete(orgId);
-        for (const queued of queue) queued(digest);
+        for (const queued of entry.sends) queued.send(digest);
     };
-    hashIdentifier(orgId).then(flush, () => {
+    hashIdentifier(orgId).then(settle, () => {
         // A failed digest is not cached and its waiting events are dropped: never sent with a
         // weaker value or the raw id. The next event for the org tries the digest again.
-        pendingSends.delete(orgId);
+        if (!entry.flushed) pendingSends.delete(orgId);
     });
 }
 
@@ -199,4 +235,12 @@ export function resetOnboardingOnceTracking(): void {
     emittedOnceKeys.clear();
     orgHashes.clear();
     pendingSends.clear();
+    if (exitListeners) {
+        exitListeners.win.removeEventListener("pagehide", exitListeners.onHide);
+        exitListeners.win.document.removeEventListener(
+            "visibilitychange",
+            exitListeners.onVisibility,
+        );
+        exitListeners = null;
+    }
 }

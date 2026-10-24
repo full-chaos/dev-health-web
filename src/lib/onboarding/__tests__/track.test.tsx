@@ -395,4 +395,109 @@ describe("trackOnboardingEvent org digest", () => {
         resolvers[0]?.(new Uint8Array(32).buffer);
         await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(2));
     });
+
+    describe("page exit with a digest still pending", () => {
+        const heldDigest = () => {
+            const pending: Array<(digest: ArrayBuffer) => void> = [];
+            const digest = vi.fn(
+                () =>
+                    new Promise<ArrayBuffer>((resolve) => {
+                        pending.push(resolve);
+                    }),
+            );
+            vi.stubGlobal("crypto", {
+                randomUUID: () => "00000000-0000-4000-8000-000000000000",
+                subtle: { digest },
+            });
+            return { pending, digest };
+        };
+        const surfaces = () =>
+            sendBeacon.mock.calls.map(
+                (call) => JSON.parse((call as [string, string])[1]).events[0].payload.surface,
+            );
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it("sends the waiting events in call order without an org value on pagehide, and never again", async () => {
+            const { pending } = heldDigest();
+            trackOnboardingEventOnce("integration_step_viewed", { orgId: "org-1" });
+            trackOnboardingEvent("github_app_install_started", { orgId: "org-1" });
+            expect(sendBeacon).not.toHaveBeenCalled();
+
+            window.dispatchEvent(new Event("pagehide"));
+            expect(sendBeacon).toHaveBeenCalledTimes(2);
+            expect(surfaces()).toEqual(["integration_step_viewed", "github_app_install_started"]);
+            for (const call of sendBeacon.mock.calls) {
+                const raw = (call as [string, string])[1];
+                expect(JSON.parse(raw).orgIdHash).toBeNull();
+                expect(raw).not.toContain("org-1");
+            }
+
+            pending[0]?.(new Uint8Array(32).buffer);
+            await new Promise((resolve) => setTimeout(resolve, 30));
+            expect(sendBeacon).toHaveBeenCalledTimes(2);
+
+            trackOnboardingEvent("integration_skipped", { orgId: "org-1" });
+            expect(sendBeacon).toHaveBeenCalledTimes(3);
+            expect(JSON.parse((sendBeacon.mock.calls[2] as [string, string])[1]).orgIdHash).toMatch(
+                /^[0-9a-f]{64}$/,
+            );
+        });
+
+        it("does the same when the page becomes hidden, and not when it becomes visible", () => {
+            heldDigest();
+            trackOnboardingEvent("integration_step_viewed", { orgId: "org-1" });
+            vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+            document.dispatchEvent(new Event("visibilitychange"));
+            expect(sendBeacon).not.toHaveBeenCalled();
+
+            vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+            document.dispatchEvent(new Event("visibilitychange"));
+            expect(sendBeacon).toHaveBeenCalledTimes(1);
+            expect(surfaces()).toEqual(["integration_step_viewed"]);
+        });
+
+        it("sends nothing on pagehide when no digest is pending", () => {
+            window.dispatchEvent(new Event("pagehide"));
+            expect(sendBeacon).not.toHaveBeenCalled();
+        });
+
+        it("flushes a two-org queue in global call order", () => {
+            heldDigest();
+            trackOnboardingEvent("integration_step_viewed", { orgId: "org-a" });
+            trackOnboardingEvent("github_app_install_started", { orgId: "org-b" });
+            trackOnboardingEvent("integration_skipped", { orgId: "org-a" });
+            trackOnboardingEvent("first_sync_started", { orgId: "org-b" });
+            window.dispatchEvent(new Event("pagehide"));
+            expect(surfaces()).toEqual([
+                "integration_step_viewed",
+                "github_app_install_started",
+                "integration_skipped",
+                "first_sync_started",
+            ]);
+            for (const call of sendBeacon.mock.calls) {
+                const raw = (call as [string, string])[1];
+                expect(JSON.parse(raw).orgIdHash).toBeNull();
+                expect(raw).not.toMatch(/org-a|org-b/);
+            }
+        });
+
+        it("registers its page-exit listeners once and the reset hook removes them", () => {
+            heldDigest();
+            const addWindow = vi.spyOn(window, "addEventListener");
+            const addDocument = vi.spyOn(document, "addEventListener");
+            const removeWindow = vi.spyOn(window, "removeEventListener");
+            trackOnboardingEvent("integration_step_viewed", { orgId: "org-a" });
+            trackOnboardingEvent("integration_skipped", { orgId: "org-b" });
+            trackOnboardingEvent("first_sync_started", { orgId: "org-a" });
+            expect(addWindow.mock.calls.filter(([type]) => type === "pagehide")).toHaveLength(1);
+            expect(
+                addDocument.mock.calls.filter(([type]) => type === "visibilitychange"),
+            ).toHaveLength(1);
+            resetOnboardingOnceTracking();
+            expect(removeWindow.mock.calls.filter(([type]) => type === "pagehide")).toHaveLength(1);
+        });
+    });
 });
