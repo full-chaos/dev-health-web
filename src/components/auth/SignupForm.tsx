@@ -8,6 +8,7 @@ import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
 import { appendCallbackUrl, safePostLoginRedirect } from "@/lib/post-login-redirect";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { trackOnboardingEvent } from "@/lib/onboarding/track";
 import { PasswordStrength } from "./PasswordStrength";
 
 type SignupFormProps = {
@@ -74,6 +75,7 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
                 return;
             }
 
+            trackOnboardingEvent("signup_completed");
             router.push(
                 appendCallbackUrl(
                     isTeamTrialIntent
