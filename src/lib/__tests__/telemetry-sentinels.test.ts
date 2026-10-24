@@ -838,6 +838,15 @@ describe("telemetry hygiene: residual address forms", () => {
         expect(stripCf(lines[0])).not.toContain(p.local.slice(0, 8));
     });
 
+    it("removes an address with an ipv4 host and a trailing period", () => {
+        const p = parts();
+        const out = scrubTelemetryText(`for ${p.local}@${v4}. now`);
+        expect(out).toBe("for [Filtered]. now");
+        const url = scrubTelemetryUrl(`https://app.example/u/${p.local}@${v4}./x`);
+        expect(url).not.toContain(p.local.slice(0, 8));
+        expect(url).not.toContain(v4);
+    });
+
     it("keeps text that is not an address", () => {
         for (const text of [
             "pkg@1.2.3 installed",
