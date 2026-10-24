@@ -2,6 +2,9 @@ import { expect, test, type Page, type Request, type Response } from "@playwrigh
 
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
 
+const PROBE_ACTION_ID = "0".repeat(40);
+const STOP_DRAIN_TIMEOUT_MS = 10_000;
+
 const secretPattern =
     /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 const clientChunkForbiddenPattern =
@@ -28,7 +31,8 @@ async function watchNetwork(
     const networkRecords: string[] = [];
     const networkRecordTasks: Promise<void>[] = [];
     const interceptedActions = new Set<Request>();
-    const actionCounts = { intercepted: 0, scanned: 0 };
+    const actionCounts = { intercepted: 0, scanned: 0, pageOwn: 0 };
+    const pendingRequests = new Set<Request>();
 
     await page.route(
         (url) => url.origin === origin,
@@ -48,10 +52,12 @@ async function watchNetwork(
                 options.mutateActionBody ? options.mutateActionBody(body) : body,
             );
             actionCounts.scanned += 1;
+            if (request.headers()["next-action"] !== PROBE_ACTION_ID) actionCounts.pageOwn += 1;
             await route.fulfill({ response, body });
         },
     );
     const onRequest = (request: Request) => {
+        pendingRequests.add(request);
         if (request.url().includes("/api/v1/agent-context")) directAcrRequests.push(request.url());
         networkRecords.push(request.postData() ?? "");
         networkRecordTasks.push(
@@ -59,6 +65,9 @@ async function watchNetwork(
                 networkRecords.push(JSON.stringify(headers));
             }),
         );
+    };
+    const onRequestDone = (request: Request) => {
+        pendingRequests.delete(request);
     };
     const onResponse = (response: Response) => {
         networkRecordTasks.push(
@@ -78,22 +87,35 @@ async function watchNetwork(
     };
     page.on("request", onRequest);
     page.on("response", onResponse);
+    page.on("requestfinished", onRequestDone);
+    page.on("requestfailed", onRequestDone);
 
-    // Stop recording, then wait for every record already started: a response that arrives after the
-    // test body has finished is not part of what this test observed and must not outlive it.
+    // Stop recording: first let every request that is still in flight finish and be recorded while the
+    // listeners are attached (a response that arrives after the listener is removed would never be
+    // scanned), then detach and wait for the records already started. Requests that do not finish in
+    // time fail the guard instead of being skipped.
     const stop = async () => {
+        const deadline = Date.now() + STOP_DRAIN_TIMEOUT_MS;
+        while (pendingRequests.size > 0 && Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        const unfinished = pendingRequests.size;
+        await Promise.all(networkRecordTasks);
         page.off("request", onRequest);
         page.off("response", onResponse);
+        page.off("requestfinished", onRequestDone);
+        page.off("requestfailed", onRequestDone);
         await page.unrouteAll({ behavior: "wait" });
         await Promise.all(networkRecordTasks);
+        expect(unfinished, "requests still in flight when the guard stopped").toBe(0);
     };
     return { directAcrRequests, networkRecords, stop, actionCounts };
 }
 
-const ACTION_PROBE = async ([path, cancelBody]: [string, boolean]) => {
+const ACTION_PROBE = async ([path, cancelBody, actionId]: [string, boolean, string]) => {
     const response = await fetch(path, {
         body: "[]",
-        headers: { "content-type": "text/plain;charset=UTF-8", "next-action": "0".repeat(40) },
+        headers: { "content-type": "text/plain;charset=UTF-8", "next-action": actionId },
         method: "POST",
     });
     if (cancelBody && response.body) {
@@ -140,8 +162,12 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
     expect(routeResult.body).not.toMatch(secretPattern);
     expect(directAcrRequests).toEqual([]);
 
+    // The page's own server action (the shell's subscription read) must be intercepted and scanned too,
+    // not only the probe below.
+    await expect.poll(() => actionCounts.pageOwn, { timeout: 20_000 }).toBeGreaterThan(0);
+
     // One server action of this guard's own, so the interception is always exercised.
-    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false]);
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID]);
 
     const clientChunks = await page.evaluate(async () => {
         const urls = performance
@@ -168,7 +194,7 @@ test("scans the full body of a server action response for secret material", asyn
     );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
-    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false]);
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID]);
     await stop();
 
     expect(actionCounts.intercepted).toBeGreaterThan(0);
@@ -186,10 +212,33 @@ test("a server action response the page cancels mid-stream is still scanned and 
     );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
-    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, true]);
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, true, PROBE_ACTION_ID]);
     await stop();
 
     expect(actionCounts.intercepted).toBeGreaterThan(0);
     expect(actionCounts.scanned).toBe(actionCounts.intercepted);
     expect(networkRecords.join("\n")).not.toMatch(secretPattern);
+});
+
+test("a non-action response still in flight when the guard stops is scanned", async ({
+    baseURL,
+    page,
+}) => {
+    // Registered before the guard's own route, so the guard sees the request first and falls back here.
+    await page.route("**/__late-response", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await route.fulfill({ body: "fcacr_LATE0123456789", contentType: "text/plain" });
+    });
+    const { networkRecords, stop } = await watchNetwork(
+        page,
+        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+    );
+
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await page.evaluate(() => {
+        void fetch("/__late-response").catch(() => undefined);
+    });
+    await stop();
+
+    expect(networkRecords.join("\n")).toMatch(secretPattern);
 });
