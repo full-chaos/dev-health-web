@@ -62,7 +62,7 @@ export function InvestmentExplainer({
                 {mixExplanation.data?.status === "llm_unavailable" ? (
                     <p className="text-sm text-(--ink-muted)">
                         Investment distribution uses metadata-based categorization. Connect an LLM
-                        provider in settings to enable AI-generated explanations.
+                        provider in settings to enable generated explanations.
                     </p>
                 ) : !mixExplanation.data || mixExplanation.filtersKey !== mixExplainKey ? (
                     <p className="text-sm text-(--ink-muted)">

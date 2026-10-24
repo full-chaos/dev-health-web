@@ -231,7 +231,7 @@ describe("InvestmentView overview today", () => {
 
     /** The AI explanation is collapsed by default (behind a ghost button) since CHAOS-8067. */
     const openAiExplanation = () =>
-        fireEvent.click(screen.getByRole("button", { name: "Show AI explanation" }));
+        fireEvent.click(screen.getByRole("button", { name: "Show explanation" }));
 
     it("LLM panel: title, Focused line, Regenerate calls the handler", () => {
         const regenerate = vi.fn();

@@ -202,7 +202,7 @@ describe("overview: context card", () => {
         expect(card).toHaveTextContent("Read this with context");
         expect(card).toHaveTextContent("Evidence quality");
         // Closed by default: only the ghost button shows, and it opens the shared drawer.
-        const toggle = within(card).getByRole("button", { name: "Show AI explanation" });
+        const toggle = within(card).getByRole("button", { name: "Show explanation" });
         expect(toggle.className).toContain("border-transparent");
         expect(card).not.toHaveTextContent("What this investment mix indicates");
         expect(screen.queryByTestId("ai-generated-label")).toBeNull();
@@ -223,7 +223,7 @@ describe("overview: context card", () => {
 
     it("the open drawer follows the explanation state (Regenerate in progress)", () => {
         const { rerender } = overview({ mixExplanation: explained() as never, mixExplainKey: "k" });
-        fireEvent.click(screen.getByRole("button", { name: "Show AI explanation" }));
+        fireEvent.click(screen.getByRole("button", { name: "Show explanation" }));
         const drawer = screen.getByRole("dialog");
         expect(within(drawer).getByRole("button", { name: "Regenerate" })).toBeEnabled();
         useInvestmentDataMock.mockReturnValue(
