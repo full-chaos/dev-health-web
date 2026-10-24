@@ -1,10 +1,11 @@
 "use client";
 
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatDateUTC } from "@/lib/formatters";
+import { applyRowSelection } from "@/lib/admin/rangeSelection";
 import type {
     SyncCoverageBackfillWindow,
     SyncCoverageDataset,
@@ -86,6 +87,36 @@ function sameScope(left: string[], right: string[]): boolean {
     const sortedLeft = [...left].sort();
     const sortedRight = [...right].sort();
     return sortedLeft.every((value, index) => value === sortedRight[index]);
+}
+
+function ShiftCheckbox({
+    ariaLabel,
+    checked,
+    onSelect,
+    className,
+}: {
+    ariaLabel: string;
+    checked: boolean;
+    onSelect: (shift: boolean) => void;
+    className?: string;
+}) {
+    const shiftRef = useRef(false);
+    return (
+        <input
+            type="checkbox"
+            aria-label={ariaLabel}
+            checked={checked}
+            onClick={(event) => {
+                shiftRef.current = event.shiftKey;
+            }}
+            onChange={() => {
+                const shift = shiftRef.current;
+                shiftRef.current = false;
+                onSelect(shift);
+            }}
+            className={className}
+        />
+    );
 }
 
 /**
@@ -268,11 +299,24 @@ export function SyncCoverageTimeline({
         );
     }, [coverage?.backfill_windows, selectedBackfillWindowKeys]);
 
-    const toggleBackfillWindow = (window: SyncCoverageBackfillWindow) => {
+    const [listAnchor, setListAnchor] = useState<{ list: string; key: string } | null>(null);
+
+    const selectListedWindow = (
+        window: SyncCoverageBackfillWindow,
+        list: string,
+        order: string[],
+        shift: boolean,
+    ) => {
         const key = backfillWindowKey(window);
-        setSelectedBackfillWindowKeys((current) =>
-            current.includes(key) ? current.filter((value) => value !== key) : [...current, key],
-        );
+        const result = applyRowSelection({
+            selected: selectedBackfillWindowKeys,
+            order,
+            anchor: listAnchor !== null && listAnchor.list === list ? listAnchor.key : null,
+            key,
+            shift,
+        });
+        setListAnchor({ list, key: result.anchor });
+        setSelectedBackfillWindowKeys(result.selected);
     };
 
     if (error) {
@@ -392,13 +436,21 @@ export function SyncCoverageTimeline({
                                 className="flex flex-wrap items-center justify-between gap-3"
                             >
                                 <label className="flex min-w-0 items-start gap-2 text-sm text-foreground">
-                                    <input
-                                        type="checkbox"
-                                        aria-label={`Select suggested ${selectionReason(window)} ${formatDateUTC(window.since)} to ${formatDateUTC(window.before)} for backfill`}
+                                    <ShiftCheckbox
+                                        ariaLabel={`Select suggested ${selectionReason(window)} ${formatDateUTC(window.since)} to ${formatDateUTC(window.before)} for backfill`}
                                         checked={selectedBackfillWindowKeys.includes(
                                             backfillWindowKey(window),
                                         )}
-                                        onChange={() => toggleBackfillWindow(window)}
+                                        onSelect={(shift) =>
+                                            selectListedWindow(
+                                                window,
+                                                "available",
+                                                (coverage.backfill_windows ?? []).map(
+                                                    backfillWindowKey,
+                                                ),
+                                                shift,
+                                            )
+                                        }
                                         className="mt-0.5"
                                     />
                                     <span>
@@ -469,6 +521,18 @@ export function SyncCoverageTimeline({
                     ];
 
                     if (activeSourceId && rows.length === 0) return null;
+
+                    const tableList = `table:${dataset.dataset_key}`;
+                    const tableOrder = [
+                        ...new Set(
+                            rows.flatMap((row) =>
+                                (row.kind === "gap" || row.kind === "failed"
+                                    ? backfillWindowsForRow(row, coverage.backfill_windows)
+                                    : []
+                                ).map(backfillWindowKey),
+                            ),
+                        ),
+                    ];
 
                     return (
                         <div
@@ -602,17 +666,19 @@ export function SyncCoverageTimeline({
                                                                     {onBackfillWindowsAction &&
                                                                         coverage.backfill_windows !==
                                                                             undefined && (
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                aria-label={`Select ${row.kind} ${formatDateUTC(row.range.since)} to ${formatDateUTC(row.range.before)} for backfill`}
+                                                                            <ShiftCheckbox
+                                                                                ariaLabel={`Select ${row.kind} ${formatDateUTC(row.range.since)} to ${formatDateUTC(row.range.before)} for backfill`}
                                                                                 checked={selectedBackfillWindowKeys.includes(
                                                                                     backfillWindowKey(
                                                                                         backfillWindows[0],
                                                                                     ),
                                                                                 )}
-                                                                                onChange={() =>
-                                                                                    toggleBackfillWindow(
+                                                                                onSelect={(shift) =>
+                                                                                    selectListedWindow(
                                                                                         backfillWindows[0],
+                                                                                        tableList,
+                                                                                        tableOrder,
+                                                                                        shift,
                                                                                     )
                                                                                 }
                                                                             />
@@ -644,9 +710,8 @@ export function SyncCoverageTimeline({
                                                                                 {onBackfillWindowsAction &&
                                                                                     coverage.backfill_windows !==
                                                                                         undefined && (
-                                                                                        <input
-                                                                                            type="checkbox"
-                                                                                            aria-label={windowSelectionLabel(
+                                                                                        <ShiftCheckbox
+                                                                                            ariaLabel={windowSelectionLabel(
                                                                                                 window,
                                                                                             )}
                                                                                             checked={selectedBackfillWindowKeys.includes(
@@ -654,9 +719,14 @@ export function SyncCoverageTimeline({
                                                                                                     window,
                                                                                                 ),
                                                                                             )}
-                                                                                            onChange={() =>
-                                                                                                toggleBackfillWindow(
+                                                                                            onSelect={(
+                                                                                                shift,
+                                                                                            ) =>
+                                                                                                selectListedWindow(
                                                                                                     window,
+                                                                                                    tableList,
+                                                                                                    tableOrder,
+                                                                                                    shift,
                                                                                                 )
                                                                                             }
                                                                                         />
