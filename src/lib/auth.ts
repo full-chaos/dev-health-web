@@ -195,6 +195,8 @@ const nextAuth = NextAuth({
                         token.is_superuser = data.user.is_superuser || false;
                         token.permissions = [];
                         token.needs_onboarding = data.needs_onboarding ?? false;
+                        // Only the exchange response can say the account is new; a client update() never can.
+                        token.is_new_user = data.is_new_user === true;
                         token.access_token = data.access_token;
                         token.refresh_token = data.refresh_token;
                         token.expires_at = Date.now() + (data.expires_in || 3600) * 1000;
@@ -419,6 +421,7 @@ const nextAuth = NextAuth({
                 session.user.is_superuser = (token.is_superuser as boolean) ?? false;
                 session.user.permissions = token.permissions as string[];
                 session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
+                session.user.is_new_user = token.is_new_user === true;
                 session.access_token = token.access_token as string;
                 if (token.error) {
                     session.error = token.error as string;

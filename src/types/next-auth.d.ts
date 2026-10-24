@@ -15,6 +15,8 @@ declare module "next-auth" {
             is_superuser?: boolean;
             permissions?: string[];
             needs_onboarding?: boolean;
+            /** True for the sign-in that created the account (social sign-in only). */
+            is_new_user?: boolean;
             is_impersonating?: boolean;
             impersonated_user_id?: string;
             impersonated_email?: string;
@@ -45,6 +47,7 @@ declare module "next-auth/jwt" {
         is_superuser?: boolean;
         permissions?: string[];
         needs_onboarding?: boolean;
+        is_new_user?: boolean;
         access_token?: string;
         refresh_token?: string;
         expires_at?: number;
