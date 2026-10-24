@@ -6,6 +6,22 @@ vi.mock("@/lib/onboarding/track", () => ({
     trackOnboardingEvent: (...args: unknown[]) => trackOnboardingEvent(...args),
 }));
 
+const hashSpy = vi.fn();
+vi.mock("@/lib/telemetry/hash", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/telemetry/hash")>();
+    return {
+        ...actual,
+        hashIdentifier: (input: string) => {
+            hashSpy(input);
+            return actual.hashIdentifier(input);
+        },
+        fallbackHash: (input: string) => {
+            hashSpy(input);
+            return actual.fallbackHash(input);
+        },
+    };
+});
+
 type Emitter = typeof import("./SignupCompletedEmitter");
 
 /** One browser tab: its own module instance, so its own in-memory guard. */
@@ -43,6 +59,7 @@ const gap = (): Promise<void> => new Promise<void>((resolve) => setTimeout(resol
 describe("SignupCompletedEmitter across tabs", () => {
     beforeEach(() => {
         trackOnboardingEvent.mockReset();
+        hashSpy.mockReset();
         window.localStorage.clear();
     });
     afterEach(() => {
@@ -115,5 +132,6 @@ describe("SignupCompletedEmitter across tabs", () => {
         expect(trackOnboardingEvent).toHaveBeenCalledTimes(1);
         expect(setItem).not.toHaveBeenCalled();
         expect(window.localStorage.length).toBe(0);
+        expect(hashSpy).not.toHaveBeenCalled();
     });
 });
