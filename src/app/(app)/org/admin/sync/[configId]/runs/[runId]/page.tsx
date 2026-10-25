@@ -2,10 +2,8 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import {
-    SYNC_RUN_UNIT_PAGE_SIZE,
-    SyncRunDetailLive,
-} from "@/components/admin/sync/SyncRunDetailLive";
+import { SyncRunDetailLive } from "@/components/admin/sync/SyncRunDetailLive";
+import { SYNC_RUN_UNIT_PAGE_SIZE } from "@/lib/admin/syncRunUnitPaging";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import { getServerEnv } from "@/lib/config";
 import { backToArea } from "@/lib/design/cta";

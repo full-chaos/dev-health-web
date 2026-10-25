@@ -9,13 +9,17 @@ import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import { getSyncRunPresentation } from "@/lib/admin/syncRunPresentation";
 import { getSyncUnitErrorPresentation } from "@/lib/admin/syncUnitErrorPresentation";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { SYNC_RUN_UNIT_PAGE_SIZE } from "@/lib/admin/syncRunUnitPaging";
 import { readSyncRunAttention, type SyncRunAttention } from "@/lib/admin/syncRunAttention";
 import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
 import { type SyncStatus, isTerminalSyncStatus } from "@/lib/sync-types";
-import type { SyncRun, SyncRunUnit, SyncRunUnitQuery, SyncRunUnitSummary } from "@/lib/admin/types";
-
-/** Units shown per page of the unit table (the paged units read asks for this many). */
-export const SYNC_RUN_UNIT_PAGE_SIZE = 100;
+import type {
+    SyncRun,
+    SyncRunUnit,
+    SyncRunUnitQuery,
+    SyncRunUnitSummary,
+    SyncRunUnitWindow,
+} from "@/lib/admin/types";
 
 /** Distinct unit statuses, in a stable display order, for the status filter. */
 const STATUS_FILTER_ORDER = [
@@ -313,7 +317,7 @@ export function SyncRunDetailLive({
 
             setSummary(unitsRes.data);
             setUnitsError(null);
-            if (attentionRes) setAttention(attentionRes);
+            setAttention(attentionRes);
             if (filtersTouchedRef.current) {
                 setRefreshTick((tick) => tick + 1);
             } else {
@@ -620,25 +624,26 @@ export function SyncRunDetailLive({
         [summary],
     );
 
+    // Live, a page of units cannot stand for the whole run: the window comes from
+    // the paged read's fields, and reads "No window recorded" without them.
+    const windowOf = useCallback(
+        (field: SyncRunUnitWindow | undefined, units: readonly SyncRunUnit[]): UnitWindow => {
+            if (field) return { since: field.since_at, before: field.before_at };
+            return testMode ? computeWindow(units) : { since: null, before: null };
+        },
+        [testMode],
+    );
     const requestedWindow = useMemo(
-        () =>
-            summary?.requested_window
-                ? {
-                      since: summary.requested_window.since_at,
-                      before: summary.requested_window.before_at,
-                  }
-                : computeWindow(summary?.units ?? []),
-        [summary],
+        () => windowOf(summary?.requested_window, summary?.units ?? []),
+        [summary, windowOf],
     );
     const coveredWindow = useMemo(
         () =>
-            summary?.covered_window
-                ? {
-                      since: summary.covered_window.since_at,
-                      before: summary.covered_window.before_at,
-                  }
-                : computeWindow((summary?.units ?? []).filter((unit) => unit.status === "success")),
-        [summary],
+            windowOf(
+                summary?.covered_window,
+                (summary?.units ?? []).filter((unit) => unit.status === "success"),
+            ),
+        [summary, windowOf],
     );
 
     return (

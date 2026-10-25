@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { fireEvent, render, screen, userEvent, waitFor, within } from "@/test/utils";
 import { SyncRunDetailLive } from "./SyncRunDetailLive";
 import { SAMPLE_SYNC_RUN, SAMPLE_SYNC_RUN_UNIT_SUMMARY } from "@/data/syncRunDetailSample";
-import { getSyncRunUnits } from "@/lib/admin/server";
+import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
+import { SYNC_RUN_UNIT_PAGE_SIZE } from "@/lib/admin/syncRunUnitPaging";
 import type { SyncRunUnitSummary } from "@/lib/admin/types";
 
 vi.mock("@/lib/admin/server", () => ({
@@ -219,5 +221,65 @@ describe("SyncRunDetailLive unit filters on a live run", () => {
             />,
         );
         expect(screen.getByText(/Needs-attention details could not be loaded/)).toBeInTheDocument();
+    });
+
+    it("takes the page size from a module that is not a client module, for the server page", () => {
+        expect(SYNC_RUN_UNIT_PAGE_SIZE).toBe(PAGE);
+        const pageSource = readFileSync(
+            "src/app/(app)/org/admin/sync/[configId]/runs/[runId]/page.tsx",
+            "utf8",
+        );
+        const clientSource = readFileSync(
+            "src/components/admin/sync/SyncRunDetailLive.tsx",
+            "utf8",
+        );
+        expect(clientSource.startsWith('"use client"')).toBe(true);
+        expect(pageSource).toMatch(
+            /SYNC_RUN_UNIT_PAGE_SIZE[^;]*from "@\/lib\/admin\/syncRunUnitPaging"/,
+        );
+        expect(pageSource).not.toMatch(/SYNC_RUN_UNIT_PAGE_SIZE[^;]*SyncRunDetailLive/);
+    });
+
+    it("never shows one page of units as the window of a live run", () => {
+        renderLive({
+            ...page(SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, 4),
+            requested_window: undefined,
+            covered_window: undefined,
+        });
+        expect(screen.getAllByText("No window recorded")).toHaveLength(2);
+        expect(screen.queryByText("Jun 12, 2026 → Jun 26, 2026")).not.toBeInTheDocument();
+    });
+
+    it("drops the Needs attention list and says so when its read fails on Refresh", async () => {
+        const farFailed = { ...failedUnit, id: "far-unit", dataset_key: "far-dataset" };
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: { ...SAMPLE_SYNC_RUN, status: "running" },
+        });
+        vi.mocked(getSyncRunUnits).mockImplementation(async (_runId, query) =>
+            query?.status || query?.error_category
+                ? { error: "boom" }
+                : { data: page(SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, 4) },
+        );
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, status: "running" }}
+                initialSummary={page(SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, 4)}
+                initialAttention={{ units: [farFailed], total: 1 }}
+            />,
+        );
+        const user = userEvent.setup();
+        expect(screen.getByRole("region", { name: /needs attention/i })).toBeInTheDocument();
+        expect(
+            screen.queryByText(/Needs-attention details could not be loaded/),
+        ).not.toBeInTheDocument();
+
+        await user.click(screen.getByTestId("refresh-control-button"));
+
+        await waitFor(() =>
+            expect(
+                screen.getByText(/Needs-attention details could not be loaded/),
+            ).toBeInTheDocument(),
+        );
+        expect(screen.queryByRole("region", { name: /needs attention/i })).not.toBeInTheDocument();
     });
 });
