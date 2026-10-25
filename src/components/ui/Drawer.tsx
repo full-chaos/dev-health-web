@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
 import { X } from "lucide-react";
 
-import { BodyPortal } from "@/components/ui/BodyPortal";
+import { BodyPortal, usePortalMounted } from "@/components/ui/BodyPortal";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -45,8 +45,10 @@ export function Drawer({
     const panelRef = useRef<HTMLDivElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
 
+    // The panel exists only once the portal has mounted; focus must wait for it.
+    const portalMounted = usePortalMounted();
     const onKeyDown = useModalFocus({
-        open,
+        open: open && portalMounted,
         panelRef,
         initialFocusRef: closeRef,
         returnFocusRef,

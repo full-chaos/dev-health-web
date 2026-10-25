@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
 
-import { BodyPortal } from "@/components/ui/BodyPortal";
+import { BodyPortal, usePortalMounted } from "@/components/ui/BodyPortal";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 
 type DialogProps = {
@@ -34,8 +34,10 @@ export function Dialog({
     const titleId = useId();
     const panelRef = useRef<HTMLDivElement>(null);
 
+    // The panel exists only once the portal has mounted; focus must wait for it.
+    const portalMounted = usePortalMounted();
     const onKeyDown = useModalFocus({
-        open,
+        open: open && portalMounted,
         panelRef,
         initialFocusRef,
         onEscape: onCloseAction,
