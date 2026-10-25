@@ -352,3 +352,60 @@ describe("an aborted server action after its response", () => {
         ]);
     });
 });
+
+describe("an aborted RSC refresh GET after its response", () => {
+    const PAGE = `${ORIGIN}/org/admin/integrations/pagerduty`;
+    const RSC_URL = `${PAGE}?_rsc=abc12`;
+    const responded = (
+        overrides: Partial<Extract<BrowserRequestEvent, { kind: "responded" }>> = {},
+    ) =>
+        ({
+            kind: "responded",
+            sequence: 1,
+            url: RSC_URL,
+            status: 200,
+            contentType: "text/x-component",
+            ...overrides,
+        }) as const satisfies BrowserRequestEvent;
+    const aborted = (overrides: Partial<Extract<BrowserRequestEvent, { kind: "failed" }>> = {}) =>
+        ({
+            kind: "failed",
+            sequence: 1,
+            url: RSC_URL,
+            method: "GET",
+            errorText: "net::ERR_ABORTED",
+            ...overrides,
+        }) as const satisfies BrowserRequestEvent;
+
+    it("is not a fault when the 200 text/x-component response came first", () => {
+        expect(unrecoveredBrowserRequestFailures([responded(), aborted()], PAGE)).toEqual([]);
+    });
+
+    it.each([
+        ["no response was seen first", [aborted()]],
+        ["the response came after the failure", [aborted(), responded()]],
+        ["the response belongs to another request", [responded({ sequence: 2 }), aborted()]],
+        ["the response was not 200", [responded({ status: 500 }), aborted()]],
+        [
+            "the content type is not text/x-component",
+            [responded({ contentType: "text/html" }), aborted()],
+        ],
+        ["the request is a POST", [responded(), aborted({ method: "POST" })]],
+        [
+            "the failure is not an abort",
+            [responded(), aborted({ errorText: "net::ERR_CONNECTION_RESET" })],
+        ],
+        [
+            "the request went to another origin",
+            [
+                responded({ url: "http://127.0.0.1:3002/x?_rsc=abc12" }),
+                aborted({ url: "http://127.0.0.1:3002/x?_rsc=abc12" }),
+            ],
+        ],
+        ["the url has no _rsc query key", [responded({ url: PAGE }), aborted({ url: PAGE })]],
+    ] as const)("stays a fault when %s", (_label, events) => {
+        const failures = unrecoveredBrowserRequestFailures(events, PAGE);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]?.kind).toBe("failed");
+    });
+});

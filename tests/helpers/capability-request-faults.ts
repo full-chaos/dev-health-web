@@ -2,6 +2,7 @@ import type { Page, Request } from "@playwright/test";
 
 const CAPABILITIES_PATH = "/api/v1/dev/capabilities";
 const REQUEST_ABORTED = "net::ERR_ABORTED";
+const RSC_QUERY_KEY = "_rsc";
 const SERVER_ACTION_HEADER = "next-action";
 const SERVER_ACTION_CONTENT_TYPE = "text/x-component";
 
@@ -93,6 +94,35 @@ function isCancelledAfterServerActionResponse(
     );
 }
 
+// router.refresh() fetches an RSC payload (GET with an `_rsc` query key); the Next client can cancel the
+// stream after the 200 response, which Chromium reports as net::ERR_ABORTED. An abort before any
+// response, a non-200 response or any other error stays a failure.
+function isCancelledAfterRscResponse(
+    failure: BrowserRequestFailure,
+    events: readonly BrowserRequestEvent[],
+    pageOrigin: string | null,
+): boolean {
+    if (
+        failure.errorText !== REQUEST_ABORTED ||
+        failure.method !== "GET" ||
+        pageOrigin === null ||
+        requestOrigin(failure.url) !== pageOrigin ||
+        !new URL(failure.url).searchParams.has(RSC_QUERY_KEY)
+    ) {
+        return false;
+    }
+
+    const failedAt = events.indexOf(failure);
+    return events.some(
+        (event, index) =>
+            index < failedAt &&
+            event.kind === "responded" &&
+            event.sequence === failure.sequence &&
+            event.status === 200 &&
+            event.contentType.toLowerCase().startsWith(SERVER_ACTION_CONTENT_TYPE),
+    );
+}
+
 export function unrecoveredBrowserRequestFailures(
     events: readonly BrowserRequestEvent[],
     pageUrl: string,
@@ -102,7 +132,8 @@ export function unrecoveredBrowserRequestFailures(
         (event): event is BrowserRequestFailure =>
             event.kind === "failed" &&
             !isRecoveredCapabilityAbort(event, events, pageOrigin) &&
-            !isCancelledAfterServerActionResponse(event, events, pageOrigin),
+            !isCancelledAfterServerActionResponse(event, events, pageOrigin) &&
+            !isCancelledAfterRscResponse(event, events, pageOrigin),
     );
 }
 
