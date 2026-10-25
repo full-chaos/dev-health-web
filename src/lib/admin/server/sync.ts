@@ -118,10 +118,17 @@ export async function updateSyncConfigRepositories(
 export async function triggerBackfill(
     configId: string,
     selector: BackfillSelector,
+    idempotencyKey?: string,
 ): Promise<ActionResult<BackfillResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        const res = await adminApi.syncConfigs.backfill(configId, { selector }, token, orgId);
+        const res = await adminApi.syncConfigs.backfill(
+            configId,
+            { selector },
+            token,
+            orgId,
+            idempotencyKey,
+        );
         revalidatePath("/org/admin/sync");
         revalidatePath(`/org/admin/sync/${configId}`);
         return res;

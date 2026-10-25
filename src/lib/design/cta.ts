@@ -245,6 +245,8 @@ export const CTA_LABELS = {
     /** Reset the run-detail unit table status filter (CHAOS-2794). */
     allStatuses: "All statuses",
     viewRun: "View run",
+    /** Open the config page where an accepted backfill job reports its progress. */
+    viewBackfillProgress: "View backfill progress",
     /** Advance the backfill wizard to the previous step (CHAOS-2796). */
     backButton: "Back",
     /** Submit the backfill wizard's final step (CHAOS-2796). */

@@ -54,7 +54,29 @@ interface BackfillWizardProps {
 interface SubmissionOutcome {
     label: string;
     syncRunId: string | null;
+    backfillJobId: string | null;
     error: string | null;
+}
+
+/**
+ * A failed submit worth one retry with the same key: no HTTP status (a thrown call, a network or deadline
+ * error), a 5xx, a 408 or a 429. Any other status is a refusal the caller must act on.
+ */
+export function isTransientFailure(result: {
+    data?: unknown;
+    error?: string;
+    status?: number;
+}): boolean {
+    if (!result.error && result.data) return false;
+    const { status } = result;
+    return status === undefined || status >= 500 || status === 408 || status === 429;
+}
+
+/** One key per user action; each window adds its index, so a retry of a window reuses its key. */
+function newSubmissionActionId(): string {
+    return (
+        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
 }
 
 function startedBackfillLabel(count: number): string {
@@ -315,6 +337,8 @@ export function BackfillWizard({
     );
     const [expensiveConfirmed, setExpensiveConfirmed] = useState(false);
     const [isPending, startTransition] = useTransition();
+    // A second press while one submit runs must not start a second one: one config, one submit in flight.
+    const submitInFlightRef = useRef(false);
     const [submissionOutcomes, setSubmissionOutcomes] = useState<SubmissionOutcome[]>([]);
     const dialogRef = useRef<HTMLDivElement>(null);
     const onCloseActionRef = useRef(onCloseAction);
@@ -430,7 +454,7 @@ export function BackfillWizard({
     };
 
     const handleSubmit = () => {
-        if (!canSubmit) return;
+        if (!canSubmit || submitInFlightRef.current) return;
         const selectors: BackfillSelector[] =
             selectedExactWindows.length > 0
                 ? selectedExactWindows.map(selectorForExactWindow)
@@ -455,6 +479,7 @@ export function BackfillWizard({
                     label: labels[index],
                     syncRunId:
                         selectors.length === 1 ? "sample-run-gaps" : `sample-run-gaps-${index + 1}`,
+                    backfillJobId: null,
                     error: null,
                 })),
             );
@@ -462,26 +487,48 @@ export function BackfillWizard({
             return;
         }
 
+        submitInFlightRef.current = true;
+        const actionId = newSubmissionActionId();
         startTransition(async () => {
             const outcomes: SubmissionOutcome[] = [];
-            for (const [index, selector] of selectors.entries()) {
-                try {
-                    const result = await triggerBackfill(configId, selector);
-                    outcomes.push({
-                        label: labels[index],
-                        syncRunId: result.data?.sync_run_id ?? null,
-                        error:
-                            result.error || !result.data
-                                ? (result.error ?? "Failed to start backfill")
-                                : null,
-                    });
-                } catch {
-                    outcomes.push({
-                        label: labels[index],
-                        syncRunId: null,
-                        error: "Failed to start backfill",
-                    });
+            try {
+                // Strictly one at a time: the ops route mints one occurrence per config per instant, so two
+                // in-flight submits of one config can collide. Each is fast (accepted before the plan).
+                for (const [index, selector] of selectors.entries()) {
+                    const idempotencyKey = `${actionId}-${index}`;
+                    try {
+                        // A thrown call may have been applied, and the server action returns a failed ops call as an
+                        // error result: one retry with the SAME key returns the job the first call made. Only a
+                        // transient failure is retried; a refusal (4xx) is final and shown at once.
+                        const attempt = async () => {
+                            try {
+                                return await triggerBackfill(configId, selector, idempotencyKey);
+                            } catch {
+                                return { error: "Failed to start backfill" };
+                            }
+                        };
+                        let result: Awaited<ReturnType<typeof triggerBackfill>> = await attempt();
+                        if (isTransientFailure(result)) result = await attempt();
+                        outcomes.push({
+                            label: labels[index],
+                            syncRunId: result.data?.sync_run_id ?? null,
+                            backfillJobId: result.data?.backfill_job_id ?? null,
+                            error:
+                                result.error || !result.data
+                                    ? (result.error ?? "Failed to start backfill")
+                                    : null,
+                        });
+                    } catch {
+                        outcomes.push({
+                            label: labels[index],
+                            syncRunId: null,
+                            backfillJobId: null,
+                            error: "Failed to start backfill",
+                        });
+                    }
                 }
+            } finally {
+                submitInFlightRef.current = false;
             }
             const startedCount = outcomes.filter((outcome) => outcome.error === null).length;
             const failedCount = outcomes.length - startedCount;
@@ -1026,10 +1073,26 @@ export function BackfillWizard({
                                                 {CTA_LABELS.viewRun}
                                             </Link>
                                         ) : (
-                                            <p className="mt-1 text-(--ink-muted)">
-                                                Backfill accepted; refresh this page to view
-                                                progress.
-                                            </p>
+                                            <>
+                                                <p className="mt-1 text-(--ink-muted)">
+                                                    {outcome.backfillJobId
+                                                        ? `Backfill accepted (job ${outcome.backfillJobId}); the run is planned in the background.`
+                                                        : "Backfill accepted; refresh this page to view progress."}
+                                                </p>
+                                                {outcome.backfillJobId ? (
+                                                    <Link
+                                                        href={appPath(
+                                                            "/org/admin/sync/[configId]",
+                                                            {
+                                                                configId,
+                                                            },
+                                                        )}
+                                                        className="mt-1 inline-block text-(--accent-2) hover:underline"
+                                                    >
+                                                        {CTA_LABELS.viewBackfillProgress}
+                                                    </Link>
+                                                ) : null}
+                                            </>
                                         )}
                                     </li>
                                 ))}
