@@ -433,6 +433,25 @@ export interface SyncRunUnitSummary {
      */
     catching_up_dataset_count?: number;
     units: SyncRunUnit[];
+    /**
+     * Units that match the request's filters. Present only when the request
+     * was paged (offset or any filter); `units` is then one page of them.
+     */
+    filtered_unit_count?: number;
+}
+
+/** Paging and filters of the sync run units read; every field is optional. */
+export interface SyncRunUnitQuery {
+    limit?: number;
+    offset?: number;
+    /** Comma-separated unit statuses (for example "failed,retrying"). */
+    status?: string;
+    dataset_key?: string;
+    source_id?: string;
+    /** Keep units that do not end before this instant (RFC 3339 or YYYY-MM-DD). */
+    since?: string;
+    /** Keep units that do not start after this instant (RFC 3339 or YYYY-MM-DD). */
+    before?: string;
 }
 
 export interface SyncConfigCreate {

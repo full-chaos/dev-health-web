@@ -17,6 +17,7 @@ import type {
     SyncConfigRepositorySelectionUpdate,
     SyncTriggerResult,
     SyncRun,
+    SyncRunUnitQuery,
     SyncRunUnitSummary,
     SyncCoverageSummary,
     BackfillSelector,
@@ -235,10 +236,13 @@ export async function getSyncRunStatus(runId: string): Promise<ActionResult<Sync
     });
 }
 
-export async function getSyncRunUnits(runId: string): Promise<ActionResult<SyncRunUnitSummary>> {
+export async function getSyncRunUnits(
+    runId: string,
+    query: SyncRunUnitQuery = {},
+): Promise<ActionResult<SyncRunUnitSummary>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.syncConfigs.getSyncRunUnits(runId, token, orgId);
+        return adminApi.syncConfigs.getSyncRunUnits(runId, token, orgId, query);
     });
 }
 

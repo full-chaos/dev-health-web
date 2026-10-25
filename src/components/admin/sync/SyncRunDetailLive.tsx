@@ -1,7 +1,7 @@
 "use client";
 
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { RefreshControl } from "@/components/admin/RefreshControl";
 import { SyncStatusBadge } from "./SyncStatusBadge";
@@ -11,7 +11,10 @@ import { getSyncUnitErrorPresentation } from "@/lib/admin/syncUnitErrorPresentat
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
 import { type SyncStatus, isTerminalSyncStatus } from "@/lib/sync-types";
-import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types";
+import type { SyncRun, SyncRunUnit, SyncRunUnitQuery, SyncRunUnitSummary } from "@/lib/admin/types";
+
+/** Units shown per page of the unit table (the paged units read asks for this many). */
+export const SYNC_RUN_UNIT_PAGE_SIZE = 100;
 
 /** Distinct unit statuses, in a stable display order, for the status filter. */
 const STATUS_FILTER_ORDER = [
@@ -267,8 +270,11 @@ export function SyncRunDetailLive({
         testMode ? null : new Date().toISOString(),
     );
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [refreshTick, setRefreshTick] = useState(0);
     // Guard against overlapping refreshes if a click lands while one is in flight.
     const inFlightRef = useRef(false);
+    const unitsRequestRef = useRef(0);
+    const filtersTouchedRef = useRef(false);
 
     const runPresentation = getSyncRunPresentation(run, summary);
     const isTerminal = isTerminalSyncStatus(runPresentation.badgeStatus);
@@ -282,7 +288,7 @@ export function SyncRunDetailLive({
         try {
             const [runRes, unitsRes] = await Promise.all([
                 getSyncRunStatus(runId),
-                getSyncRunUnits(runId),
+                getSyncRunUnits(runId, { limit: SYNC_RUN_UNIT_PAGE_SIZE, offset: 0 }),
             ]);
 
             // withErrorHandling RETURNS { error } (never throws), so a failed
@@ -295,6 +301,12 @@ export function SyncRunDetailLive({
 
             setSummary(unitsRes.data);
             setUnitsError(null);
+            if (filtersTouchedRef.current) {
+                setRefreshTick((tick) => tick + 1);
+            } else {
+                setPageUnits(unitsRes.data.units);
+                setFilteredCount(unitsRes.data.filtered_unit_count ?? unitsRes.data.unit_count);
+            }
             setRun(runRes.data);
             setLastUpdatedAt(new Date().toISOString());
         } finally {
@@ -395,32 +407,147 @@ export function SyncRunDetailLive({
         );
     }, [attentionUnits, sourceLabel]);
 
-    // Unit table filters (CHAOS-2794) — client-side over the already-fetched
-    // unit summary; narrows which persisted rows are displayed, never
-    // re-derives coverage/category truth.
+    // Unit table filters (CHAOS-2794). In test mode they narrow the sample units
+    // client-side. Live, every filter and page change asks the units read for
+    // that page (the run can hold far more units than one response carries), and
+    // the rollups above keep describing the whole run.
     const [statusFilter, setStatusFilter] = useState("all");
     const [datasetFilter, setDatasetFilter] = useState("all");
     const [sourceFilter, setSourceFilter] = useState("all");
     const [failedOnlyFilter, setFailedOnlyFilter] = useState(false);
     const [sinceFilter, setSinceFilter] = useState("");
     const [beforeFilter, setBeforeFilter] = useState("");
+    const [offset, setOffset] = useState(0);
+    const [pageUnits, setPageUnits] = useState<SyncRunUnit[]>(initialSummary?.units ?? []);
+    const [filteredCount, setFilteredCount] = useState<number | null>(
+        initialSummary ? (initialSummary.filtered_unit_count ?? initialSummary.unit_count) : null,
+    );
+    const [unitsLoading, setUnitsLoading] = useState(false);
+
+    const hasActiveUnitFilters =
+        statusFilter !== "all" ||
+        datasetFilter !== "all" ||
+        sourceFilter !== "all" ||
+        failedOnlyFilter ||
+        sinceFilter !== "" ||
+        beforeFilter !== "";
+
+    const changeFilter =
+        <T,>(setter: (value: T) => void) =>
+        (value: T) => {
+            filtersTouchedRef.current = true;
+            setOffset(0);
+            setter(value);
+        };
 
     const availableStatuses = useMemo(() => {
-        const present = new Set((summary?.units ?? []).map((unit) => unit.status));
+        const present = new Set(
+            testMode
+                ? (summary?.units ?? []).map((unit) => unit.status)
+                : Object.keys(summary?.by_status ?? {}),
+        );
+        if (!testMode && !summary) return [...STATUS_FILTER_ORDER];
         return STATUS_FILTER_ORDER.filter((status) => present.has(status));
-    }, [summary]);
+    }, [summary, testMode]);
 
     const availableDatasets = useMemo(
-        () => Array.from(new Set((summary?.units ?? []).map((unit) => unit.dataset_key))).sort(),
-        [summary],
+        () =>
+            Array.from(
+                new Set(
+                    testMode
+                        ? (summary?.units ?? []).map((unit) => unit.dataset_key)
+                        : Object.keys(summary?.by_dataset ?? {}),
+                ),
+            ).sort(),
+        [summary, testMode],
     );
 
     const availableSourceIds = useMemo(
-        () => Array.from(new Set((summary?.units ?? []).map((unit) => unit.source_id))),
-        [summary],
+        () =>
+            Array.from(
+                new Set(
+                    testMode
+                        ? (summary?.units ?? []).map((unit) => unit.source_id)
+                        : Object.keys(summary?.by_source ?? {}),
+                ),
+            ),
+        [summary, testMode],
     );
 
+    // The unit-read query for the current filters and page, or null when the
+    // filters cannot match any unit (an explicit status that is not failed or
+    // retrying together with "Failed/retrying only").
+    const unitQuery = useMemo<SyncRunUnitQuery | null>(() => {
+        let status: string | undefined;
+        if (failedOnlyFilter) {
+            if (statusFilter === "all") status = "failed,retrying";
+            else if (statusFilter === "failed" || statusFilter === "retrying")
+                status = statusFilter;
+            else return null;
+        } else if (statusFilter !== "all") {
+            status = statusFilter;
+        }
+        return {
+            limit: SYNC_RUN_UNIT_PAGE_SIZE,
+            offset,
+            status,
+            dataset_key: datasetFilter !== "all" ? datasetFilter : undefined,
+            source_id: sourceFilter !== "all" ? sourceFilter : undefined,
+            since: sinceFilter ? `${sinceFilter}T00:00:00.000Z` : undefined,
+            before: beforeFilter ? `${beforeFilter}T23:59:59.999Z` : undefined,
+        };
+    }, [
+        statusFilter,
+        datasetFilter,
+        sourceFilter,
+        failedOnlyFilter,
+        sinceFilter,
+        beforeFilter,
+        offset,
+    ]);
+
+    const loadUnits = useCallback(
+        async (query: SyncRunUnitQuery | null) => {
+            const requestId = ++unitsRequestRef.current;
+            if (query === null) {
+                setPageUnits([]);
+                setFilteredCount(0);
+                setUnitsError(null);
+                setUnitsLoading(false);
+                return;
+            }
+            setUnitsLoading(true);
+            const result = await getSyncRunUnits(runId, query);
+            if (requestId !== unitsRequestRef.current) return;
+            setUnitsLoading(false);
+            if (result.error || !result.data) {
+                setUnitsError(READ_FAILED_MESSAGE);
+                return;
+            }
+            setUnitsError(null);
+            setPageUnits(result.data.units);
+            setFilteredCount(result.data.filtered_unit_count ?? result.data.unit_count);
+            setSummary((current) => current ?? result.data ?? null);
+        },
+        [runId],
+    );
+
+    useEffect(() => {
+        if (testMode || !filtersTouchedRef.current) return;
+        void loadUnits(unitQuery);
+    }, [testMode, unitQuery, loadUnits, refreshTick]);
+
+    const goToOffset = (nextOffset: number) => {
+        filtersTouchedRef.current = true;
+        setOffset(Math.max(0, nextOffset));
+    };
+
+    const retryUnits = useCallback(() => {
+        void loadUnits(unitQuery);
+    }, [loadUnits, unitQuery]);
+
     const filteredUnits = useMemo(() => {
+        if (!testMode) return pageUnits;
         const units = summary?.units ?? [];
         const sinceBoundary = sinceFilter ? Date.parse(`${sinceFilter}T00:00:00.000Z`) : null;
         const beforeBoundary = beforeFilter ? Date.parse(`${beforeFilter}T23:59:59.999Z`) : null;
@@ -450,6 +577,8 @@ export function SyncRunDetailLive({
             return true;
         });
     }, [
+        testMode,
+        pageUnits,
         summary,
         statusFilter,
         datasetFilter,
@@ -459,19 +588,9 @@ export function SyncRunDetailLive({
         beforeFilter,
     ]);
 
-    const hasActiveUnitFilters =
-        statusFilter !== "all" ||
-        datasetFilter !== "all" ||
-        sourceFilter !== "all" ||
-        failedOnlyFilter ||
-        sinceFilter !== "" ||
-        beforeFilter !== "";
+    const shownCount = testMode ? filteredUnits.length : filteredCount;
+    const totalUnits = summary?.unit_count ?? null;
 
-    // Intent vs result (CHAOS-2794): requested window spans ALL units
-    // regardless of outcome; covered window spans SUCCESSFUL units only.
-    // Both are simple min/max display aggregates over persisted fields —
-    // counts below come from the persisted `by_status` rollup, never
-    // recomputed client-side.
     // Datasets still ratcheting (CHAOS-3430). Filters the persisted freshness
     // rollup to entries the BACKEND flagged — the verdict, the tick estimate,
     // and the lag are all backend state; nothing here is recomputed from a
@@ -890,212 +1009,288 @@ export function SyncRunDetailLive({
                             </ul>
                         </section>
                     )}
-
-                    {/* Unit table */}
-                    <div className="space-y-3">
-                        <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
-                            Units ({formatNumber(filteredUnits.length)}
-                            {hasActiveUnitFilters ? ` of ${formatNumber(summary.unit_count)}` : ""})
-                        </h3>
-
-                        {/* Client-side filters over the already-fetched unit summary
-                            (CHAOS-2794) — narrows the table below only; the persisted
-                            rollups (Unit status / By dataset / By source / By cost class)
-                            above always reflect the full run. */}
-                        <div className="flex flex-wrap items-end gap-3">
-                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
-                                Status
-                                <select
-                                    value={statusFilter}
-                                    onChange={(event) => setStatusFilter(event.target.value)}
-                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
-                                >
-                                    <option value="all">{CTA_LABELS.allStatuses}</option>
-                                    {availableStatuses.map((status) => (
-                                        <option key={status} value={status}>
-                                            {status}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
-                                Dataset
-                                <select
-                                    value={datasetFilter}
-                                    onChange={(event) => setDatasetFilter(event.target.value)}
-                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
-                                >
-                                    <option value="all">{CTA_LABELS.allDatasets}</option>
-                                    {availableDatasets.map((dataset) => (
-                                        <option key={dataset} value={dataset}>
-                                            {dataset}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
-                                Source
-                                <select
-                                    value={sourceFilter}
-                                    onChange={(event) => setSourceFilter(event.target.value)}
-                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
-                                >
-                                    <option value="all">{CTA_LABELS.allSources}</option>
-                                    {availableSourceIds.map((sourceId) => (
-                                        <option key={sourceId} value={sourceId}>
-                                            {sourceLabel(sourceId)}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
-                                Since
-                                <input
-                                    type="date"
-                                    value={sinceFilter}
-                                    onChange={(event) => setSinceFilter(event.target.value)}
-                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
-                                Before
-                                <input
-                                    type="date"
-                                    value={beforeFilter}
-                                    onChange={(event) => setBeforeFilter(event.target.value)}
-                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
-                                />
-                            </label>
-                            <label className="flex items-center gap-2 pb-1.5 text-sm text-(--ink-muted)">
-                                <input
-                                    type="checkbox"
-                                    checked={failedOnlyFilter}
-                                    onChange={(event) => setFailedOnlyFilter(event.target.checked)}
-                                    className="h-4 w-4 rounded border-(--card-stroke)"
-                                />
-                                Failed/retrying only
-                            </label>
-                        </div>
-                        <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
-                            <table className="min-w-full divide-y divide-(--card-stroke)">
-                                <thead className="bg-(--surface-raised)">
-                                    <tr>
-                                        {[
-                                            "Source",
-                                            "Dataset",
-                                            "Since",
-                                            "Before",
-                                            "Cost class",
-                                            "Status",
-                                            "Attempts",
-                                            "Duration",
-                                            "Detail",
-                                        ].map((heading) => (
-                                            <th
-                                                key={heading}
-                                                scope="col"
-                                                className="px-4 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
-                                            >
-                                                {heading}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-(--card-stroke)">
-                                    {filteredUnits.map((unit: SyncRunUnit) => {
-                                        const errorPresentation = getSyncUnitErrorPresentation(
-                                            unit.error,
-                                            unit.error_category,
-                                        );
-                                        return (
-                                            <tr key={unit.id}>
-                                                <td className="px-4 py-3 text-sm text-foreground">
-                                                    {sourceLabel(unit.source_id)}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                    {unit.dataset_key}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                    {formatDateUTC(unit.since_at)}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                    {formatDateUTC(unit.before_at)}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                    {unit.cost_class}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {isBudgetBlockedUnit(unit) ? (
-                                                        <BudgetGuardBadge
-                                                            tone="blocked"
-                                                            label="Blocked: budget"
-                                                        />
-                                                    ) : isBudgetExhaustedUnit(unit) ? (
-                                                        <BudgetGuardBadge
-                                                            tone="exhausted"
-                                                            label="Budget exhausted"
-                                                        />
-                                                    ) : isDeferralsExhaustedUnit(unit) ? (
-                                                        <BudgetGuardBadge
-                                                            tone="exhausted"
-                                                            label="Deferrals exhausted"
-                                                        />
-                                                    ) : isProviderCapacityWaitingUnit(unit) ? (
-                                                        <BudgetGuardBadge
-                                                            tone="blocked"
-                                                            label="Waiting: provider capacity"
-                                                        />
-                                                    ) : (
-                                                        <SyncStatusBadge
-                                                            status={unitBadgeStatus(unit.status)}
-                                                            label={unit.status}
-                                                        />
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                    {formatNumber(unit.attempts)}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                    {formatDuration(unit.duration_seconds)}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm">
-                                                    {unit.error || unit.error_category ? (
-                                                        <span
-                                                            className={
-                                                                unit.status === "failed"
-                                                                    ? "text-(--negative)"
-                                                                    : "text-(--ink-muted)"
-                                                            }
-                                                            title={
-                                                                errorPresentation.detail ??
-                                                                undefined
-                                                            }
-                                                        >
-                                                            {errorPresentation.title}
-                                                        </span>
-                                                    ) : unit.available_at ? (
-                                                        <span className="text-(--ink-muted)">
-                                                            Retry{" "}
-                                                            <ClientTimestamp
-                                                                value={unit.available_at}
-                                                                fallback="—"
-                                                            />
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-(--ink-muted)">
-                                                            —
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </>
             ) : null}
+
+            {/* Unit table */}
+            <div className="space-y-3">
+                <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
+                    {shownCount === null
+                        ? "Units"
+                        : `Units (${formatNumber(shownCount)}${
+                              hasActiveUnitFilters && totalUnits !== null
+                                  ? ` of ${formatNumber(totalUnits)}`
+                                  : ""
+                          })`}
+                </h3>
+
+                {/* Filters (CHAOS-2794) narrow the table below only; the persisted
+                    rollups (Unit status / By dataset / By source / By cost class)
+                    above always reflect the full run. The bar renders even when
+                    the units read failed, so a failed read never looks like a
+                    lost filter. */}
+                <div className="flex flex-wrap items-end gap-3">
+                    <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                        Status
+                        <select
+                            value={statusFilter}
+                            onChange={(event) => changeFilter(setStatusFilter)(event.target.value)}
+                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                        >
+                            <option value="all">{CTA_LABELS.allStatuses}</option>
+                            {availableStatuses.map((status) => (
+                                <option key={status} value={status}>
+                                    {status}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                        Dataset
+                        <select
+                            value={datasetFilter}
+                            onChange={(event) => changeFilter(setDatasetFilter)(event.target.value)}
+                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                        >
+                            <option value="all">{CTA_LABELS.allDatasets}</option>
+                            {availableDatasets.map((dataset) => (
+                                <option key={dataset} value={dataset}>
+                                    {dataset}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                        Source
+                        <select
+                            value={sourceFilter}
+                            onChange={(event) => changeFilter(setSourceFilter)(event.target.value)}
+                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                        >
+                            <option value="all">{CTA_LABELS.allSources}</option>
+                            {availableSourceIds.map((sourceId) => (
+                                <option key={sourceId} value={sourceId}>
+                                    {sourceLabel(sourceId)}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                        Since
+                        <input
+                            type="date"
+                            value={sinceFilter}
+                            onChange={(event) => changeFilter(setSinceFilter)(event.target.value)}
+                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                        />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                        Before
+                        <input
+                            type="date"
+                            value={beforeFilter}
+                            onChange={(event) => changeFilter(setBeforeFilter)(event.target.value)}
+                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                        />
+                    </label>
+                    <label className="flex items-center gap-2 pb-1.5 text-sm text-(--ink-muted)">
+                        <input
+                            type="checkbox"
+                            checked={failedOnlyFilter}
+                            onChange={(event) =>
+                                changeFilter(setFailedOnlyFilter)(event.target.checked)
+                            }
+                            className="h-4 w-4 rounded border-(--card-stroke)"
+                        />
+                        Failed/retrying only
+                    </label>
+                </div>
+                {unitsError ? (
+                    <div
+                        role="alert"
+                        className="flex flex-wrap items-center gap-3 rounded-xl border border-(--card-stroke) bg-(--card-80) p-4"
+                    >
+                        <p className="text-sm text-(--ink-muted)">
+                            Failed to load units: {unitsError}
+                        </p>
+                        {!testMode && (
+                            <button
+                                type="button"
+                                onClick={retryUnits}
+                                disabled={unitsLoading}
+                                className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-sm text-foreground hover:bg-(--card-80) disabled:opacity-60"
+                            >
+                                {CTA_LABELS.retry}
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div
+                        className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)"
+                        aria-busy={unitsLoading}
+                    >
+                        <table className="min-w-full divide-y divide-(--card-stroke)">
+                            <thead className="bg-(--surface-raised)">
+                                <tr>
+                                    {[
+                                        "Source",
+                                        "Dataset",
+                                        "Since",
+                                        "Before",
+                                        "Cost class",
+                                        "Status",
+                                        "Attempts",
+                                        "Duration",
+                                        "Detail",
+                                    ].map((heading) => (
+                                        <th
+                                            key={heading}
+                                            scope="col"
+                                            className="px-4 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
+                                        >
+                                            {heading}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-(--card-stroke)">
+                                {filteredUnits.length === 0 && (
+                                    <tr>
+                                        <td
+                                            colSpan={9}
+                                            className="px-4 py-6 text-center text-sm text-(--ink-muted)"
+                                        >
+                                            {unitsLoading
+                                                ? "Loading units…"
+                                                : "No units match these filters."}
+                                        </td>
+                                    </tr>
+                                )}
+                                {filteredUnits.map((unit: SyncRunUnit) => {
+                                    const errorPresentation = getSyncUnitErrorPresentation(
+                                        unit.error,
+                                        unit.error_category,
+                                    );
+                                    return (
+                                        <tr key={unit.id}>
+                                            <td className="px-4 py-3 text-sm text-foreground">
+                                                {sourceLabel(unit.source_id)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {unit.dataset_key}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {formatDateUTC(unit.since_at)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {formatDateUTC(unit.before_at)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {unit.cost_class}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {isBudgetBlockedUnit(unit) ? (
+                                                    <BudgetGuardBadge
+                                                        tone="blocked"
+                                                        label="Blocked: budget"
+                                                    />
+                                                ) : isBudgetExhaustedUnit(unit) ? (
+                                                    <BudgetGuardBadge
+                                                        tone="exhausted"
+                                                        label="Budget exhausted"
+                                                    />
+                                                ) : isDeferralsExhaustedUnit(unit) ? (
+                                                    <BudgetGuardBadge
+                                                        tone="exhausted"
+                                                        label="Deferrals exhausted"
+                                                    />
+                                                ) : isProviderCapacityWaitingUnit(unit) ? (
+                                                    <BudgetGuardBadge
+                                                        tone="blocked"
+                                                        label="Waiting: provider capacity"
+                                                    />
+                                                ) : (
+                                                    <SyncStatusBadge
+                                                        status={unitBadgeStatus(unit.status)}
+                                                        label={unit.status}
+                                                    />
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {formatNumber(unit.attempts)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {formatDuration(unit.duration_seconds)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm">
+                                                {unit.error || unit.error_category ? (
+                                                    <span
+                                                        className={
+                                                            unit.status === "failed"
+                                                                ? "text-(--negative)"
+                                                                : "text-(--ink-muted)"
+                                                        }
+                                                        title={
+                                                            errorPresentation.detail ?? undefined
+                                                        }
+                                                    >
+                                                        {errorPresentation.title}
+                                                    </span>
+                                                ) : unit.available_at ? (
+                                                    <span className="text-(--ink-muted)">
+                                                        Retry{" "}
+                                                        <ClientTimestamp
+                                                            value={unit.available_at}
+                                                            fallback="—"
+                                                        />
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-(--ink-muted)">—</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {!testMode &&
+                    !unitsError &&
+                    shownCount !== null &&
+                    shownCount > SYNC_RUN_UNIT_PAGE_SIZE && (
+                        <div className="flex items-center justify-between text-sm text-(--ink-muted)">
+                            <span>
+                                Showing {formatNumber(offset + 1)}–
+                                {formatNumber(
+                                    Math.min(offset + SYNC_RUN_UNIT_PAGE_SIZE, shownCount),
+                                )}{" "}
+                                of {formatNumber(shownCount)}
+                            </span>
+                            <span className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => goToOffset(offset - SYNC_RUN_UNIT_PAGE_SIZE)}
+                                    disabled={offset === 0 || unitsLoading}
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-foreground disabled:opacity-60"
+                                >
+                                    {CTA_LABELS.previousPage}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => goToOffset(offset + SYNC_RUN_UNIT_PAGE_SIZE)}
+                                    disabled={
+                                        offset + SYNC_RUN_UNIT_PAGE_SIZE >= shownCount ||
+                                        unitsLoading
+                                    }
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-foreground disabled:opacity-60"
+                                >
+                                    {CTA_LABELS.nextPage}
+                                </button>
+                            </span>
+                        </div>
+                    )}
+            </div>
         </div>
     );
 }
