@@ -185,9 +185,13 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
         page.off("response", onResponse);
         page.off("requestfinished", onRequestDone);
         page.off("requestfailed", onRequestDone);
+        if (unfinished > 0) {
+            // Waiting for the handlers or the record tasks could hang on the very request that is pending.
+            await page.unrouteAll({ behavior: "ignoreErrors" });
+            expect(unfinished, "requests still in flight when the guard stopped").toBe(0);
+        }
         await page.unrouteAll({ behavior: "wait" });
         await Promise.all(networkRecordTasks);
-        expect(unfinished, "requests still in flight when the guard stopped").toBe(0);
         const expected = stopOptions.expectedFailures ?? [];
         expect(guardFailures.length, guardFailures.join("; ")).toBe(expected.length);
         expected.forEach((pattern, index) => expect(guardFailures[index]).toMatch(pattern));
@@ -355,9 +359,11 @@ test("a non-action response still in flight when the guard stops is scanned", as
 });
 
 type HopSeen = { method: string; hopCookie: boolean; body: string; path: string };
+type HopHeaders = { authorization: string; cookie: string };
 
-async function startHopServer() {
+async function startHopServer(crossOrigin = "") {
     const seen: HopSeen[] = [];
+    const crossSeen: HopHeaders[] = [];
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
         const chunks: Buffer[] = [];
         req.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -373,6 +379,19 @@ async function startHopServer() {
             } else if (path === "/start307") {
                 res.writeHead(307, { location: "/next307" });
                 res.end("hop-307-body");
+            } else if (path === "/start-query") {
+                res.writeHead(303, { location: "/next-q?leak=fcacr_QUERY0123456789" });
+                res.end("q");
+            } else if (path === "/start-cross") {
+                res.writeHead(302, { location: `${crossOrigin}/cross-final` });
+                res.end("x");
+            } else if (path === "/cross-final") {
+                crossSeen.push({
+                    authorization: req.headers.authorization ?? "",
+                    cookie: req.headers.cookie ?? "",
+                });
+                res.writeHead(200, { "content-type": "text/plain" });
+                res.end("cross-final");
             } else if (path === "/loop") {
                 res.writeHead(303, { location: "/loop" });
                 res.end("loop");
@@ -392,8 +411,11 @@ async function startHopServer() {
     const address = server.address();
     if (address === null || typeof address === "string") throw new Error("hop server has no port");
     const origin = `http://127.0.0.1:${address.port}`;
-    const close = () => new Promise<void>((resolve) => server.close(() => resolve()));
-    return { close, origin, seen };
+    const close = () => {
+        server.closeAllConnections();
+        return new Promise<void>((resolve) => server.close(() => resolve()));
+    };
+    return { close, crossSeen, origin, seen };
 }
 
 const HOP_PREFIX = "/__hop";
@@ -403,10 +425,14 @@ const hopUpstream = (hopOrigin: string) => (url: string) => {
         ? `${hopOrigin}${parsed.pathname.slice(HOP_PREFIX.length)}`
         : url;
 };
-const HOP_POST = async ([path, body]: [string, string]) => {
+const HOP_POST = async ([path, body, authorization]: [string, string, string?]) => {
     const response = await fetch(path, {
         body,
-        headers: { "content-type": "text/plain;charset=UTF-8", "next-action": "0".repeat(40) },
+        headers: {
+            "content-type": "text/plain;charset=UTF-8",
+            "next-action": "0".repeat(40),
+            ...(authorization ? { authorization } : {}),
+        },
         method: "POST",
     });
     await response.text();
@@ -511,4 +537,70 @@ test("a request that starts while the guard stops is still scanned", async ({ ba
     await stop();
 
     expect(networkRecords.join("\n")).toMatch(secretPattern);
+});
+
+test("the Location of a redirect hop is recorded with its query string", async ({
+    baseURL,
+    page,
+}) => {
+    const hop = await startHopServer();
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-query`, "[]"]);
+        await stop();
+        expect(networkRecords).toContain(`${hop.origin}/next-q?leak=fcacr_QUERY0123456789`);
+        expect(networkRecords.join("\n")).toMatch(secretPattern);
+    } finally {
+        await hop.close();
+    }
+});
+
+test("a cross-origin redirect hop is recorded with the headers it actually sent", async ({
+    baseURL,
+    page,
+}) => {
+    const other = await startHopServer();
+    const hop = await startHopServer(other.origin);
+    const authorization = "Bearer hop-auth-marker";
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-cross`, "[]", authorization]);
+        await stop();
+        expect(other.crossSeen).toHaveLength(1);
+        const hopIndex = networkRecords.indexOf(`${other.origin}/cross-final`);
+        expect(hopIndex).toBeGreaterThanOrEqual(0);
+        const recordedHeaders = JSON.parse(networkRecords[hopIndex + 1] ?? "{}") as Record<
+            string,
+            string
+        >;
+        expect(recordedHeaders["authorization"] ?? "").toBe(other.crossSeen[0]?.authorization);
+        expect(recordedHeaders["cookie"] ?? "").toBe(other.crossSeen[0]?.cookie);
+    } finally {
+        await other.close();
+        await hop.close();
+    }
+});
+
+test("a request still pending at the stop deadline fails the guard", async ({ baseURL, page }) => {
+    test.setTimeout(45_000);
+    // The handler returns without answering: the request stays pending, and unrouteAll does not wait for it.
+    await page.route("**/__hang", () => undefined);
+    const { stop } = await watchNetwork(page, new URL(baseURL ?? "http://127.0.0.1:3001").origin);
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    const started = page.waitForRequest("**/__hang");
+    await page.evaluate(() => {
+        void fetch("/__hang").catch(() => undefined);
+    });
+    await started;
+    await expect(stop()).rejects.toThrow(/requests still in flight/u);
 });
