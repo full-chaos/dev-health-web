@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
 import { X } from "lucide-react";
 
+import { BodyPortal } from "@/components/ui/BodyPortal";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -64,57 +65,59 @@ export function Drawer({
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex justify-end">
-            <div
-                aria-hidden="true"
-                data-testid="drawer-backdrop"
-                className="absolute inset-0 bg-black/40"
-                onClick={onCloseAction}
-            />
-            <div
-                ref={panelRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={titleId}
-                tabIndex={-1}
-                data-testid={testId ?? "drawer"}
-                data-size={size}
-                onKeyDown={onKeyDown}
-                className={`relative flex h-full w-full max-w-[94vw] flex-col border-l border-(--card-stroke) bg-(--surface) shadow-(--elevation-drawer) animate-in slide-in-from-right-4 duration-200 focus:outline-none motion-reduce:animate-none ${
-                    size === "wide" ? "sm:w-195" : "sm:w-112.5"
-                }`}
-            >
-                <header className="flex items-start gap-4 border-b border-(--card-stroke) p-6">
-                    <div className="min-w-0 flex-1">
-                        {eyebrow && (
-                            <p className="text-label-caps uppercase text-(--ink-muted)">
-                                {eyebrow}
-                            </p>
-                        )}
-                        <h2 id={titleId} className="mt-1 text-h2 font-semibold text-foreground">
-                            {title}
-                        </h2>
-                    </div>
-                    {/* Approved prototype `.btn.circle` (app.js:121): an icon-only close control, 35px
-                        square, 6px radius. The accessible name stays "Close". */}
-                    <button
-                        type="button"
-                        ref={closeRef}
-                        onClick={onCloseAction}
-                        aria-label={CTA_LABELS.close}
-                        data-testid="drawer-close"
-                        className="inline-flex h-8.75 w-8.75 shrink-0 items-center justify-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
-                    >
-                        <X aria-hidden="true" className="h-4 w-4" />
-                    </button>
-                </header>
-                <div className="flex-1 overflow-y-auto p-6">{children}</div>
-                {footer && (
-                    <footer className="flex flex-wrap gap-2 border-t border-(--card-stroke) px-6 py-4.5">
-                        {footer}
-                    </footer>
-                )}
+        <BodyPortal>
+            <div className="fixed inset-0 z-50 flex justify-end">
+                <div
+                    aria-hidden="true"
+                    data-testid="drawer-backdrop"
+                    className="absolute inset-0 bg-black/40"
+                    onClick={onCloseAction}
+                />
+                <div
+                    ref={panelRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={titleId}
+                    tabIndex={-1}
+                    data-testid={testId ?? "drawer"}
+                    data-size={size}
+                    onKeyDown={onKeyDown}
+                    className={`relative flex h-full w-full max-w-[94vw] flex-col border-l border-(--card-stroke) bg-(--surface) shadow-(--elevation-drawer) animate-in slide-in-from-right-4 duration-200 focus:outline-none motion-reduce:animate-none ${
+                        size === "wide" ? "sm:w-195" : "sm:w-112.5"
+                    }`}
+                >
+                    <header className="flex items-start gap-4 border-b border-(--card-stroke) p-6">
+                        <div className="min-w-0 flex-1">
+                            {eyebrow && (
+                                <p className="text-label-caps uppercase text-(--ink-muted)">
+                                    {eyebrow}
+                                </p>
+                            )}
+                            <h2 id={titleId} className="mt-1 text-h2 font-semibold text-foreground">
+                                {title}
+                            </h2>
+                        </div>
+                        {/* Approved prototype `.btn.circle` (app.js:121): an icon-only close control, 35px
+                            square, 6px radius. The accessible name stays "Close". */}
+                        <button
+                            type="button"
+                            ref={closeRef}
+                            onClick={onCloseAction}
+                            aria-label={CTA_LABELS.close}
+                            data-testid="drawer-close"
+                            className="inline-flex h-8.75 w-8.75 shrink-0 items-center justify-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                        >
+                            <X aria-hidden="true" className="h-4 w-4" />
+                        </button>
+                    </header>
+                    <div className="flex-1 overflow-y-auto p-6">{children}</div>
+                    {footer && (
+                        <footer className="flex flex-wrap gap-2 border-t border-(--card-stroke) px-6 py-4.5">
+                            {footer}
+                        </footer>
+                    )}
+                </div>
             </div>
-        </div>
+        </BodyPortal>
     );
 }
