@@ -10,11 +10,15 @@ const subscribe = () => () => {};
  * ancestor with a `backdrop-filter`, `transform` or `filter` (the sticky top bar blurs), which clips
  * a backdrop to that ancestor. Nothing on the server: the first client render matches it.
  */
-export function BodyPortal({ children }: { children: ReactNode }) {
-    const mounted = useSyncExternalStore(
+export function usePortalMounted() {
+    return useSyncExternalStore(
         subscribe,
         () => true,
         () => false,
     );
+}
+
+export function BodyPortal({ children }: { children: ReactNode }) {
+    const mounted = usePortalMounted();
     return mounted ? createPortal(children, document.body) : null;
 }
