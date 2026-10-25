@@ -414,6 +414,10 @@ export type EvidenceQualityStats = {
     stddev: number | null;
     band_counts: Record<string, number>;
     quality_drivers: string[];
+    /** Work units in the window, including those the theme mix leaves out. */
+    total?: number;
+    /** Work units the theme mix leaves out for too little text; null = not measured. */
+    uncategorized_count?: number | null;
 };
 
 export type InvestmentResponse = {
