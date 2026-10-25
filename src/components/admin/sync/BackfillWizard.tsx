@@ -58,6 +58,20 @@ interface SubmissionOutcome {
     error: string | null;
 }
 
+/**
+ * A failed submit worth one retry with the same key: no HTTP status (a thrown call, a network or deadline
+ * error), a 5xx, a 408 or a 429. Any other status is a refusal the caller must act on.
+ */
+export function isTransientFailure(result: {
+    data?: unknown;
+    error?: string;
+    status?: number;
+}): boolean {
+    if (!result.error && result.data) return false;
+    const { status } = result;
+    return status === undefined || status >= 500 || status === 408 || status === 429;
+}
+
 /** One key per user action; each window adds its index, so a retry of a window reuses its key. */
 function newSubmissionActionId(): string {
     return (
@@ -483,8 +497,9 @@ export function BackfillWizard({
                 for (const [index, selector] of selectors.entries()) {
                     const idempotencyKey = `${actionId}-${index}`;
                     try {
-                        // The server action returns a failed ops call as an error result, and a thrown call may
-                        // have been applied: one retry with the SAME key returns the job the first call made.
+                        // A thrown call may have been applied, and the server action returns a failed ops call as an
+                        // error result: one retry with the SAME key returns the job the first call made. Only a
+                        // transient failure is retried; a refusal (4xx) is final and shown at once.
                         const attempt = async () => {
                             try {
                                 return await triggerBackfill(configId, selector, idempotencyKey);
@@ -493,7 +508,7 @@ export function BackfillWizard({
                             }
                         };
                         let result: Awaited<ReturnType<typeof triggerBackfill>> = await attempt();
-                        if (result.error || !result.data) result = await attempt();
+                        if (isTransientFailure(result)) result = await attempt();
                         outcomes.push({
                             label: labels[index],
                             syncRunId: result.data?.sync_run_id ?? null,

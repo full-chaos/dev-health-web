@@ -365,8 +365,7 @@ describe("BackfillWizard", () => {
         ];
         triggerBackfill
             .mockResolvedValueOnce({ data: { status: "accepted", sync_run_id: "run-1" } })
-            .mockResolvedValueOnce({ error: "Source is already running" })
-            .mockResolvedValueOnce({ error: "Source is already running" });
+            .mockResolvedValueOnce({ error: "Source is already running", status: 409 });
         renderWizard({ initialWindows: windows, suggestedWindows: windows });
 
         await reviewAndSubmit(user);
@@ -377,8 +376,8 @@ describe("BackfillWizard", () => {
             "/org/admin/sync/cfg-1/runs/run-1",
         );
         expect(screen.getByRole("alert")).toHaveTextContent("Source is already running");
-        // the refused window is retried once with its own key, the first is not retried
-        expect(triggerBackfill).toHaveBeenCalledTimes(3);
+        // a refusal (409) is final: the refused window is not retried either
+        expect(triggerBackfill).toHaveBeenCalledTimes(2);
     });
 
     it("submits a repository-only focused selector", async () => {
@@ -739,9 +738,12 @@ describe("BackfillWizard server-window timezone handling", () => {
             expect(triggerBackfill.mock.calls[1]?.[2]).toBe(triggerBackfill.mock.calls[0]?.[2]);
         });
 
-        it("retries a failed ops call (an error RESULT, not a throw) once with the SAME key", async () => {
+        it("retries a transient ops failure (a 503 error RESULT, not a throw) once with the SAME key", async () => {
             triggerBackfill
-                .mockResolvedValueOnce({ error: "Task queue unavailable" })
+                .mockResolvedValueOnce({
+                    error: "The change was not saved. Try again.",
+                    status: 503,
+                })
                 .mockResolvedValue({
                     data: { status: "accepted", backfill_job_id: "job-2", occurrence_id: "occ-2" },
                 });
@@ -755,19 +757,52 @@ describe("BackfillWizard server-window timezone handling", () => {
             expect(triggerBackfill.mock.calls[1]?.[2]).toBe(triggerBackfill.mock.calls[0]?.[2]);
         });
 
-        it("a persistent failure is retried once only, and shows the error", async () => {
-            triggerBackfill.mockResolvedValue({ error: "Backfill refused" });
+        it("retries an error result with no HTTP status (network, deadline) once with the same key", async () => {
+            triggerBackfill
+                .mockResolvedValueOnce({ error: "The change timed out." })
+                .mockResolvedValue({
+                    data: { status: "accepted", backfill_job_id: "job-3", occurrence_id: "occ-3" },
+                });
             const user = userEvent.setup();
             renderWizard();
             await fillRange(user);
             await reviewAndSubmit(user);
 
-            expect(await screen.findByText("Backfill refused")).toBeInTheDocument();
+            expect(await screen.findByText(/job-3/)).toBeInTheDocument();
             expect(triggerBackfill).toHaveBeenCalledTimes(2);
+            expect(triggerBackfill.mock.calls[1]?.[2]).toBe(triggerBackfill.mock.calls[0]?.[2]);
         });
 
+        it.each([408, 429, 500, 503])(
+            "a persistent transient failure (%i) is retried once only, and shows the error",
+            async (status) => {
+                triggerBackfill.mockResolvedValue({ error: "Backfill unavailable", status });
+                const user = userEvent.setup();
+                renderWizard();
+                await fillRange(user);
+                await reviewAndSubmit(user);
+
+                expect(await screen.findByText("Backfill unavailable")).toBeInTheDocument();
+                expect(triggerBackfill).toHaveBeenCalledTimes(2);
+            },
+        );
+
+        it.each([400, 401, 403, 404, 409, 422])(
+            "a %i refusal is final: one call, the error shown at once",
+            async (status) => {
+                triggerBackfill.mockResolvedValue({ error: "Backfill refused", status });
+                const user = userEvent.setup();
+                renderWizard();
+                await fillRange(user);
+                await reviewAndSubmit(user);
+
+                expect(await screen.findByText("Backfill refused")).toBeInTheDocument();
+                expect(triggerBackfill).toHaveBeenCalledTimes(1);
+            },
+        );
+
         it("a new user action after a failure sends a new key", async () => {
-            triggerBackfill.mockResolvedValue({ error: "Backfill refused" });
+            triggerBackfill.mockResolvedValue({ error: "Backfill refused", status: 422 });
             const first = renderWizard();
             const user = userEvent.setup();
             await fillRange(user);
