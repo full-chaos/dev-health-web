@@ -795,7 +795,9 @@ describe("SyncRunDetailLive — CHAOS-4318 manual refresh (no timer-driven polli
         await clickRefresh();
 
         expect(getSyncRunStatus).toHaveBeenCalledTimes(2);
-        expect(getSyncRunUnits).toHaveBeenCalledTimes(2);
+        // Each Refresh reads the first unit page and the two needs-attention
+        // reads (failed/retrying, and waiting for provider capacity).
+        expect(getSyncRunUnits).toHaveBeenCalledTimes(6);
     });
 
     it("renders the server-side initialUnitsError without polling for a terminal run", () => {

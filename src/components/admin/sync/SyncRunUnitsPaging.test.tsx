@@ -162,4 +162,62 @@ describe("SyncRunDetailLive unit filters on a live run", () => {
             }),
         );
     });
+
+    it("builds Needs attention, source labels and windows from the whole run, not from the table page", async () => {
+        const [first, , , last] = SAMPLE_SYNC_RUN_UNIT_SUMMARY.units;
+        const farFailed = {
+            ...failedUnit,
+            id: "far-unit",
+            source_id: "far-source",
+            source_name: null,
+            source_full_name: null,
+            dataset_key: "far-dataset",
+            error: "boom",
+            error_category: "auth",
+        };
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, status: "success" }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    units: [first!, last!].map((unit) => ({ ...unit, status: "success" })),
+                    by_source: { "far-source": { failed: 1 }, "sample-source-1": { success: 2 } },
+                    source_names: { "far-source": "fullchaos/far-service" },
+                    requested_window: {
+                        since_at: "2026-01-02T00:00:00.000Z",
+                        before_at: "2026-03-04T00:00:00.000Z",
+                    },
+                    covered_window: {
+                        since_at: "2026-02-03T00:00:00.000Z",
+                        before_at: "2026-03-04T00:00:00.000Z",
+                    },
+                    filtered_unit_count: 2,
+                }}
+                initialAttention={{ units: [farFailed], total: 1500 }}
+            />,
+        );
+
+        const attention = screen.getByRole("region", { name: /needs attention/i });
+        expect(within(attention).getByText("fullchaos/far-service")).toBeInTheDocument();
+        expect(within(attention).getByText(/far-dataset/)).toBeInTheDocument();
+        expect(
+            within(attention).getByText(/First 1\s?unit of 1,500 units|First 1 of 1,500 units/),
+        ).toBeInTheDocument();
+        expect(screen.getAllByText("fullchaos/far-service").length).toBeGreaterThan(1);
+        expect(screen.queryByText("Unresolved source")).not.toBeInTheDocument();
+        expect(screen.getByText("Jan 2, 2026 → Mar 4, 2026")).toBeInTheDocument();
+        expect(screen.getByText("Feb 3, 2026 → Mar 4, 2026")).toBeInTheDocument();
+    });
+
+    it("says so when the units that need attention could not be read", () => {
+        renderLive(page(SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, 4));
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, status: "success" }}
+                initialSummary={page(SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, 4)}
+                initialAttention={null}
+            />,
+        );
+        expect(screen.getByText(/Needs-attention details could not be loaded/)).toBeInTheDocument();
+    });
 });

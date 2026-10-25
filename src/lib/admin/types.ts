@@ -438,6 +438,20 @@ export interface SyncRunUnitSummary {
      * was paged (offset or any filter); `units` is then one page of them.
      */
     filtered_unit_count?: number;
+    /**
+     * Paged reads only: the label of every source of the run, full name else
+     * name, so a page of units never leaves a source unnamed.
+     */
+    source_names?: Record<string, string>;
+    /** Paged reads only: earliest since_at and latest before_at over all units. */
+    requested_window?: SyncRunUnitWindow;
+    /** Paged reads only: the same extent over the successful units. */
+    covered_window?: SyncRunUnitWindow;
+}
+
+export interface SyncRunUnitWindow {
+    since_at: string | null;
+    before_at: string | null;
 }
 
 /** Paging and filters of the sync run units read; every field is optional. */
@@ -448,6 +462,8 @@ export interface SyncRunUnitQuery {
     status?: string;
     dataset_key?: string;
     source_id?: string;
+    /** Only "provider_budget_contention": units waiting for provider capacity. */
+    error_category?: string;
     /** Keep units that do not end before this instant (RFC 3339 or YYYY-MM-DD). */
     since?: string;
     /** Keep units that do not start after this instant (RFC 3339 or YYYY-MM-DD). */

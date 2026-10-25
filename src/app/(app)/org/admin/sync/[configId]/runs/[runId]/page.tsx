@@ -10,6 +10,7 @@ import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import { getServerEnv } from "@/lib/config";
 import { backToArea } from "@/lib/design/cta";
 import { SAMPLE_SYNC_RUN, SAMPLE_SYNC_RUN_UNIT_SUMMARY } from "@/data/syncRunDetailSample";
+import { readSyncRunAttention, type SyncRunAttention } from "@/lib/admin/syncRunAttention";
 import type { SyncRun, SyncRunUnitSummary } from "@/lib/admin/types";
 
 interface PageProps {
@@ -26,6 +27,7 @@ export default async function SyncRunDetailPage({ params }: PageProps) {
     let run: SyncRun;
     let summary: SyncRunUnitSummary | null;
     let unitsError: string | null = null;
+    let attention: SyncRunAttention | null = null;
 
     if (isTestMode) {
         // Render deterministic sample data without hitting the admin API so the
@@ -33,10 +35,12 @@ export default async function SyncRunDetailPage({ params }: PageProps) {
         run = SAMPLE_SYNC_RUN;
         summary = SAMPLE_SYNC_RUN_UNIT_SUMMARY;
     } else {
-        const [runResult, unitsResult] = await Promise.all([
+        const [runResult, unitsResult, attentionResult] = await Promise.all([
             getSyncRunStatus(runId),
             getSyncRunUnits(runId, { limit: SYNC_RUN_UNIT_PAGE_SIZE, offset: 0 }),
+            readSyncRunAttention(runId),
         ]);
+        attention = attentionResult;
 
         if (runResult.error || !runResult.data) {
             notFound();
@@ -80,6 +84,7 @@ export default async function SyncRunDetailPage({ params }: PageProps) {
                 initialRun={run}
                 initialSummary={summary}
                 initialUnitsError={unitsError}
+                initialAttention={attention}
                 testMode={isTestMode}
             />
         </div>

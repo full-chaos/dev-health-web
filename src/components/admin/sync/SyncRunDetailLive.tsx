@@ -9,6 +9,7 @@ import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import { getSyncRunPresentation } from "@/lib/admin/syncRunPresentation";
 import { getSyncUnitErrorPresentation } from "@/lib/admin/syncUnitErrorPresentation";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { readSyncRunAttention, type SyncRunAttention } from "@/lib/admin/syncRunAttention";
 import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
 import { type SyncStatus, isTerminalSyncStatus } from "@/lib/sync-types";
 import type { SyncRun, SyncRunUnit, SyncRunUnitQuery, SyncRunUnitSummary } from "@/lib/admin/types";
@@ -35,6 +36,12 @@ interface SyncRunDetailLiveProps {
     initialSummary: SyncRunUnitSummary | null;
     /** Server-side units-fetch error message, if any (render-only notice). */
     initialUnitsError?: string | null;
+    /**
+     * The units that need attention, read apart from the unit table page.
+     * Undefined in test mode (the sample units carry them); null when the
+     * server could not read them.
+     */
+    initialAttention?: SyncRunAttention | null;
     /** When true, render the provided sample data and never poll a live API. */
     testMode?: boolean;
 }
@@ -257,6 +264,7 @@ export function SyncRunDetailLive({
     initialRun,
     initialSummary,
     initialUnitsError = null,
+    initialAttention,
     testMode = false,
 }: SyncRunDetailLiveProps) {
     const runId = initialRun.id;
@@ -271,6 +279,9 @@ export function SyncRunDetailLive({
     );
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [refreshTick, setRefreshTick] = useState(0);
+    const [attention, setAttention] = useState<SyncRunAttention | null | undefined>(
+        initialAttention,
+    );
     // Guard against overlapping refreshes if a click lands while one is in flight.
     const inFlightRef = useRef(false);
     const unitsRequestRef = useRef(0);
@@ -286,9 +297,10 @@ export function SyncRunDetailLive({
         inFlightRef.current = true;
         setIsRefreshing(true);
         try {
-            const [runRes, unitsRes] = await Promise.all([
+            const [runRes, unitsRes, attentionRes] = await Promise.all([
                 getSyncRunStatus(runId),
                 getSyncRunUnits(runId, { limit: SYNC_RUN_UNIT_PAGE_SIZE, offset: 0 }),
+                readSyncRunAttention(runId),
             ]);
 
             // withErrorHandling RETURNS { error } (never throws), so a failed
@@ -301,6 +313,7 @@ export function SyncRunDetailLive({
 
             setSummary(unitsRes.data);
             setUnitsError(null);
+            if (attentionRes) setAttention(attentionRes);
             if (filtersTouchedRef.current) {
                 setRefreshTick((tick) => tick + 1);
             } else {
@@ -318,13 +331,13 @@ export function SyncRunDetailLive({
     // Resolve source ids → display names from the units themselves. We NEVER
     // surface a raw source id when a resolved name exists (web DoD / A7).
     const sourceNameById = useMemo(() => {
-        const map: Record<string, string> = {};
-        for (const unit of summary?.units ?? []) {
+        const map: Record<string, string> = { ...summary?.source_names };
+        for (const unit of [...(summary?.units ?? []), ...(attention?.units ?? [])]) {
             const name = unit.source_full_name ?? unit.source_name;
             if (name) map[unit.source_id] = name;
         }
         return map;
-    }, [summary]);
+    }, [summary, attention]);
 
     const sourceLabel = useCallback(
         (sourceId: string) => sourceNameById[sourceId] ?? "Unresolved source",
@@ -334,16 +347,22 @@ export function SyncRunDetailLive({
     const { total, completed, failed, settled } = runPresentation.counts;
     const percent = total > 0 ? Math.min(100, Math.round((settled / total) * 100)) : 0;
 
+    // Live, the units that need attention come from their own reads (the table
+    // page holds only some of the run's units); test mode reads the sample units.
     const attentionUnits = useMemo(
         () =>
-            (summary?.units ?? []).filter(
+            (testMode || attention === undefined
+                ? (summary?.units ?? [])
+                : (attention?.units ?? [])
+            ).filter(
                 (unit) =>
                     unit.status === "failed" ||
                     unit.status === "retrying" ||
                     isProviderCapacityWaitingUnit(unit),
             ),
-        [summary],
+        [summary, attention, testMode],
     );
+    const attentionUnavailable = !testMode && attention === null;
 
     const attentionGroups = useMemo<AttentionGroup[]>(() => {
         const groups = new Map<
@@ -601,9 +620,24 @@ export function SyncRunDetailLive({
         [summary],
     );
 
-    const requestedWindow = useMemo(() => computeWindow(summary?.units ?? []), [summary]);
+    const requestedWindow = useMemo(
+        () =>
+            summary?.requested_window
+                ? {
+                      since: summary.requested_window.since_at,
+                      before: summary.requested_window.before_at,
+                  }
+                : computeWindow(summary?.units ?? []),
+        [summary],
+    );
     const coveredWindow = useMemo(
-        () => computeWindow((summary?.units ?? []).filter((unit) => unit.status === "success")),
+        () =>
+            summary?.covered_window
+                ? {
+                      since: summary.covered_window.since_at,
+                      before: summary.covered_window.before_at,
+                  }
+                : computeWindow((summary?.units ?? []).filter((unit) => unit.status === "success")),
         [summary],
     );
 
@@ -907,6 +941,12 @@ export function SyncRunDetailLive({
                         </div>
                     </div>
 
+                    {attentionUnavailable && (
+                        <p role="status" className="text-sm text-(--ink-muted)">
+                            Needs-attention details could not be loaded. Use Refresh to try again.
+                        </p>
+                    )}
+
                     {/* Failed / retrying summary */}
                     {attentionGroups.length > 0 && (
                         <section
@@ -920,6 +960,12 @@ export function SyncRunDetailLive({
                                 >
                                     Needs attention
                                 </h3>
+                                {attention && attention.total > attention.units.length && (
+                                    <span className="text-xs text-(--ink-muted)">
+                                        First {formatNumber(attention.units.length)} of{" "}
+                                        {formatNumber(attention.total)} units
+                                    </span>
+                                )}
                                 <div className="flex flex-wrap items-center gap-3">
                                     {typeof summary.budget_blocked_unit_count === "number" &&
                                         summary.budget_blocked_unit_count > 0 && (
