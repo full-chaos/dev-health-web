@@ -40,7 +40,7 @@ function loadGuardFiles(root = process.cwd()): GuardFile[] {
 const DIGEST_PRIMITIVE = /\.digest\s*\(|createHash|crypto-js|js-sha|sha-?1\b|md5/i;
 // Shapes a hand-rolled hash needs, under any function name.
 const WEAK_SHAPES: Array<[string, RegExp]> = [
-    ["Math.imul", /Math\s*\.\s*imul/],
+    ["Math.imul", /^(?=[\s\S]*charCodeAt)[\s\S]*Math\s*\.\s*imul/],
     ["unsigned 32-bit coercion", />>>\s*0\b/],
     ["number to hex", /\.toString\(\s*16\s*\)/],
 ];
@@ -65,6 +65,13 @@ function guardViolations(files: GuardFile[]): string[] {
                     out.push(`${file}: digest not called with the literal "SHA-256"`);
             }
             if (/Math\s*\.\s*imul|>>>\s*0\b/.test(code)) out.push(`${file}: weak hash shape`);
+            if (/^\s*import\b|\bimport\s*\(|\brequire\s*\(/m.test(code))
+                out.push(`${file}: hash.ts must have no import`);
+            const result = /\b(?:const|let)\s+(\w+)\s*=\s*await\s+[\w.?]+\.digest\s*\(/.exec(
+                code,
+            )?.[1];
+            if (!result || !new RegExp(`new\\s+Uint8Array\\(\\s*${result}\\s*\\)`).test(code))
+                out.push(`${file}: the SHA-256 digest result does not feed the returned hex`);
         }
     }
     return out;
@@ -101,6 +108,33 @@ describe("digest code guard", () => {
         expect(guardViolations(files)).toContain(
             `${HASH_FILE}: digest not called with the literal "SHA-256"`,
         );
+    });
+
+    it("refuses an external weak hash imported into hash.ts, even with the SHA-256 call left unused", () => {
+        const files = loadGuardFiles().map((f) =>
+            f.file === HASH_FILE
+                ? {
+                      ...f,
+                      code: `import { weak } from "../weakTelemetryDigest";\n${f.code.replace(
+                          "new Uint8Array(digest)",
+                          "new Uint8Array(weak(input))",
+                      )}`,
+                  }
+                : f,
+        );
+        const found = guardViolations(files);
+        expect(found).toContain(`${HASH_FILE}: hash.ts must have no import`);
+        expect(found).toContain(
+            `${HASH_FILE}: the SHA-256 digest result does not feed the returned hex`,
+        );
+    });
+
+    it("does not refuse Math.imul in a file with no character-code hash loop", () => {
+        const files = [
+            ...loadGuardFiles(),
+            { file: "src/lib/telemetry/queue.ts", code: "const x = Math.imul(value, 2);" },
+        ];
+        expect(guardViolations(files)).toEqual([]);
     });
 
     it("refuses a digest call outside hash.ts", () => {
