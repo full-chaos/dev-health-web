@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
 import { render, screen, userEvent } from "@/test/utils";
 import type { SyncCoverageDataset, SyncCoverageSource } from "@/lib/admin/types";
 import { BackfillWizard, buildDatasetChoices } from "./BackfillWizard";
@@ -364,6 +365,7 @@ describe("BackfillWizard", () => {
         ];
         triggerBackfill
             .mockResolvedValueOnce({ data: { status: "accepted", sync_run_id: "run-1" } })
+            .mockResolvedValueOnce({ error: "Source is already running" })
             .mockResolvedValueOnce({ error: "Source is already running" });
         renderWizard({ initialWindows: windows, suggestedWindows: windows });
 
@@ -375,7 +377,8 @@ describe("BackfillWizard", () => {
             "/org/admin/sync/cfg-1/runs/run-1",
         );
         expect(screen.getByRole("alert")).toHaveTextContent("Source is already running");
-        expect(triggerBackfill).toHaveBeenCalledTimes(2);
+        // the refused window is retried once with its own key, the first is not retried
+        expect(triggerBackfill).toHaveBeenCalledTimes(3);
     });
 
     it("submits a repository-only focused selector", async () => {
@@ -736,16 +739,85 @@ describe("BackfillWizard server-window timezone handling", () => {
             expect(triggerBackfill.mock.calls[1]?.[2]).toBe(triggerBackfill.mock.calls[0]?.[2]);
         });
 
-        it("a new user action after a failure sends a new key", async () => {
+        it("retries a failed ops call (an error RESULT, not a throw) once with the SAME key", async () => {
+            triggerBackfill
+                .mockResolvedValueOnce({ error: "Task queue unavailable" })
+                .mockResolvedValue({
+                    data: { status: "accepted", backfill_job_id: "job-2", occurrence_id: "occ-2" },
+                });
+            const user = userEvent.setup();
+            renderWizard();
+            await fillRange(user);
+            await reviewAndSubmit(user);
+
+            expect(await screen.findByText(/job-2/)).toBeInTheDocument();
+            expect(triggerBackfill).toHaveBeenCalledTimes(2);
+            expect(triggerBackfill.mock.calls[1]?.[2]).toBe(triggerBackfill.mock.calls[0]?.[2]);
+        });
+
+        it("a persistent failure is retried once only, and shows the error", async () => {
             triggerBackfill.mockResolvedValue({ error: "Backfill refused" });
             const user = userEvent.setup();
             renderWizard();
             await fillRange(user);
             await reviewAndSubmit(user);
-            const firstKey = triggerBackfill.mock.calls[0]?.[2];
+
             expect(await screen.findByText("Backfill refused")).toBeInTheDocument();
-            expect(triggerBackfill).toHaveBeenCalledTimes(1);
+            expect(triggerBackfill).toHaveBeenCalledTimes(2);
+        });
+
+        it("a new user action after a failure sends a new key", async () => {
+            triggerBackfill.mockResolvedValue({ error: "Backfill refused" });
+            const first = renderWizard();
+            const user = userEvent.setup();
+            await fillRange(user);
+            await reviewAndSubmit(user);
+            expect(await screen.findByText("Backfill refused")).toBeInTheDocument();
+            const firstKey = triggerBackfill.mock.calls[0]?.[2];
+            first.unmount();
+            triggerBackfill.mockClear();
+
+            renderWizard();
+            await fillRange(user);
+            await reviewAndSubmit(user);
+            expect(await screen.findByText("Backfill refused")).toBeInTheDocument();
+            const secondKey = triggerBackfill.mock.calls[0]?.[2];
             expect(typeof firstKey).toBe("string");
+            expect(typeof secondKey).toBe("string");
+            expect(secondKey).not.toBe(firstKey);
+        });
+
+        it("ignores a second press made before the first submit settles", async () => {
+            let release: (() => void) | undefined;
+            triggerBackfill.mockImplementation(
+                () =>
+                    new Promise((resolve) => {
+                        release = () =>
+                            resolve({
+                                data: {
+                                    status: "accepted",
+                                    backfill_job_id: "job-9",
+                                    occurrence_id: "occ-9",
+                                },
+                            });
+                    }),
+            );
+            const user = userEvent.setup();
+            renderWizard();
+            await fillRange(user);
+            await user.click(screen.getByRole("button", { name: "Continue" }));
+            const run = screen.getByRole("button", { name: /^Run (backfill|\d+ backfills)$/ });
+            // Two clicks in the same tick, before React can disable the button.
+            act(() => {
+                run.click();
+                run.click();
+            });
+
+            await vi.waitFor(() => expect(release).toBeDefined());
+            expect(triggerBackfill).toHaveBeenCalledTimes(1);
+            release?.();
+            expect(await screen.findByText(/job-9/)).toBeInTheDocument();
+            expect(triggerBackfill).toHaveBeenCalledTimes(1);
         });
 
         it("never has two submits of the config in flight, and ignores a second press while one runs", async () => {

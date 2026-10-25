@@ -483,13 +483,17 @@ export function BackfillWizard({
                 for (const [index, selector] of selectors.entries()) {
                     const idempotencyKey = `${actionId}-${index}`;
                     try {
-                        let result: Awaited<ReturnType<typeof triggerBackfill>>;
-                        try {
-                            result = await triggerBackfill(configId, selector, idempotencyKey);
-                        } catch {
-                            // A thrown call may have been applied: the same key makes the retry return that job.
-                            result = await triggerBackfill(configId, selector, idempotencyKey);
-                        }
+                        // The server action returns a failed ops call as an error result, and a thrown call may
+                        // have been applied: one retry with the SAME key returns the job the first call made.
+                        const attempt = async () => {
+                            try {
+                                return await triggerBackfill(configId, selector, idempotencyKey);
+                            } catch {
+                                return { error: "Failed to start backfill" };
+                            }
+                        };
+                        let result: Awaited<ReturnType<typeof triggerBackfill>> = await attempt();
+                        if (result.error || !result.data) result = await attempt();
                         outcomes.push({
                             label: labels[index],
                             syncRunId: result.data?.sync_run_id ?? null,
