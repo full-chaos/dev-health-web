@@ -489,6 +489,7 @@ describe("trackOnboardingEvent org digest", () => {
             const addWindow = vi.spyOn(window, "addEventListener");
             const addDocument = vi.spyOn(document, "addEventListener");
             const removeWindow = vi.spyOn(window, "removeEventListener");
+            const removeDocument = vi.spyOn(document, "removeEventListener");
             trackOnboardingEvent("integration_step_viewed", { orgId: "org-a" });
             trackOnboardingEvent("integration_skipped", { orgId: "org-b" });
             trackOnboardingEvent("first_sync_started", { orgId: "org-a" });
@@ -498,6 +499,28 @@ describe("trackOnboardingEvent org digest", () => {
             ).toHaveLength(1);
             resetOnboardingOnceTracking();
             expect(removeWindow.mock.calls.filter(([type]) => type === "pagehide")).toHaveLength(1);
+            expect(
+                removeDocument.mock.calls.filter(([type]) => type === "visibilitychange"),
+            ).toHaveLength(1);
+        });
+
+        it("a digest still in flight when the test reset runs sends nothing and caches nothing", async () => {
+            const { pending, digest } = heldDigest();
+            trackOnboardingEvent("integration_step_viewed", { orgId: "org-a" });
+            expect(digest).toHaveBeenCalledTimes(1);
+
+            resetOnboardingOnceTracking();
+            pending[0]?.(new Uint8Array(32).buffer);
+            await new Promise((resolve) => setTimeout(resolve, 30));
+            expect(sendBeacon).not.toHaveBeenCalled();
+
+            // Nothing was cached: the next event for the org hashes again and waits for it.
+            trackOnboardingEvent("integration_skipped", { orgId: "org-a" });
+            expect(digest).toHaveBeenCalledTimes(2);
+            expect(sendBeacon).not.toHaveBeenCalled();
+            pending[1]?.(new Uint8Array(32).buffer);
+            await waitFor(() => expect(sendBeacon).toHaveBeenCalledTimes(1));
+            expect(surfaces()).toEqual(["integration_skipped"]);
         });
     });
 });

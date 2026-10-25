@@ -1,6 +1,8 @@
 import { act, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetDigestCacheForTests } from "@/lib/telemetry/digestCache";
+
 import { TelemetryProvider } from "./TelemetryProvider";
 
 let pathname = "/metrics?tab=dora";
@@ -20,6 +22,7 @@ vi.mock("@/lib/telemetry", () => telemetryMock);
 describe("TelemetryProvider", () => {
     beforeEach(() => {
         pathname = "/metrics?tab=dora";
+        resetDigestCacheForTests();
         telemetryMock.setTelemetryContext.mockClear();
         telemetryMock.trackTelemetryEvent.mockClear();
         telemetryMock.flushTelemetryEventsOnHide.mockClear();

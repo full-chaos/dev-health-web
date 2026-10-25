@@ -10,6 +10,7 @@ import {
 } from "@/lib/telemetry";
 import { TELEMETRY_INTERACTION_EVENT } from "@/lib/telemetry/interaction";
 import { emitClientError, emitFeatureViewed } from "@/lib/telemetry/emitters";
+import { digestOnce } from "@/lib/telemetry/digestCache";
 import { hashIdentifier } from "@/lib/telemetry/hash";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 
@@ -39,8 +40,8 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
         let cancelled = false;
         async function applyIdentity() {
             const [anonymousUserId, orgIdHash] = await Promise.all([
-                hashIdentifier(userId || anonymousFallbackId()),
-                orgId ? hashIdentifier(orgId) : Promise.resolve(null),
+                userId ? digestOnce(userId) : hashIdentifier(anonymousFallbackId()),
+                orgId ? digestOnce(orgId) : Promise.resolve(null),
             ]);
             if (!cancelled) {
                 // No SubtleCrypto: no digest is made. The id then falls back to the stored random

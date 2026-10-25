@@ -28,7 +28,12 @@ import { getWindow } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { canTrackProductTelemetry } from "@/lib/telemetry/config";
 import { telemetryEnvelopeIdentity } from "@/lib/telemetry";
-import { hashIdentifier } from "@/lib/telemetry/hash";
+import {
+    digestGeneration,
+    digestOnce,
+    getCachedDigest,
+    resetDigestCacheForTests,
+} from "@/lib/telemetry/digestCache";
 import { sanitizeTelemetryPayload } from "@/lib/telemetry/sanitize";
 import { closeTelemetryEvent } from "@/lib/telemetry/schema";
 
@@ -57,9 +62,6 @@ const ONBOARDING_ROUTE_FALLBACK = "/onboarding";
  * effect-fired funnel events emit at most once per page load.
  */
 const emittedOnceKeys = new Set<string>();
-
-/** SHA-256 digest per org id, so a repeat event for the same org can send synchronously. */
-const orgHashes = new Map<string, string>();
 
 type SendWithOrg = (orgIdHash: string | null) => void;
 type QueuedSend = { seq: number; send: SendWithOrg };
@@ -197,7 +199,7 @@ export function trackOnboardingEvent(
         waiting.sends.push({ seq: callSeq++, send });
         return;
     }
-    const cached = orgHashes.get(orgId);
+    const cached = getCachedDigest(orgId);
     if (cached !== undefined) {
         send(cached);
         return;
@@ -205,16 +207,16 @@ export function trackOnboardingEvent(
     const entry = { sends: [{ seq: callSeq++, send }] as QueuedSend[], flushed: false };
     pendingSends.set(orgId, entry);
     installExitListeners();
+    const startedIn = digestGeneration();
     const settle = (digest: string | null): void => {
-        if (digest !== null) orgHashes.set(orgId, digest);
-        if (entry.flushed) return;
+        if (startedIn !== digestGeneration() || entry.flushed) return;
         pendingSends.delete(orgId);
         for (const queued of entry.sends) queued.send(digest);
     };
-    hashIdentifier(orgId).then(settle, () => {
+    digestOnce(orgId).then(settle, () => {
         // A failed digest is not cached and its waiting events are dropped: never sent with a
         // weaker value or the raw id. The next event for the org tries the digest again.
-        if (!entry.flushed) pendingSends.delete(orgId);
+        if (startedIn === digestGeneration() && !entry.flushed) pendingSends.delete(orgId);
     });
 }
 
@@ -240,7 +242,7 @@ export function trackOnboardingEventOnce(
 /** Test seam: clear the module-scoped one-shot dedupe set. */
 export function resetOnboardingOnceTracking(): void {
     emittedOnceKeys.clear();
-    orgHashes.clear();
+    resetDigestCacheForTests();
     pendingSends.clear();
     if (exitListeners) {
         exitListeners.win.removeEventListener("pagehide", exitListeners.onHide);
