@@ -462,6 +462,8 @@ export interface BackfillResponse {
     status: string;
     task_id?: string;
     backfill_job_id?: string;
+    /** The occurrence the scheduler plans; a submit answers before the plan, so no run id yet. */
+    occurrence_id?: string;
     sync_run_id?: string;
     total_units?: number;
 }

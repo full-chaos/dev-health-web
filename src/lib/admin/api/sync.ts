@@ -96,10 +96,20 @@ export const syncConfigsApi = {
             orgId,
         ),
 
-    backfill: (id: string, data: BackfillRequest, token?: string, orgId?: string) =>
+    backfill: (
+        id: string,
+        data: BackfillRequest,
+        token?: string,
+        orgId?: string,
+        idempotencyKey?: string,
+    ) =>
         request<BackfillResponse>(
             `/sync-configs/${id}/backfill`,
-            { method: "POST", body: JSON.stringify(data) },
+            {
+                method: "POST",
+                body: JSON.stringify(data),
+                ...(idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : {}),
+            },
             token,
             orgId,
         ),

@@ -190,10 +190,11 @@ describe("BackfillWizard", () => {
         await fillRange(user);
         await reviewAndSubmit(user);
 
-        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
-            since: "2026-06-01T00:00:00.000Z",
-            before: "2026-06-05T00:00:00.000Z",
-        });
+        expect(triggerBackfill).toHaveBeenCalledWith(
+            "cfg-1",
+            { since: "2026-06-01T00:00:00.000Z", before: "2026-06-05T00:00:00.000Z" },
+            expect.any(String),
+        );
         expect(await screen.findByRole("link", { name: "View run" })).toHaveAttribute(
             "href",
             "/org/admin/sync/cfg-1/runs/run-42",
@@ -218,12 +219,16 @@ describe("BackfillWizard", () => {
 
         await reviewAndSubmit(user);
 
-        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
-            since: "2026-06-10T00:00:00Z",
-            before: "2026-06-12T00:00:00Z",
-            source_ids: ["src-web"],
-            dataset_keys: ["work-item-comments"],
-        });
+        expect(triggerBackfill).toHaveBeenCalledWith(
+            "cfg-1",
+            {
+                since: "2026-06-10T00:00:00Z",
+                before: "2026-06-12T00:00:00Z",
+                source_ids: ["src-web"],
+                dataset_keys: ["work-item-comments"],
+            },
+            expect.any(String),
+        );
     });
 
     it("blocks a stale exact window that mixes an enabled and a not_enabled dataset key", async () => {
@@ -289,18 +294,28 @@ describe("BackfillWizard", () => {
         await reviewAndSubmit(user);
 
         expect(triggerBackfill).toHaveBeenCalledTimes(2);
-        expect(triggerBackfill).toHaveBeenNthCalledWith(1, "cfg-1", {
-            since: "2026-06-01T05:30:00Z",
-            before: "2026-06-02T05:30:00Z",
-            source_ids: ["src-api"],
-            dataset_keys: ["git"],
-        });
-        expect(triggerBackfill).toHaveBeenNthCalledWith(2, "cfg-1", {
-            since: "2026-06-10T00:00:00Z",
-            before: "2026-06-12T00:00:00Z",
-            source_ids: ["src-web"],
-            dataset_keys: ["work-item-comments"],
-        });
+        expect(triggerBackfill).toHaveBeenNthCalledWith(
+            1,
+            "cfg-1",
+            {
+                since: "2026-06-01T05:30:00Z",
+                before: "2026-06-02T05:30:00Z",
+                source_ids: ["src-api"],
+                dataset_keys: ["git"],
+            },
+            expect.any(String),
+        );
+        expect(triggerBackfill).toHaveBeenNthCalledWith(
+            2,
+            "cfg-1",
+            {
+                since: "2026-06-10T00:00:00Z",
+                before: "2026-06-12T00:00:00Z",
+                source_ids: ["src-web"],
+                dataset_keys: ["work-item-comments"],
+            },
+            expect.any(String),
+        );
         expect(await screen.findByText(/^2 backfills started/)).toBeInTheDocument();
     });
 
@@ -376,6 +391,7 @@ describe("BackfillWizard", () => {
             expect.objectContaining({
                 source_ids: ["src-web"],
             }),
+            expect.any(String),
         );
         expect(triggerBackfill.mock.calls[0]?.[1]).not.toHaveProperty("dataset_keys");
     });
@@ -397,6 +413,7 @@ describe("BackfillWizard", () => {
             expect.objectContaining({
                 dataset_keys: ["work-items", "work-item-comments"],
             }),
+            expect.any(String),
         );
     });
 
@@ -435,6 +452,7 @@ describe("BackfillWizard", () => {
         expect(triggerBackfill).toHaveBeenCalledWith(
             "cfg-1",
             expect.objectContaining({ dataset_keys: ["work-items"] }),
+            expect.any(String),
         );
     });
 
@@ -448,12 +466,16 @@ describe("BackfillWizard", () => {
         await user.click(screen.getByLabelText("Git Data (Commits, Branches)"));
         await reviewAndSubmit(user);
 
-        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
-            since: "2026-06-01T00:00:00.000Z",
-            before: "2026-06-05T00:00:00.000Z",
-            source_ids: ["src-api"],
-            dataset_keys: ["git"],
-        });
+        expect(triggerBackfill).toHaveBeenCalledWith(
+            "cfg-1",
+            {
+                since: "2026-06-01T00:00:00.000Z",
+                before: "2026-06-05T00:00:00.000Z",
+                source_ids: ["src-api"],
+                dataset_keys: ["git"],
+            },
+            expect.any(String),
+        );
     });
 
     it("rejects an empty focused selection before review instead of silently widening it", async () => {
@@ -556,10 +578,14 @@ describe("BackfillWizard server-window timezone handling", () => {
 
             await reviewAndSubmit(user);
 
-            expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
-                since: sentSince,
-                before: sentBefore,
-            });
+            expect(triggerBackfill).toHaveBeenCalledWith(
+                "cfg-1",
+                {
+                    since: sentSince,
+                    before: sentBefore,
+                },
+                expect.any(String),
+            );
             // Both forms must satisfy the endpoint's AwareDatetime selector.
             expect(sentSince).toMatch(/(?:Z|[+-]\d{2}:?\d{2})$/);
             expect(sentBefore).toMatch(/(?:Z|[+-]\d{2}:?\d{2})$/);
@@ -577,10 +603,14 @@ describe("BackfillWizard server-window timezone handling", () => {
 
         await reviewAndSubmit(user);
 
-        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
-            since: "2026-08-08T00:00:00+00:00",
-            before: "2026-08-13T00:00:00Z",
-        });
+        expect(triggerBackfill).toHaveBeenCalledWith(
+            "cfg-1",
+            {
+                since: "2026-08-08T00:00:00+00:00",
+                before: "2026-08-13T00:00:00Z",
+            },
+            expect.any(String),
+        );
     });
 
     it("keeps the time on an intra-day window so it does not read as zero-width", async () => {
@@ -622,5 +652,137 @@ describe("BackfillWizard server-window timezone handling", () => {
         renderWizard({ initialWindows: [window], suggestedWindows: [window] });
 
         expect(screen.getByText(/2026-08-08 to 2026-08-13 · all datasets/)).toBeInTheDocument();
+    });
+
+    describe("fast submit (accepted without a run)", () => {
+        const twoWindows = () => {
+            const first = {
+                since: "2026-06-01T00:00:00Z",
+                before: "2026-06-02T00:00:00Z",
+                source_ids: ["src-api"],
+                dataset_keys: ["git"],
+                reasons: ["gap"] as const,
+            };
+            const second = {
+                since: "2026-06-10T00:00:00Z",
+                before: "2026-06-12T00:00:00Z",
+                source_ids: ["src-web"],
+                dataset_keys: ["work-item-comments"],
+                reasons: ["gap"] as const,
+            };
+            return [first, second];
+        };
+        const selectBoth = async (user: ReturnType<typeof userEvent.setup>) => {
+            await user.click(
+                screen.getByRole("checkbox", { name: "2026-06-01 to 2026-06-02 · git" }),
+            );
+            await user.click(
+                screen.getByRole("checkbox", {
+                    name: "2026-06-10 to 2026-06-12 · work-item-comments",
+                }),
+            );
+        };
+
+        it("links an accepted job to the config page, with no run link and no run id needed", async () => {
+            triggerBackfill.mockResolvedValue({
+                data: {
+                    status: "accepted",
+                    backfill_job_id: "job-7",
+                    occurrence_id: "occ-7",
+                    task_id: "occurrence:occ-7",
+                },
+            });
+            const user = userEvent.setup();
+            renderWizard();
+            await fillRange(user);
+            await reviewAndSubmit(user);
+
+            expect(await screen.findByText(/job-7/)).toBeInTheDocument();
+            expect(screen.queryByRole("link", { name: "View run" })).not.toBeInTheDocument();
+            expect(screen.getByRole("link", { name: "View backfill progress" })).toHaveAttribute(
+                "href",
+                "/org/admin/sync/cfg-1",
+            );
+        });
+
+        it("sends one stable Idempotency-Key per window: distinct across windows, shared prefix per action", async () => {
+            triggerBackfill.mockResolvedValue({
+                data: { status: "accepted", backfill_job_id: "job-1", occurrence_id: "occ-1" },
+            });
+            const user = userEvent.setup();
+            const [first, second] = twoWindows();
+            renderWizard({ suggestedWindows: [first, second] });
+            await selectBoth(user);
+            await reviewAndSubmit(user);
+
+            const keys = triggerBackfill.mock.calls.map((call) => call[2] as string);
+            expect(keys).toHaveLength(2);
+            expect(keys[0]).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+            expect(keys[1]).toMatch(/^[A-Za-z0-9._:-]{1,128}$/);
+            expect(keys[0]).not.toBe(keys[1]);
+        });
+
+        it("retries a thrown submit once with the SAME key, never with a new one", async () => {
+            triggerBackfill.mockRejectedValueOnce(new Error("network")).mockResolvedValue({
+                data: { status: "accepted", backfill_job_id: "job-1", occurrence_id: "occ-1" },
+            });
+            const user = userEvent.setup();
+            renderWizard();
+            await fillRange(user);
+            await reviewAndSubmit(user);
+
+            expect(await screen.findByText(/job-1/)).toBeInTheDocument();
+            expect(triggerBackfill).toHaveBeenCalledTimes(2);
+            expect(triggerBackfill.mock.calls[1]?.[2]).toBe(triggerBackfill.mock.calls[0]?.[2]);
+        });
+
+        it("a new user action after a failure sends a new key", async () => {
+            triggerBackfill.mockResolvedValue({ error: "Backfill refused" });
+            const user = userEvent.setup();
+            renderWizard();
+            await fillRange(user);
+            await reviewAndSubmit(user);
+            const firstKey = triggerBackfill.mock.calls[0]?.[2];
+            expect(await screen.findByText("Backfill refused")).toBeInTheDocument();
+            expect(triggerBackfill).toHaveBeenCalledTimes(1);
+            expect(typeof firstKey).toBe("string");
+        });
+
+        it("never has two submits of the config in flight, and ignores a second press while one runs", async () => {
+            let inFlight = 0;
+            let maxInFlight = 0;
+            const release: Array<() => void> = [];
+            triggerBackfill.mockImplementation(
+                () =>
+                    new Promise((resolve) => {
+                        inFlight += 1;
+                        maxInFlight = Math.max(maxInFlight, inFlight);
+                        release.push(() => {
+                            inFlight -= 1;
+                            resolve({
+                                data: {
+                                    status: "accepted",
+                                    backfill_job_id: "job-1",
+                                    occurrence_id: "occ-1",
+                                },
+                            });
+                        });
+                    }),
+            );
+            const user = userEvent.setup();
+            const [first, second] = twoWindows();
+            renderWizard({ suggestedWindows: [first, second] });
+            await selectBoth(user);
+            await reviewAndSubmit(user);
+
+            await vi.waitFor(() => expect(release).toHaveLength(1));
+            expect(triggerBackfill).toHaveBeenCalledTimes(1);
+            release[0]?.();
+            await vi.waitFor(() => expect(release).toHaveLength(2));
+            release[1]?.();
+            expect(await screen.findByText(/^2 backfills started/)).toBeInTheDocument();
+            expect(maxInFlight).toBe(1);
+            expect(triggerBackfill).toHaveBeenCalledTimes(2);
+        });
     });
 });
