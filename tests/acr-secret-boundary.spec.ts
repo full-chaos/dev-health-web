@@ -7,6 +7,73 @@ const PROBE_ACTION_ID = "0".repeat(40);
 const STOP_DRAIN_TIMEOUT_MS = 10_000;
 const MAX_REDIRECT_HOPS = 10;
 const DRAIN_SETTLE_MS = 50;
+const FOLLOWED_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const CREDENTIAL_HEADER =
+    /^(?:authorization|proxy-authorization)$|token|secret|credential|api-?key/iu;
+
+type JarCookie = {
+    name: string;
+    value: string;
+    domain: string;
+    path: string;
+    secure: boolean;
+    expires: number;
+};
+
+function cookiesFor(jar: JarCookie[], url: URL): string {
+    const now = Date.now() / 1000;
+    const latest = new Map<string, JarCookie>();
+    for (const cookie of jar) latest.set(`${cookie.name}|${cookie.domain}|${cookie.path}`, cookie);
+    return [...latest.values()]
+        .filter((cookie) => {
+            const domain = cookie.domain.replace(/^\./u, "");
+            const domainMatch = cookie.domain.startsWith(".")
+                ? url.hostname === domain || url.hostname.endsWith(`.${domain}`)
+                : url.hostname === domain;
+            const pathMatch =
+                url.pathname === cookie.path ||
+                url.pathname.startsWith(
+                    cookie.path.endsWith("/") ? cookie.path : `${cookie.path}/`,
+                );
+            const alive = cookie.expires === -1 || cookie.expires > now;
+            return (
+                domainMatch && pathMatch && alive && (!cookie.secure || url.protocol === "https:")
+            );
+        })
+        .map((cookie) => `${cookie.name}=${cookie.value}`)
+        .join("; ");
+}
+
+function parseSetCookie(header: string, url: URL): JarCookie | null {
+    const [pair = "", ...attributes] = header.split(";");
+    const separator = pair.indexOf("=");
+    if (separator <= 0) return null;
+    const cookie: JarCookie = {
+        domain: url.hostname,
+        expires: -1,
+        name: pair.slice(0, separator).trim(),
+        path:
+            url.pathname.lastIndexOf("/") > 0
+                ? url.pathname.slice(0, url.pathname.lastIndexOf("/"))
+                : "/",
+        secure: false,
+        value: pair.slice(separator + 1).trim(),
+    };
+    for (const attribute of attributes) {
+        const [rawName = "", ...rawValue] = attribute.split("=");
+        const name = rawName.trim().toLowerCase();
+        const value = rawValue.join("=").trim();
+        if (name === "path" && value.startsWith("/")) cookie.path = value;
+        if (name === "secure") cookie.secure = true;
+        if (name === "max-age" && Number.isFinite(Number(value))) {
+            cookie.expires = Date.now() / 1000 + Number(value);
+        }
+        if (name === "expires" && cookie.expires === -1 && !Number.isNaN(Date.parse(value))) {
+            cookie.expires = Date.parse(value) / 1000;
+        }
+    }
+    return cookie;
+}
 
 const secretPattern =
     /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
@@ -29,12 +96,19 @@ test.beforeEach(async ({ request }) => {
 // keep the method and the body. A hop chain longer than MAX_REDIRECT_HOPS fails the guard.
 // Known limit: server-action responses are buffered in the guard spec.
 // Test seams (used only by the guard's own tests): `upstream` maps the URL of an intercepted action to
-// the URL that is really fetched; `onDrained` runs once
-// stop() has seen no pending request, so a test can start a request at the worst moment.
+// the URL that is really fetched; `onDrained` runs once stop() has seen no pending request, so a test
+// can start a request at the worst moment; `drainTimeoutMs` shortens the stop deadline; `recordTask`
+// adds a record task of the test's own (one that never ends).
+// Redirect semantics follow fetch: only 301/302/303/307/308 are followed (a 300/304/305 is recorded as
+// the final response); Authorization and any token/secret/credential header are dropped on a cross-origin
+// hop; Cookie is built from the browser jar and the hop's own Set-Cookie by origin, path, Secure and
+// expiry; the headers that are recorded for a hop are the headers that are sent.
 type WatchOptions = {
     mutateActionBody?: (body: string) => string;
     upstream?: (url: string) => string;
     onDrained?: () => Promise<void>;
+    drainTimeoutMs?: number;
+    recordTask?: () => Promise<void>;
 };
 
 async function watchNetwork(page: Page, origin: string, options: WatchOptions = {}) {
@@ -59,14 +133,41 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
             let target = options.upstream ? options.upstream(request.url()) : request.url();
             let method = request.method();
             let postData: Buffer | null = request.postDataBuffer();
-            const baseHeaders = request.headers();
-            let cookieHeader: string | undefined = baseHeaders["cookie"];
-            let response = await route.fetch({ maxRedirects: 0, url: target });
+            const initialHeaders = await request.allHeaders();
+            const pageUrl = request.url() === target;
+            let headers: Record<string, string> = { ...initialHeaders };
+            const hopJar: JarCookie[] = [];
+            const contextJar = async (): Promise<JarCookie[]> =>
+                (await page.context().cookies()).map((cookie) => ({
+                    domain: cookie.domain,
+                    expires: cookie.expires,
+                    name: cookie.name,
+                    path: cookie.path,
+                    secure: cookie.secure,
+                    value: cookie.value,
+                }));
+            if (!pageUrl) {
+                delete headers["host"];
+                headers["cookie"] = cookiesFor(
+                    [...(await contextJar()), ...hopJar],
+                    new URL(target),
+                );
+            }
+            networkRecords.push(target, JSON.stringify(headers), postData?.toString("utf8") ?? "");
+            let response = pageUrl
+                ? await route.fetch({ maxRedirects: 0 })
+                : await route.fetch({
+                      headers,
+                      maxRedirects: 0,
+                      method,
+                      postData: postData ?? Buffer.alloc(0),
+                      url: target,
+                  });
             for (let hop = 0; ; hop += 1) {
                 const body = await response.text();
                 const status = response.status();
                 const location = response.headers()["location"];
-                const isRedirect = status >= 300 && status < 400 && location !== undefined;
+                const isRedirect = FOLLOWED_REDIRECT_STATUSES.has(status) && location !== undefined;
                 networkRecords.push(response.url(), JSON.stringify(response.headers()));
                 if (isRedirect) {
                     networkRecords.push(body);
@@ -87,28 +188,30 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
                     await route.abort();
                     return;
                 }
-                target = new URL(location, response.url()).toString();
+                const hopUrl = new URL(response.url());
+                const next = new URL(location, hopUrl);
+                for (const header of response.headersArray()) {
+                    if (header.name.toLowerCase() !== "set-cookie") continue;
+                    const cookie = parseSetCookie(header.value, hopUrl);
+                    if (cookie !== null) hopJar.push(cookie);
+                }
                 if (status === 303 || ((status === 301 || status === 302) && method === "POST")) {
                     method = "GET";
                     postData = null;
                 }
-                const headers = { ...baseHeaders };
-                // route.fetch does not store the Set-Cookie of a hop; a browser would, so the next hop gets it.
-                for (const header of response.headersArray()) {
-                    if (header.name.toLowerCase() !== "set-cookie") continue;
-                    const [pair = ""] = header.value.split(";");
-                    const name = pair.split("=")[0]?.trim() ?? "";
-                    if (name === "") continue;
-                    const kept = (cookieHeader ?? "")
-                        .split("; ")
-                        .filter((cookie) => cookie !== "" && !cookie.startsWith(`${name}=`));
-                    cookieHeader = [...kept, pair.trim()].join("; ");
+                headers = { ...headers };
+                delete headers["host"];
+                if (next.origin !== hopUrl.origin) {
+                    for (const name of Object.keys(headers)) {
+                        if (CREDENTIAL_HEADER.test(name)) delete headers[name];
+                    }
                 }
-                if (cookieHeader !== undefined) headers["cookie"] = cookieHeader;
+                headers["cookie"] = cookiesFor([...(await contextJar()), ...hopJar], next);
                 if (postData === null) {
                     delete headers["content-type"];
                     delete headers["content-length"];
                 }
+                target = next.toString();
                 networkRecords.push(
                     target,
                     JSON.stringify(headers),
@@ -124,6 +227,7 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
             }
         },
     );
+    if (options.recordTask) networkRecordTasks.push(options.recordTask());
     const onRequest = (request: Request) => {
         pendingRequests.add(request);
         if (request.url().includes("/api/v1/agent-context")) directAcrRequests.push(request.url());
@@ -164,20 +268,34 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
     // is pending after the records settled, so a request that starts during the drain is covered too.
     // Requests that do not finish in time fail the guard instead of being skipped.
     const stop = async (stopOptions: { expectedFailures?: RegExp[] } = {}) => {
-        const deadline = Date.now() + STOP_DRAIN_TIMEOUT_MS;
+        const deadline = Date.now() + (options.drainTimeoutMs ?? STOP_DRAIN_TIMEOUT_MS);
         const drain = async () => {
             while (pendingRequests.size > 0 && Date.now() < deadline) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         };
+        // The record tasks are raced against the deadline: a response body that never ends must fail the
+        // guard at the deadline, not hang until the test times out.
+        const recordsDone = async () => {
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const done = await Promise.race([
+                Promise.all(networkRecordTasks).then(() => true),
+                new Promise<boolean>((resolve) => {
+                    timer = setTimeout(() => resolve(false), Math.max(deadline - Date.now(), 0));
+                }),
+            ]);
+            clearTimeout(timer);
+            return done;
+        };
         await drain();
         if (options.onDrained) await options.onDrained();
         let settled = false;
-        while (!settled) {
+        let recordsStuck = false;
+        while (!settled && !recordsStuck) {
             await drain();
-            await Promise.all(networkRecordTasks);
+            recordsStuck = !(await recordsDone());
             await new Promise((resolve) => setTimeout(resolve, DRAIN_SETTLE_MS));
-            await Promise.all(networkRecordTasks);
+            recordsStuck = recordsStuck || !(await recordsDone());
             settled = pendingRequests.size === 0 || Date.now() >= deadline;
         }
         const unfinished = pendingRequests.size;
@@ -185,9 +303,10 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
         page.off("response", onResponse);
         page.off("requestfinished", onRequestDone);
         page.off("requestfailed", onRequestDone);
-        if (unfinished > 0) {
+        if (unfinished > 0 || recordsStuck) {
             // Waiting for the handlers or the record tasks could hang on the very request that is pending.
             await page.unrouteAll({ behavior: "ignoreErrors" });
+            expect(recordsStuck, "record tasks still running when the guard stopped").toBe(false);
             expect(unfinished, "requests still in flight when the guard stopped").toBe(0);
         }
         await page.unrouteAll({ behavior: "wait" });
@@ -364,6 +483,8 @@ type HopHeaders = { authorization: string; cookie: string };
 async function startHopServer(crossOrigin = "") {
     const seen: HopSeen[] = [];
     const crossSeen: HopHeaders[] = [];
+    const cookieSeen: string[] = [];
+    const authSeen: string[] = [];
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
         const chunks: Buffer[] = [];
         req.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -382,6 +503,15 @@ async function startHopServer(crossOrigin = "") {
             } else if (path === "/start-query") {
                 res.writeHead(303, { location: "/next-q?leak=fcacr_QUERY0123456789" });
                 res.end("q");
+            } else if (path === "/start300") {
+                res.writeHead(300, { location: "/next" });
+                res.end("multiple fcacr_MULTI0123456789");
+            } else if (path === "/start-cross307") {
+                res.writeHead(307, { location: `${crossOrigin}/cross-final` });
+                res.end("x");
+            } else if (path === "/start-same307") {
+                res.writeHead(307, { location: "/next-auth" });
+                res.end("x");
             } else if (path === "/start-cross") {
                 res.writeHead(302, { location: `${crossOrigin}/cross-final` });
                 res.end("x");
@@ -396,6 +526,8 @@ async function startHopServer(crossOrigin = "") {
                 res.writeHead(303, { location: "/loop" });
                 res.end("loop");
             } else {
+                cookieSeen.push(req.headers.cookie ?? "");
+                authSeen.push(req.headers.authorization ?? "");
                 seen.push({
                     body,
                     hopCookie: (req.headers.cookie ?? "").includes("hopcheck=hop-cookie-marker"),
@@ -415,7 +547,7 @@ async function startHopServer(crossOrigin = "") {
         server.closeAllConnections();
         return new Promise<void>((resolve) => server.close(() => resolve()));
     };
-    return { close, crossSeen, origin, seen };
+    return { authSeen, close, cookieSeen, crossSeen, origin, seen };
 }
 
 const HOP_PREFIX = "/__hop";
@@ -560,7 +692,7 @@ test("the Location of a redirect hop is recorded with its query string", async (
     }
 });
 
-test("a cross-origin redirect hop is recorded with the headers it actually sent", async ({
+test("a cross-origin redirect hop is recorded and carries no Authorization", async ({
     baseURL,
     page,
 }) => {
@@ -574,21 +706,124 @@ test("a cross-origin redirect hop is recorded with the headers it actually sent"
             { upstream: hopUpstream(hop.origin) },
         );
         await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
-        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-cross`, "[]", authorization]);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-cross307`, "[]", authorization]);
         await stop();
         expect(other.crossSeen).toHaveLength(1);
+        expect(other.crossSeen[0]?.authorization).toBe("");
         const hopIndex = networkRecords.indexOf(`${other.origin}/cross-final`);
         expect(hopIndex).toBeGreaterThanOrEqual(0);
         const recordedHeaders = JSON.parse(networkRecords[hopIndex + 1] ?? "{}") as Record<
             string,
             string
         >;
-        expect(recordedHeaders["authorization"] ?? "").toBe(other.crossSeen[0]?.authorization);
+        expect(Object.keys(recordedHeaders).map((name) => name.toLowerCase())).not.toContain(
+            "authorization",
+        );
         expect(recordedHeaders["cookie"] ?? "").toBe(other.crossSeen[0]?.cookie);
     } finally {
         await other.close();
         await hop.close();
     }
+});
+
+test("a same-origin 307 hop keeps Authorization and records it", async ({ baseURL, page }) => {
+    const hop = await startHopServer();
+    const authorization = "Bearer hop-auth-marker";
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-same307`, "[]", authorization]);
+        await stop();
+        expect(hop.authSeen).toEqual([authorization]);
+        const hopIndex = networkRecords.indexOf(`${hop.origin}/next-auth`);
+        const recordedHeaders = JSON.parse(networkRecords[hopIndex + 1] ?? "{}") as Record<
+            string,
+            string
+        >;
+        expect(recordedHeaders["authorization"]).toBe(authorization);
+    } finally {
+        await hop.close();
+    }
+});
+
+test("a hop gets the jar cookies of its own origin, path and scheme, and they are recorded", async ({
+    baseURL,
+    page,
+}) => {
+    const hop = await startHopServer();
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.context().addCookies([
+            { domain: "127.0.0.1", name: "jarin", path: "/next", value: "jar-in-marker" },
+            { domain: "127.0.0.1", name: "jarpath", path: "/other", value: "jar-path-marker" },
+            {
+                domain: "127.0.0.1",
+                name: "jarsecure",
+                path: "/",
+                secure: true,
+                value: "jar-secure-marker",
+            },
+        ]);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start`, "[]"]);
+        await stop();
+        expect(hop.cookieSeen).toHaveLength(1);
+        expect(hop.cookieSeen[0]).toContain("jarin=jar-in-marker");
+        expect(hop.cookieSeen[0]).not.toContain("jarpath");
+        expect(hop.cookieSeen[0]).not.toContain("jarsecure");
+        const hopIndex = networkRecords.indexOf(`${hop.origin}/next`);
+        const recordedHeaders = JSON.parse(networkRecords[hopIndex + 1] ?? "{}") as Record<
+            string,
+            string
+        >;
+        expect(recordedHeaders["cookie"]).toBe(hop.cookieSeen[0]);
+    } finally {
+        await hop.close();
+    }
+});
+
+test("a 300 response with a Location is not followed and its body is scanned", async ({
+    baseURL,
+    page,
+}) => {
+    const hop = await startHopServer();
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        const status = await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start300`, "[]"]);
+        await stop();
+        expect(status).toBe(300);
+        expect(hop.seen).toEqual([]);
+        expect(networkRecords.join("\n")).toMatch(secretPattern);
+    } finally {
+        await hop.close();
+    }
+});
+
+test("a record task that never ends fails the guard by name at the deadline", async ({
+    baseURL,
+    page,
+}) => {
+    const { stop } = await watchNetwork(page, new URL(baseURL ?? "http://127.0.0.1:3001").origin, {
+        drainTimeoutMs: 1_500,
+        recordTask: () => new Promise<void>(() => undefined),
+    });
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    const started = Date.now();
+    await expect(stop()).rejects.toThrow(/record tasks still running/u);
+    expect(Date.now() - started).toBeLessThan(1_500 + 1_000);
 });
 
 test("a request still pending at the stop deadline fails the guard", async ({ baseURL, page }) => {
