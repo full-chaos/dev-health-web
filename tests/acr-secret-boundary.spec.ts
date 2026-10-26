@@ -1,5 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { expect, test, type Page, type Request, type Response } from "@playwright/test";
+import {
+    expect,
+    request as playwrightRequest,
+    test,
+    type Page,
+    type Request,
+    type Response,
+} from "@playwright/test";
 
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
 
@@ -8,6 +15,13 @@ const STOP_DRAIN_TIMEOUT_MS = 10_000;
 const MAX_REDIRECT_HOPS = 10;
 const DRAIN_SETTLE_MS = 50;
 const FOLLOWED_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const BODY_HEADERS = [
+    "content-type",
+    "content-length",
+    "content-encoding",
+    "content-language",
+    "content-location",
+];
 const CREDENTIAL_HEADER =
     /^(?:authorization|proxy-authorization)$|token|secret|credential|api-?key/iu;
 
@@ -98,17 +112,23 @@ test.beforeEach(async ({ request }) => {
 // Test seams (used only by the guard's own tests): `upstream` maps the URL of an intercepted action to
 // the URL that is really fetched; `onDrained` runs once stop() has seen no pending request, so a test
 // can start a request at the worst moment; `drainTimeoutMs` shortens the stop deadline; `recordTask`
-// adds a record task of the test's own (one that never ends).
+// adds a record task of the test's own (one that never ends); `ignoreResponseEvents` drops the response
+// events of matching URLs (a response event that is never delivered); `credentials` declares the credentials mode of the page's fetch. Playwright does not expose it
+// (an intercepted request's allHeaders() carries jar cookies even for omit), so the default is
+// "same-origin", the fetch default and the mode of the app's own server-action fetches.
 // Redirect semantics follow fetch: only 301/302/303/307/308 are followed (a 300/304/305 is recorded as
 // the final response); Authorization and any token/secret/credential header are dropped on a cross-origin
 // hop; Cookie is built from the browser jar and the hop's own Set-Cookie by origin, path, Secure and
-// expiry; the headers that are recorded for a hop are the headers that are sent.
+// expiry, and by the credentials mode: omit = never, include = every hop, same-origin = only while every
+// hop so far is same-origin with the first hop (one cross-origin hop ends cookies for all later hops); the headers that are recorded for a hop are the headers that are sent.
 type WatchOptions = {
     mutateActionBody?: (body: string) => string;
     upstream?: (url: string) => string;
     onDrained?: () => Promise<void>;
     drainTimeoutMs?: number;
     recordTask?: () => Promise<void>;
+    ignoreResponseEvents?: (url: string) => boolean;
+    credentials?: "omit" | "same-origin" | "include";
 };
 
 async function watchNetwork(page: Page, origin: string, options: WatchOptions = {}) {
@@ -118,6 +138,13 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
     const interceptedActions = new Set<Request>();
     const actionCounts = { intercepted: 0, scanned: 0, pageOwn: 0 };
     const pendingRequests = new Set<Request>();
+    const seenRequests = new Set<Request>();
+    const respondedRequests = new Set<Request>();
+    const failedRequests = new Set<Request>();
+    const unrecordedRequests = () =>
+        [...seenRequests].filter(
+            (seen) => !respondedRequests.has(seen) && !failedRequests.has(seen),
+        );
     const guardFailures: string[] = [];
 
     await page.route(
@@ -146,90 +173,127 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
                     secure: cookie.secure,
                     value: cookie.value,
                 }));
-            if (!pageUrl) {
-                delete headers["host"];
-                headers["cookie"] = cookiesFor(
-                    [...(await contextJar()), ...hopJar],
-                    new URL(target),
-                );
-            }
-            networkRecords.push(target, JSON.stringify(headers), postData?.toString("utf8") ?? "");
-            let response = pageUrl
-                ? await route.fetch({ maxRedirects: 0 })
-                : await route.fetch({
-                      headers,
-                      maxRedirects: 0,
-                      method,
-                      postData: postData ?? Buffer.alloc(0),
-                      url: target,
-                  });
-            for (let hop = 0; ; hop += 1) {
-                const body = await response.text();
-                const status = response.status();
-                const location = response.headers()["location"];
-                const isRedirect = FOLLOWED_REDIRECT_STATUSES.has(status) && location !== undefined;
-                networkRecords.push(response.url(), JSON.stringify(response.headers()));
-                if (isRedirect) {
-                    networkRecords.push(body);
-                } else {
-                    networkRecords.push(
-                        options.mutateActionBody ? options.mutateActionBody(body) : body,
-                    );
-                    actionCounts.scanned += 1;
-                    if (request.headers()["next-action"] !== PROBE_ACTION_ID)
-                        actionCounts.pageOwn += 1;
-                    await route.fulfill({ response, body });
-                    return;
+            const firstOrigin = new URL(target).origin;
+            const credentials = options.credentials ?? "same-origin";
+            let tainted = false;
+            const cookieFor = async (url: URL): Promise<string> => {
+                if (credentials === "omit") return "";
+                if (credentials === "same-origin" && (tainted || url.origin !== firstOrigin))
+                    return "";
+                return cookiesFor([...(await contextJar()), ...hopJar], url);
+            };
+            const setCookieHeader = (value: string) => {
+                if (value === "") delete headers["cookie"];
+                else headers["cookie"] = value;
+            };
+            // Every manual hop uses a fresh API context: an empty cookie jar that never stores a hop's
+            // Set-Cookie for the next hop, so every header, cookie and body of a hop is exactly what this
+            // handler passes. The contexts live until the handler ends (a response body is read later).
+            const hopClients: Awaited<ReturnType<typeof playwrightRequest.newContext>>[] = [];
+            const fetchHop = async (
+                url: string,
+                init: { headers: Record<string, string>; method: string; data?: Buffer },
+            ) => {
+                const client = await playwrightRequest.newContext({
+                    extraHTTPHeaders: {},
+                    storageState: { cookies: [], origins: [] },
+                });
+                hopClients.push(client);
+                return client.fetch(url, { ...init, maxRedirects: 0 });
+            };
+            try {
+                if (!pageUrl) {
+                    delete headers["host"];
+                    if (postData !== null) headers["content-length"] = String(postData.length);
+                    setCookieHeader(await cookieFor(new URL(target)));
                 }
-                if (hop >= MAX_REDIRECT_HOPS) {
-                    guardFailures.push(
-                        `server action redirect chain longer than ${MAX_REDIRECT_HOPS} hops: ${request.url()}`,
-                    );
-                    await route.abort();
-                    return;
-                }
-                const hopUrl = new URL(response.url());
-                const next = new URL(location, hopUrl);
-                for (const header of response.headersArray()) {
-                    if (header.name.toLowerCase() !== "set-cookie") continue;
-                    const cookie = parseSetCookie(header.value, hopUrl);
-                    if (cookie !== null) hopJar.push(cookie);
-                }
-                if (status === 303 || ((status === 301 || status === 302) && method === "POST")) {
-                    method = "GET";
-                    postData = null;
-                }
-                headers = { ...headers };
-                delete headers["host"];
-                if (next.origin !== hopUrl.origin) {
-                    for (const name of Object.keys(headers)) {
-                        if (CREDENTIAL_HEADER.test(name)) delete headers[name];
-                    }
-                }
-                headers["cookie"] = cookiesFor([...(await contextJar()), ...hopJar], next);
-                if (postData === null) {
-                    delete headers["content-type"];
-                    delete headers["content-length"];
-                }
-                target = next.toString();
                 networkRecords.push(
                     target,
                     JSON.stringify(headers),
                     postData?.toString("utf8") ?? "",
                 );
-                response = await route.fetch({
-                    headers,
-                    maxRedirects: 0,
-                    method,
-                    postData: postData ?? Buffer.alloc(0),
-                    url: target,
-                });
+                let response = pageUrl
+                    ? await route.fetch({ maxRedirects: 0 })
+                    : await fetchHop(target, {
+                          headers,
+                          method,
+                          ...(postData === null ? {} : { data: postData }),
+                      });
+                for (let hop = 0; ; hop += 1) {
+                    const body = await response.text();
+                    const status = response.status();
+                    const location = response.headers()["location"];
+                    const isRedirect =
+                        FOLLOWED_REDIRECT_STATUSES.has(status) && location !== undefined;
+                    networkRecords.push(response.url(), JSON.stringify(response.headers()));
+                    if (isRedirect) {
+                        networkRecords.push(body);
+                    } else {
+                        networkRecords.push(
+                            options.mutateActionBody ? options.mutateActionBody(body) : body,
+                        );
+                        actionCounts.scanned += 1;
+                        if (request.headers()["next-action"] !== PROBE_ACTION_ID)
+                            actionCounts.pageOwn += 1;
+                        await route.fulfill({ response, body });
+                        return;
+                    }
+                    if (hop >= MAX_REDIRECT_HOPS) {
+                        guardFailures.push(
+                            `server action redirect chain longer than ${MAX_REDIRECT_HOPS} hops: ${request.url()}`,
+                        );
+                        await route.abort();
+                        return;
+                    }
+                    const hopUrl = new URL(response.url());
+                    const next = new URL(location, hopUrl);
+                    for (const header of response.headersArray()) {
+                        if (header.name.toLowerCase() !== "set-cookie") continue;
+                        const cookie = parseSetCookie(header.value, hopUrl);
+                        if (cookie !== null && credentials !== "omit") hopJar.push(cookie);
+                    }
+                    if (
+                        status === 303 ||
+                        ((status === 301 || status === 302) && method === "POST")
+                    ) {
+                        method = "GET";
+                        postData = null;
+                    }
+                    headers = { ...headers };
+                    delete headers["host"];
+                    if (next.origin !== hopUrl.origin) {
+                        for (const name of Object.keys(headers)) {
+                            if (CREDENTIAL_HEADER.test(name)) delete headers[name];
+                        }
+                    }
+                    if (next.origin !== firstOrigin) tainted = true;
+                    setCookieHeader(await cookieFor(next));
+                    if (postData === null) {
+                        for (const name of BODY_HEADERS) delete headers[name];
+                    } else {
+                        headers["content-length"] = String(postData.length);
+                    }
+                    target = next.toString();
+                    networkRecords.push(
+                        target,
+                        JSON.stringify(headers),
+                        postData?.toString("utf8") ?? "",
+                    );
+                    response = await fetchHop(target, {
+                        headers,
+                        method,
+                        ...(postData === null ? {} : { data: postData }),
+                    });
+                }
+            } finally {
+                await Promise.all(hopClients.map((client) => client.dispose()));
             }
         },
     );
     if (options.recordTask) networkRecordTasks.push(options.recordTask());
     const onRequest = (request: Request) => {
         pendingRequests.add(request);
+        seenRequests.add(request);
         if (request.url().includes("/api/v1/agent-context")) directAcrRequests.push(request.url());
         networkRecords.push(request.postData() ?? "");
         networkRecordTasks.push(
@@ -242,6 +306,8 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
         pendingRequests.delete(request);
     };
     const onResponse = (response: Response) => {
+        if (options.ignoreResponseEvents?.(response.url())) return;
+        respondedRequests.add(response.request());
         networkRecordTasks.push(
             (async () => {
                 const headers = await response.allHeaders();
@@ -260,7 +326,11 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
     page.on("request", onRequest);
     page.on("response", onResponse);
     page.on("requestfinished", onRequestDone);
-    page.on("requestfailed", onRequestDone);
+    const onRequestFailed = (request: Request) => {
+        failedRequests.add(request);
+        pendingRequests.delete(request);
+    };
+    page.on("requestfailed", onRequestFailed);
 
     // Stop recording: first let every request that is still in flight finish and be recorded while the
     // listeners are attached (a response that arrives after the listener is removed would never be
@@ -296,18 +366,28 @@ async function watchNetwork(page: Page, origin: string, options: WatchOptions = 
             recordsStuck = !(await recordsDone());
             await new Promise((resolve) => setTimeout(resolve, DRAIN_SETTLE_MS));
             recordsStuck = recordsStuck || !(await recordsDone());
-            settled = pendingRequests.size === 0 || Date.now() >= deadline;
+            settled =
+                (pendingRequests.size === 0 && unrecordedRequests().length === 0) ||
+                Date.now() >= deadline;
         }
         const unfinished = pendingRequests.size;
         page.off("request", onRequest);
         page.off("response", onResponse);
         page.off("requestfinished", onRequestDone);
-        page.off("requestfailed", onRequestDone);
+        page.off("requestfailed", onRequestFailed);
         if (unfinished > 0 || recordsStuck) {
             // Waiting for the handlers or the record tasks could hang on the very request that is pending.
             await page.unrouteAll({ behavior: "ignoreErrors" });
             expect(recordsStuck, "record tasks still running when the guard stopped").toBe(false);
             expect(unfinished, "requests still in flight when the guard stopped").toBe(0);
+        }
+        const unrecorded = unrecordedRequests();
+        if (unrecorded.length > 0) {
+            await page.unrouteAll({ behavior: "ignoreErrors" });
+            expect(
+                unrecorded.map((seen) => seen.url()),
+                "request seen but not recorded when the guard stopped",
+            ).toEqual([]);
         }
         await page.unrouteAll({ behavior: "wait" });
         await Promise.all(networkRecordTasks);
@@ -481,6 +561,8 @@ type HopSeen = { method: string; hopCookie: boolean; body: string; path: string 
 type HopHeaders = { authorization: string; cookie: string };
 
 async function startHopServer(crossOrigin = "") {
+    const peers = { back: "", cross: crossOrigin };
+    const headersSeen: Record<string, string | string[] | undefined>[] = [];
     const seen: HopSeen[] = [];
     const crossSeen: HopHeaders[] = [];
     const cookieSeen: string[] = [];
@@ -507,13 +589,19 @@ async function startHopServer(crossOrigin = "") {
                 res.writeHead(300, { location: "/next" });
                 res.end("multiple fcacr_MULTI0123456789");
             } else if (path === "/start-cross307") {
-                res.writeHead(307, { location: `${crossOrigin}/cross-final` });
+                res.writeHead(307, { location: `${peers.cross}/cross-final` });
                 res.end("x");
             } else if (path === "/start-same307") {
                 res.writeHead(307, { location: "/next-auth" });
                 res.end("x");
+            } else if (path === "/start-rt") {
+                res.writeHead(307, { location: `${peers.cross}/bounce` });
+                res.end("x");
+            } else if (path === "/bounce") {
+                res.writeHead(307, { location: `${peers.back}/next-rt` });
+                res.end("x");
             } else if (path === "/start-cross") {
-                res.writeHead(302, { location: `${crossOrigin}/cross-final` });
+                res.writeHead(302, { location: `${peers.cross}/cross-final` });
                 res.end("x");
             } else if (path === "/cross-final") {
                 crossSeen.push({
@@ -526,6 +614,7 @@ async function startHopServer(crossOrigin = "") {
                 res.writeHead(303, { location: "/loop" });
                 res.end("loop");
             } else {
+                headersSeen.push({ ...req.headers });
                 cookieSeen.push(req.headers.cookie ?? "");
                 authSeen.push(req.headers.authorization ?? "");
                 seen.push({
@@ -547,7 +636,7 @@ async function startHopServer(crossOrigin = "") {
         server.closeAllConnections();
         return new Promise<void>((resolve) => server.close(() => resolve()));
     };
-    return { authSeen, close, cookieSeen, crossSeen, origin, seen };
+    return { authSeen, close, cookieSeen, crossSeen, headersSeen, origin, peers, seen };
 }
 
 const HOP_PREFIX = "/__hop";
@@ -557,13 +646,21 @@ const hopUpstream = (hopOrigin: string) => (url: string) => {
         ? `${hopOrigin}${parsed.pathname.slice(HOP_PREFIX.length)}`
         : url;
 };
-const HOP_POST = async ([path, body, authorization]: [string, string, string?]) => {
+const HOP_POST = async ([path, body, authorization, credentials, bodyHeaders]: [
+    string,
+    string,
+    string?,
+    RequestCredentials?,
+    Record<string, string>?,
+]) => {
     const response = await fetch(path, {
         body,
+        ...(credentials ? { credentials } : {}),
         headers: {
             "content-type": "text/plain;charset=UTF-8",
             "next-action": "0".repeat(40),
             ...(authorization ? { authorization } : {}),
+            ...bodyHeaders,
         },
         method: "POST",
     });
@@ -838,4 +935,164 @@ test("a request still pending at the stop deadline fails the guard", async ({ ba
     });
     await started;
     await expect(stop()).rejects.toThrow(/requests still in flight/u);
+});
+
+const planCookie = (name: string, path: string, value: string) => ({
+    domain: "127.0.0.1",
+    name,
+    path,
+    value,
+});
+
+test("a cross-origin hop gets no cookie under same-origin credentials, even with a cookie for its path", async ({
+    baseURL,
+    page,
+}) => {
+    const other = await startHopServer();
+    const hop = await startHopServer(other.origin);
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.context().addCookies([planCookie("destjar", "/cross-final", "dest-jar-marker")]);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-cross307`, "[]"]);
+        await stop();
+        expect(other.crossSeen).toHaveLength(1);
+        expect(other.crossSeen[0]?.cookie).toBe("");
+        expect(networkRecords.join("\n")).not.toContain("dest-jar-marker");
+    } finally {
+        await other.close();
+        await hop.close();
+    }
+});
+
+test("a hop back to the first origin after a cross-origin hop gets no cookie", async ({
+    baseURL,
+    page,
+}) => {
+    const other = await startHopServer();
+    const hop = await startHopServer(other.origin);
+    other.peers.back = hop.origin;
+    try {
+        const { stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.context().addCookies([planCookie("rtjar", "/", "rt-jar-marker")]);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-rt`, "[]"]);
+        await stop();
+        expect(hop.cookieSeen).toEqual([""]);
+    } finally {
+        await other.close();
+        await hop.close();
+    }
+});
+
+test("credentials include sends the cookie that is scoped to a cross-origin hop and records it", async ({
+    baseURL,
+    page,
+}) => {
+    const other = await startHopServer();
+    const hop = await startHopServer(other.origin);
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { credentials: "include", upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.context().addCookies([planCookie("destjar", "/cross-final", "dest-jar-marker")]);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start-cross307`, "[]", undefined, "include"]);
+        await stop();
+        expect(other.crossSeen).toHaveLength(1);
+        expect(other.crossSeen[0]?.cookie).toContain("destjar=dest-jar-marker");
+        const hopIndex = networkRecords.indexOf(`${other.origin}/cross-final`);
+        const recordedHeaders = JSON.parse(networkRecords[hopIndex + 1] ?? "{}") as Record<
+            string,
+            string
+        >;
+        expect(recordedHeaders["cookie"]).toBe(other.crossSeen[0]?.cookie);
+    } finally {
+        await other.close();
+        await hop.close();
+    }
+});
+
+test("credentials omit sends no cookie on any hop", async ({ baseURL, page }) => {
+    const hop = await startHopServer();
+    try {
+        const { stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { credentials: "omit", upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.context().addCookies([planCookie("omitjar", "/", "omit-jar-marker")]);
+        await page.evaluate(HOP_POST, [`${HOP_PREFIX}/start`, "[]", undefined, "omit"]);
+        await stop();
+        expect(hop.cookieSeen).toEqual([""]);
+    } finally {
+        await hop.close();
+    }
+});
+
+test("a POST turned into a GET carries none of the five body headers and no Content-Length", async ({
+    baseURL,
+    page,
+}) => {
+    const hop = await startHopServer();
+    try {
+        const { networkRecords, stop } = await watchNetwork(
+            page,
+            new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+            { upstream: hopUpstream(hop.origin) },
+        );
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await page.evaluate(HOP_POST, [
+            `${HOP_PREFIX}/start`,
+            "[]",
+            undefined,
+            undefined,
+            {
+                "content-encoding": "identity",
+                "content-language": "en",
+                "content-location": "/somewhere",
+            },
+        ]);
+        await stop();
+        expect(hop.headersSeen).toHaveLength(1);
+        const seenNames = Object.keys(hop.headersSeen[0] ?? {});
+        for (const name of BODY_HEADERS) expect(seenNames).not.toContain(name);
+        expect(hop.seen[0]?.body).toBe("");
+        const hopIndex = networkRecords.indexOf(`${hop.origin}/next`);
+        const recordedNames = Object.keys(
+            JSON.parse(networkRecords[hopIndex + 1] ?? "{}") as Record<string, string>,
+        );
+        for (const name of BODY_HEADERS) expect(recordedNames).not.toContain(name);
+    } finally {
+        await hop.close();
+    }
+});
+
+test("a request seen without a recorded response fails the guard by name", async ({
+    baseURL,
+    page,
+}) => {
+    await page.route("**/__no-response-event", (route) =>
+        route.fulfill({ body: "ok", contentType: "text/plain" }),
+    );
+    const { stop } = await watchNetwork(page, new URL(baseURL ?? "http://127.0.0.1:3001").origin, {
+        drainTimeoutMs: 1_500,
+        ignoreResponseEvents: (url) => url.endsWith("/__no-response-event"),
+    });
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await page.evaluate(async () => {
+        await fetch("/__no-response-event");
+    });
+    await expect(stop()).rejects.toThrow(/request seen but not recorded/u);
 });
