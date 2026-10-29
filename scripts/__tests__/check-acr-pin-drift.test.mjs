@@ -94,6 +94,12 @@ describe("checkDrift", () => {
             );
         }
     });
+    it("THROWS on a bad manifest path even when the pin IS acr main", () => {
+        const { repo, base } = fakeAcr();
+        expect(() =>
+            checkDrift({ remote: repo, pin: base, paths: ["contracts/openapi/missing.json"] }),
+        ).toThrow(/neither pin nor main/);
+    });
     it("rejects a directory entry as a vendored path", () => {
         const { repo, base } = fakeAcr();
         commit(repo, { "contracts/openapi/a.json": "2" }, "change");

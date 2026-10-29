@@ -50,8 +50,7 @@ export function checkDrift({ remote, branch = "main", pin, paths }) {
         git(tmp, ["fetch", "-q", "--depth", "1", remote, branch]);
         const head = git(tmp, ["rev-parse", "FETCH_HEAD"]).trim();
         if (!SHA_RE.test(head)) throw new Error(`acr ${branch} did not resolve to a SHA`);
-        if (head === pin) return { status: "current", pin, head };
-        git(tmp, ["fetch", "-q", "--depth", "1", remote, pin]);
+        if (head !== pin) git(tmp, ["fetch", "-q", "--depth", "1", remote, pin]);
         // Compare BLOB ids per path, not `git diff`: a mode-only change is not a content change, and a
         // path that exists at neither commit is a broken manifest, never a silent green.
         const blob = (rev, file) => {
