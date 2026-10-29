@@ -13,6 +13,8 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
+    /** The Ask Dev launcher in the app shell (CHAOS-3247: the accessible name). */
+    openAskDev: "Open Ask Dev",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */
