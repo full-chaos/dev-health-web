@@ -5125,6 +5125,10 @@ export interface ACRErrorV1 {
              * On a 429 rate_limited: which limit refused the request. request_budget is the organization's request budget; capabilities_budget is the capabilities handshake's own budget, spent by the caller-resolution call every MCP request makes; the credential was already decided in both cases. A consumer treats a value outside this enum as absent.
              */
             limit?: "request_budget" | "capabilities_budget";
+            /**
+             * On a 504 upstream_unavailable: which deadline ended the investigation. model is one model attempt reaching its own timeout (ACR_CONTEXT_FABRIC_MODEL_TIMEOUT) before the request deadline; request is the request deadline (ACR_REQUEST_TIMEOUT or the caller's shorter wait budget). Absent when the answer cannot tell which. A consumer treats a value outside this enum as absent.
+             */
+            deadline?: "model" | "request";
             [k: string]: unknown | undefined;
         };
     };
