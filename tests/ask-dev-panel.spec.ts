@@ -70,9 +70,7 @@ test.describe("desktop (1280px)", () => {
         expect(requests).toEqual([]);
     });
 
-    test("is the only right drawer: opening the filter drawer closes Ask Dev", async ({
-        page,
-    }) => {
+    test("is the only right drawer: opening the filter drawer closes Ask Dev", async ({ page }) => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         await expect(page.getByRole("complementary", { name: "Ask Dev" })).toBeVisible();
