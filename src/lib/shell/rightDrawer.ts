@@ -5,12 +5,7 @@
  * own close function (so each owner keeps its own state and focus rules).
  */
 export type RightDrawerOwner =
-    | "ask-dev"
-    | "audit-log"
-    | "bug-report"
-    | "drawer"
-    | "evidence"
-    | "filters";
+    "ask-dev" | "audit-log" | "bug-report" | "drawer" | "evidence" | "filters";
 
 let current: { owner: RightDrawerOwner; close: () => void } | null = null;
 
