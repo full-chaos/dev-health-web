@@ -4,6 +4,14 @@
 set -euo pipefail
 : "${ASK_DEV_DIR:?set ASK_DEV_DIR to an ask-dev checkout}"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
+# The oracle is only meaningful against the ask-dev commit it is pinned to: a different checkout
+# is a measurement of something else, so it fails rather than runs.
+pinned="$(tr -d '[:space:]' < "$root/scripts/ask-dev-oracle/ASK_DEV_SHA")"
+actual="$(git -C "$ASK_DEV_DIR" rev-parse HEAD 2>/dev/null || true)"
+if [ "$actual" != "$pinned" ]; then
+  echo "ask-dev checkout is at '${actual:-none}', the oracle is pinned to $pinned" >&2
+  exit 1
+fi
 committed="$root/src/lib/ask-dev/__tests__/oracle/request-builder.cases.json"
 fresh="$(mktemp)"
 trap 'rm -f "$fresh"' EXIT
