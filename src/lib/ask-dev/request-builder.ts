@@ -68,7 +68,7 @@ function dedupeAndCap(receipts: readonly BoundReceipt[], limit: number): BoundRe
     return [
         ...new Map(
             receipts.map((receipt) => [
-                `${receipt.result_id}|${receipt.receipt_id}`,
+                JSON.stringify([receipt.result_id, receipt.receipt_id]),
                 // Rebuilt: only the two wire fields survive, whatever else the caller's object holds.
                 { result_id: receipt.result_id, receipt_id: receipt.receipt_id },
             ]),

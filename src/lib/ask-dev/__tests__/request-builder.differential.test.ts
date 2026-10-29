@@ -69,8 +69,13 @@ describe("ask-dev request builder: differential vs the ask-dev repo", () => {
     for (const c of cases) {
         describe(c.name, () => {
             it("conversation and parent carry equal ask-dev's", () => {
-                // A raw case hands the builder its lists as they are; the helpers are not in play.
-                if (c.raw) return;
+                // A raw case hands the builder its lists as they are; the helpers are not in play,
+                // and the lists must be exactly what ask-dev's builder was given.
+                if (c.raw) {
+                    expect(c.askDev.conversation).toEqual(c.raw.conversation);
+                    expect(c.askDev.parent).toMatchObject({ subjectHints: c.raw.subjectHints });
+                    return;
+                }
                 expect(JSON.stringify(buildConversationTurns(c.turns))).toBe(
                     JSON.stringify(c.askDev.conversation),
                 );
@@ -221,6 +226,18 @@ describe("ask-dev request builder: turn 2 and authorization", () => {
         expect(parent.unsentSubjects.map((s) => s.kind)).toEqual(["gadget"]);
         expect(unsentSubjectsNotice(parent.unsentSubjects)).toContain("gadget 1");
         expect(unsentSubjectsNotice([])).toBeUndefined();
+    });
+
+    it("keeps two distinct receipt pairs whose ids contain the separator character", () => {
+        const request = buildInvestigationRequest({
+            question: "q",
+            requestId: newRequestId("00000000-0000-4000-8000-000000000002"),
+            priorSubjectReceipts: [
+                { result_id: "result_12345678|receipt_a", receipt_id: "receipt_b_12345" },
+                { result_id: "result_12345678", receipt_id: "receipt_a|receipt_b_12345" },
+            ],
+        });
+        expect(request.prior_subject_receipts).toHaveLength(2);
     });
 
     it("mints a request id in the ask-dev shape", () => {
