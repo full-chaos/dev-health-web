@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef } from "react";
 
 import type { MetricFilter } from "@/lib/filters/types";
+import { claimRightDrawer, resetRightDrawerForTest } from "@/lib/shell/rightDrawer";
 
 import { EvidenceDrawerProvider, useEvidenceDrawer } from "./EvidenceDrawerProvider";
 
@@ -262,6 +263,28 @@ describe("EvidenceDrawerProvider with a body of the caller", () => {
         expect(screen.getAllByRole("dialog")).toHaveLength(1);
         expect(subject()).toHaveTextContent("Team Beta");
         expect(onClose).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("EvidenceDrawerProvider and the right edge", () => {
+    it("never calls the onClose of a subject that a navigation already dropped", async () => {
+        resetRightDrawerForTest();
+        const onClose = vi.fn();
+        const tree = () => (
+            <EvidenceDrawerProvider>
+                <ContentPage onClose={onClose} />
+            </EvidenceDrawerProvider>
+        );
+        const view = render(tree());
+        await userEvent.click(screen.getByRole("button", { name: "Row button" }));
+        nav.pathname = "/explore";
+        view.rerender(tree());
+        expect(screen.queryByRole("dialog")).toBeNull();
+
+        // Another right drawer opens on the new page.
+        claimRightDrawer("ask-dev", vi.fn());
+
+        expect(onClose).not.toHaveBeenCalled();
     });
 });
 

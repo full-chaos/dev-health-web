@@ -130,7 +130,10 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     // A navigation drops the subject without `close`: the claim goes with it.
     const hasSubject = state !== null;
     useEffect(() => {
-        if (!hasSubject) releaseRightDrawer("evidence");
+        if (hasSubject) return;
+        // The dropped subject's `onClose` belongs to a page that is gone: forget it, never call it.
+        current.current = { subject: null, id: current.current.id };
+        releaseRightDrawer("evidence");
     }, [hasSubject]);
     // The open subject and a counter, for the event handlers only (never read during render).
     const current = useRef<{ subject: EvidenceSubject | null; id: number }>({

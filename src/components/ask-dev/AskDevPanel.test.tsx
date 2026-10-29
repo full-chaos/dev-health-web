@@ -380,11 +380,54 @@ describe("every shared right drawer takes the edge", () => {
             </AdminTierProvider>,
         );
         await userEvent.click(screen.getByRole("button", { name: "Open shared drawer" }));
-        expect(rightDrawerOwnerForTest()).toBe("drawer");
+        expect(rightDrawerOwnerForTest()).toMatch(/^drawer:/u);
 
         await userEvent.keyboard("{Escape}");
 
         expect(rightDrawerOwnerForTest()).toBeNull();
+    });
+});
+
+function TwoDrawers() {
+    const [first, setFirst] = useState(false);
+    const [second, setSecond] = useState(false);
+    return (
+        <>
+            <button type="button" onClick={() => setFirst(true)}>
+                Open first
+            </button>
+            <button type="button" onClick={() => setSecond(true)}>
+                Open second
+            </button>
+            <Drawer open={first} onCloseAction={() => setFirst(false)} title="First drawer">
+                <p>First</p>
+            </Drawer>
+            <Drawer open={second} onCloseAction={() => setSecond(false)} title="Second drawer">
+                <p>Second</p>
+            </Drawer>
+        </>
+    );
+}
+
+describe("two shared drawers are two owners", () => {
+    beforeEach(() => setViewport(true));
+
+    it("opening the second closes the first", async () => {
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <TwoDrawers />
+            </AdminTierProvider>,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Open first" }));
+        expect(screen.getByRole("dialog", { name: "First drawer" })).toBeInTheDocument();
+
+        // The first drawer is modal and hides the page: click the second opener directly.
+        await act(async () =>
+            screen.getByRole("button", { name: "Open second", hidden: true }).click(),
+        );
+
+        expect(screen.getByRole("dialog", { name: "Second drawer" })).toBeInTheDocument();
+        expect(screen.queryByRole("dialog", { name: "First drawer" })).toBeNull();
     });
 });
 

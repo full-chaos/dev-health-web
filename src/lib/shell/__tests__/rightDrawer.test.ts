@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { claimRightDrawer, releaseRightDrawer, resetRightDrawerForTest } from "./rightDrawer";
+import { claimRightDrawer, releaseRightDrawer, resetRightDrawerForTest } from "../rightDrawer";
 
 beforeEach(resetRightDrawerForTest);
 

@@ -5,7 +5,13 @@
  * own close function (so each owner keeps its own state and focus rules).
  */
 export type RightDrawerOwner =
-    "ask-dev" | "audit-log" | "bug-report" | "drawer" | "evidence" | "filters";
+    | "ask-dev"
+    | "audit-log"
+    | "bug-report"
+    | "evidence"
+    | "filters"
+    // One per mounted shared `Drawer`: two of them are two owners, so the second closes the first.
+    | `drawer:${string}`;
 
 let current: { owner: RightDrawerOwner; close: () => void } | null = null;
 

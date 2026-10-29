@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 
 import { BodyPortal, usePortalMounted } from "@/components/ui/BodyPortal";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
+import type { RightDrawerOwner } from "@/lib/shell/rightDrawer";
 import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -51,8 +52,9 @@ export function Drawer({
     "data-testid": testId,
     children,
 }: DrawerProps) {
-    useRightDrawerClaim("drawer", open && claimsRightEdge, onCloseAction);
     const titleId = useId();
+    const edgeOwner: RightDrawerOwner = `drawer:${titleId}`;
+    useRightDrawerClaim(edgeOwner, open && claimsRightEdge, onCloseAction);
     const panelRef = useRef<HTMLDivElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
 
