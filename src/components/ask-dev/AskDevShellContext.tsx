@@ -1,7 +1,18 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
+    type ReactNode,
+} from "react";
+import { usePathname } from "next/navigation";
 
+import { useAdminTier } from "@/components/admin/AdminTierContext";
+import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
 import { claimRightDrawer, releaseRightDrawer } from "@/lib/shell/rightDrawer";
 
 type AskDevShellValue = {
@@ -28,6 +39,17 @@ function visibleLauncher(): HTMLElement | null {
 /** Holds the one open/closed state that the launcher and the panel share. */
 export function AskDevShellProvider({ children }: { children: ReactNode }) {
     const [open, setOpenState] = useState(false);
+    const pathname = usePathname() ?? "";
+    const { features } = useAdminTier();
+
+    // The panel is open only where Ask Dev is allowed. A client navigation to an excluded route, or
+    // an entitlement that turns off, closes it for good: coming back does not reopen it by itself.
+    // (Set during render, as the evidence drawer does: no effect, no extra paint.)
+    if (open && (!isAskDevEnabled(features) || isAskDevExcludedPath(pathname))) {
+        setOpenState(false);
+    }
+    // Leaving the shell (sign-out, another route group) drops the claim and its stale callback.
+    useEffect(() => () => releaseRightDrawer("ask-dev"), []);
 
     // Another right drawer took the edge: close without moving focus (that drawer has it).
     const closeFromPeer = useCallback(() => setOpenState(false), []);

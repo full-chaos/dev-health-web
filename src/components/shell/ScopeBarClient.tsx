@@ -1,7 +1,7 @@
 "use client";
 
 import { ListFilter } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { containsIdToken } from "@/lib/labels/idToken";
@@ -109,6 +109,8 @@ export function ScopeBarClient({
     const [filtersMode, setFiltersMode] = useState<"drawer" | "inline" | null>(null);
     const filtersButtonRef = useRef<HTMLButtonElement>(null);
     const filtersOpen = filtersMode !== null;
+    // Unmounting drops the right-edge claim and its stale callback.
+    useEffect(() => () => releaseRightDrawer("filters"), []);
 
     const openFilters = () => {
         const wide =

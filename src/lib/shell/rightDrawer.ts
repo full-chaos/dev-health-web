@@ -4,7 +4,13 @@
  * it when it closes; a claim by another owner closes the one that held it, through that owner's
  * own close function (so each owner keeps its own state and focus rules).
  */
-export type RightDrawerOwner = "ask-dev" | "evidence" | "filters";
+export type RightDrawerOwner =
+    | "ask-dev"
+    | "audit-log"
+    | "bug-report"
+    | "drawer"
+    | "evidence"
+    | "filters";
 
 let current: { owner: RightDrawerOwner; close: () => void } | null = null;
 
@@ -18,6 +24,11 @@ export function claimRightDrawer(owner: RightDrawerOwner, close: () => void): vo
 /** Gives the right edge back. A release by an owner that does not hold it does nothing. */
 export function releaseRightDrawer(owner: RightDrawerOwner): void {
     if (current?.owner === owner) current = null;
+}
+
+/** For tests: who holds the right edge now. */
+export function rightDrawerOwnerForTest(): RightDrawerOwner | null {
+    return current?.owner ?? null;
 }
 
 /** For tests: forget every claim. */

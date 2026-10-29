@@ -1,6 +1,7 @@
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
@@ -10,7 +11,12 @@ import {
 } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { EVIDENCE_DRAWER_TITLE } from "@/components/evidence/EvidenceDrawerShell";
-import { claimRightDrawer, resetRightDrawerForTest } from "@/lib/shell/rightDrawer";
+import { Drawer } from "@/components/ui/Drawer";
+import {
+    claimRightDrawer,
+    resetRightDrawerForTest,
+    rightDrawerOwnerForTest,
+} from "@/lib/shell/rightDrawer";
 
 const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
 
@@ -70,17 +76,21 @@ function EvidenceOpener() {
     );
 }
 
-function renderShell() {
-    return render(
-        <AdminTierProvider tier="team" features={ON}>
+function shellTree(features: Record<string, boolean> = ON) {
+    return (
+        <AdminTierProvider tier="team" features={features}>
             <EvidenceDrawerProvider>
                 <AppShell>
                     <h1>Page</h1>
                     <EvidenceOpener />
                 </AppShell>
             </EvidenceDrawerProvider>
-        </AdminTierProvider>,
+        </AdminTierProvider>
     );
+}
+
+function renderShell() {
+    return render(shellTree());
 }
 
 const visibleLauncherName = { name: "Open Ask Dev" } as const;
@@ -310,5 +320,102 @@ describe("the surface is off", () => {
 
         expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
         expect(screen.queryByRole("button", visibleLauncherName)).toBeNull();
+    });
+});
+
+function DrawerOpener() {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <button type="button" onClick={() => setOpen(true)}>
+                Open shared drawer
+            </button>
+            <Drawer open={open} onCloseAction={() => setOpen(false)} title="Shared drawer">
+                <p>Body</p>
+            </Drawer>
+        </>
+    );
+}
+
+describe("every shared right drawer takes the edge", () => {
+    beforeEach(() => setViewport(true));
+
+    it("opening a `Drawer` (for example the AI evidence drawer) closes Ask Dev", async () => {
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <EvidenceDrawerProvider>
+                    <AppShell>
+                        <DrawerOpener />
+                    </AppShell>
+                </EvidenceDrawerProvider>
+            </AdminTierProvider>,
+        );
+        await userEvent.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole("button", { name: "Open shared drawer" }));
+
+        expect(screen.getByRole("dialog", { name: "Shared drawer" })).toBeInTheDocument();
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
+
+    it("a closed `Drawer` gives the edge back", async () => {
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <EvidenceDrawerProvider>
+                    <AppShell>
+                        <DrawerOpener />
+                    </AppShell>
+                </EvidenceDrawerProvider>
+            </AdminTierProvider>,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Open shared drawer" }));
+        expect(rightDrawerOwnerForTest()).toBe("drawer");
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(rightDrawerOwnerForTest()).toBeNull();
+    });
+});
+
+describe("Ask Dev state follows where it is allowed", () => {
+    beforeEach(() => setViewport(true));
+
+    it("stays closed after a visit to an excluded route", async () => {
+        const { rerender } = renderShell();
+        await userEvent.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+
+        navigationMock.pathname = "/superadmin/context-fabric/validation";
+        rerender(shellTree());
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+
+        navigationMock.pathname = "/dashboard";
+        rerender(shellTree());
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        expect(launcher()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("closes for good when an entitlement turns off, and does not reopen when it returns", async () => {
+        const { rerender } = renderShell();
+        await userEvent.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+
+        rerender(shellTree({ ask_dev: false, agent_context_runtime: true }));
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+
+        rerender(shellTree(ON));
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        expect(launcher()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("drops its claim when the shell unmounts", async () => {
+        const { unmount } = renderShell();
+        await userEvent.click(launcher());
+        expect(rightDrawerOwnerForTest()).toBe("ask-dev");
+
+        unmount();
+
+        expect(rightDrawerOwnerForTest()).toBeNull();
     });
 });

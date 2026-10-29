@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 
 import { BodyPortal, usePortalMounted } from "@/components/ui/BodyPortal";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 type DrawerProps = {
@@ -19,6 +20,11 @@ type DrawerProps = {
     footer?: ReactNode;
     /** Gets focus on close. Defaults to the element that was focused when the drawer opened. */
     returnFocusRef?: RefObject<HTMLElement | null>;
+    /**
+     * Whether it takes the right edge while open, so no other right drawer is open with it. On by
+     * default. Off for a drawer whose owner claims the edge itself (Ask Dev, the evidence drawer).
+     */
+    claimsRightEdge?: boolean;
     "data-testid"?: string;
     children: ReactNode;
 };
@@ -38,9 +44,11 @@ export function Drawer({
     size = "default",
     footer,
     returnFocusRef,
+    claimsRightEdge = true,
     "data-testid": testId,
     children,
 }: DrawerProps) {
+    useRightDrawerClaim("drawer", open && claimsRightEdge, onCloseAction);
     const titleId = useId();
     const panelRef = useRef<HTMLDivElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);

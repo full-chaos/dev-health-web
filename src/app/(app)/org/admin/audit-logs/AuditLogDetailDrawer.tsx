@@ -1,5 +1,6 @@
 "use client";
 
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 import { useEffect, type ReactNode } from "react";
 import type { AuditLog } from "@/lib/admin/types";
 import { formatDateTimeUTC } from "@/lib/formatters";
@@ -43,6 +44,8 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [isOpen, onCloseAction]);
+
+    useRightDrawerClaim("audit-log", isOpen && entry !== null, onCloseAction);
 
     if (!isOpen || !entry) return null;
 

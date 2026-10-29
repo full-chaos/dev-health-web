@@ -112,7 +112,14 @@ export function AskDevPanel() {
     if (!open || !isAskDevEnabled(features) || isAskDevExcludedPath(pathname)) return null;
     if (desktop) return <DesktopPanel onClose={close} />;
     return (
-        <Drawer open onCloseAction={close} title={TITLE} data-testid="ask-dev-sheet">
+        <Drawer
+            open
+            onCloseAction={close}
+            title={TITLE}
+            data-testid="ask-dev-sheet"
+            // Ask Dev claims the right edge itself (`AskDevShellProvider`).
+            claimsRightEdge={false}
+        >
             <Transcript />
         </Drawer>
     );

@@ -125,6 +125,8 @@ const hasContent = (subject: EvidenceSubject): subject is EvidenceContentSubject
 export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const [state, setState] = useState<OpenState | null>(null);
+    // Unmounting drops the right-edge claim and its stale callback.
+    useEffect(() => () => releaseRightDrawer("evidence"), []);
     // The open subject and a counter, for the event handlers only (never read during render).
     const current = useRef<{ subject: EvidenceSubject | null; id: number }>({
         subject: null,
