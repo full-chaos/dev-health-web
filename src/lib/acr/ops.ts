@@ -46,6 +46,12 @@ type ResolveOpsAuthorizationInput = {
     readonly selectedRepository?: string;
     readonly signal: AbortSignal;
     readonly subject: string;
+    /**
+     * Ask Dev only: the longest each setup read (entitlement, scopes) may take right now. Called
+     * once per read so a read that starts late gets what is left of the run deadline, not a
+     * fixed 5 s. Unset: 5 s.
+     */
+    readonly stepTimeoutMs?: () => number;
 };
 
 type ResolveOpsCredentialIssuanceAuthorizationInput = {
@@ -139,12 +145,13 @@ async function requireAskDevEntitlements(input: {
     readonly accessToken: string;
     readonly orgId: string;
     readonly signal: AbortSignal;
+    readonly stepTimeoutMs?: () => number;
 }): Promise<void> {
     const entitlement = await fetchBoundedJson({
         headers: opsHeaders(input.accessToken),
         method: "GET",
         signal: input.signal,
-        timeoutMs: 5_000,
+        timeoutMs: input.stepTimeoutMs?.() ?? 5_000,
         url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
     });
     if (entitlement.status !== 200) {
@@ -218,7 +225,7 @@ async function readRepositoryScopes(
         headers: opsHeaders(input.accessToken),
         method: "POST",
         signal: input.signal,
-        timeoutMs: 5_000,
+        timeoutMs: input.stepTimeoutMs?.() ?? 5_000,
         url: backendUrl("/graphql"),
     });
     if (scopes.status !== 200) {

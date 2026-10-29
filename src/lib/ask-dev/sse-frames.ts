@@ -13,6 +13,8 @@ export type WebErrorFrame = {
     readonly requestId: string;
     readonly retryable: boolean;
     readonly retryAfterSeconds?: number | undefined;
+    /** Where the run was when it failed (`admission` before ACR answered, else `streaming`). */
+    readonly phase?: "admission" | "streaming" | undefined;
 };
 
 /**
@@ -28,6 +30,7 @@ export function errorFrame(error: WebErrorFrame): string {
         ...(error.retryAfterSeconds === undefined
             ? {}
             : { retry_after_seconds: error.retryAfterSeconds }),
+        ...(error.phase === undefined ? {} : { phase: error.phase }),
         source: "web",
     };
     return `event: error\ndata: ${JSON.stringify(data)}\n\n`;
