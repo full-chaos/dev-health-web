@@ -7,7 +7,10 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { checkDrift, sourcePathsFromManifest } from "../check-acr-pin-drift.mjs";
 
-const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../check-acr-pin-drift.mjs");
+const SCRIPT = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../check-acr-pin-drift.mjs",
+);
 const tmpDirs = [];
 const PATHS = ["contracts/openapi/a.json", "contracts/jsonschema/v1/s.json"];
 const g = (cwd, ...args) =>
@@ -33,7 +36,15 @@ function fakeAcr() {
     g(repo, "init", "-q", "-b", "main");
     // allow fetching an arbitrary commit by SHA
     g(repo, "config", "uploadpack.allowAnySHA1InWant", "true");
-    const base = commit(repo, { "contracts/openapi/a.json": "1", "contracts/jsonschema/v1/s.json": "1", "README.md": "x" }, "base");
+    const base = commit(
+        repo,
+        {
+            "contracts/openapi/a.json": "1",
+            "contracts/jsonschema/v1/s.json": "1",
+            "README.md": "x",
+        },
+        "base",
+    );
     return { repo, base };
 }
 
@@ -58,8 +69,21 @@ describe("checkDrift", () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mf-"));
         tmpDirs.push(dir);
         const m = path.join(dir, "m.json");
-        fs.writeFileSync(m, JSON.stringify({ files: [{ path: "openapi/a.json" }, { path: "schemas/s.json" }, { path: "examples/e.json" }] }));
-        expect(sourcePathsFromManifest(m)).toEqual(["contracts/openapi/a.json", "contracts/jsonschema/v1/s.json", "contracts/examples/v1/e.json"]);
+        fs.writeFileSync(
+            m,
+            JSON.stringify({
+                files: [
+                    { path: "openapi/a.json" },
+                    { path: "schemas/s.json" },
+                    { path: "examples/e.json" },
+                ],
+            }),
+        );
+        expect(sourcePathsFromManifest(m)).toEqual([
+            "contracts/openapi/a.json",
+            "contracts/jsonschema/v1/s.json",
+            "contracts/examples/v1/e.json",
+        ]);
     });
     it("is drift when contracts/ changed after the pin", () => {
         const { repo, base } = fakeAcr();
@@ -69,7 +93,9 @@ describe("checkDrift", () => {
         expect(r.changed).toEqual(["contracts/openapi/a.json"]);
     });
     it("THROWS (never passes) when the remote cannot be fetched", () => {
-        expect(() => checkDrift({ remote: "/nonexistent/acr.git", pin: "a".repeat(40), paths: PATHS })).toThrow();
+        expect(() =>
+            checkDrift({ remote: "/nonexistent/acr.git", pin: "a".repeat(40), paths: PATHS }),
+        ).toThrow();
     });
 });
 
@@ -78,7 +104,10 @@ describe("cli exit codes", () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "manifest-"));
         tmpDirs.push(dir);
         const manifest = path.join(dir, "manifest.json");
-        fs.writeFileSync(manifest, JSON.stringify({ source_commit: pin, files: [{ path: "openapi/a.json" }] }));
+        fs.writeFileSync(
+            manifest,
+            JSON.stringify({ source_commit: pin, files: [{ path: "openapi/a.json" }] }),
+        );
         return spawnSync("node", [SCRIPT], {
             env: { ...process.env, ACR_REMOTE: remote, ACR_MANIFEST: manifest },
             encoding: "utf8",

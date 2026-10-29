@@ -42,7 +42,8 @@ export function sourcePathsFromManifest(manifestPath) {
 }
 
 export function checkDrift({ remote, branch = "main", pin, paths }) {
-    if (!Array.isArray(paths) || paths.length === 0) throw new Error("no vendored paths to compare");
+    if (!Array.isArray(paths) || paths.length === 0)
+        throw new Error("no vendored paths to compare");
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "acr-pin-drift-"));
     try {
         git(tmp, ["init", "-q"]);
@@ -70,7 +71,9 @@ function main() {
         const pin = readPin(manifest);
         const result = checkDrift({ remote, pin, paths: sourcePathsFromManifest(manifest) });
         if (result.status === "current") {
-            process.stdout.write(`ACR pin ${pin} matches acr main ${result.head} for contracts/.\n`);
+            process.stdout.write(
+                `ACR pin ${pin} matches acr main ${result.head} for contracts/.\n`,
+            );
             return 0;
         }
         process.stderr.write(
