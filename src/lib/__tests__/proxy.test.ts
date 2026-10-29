@@ -24,6 +24,7 @@ vi.mock("@/lib/rate-limit", () => ({
 
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { shouldProxyToOps } from "@/lib/proxyRouting";
 import { isPublicPath, sanitizeCallbackUrl, proxy } from "@/proxy";
 
 const mockCheckRateLimit = vi.mocked(checkRateLimit);
@@ -332,6 +333,49 @@ describe("proxy rate limiting", () => {
         const res = await proxy(makeRequest("/api/agent-context/context-packets"));
 
         expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
+    it.each([
+        "/api/ask-dev",
+        "/api/ask-dev/investigations",
+        "/api/ask-dev/investigations/3f0c",
+        "/api/ask-dev/submissions/3f0c",
+    ])(
+        "keeps the Ask Dev route %s local instead of rewriting it to Ops (CHAOS-11921)",
+        async (path) => {
+            mockAuth.mockResolvedValue(session);
+
+            expect(shouldProxyToOps(path)).toBe(false);
+            const res = await proxy(makeRequest(path));
+
+            expect(res.status).not.toBe(404);
+            expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+        },
+    );
+
+    it.each(["/api/%61sk-dev/investigations", "/api/ask-dev%2Finvestigations", "/api/%41sk-dev"])(
+        "reads %s as the path the router matches, so an escape does not slip past the exclusion",
+        (path) => {
+            // `%41sk-dev` decodes to `Ask-dev`: not the family, so it goes to Ops like any unknown path.
+            expect(shouldProxyToOps(path)).toBe(path.includes("%41"));
+        },
+    );
+
+    it("blocks the deleted Ask Dev API behind an escape too", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        const res = await proxy(makeRequest("/api/v1/%64ev/conversations", "POST"));
+
+        expect(res.status).toBe(404);
+        expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
+    it("rewrites a look-alike of the Ask Dev family, which is not that family", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        expect(shouldProxyToOps("/api/ask-devx")).toBe(true);
+        expect(shouldProxyToOps("/api/v1/reports")).toBe(true);
+        expect(shouldProxyToOps("/graphql")).toBe(true);
     });
 
     it.each([

@@ -46,6 +46,9 @@ const SETINTERVAL_ALLOWLIST = new Set<string>([
     // Batches outbound client telemetry events to the telemetry adapter, not
     // a Python API progress read.
     "src/lib/telemetry/queue.ts",
+    // CHAOS-11921: the 10 s SSE keepalive comment the Ask Dev route writes to the browser. It
+    // enqueues a constant string; it fetches nothing and reads no Python API.
+    "src/app/api/ask-dev/investigations/route.ts",
 ]);
 
 const TEST_FILE_PATTERN = /\.(test|spec)\.[jt]sx?$/;

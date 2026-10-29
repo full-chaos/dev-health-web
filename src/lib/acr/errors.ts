@@ -26,6 +26,10 @@ export const acrRuntimeErrorCodes = {
     // client.ts upstreamFailure). Web hardcodes retryable: true here per the
     // closed wire contract rather than trusting the upstream body's own
     // `retryable` field.
+    // Ask Dev (CHAOS-11921): the org is entitled but has no repository in scope.
+    noRepository: "no_repository",
+    // Ask Dev (CHAOS-11921): a mutating call whose `Origin` is not this site.
+    originRefused: "origin_refused",
     interpretationRejected: "interpretation_rejected",
     synthesisRejected: "synthesis_rejected",
 } as const;
@@ -80,6 +84,10 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "The context request is invalid.";
         case acrRuntimeErrorCodes.malformedResponse:
             return "Agent Context Runtime returned an invalid response.";
+        case acrRuntimeErrorCodes.noRepository:
+            return "Connect a repository to ask Dev a question.";
+        case acrRuntimeErrorCodes.originRefused:
+            return "The request was rejected.";
         case acrRuntimeErrorCodes.notEntitled:
             return "Agent Context Runtime is not available for this organization.";
         case acrRuntimeErrorCodes.rateLimited:

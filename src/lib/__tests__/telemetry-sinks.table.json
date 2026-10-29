@@ -103,6 +103,10 @@
         "log": 2,
         "sentry": 0
     },
+    "src/app/api/ask-dev/investigations/route.ts": {
+        "log": 3,
+        "sentry": 0
+    },
     "src/app/api/auth/change-password/route.ts": {
         "log": 6,
         "sentry": 0
