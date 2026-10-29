@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { ACR_API_ORIGIN, OPS_MOCK_ORIGIN } from "../playwright.context-fabric.config";
+import { ACR_API_ORIGIN, BFF_ORIGIN, OPS_MOCK_ORIGIN } from "../playwright.context-fabric.config";
 
 /**
  * CHAOS-11921 (plan INV-8): the Ask Dev route family reaches its Next handler in the PRODUCTION
@@ -57,7 +57,10 @@ test("denies a run when ask_dev is off, from the handler, and calls ACR zero tim
     await request.post(`${OPS_MOCK_ORIGIN}/__test/backend-log/reset`);
     const before = await acrInvestigationCount(request);
 
-    const response = await page.request.post(ROUTE, { data: BODY });
+    const response = await page.request.post(ROUTE, {
+        data: BODY,
+        headers: { origin: BFF_ORIGIN },
+    });
 
     expect(response.status()).toBe(403);
     const body = (await response.json()) as { error: { code: string }; request_id: string };
@@ -75,7 +78,10 @@ test("streams a run from the handler when both entitlements are on, with a signe
     await request.post(`${OPS_MOCK_ORIGIN}/__test/backend-log/reset`);
     const before = await acrInvestigationCount(request);
 
-    const response = await page.request.post(ROUTE, { data: BODY });
+    const response = await page.request.post(ROUTE, {
+        data: BODY,
+        headers: { origin: BFF_ORIGIN },
+    });
 
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toContain("text/event-stream");

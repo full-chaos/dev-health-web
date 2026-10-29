@@ -97,7 +97,11 @@ function post(body: unknown = request, headers: Record<string, string> = {}): Pr
     return POST(
         new Request("http://web.example.test/api/ask-dev/investigations", {
             body: JSON.stringify(body),
-            headers: { "Content-Type": "application/json", ...headers },
+            headers: {
+                "Content-Type": "application/json",
+                Origin: "http://web.example.test",
+                ...headers,
+            },
             method: "POST",
         }),
     );
@@ -157,6 +161,47 @@ describe("POST /api/ask-dev/investigations — before the stream opens", () => {
         expect(body.request_id).toMatch(/^[0-9a-f-]{36}$/u);
         return body as unknown as Record<string, unknown>;
     }
+
+    it.each([
+        ["a different origin", { Origin: "https://evil.example.test" }],
+        ["an origin that is not a URL", { Origin: "null" }],
+    ])(
+        "refuses a cross-site POST with %s, before any session, ops or ACR call",
+        async (_name, headers) => {
+            const calls = installOps(ENTITLED);
+
+            await expectDenied(await post(request, headers), 403, "origin_refused");
+            expect(calls).toEqual({ entitlement: 0, scopes: 0 });
+            expect(vi.mocked(auth)).not.toHaveBeenCalled();
+        },
+    );
+
+    it("refuses a POST with no Origin header", async () => {
+        installOps(ENTITLED);
+
+        const response = await POST(
+            new Request("http://web.example.test/api/ask-dev/investigations", {
+                body: JSON.stringify(request),
+                headers: { "Content-Type": "application/json" },
+                method: "POST",
+            }),
+        );
+
+        await expectDenied(response, 403, "origin_refused");
+    });
+
+    it("expects AUTH_URL's origin behind a proxy", async () => {
+        vi.stubEnv("AUTH_URL", "https://app.example.test");
+        installOps(ENTITLED);
+
+        await expectDenied(await post(), 403, "origin_refused");
+        server.use(
+            http.post(`${ACR}/api/v1/context-fabric/investigations`, () =>
+                sse("event: result\ndata: {}\n\n"),
+            ),
+        );
+        expect((await post(request, { Origin: "https://app.example.test" })).status).toBe(200);
+    });
 
     it("denies a request with no session, and calls neither ops nor ACR", async () => {
         vi.mocked(auth).mockResolvedValue(null);
@@ -321,6 +366,49 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
             retryable: true,
             source: "web",
         });
+    });
+
+    it("passes Retry-After on a 503 too, not only on a 429", async () => {
+        installOps(ENTITLED);
+        server.use(
+            http.post(`${ACR}/api/v1/context-fabric/investigations`, () =>
+                HttpResponse.json(errorV1("upstream_unavailable", 503), {
+                    headers: { "Retry-After": "30" },
+                    status: 503,
+                }),
+            ),
+        );
+
+        const text = await readAll(await post());
+
+        expect(text).toContain('"retry_after_seconds":30');
+    });
+
+    it("accepts a case-variant event-stream media type and refuses a look-alike", async () => {
+        installOps(ENTITLED);
+        server.use(
+            http.post(
+                `${ACR}/api/v1/context-fabric/investigations`,
+                () =>
+                    new HttpResponse("event: result\ndata: {}\n\n", {
+                        headers: { "Content-Type": "Text/Event-Stream; charset=utf-8" },
+                    }),
+            ),
+        );
+        expect(await readAll(await post())).toContain("event: result");
+
+        server.use(
+            http.post(
+                `${ACR}/api/v1/context-fabric/investigations`,
+                () =>
+                    new HttpResponse("event: result\ndata: {}\n\n", {
+                        headers: { "Content-Type": "text/event-streams" },
+                    }),
+            ),
+        );
+        const text = await readAll(await post());
+        expect(text).toContain('"code":"invalid_upstream"');
+        expect(text).not.toContain("event: result");
     });
 
     it("names a 406 from ACR stream_unavailable and does not fall back to JSON", async () => {

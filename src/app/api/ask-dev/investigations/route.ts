@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
-import { AcrRuntimeError, safeAcrRuntimeMessage } from "@/lib/acr/errors";
+import { AcrRuntimeError, acrRuntimeErrorCodes, safeAcrRuntimeMessage } from "@/lib/acr/errors";
 import { readRequestJson } from "@/lib/acr/http";
 import { validateAcrContract } from "@/lib/acr/contracts";
 import { logger } from "@/lib/logger";
+import { isSameOriginRequest } from "@/lib/ask-dev/origin";
 import {
     prepareInvestigation,
     streamRequest,
@@ -167,8 +168,12 @@ function relay(prepared: PreparedInvestigation, requestId: string, browser: Abor
                     );
                     return;
                 }
-                const contentType = response.headers.get("content-type") ?? "";
-                if (!contentType.startsWith("text/event-stream") || response.body === null) {
+                // The media type is the part before any parameter, compared without case.
+                const mediaType = (response.headers.get("content-type") ?? "")
+                    .split(";")[0]!
+                    .trim()
+                    .toLowerCase();
+                if (mediaType !== "text/event-stream" || response.body === null) {
                     // No JSON fallback in the product path.
                     fail(
                         new AcrRuntimeError(
@@ -232,6 +237,12 @@ function relay(prepared: PreparedInvestigation, requestId: string, browser: Abor
 export async function POST(request: Request): Promise<Response> {
     const requestId = randomUUID();
     try {
+        // First of all: no session read, no ops call and no body read for a cross-site POST.
+        if (!isSameOriginRequest(request)) {
+            throw new AcrRuntimeError(acrRuntimeErrorCodes.originRefused, "Request rejected.", {
+                status: 403,
+            });
+        }
         const prepared = await prepareInvestigation({
             body: await readRequestJson(request, MAX_REQUEST_BYTES),
             signal: request.signal,

@@ -412,7 +412,17 @@ export class AcrRuntimeClient {
         wireErrorCode: string | undefined,
         retryAfterSeconds: number | undefined,
     ): AcrRuntimeError {
-        return upstreamFailure(status, wireErrorCode, retryAfterSeconds);
+        const failure = upstreamFailure(status, wireErrorCode, retryAfterSeconds);
+        // `upstreamFailure` keeps the hint for 429 only; an Ask Dev client also needs it on a 503.
+        if (retryAfterSeconds === undefined || failure.retryAfterSeconds !== undefined) {
+            return failure;
+        }
+        return new AcrRuntimeError(failure.code, failure.message, {
+            cause: failure.cause,
+            retryable: failure.retryable,
+            retryAfterSeconds,
+            status: failure.status,
+        });
     }
 
     async deviceApproval(input: DeviceApprovalRequest): Promise<{ readonly status: "approved" }> {
