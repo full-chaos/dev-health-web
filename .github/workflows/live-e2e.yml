@@ -279,7 +279,9 @@ jobs:
                   x="$(openssl pkey -in "${dir}/envelope.pem" -pubout -outform DER | tail -c 32 | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
                   rm -f "${dir}/envelope.pem"
                   printf '{"keys":[{"kty":"OKP","crv":"Ed25519","kid":"live-e2e","use":"sig","alg":"EdDSA","x":"%s"}]}\n' "${x}" > "${dir}/jwks.json"
-                  test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')==" | wc -c)" -ge 32
+                  # Pad by length: a 43-char key needs one '='. OpenSSL 4 (ubuntu-26.04) rejects surplus padding (CHAOS-11976).
+                  pad="$(printf '%*s' $(( (4 - ${#x} % 4) % 4 )) '' | tr ' ' '=')"
+                  test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')${pad}" | wc -c)" -ge 32
                   echo "LIVE_E2E_JWKS_PATH=${dir}/jwks.json" >> "${GITHUB_ENV}"
 
             - name: Start dev-health-ops go-api and query-api
