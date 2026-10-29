@@ -2,8 +2,8 @@
 // Fails when the vendored ACR contract pin has drifted from acr main (CHAOS-11907).
 //
 // Pin of record: source_commit in src/lib/acr/contracts/manifest.json.
-// Drift = the pin differs from acr main AND the acr `contracts/` tree differs between the two.
-// A main that moved without touching contracts is not drift.
+// Drift = the pin differs from acr main AND at least one VENDORED file (the manifest list) differs
+// between the two. A main that moved without touching a vendored file is not drift.
 //
 // Exit codes: 0 current · 1 drift · 2 the measurement did not happen (fetch/parse failure).
 // A failed fetch must never read as "current".
@@ -15,8 +15,6 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_REMOTE = "https://github.com/full-chaos/dev-health-acr.git";
-// Only the trees web vendors (openapi, jsonschema, examples). mcp/ and auth/ are not vendored.
-const VENDORED_TREES = ["contracts/openapi", "contracts/jsonschema", "contracts/examples"];
 const SHA_RE = /^[0-9a-f]{40}$/;
 
 function git(cwd, args) {
@@ -31,7 +29,20 @@ export function readPin(manifestPath) {
     return sha;
 }
 
-export function checkDrift({ remote, branch = "main", pin }) {
+// Manifest path -> acr source path (inverse of artifactPath in acr-contract-artifacts.mjs).
+export function sourcePathsFromManifest(manifestPath) {
+    const { files } = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    if (!Array.isArray(files) || files.length === 0) throw new Error("manifest lists no files");
+    return files.map(({ path: p }) => {
+        if (p.startsWith("openapi/")) return `contracts/${p}`;
+        if (p.startsWith("schemas/")) return `contracts/jsonschema/v1/${p.slice(8)}`;
+        if (p.startsWith("examples/")) return `contracts/examples/v1/${p.slice(9)}`;
+        throw new Error(`unrecognised manifest path: ${p}`);
+    });
+}
+
+export function checkDrift({ remote, branch = "main", pin, paths }) {
+    if (!Array.isArray(paths) || paths.length === 0) throw new Error("no vendored paths to compare");
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "acr-pin-drift-"));
     try {
         git(tmp, ["init", "-q"]);
@@ -40,7 +51,7 @@ export function checkDrift({ remote, branch = "main", pin }) {
         if (!SHA_RE.test(head)) throw new Error(`acr ${branch} did not resolve to a SHA`);
         if (head === pin) return { status: "current", pin, head };
         git(tmp, ["fetch", "-q", "--depth", "1", remote, pin]);
-        const changed = git(tmp, ["diff", "--name-only", pin, head, "--", ...VENDORED_TREES])
+        const changed = git(tmp, ["diff", "--name-only", pin, head, "--", ...paths])
             .split("\n")
             .filter(Boolean);
         return changed.length === 0
@@ -57,13 +68,13 @@ function main() {
         process.env.ACR_MANIFEST ?? path.join(ROOT, "src/lib/acr/contracts/manifest.json");
     try {
         const pin = readPin(manifest);
-        const result = checkDrift({ remote, pin });
+        const result = checkDrift({ remote, pin, paths: sourcePathsFromManifest(manifest) });
         if (result.status === "current") {
             process.stdout.write(`ACR pin ${pin} matches acr main ${result.head} for contracts/.\n`);
             return 0;
         }
         process.stderr.write(
-            `ACR contract pin DRIFT: pin ${pin} vs acr main ${result.head}.\nChanged under vendored contracts/:\n${result.changed.map((f) => `  ${f}`).join("\n")}\nBump: pnpm acr:contracts:generate with ACR_ROOT at the new SHA, and update SOURCE_COMMIT.\n`,
+            `ACR contract pin DRIFT: pin ${pin} vs acr main ${result.head}.\nChanged among vendored files:\n${result.changed.map((f) => `  ${f}`).join("\n")}\nBump: pnpm acr:contracts:generate with ACR_ROOT at the new SHA, and update SOURCE_COMMIT.\n`,
         );
         return 1;
     } catch (error) {
