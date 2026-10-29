@@ -296,6 +296,54 @@ describe("Ask Dev deadline chain: setup and the budget header", () => {
     });
 });
 
+describe("Ask Dev deadline chain: before the stream opens", () => {
+    it("answers 504 at D when the session read never returns, and logs the branch", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-29T12:00:00Z"));
+        vi.stubEnv("ASK_DEV_RUN_TIMEOUT_MS", "20000");
+        vi.mocked(auth).mockReturnValue(new Promise(() => undefined) as never);
+        const warn = vi.mocked(logger.warn);
+        const pending = post();
+        await vi.advanceTimersByTimeAsync(19_999);
+        let settled = false;
+        void pending.then(() => {
+            settled = true;
+        });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        const response = await pending;
+        expect(response.status).toBe(504);
+        expect(((await response.json()) as { error: { code: string } }).error.code).toBe("timeout");
+        expect(warnings(warn)).toContainEqual(
+            expect.objectContaining({
+                branch: "setup_deadline",
+                request_id: response.headers.get("x-request-id"),
+                run_timeout_ms: 20_000,
+            }),
+        );
+    });
+
+    it("aborts a setup read that is still pending at its per-step limit", async () => {
+        // Scale the per-step timer 100x down so the real AbortSignal fires in tens of ms.
+        const real = AbortSignal.timeout.bind(AbortSignal);
+        vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => real(ms / 100));
+        let opsSignal: AbortSignal | undefined;
+        server.use(
+            http.get(`${OPS}/api/v1/licensing/entitlements/:orgId`, ({ request: incoming }) => {
+                opsSignal = incoming.signal;
+                return new Promise<Response>(() => undefined);
+            }),
+        );
+
+        const response = await post();
+
+        expect(response.status).toBe(504);
+        expect(opsSignal?.aborted).toBe(true);
+    });
+});
+
 describe("Ask Dev deadline chain: the stream", () => {
     beforeEach(() => {
         vi.useFakeTimers();
