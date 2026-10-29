@@ -56,6 +56,8 @@ export function checkDrift({ remote, branch = "main", pin, paths }) {
         // path that exists at neither commit is a broken manifest, never a silent green.
         const blob = (rev, file) => {
             try {
+                // Only a real file counts: a directory/tree entry is never a vendored artifact.
+                if (git(tmp, ["cat-file", "-t", `${rev}:${file}`]).trim() !== "blob") return null;
                 return git(tmp, ["rev-parse", "--verify", "-q", `${rev}:${file}`]).trim();
             } catch {
                 return null;

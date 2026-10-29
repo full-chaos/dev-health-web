@@ -94,6 +94,27 @@ describe("checkDrift", () => {
             );
         }
     });
+    it("rejects a directory entry as a vendored path", () => {
+        const { repo, base } = fakeAcr();
+        commit(repo, { "contracts/openapi/a.json": "2" }, "change");
+        expect(() =>
+            checkDrift({
+                remote: repo,
+                pin: base,
+                paths: ["contracts/openapi", "contracts/jsonschema/v1"],
+            }),
+        ).toThrow(/neither pin nor main/);
+    });
+    it("the real manifest maps to EXACTLY the generator's source path list", () => {
+        const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+        const sync = fs.readFileSync(path.join(root, "scripts/sync-acr-contracts.mjs"), "utf8");
+        const declared = [...sync.matchAll(/^\s*"(contracts\/[^"]+)",$/gm)].map((m) => m[1]).sort();
+        const mapped = sourcePathsFromManifest(
+            path.join(root, "src/lib/acr/contracts/manifest.json"),
+        ).sort();
+        expect(declared.length).toBeGreaterThan(30);
+        expect(mapped).toEqual(declared);
+    });
     it("maps manifest paths back to acr source paths", () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mf-"));
         tmpDirs.push(dir);
