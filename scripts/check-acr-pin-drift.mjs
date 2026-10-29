@@ -52,9 +52,24 @@ export function checkDrift({ remote, branch = "main", pin, paths }) {
         if (!SHA_RE.test(head)) throw new Error(`acr ${branch} did not resolve to a SHA`);
         if (head === pin) return { status: "current", pin, head };
         git(tmp, ["fetch", "-q", "--depth", "1", remote, pin]);
-        const changed = git(tmp, ["diff", "--name-only", pin, head, "--", ...paths])
-            .split("\n")
-            .filter(Boolean);
+        // Compare BLOB ids per path, not `git diff`: a mode-only change is not a content change, and a
+        // path that exists at neither commit is a broken manifest, never a silent green.
+        const blob = (rev, file) => {
+            try {
+                return git(tmp, ["rev-parse", "--verify", "-q", `${rev}:${file}`]).trim();
+            } catch {
+                return null;
+            }
+        };
+        const changed = [];
+        for (const file of paths) {
+            const atPin = blob(pin, file);
+            const atHead = blob(head, file);
+            if (atPin === null && atHead === null) {
+                throw new Error(`vendored path exists at neither pin nor main: ${file}`);
+            }
+            if (atPin !== atHead) changed.push(file);
+        }
         return changed.length === 0
             ? { status: "current", pin, head }
             : { status: "drift", pin, head, changed };

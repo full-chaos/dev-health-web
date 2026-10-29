@@ -60,10 +60,39 @@ describe("checkDrift", () => {
         commit(repo, { "README.md": "y" }, "docs only");
         expect(checkDrift({ remote: repo, pin: base, paths: PATHS }).status).toBe("current");
     });
-    it("is current when only a NON-vendored contract file changed (mcp_*)", () => {
+    it("is current when only a contract file NOT in the manifest changed (an mcp_* schema web does not vendor)", () => {
         const { repo, base } = fakeAcr();
         commit(repo, { "contracts/jsonschema/v1/mcp_x.v1.schema.json": "2" }, "mcp only");
         expect(checkDrift({ remote: repo, pin: base, paths: PATHS }).status).toBe("current");
+    });
+    it("is drift when a manifest-listed mcp_* file changed (it IS vendored)", () => {
+        const { repo, base } = fakeAcr();
+        commit(repo, { "contracts/jsonschema/v1/mcp_v.v1.schema.json": "1" }, "add");
+        const pin = g(repo, "rev-parse", "HEAD");
+        commit(repo, { "contracts/jsonschema/v1/mcp_v.v1.schema.json": "2" }, "change");
+        const r = checkDrift({
+            remote: repo,
+            pin,
+            paths: [...PATHS, "contracts/jsonschema/v1/mcp_v.v1.schema.json"],
+        });
+        expect(r.status).toBe("drift");
+        expect(base).toBeTruthy();
+    });
+    it("is current for a mode-only change (same content)", () => {
+        const { repo, base } = fakeAcr();
+        fs.chmodSync(path.join(repo, "contracts/openapi/a.json"), 0o755);
+        g(repo, "add", "-A");
+        g(repo, "commit", "-q", "-m", "mode");
+        expect(checkDrift({ remote: repo, pin: base, paths: PATHS }).status).toBe("current");
+    });
+    it("THROWS when a manifest path exists at neither commit, or is a glob", () => {
+        const { repo, base } = fakeAcr();
+        commit(repo, { "contracts/openapi/a.json": "2" }, "change");
+        for (const bad of ["contracts/openapi/no-such.json", "contracts/openapi/*.json"]) {
+            expect(() => checkDrift({ remote: repo, pin: base, paths: [bad] })).toThrow(
+                /neither pin nor main/,
+            );
+        }
     });
     it("maps manifest paths back to acr source paths", () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mf-"));
