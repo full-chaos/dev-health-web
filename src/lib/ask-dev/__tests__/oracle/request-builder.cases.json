@@ -732,6 +732,2147 @@
     }
   },
   {
+    "name": "builder-level caps: 60 turns, 60 hints, every kind twice",
+    "turns": [],
+    "question": "caps",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [
+      "organization",
+      "team",
+      "project",
+      "repository",
+      "work_item",
+      "pull_request",
+      "deployment",
+      "incident",
+      "document",
+      "decision",
+      "episode",
+      "metric",
+      "pull_request_review",
+      "ci_pipeline_run",
+      "work_item_ref",
+      "organization",
+      "team",
+      "project",
+      "repository",
+      "work_item",
+      "pull_request",
+      "deployment",
+      "incident",
+      "document",
+      "decision",
+      "episode",
+      "metric",
+      "pull_request_review",
+      "ci_pipeline_run",
+      "work_item_ref"
+    ],
+    "raw": {
+      "conversation": [
+        {
+          "turn_id": "turn_0",
+          "role": "user",
+          "content": "content 0",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_1",
+          "role": "assistant",
+          "content": "content 1",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_2",
+          "role": "user",
+          "content": "content 2",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_3",
+          "role": "assistant",
+          "content": "content 3",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_4",
+          "role": "user",
+          "content": "content 4",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_5",
+          "role": "assistant",
+          "content": "content 5",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_6",
+          "role": "user",
+          "content": "content 6",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_7",
+          "role": "assistant",
+          "content": "content 7",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_8",
+          "role": "user",
+          "content": "content 8",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_9",
+          "role": "assistant",
+          "content": "content 9",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_10",
+          "role": "user",
+          "content": "content 10",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_11",
+          "role": "assistant",
+          "content": "content 11",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_12",
+          "role": "user",
+          "content": "content 12",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_13",
+          "role": "assistant",
+          "content": "content 13",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_14",
+          "role": "user",
+          "content": "content 14",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_15",
+          "role": "assistant",
+          "content": "content 15",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_16",
+          "role": "user",
+          "content": "content 16",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_17",
+          "role": "assistant",
+          "content": "content 17",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_18",
+          "role": "user",
+          "content": "content 18",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_19",
+          "role": "assistant",
+          "content": "content 19",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_20",
+          "role": "user",
+          "content": "content 20",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_21",
+          "role": "assistant",
+          "content": "content 21",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_22",
+          "role": "user",
+          "content": "content 22",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_23",
+          "role": "assistant",
+          "content": "content 23",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_24",
+          "role": "user",
+          "content": "content 24",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_25",
+          "role": "assistant",
+          "content": "content 25",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_26",
+          "role": "user",
+          "content": "content 26",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_27",
+          "role": "assistant",
+          "content": "content 27",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_28",
+          "role": "user",
+          "content": "content 28",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_29",
+          "role": "assistant",
+          "content": "content 29",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_30",
+          "role": "user",
+          "content": "content 30",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_31",
+          "role": "assistant",
+          "content": "content 31",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_32",
+          "role": "user",
+          "content": "content 32",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_33",
+          "role": "assistant",
+          "content": "content 33",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_34",
+          "role": "user",
+          "content": "content 34",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_35",
+          "role": "assistant",
+          "content": "content 35",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_36",
+          "role": "user",
+          "content": "content 36",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_37",
+          "role": "assistant",
+          "content": "content 37",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_38",
+          "role": "user",
+          "content": "content 38",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_39",
+          "role": "assistant",
+          "content": "content 39",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_40",
+          "role": "user",
+          "content": "content 40",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_41",
+          "role": "assistant",
+          "content": "content 41",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_42",
+          "role": "user",
+          "content": "content 42",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_43",
+          "role": "assistant",
+          "content": "content 43",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_44",
+          "role": "user",
+          "content": "content 44",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_45",
+          "role": "assistant",
+          "content": "content 45",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_46",
+          "role": "user",
+          "content": "content 46",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_47",
+          "role": "assistant",
+          "content": "content 47",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_48",
+          "role": "user",
+          "content": "content 48",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_49",
+          "role": "assistant",
+          "content": "content 49",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_50",
+          "role": "user",
+          "content": "content 50",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_51",
+          "role": "assistant",
+          "content": "content 51",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_52",
+          "role": "user",
+          "content": "content 52",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_53",
+          "role": "assistant",
+          "content": "content 53",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_54",
+          "role": "user",
+          "content": "content 54",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_55",
+          "role": "assistant",
+          "content": "content 55",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_56",
+          "role": "user",
+          "content": "content 56",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_57",
+          "role": "assistant",
+          "content": "content 57",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_58",
+          "role": "user",
+          "content": "content 58",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_59",
+          "role": "assistant",
+          "content": "content 59",
+          "created_at": "2026-10-29T10:00:00Z"
+        }
+      ],
+      "subjectHints": [
+        {
+          "kind": "repository",
+          "id": "repository:0",
+          "label": "repo 0",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:1",
+          "label": "repo 1",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:2",
+          "label": "repo 2",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:3",
+          "label": "repo 3",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:4",
+          "label": "repo 4",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:5",
+          "label": "repo 5",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:6",
+          "label": "repo 6",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:7",
+          "label": "repo 7",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:8",
+          "label": "repo 8",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:9",
+          "label": "repo 9",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:10",
+          "label": "repo 10",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:11",
+          "label": "repo 11",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:12",
+          "label": "repo 12",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:13",
+          "label": "repo 13",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:14",
+          "label": "repo 14",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:15",
+          "label": "repo 15",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:16",
+          "label": "repo 16",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:17",
+          "label": "repo 17",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:18",
+          "label": "repo 18",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:19",
+          "label": "repo 19",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:20",
+          "label": "repo 20",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:21",
+          "label": "repo 21",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:22",
+          "label": "repo 22",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:23",
+          "label": "repo 23",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:24",
+          "label": "repo 24",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:25",
+          "label": "repo 25",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:26",
+          "label": "repo 26",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:27",
+          "label": "repo 27",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:28",
+          "label": "repo 28",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:29",
+          "label": "repo 29",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:30",
+          "label": "repo 30",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:31",
+          "label": "repo 31",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:32",
+          "label": "repo 32",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:33",
+          "label": "repo 33",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:34",
+          "label": "repo 34",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:35",
+          "label": "repo 35",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:36",
+          "label": "repo 36",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:37",
+          "label": "repo 37",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:38",
+          "label": "repo 38",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:39",
+          "label": "repo 39",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:40",
+          "label": "repo 40",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:41",
+          "label": "repo 41",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:42",
+          "label": "repo 42",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:43",
+          "label": "repo 43",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:44",
+          "label": "repo 44",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:45",
+          "label": "repo 45",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:46",
+          "label": "repo 46",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:47",
+          "label": "repo 47",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:48",
+          "label": "repo 48",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:49",
+          "label": "repo 49",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:50",
+          "label": "repo 50",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:51",
+          "label": "repo 51",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:52",
+          "label": "repo 52",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:53",
+          "label": "repo 53",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:54",
+          "label": "repo 54",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:55",
+          "label": "repo 55",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:56",
+          "label": "repo 56",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:57",
+          "label": "repo 57",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:58",
+          "label": "repo 58",
+          "source": "ask_dev_parent_result_subject"
+        },
+        {
+          "kind": "repository",
+          "id": "repository:59",
+          "label": "repo 59",
+          "source": "ask_dev_parent_result_subject"
+        }
+      ]
+    },
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_0",
+          "role": "user",
+          "content": "content 0",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_1",
+          "role": "assistant",
+          "content": "content 1",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_2",
+          "role": "user",
+          "content": "content 2",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_3",
+          "role": "assistant",
+          "content": "content 3",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_4",
+          "role": "user",
+          "content": "content 4",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_5",
+          "role": "assistant",
+          "content": "content 5",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_6",
+          "role": "user",
+          "content": "content 6",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_7",
+          "role": "assistant",
+          "content": "content 7",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_8",
+          "role": "user",
+          "content": "content 8",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_9",
+          "role": "assistant",
+          "content": "content 9",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_10",
+          "role": "user",
+          "content": "content 10",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_11",
+          "role": "assistant",
+          "content": "content 11",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_12",
+          "role": "user",
+          "content": "content 12",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_13",
+          "role": "assistant",
+          "content": "content 13",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_14",
+          "role": "user",
+          "content": "content 14",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_15",
+          "role": "assistant",
+          "content": "content 15",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_16",
+          "role": "user",
+          "content": "content 16",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_17",
+          "role": "assistant",
+          "content": "content 17",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_18",
+          "role": "user",
+          "content": "content 18",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_19",
+          "role": "assistant",
+          "content": "content 19",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_20",
+          "role": "user",
+          "content": "content 20",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_21",
+          "role": "assistant",
+          "content": "content 21",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_22",
+          "role": "user",
+          "content": "content 22",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_23",
+          "role": "assistant",
+          "content": "content 23",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_24",
+          "role": "user",
+          "content": "content 24",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_25",
+          "role": "assistant",
+          "content": "content 25",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_26",
+          "role": "user",
+          "content": "content 26",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_27",
+          "role": "assistant",
+          "content": "content 27",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_28",
+          "role": "user",
+          "content": "content 28",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_29",
+          "role": "assistant",
+          "content": "content 29",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_30",
+          "role": "user",
+          "content": "content 30",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_31",
+          "role": "assistant",
+          "content": "content 31",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_32",
+          "role": "user",
+          "content": "content 32",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_33",
+          "role": "assistant",
+          "content": "content 33",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_34",
+          "role": "user",
+          "content": "content 34",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_35",
+          "role": "assistant",
+          "content": "content 35",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_36",
+          "role": "user",
+          "content": "content 36",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_37",
+          "role": "assistant",
+          "content": "content 37",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_38",
+          "role": "user",
+          "content": "content 38",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_39",
+          "role": "assistant",
+          "content": "content 39",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_40",
+          "role": "user",
+          "content": "content 40",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_41",
+          "role": "assistant",
+          "content": "content 41",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_42",
+          "role": "user",
+          "content": "content 42",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_43",
+          "role": "assistant",
+          "content": "content 43",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_44",
+          "role": "user",
+          "content": "content 44",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_45",
+          "role": "assistant",
+          "content": "content 45",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_46",
+          "role": "user",
+          "content": "content 46",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_47",
+          "role": "assistant",
+          "content": "content 47",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_48",
+          "role": "user",
+          "content": "content 48",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_49",
+          "role": "assistant",
+          "content": "content 49",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_50",
+          "role": "user",
+          "content": "content 50",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_51",
+          "role": "assistant",
+          "content": "content 51",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_52",
+          "role": "user",
+          "content": "content 52",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_53",
+          "role": "assistant",
+          "content": "content 53",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_54",
+          "role": "user",
+          "content": "content 54",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_55",
+          "role": "assistant",
+          "content": "content 55",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_56",
+          "role": "user",
+          "content": "content 56",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_57",
+          "role": "assistant",
+          "content": "content 57",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_58",
+          "role": "user",
+          "content": "content 58",
+          "created_at": "2026-10-29T10:00:00Z"
+        },
+        {
+          "turn_id": "turn_59",
+          "role": "assistant",
+          "content": "content 59",
+          "created_at": "2026-10-29T10:00:00Z"
+        }
+      ],
+      "parent": {
+        "subjectHints": [
+          {
+            "kind": "repository",
+            "id": "repository:0",
+            "label": "repo 0",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:1",
+            "label": "repo 1",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:2",
+            "label": "repo 2",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:3",
+            "label": "repo 3",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:4",
+            "label": "repo 4",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:5",
+            "label": "repo 5",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:6",
+            "label": "repo 6",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:7",
+            "label": "repo 7",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:8",
+            "label": "repo 8",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:9",
+            "label": "repo 9",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:10",
+            "label": "repo 10",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:11",
+            "label": "repo 11",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:12",
+            "label": "repo 12",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:13",
+            "label": "repo 13",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:14",
+            "label": "repo 14",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:15",
+            "label": "repo 15",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:16",
+            "label": "repo 16",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:17",
+            "label": "repo 17",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:18",
+            "label": "repo 18",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:19",
+            "label": "repo 19",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:20",
+            "label": "repo 20",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:21",
+            "label": "repo 21",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:22",
+            "label": "repo 22",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:23",
+            "label": "repo 23",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:24",
+            "label": "repo 24",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:25",
+            "label": "repo 25",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:26",
+            "label": "repo 26",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:27",
+            "label": "repo 27",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:28",
+            "label": "repo 28",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:29",
+            "label": "repo 29",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:30",
+            "label": "repo 30",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:31",
+            "label": "repo 31",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:32",
+            "label": "repo 32",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:33",
+            "label": "repo 33",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:34",
+            "label": "repo 34",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:35",
+            "label": "repo 35",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:36",
+            "label": "repo 36",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:37",
+            "label": "repo 37",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:38",
+            "label": "repo 38",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:39",
+            "label": "repo 39",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:40",
+            "label": "repo 40",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:41",
+            "label": "repo 41",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:42",
+            "label": "repo 42",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:43",
+            "label": "repo 43",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:44",
+            "label": "repo 44",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:45",
+            "label": "repo 45",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:46",
+            "label": "repo 46",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:47",
+            "label": "repo 47",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:48",
+            "label": "repo 48",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:49",
+            "label": "repo 49",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:50",
+            "label": "repo 50",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:51",
+            "label": "repo 51",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:52",
+            "label": "repo 52",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:53",
+            "label": "repo 53",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:54",
+            "label": "repo 54",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:55",
+            "label": "repo 55",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:56",
+            "label": "repo 56",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:57",
+            "label": "repo 57",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:58",
+            "label": "repo 58",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:59",
+            "label": "repo 59",
+            "source": "ask_dev_parent_result_subject"
+          }
+        ],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000070000400080000000",
+        "question": "caps",
+        "conversation": [
+          {
+            "turn_id": "turn_10",
+            "role": "user",
+            "content": "content 10",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_11",
+            "role": "assistant",
+            "content": "content 11",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_12",
+            "role": "user",
+            "content": "content 12",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_13",
+            "role": "assistant",
+            "content": "content 13",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_14",
+            "role": "user",
+            "content": "content 14",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_15",
+            "role": "assistant",
+            "content": "content 15",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_16",
+            "role": "user",
+            "content": "content 16",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_17",
+            "role": "assistant",
+            "content": "content 17",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_18",
+            "role": "user",
+            "content": "content 18",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_19",
+            "role": "assistant",
+            "content": "content 19",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_20",
+            "role": "user",
+            "content": "content 20",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_21",
+            "role": "assistant",
+            "content": "content 21",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_22",
+            "role": "user",
+            "content": "content 22",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_23",
+            "role": "assistant",
+            "content": "content 23",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_24",
+            "role": "user",
+            "content": "content 24",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_25",
+            "role": "assistant",
+            "content": "content 25",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_26",
+            "role": "user",
+            "content": "content 26",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_27",
+            "role": "assistant",
+            "content": "content 27",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_28",
+            "role": "user",
+            "content": "content 28",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_29",
+            "role": "assistant",
+            "content": "content 29",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_30",
+            "role": "user",
+            "content": "content 30",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_31",
+            "role": "assistant",
+            "content": "content 31",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_32",
+            "role": "user",
+            "content": "content 32",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_33",
+            "role": "assistant",
+            "content": "content 33",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_34",
+            "role": "user",
+            "content": "content 34",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_35",
+            "role": "assistant",
+            "content": "content 35",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_36",
+            "role": "user",
+            "content": "content 36",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_37",
+            "role": "assistant",
+            "content": "content 37",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_38",
+            "role": "user",
+            "content": "content 38",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_39",
+            "role": "assistant",
+            "content": "content 39",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_40",
+            "role": "user",
+            "content": "content 40",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_41",
+            "role": "assistant",
+            "content": "content 41",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_42",
+            "role": "user",
+            "content": "content 42",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_43",
+            "role": "assistant",
+            "content": "content 43",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_44",
+            "role": "user",
+            "content": "content 44",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_45",
+            "role": "assistant",
+            "content": "content 45",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_46",
+            "role": "user",
+            "content": "content 46",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_47",
+            "role": "assistant",
+            "content": "content 47",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_48",
+            "role": "user",
+            "content": "content 48",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_49",
+            "role": "assistant",
+            "content": "content 49",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_50",
+            "role": "user",
+            "content": "content 50",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_51",
+            "role": "assistant",
+            "content": "content 51",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_52",
+            "role": "user",
+            "content": "content 52",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_53",
+            "role": "assistant",
+            "content": "content 53",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_54",
+            "role": "user",
+            "content": "content 54",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_55",
+            "role": "assistant",
+            "content": "content 55",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_56",
+            "role": "user",
+            "content": "content 56",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_57",
+            "role": "assistant",
+            "content": "content 57",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_58",
+            "role": "user",
+            "content": "content 58",
+            "created_at": "2026-10-29T10:00:00Z"
+          },
+          {
+            "turn_id": "turn_59",
+            "role": "assistant",
+            "content": "content 59",
+            "created_at": "2026-10-29T10:00:00Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "expected_kinds": [
+          "organization",
+          "team",
+          "project",
+          "repository",
+          "work_item",
+          "pull_request",
+          "deployment",
+          "incident",
+          "document",
+          "decision",
+          "episode",
+          "metric",
+          "pull_request_review",
+          "ci_pipeline_run",
+          "work_item_ref"
+        ],
+        "requested_scope": {
+          "subject_hints": [
+            {
+              "kind": "repository",
+              "id": "repository:0",
+              "label": "repo 0",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:1",
+              "label": "repo 1",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:2",
+              "label": "repo 2",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:3",
+              "label": "repo 3",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:4",
+              "label": "repo 4",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:5",
+              "label": "repo 5",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:6",
+              "label": "repo 6",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:7",
+              "label": "repo 7",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:8",
+              "label": "repo 8",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:9",
+              "label": "repo 9",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:10",
+              "label": "repo 10",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:11",
+              "label": "repo 11",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:12",
+              "label": "repo 12",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:13",
+              "label": "repo 13",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:14",
+              "label": "repo 14",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:15",
+              "label": "repo 15",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:16",
+              "label": "repo 16",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:17",
+              "label": "repo 17",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:18",
+              "label": "repo 18",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:19",
+              "label": "repo 19",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:20",
+              "label": "repo 20",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:21",
+              "label": "repo 21",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:22",
+              "label": "repo 22",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:23",
+              "label": "repo 23",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:24",
+              "label": "repo 24",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:25",
+              "label": "repo 25",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:26",
+              "label": "repo 26",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:27",
+              "label": "repo 27",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:28",
+              "label": "repo 28",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:29",
+              "label": "repo 29",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:30",
+              "label": "repo 30",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:31",
+              "label": "repo 31",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:32",
+              "label": "repo 32",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:33",
+              "label": "repo 33",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:34",
+              "label": "repo 34",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:35",
+              "label": "repo 35",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:36",
+              "label": "repo 36",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:37",
+              "label": "repo 37",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:38",
+              "label": "repo 38",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:39",
+              "label": "repo 39",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:40",
+              "label": "repo 40",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:41",
+              "label": "repo 41",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:42",
+              "label": "repo 42",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:43",
+              "label": "repo 43",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:44",
+              "label": "repo 44",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:45",
+              "label": "repo 45",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:46",
+              "label": "repo 46",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:47",
+              "label": "repo 47",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:48",
+              "label": "repo 48",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:49",
+              "label": "repo 49",
+              "source": "ask_dev_parent_result_subject"
+            }
+          ]
+        },
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
     "name": "turn 2 after an answer",
     "turns": [
       {
@@ -795,7 +2936,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_000000070000400080000000",
+        "request_id": "request_000000080000400080000000",
         "question": "and last month?",
         "conversation": [
           {
@@ -878,14 +3019,14 @@
     "question": "Show the team",
     "subjectReceipts": [
       {
-        "result_id": "result_12345678",
+        "result_id": "res_origin_state_0001",
         "receipt_id": "receipt_12345678"
       }
     ],
     "structure": {
       "priorKindReceipts": [
         {
-          "result_id": "result_12345678",
+          "result_id": "res_origin_state_0001",
           "receipt_id": "kindr_ask_dev_9012"
         }
       ]
@@ -920,7 +3061,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_000000080000400080000000",
+        "request_id": "request_000000090000400080000000",
         "question": "Show the team",
         "conversation": [
           {
@@ -938,13 +3079,13 @@
         ],
         "prior_subject_receipts": [
           {
-            "result_id": "result_12345678",
+            "result_id": "res_origin_state_0001",
             "receipt_id": "receipt_12345678"
           }
         ],
         "prior_kind_receipts": [
           {
-            "result_id": "result_12345678",
+            "result_id": "res_origin_state_0001",
             "receipt_id": "kindr_ask_dev_9012"
           }
         ],
@@ -1037,7 +3178,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_000000090000400080000000",
+        "request_id": "request_0000000a0000400080000000",
         "question": "c",
         "conversation": [
           {
@@ -1205,7 +3346,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_0000000a0000400080000000",
+        "request_id": "request_0000000b0000400080000000",
         "question": "next",
         "conversation": [
           {
@@ -1340,7 +3481,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_0000000b0000400080000000",
+        "request_id": "request_0000000c0000400080000000",
         "question": "follow up",
         "conversation": [
           {
@@ -2038,7 +4179,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_0000000c0000400080000000",
+        "request_id": "request_0000000d0000400080000000",
         "question": "follow up",
         "conversation": [
           {
@@ -2727,7 +4868,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_0000000d0000400080000000",
+        "request_id": "request_0000000e0000400080000000",
         "question": "latest",
         "conversation": [
           {
@@ -2960,7 +5101,7 @@
       },
       "request": {
         "schema_version": "context_fabric_investigation_request.v1",
-        "request_id": "request_0000000e0000400080000000",
+        "request_id": "request_0000000f0000400080000000",
         "question": "retry",
         "conversation": [
           {

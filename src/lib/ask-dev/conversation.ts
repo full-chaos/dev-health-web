@@ -138,7 +138,7 @@ export type ParentReference = {
 export function unsentSubjectsNotice(unsent: readonly UnsentSubject[]): string | undefined {
     if (unsent.length === 0) return undefined;
     const labels = unsent.map((subject) => subject.label).join(", ");
-    return `This follow-up does not carry ${labels} as its subject, because its kind is not one the service accepts as a scope hint. Name it in the question if the answer should stay about it.`;
+    return `This follow-up does not carry ${labels} as its subject, because it is not sent as a scope hint (its kind is not accepted, or the follow-up already carries the most hints the service allows). Name it in the question if the answer should stay about it.`;
 }
 
 /**

@@ -53,7 +53,7 @@ it("writes the oracle", async () => {
     if (out === undefined || out === "") throw new Error("ORACLE_OUT is required");
     const { buildInvestigationRequest } = await import("@/lib/acr/client");
     const { buildConversationTurns, deriveParentReference } = await import("@/lib/conversation");
-    const { STRUCTURE_RECEIPT_PREFIX } = await import("@/lib/contracts");
+    const { STRUCTURE_RECEIPT_PREFIX, SUBJECT_KIND_VOCABULARY } = await import("@/lib/contracts");
 
     const results = [
         capture("context_fabric_investigation_result.v1.json"),
@@ -120,6 +120,8 @@ it("writes the oracle", async () => {
         subjectReceipts: unknown[];
         structure: Json;
         expectedKinds: string[];
+        /** Bypasses the helpers and hands the builder these lists as they are (its own caps). */
+        raw?: { conversation: unknown[]; subjectHints: unknown[] };
     }[] = [
         {
             name: "fresh question",
@@ -189,6 +191,31 @@ it("writes the oracle", async () => {
             expectedKinds: ["repository", "team", "repository"],
         },
         {
+            name: "builder-level caps: 60 turns, 60 hints, every kind twice",
+            turns: [],
+            question: "caps",
+            subjectReceipts: [],
+            structure: {},
+            expectedKinds: [
+                ...(SUBJECT_KIND_VOCABULARY as readonly string[]),
+                ...(SUBJECT_KIND_VOCABULARY as readonly string[]),
+            ],
+            raw: {
+                conversation: Array.from({ length: 60 }, (_, i) => ({
+                    turn_id: `turn_${String(i)}`,
+                    role: i % 2 === 0 ? "user" : "assistant",
+                    content: `content ${String(i)}`,
+                    created_at: "2026-10-29T10:00:00Z",
+                })),
+                subjectHints: Array.from({ length: 60 }, (_, i) => ({
+                    kind: "repository",
+                    id: `repository:${String(i)}`,
+                    label: `repo ${String(i)}`,
+                    source: "ask_dev_parent_result_subject",
+                })),
+            },
+        },
+        {
             name: "turn 2 after an answer",
             turns: [user(1, "What is blocking delivery?"), answered(2, first)],
             question: "and last month?",
@@ -200,8 +227,15 @@ it("writes the oracle", async () => {
             name: "turn 2 after a clarification choice",
             turns: [user(1, "Show the team"), answered(2, results[1]!)],
             question: "Show the team",
-            subjectReceipts: subjectR.slice(0, 1),
-            structure: { priorKindReceipts: kindr.slice(0, 1) },
+            // Receipts issued by the SAME result the follow-up's parent names.
+            subjectReceipts: subjectR
+                .filter((r) => r.result_id === results[1]!.result_id)
+                .slice(0, 1),
+            structure: {
+                priorKindReceipts: kindr
+                    .filter((r) => r.result_id === results[1]!.result_id)
+                    .slice(0, 1),
+            },
             expectedKinds: [],
         },
         {
@@ -290,8 +324,11 @@ it("writes the oracle", async () => {
     ];
 
     const produced = cases.map((c) => {
-        const conversation = buildConversationTurns(c.turns as never);
-        const parent = deriveParentReference(c.turns as never);
+        const conversation = c.raw
+            ? (c.raw.conversation as never)
+            : buildConversationTurns(c.turns as never);
+        const derived = deriveParentReference(c.turns as never);
+        const parent = c.raw ? { ...derived, subjectHints: c.raw.subjectHints as never } : derived;
         // The request_id is the one the mocked randomUUID hands out, read back from the wire object.
         const request = buildInvestigationRequest(
             c.question,

@@ -67,7 +67,11 @@ const MAX_EXPECTED_KINDS = 15;
 function dedupeAndCap(receipts: readonly BoundReceipt[], limit: number): BoundReceipt[] {
     return [
         ...new Map(
-            receipts.map((receipt) => [`${receipt.result_id}|${receipt.receipt_id}`, receipt]),
+            receipts.map((receipt) => [
+                `${receipt.result_id}|${receipt.receipt_id}`,
+                // Rebuilt: only the two wire fields survive, whatever else the caller's object holds.
+                { result_id: receipt.result_id, receipt_id: receipt.receipt_id },
+            ]),
         ).values(),
     ].slice(0, limit);
 }
@@ -125,25 +129,37 @@ export function buildInvestigationRequest(
         input.priorSubjectReceipts ?? [],
         MAX_PRIOR_SUBJECT_RECEIPTS,
     ) as NonNullable<InvestigationRequest["prior_subject_receipts"]>;
-    const conversation = (input.conversation ?? []).slice(-MAX_CONVERSATION_TURNS_ON_WIRE);
+    const conversation = (input.conversation ?? [])
+        .slice(-MAX_CONVERSATION_TURNS_ON_WIRE)
+        .map((turn) => ({
+            turn_id: turn.turn_id,
+            role: turn.role,
+            content: turn.content,
+            created_at: turn.created_at,
+        }));
     const expectedKinds = [...new Set(input.expectedKinds ?? [])].slice(
         0,
         MAX_EXPECTED_KINDS,
     ) as NonNullable<InvestigationRequest["expected_kinds"]>;
-    const subjectHints = (input.subjectHints ?? []).slice(0, MAX_SUBJECT_HINTS_ON_WIRE);
+    const subjectHints = (input.subjectHints ?? [])
+        .slice(0, MAX_SUBJECT_HINTS_ON_WIRE)
+        .map((hint) => ({
+            kind: hint.kind,
+            ...(hint.id === undefined ? {} : { id: hint.id }),
+            ...(hint.label === undefined ? {} : { label: hint.label }),
+            source: hint.source,
+        }));
 
     return {
         schema_version: "context_fabric_investigation_request.v1",
         request_id: input.requestId,
         question: input.question,
-        ...(conversation.length > 0 ? { conversation: [...conversation] } : {}),
+        ...(conversation.length > 0 ? { conversation } : {}),
         prior_subject_receipts: subjectReceipts,
         ...structureFields,
         ...(expectedKinds.length > 0 ? { expected_kinds: expectedKinds } : {}),
         ...(input.parentResultId !== undefined ? { parent_result_id: input.parentResultId } : {}),
-        ...(subjectHints.length > 0
-            ? { requested_scope: { subject_hints: [...subjectHints] } }
-            : {}),
+        ...(subjectHints.length > 0 ? { requested_scope: { subject_hints: subjectHints } } : {}),
         time_context: { axis: "current" },
         options: {
             max_subject_candidates: 10,

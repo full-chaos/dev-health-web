@@ -28,6 +28,7 @@ type OracleCase = {
     subjectReceipts: never[];
     structure: NonNullable<InvestigationRequestInput["structureReceipts"]>;
     expectedKinds: never[];
+    raw?: { conversation: never[]; subjectHints: never[] };
     askDev: {
         conversation: unknown;
         parent: { parentResultId: string | undefined };
@@ -40,14 +41,15 @@ const cases = JSON.parse(
 ) as OracleCase[];
 
 function webRequest(c: OracleCase, consumer = WEB_CONSUMER) {
-    const parent = deriveParentReference(c.turns);
+    const derived = deriveParentReference(c.turns);
+    const parent = c.raw ? { ...derived, subjectHints: c.raw.subjectHints } : derived;
     return buildInvestigationRequest(
         {
             question: c.question,
             requestId: c.askDev.request.request_id,
             priorSubjectReceipts: c.subjectReceipts,
             structureReceipts: c.structure,
-            conversation: buildConversationTurns(c.turns),
+            conversation: c.raw ? c.raw.conversation : buildConversationTurns(c.turns),
             expectedKinds: c.expectedKinds,
             parentResultId: parent.parentResultId,
             subjectHints: parent.subjectHints,
@@ -67,6 +69,8 @@ describe("ask-dev request builder: differential vs the ask-dev repo", () => {
     for (const c of cases) {
         describe(c.name, () => {
             it("conversation and parent carry equal ask-dev's", () => {
+                // A raw case hands the builder its lists as they are; the helpers are not in play.
+                if (c.raw) return;
                 expect(JSON.stringify(buildConversationTurns(c.turns))).toBe(
                     JSON.stringify(c.askDev.conversation),
                 );
@@ -166,6 +170,49 @@ describe("ask-dev request builder: turn 2 and authorization", () => {
                 "time_context",
             ].sort(),
         );
+    });
+
+    it("nested authorization fields are dropped too: receipts, turns and hints are rebuilt field by field", () => {
+        const request = buildInvestigationRequest({
+            question: "q",
+            requestId: newRequestId("00000000-0000-4000-8000-000000000001"),
+            priorSubjectReceipts: [
+                {
+                    result_id: "result_1",
+                    receipt_id: "receipt_12345678",
+                    accessToken: "tok-receipt",
+                },
+            ] as never,
+            structureReceipts: {
+                priorKindReceipts: [
+                    {
+                        result_id: "result_1",
+                        receipt_id: "kindr_ask_dev_9012",
+                        orgId: "org-nested",
+                    },
+                ] as never,
+            },
+            conversation: [
+                {
+                    turn_id: "turn_1",
+                    role: "user",
+                    content: "c",
+                    created_at: "2026-10-29T10:00:00Z",
+                    subject: "user-nested",
+                },
+            ] as never,
+            subjectHints: [
+                { kind: "team", id: "team:1", label: "T", source: "s", repositoryScopes: ["x"] },
+            ] as never,
+        });
+        const wire = JSON.stringify(request);
+        for (const needle of ["tok-receipt", "org-nested", "user-nested", "repositoryScopes"]) {
+            expect(wire).not.toContain(needle);
+        }
+        expect(
+            validateAcrContract("context_fabric_investigation_request.v1.schema.json", request)
+                .valid,
+        ).toBe(true);
     });
 
     it("an unsent subject is disclosed, never dropped silently", () => {
