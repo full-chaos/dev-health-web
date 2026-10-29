@@ -179,7 +179,7 @@ machine-readable `issued_credential` rows in
 > one, so the claim is corrected here rather than left standing in prose.
 
 Every mint funnels through `signWebAssertion`: the private
-`AcrRuntimeClient.request` (`src/lib/acr/client.ts:276`, header set at `:284`) and
+`AcrRuntimeClient.request` (`src/lib/acr/client.ts`, where the `X-ACR-Web-Assertion` header is set) and
 `AcrRuntimeClient.openInvestigationStream` (CHAOS-11921) are its only two callers.
 
 **Key custody** (`src/lib/acr/config.ts::readPrivateKey()`):
