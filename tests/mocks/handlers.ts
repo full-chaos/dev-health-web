@@ -2899,25 +2899,31 @@ export const handlers = [
             features:
                 scenario === "provisioned"
                     ? { ...MOCK_ORG_ENTITLEMENTS.features, agent_context_runtime: true }
-                    : scenario === "ask-dev-enabled"
+                    : scenario === "ask-dev-off"
                       ? {
                             ...MOCK_ORG_ENTITLEMENTS.features,
                             agent_context_runtime: true,
-                            ask_dev: true,
+                            ask_dev: false,
                         }
-                      : scenario === "investment-enabled"
-                        ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
-                        : scenario === "canonical-enabled"
-                          ? {
-                                ...MOCK_ORG_ENTITLEMENTS.features,
-                                canonical_incident_ingestion: true,
-                            }
-                          : scenario === "canonical-disabled"
+                      : scenario === "ask-dev-enabled"
+                        ? {
+                              ...MOCK_ORG_ENTITLEMENTS.features,
+                              agent_context_runtime: true,
+                              ask_dev: true,
+                          }
+                        : scenario === "investment-enabled"
+                          ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
+                          : scenario === "canonical-enabled"
                             ? {
                                   ...MOCK_ORG_ENTITLEMENTS.features,
-                                  canonical_incident_ingestion: false,
+                                  canonical_incident_ingestion: true,
                               }
-                            : MOCK_ORG_ENTITLEMENTS.features,
+                            : scenario === "canonical-disabled"
+                              ? {
+                                    ...MOCK_ORG_ENTITLEMENTS.features,
+                                    canonical_incident_ingestion: false,
+                                }
+                              : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 

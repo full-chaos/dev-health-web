@@ -6,7 +6,7 @@ _architecture_; this one is the per-surface inventory Guardrail G-1 requires
 it rather than duplicating it: read `auth-system.md` first.
 
 - Machine-readable inventory: [`../contracts/auth/v1/endpoint-profiles.web.json`](../contracts/auth/v1/endpoint-profiles.web.json)
-  (157 rows: 12 REST + 145 `server_action`)
+  (173 rows: 14 REST + 159 `server_action`)
 - Discovery script (independent re-derivation): [`../ci/discover_web_routes.ts`](../ci/discover_web_routes.ts)
 - CI gate (diffs discovery against the inventory; fails on an unowned
   surface, a stale row, a duplicate id, a closed-vocabulary violation,
@@ -102,7 +102,7 @@ gaps entry (manual review), not absent.
 
 ## Coverage
 
-12 REST surfaces across 8 `route.ts` files under `src/app/api/` (the
+14 REST surfaces across 9 `route.ts` files under `src/app/api/` (the
 NextAuth catch-all is represented as a single `api_route` row).
 
 Two families, by how they reach ops:
@@ -157,7 +157,8 @@ JWT-shaped assertion (header `{alg: "EdDSA", kid, typ: "JWT"}`, claims
 `{aud, body_sha256, exp: iat+30s, iat, iss, jti, method, nbf, org_id,
 path, permissions, repository_scopes, sub}`) and sends it as
 `X-ACR-Web-Assertion` on every request `AcrRuntimeClient` makes to the ACR
-service (`src/lib/acr/client.ts:276-301`). **Three** routes trigger this:
+service (`src/lib/acr/client.ts:276-301`). **Four** routes trigger this (the first three through `request`; the fourth, `POST /api/ask-dev/investigations`, signs in `openInvestigationStream`, see "Ask Dev route" below):
+`POST /api/ask-dev/investigations`,
 `POST /api/acr/device`, `POST /api/agent-context/context-packets`, and
 `GET /api/agent-context/evidence/[evidenceRefId]`. They now carry it as
 machine-readable `issued_credential` rows in
@@ -177,9 +178,9 @@ machine-readable `issued_credential` rows in
 > anything. In an issuer inventory a false issuer is as damaging as a missing
 > one, so the claim is corrected here rather than left standing in prose.
 
-Every mint funnels through the single private `AcrRuntimeClient.request`
-(`src/lib/acr/client.ts:276`, header set at `:284`); `signWebAssertion` has no
-other caller in the repo, so that one line is the whole issuing surface.
+Every mint funnels through `signWebAssertion`: the private
+`AcrRuntimeClient.request` (`src/lib/acr/client.ts:276`, header set at `:284`) and
+`AcrRuntimeClient.openInvestigationStream` (CHAOS-11921) are its only two callers.
 
 **Key custody** (`src/lib/acr/config.ts::readPrivateKey()`):
 

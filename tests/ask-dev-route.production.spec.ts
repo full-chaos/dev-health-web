@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { ACR_API_ORIGIN, OPS_MOCK_ORIGIN } from "../playwright.context-fabric.config";
 
@@ -12,11 +14,17 @@ import { ACR_API_ORIGIN, OPS_MOCK_ORIGIN } from "../playwright.context-fabric.co
  * (a rewritten call would have landed there with the user's bearer token).
  */
 const ROUTE = "/api/ask-dev/investigations";
-const BODY = {
-    question: "Why is delivery slow for the platform team?",
-    request_id: "request_12345678",
-    schema_version: "context_fabric_investigation_request.v1",
-};
+// ACR's own request example, byte for byte: the route validates the body against the pinned
+// schema before it reads any entitlement, so a hand-written body would stop at a 400.
+const BODY: unknown = JSON.parse(
+    readFileSync(
+        join(
+            process.cwd(),
+            "src/lib/ask-dev/__tests__/captures/context_fabric_investigation_request.v1.json",
+        ),
+        "utf8",
+    ),
+);
 
 type BackendEntry = { path: string };
 
@@ -45,7 +53,7 @@ test("denies a run when ask_dev is off, from the handler, and calls ACR zero tim
     page,
     request,
 }) => {
-    await setEntitlements(request, "provisioned");
+    await setEntitlements(request, "ask-dev-off");
     await request.post(`${OPS_MOCK_ORIGIN}/__test/backend-log/reset`);
     const before = await acrInvestigationCount(request);
 

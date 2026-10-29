@@ -350,6 +350,7 @@ export class AcrRuntimeClient {
      * this call. Wire failures before headers throw an {@link AcrRuntimeError}.
      */
     async openInvestigationStream(input: InvestigationStreamRequest): Promise<Response> {
+        input.signal.throwIfAborted();
         const headerTimeout = AbortSignal.timeout(input.headerWaitMs);
         const headers: Record<string, string> = {
             Accept: "text/event-stream",

@@ -5,6 +5,7 @@ import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
+import { routedPathname, shouldProxyToOps } from "@/lib/proxyRouting";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
 import { isServerDeadlineError, withDeadline } from "@/lib/serverDeadline";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
@@ -120,30 +121,8 @@ const DELETED_ASK_DEV_PATH_FAMILIES = [
     "/api/v1/admin/platform/ask-dev",
 ] as const;
 
-/**
- * Route families that are served by Next route handlers in this app and must never be rewritten to
- * Ops. `/api/ask-dev` (CHAOS-11921, plan INV-8) is the Ask Dev route family: without this entry a
- * production build forwards it to Ops with the user's bearer token and the handler never runs.
- * Matching is by path segment, so `/api/ask-devx` is NOT excluded.
- */
-const NEXT_HANDLED_API_PREFIXES = [
-    "/api/auth",
-    "/api/acr",
-    "/api/agent-context",
-    "/api/v1/llm-proxy",
-] as const;
-const NEXT_HANDLED_API_SEGMENT_FAMILIES = ["/api/ask-dev"] as const;
-
-export function shouldProxyToOps(pathname: string): boolean {
-    if (pathname === "/graphql") return true;
-    if (!pathname.startsWith("/api/")) return false;
-    if (NEXT_HANDLED_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false;
-    return !NEXT_HANDLED_API_SEGMENT_FAMILIES.some(
-        (family) => pathname === family || pathname.startsWith(`${family}/`),
-    );
-}
-
-export function isDeletedAskDevPath(pathname: string): boolean {
+export function isDeletedAskDevPath(rawPathname: string): boolean {
+    const pathname = routedPathname(rawPathname);
     return DELETED_ASK_DEV_PATH_FAMILIES.some(
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
     );

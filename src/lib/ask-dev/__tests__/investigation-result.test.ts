@@ -11,23 +11,28 @@ import unsupported from "./captures/context_fabric_investigation_result_unsuppor
 import canonical from "./captures/context_fabric_investigation_result.v1.json";
 
 /**
- * Parity with the ask-dev validator (`ask-dev/src/lib/acr/validate.ts`): the same Ajv options and
- * the same schema set (common + result.v1), rebuilt here, judge the same real captures. Web must
- * agree with it on every v1 payload; it also checks the v2 shapes, which ask-dev does not know.
+ * Parity with the ask-dev validator (`ask-dev/src/lib/acr/validate.ts`). That module cannot be
+ * imported across repositories, so its METHOD is rebuilt here: the same Ajv options and the same
+ * schema set (common + result.v1), loaded from web's pin. What this proves is that web's
+ * validator, which also takes v2, agrees with that method on real producer captures and on
+ * planted defects. It does not prove the two repositories pin the same schema bytes: that is the
+ * pin-alignment check (CHAOS-11906).
  */
-const askDevAjv = new Ajv2020({
+const askDevMethodAjv = new Ajv2020({
     allErrors: true,
     strictRequired: false,
     strictSchema: true,
     strictTypes: false,
 });
-addFormats(askDevAjv);
-askDevAjv.addKeyword({ keyword: "x-documented-values", schemaType: "array" });
-askDevAjv.addSchema(commonSchema, "context_fabric_common.v1.schema.json");
-askDevAjv.addSchema(resultV1Schema, "context_fabric_investigation_result.v1.schema.json");
+addFormats(askDevMethodAjv);
+askDevMethodAjv.addKeyword({ keyword: "x-documented-values", schemaType: "array" });
+askDevMethodAjv.addSchema(commonSchema, "context_fabric_common.v1.schema.json");
+askDevMethodAjv.addSchema(resultV1Schema, "context_fabric_investigation_result.v1.schema.json");
 
-function askDevVerdict(value: unknown): boolean {
-    const validator = askDevAjv.getSchema("context_fabric_investigation_result.v1.schema.json");
+function askDevMethodVerdict(value: unknown): boolean {
+    const validator = askDevMethodAjv.getSchema(
+        "context_fabric_investigation_result.v1.schema.json",
+    );
     if (validator === undefined) throw new Error("ask-dev schema missing");
     return validator(value) === true;
 }
@@ -45,9 +50,9 @@ function clone<T>(value: T): T {
 
 describe("Ask Dev investigation result validation", () => {
     it.each(Object.entries(captures))(
-        "accepts the real producer capture %s as ask-dev does",
+        "accepts the real producer capture %s as the ask-dev method does",
         (name, capture) => {
-            expect(askDevVerdict(capture), `ask-dev verdict on ${name}`).toBe(true);
+            expect(askDevMethodVerdict(capture), `ask-dev verdict on ${name}`).toBe(true);
             const verdict = validateInvestigationResult(capture);
             expect(verdict.valid, JSON.stringify(verdict)).toBe(true);
         },
@@ -63,10 +68,10 @@ describe("Ask Dev investigation result validation", () => {
         ["a status outside the enum", (value) => (value.status = "healthy")],
     ];
 
-    it.each(negatives)("rejects %s exactly as ask-dev does", (_name, mutate) => {
+    it.each(negatives)("rejects %s exactly as the ask-dev method does", (_name, mutate) => {
         const broken = clone(canonical) as Record<string, unknown>;
         mutate(broken);
-        expect(askDevVerdict(broken), "ask-dev must reject the planted defect").toBe(false);
+        expect(askDevMethodVerdict(broken), "ask-dev must reject the planted defect").toBe(false);
         expect(validateInvestigationResult(broken).valid).toBe(false);
     });
 

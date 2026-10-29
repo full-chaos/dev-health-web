@@ -103,7 +103,9 @@ function retryAfter(response: Response): number | undefined {
 function relay(prepared: PreparedInvestigation, requestId: string, browser: AbortSignal): Response {
     const upstreamAbort = new AbortController();
     const abort = (): void => upstreamAbort.abort();
-    browser.addEventListener("abort", abort, { once: true });
+    // A browser that left while the request was being prepared never gets an abort event.
+    if (browser.aborted) upstreamAbort.abort();
+    else browser.addEventListener("abort", abort, { once: true });
     let keepalive: ReturnType<typeof setInterval> | undefined;
 
     const body = new ReadableStream<Uint8Array>({
@@ -116,7 +118,12 @@ function relay(prepared: PreparedInvestigation, requestId: string, browser: Abor
                 }
             };
             write(KEEPALIVE_FRAME);
-            keepalive = setInterval(() => write(KEEPALIVE_FRAME), KEEPALIVE_INTERVAL_MS);
+            // A keepalive is dropped while the browser is not reading: a stalled client must
+            // not grow the queue without bound.
+            keepalive = setInterval(() => {
+                if (controller.desiredSize !== null && controller.desiredSize <= 0) return;
+                write(KEEPALIVE_FRAME);
+            }, KEEPALIVE_INTERVAL_MS);
             const fail = (error: AcrRuntimeError, code: string = error.code): void => {
                 logger.warn(
                     { request_id: requestId, code, status: error.status },
@@ -133,6 +140,7 @@ function relay(prepared: PreparedInvestigation, requestId: string, browser: Abor
                 );
             };
             try {
+                if (upstreamAbort.signal.aborted) return;
                 const response = await prepared.client.openInvestigationStream(
                     streamRequest(prepared, { requestId, signal: upstreamAbort.signal }),
                 );

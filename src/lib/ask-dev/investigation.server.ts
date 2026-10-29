@@ -39,10 +39,10 @@ function optionalUuid(value: string | null): string | undefined {
  * The per-call auth chain. It runs on EVERY request and nothing it learns is cached:
  *   1. a session with an access token, an org and a subject (else 401);
  *   2. no impersonation: an impersonated session never starts a run (else 403);
- *   3. BOTH entitlements `agent_context_runtime` and `ask_dev`, read fresh from ops (off or
+ *   3. the request body against the pinned request schema (else 400);
+ *   4. BOTH entitlements `agent_context_runtime` and `ask_dev`, read fresh from ops (off or
  *      revoked: 403);
- *   4. the caller's repository scopes, read fresh from ops (an empty list: `no_repository`);
- *   5. the request body against the pinned request schema (else 400);
+ *   5. the caller's repository scopes, read fresh from ops (an empty list: `no_repository`);
  * after which a fresh single-use assertion is signed when the stream opens.
  */
 export async function prepareInvestigation(input: {
