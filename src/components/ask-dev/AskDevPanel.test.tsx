@@ -225,6 +225,16 @@ describe("Ask Dev panel — mobile (modal sheet)", () => {
         expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
     });
 
+    it("points the launcher at the sheet it opened", async () => {
+        renderShell();
+
+        await userEvent.click(mobileLauncher());
+
+        const sheet = screen.getByRole("dialog", { name: "Ask Dev" });
+        expect(sheet.id).not.toBe("");
+        expect(mobileLauncher()).toHaveAttribute("aria-controls", sheet.id);
+    });
+
     it("keeps Tab inside the sheet", async () => {
         renderShell();
         await userEvent.click(mobileLauncher());
@@ -407,6 +417,17 @@ describe("Ask Dev state follows where it is allowed", () => {
         rerender(shellTree(ON));
         expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
         expect(launcher()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("gives the right edge back when it is no longer allowed", async () => {
+        const { rerender } = renderShell();
+        await userEvent.click(launcher());
+        expect(rightDrawerOwnerForTest()).toBe("ask-dev");
+
+        navigationMock.pathname = "/superadmin/context-fabric/validation";
+        rerender(shellTree());
+
+        await waitFor(() => expect(rightDrawerOwnerForTest()).toBeNull());
     });
 
     it("drops its claim when the shell unmounts", async () => {

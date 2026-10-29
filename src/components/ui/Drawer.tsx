@@ -25,6 +25,8 @@ type DrawerProps = {
      * default. Off for a drawer whose owner claims the edge itself (Ask Dev, the evidence drawer).
      */
     claimsRightEdge?: boolean;
+    /** The `id` of the dialog, for a control that points at it with `aria-controls`. */
+    panelId?: string;
     "data-testid"?: string;
     children: ReactNode;
 };
@@ -45,6 +47,7 @@ export function Drawer({
     footer,
     returnFocusRef,
     claimsRightEdge = true,
+    panelId,
     "data-testid": testId,
     children,
 }: DrawerProps) {
@@ -85,6 +88,7 @@ export function Drawer({
                 />
                 <div
                     ref={panelRef}
+                    id={panelId}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby={titleId}

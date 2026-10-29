@@ -117,6 +117,7 @@ export function AskDevPanel() {
             onCloseAction={close}
             title={TITLE}
             data-testid="ask-dev-sheet"
+            panelId={ASK_DEV_PANEL_ID}
             // Ask Dev claims the right edge itself (`AskDevShellProvider`).
             claimsRightEdge={false}
         >

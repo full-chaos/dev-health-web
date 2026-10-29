@@ -16,7 +16,7 @@ async function setScenario(request: APIRequestContext, scenario: string): Promis
 function askDevRequests(page: Page): string[] {
     const urls: string[] = [];
     page.on("request", (request) => {
-        if (/\/api\/ask-dev|\/api\/v1\/dev|context-fabric\/investigations/u.test(request.url())) {
+        if (/\/api\/ask-dev|\/api\/v1\/dev|agent-context|context-fabric/u.test(request.url())) {
             urls.push(request.url());
         }
     });

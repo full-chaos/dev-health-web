@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, cleanup, userEvent } from "@/test/utils";
 import { AuditLogDetailDrawer } from "./AuditLogDetailDrawer";
 import type { AuditLog } from "@/lib/admin/types";
+import {
+    claimRightDrawer,
+    resetRightDrawerForTest,
+    rightDrawerOwnerForTest,
+} from "@/lib/shell/rightDrawer";
 
 function makeEntry(overrides: Partial<AuditLog> = {}): AuditLog {
     return {
@@ -164,5 +169,21 @@ describe("AuditLogDetailDrawer", () => {
         await user.keyboard("{Escape}");
 
         expect(onCloseAction).not.toHaveBeenCalled();
+    });
+
+    it("holds the right edge while open, and closes when another right drawer takes it", () => {
+        resetRightDrawerForTest();
+        const onClose = vi.fn();
+        const { rerender } = render(
+            <AuditLogDetailDrawer entry={makeEntry()} isOpen={true} onCloseAction={onClose} />,
+        );
+        expect(rightDrawerOwnerForTest()).toBe("audit-log");
+
+        claimRightDrawer("ask-dev", vi.fn());
+
+        expect(onClose).toHaveBeenCalledTimes(1);
+        rerender(
+            <AuditLogDetailDrawer entry={makeEntry()} isOpen={false} onCloseAction={onClose} />,
+        );
     });
 });

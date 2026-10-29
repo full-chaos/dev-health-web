@@ -45,9 +45,12 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
     // The panel is open only where Ask Dev is allowed. A client navigation to an excluded route, or
     // an entitlement that turns off, closes it for good: coming back does not reopen it by itself.
     // (Set during render, as the evidence drawer does: no effect, no extra paint.)
-    if (open && (!isAskDevEnabled(features) || isAskDevExcludedPath(pathname))) {
-        setOpenState(false);
-    }
+    const eligible = isAskDevEnabled(features) && !isAskDevExcludedPath(pathname);
+    if (open && !eligible) setOpenState(false);
+    // ...and gives the right edge back (a claim must not outlive the panel it belongs to).
+    useEffect(() => {
+        if (!eligible) releaseRightDrawer("ask-dev");
+    }, [eligible]);
     // Leaving the shell (sign-out, another route group) drops the claim and its stale callback.
     useEffect(() => () => releaseRightDrawer("ask-dev"), []);
 

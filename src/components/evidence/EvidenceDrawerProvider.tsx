@@ -127,6 +127,11 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     const [state, setState] = useState<OpenState | null>(null);
     // Unmounting drops the right-edge claim and its stale callback.
     useEffect(() => () => releaseRightDrawer("evidence"), []);
+    // A navigation drops the subject without `close`: the claim goes with it.
+    const hasSubject = state !== null;
+    useEffect(() => {
+        if (!hasSubject) releaseRightDrawer("evidence");
+    }, [hasSubject]);
     // The open subject and a counter, for the event handlers only (never read during render).
     const current = useRef<{ subject: EvidenceSubject | null; id: number }>({
         subject: null,
