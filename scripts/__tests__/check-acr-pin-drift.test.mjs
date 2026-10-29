@@ -1,0 +1,94 @@
+import { execFileSync, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterAll, describe, expect, it } from "vitest";
+
+import { checkDrift } from "../check-acr-pin-drift.mjs";
+
+const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../check-acr-pin-drift.mjs");
+const tmpDirs = [];
+const g = (cwd, ...args) =>
+    execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+
+function commit(repo, files, msg) {
+    for (const [f, c] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(repo, f)), { recursive: true });
+        fs.writeFileSync(path.join(repo, f), c);
+    }
+    g(repo, "add", "-A");
+    g(repo, "commit", "-q", "-m", msg);
+    return g(repo, "rev-parse", "HEAD");
+}
+
+function fakeAcr() {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "fake-acr-"));
+    tmpDirs.push(repo);
+    g(repo, "init", "-q", "-b", "main");
+    // allow fetching an arbitrary commit by SHA
+    g(repo, "config", "uploadpack.allowAnySHA1InWant", "true");
+    const base = commit(repo, { "contracts/openapi/a.json": "1", "README.md": "x" }, "base");
+    return { repo, base };
+}
+
+afterAll(() => tmpDirs.forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
+
+describe("checkDrift", () => {
+    it("is current when the pin is acr main", () => {
+        const { repo, base } = fakeAcr();
+        expect(checkDrift({ remote: repo, pin: base }).status).toBe("current");
+    });
+    it("is current when main moved without touching contracts/", () => {
+        const { repo, base } = fakeAcr();
+        commit(repo, { "README.md": "y" }, "docs only");
+        expect(checkDrift({ remote: repo, pin: base }).status).toBe("current");
+    });
+    it("is drift when contracts/ changed after the pin", () => {
+        const { repo, base } = fakeAcr();
+        commit(repo, { "contracts/openapi/a.json": "2" }, "contract change");
+        const r = checkDrift({ remote: repo, pin: base });
+        expect(r.status).toBe("drift");
+        expect(r.changed).toEqual(["contracts/openapi/a.json"]);
+    });
+    it("THROWS (never passes) when the remote cannot be fetched", () => {
+        expect(() => checkDrift({ remote: "/nonexistent/acr.git", pin: "a".repeat(40) })).toThrow();
+    });
+});
+
+describe("cli exit codes", () => {
+    const run = (remote, pin) => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "manifest-"));
+        tmpDirs.push(dir);
+        const manifest = path.join(dir, "manifest.json");
+        fs.writeFileSync(manifest, JSON.stringify({ source_commit: pin }));
+        return spawnSync("node", [SCRIPT], {
+            env: { ...process.env, ACR_REMOTE: remote, ACR_MANIFEST: manifest },
+            encoding: "utf8",
+        });
+    };
+    it("exits 0 on a clean pin", () => {
+        const { repo, base } = fakeAcr();
+        expect(run(repo, base).status).toBe(0);
+    });
+    it("exits 1 on planted drift", () => {
+        const { repo, base } = fakeAcr();
+        commit(repo, { "contracts/openapi/a.json": "2" }, "planted");
+        const r = run(repo, base);
+        expect(r.status).toBe(1);
+        expect(r.stderr).toContain("DRIFT");
+    });
+    it("exits 2 on fetch failure", () => {
+        const r = run("/nonexistent/acr.git", "a".repeat(40));
+        expect(r.status).toBe(2);
+        expect(r.stderr).toContain("could NOT run");
+    });
+    it("exits 2 on a malformed pin", () => {
+        const { repo } = fakeAcr();
+        expect(run(repo, "main").status).toBe(2);
+    });
+});
