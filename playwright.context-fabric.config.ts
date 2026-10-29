@@ -31,7 +31,7 @@ export default defineConfig({
     // production bundler put in the server graphs. The order of these files has no effect on a
     // result.
     testMatch:
-        /(?:acr-context-fabric|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|server-session-token|product-telemetry-flush)\.production\.spec\.ts/,
+        /(?:acr-context-fabric|ask-dev-route|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|server-session-token|product-telemetry-flush)\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
     outputDir: RESULTS_DIRECTORY,

@@ -131,6 +131,45 @@ async function requireAcrEntitlement(input: {
 }
 
 /**
+ * Ask Dev needs BOTH `agent_context_runtime` and `ask_dev`. Same shape as
+ * {@link requireAcrEntitlement} on purpose: the auth-profile gate walks this body for the fetch,
+ * the parse and the rejecting condition. Read fresh on every call; nothing is cached.
+ */
+async function requireAskDevEntitlements(input: {
+    readonly accessToken: string;
+    readonly orgId: string;
+    readonly signal: AbortSignal;
+}): Promise<void> {
+    const entitlement = await fetchBoundedJson({
+        headers: opsHeaders(input.accessToken),
+        method: "GET",
+        signal: input.signal,
+        timeoutMs: 5_000,
+        url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
+    });
+    if (entitlement.status !== 200) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.unavailable,
+            "Agent Context Runtime is temporarily unavailable.",
+            { retryable: true },
+        );
+    }
+    const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
+    if (
+        !parsedEntitlement.success ||
+        !parsedEntitlement.data.is_valid ||
+        !parsedEntitlement.data.features.agent_context_runtime ||
+        parsedEntitlement.data.features.ask_dev !== true
+    ) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.notEntitled,
+            "Agent Context Runtime is not available for this organization.",
+            { status: 403 },
+        );
+    }
+}
+
+/**
  * Authorizes credential issuance from authenticated organization identity and
  * entitlement only. Repository analytics are inventory, never an authorization
  * source. ACR binds the supplied grant to this organization in the assertion.
@@ -152,6 +191,25 @@ export async function resolveOpsAuthorization(
     if (input.platformValidation !== true) {
         await requireAcrEntitlement(input);
     }
+    return readRepositoryScopes(input);
+}
+
+/**
+ * Ask Dev authorization: BOTH `agent_context_runtime` and `ask_dev` must be on, read fresh from
+ * ops on every call (nothing is cached, so a revoked entitlement denies the next request). There
+ * is no platform-validation bypass: an Ask Dev run is always scoped to the caller's own org.
+ * The repository list may be empty; the caller decides what an empty list means.
+ */
+export async function resolveAskDevAuthorization(
+    input: Omit<ResolveOpsAuthorizationInput, "platformValidation" | "selectedRepository">,
+): Promise<OpsAuthorization> {
+    await requireAskDevEntitlements(input);
+    return readRepositoryScopes(input);
+}
+
+async function readRepositoryScopes(
+    input: ResolveOpsAuthorizationInput,
+): Promise<OpsAuthorization> {
     const scopes = await fetchBoundedJson({
         body: JSON.stringify({
             query: ACR_REPOSITORY_SCOPES_QUERY,

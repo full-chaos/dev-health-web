@@ -490,6 +490,7 @@ describe("the registry of server-only modules", () => {
             "src/lib/acr/client.ts",
             "src/lib/acr/ops.ts",
             "src/lib/acr/service.ts",
+            "src/lib/ask-dev/investigation.server.ts",
         ]);
     });
 

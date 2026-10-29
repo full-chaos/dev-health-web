@@ -73,6 +73,25 @@ app.post("/__test/paused-context-packets/release", (request, response) => {
     }
     response.status(204).end();
 });
+// CHAOS-11921: the investigation stream, to prove the web route reaches ACR with an assertion.
+let investigationRequests = 0;
+app.get("/__test/investigation-requests", (_request, response) => {
+    response.json({ count: investigationRequests });
+});
+app.post("/api/v1/context-fabric/investigations", (request, response) => {
+    investigationRequests += 1;
+    if (
+        request.header("accept") !== "text/event-stream" ||
+        (request.header("x-acr-web-assertion") ?? "") === "" ||
+        request.header("authorization") !== undefined
+    ) {
+        response.status(400).json({ error: "bad ask-dev call" });
+        return;
+    }
+    response.setHeader("Content-Type", "text/event-stream");
+    response.write('event: accepted\ndata: {"seq":1}\n\n');
+    response.end('event: result\ndata: {"seq":2}\n\n');
+});
 app.post("/api/v1/agent-context/context-packets", async (request, response) => {
     const goal =
         typeof request.body.goal === "string"

@@ -24,7 +24,7 @@ vi.mock("@/lib/rate-limit", () => ({
 
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { isPublicPath, sanitizeCallbackUrl, proxy } from "@/proxy";
+import { isPublicPath, sanitizeCallbackUrl, proxy, shouldProxyToOps } from "@/proxy";
 
 const mockCheckRateLimit = vi.mocked(checkRateLimit);
 
@@ -332,6 +332,32 @@ describe("proxy rate limiting", () => {
         const res = await proxy(makeRequest("/api/agent-context/context-packets"));
 
         expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
+    it.each([
+        "/api/ask-dev",
+        "/api/ask-dev/investigations",
+        "/api/ask-dev/investigations/3f0c",
+        "/api/ask-dev/submissions/3f0c",
+    ])(
+        "keeps the Ask Dev route %s local instead of rewriting it to Ops (CHAOS-11921)",
+        async (path) => {
+            mockAuth.mockResolvedValue(session);
+
+            expect(shouldProxyToOps(path)).toBe(false);
+            const res = await proxy(makeRequest(path));
+
+            expect(res.status).not.toBe(404);
+            expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+        },
+    );
+
+    it("rewrites a look-alike of the Ask Dev family, which is not that family", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        expect(shouldProxyToOps("/api/ask-devx")).toBe(true);
+        expect(shouldProxyToOps("/api/v1/reports")).toBe(true);
+        expect(shouldProxyToOps("/graphql")).toBe(true);
     });
 
     it.each([

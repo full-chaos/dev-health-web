@@ -16,14 +16,14 @@ const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
 // characters (the un-padded encoding of a 256-bit value).
 const oauthHandlePattern = /^[A-Za-z0-9_-]{43}$/u;
 
-type WebSession = {
+export type WebSession = {
     readonly accessToken: string;
     readonly orgId: string;
     readonly subject: string;
     readonly isPlatformAdmin: boolean;
 };
 
-function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
+export function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
     const accessToken = session?.access_token;
     const orgId = session?.user?.org_id;
     const subject = session?.user?.id;

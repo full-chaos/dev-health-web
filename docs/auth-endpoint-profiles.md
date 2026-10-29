@@ -208,6 +208,17 @@ two minting routes rely only on `session.user.org_id` already being
 impersonation-resolved (`resolveActiveOrgId()`), which is weaker (silently
 scopes to the impersonated org rather than refusing).
 
+### Ask Dev route (CHAOS-11921)
+
+`POST /api/ask-dev/investigations` is a fourth minting route. It has no `capabilities` pre-call: one
+assertion (`context:read`, bound to the exact body bytes and the caller's repository scopes) is
+signed per request in `AcrRuntimeClient.openInvestigationStream`, with the same key custody as above
+(only the web server holds the key). The auth chain runs on every call and caches nothing: session,
+impersonation refusal (`real_org_id` differs: 403), both entitlements `agent_context_runtime` and
+`ask_dev` read from ops (`requireAskDevEntitlements`), the repository scopes (empty: `no_repository`),
+then the pinned request schema. `/api/ask-dev` is excluded from the Ops rewrite (`shouldProxyToOps`
+in `src/proxy.ts`); `/api/v1/dev` stays blocked.
+
 ## FINDING: inconsistent mutation CSRF/Origin checks
 
 Two postures remain across mutating routes:

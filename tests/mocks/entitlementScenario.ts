@@ -6,7 +6,8 @@ export type EntitlementScenario =
     | "canonical-absent"
     | "canonical-disabled"
     | "canonical-enabled"
-    | "investment-enabled";
+    | "investment-enabled"
+    | "ask-dev-enabled";
 
 let currentEntitlementScenario: EntitlementScenario = "unprovisioned";
 
@@ -20,6 +21,7 @@ export function setEntitlementScenario(scenario: string): boolean {
         case "canonical-disabled":
         case "canonical-enabled":
         case "investment-enabled":
+        case "ask-dev-enabled":
             currentEntitlementScenario = scenario;
             return true;
         default:
