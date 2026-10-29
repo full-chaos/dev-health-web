@@ -88,7 +88,8 @@ export function Drawer({
                         size === "wide" ? "sm:w-195" : "sm:w-112.5"
                     }`}
                 >
-                    <header className="flex items-start gap-4 border-b border-(--card-stroke) p-6">
+                    {/* A `div`, not a `header`: inside a dialog it would count as a second banner landmark. */}
+                    <div className="flex items-start gap-4 border-b border-(--card-stroke) p-6">
                         <div className="min-w-0 flex-1">
                             {eyebrow && (
                                 <p className="text-label-caps uppercase text-(--ink-muted)">
@@ -111,7 +112,7 @@ export function Drawer({
                         >
                             <X aria-hidden="true" className="h-4 w-4" />
                         </button>
-                    </header>
+                    </div>
                     <div className="flex-1 overflow-y-auto p-6">{children}</div>
                     {footer && (
                         <footer className="flex flex-wrap gap-2 border-t border-(--card-stroke) px-6 py-4.5">

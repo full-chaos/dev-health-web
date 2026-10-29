@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
+import { AskDevPanel } from "@/components/ask-dev/AskDevPanel";
 import { AskDevShellProvider } from "@/components/ask-dev/AskDevShellContext";
 import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -115,6 +116,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                         )}
                     </FilterPendingProvider>
                 </div>
+                <AskDevPanel />
             </div>
         </AskDevShellProvider>
     );

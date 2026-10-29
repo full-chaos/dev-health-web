@@ -8,6 +8,7 @@ import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
 
+import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { useAskDevShell } from "./AskDevShellContext";
 
 type AskDevLauncherProps = {
@@ -32,6 +33,7 @@ export function AskDevLauncher({ placement }: AskDevLauncherProps) {
             data-ask-dev-launcher=""
             aria-label={CTA_LABELS.openAskDev}
             aria-expanded={open}
+            aria-controls={open ? ASK_DEV_PANEL_ID : undefined}
             title={CTA_LABELS.openAskDev}
             onClick={() => setOpen(!open)}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-80) text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
