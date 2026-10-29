@@ -31,5 +31,11 @@
         "**/*.mts",
         ".next/dev/dev/types/**/*.ts"
     ],
-    "exclude": ["node_modules", "tests", "test-results", "playwright-report"]
+    "exclude": [
+        "node_modules",
+        "scripts/ask-dev-oracle",
+        "tests",
+        "test-results",
+        "playwright-report"
+    ]
 }

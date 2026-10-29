@@ -1,0 +1,3007 @@
+[
+  {
+    "name": "fresh question",
+    "turns": [],
+    "question": "What is blocking delivery?",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000010000400080000000",
+        "question": "What is blocking delivery?",
+        "prior_subject_receipts": [],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "real subject and kind receipts",
+    "turns": [],
+    "question": "Show the team",
+    "subjectReceipts": [
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_12345678"
+      }
+    ],
+    "structure": {
+      "priorKindReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "kindr_ask_dev_9012"
+        }
+      ]
+    },
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000020000400080000000",
+        "question": "Show the team",
+        "prior_subject_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_12345678"
+          }
+        ],
+        "prior_kind_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "kindr_ask_dev_9012"
+          }
+        ],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "all five structure namespaces",
+    "turns": [],
+    "question": "Which one?",
+    "subjectReceipts": [],
+    "structure": {
+      "priorKindReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "kindr_0001"
+        }
+      ],
+      "priorAnchorReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "ancr_0002"
+        }
+      ],
+      "priorHandleReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "handr_0003"
+        }
+      ],
+      "priorWindowReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "winr_0004"
+        }
+      ],
+      "priorCandidateReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0005"
+        }
+      ]
+    },
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000030000400080000000",
+        "question": "Which one?",
+        "prior_subject_receipts": [],
+        "prior_kind_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "kindr_0001"
+          }
+        ],
+        "prior_anchor_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "ancr_0002"
+          }
+        ],
+        "prior_handle_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "handr_0003"
+          }
+        ],
+        "prior_window_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "winr_0004"
+          }
+        ],
+        "prior_candidate_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0005"
+          }
+        ],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "duplicate receipts collapse",
+    "turns": [],
+    "question": "dupes",
+    "subjectReceipts": [
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_12345678"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_12345678"
+      }
+    ],
+    "structure": {
+      "priorKindReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "kindr_0001"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "kindr_0001"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "kindr_0002"
+        }
+      ]
+    },
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000040000400080000000",
+        "question": "dupes",
+        "prior_subject_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_12345678"
+          }
+        ],
+        "prior_kind_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "kindr_0001"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "kindr_0002"
+          }
+        ],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "receipts cap at 20",
+    "turns": [],
+    "question": "cap",
+    "subjectReceipts": [
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_0"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_1"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_2"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_3"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_4"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_5"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_6"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_7"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_8"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_9"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_10"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_11"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_12"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_13"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_14"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_15"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_16"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_17"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_18"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_19"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_20"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_21"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_22"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_23"
+      },
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_24"
+      }
+    ],
+    "structure": {
+      "priorCandidateReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0000"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0001"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0002"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0003"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0004"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0005"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0006"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0007"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0008"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0009"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0010"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0011"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0012"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0013"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0014"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0015"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0016"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0017"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0018"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0019"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0020"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0021"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0022"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0023"
+        },
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "candr_0024"
+        }
+      ]
+    },
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000050000400080000000",
+        "question": "cap",
+        "prior_subject_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_0"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_1"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_2"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_3"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_4"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_5"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_6"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_7"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_8"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_9"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_10"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_11"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_12"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_13"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_14"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_15"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_16"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_17"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_18"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_19"
+          }
+        ],
+        "prior_candidate_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0000"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0001"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0002"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0003"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0004"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0005"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0006"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0007"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0008"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0009"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0010"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0011"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0012"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0013"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0014"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0015"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0016"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0017"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0018"
+          },
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "candr_0019"
+          }
+        ],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "expected kinds dedupe",
+    "turns": [],
+    "question": "which repositories",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [
+      "repository",
+      "team",
+      "repository"
+    ],
+    "askDev": {
+      "conversation": [],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000060000400080000000",
+        "question": "which repositories",
+        "prior_subject_receipts": [],
+        "expected_kinds": [
+          "repository",
+          "team"
+        ],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "turn 2 after an answer",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "What is blocking delivery?",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "assistant",
+        "id": 2,
+        "createdAt": "2026-10-29T10:00:02Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "project",
+                  "canonical_id": "project_ask_dev",
+                  "label": "Ask Dev"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "question": "and last month?",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_1",
+          "role": "user",
+          "content": "What is blocking delivery?",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_2",
+          "role": "assistant",
+          "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+          "created_at": "2026-10-29T10:00:02Z"
+        }
+      ],
+      "parent": {
+        "parentResultId": "result_12345678",
+        "subjectHints": [
+          {
+            "kind": "project",
+            "id": "project_ask_dev",
+            "label": "Ask Dev",
+            "source": "ask_dev_parent_result_subject"
+          }
+        ],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000070000400080000000",
+        "question": "and last month?",
+        "conversation": [
+          {
+            "turn_id": "turn_1",
+            "role": "user",
+            "content": "What is blocking delivery?",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_2",
+            "role": "assistant",
+            "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "created_at": "2026-10-29T10:00:02Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "parent_result_id": "result_12345678",
+        "requested_scope": {
+          "subject_hints": [
+            {
+              "kind": "project",
+              "id": "project_ask_dev",
+              "label": "Ask Dev",
+              "source": "ask_dev_parent_result_subject"
+            }
+          ]
+        },
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "turn 2 after a clarification choice",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "Show the team",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "assistant",
+        "id": 2,
+        "createdAt": "2026-10-29T10:00:02Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "result_id": "res_origin_state_0001",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "project",
+                  "canonical_id": "project_ask_dev",
+                  "label": "Ask Dev"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "question": "Show the team",
+    "subjectReceipts": [
+      {
+        "result_id": "result_12345678",
+        "receipt_id": "receipt_12345678"
+      }
+    ],
+    "structure": {
+      "priorKindReceipts": [
+        {
+          "result_id": "result_12345678",
+          "receipt_id": "kindr_ask_dev_9012"
+        }
+      ]
+    },
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_1",
+          "role": "user",
+          "content": "Show the team",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_2",
+          "role": "assistant",
+          "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+          "created_at": "2026-10-29T10:00:02Z"
+        }
+      ],
+      "parent": {
+        "parentResultId": "res_origin_state_0001",
+        "subjectHints": [
+          {
+            "kind": "project",
+            "id": "project_ask_dev",
+            "label": "Ask Dev",
+            "source": "ask_dev_parent_result_subject"
+          }
+        ],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000080000400080000000",
+        "question": "Show the team",
+        "conversation": [
+          {
+            "turn_id": "turn_1",
+            "role": "user",
+            "content": "Show the team",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_2",
+            "role": "assistant",
+            "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "created_at": "2026-10-29T10:00:02Z"
+          }
+        ],
+        "prior_subject_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "receipt_12345678"
+          }
+        ],
+        "prior_kind_receipts": [
+          {
+            "result_id": "result_12345678",
+            "receipt_id": "kindr_ask_dev_9012"
+          }
+        ],
+        "parent_result_id": "res_origin_state_0001",
+        "requested_scope": {
+          "subject_hints": [
+            {
+              "kind": "project",
+              "id": "project_ask_dev",
+              "label": "Ask Dev",
+              "source": "ask_dev_parent_result_subject"
+            }
+          ]
+        },
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "pending and failed turns are not threaded",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "a",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "assistant",
+        "id": 2,
+        "createdAt": "2026-10-29T10:00:02Z",
+        "outcome": {
+          "kind": "failed"
+        }
+      },
+      {
+        "role": "user",
+        "id": 3,
+        "question": "b",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "assistant",
+        "id": 4,
+        "createdAt": "2026-10-29T10:00:04Z",
+        "outcome": {
+          "kind": "pending"
+        }
+      }
+    ],
+    "question": "c",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_1",
+          "role": "user",
+          "content": "a",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_3",
+          "role": "user",
+          "content": "b",
+          "created_at": "2026-10-29T10:00:03Z"
+        }
+      ],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_000000090000400080000000",
+        "question": "c",
+        "conversation": [
+          {
+            "turn_id": "turn_1",
+            "role": "user",
+            "content": "a",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_3",
+            "role": "user",
+            "content": "b",
+            "created_at": "2026-10-29T10:00:03Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "blank and invisible answers are not threaded",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "q",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "assistant",
+        "id": 2,
+        "createdAt": "2026-10-29T10:00:02Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "project",
+                  "canonical_id": "project_ask_dev",
+                  "label": "Ask Dev"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "role": "user",
+        "id": 3,
+        "question": "q2",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "assistant",
+        "id": 4,
+        "createdAt": "2026-10-29T10:00:04Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "​  ",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "project",
+                  "canonical_id": "project_ask_dev",
+                  "label": "Ask Dev"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "role": "user",
+        "id": 5,
+        "question": "q3",
+        "createdAt": "2026-10-29T10:00:05Z"
+      },
+      {
+        "role": "assistant",
+        "id": 6,
+        "createdAt": "2026-10-29T10:00:06Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "project",
+                  "canonical_id": "project_ask_dev",
+                  "label": "Ask Dev"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "question": "next",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_1",
+          "role": "user",
+          "content": "q",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_3",
+          "role": "user",
+          "content": "q2",
+          "created_at": "2026-10-29T10:00:03Z"
+        },
+        {
+          "turn_id": "turn_5",
+          "role": "user",
+          "content": "q3",
+          "created_at": "2026-10-29T10:00:05Z"
+        },
+        {
+          "turn_id": "turn_6",
+          "role": "assistant",
+          "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+          "created_at": "2026-10-29T10:00:06Z"
+        }
+      ],
+      "parent": {
+        "parentResultId": "result_12345678",
+        "subjectHints": [
+          {
+            "kind": "project",
+            "id": "project_ask_dev",
+            "label": "Ask Dev",
+            "source": "ask_dev_parent_result_subject"
+          }
+        ],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_0000000a0000400080000000",
+        "question": "next",
+        "conversation": [
+          {
+            "turn_id": "turn_1",
+            "role": "user",
+            "content": "q",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_3",
+            "role": "user",
+            "content": "q2",
+            "created_at": "2026-10-29T10:00:03Z"
+          },
+          {
+            "turn_id": "turn_5",
+            "role": "user",
+            "content": "q3",
+            "created_at": "2026-10-29T10:00:05Z"
+          },
+          {
+            "turn_id": "turn_6",
+            "role": "assistant",
+            "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "created_at": "2026-10-29T10:00:06Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "parent_result_id": "result_12345678",
+        "requested_scope": {
+          "subject_hints": [
+            {
+              "kind": "project",
+              "id": "project_ask_dev",
+              "label": "Ask Dev",
+              "source": "ask_dev_parent_result_subject"
+            }
+          ]
+        },
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "unknown subject kind is unsent",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "q",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "assistant",
+        "id": 2,
+        "createdAt": "2026-10-29T10:00:02Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "team",
+                  "canonical_id": "team:0",
+                  "label": "team 0"
+                },
+                {
+                  "kind": "gadget",
+                  "canonical_id": "gadget:1",
+                  "label": "gadget 1"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "question": "follow up",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_1",
+          "role": "user",
+          "content": "q",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_2",
+          "role": "assistant",
+          "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+          "created_at": "2026-10-29T10:00:02Z"
+        }
+      ],
+      "parent": {
+        "parentResultId": "result_12345678",
+        "subjectHints": [
+          {
+            "kind": "team",
+            "id": "team:0",
+            "label": "team 0",
+            "source": "ask_dev_parent_result_subject"
+          }
+        ],
+        "unsentSubjects": [
+          {
+            "kind": "gadget",
+            "label": "gadget 1"
+          }
+        ]
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_0000000b0000400080000000",
+        "question": "follow up",
+        "conversation": [
+          {
+            "turn_id": "turn_1",
+            "role": "user",
+            "content": "q",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_2",
+            "role": "assistant",
+            "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "created_at": "2026-10-29T10:00:02Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "parent_result_id": "result_12345678",
+        "requested_scope": {
+          "subject_hints": [
+            {
+              "kind": "team",
+              "id": "team:0",
+              "label": "team 0",
+              "source": "ask_dev_parent_result_subject"
+            }
+          ]
+        },
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "more than 50 hints are capped",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "q",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "assistant",
+        "id": 2,
+        "createdAt": "2026-10-29T10:00:02Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:0",
+                  "label": "repository 0"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:1",
+                  "label": "repository 1"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:2",
+                  "label": "repository 2"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:3",
+                  "label": "repository 3"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:4",
+                  "label": "repository 4"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:5",
+                  "label": "repository 5"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:6",
+                  "label": "repository 6"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:7",
+                  "label": "repository 7"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:8",
+                  "label": "repository 8"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:9",
+                  "label": "repository 9"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:10",
+                  "label": "repository 10"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:11",
+                  "label": "repository 11"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:12",
+                  "label": "repository 12"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:13",
+                  "label": "repository 13"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:14",
+                  "label": "repository 14"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:15",
+                  "label": "repository 15"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:16",
+                  "label": "repository 16"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:17",
+                  "label": "repository 17"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:18",
+                  "label": "repository 18"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:19",
+                  "label": "repository 19"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:20",
+                  "label": "repository 20"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:21",
+                  "label": "repository 21"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:22",
+                  "label": "repository 22"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:23",
+                  "label": "repository 23"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:24",
+                  "label": "repository 24"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:25",
+                  "label": "repository 25"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:26",
+                  "label": "repository 26"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:27",
+                  "label": "repository 27"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:28",
+                  "label": "repository 28"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:29",
+                  "label": "repository 29"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:30",
+                  "label": "repository 30"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:31",
+                  "label": "repository 31"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:32",
+                  "label": "repository 32"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:33",
+                  "label": "repository 33"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:34",
+                  "label": "repository 34"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:35",
+                  "label": "repository 35"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:36",
+                  "label": "repository 36"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:37",
+                  "label": "repository 37"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:38",
+                  "label": "repository 38"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:39",
+                  "label": "repository 39"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:40",
+                  "label": "repository 40"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:41",
+                  "label": "repository 41"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:42",
+                  "label": "repository 42"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:43",
+                  "label": "repository 43"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:44",
+                  "label": "repository 44"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:45",
+                  "label": "repository 45"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:46",
+                  "label": "repository 46"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:47",
+                  "label": "repository 47"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:48",
+                  "label": "repository 48"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:49",
+                  "label": "repository 49"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:50",
+                  "label": "repository 50"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:51",
+                  "label": "repository 51"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:52",
+                  "label": "repository 52"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:53",
+                  "label": "repository 53"
+                },
+                {
+                  "kind": "repository",
+                  "canonical_id": "repository:54",
+                  "label": "repository 54"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "question": "follow up",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_1",
+          "role": "user",
+          "content": "q",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_2",
+          "role": "assistant",
+          "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+          "created_at": "2026-10-29T10:00:02Z"
+        }
+      ],
+      "parent": {
+        "parentResultId": "result_12345678",
+        "subjectHints": [
+          {
+            "kind": "repository",
+            "id": "repository:0",
+            "label": "repository 0",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:1",
+            "label": "repository 1",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:2",
+            "label": "repository 2",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:3",
+            "label": "repository 3",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:4",
+            "label": "repository 4",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:5",
+            "label": "repository 5",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:6",
+            "label": "repository 6",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:7",
+            "label": "repository 7",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:8",
+            "label": "repository 8",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:9",
+            "label": "repository 9",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:10",
+            "label": "repository 10",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:11",
+            "label": "repository 11",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:12",
+            "label": "repository 12",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:13",
+            "label": "repository 13",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:14",
+            "label": "repository 14",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:15",
+            "label": "repository 15",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:16",
+            "label": "repository 16",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:17",
+            "label": "repository 17",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:18",
+            "label": "repository 18",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:19",
+            "label": "repository 19",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:20",
+            "label": "repository 20",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:21",
+            "label": "repository 21",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:22",
+            "label": "repository 22",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:23",
+            "label": "repository 23",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:24",
+            "label": "repository 24",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:25",
+            "label": "repository 25",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:26",
+            "label": "repository 26",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:27",
+            "label": "repository 27",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:28",
+            "label": "repository 28",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:29",
+            "label": "repository 29",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:30",
+            "label": "repository 30",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:31",
+            "label": "repository 31",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:32",
+            "label": "repository 32",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:33",
+            "label": "repository 33",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:34",
+            "label": "repository 34",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:35",
+            "label": "repository 35",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:36",
+            "label": "repository 36",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:37",
+            "label": "repository 37",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:38",
+            "label": "repository 38",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:39",
+            "label": "repository 39",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:40",
+            "label": "repository 40",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:41",
+            "label": "repository 41",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:42",
+            "label": "repository 42",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:43",
+            "label": "repository 43",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:44",
+            "label": "repository 44",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:45",
+            "label": "repository 45",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:46",
+            "label": "repository 46",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:47",
+            "label": "repository 47",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:48",
+            "label": "repository 48",
+            "source": "ask_dev_parent_result_subject"
+          },
+          {
+            "kind": "repository",
+            "id": "repository:49",
+            "label": "repository 49",
+            "source": "ask_dev_parent_result_subject"
+          }
+        ],
+        "unsentSubjects": [
+          {
+            "kind": "repository",
+            "label": "repository 50"
+          },
+          {
+            "kind": "repository",
+            "label": "repository 51"
+          },
+          {
+            "kind": "repository",
+            "label": "repository 52"
+          },
+          {
+            "kind": "repository",
+            "label": "repository 53"
+          },
+          {
+            "kind": "repository",
+            "label": "repository 54"
+          }
+        ]
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_0000000c0000400080000000",
+        "question": "follow up",
+        "conversation": [
+          {
+            "turn_id": "turn_1",
+            "role": "user",
+            "content": "q",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_2",
+            "role": "assistant",
+            "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "created_at": "2026-10-29T10:00:02Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "parent_result_id": "result_12345678",
+        "requested_scope": {
+          "subject_hints": [
+            {
+              "kind": "repository",
+              "id": "repository:0",
+              "label": "repository 0",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:1",
+              "label": "repository 1",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:2",
+              "label": "repository 2",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:3",
+              "label": "repository 3",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:4",
+              "label": "repository 4",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:5",
+              "label": "repository 5",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:6",
+              "label": "repository 6",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:7",
+              "label": "repository 7",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:8",
+              "label": "repository 8",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:9",
+              "label": "repository 9",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:10",
+              "label": "repository 10",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:11",
+              "label": "repository 11",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:12",
+              "label": "repository 12",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:13",
+              "label": "repository 13",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:14",
+              "label": "repository 14",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:15",
+              "label": "repository 15",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:16",
+              "label": "repository 16",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:17",
+              "label": "repository 17",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:18",
+              "label": "repository 18",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:19",
+              "label": "repository 19",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:20",
+              "label": "repository 20",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:21",
+              "label": "repository 21",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:22",
+              "label": "repository 22",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:23",
+              "label": "repository 23",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:24",
+              "label": "repository 24",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:25",
+              "label": "repository 25",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:26",
+              "label": "repository 26",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:27",
+              "label": "repository 27",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:28",
+              "label": "repository 28",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:29",
+              "label": "repository 29",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:30",
+              "label": "repository 30",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:31",
+              "label": "repository 31",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:32",
+              "label": "repository 32",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:33",
+              "label": "repository 33",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:34",
+              "label": "repository 34",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:35",
+              "label": "repository 35",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:36",
+              "label": "repository 36",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:37",
+              "label": "repository 37",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:38",
+              "label": "repository 38",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:39",
+              "label": "repository 39",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:40",
+              "label": "repository 40",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:41",
+              "label": "repository 41",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:42",
+              "label": "repository 42",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:43",
+              "label": "repository 43",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:44",
+              "label": "repository 44",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:45",
+              "label": "repository 45",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:46",
+              "label": "repository 46",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:47",
+              "label": "repository 47",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:48",
+              "label": "repository 48",
+              "source": "ask_dev_parent_result_subject"
+            },
+            {
+              "kind": "repository",
+              "id": "repository:49",
+              "label": "repository 49",
+              "source": "ask_dev_parent_result_subject"
+            }
+          ]
+        },
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "long timeline keeps the latest 20 turns",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "question 0",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "user",
+        "id": 3,
+        "question": "question 1",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "user",
+        "id": 5,
+        "question": "question 2",
+        "createdAt": "2026-10-29T10:00:05Z"
+      },
+      {
+        "role": "user",
+        "id": 7,
+        "question": "question 3",
+        "createdAt": "2026-10-29T10:00:07Z"
+      },
+      {
+        "role": "user",
+        "id": 9,
+        "question": "question 4",
+        "createdAt": "2026-10-29T10:00:09Z"
+      },
+      {
+        "role": "user",
+        "id": 11,
+        "question": "question 5",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "user",
+        "id": 13,
+        "question": "question 6",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "user",
+        "id": 15,
+        "question": "question 7",
+        "createdAt": "2026-10-29T10:00:05Z"
+      },
+      {
+        "role": "user",
+        "id": 17,
+        "question": "question 8",
+        "createdAt": "2026-10-29T10:00:07Z"
+      },
+      {
+        "role": "user",
+        "id": 19,
+        "question": "question 9",
+        "createdAt": "2026-10-29T10:00:09Z"
+      },
+      {
+        "role": "user",
+        "id": 21,
+        "question": "question 10",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "user",
+        "id": 23,
+        "question": "question 11",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "user",
+        "id": 25,
+        "question": "question 12",
+        "createdAt": "2026-10-29T10:00:05Z"
+      },
+      {
+        "role": "user",
+        "id": 27,
+        "question": "question 13",
+        "createdAt": "2026-10-29T10:00:07Z"
+      },
+      {
+        "role": "user",
+        "id": 29,
+        "question": "question 14",
+        "createdAt": "2026-10-29T10:00:09Z"
+      },
+      {
+        "role": "user",
+        "id": 31,
+        "question": "question 15",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "user",
+        "id": 33,
+        "question": "question 16",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "user",
+        "id": 35,
+        "question": "question 17",
+        "createdAt": "2026-10-29T10:00:05Z"
+      },
+      {
+        "role": "user",
+        "id": 37,
+        "question": "question 18",
+        "createdAt": "2026-10-29T10:00:07Z"
+      },
+      {
+        "role": "user",
+        "id": 39,
+        "question": "question 19",
+        "createdAt": "2026-10-29T10:00:09Z"
+      },
+      {
+        "role": "user",
+        "id": 41,
+        "question": "question 20",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "user",
+        "id": 43,
+        "question": "question 21",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "user",
+        "id": 45,
+        "question": "question 22",
+        "createdAt": "2026-10-29T10:00:05Z"
+      },
+      {
+        "role": "user",
+        "id": 47,
+        "question": "question 23",
+        "createdAt": "2026-10-29T10:00:07Z"
+      },
+      {
+        "role": "user",
+        "id": 49,
+        "question": "question 24",
+        "createdAt": "2026-10-29T10:00:09Z"
+      },
+      {
+        "role": "user",
+        "id": 51,
+        "question": "question 25",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "user",
+        "id": 53,
+        "question": "question 26",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "user",
+        "id": 55,
+        "question": "question 27",
+        "createdAt": "2026-10-29T10:00:05Z"
+      },
+      {
+        "role": "user",
+        "id": 57,
+        "question": "question 28",
+        "createdAt": "2026-10-29T10:00:07Z"
+      },
+      {
+        "role": "user",
+        "id": 59,
+        "question": "question 29",
+        "createdAt": "2026-10-29T10:00:09Z"
+      },
+      {
+        "role": "assistant",
+        "id": 100,
+        "createdAt": "2026-10-29T10:00:00Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "project",
+                  "canonical_id": "project_ask_dev",
+                  "label": "Ask Dev"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "question": "latest",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_23",
+          "role": "user",
+          "content": "question 11",
+          "created_at": "2026-10-29T10:00:03Z"
+        },
+        {
+          "turn_id": "turn_25",
+          "role": "user",
+          "content": "question 12",
+          "created_at": "2026-10-29T10:00:05Z"
+        },
+        {
+          "turn_id": "turn_27",
+          "role": "user",
+          "content": "question 13",
+          "created_at": "2026-10-29T10:00:07Z"
+        },
+        {
+          "turn_id": "turn_29",
+          "role": "user",
+          "content": "question 14",
+          "created_at": "2026-10-29T10:00:09Z"
+        },
+        {
+          "turn_id": "turn_31",
+          "role": "user",
+          "content": "question 15",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_33",
+          "role": "user",
+          "content": "question 16",
+          "created_at": "2026-10-29T10:00:03Z"
+        },
+        {
+          "turn_id": "turn_35",
+          "role": "user",
+          "content": "question 17",
+          "created_at": "2026-10-29T10:00:05Z"
+        },
+        {
+          "turn_id": "turn_37",
+          "role": "user",
+          "content": "question 18",
+          "created_at": "2026-10-29T10:00:07Z"
+        },
+        {
+          "turn_id": "turn_39",
+          "role": "user",
+          "content": "question 19",
+          "created_at": "2026-10-29T10:00:09Z"
+        },
+        {
+          "turn_id": "turn_41",
+          "role": "user",
+          "content": "question 20",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_43",
+          "role": "user",
+          "content": "question 21",
+          "created_at": "2026-10-29T10:00:03Z"
+        },
+        {
+          "turn_id": "turn_45",
+          "role": "user",
+          "content": "question 22",
+          "created_at": "2026-10-29T10:00:05Z"
+        },
+        {
+          "turn_id": "turn_47",
+          "role": "user",
+          "content": "question 23",
+          "created_at": "2026-10-29T10:00:07Z"
+        },
+        {
+          "turn_id": "turn_49",
+          "role": "user",
+          "content": "question 24",
+          "created_at": "2026-10-29T10:00:09Z"
+        },
+        {
+          "turn_id": "turn_51",
+          "role": "user",
+          "content": "question 25",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_53",
+          "role": "user",
+          "content": "question 26",
+          "created_at": "2026-10-29T10:00:03Z"
+        },
+        {
+          "turn_id": "turn_55",
+          "role": "user",
+          "content": "question 27",
+          "created_at": "2026-10-29T10:00:05Z"
+        },
+        {
+          "turn_id": "turn_57",
+          "role": "user",
+          "content": "question 28",
+          "created_at": "2026-10-29T10:00:07Z"
+        },
+        {
+          "turn_id": "turn_59",
+          "role": "user",
+          "content": "question 29",
+          "created_at": "2026-10-29T10:00:09Z"
+        },
+        {
+          "turn_id": "turn_100",
+          "role": "assistant",
+          "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+          "created_at": "2026-10-29T10:00:00Z"
+        }
+      ],
+      "parent": {
+        "parentResultId": "result_12345678",
+        "subjectHints": [
+          {
+            "kind": "project",
+            "id": "project_ask_dev",
+            "label": "Ask Dev",
+            "source": "ask_dev_parent_result_subject"
+          }
+        ],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_0000000d0000400080000000",
+        "question": "latest",
+        "conversation": [
+          {
+            "turn_id": "turn_23",
+            "role": "user",
+            "content": "question 11",
+            "created_at": "2026-10-29T10:00:03Z"
+          },
+          {
+            "turn_id": "turn_25",
+            "role": "user",
+            "content": "question 12",
+            "created_at": "2026-10-29T10:00:05Z"
+          },
+          {
+            "turn_id": "turn_27",
+            "role": "user",
+            "content": "question 13",
+            "created_at": "2026-10-29T10:00:07Z"
+          },
+          {
+            "turn_id": "turn_29",
+            "role": "user",
+            "content": "question 14",
+            "created_at": "2026-10-29T10:00:09Z"
+          },
+          {
+            "turn_id": "turn_31",
+            "role": "user",
+            "content": "question 15",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_33",
+            "role": "user",
+            "content": "question 16",
+            "created_at": "2026-10-29T10:00:03Z"
+          },
+          {
+            "turn_id": "turn_35",
+            "role": "user",
+            "content": "question 17",
+            "created_at": "2026-10-29T10:00:05Z"
+          },
+          {
+            "turn_id": "turn_37",
+            "role": "user",
+            "content": "question 18",
+            "created_at": "2026-10-29T10:00:07Z"
+          },
+          {
+            "turn_id": "turn_39",
+            "role": "user",
+            "content": "question 19",
+            "created_at": "2026-10-29T10:00:09Z"
+          },
+          {
+            "turn_id": "turn_41",
+            "role": "user",
+            "content": "question 20",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_43",
+            "role": "user",
+            "content": "question 21",
+            "created_at": "2026-10-29T10:00:03Z"
+          },
+          {
+            "turn_id": "turn_45",
+            "role": "user",
+            "content": "question 22",
+            "created_at": "2026-10-29T10:00:05Z"
+          },
+          {
+            "turn_id": "turn_47",
+            "role": "user",
+            "content": "question 23",
+            "created_at": "2026-10-29T10:00:07Z"
+          },
+          {
+            "turn_id": "turn_49",
+            "role": "user",
+            "content": "question 24",
+            "created_at": "2026-10-29T10:00:09Z"
+          },
+          {
+            "turn_id": "turn_51",
+            "role": "user",
+            "content": "question 25",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_53",
+            "role": "user",
+            "content": "question 26",
+            "created_at": "2026-10-29T10:00:03Z"
+          },
+          {
+            "turn_id": "turn_55",
+            "role": "user",
+            "content": "question 27",
+            "created_at": "2026-10-29T10:00:05Z"
+          },
+          {
+            "turn_id": "turn_57",
+            "role": "user",
+            "content": "question 28",
+            "created_at": "2026-10-29T10:00:07Z"
+          },
+          {
+            "turn_id": "turn_59",
+            "role": "user",
+            "content": "question 29",
+            "created_at": "2026-10-29T10:00:09Z"
+          },
+          {
+            "turn_id": "turn_100",
+            "role": "assistant",
+            "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "created_at": "2026-10-29T10:00:00Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "parent_result_id": "result_12345678",
+        "requested_scope": {
+          "subject_hints": [
+            {
+              "kind": "project",
+              "id": "project_ask_dev",
+              "label": "Ask Dev",
+              "source": "ask_dev_parent_result_subject"
+            }
+          ]
+        },
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  },
+  {
+    "name": "a non-answered last turn carries no parent",
+    "turns": [
+      {
+        "role": "user",
+        "id": 1,
+        "question": "q",
+        "createdAt": "2026-10-29T10:00:01Z"
+      },
+      {
+        "role": "assistant",
+        "id": 2,
+        "createdAt": "2026-10-29T10:00:02Z",
+        "outcome": {
+          "kind": "answered",
+          "result": {
+            "deterministic_answer": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "result_id": "result_12345678",
+            "subject_resolution": {
+              "committed": [
+                {
+                  "kind": "project",
+                  "canonical_id": "project_ask_dev",
+                  "label": "Ask Dev"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "role": "user",
+        "id": 3,
+        "question": "q2",
+        "createdAt": "2026-10-29T10:00:03Z"
+      },
+      {
+        "role": "assistant",
+        "id": 4,
+        "createdAt": "2026-10-29T10:00:04Z",
+        "outcome": {
+          "kind": "failed"
+        }
+      }
+    ],
+    "question": "retry",
+    "subjectReceipts": [],
+    "structure": {},
+    "expectedKinds": [],
+    "askDev": {
+      "conversation": [
+        {
+          "turn_id": "turn_1",
+          "role": "user",
+          "content": "q",
+          "created_at": "2026-10-29T10:00:01Z"
+        },
+        {
+          "turn_id": "turn_2",
+          "role": "assistant",
+          "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+          "created_at": "2026-10-29T10:00:02Z"
+        },
+        {
+          "turn_id": "turn_3",
+          "role": "user",
+          "content": "q2",
+          "created_at": "2026-10-29T10:00:03Z"
+        }
+      ],
+      "parent": {
+        "subjectHints": [],
+        "unsentSubjects": []
+      },
+      "request": {
+        "schema_version": "context_fabric_investigation_request.v1",
+        "request_id": "request_0000000e0000400080000000",
+        "question": "retry",
+        "conversation": [
+          {
+            "turn_id": "turn_1",
+            "role": "user",
+            "content": "q",
+            "created_at": "2026-10-29T10:00:01Z"
+          },
+          {
+            "turn_id": "turn_2",
+            "role": "assistant",
+            "content": "Ask Dev is not release-ready. The principal current driver is incomplete release acceptance, despite most tracked implementation work being closed.",
+            "created_at": "2026-10-29T10:00:02Z"
+          },
+          {
+            "turn_id": "turn_3",
+            "role": "user",
+            "content": "q2",
+            "created_at": "2026-10-29T10:00:03Z"
+          }
+        ],
+        "prior_subject_receipts": [],
+        "time_context": {
+          "axis": "current"
+        },
+        "options": {
+          "max_subject_candidates": 10,
+          "max_cohort_members": 50,
+          "max_relationship_paths": 50,
+          "max_drivers": 10,
+          "max_evidence_refs": 100,
+          "max_serialized_bytes": 262144,
+          "allow_clarification": true,
+          "include_debug": false
+        },
+        "consumer": {
+          "name": "context-fabric-workbench",
+          "version": "0.1.0",
+          "surface": "workbench"
+        }
+      }
+    }
+  }
+]
