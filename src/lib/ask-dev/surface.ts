@@ -10,6 +10,7 @@
  */
 const EXCLUDED_ROUTE_PREFIXES = [
     "/auth",
+    "/marketing",
     "/pricing",
     "/privacy",
     "/terms",

@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { isAskDevEnabled, isAskDevExcludedPath } from "./surface";
+import { isAskDevEnabled, isAskDevExcludedPath } from "../surface";
 
 describe("isAskDevExcludedPath", () => {
     it.each([
         "/",
         "/auth/signin",
         "/auth/onboard",
+        "/marketing",
+        "/marketing/about",
         "/pricing",
         "/privacy",
         "/terms",
