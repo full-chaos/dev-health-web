@@ -9,11 +9,11 @@
         "request_id": "req_6af93ec8430fe528743bc2c365a12878",
         "generated_at": "2026-10-30T18:31:55.549256042Z",
         "status": "no_match",
-        "question": "What work remains to finish the Go Worker Runtime Migration project?",
+        "question": "What work remains to finish the Synthetic Project Beta project?",
         "interpretation": {
             "shape": "explicit_cohort",
-            "requested_judgment": "Identify the work items remaining to finish the Go Worker Runtime Migration project.",
-            "subject_terms": ["Go Worker Runtime Migration"],
+            "requested_judgment": "Identify the work items remaining to finish the Synthetic Project Beta project.",
+            "subject_terms": ["Synthetic Project Beta"],
             "time_context": {
                 "axis": "current"
             },

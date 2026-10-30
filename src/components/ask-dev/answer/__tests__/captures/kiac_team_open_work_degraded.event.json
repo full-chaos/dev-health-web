@@ -9,11 +9,11 @@
         "request_id": "req_fa94eababe200aebd7486a9ed51896bf",
         "generated_at": "2026-10-30T18:30:41.795037135Z",
         "status": "degraded",
-        "question": "Which of the projects the Fullchaos team owns carry the most open work right now?",
+        "question": "Which of the projects the Teamalpha team owns carry the most open work right now?",
         "interpretation": {
             "shape": "explicit_cohort",
-            "requested_judgment": "Which Fullchaos-owned projects have the most open work right now?",
-            "subject_terms": ["Fullchaos"],
+            "requested_judgment": "Which Teamalpha-owned projects have the most open work right now?",
+            "subject_terms": ["Teamalpha"],
             "time_context": {
                 "axis": "current"
             },
@@ -30,17 +30,17 @@
         "subject_resolution": {
             "candidates": [
                 {
-                    "receipt_id": "e58efa44-1bbd-5944-b138-c1932bb7131c",
+                    "receipt_id": "00000000-0000-4000-8000-00000000009c",
                     "subject": {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     },
                     "state": "committed",
-                    "matched_terms": ["Fullchaos"],
+                    "matched_terms": ["Teamalpha"],
                     "match_reasons": ["Exact canonical subject label match."],
                     "confidence": 1,
-                    "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                    "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
                     "provider": "linear",
                     "match_mechanisms": ["exact", "lexical"]
                 }
@@ -48,16 +48,16 @@
             "committed": [
                 {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 }
             ],
             "commit_decision_digests": [
                 {
                     "subject": {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     },
                     "commit_gate": "exact_index",
                     "search_truncated": true,
@@ -139,28 +139,28 @@
                 }
             ]
         },
-        "direct_judgment": "This investigation is degraded: coverage was limited. Principal driver: Fullchaos has a team-wide open-work count, not a project ranking.",
-        "current_state": "Current observed values: basis: capacity forecast (Fullchaos); aggregate scope: all_owned_repositories (Fullchaos); backlog size: 114 (Fullchaos); computed at: 2026-10-26 04:00:19.540 (Fullchaos).",
+        "direct_judgment": "This investigation is degraded: coverage was limited. Principal driver: Teamalpha has a team-wide open-work count, not a project ranking.",
+        "current_state": "Current observed values: basis: capacity forecast (Teamalpha); aggregate scope: all_owned_repositories (Teamalpha); backlog size: 114 (Teamalpha); computed at: 2026-10-26 04:00:19.540 (Teamalpha).",
         "strongest_pressures": [],
         "drivers": [
             {
-                "driver_id": "driver_fullchaos_team_backlog",
+                "driver_id": "driver_teamalpha_team_backlog",
                 "standing": "principal",
                 "category": "workload",
-                "title": "Fullchaos has a team-wide open-work count, not a project ranking",
-                "summary": "The available workload measure reports a backlog size of 114 for Fullchaos across all owned repositories. It does not identify how that open work is distributed among projects, so it cannot establish which projects carry the most open work.",
+                "title": "Teamalpha has a team-wide open-work count, not a project ranking",
+                "summary": "The available workload measure reports a backlog size of 114 for Teamalpha across all owned repositories. It does not identify how that open work is distributed among projects, so it cannot establish which projects carry the most open work.",
                 "affected_subjects": [
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
-                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
                 "claimed_fact_ids": [
-                    "claim_fullchaos_backlog_size",
-                    "claim_fullchaos_backlog_scope",
-                    "claim_fullchaos_backlog_time"
+                    "claim_teamalpha_backlog_size",
+                    "claim_teamalpha_backlog_scope",
+                    "claim_teamalpha_backlog_time"
                 ],
                 "derivation": "canonical_structured",
                 "epistemic_status": "observed",
@@ -172,17 +172,17 @@
         "readiness_gaps": [],
         "paths": [
             {
-                "path_id": "07a6dd02-4127-5200-a55d-3e91df8e86cc",
+                "path_id": "00000000-0000-4000-8000-00000000009d",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3745",
-                        "label": "fix(compose): CHAOS-8363 router owns the forwarded headers and names the four exact paths"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745",
+                        "label": "Synthetic work item title 002"
                     },
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
                 "edges": [
@@ -190,40 +190,40 @@
                         "type": "OWNED_BY_TEAM",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3745",
-                            "label": "fix(compose): CHAOS-8363 router owns the forwarded headers and names the four exact paths"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745",
+                            "label": "Synthetic work item title 002"
                         },
                         "to": {
                             "kind": "team",
-                            "canonical_id": "team:linear:CHAOS",
-                            "label": "Fullchaos"
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership"
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-ops#3745 owned by team linear:CHAOS",
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#3745 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "49ec9cbf-978a-590d-b060-d1ab5b9fd2d4",
+                "path_id": "00000000-0000-4000-8000-00000000009e",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1923",
-                        "label": "Split sync-config auto-import into independent teams/projects/members flags"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                        "label": "Synthetic work item title 003"
                     },
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
                 "edges": [
@@ -231,40 +231,40 @@
                         "type": "OWNED_BY_TEAM",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1923",
-                            "label": "Split sync-config auto-import into independent teams/projects/members flags"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                            "label": "Synthetic work item title 003"
                         },
                         "to": {
                             "kind": "team",
-                            "canonical_id": "team:linear:CHAOS",
-                            "label": "Fullchaos"
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership"
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-ops#1923 owned by team linear:CHAOS",
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#1923 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "a4e60973-8ac5-5c7f-818c-e353961777af",
+                "path_id": "00000000-0000-4000-8000-00000000009f",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1548",
-                        "label": "CHAOS-3123: ratify the Projects v2 collector (D18), retire the policy_pending seam"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548",
+                        "label": "Synthetic work item title 004"
                     },
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
                 "edges": [
@@ -272,40 +272,40 @@
                         "type": "OWNED_BY_TEAM",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1548",
-                            "label": "CHAOS-3123: ratify the Projects v2 collector (D18), retire the policy_pending seam"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548",
+                            "label": "Synthetic work item title 004"
                         },
                         "to": {
                             "kind": "team",
-                            "canonical_id": "team:linear:CHAOS",
-                            "label": "Fullchaos"
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership"
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-ops#1548 owned by team linear:CHAOS",
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#1548 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "05724c59-d833-5847-a8a7-2eebc86e5da3",
+                "path_id": "00000000-0000-4000-8000-0000000000a0",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#1272",
-                        "label": "fix(test): CHAOS-8457 verify the owned group is gone after the guardian's own death"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272",
+                        "label": "Synthetic work item title 005"
                     },
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
                 "edges": [
@@ -313,40 +313,40 @@
                         "type": "OWNED_BY_TEAM",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#1272",
-                            "label": "fix(test): CHAOS-8457 verify the owned group is gone after the guardian's own death"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272",
+                            "label": "Synthetic work item title 005"
                         },
                         "to": {
                             "kind": "team",
-                            "canonical_id": "team:linear:CHAOS",
-                            "label": "Fullchaos"
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership"
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-web#1272 owned by team linear:CHAOS",
+                "why_relevant": "ghpr:full-chaos/dev-health-web#1272 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "71119079-88f8-5e5a-a8d7-deca36d05f6e",
+                "path_id": "00000000-0000-4000-8000-0000000000a1",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3128",
-                        "label": "feat(cli): CHAOS-6728 list github repositories and gitlab projects the way the Python batch path does"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128",
+                        "label": "Synthetic work item title 006"
                     },
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
                 "edges": [
@@ -354,40 +354,40 @@
                         "type": "OWNED_BY_TEAM",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3128",
-                            "label": "feat(cli): CHAOS-6728 list github repositories and gitlab projects the way the Python batch path does"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128",
+                            "label": "Synthetic work item title 006"
                         },
                         "to": {
                             "kind": "team",
-                            "canonical_id": "team:linear:CHAOS",
-                            "label": "Fullchaos"
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership"
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-ops#3128 owned by team linear:CHAOS",
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#3128 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "3665bcbb-c4c0-53ae-828d-5f0f6d7b7bee",
+                "path_id": "00000000-0000-4000-8000-0000000000a2",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#903",
-                        "label": "Split sync-config auto-import into independent teams/projects/members checkboxes"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903",
+                        "label": "Synthetic work item title 007"
                     },
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
                 "edges": [
@@ -395,40 +395,40 @@
                         "type": "OWNED_BY_TEAM",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#903",
-                            "label": "Split sync-config auto-import into independent teams/projects/members checkboxes"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903",
+                            "label": "Synthetic work item title 007"
                         },
                         "to": {
                             "kind": "team",
-                            "canonical_id": "team:linear:CHAOS",
-                            "label": "Fullchaos"
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership"
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-web#903 owned by team linear:CHAOS",
+                "why_relevant": "ghpr:full-chaos/dev-health-web#903 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "830fa309-ba0b-5f28-81e7-b0dc6135caf6",
+                "path_id": "00000000-0000-4000-8000-0000000000a3",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr%3Afull-chaos/dev-health-acr#411",
-                        "label": "Carry the scope anchor's kind into subject retrieval and reserve its slot"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                        "label": "Synthetic work item title 008"
                     },
                     {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     }
                 ],
                 "edges": [
@@ -436,39 +436,39 @@
                         "type": "OWNED_BY_TEAM",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr%3Afull-chaos/dev-health-acr#411",
-                            "label": "Carry the scope anchor's kind into subject retrieval and reserve its slot"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                            "label": "Synthetic work item title 008"
                         },
                         "to": {
                             "kind": "team",
-                            "canonical_id": "team:linear:CHAOS",
-                            "label": "Fullchaos"
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership"
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-acr#411 owned by team linear:CHAOS",
+                "why_relevant": "ghpr:full-chaos/dev-health-acr#411 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "27292d19-0197-514c-a94b-cf857ef000fd",
+                "path_id": "00000000-0000-4000-8000-0000000000a4",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1548",
-                        "label": "CHAOS-3123: ratify the Projects v2 collector (D18), retire the policy_pending seam"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:1548",
+                        "label": "Synthetic work item title 004"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -477,12 +477,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1548",
-                            "label": "CHAOS-3123: ratify the Projects v2 collector (D18), retire the policy_pending seam"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:1548",
+                            "label": "Synthetic work item title 004"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -491,27 +491,27 @@
                         "valid_from": "2026-08-07T00:40:21Z",
                         "valid_to": "2026-08-07T03:50:15Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1548"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1548"
                         ]
                     }
                 ],
-                "why_relevant": "CHAOS-3123: ratify the Projects v2 collector (D18), retire the policy_pending seam belongs to repository full-chaos/dev-health-ops",
+                "why_relevant": "Synthetic work item title 004 belongs to repository full-chaos/dev-health-ops",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1548"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1548"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "be6f43ac-cd77-562d-9fa5-2154d6d4abb0",
+                "path_id": "00000000-0000-4000-8000-0000000000a5",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr%3Afull-chaos/dev-health-acr#411",
-                        "label": "Carry the scope anchor's kind into subject retrieval and reserve its slot"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                        "label": "Synthetic work item title 008"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -520,12 +520,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr%3Afull-chaos/dev-health-acr#411",
-                            "label": "Carry the scope anchor's kind into subject retrieval and reserve its slot"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                            "label": "Synthetic work item title 008"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -534,27 +534,27 @@
                         "valid_from": "2026-09-03T20:45:04Z",
                         "valid_to": "2026-09-03T23:18:21Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr:full-chaos/dev-health-acr#411"
+                            "acr:v1:work-item:00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411"
                         ]
                     }
                 ],
-                "why_relevant": "Carry the scope anchor's kind into subject retrieval and reserve its slot belongs to repository full-chaos/dev-health-acr",
+                "why_relevant": "Synthetic work item title 008 belongs to repository full-chaos/dev-health-acr",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr:full-chaos/dev-health-acr#411"
+                    "acr:v1:work-item:00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "dbffd7bf-fd5e-516d-9b99-e711bafc7f42",
+                "path_id": "00000000-0000-4000-8000-0000000000a6",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1923",
-                        "label": "Split sync-config auto-import into independent teams/projects/members flags"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                        "label": "Synthetic work item title 003"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -563,12 +563,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1923",
-                            "label": "Split sync-config auto-import into independent teams/projects/members flags"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                            "label": "Synthetic work item title 003"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -577,27 +577,27 @@
                         "valid_from": "2026-08-26T15:18:11Z",
                         "valid_to": "2026-08-26T18:04:42Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1923"
+                            "acr:v1:work-item:00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923"
                         ]
                     }
                 ],
-                "why_relevant": "Split sync-config auto-import into independent teams/projects/members flags belongs to repository full-chaos/dev-health-ops",
+                "why_relevant": "Synthetic work item title 003 belongs to repository full-chaos/dev-health-ops",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1923"
+                    "acr:v1:work-item:00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "afbd7ec6-5fa0-52de-b182-7123fc068d9a",
+                "path_id": "00000000-0000-4000-8000-0000000000a7",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:794",
-                        "label": "test(testsupport): CHAOS-8029 find the repo root from the working directory"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:794",
+                        "label": "Synthetic pull request title 059"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -606,12 +606,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:794",
-                            "label": "test(testsupport): CHAOS-8029 find the repo root from the working directory"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:794",
+                            "label": "Synthetic pull request title 059"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -620,27 +620,27 @@
                         "valid_from": "2026-10-02T17:21:01Z",
                         "valid_to": "2026-10-02T18:20:17Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:794"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:794"
                         ]
                     }
                 ],
-                "why_relevant": "test(testsupport): CHAOS-8029 find the repo root from the working directory belongs to repository full-chaos/dev-health-acr",
+                "why_relevant": "Synthetic pull request title 059 belongs to repository full-chaos/dev-health-acr",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:794"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:794"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "7c1a503b-3a19-5614-b624-f490d05f8620",
+                "path_id": "00000000-0000-4000-8000-0000000000a8",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:d29d160a-95fe-5b45-d4c1-fd1f5427b772:1272",
-                        "label": "fix(test): CHAOS-8457 verify the owned group is gone after the guardian's own death"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-00000000002c:1272",
+                        "label": "Synthetic work item title 005"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:d29d160a-95fe-5b45-d4c1-fd1f5427b772",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
                         "label": "full-chaos/dev-health-web"
                     }
                 ],
@@ -649,12 +649,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:d29d160a-95fe-5b45-d4c1-fd1f5427b772:1272",
-                            "label": "fix(test): CHAOS-8457 verify the owned group is gone after the guardian's own death"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-00000000002c:1272",
+                            "label": "Synthetic work item title 005"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:d29d160a-95fe-5b45-d4c1-fd1f5427b772",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
                             "label": "full-chaos/dev-health-web"
                         },
                         "derivation": "graph_associated",
@@ -663,27 +663,27 @@
                         "valid_from": "2026-10-03T19:40:36Z",
                         "valid_to": "2026-10-03T21:10:41Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:d29d160a-95fe-5b45-d4c1-fd1f5427b772:1272"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-00000000002c:1272"
                         ]
                     }
                 ],
-                "why_relevant": "fix(test): CHAOS-8457 verify the owned group is gone after the guardian's own death belongs to repository full-chaos/dev-health-web",
+                "why_relevant": "Synthetic work item title 005 belongs to repository full-chaos/dev-health-web",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:d29d160a-95fe-5b45-d4c1-fd1f5427b772:1272"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-00000000002c:1272"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "80ed7911-599d-5c56-a5f0-969d4bef8bb7",
+                "path_id": "00000000-0000-4000-8000-0000000000a9",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38377930897",
-                        "label": "CI fullstack-acceptance #38377930897"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38377930897",
+                        "label": "Synthetic CI run title 095"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -692,12 +692,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38377930897",
-                            "label": "CI fullstack-acceptance #38377930897"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38377930897",
+                            "label": "Synthetic CI run title 095"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -706,25 +706,25 @@
                         "valid_from": "2026-10-13T09:39:53Z",
                         "valid_to": "2026-10-13T09:53:36Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38377930897"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38377930897"
                         ]
                     }
                 ],
-                "why_relevant": "CI fullstack-acceptance #38377930897 belongs to repository full-chaos/dev-health-acr",
-                "evidence_ref_ids": ["acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38377930897"],
+                "why_relevant": "Synthetic CI run title 095 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000001:38377930897"],
                 "truncated": false
             },
             {
-                "path_id": "de94be08-5e49-5b48-8f06-f4ccc4367932",
+                "path_id": "00000000-0000-4000-8000-0000000000aa",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38380376061",
-                        "label": "CI fullstack-acceptance #38380376061"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38380376061",
+                        "label": "Synthetic CI run title 096"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -733,12 +733,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38380376061",
-                            "label": "CI fullstack-acceptance #38380376061"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38380376061",
+                            "label": "Synthetic CI run title 096"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -747,25 +747,25 @@
                         "valid_from": "2026-10-13T10:00:30Z",
                         "valid_to": "2026-10-13T10:14:53Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38380376061"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38380376061"
                         ]
                     }
                 ],
-                "why_relevant": "CI fullstack-acceptance #38380376061 belongs to repository full-chaos/dev-health-acr",
-                "evidence_ref_ids": ["acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38380376061"],
+                "why_relevant": "Synthetic CI run title 096 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000001:38380376061"],
                 "truncated": false
             },
             {
-                "path_id": "e42b4ad0-a2b6-5787-b062-87151d03c78d",
+                "path_id": "00000000-0000-4000-8000-0000000000ab",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38407303245",
-                        "label": "CI fullstack-acceptance #38407303245"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38407303245",
+                        "label": "Synthetic CI run title 097"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -774,12 +774,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38407303245",
-                            "label": "CI fullstack-acceptance #38407303245"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38407303245",
+                            "label": "Synthetic CI run title 097"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -788,25 +788,25 @@
                         "valid_from": "2026-10-13T13:43:31Z",
                         "valid_to": "2026-10-13T13:58:04Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38407303245"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38407303245"
                         ]
                     }
                 ],
-                "why_relevant": "CI fullstack-acceptance #38407303245 belongs to repository full-chaos/dev-health-acr",
-                "evidence_ref_ids": ["acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38407303245"],
+                "why_relevant": "Synthetic CI run title 097 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000001:38407303245"],
                 "truncated": false
             },
             {
-                "path_id": "43bc6401-8f0d-53b3-b4d5-285a377f4252",
+                "path_id": "00000000-0000-4000-8000-0000000000ac",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1219",
-                        "label": "fix(directread): CHAOS-9471 read a team that owns no repository as not_applicable"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1219",
+                        "label": "Synthetic pull request title 060"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -815,12 +815,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1219",
-                            "label": "fix(directread): CHAOS-9471 read a team that owns no repository as not_applicable"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1219",
+                            "label": "Synthetic pull request title 060"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -829,27 +829,27 @@
                         "valid_from": "2026-10-13T09:39:49Z",
                         "valid_to": "2026-10-13T14:20:34Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1219"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1219"
                         ]
                     }
                 ],
-                "why_relevant": "fix(directread): CHAOS-9471 read a team that owns no repository as not_applicable belongs to repository full-chaos/dev-health-acr",
+                "why_relevant": "Synthetic pull request title 060 belongs to repository full-chaos/dev-health-acr",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1219"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1219"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "b93f5d85-c125-5cb4-81a8-1ad70692a71d",
+                "path_id": "00000000-0000-4000-8000-0000000000ad",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3745",
-                        "label": "fix(compose): CHAOS-8363 router owns the forwarded headers and names the four exact paths"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3745",
+                        "label": "Synthetic work item title 002"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -858,12 +858,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3745",
-                            "label": "fix(compose): CHAOS-8363 router owns the forwarded headers and names the four exact paths"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3745",
+                            "label": "Synthetic work item title 002"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -872,27 +872,27 @@
                         "valid_from": "2026-10-03T19:09:51Z",
                         "valid_to": "2026-10-03T19:36:31Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3745"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3745"
                         ]
                     }
                 ],
-                "why_relevant": "fix(compose): CHAOS-8363 router owns the forwarded headers and names the four exact paths belongs to repository full-chaos/dev-health-ops",
+                "why_relevant": "Synthetic work item title 002 belongs to repository full-chaos/dev-health-ops",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3745"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3745"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "7dd01098-4289-5bad-85b4-f9d9fbf54781",
+                "path_id": "00000000-0000-4000-8000-0000000000ae",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3921",
-                        "label": "test(venue): CHAOS-9011 retire the Python golden of the teams and identities admin groups"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3921",
+                        "label": "Synthetic pull request title 061"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -901,12 +901,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3921",
-                            "label": "test(venue): CHAOS-9011 retire the Python golden of the teams and identities admin groups"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3921",
+                            "label": "Synthetic pull request title 061"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -915,27 +915,27 @@
                         "valid_from": "2026-10-09T09:26:07Z",
                         "valid_to": "2026-10-09T12:01:24Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3921"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3921"
                         ]
                     }
                 ],
-                "why_relevant": "test(venue): CHAOS-9011 retire the Python golden of the teams and identities admin groups belongs to repository full-chaos/dev-health-ops",
+                "why_relevant": "Synthetic pull request title 061 belongs to repository full-chaos/dev-health-ops",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3921"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3921"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "da427d40-e22b-544e-bcd3-515d9c30e7f5",
+                "path_id": "00000000-0000-4000-8000-0000000000af",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3128",
-                        "label": "feat(cli): CHAOS-6728 list github repositories and gitlab projects the way the Python batch path does"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3128",
+                        "label": "Synthetic work item title 006"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -944,12 +944,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3128",
-                            "label": "feat(cli): CHAOS-6728 list github repositories and gitlab projects the way the Python batch path does"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3128",
+                            "label": "Synthetic work item title 006"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -958,27 +958,27 @@
                         "valid_from": "2026-09-25T11:26:21Z",
                         "valid_to": "2026-09-25T12:56:44Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3128"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3128"
                         ]
                     }
                 ],
-                "why_relevant": "feat(cli): CHAOS-6728 list github repositories and gitlab projects the way the Python batch path does belongs to repository full-chaos/dev-health-ops",
+                "why_relevant": "Synthetic work item title 006 belongs to repository full-chaos/dev-health-ops",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3128"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3128"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "175bff68-2583-5275-9239-c2bb6db4107f",
+                "path_id": "00000000-0000-4000-8000-0000000000b0",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:5242",
-                        "label": "auth: invite accept projects the org; create and revoke lock the actor"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:5242",
+                        "label": "Synthetic pull request title 062"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -987,12 +987,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:5242",
-                            "label": "auth: invite accept projects the org; create and revoke lock the actor"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:5242",
+                            "label": "Synthetic pull request title 062"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -1001,28 +1001,28 @@
                         "valid_from": "2026-10-29T17:31:56Z",
                         "valid_to": "2026-10-29T19:32:29Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:5242"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:5242"
                         ]
                     }
                 ],
-                "why_relevant": "auth: invite accept projects the org; create and revoke lock the actor belongs to repository full-chaos/dev-health-ops",
+                "why_relevant": "Synthetic pull request title 062 belongs to repository full-chaos/dev-health-ops",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:5242"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:5242"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "0fde17ef-32b4-5f13-afb6-0f096643a961",
+                "path_id": "00000000-0000-4000-8000-0000000000b1",
                 "nodes": [
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5242",
-                        "label": "auth: invite accept projects the org; create and revoke lock the actor"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#5242",
+                        "label": "Synthetic pull request title 062"
                     },
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:00000000-0000-0000-0000-000000000000:extkey%3ACHAOS-11865",
-                        "label": "extkey:CHAOS-11865"
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ACHAOS-11865",
+                        "label": "Synthetic work item title 009"
                     }
                 ],
                 "edges": [
@@ -1030,13 +1030,13 @@
                         "type": "RELATES_TO",
                         "from": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5242",
-                            "label": "auth: invite accept projects the org; create and revoke lock the actor"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#5242",
+                            "label": "Synthetic pull request title 062"
                         },
                         "to": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:00000000-0000-0000-0000-000000000000:extkey%3ACHAOS-11865",
-                            "label": "extkey:CHAOS-11865"
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ACHAOS-11865",
+                            "label": "Synthetic work item title 009"
                         },
                         "derivation": "graph_associated",
                         "epistemic_status": "observed",
@@ -1048,23 +1048,23 @@
                         ]
                     }
                 ],
-                "why_relevant": "ghpr:full-chaos/dev-health-ops#5242 relates to extkey:CHAOS-11865",
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#5242 relates to Synthetic work item title 009",
                 "evidence_ref_ids": [
                     "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ACHAOS-11865:relates_to%3Afwd"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "5cf754a8-4156-5956-b0eb-67dab4ae3f37",
+                "path_id": "00000000-0000-4000-8000-0000000000b3",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3280",
-                        "label": "feat(cli): CHAOS-6895 dho sync teams --provider github triggers the team catalog, with a live oracle against the real dev-hops verb"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3280",
+                        "label": "Synthetic pull request title 063"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -1073,12 +1073,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3280",
-                            "label": "feat(cli): CHAOS-6895 dho sync teams --provider github triggers the team catalog, with a live oracle against the real dev-hops verb"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3280",
+                            "label": "Synthetic pull request title 063"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -1087,27 +1087,27 @@
                         "valid_from": "2026-09-26T11:24:41Z",
                         "valid_to": "2026-09-26T15:51:25Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3280"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3280"
                         ]
                     }
                 ],
-                "why_relevant": "feat(cli): CHAOS-6895 dho sync teams --provider github triggers the team catalog, with a live oracle against the real dev-hops verb belongs to repository full-chaos/dev-health-ops",
+                "why_relevant": "Synthetic pull request title 063 belongs to repository full-chaos/dev-health-ops",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3280"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3280"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "f20c3044-6548-54d6-9b93-049617629924",
+                "path_id": "00000000-0000-4000-8000-0000000000b4",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1009",
-                        "label": "fix(mcp): CHAOS-9020 carry the read_facts window refusal advice to the client"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1009",
+                        "label": "Synthetic pull request title 064"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -1116,12 +1116,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1009",
-                            "label": "fix(mcp): CHAOS-9020 carry the read_facts window refusal advice to the client"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1009",
+                            "label": "Synthetic pull request title 064"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -1130,27 +1130,27 @@
                         "valid_from": "2026-10-09T13:16:20Z",
                         "valid_to": "2026-10-09T14:00:29Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1009"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1009"
                         ]
                     }
                 ],
-                "why_relevant": "fix(mcp): CHAOS-9020 carry the read_facts window refusal advice to the client belongs to repository full-chaos/dev-health-acr",
+                "why_relevant": "Synthetic pull request title 064 belongs to repository full-chaos/dev-health-acr",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1009"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1009"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "7ecd9a9f-47ab-5aa4-90f3-8db5592ed63d",
+                "path_id": "00000000-0000-4000-8000-0000000000b5",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1678",
-                        "label": "test(devhealthsource): CHAOS-10781 cover the legacy statements and assert tie and arm coverage in the carry parity oracle"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1678",
+                        "label": "Synthetic pull request title 065"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -1159,12 +1159,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1678",
-                            "label": "test(devhealthsource): CHAOS-10781 cover the legacy statements and assert tie and arm coverage in the carry parity oracle"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1678",
+                            "label": "Synthetic pull request title 065"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -1173,27 +1173,27 @@
                         "valid_from": "2026-10-24T06:45:09Z",
                         "valid_to": "2026-10-24T11:58:36Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1678"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1678"
                         ]
                     }
                 ],
-                "why_relevant": "test(devhealthsource): CHAOS-10781 cover the legacy statements and assert tie and arm coverage in the carry parity oracle belongs to repository full-chaos/dev-health-acr",
+                "why_relevant": "Synthetic pull request title 065 belongs to repository full-chaos/dev-health-acr",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1678"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1678"
                 ],
                 "truncated": false
             },
             {
-                "path_id": "9cdd1eef-9538-50f3-ac4b-8c099f145f3b",
+                "path_id": "00000000-0000-4000-8000-0000000000b6",
                 "nodes": [
                     {
                         "kind": "pull_request",
-                        "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:494",
-                        "label": "feat(genkitruntime): CHAOS-5380 Carry the attempt sequence and its identity beside the decision"
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:494",
+                        "label": "Synthetic pull request title 066"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     }
                 ],
@@ -1202,12 +1202,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "pull_request",
-                            "canonical_id": "pull_request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:494",
-                            "label": "feat(genkitruntime): CHAOS-5380 Carry the attempt sequence and its identity beside the decision"
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:494",
+                            "label": "Synthetic pull request title 066"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                             "label": "full-chaos/dev-health-acr"
                         },
                         "derivation": "graph_associated",
@@ -1216,13 +1216,13 @@
                         "valid_from": "2026-09-10T15:04:49Z",
                         "valid_to": "2026-09-10T19:50:50Z",
                         "evidence_ref_ids": [
-                            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:494"
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:494"
                         ]
                     }
                 ],
-                "why_relevant": "feat(genkitruntime): CHAOS-5380 Carry the attempt sequence and its identity beside the decision belongs to repository full-chaos/dev-health-acr",
+                "why_relevant": "Synthetic pull request title 066 belongs to repository full-chaos/dev-health-acr",
                 "evidence_ref_ids": [
-                    "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:494"
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:494"
                 ],
                 "truncated": false
             }
@@ -1235,15 +1235,15 @@
             "No canonical status fact was supplied for the owned projects, so project-level open-status filtering cannot be verified.",
             "Some requested evidence could not be reached from the subject of this question, so this answer's silence on it is a limit of what was retrievable rather than a finding that none exists."
         ],
-        "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+        "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
         "claimed_facts": [
             {
-                "claim_id": "claim_fullchaos_backlog_size",
+                "claim_id": "claim_teamalpha_backlog_size",
                 "kind": "workload",
                 "subject": {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 },
                 "field": "backlog_size",
                 "value": {
@@ -1308,12 +1308,12 @@
                 }
             },
             {
-                "claim_id": "claim_fullchaos_backlog_scope",
+                "claim_id": "claim_teamalpha_backlog_scope",
                 "kind": "workload",
                 "subject": {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 },
                 "field": "aggregate_scope",
                 "value": {
@@ -1378,12 +1378,12 @@
                 }
             },
             {
-                "claim_id": "claim_fullchaos_backlog_time",
+                "claim_id": "claim_teamalpha_backlog_time",
                 "kind": "workload",
                 "subject": {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 },
                 "field": "computed_at",
                 "value": {
@@ -1448,12 +1448,12 @@
                 }
             },
             {
-                "claim_id": "claim_fullchaos_backlog_basis",
+                "claim_id": "claim_teamalpha_backlog_basis",
                 "kind": "workload",
                 "subject": {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 },
                 "field": "basis",
                 "value": {
@@ -1672,32 +1672,32 @@
             }
         ],
         "evidence_ref_labels": {
-            "acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38377930897": "CI run: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:38377930897",
-            "acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38380376061": "CI run: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:38380376061",
-            "acr:v1:ci:7b9583ee-4d24-2be7-4d09-34f815bebdd7:38407303245": "CI run: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:38407303245",
-            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1009": "Pull request: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:1009",
-            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1219": "Pull request: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:1219",
-            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:1678": "Pull request: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:1678",
-            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:494": "Pull request: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:494",
-            "acr:v1:pull-request:7b9583ee-4d24-2be7-4d09-34f815bebdd7:794": "Pull request: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:794",
-            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1548": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:1548",
-            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3128": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3128",
-            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3280": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3280",
-            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3745": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3745",
-            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3921": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3921",
-            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:5242": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:5242",
-            "acr:v1:pull-request:d29d160a-95fe-5b45-d4c1-fd1f5427b772:1272": "Pull request: d29d160a-95fe-5b45-d4c1-fd1f5427b772:1272",
-            "acr:v1:team:linear:CHAOS": "Team: linear:CHAOS",
-            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ACHAOS-11865:relates_to%3Afwd": "Work item dependency: ghpr:full-chaos/dev-health-ops#5242:extkey:CHAOS-11865:relates_to:fwd",
-            "acr:v1:work-item-team.v2:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership": "Work item/team link: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr:full-chaos/dev-health-acr#411:linear:CHAOS:repo_ownership",
-            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership": "Work item/team link: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1548:linear:CHAOS:repo_ownership",
-            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership": "Work item/team link: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1923:linear:CHAOS:repo_ownership",
-            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership": "Work item/team link: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#3128:linear:CHAOS:repo_ownership",
-            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership": "Work item/team link: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#3745:linear:CHAOS:repo_ownership",
-            "acr:v1:work-item-team.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership": "Work item/team link: d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr:full-chaos/dev-health-web#1272:linear:CHAOS:repo_ownership",
-            "acr:v1:work-item-team.v2:d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership": "Work item/team link: d29d160a-95fe-5b45-d4c1-fd1f5427b772:ghpr:full-chaos/dev-health-web#903:linear:CHAOS:repo_ownership",
-            "acr:v1:work-item:7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr:full-chaos/dev-health-acr#411": "Work item: 7b9583ee-4d24-2be7-4d09-34f815bebdd7:ghpr:full-chaos/dev-health-acr#411",
-            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1923": "Work item: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1923"
+            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38377930897": "CI run: 00000000-0000-4000-8000-000000000001:38377930897",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38380376061": "CI run: 00000000-0000-4000-8000-000000000001:38380376061",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38407303245": "CI run: 00000000-0000-4000-8000-000000000001:38407303245",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1009": "Pull request: 00000000-0000-4000-8000-000000000001:1009",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1219": "Pull request: 00000000-0000-4000-8000-000000000001:1219",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1678": "Pull request: 00000000-0000-4000-8000-000000000001:1678",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:494": "Pull request: 00000000-0000-4000-8000-000000000001:494",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:794": "Pull request: 00000000-0000-4000-8000-000000000001:794",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1548": "Pull request: 00000000-0000-4000-8000-000000000002:1548",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3128": "Pull request: 00000000-0000-4000-8000-000000000002:3128",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3280": "Pull request: 00000000-0000-4000-8000-000000000002:3280",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3745": "Pull request: 00000000-0000-4000-8000-000000000002:3745",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3921": "Pull request: 00000000-0000-4000-8000-000000000002:3921",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:5242": "Pull request: 00000000-0000-4000-8000-000000000002:5242",
+            "acr:v1:pull-request:00000000-0000-4000-8000-00000000002c:1272": "Pull request: 00000000-0000-4000-8000-00000000002c:1272",
+            "acr:v1:team:linear:TEAMA": "Team: linear:TEAMA",
+            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ACHAOS-11865:relates_to%3Afwd": "Work item dependency: ghpr:full-chaos/dev-health-ops#5242:Synthetic work item title 009:relates_to:fwd",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1548:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3128:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3745:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#1272:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#903:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item:00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411": "Work item: 00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411",
+            "acr:v1:work-item:00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923": "Work item: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923"
         },
         "versions": {
             "service_version": "0.0.0-dev",
@@ -1713,7 +1713,7 @@
             "interpretation_model_identity": "openai/gpt-5.6-luna",
             "synthesis_source": "server"
         },
-        "deterministic_answer": "This investigation is degraded: coverage was limited. Principal driver(s): Fullchaos has a team-wide open-work count, not a project ranking.",
+        "deterministic_answer": "This investigation is degraded: coverage was limited. Principal driver(s): Teamalpha has a team-wide open-work count, not a project ranking.",
         "warnings": [
             "The answer is limited to a team-wide backlog measure and should not be treated as a project ranking."
         ],

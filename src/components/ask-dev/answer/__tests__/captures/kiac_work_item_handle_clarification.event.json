@@ -9,11 +9,11 @@
         "request_id": "req_5754ac530877ae5d6dd9372e099bdc60",
         "generated_at": "2026-10-30T19:42:03.032694626Z",
         "status": "clarification_required",
-        "question": "What is the status of CHAOS-11930 over the last 30 days?",
+        "question": "What is the status of TEAMA-101 over the last 30 days?",
         "interpretation": {
             "shape": "single_subject",
-            "requested_judgment": "Determine the status of CHAOS-11930 over the last 30 days",
-            "subject_terms": ["CHAOS-11930"],
+            "requested_judgment": "Determine the status of TEAMA-101 over the last 30 days",
+            "subject_terms": ["TEAMA-101"],
             "time_context": {
                 "axis": "current"
             },
@@ -115,10 +115,10 @@
                 {
                     "receipt_id": "handr_a742b715db055fe7a0833170",
                     "option_id": "opt_672488893a695169",
-                    "label": "work item CHAOS-11930",
+                    "label": "Synthetic work item title 010",
                     "kind": "work_item",
                     "pattern_id": "work_item_ticket_key",
-                    "value": "CHAOS-11930",
+                    "value": "TEAMA-101",
                     "source_column": "work_items.work_item_id",
                     "offer_source": "engine"
                 }

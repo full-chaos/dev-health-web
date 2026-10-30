@@ -9,11 +9,11 @@
         "request_id": "req_01d12b589c14e3694418d384f0601f91",
         "generated_at": "2026-10-30T18:29:30.154942506Z",
         "status": "clarification_required",
-        "question": "What is the status of the Go Worker Runtime Migration project?",
+        "question": "What is the status of the Synthetic Project Beta project?",
         "interpretation": {
             "shape": "single_subject",
-            "requested_judgment": "The current status of the Go Worker Runtime Migration project",
-            "subject_terms": ["Go Worker Runtime Migration"],
+            "requested_judgment": "The current status of the Synthetic Project Beta project",
+            "subject_terms": ["Synthetic Project Beta"],
             "time_context": {
                 "axis": "current"
             },

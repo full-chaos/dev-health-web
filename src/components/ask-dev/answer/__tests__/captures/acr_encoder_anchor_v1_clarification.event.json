@@ -14,8 +14,14 @@
             "shape": "single_subject",
             "requested_judgment": "status",
             "subject_terms": ["dev-health"],
-            "time_context": { "axis": "current" },
-            "fact_requirements": [{ "kind": "status" }],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "status"
+                }
+            ],
             "clarification_needed": false
         },
         "subject_resolution": {
@@ -59,7 +65,10 @@
         ],
         "evidence_ref_ids": [],
         "claimed_facts": [],
-        "coverage": { "sources": [], "partial": false },
+        "coverage": {
+            "sources": [],
+            "partial": false
+        },
         "versions": {
             "service_version": "tuple-test",
             "contract_version": "context_fabric_investigation_result.v1",
@@ -126,7 +135,7 @@
                     "option_id": "opt_2afdbcd005d11436",
                     "label": "full-chaos/dev-health-acr",
                     "kind": "repository",
-                    "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                    "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                     "matched_term_hash": "03ebcbc7dc574441da3c560f",
                     "offer_source": "engine"
                 },
@@ -135,7 +144,7 @@
                     "option_id": "opt_bdf078f770cb9826",
                     "label": "full-chaos/dev-health-ops",
                     "kind": "repository",
-                    "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                    "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                     "matched_term_hash": "166f12446d72728cc8a21dd3",
                     "offer_source": "engine"
                 }
