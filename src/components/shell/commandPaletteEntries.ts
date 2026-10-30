@@ -8,6 +8,8 @@ export type PaletteEntry = {
     /** The area the destination belongs to (the secondary line). */
     areaLabel: string;
     path: string;
+    /** An entry that runs an action instead of navigating (`path` is then empty). */
+    action?: "open-ask-dev";
 };
 
 /**
@@ -70,3 +72,12 @@ export function filterPaletteEntries(entries: PaletteEntry[], query: string): Pa
         return words.every((word) => haystack.includes(word));
     });
 }
+
+/** The Ask Dev entry: offered only where the launcher and the shortcut are (the same gate). */
+export const ASK_DEV_PALETTE_ENTRY: PaletteEntry = {
+    id: "action-open-ask-dev",
+    label: "Ask Dev",
+    areaLabel: "Open the Ask Dev panel",
+    path: "",
+    action: "open-ask-dev",
+};

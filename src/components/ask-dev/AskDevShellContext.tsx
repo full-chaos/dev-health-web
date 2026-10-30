@@ -30,6 +30,25 @@ const AskDevShellContext = createContext<AskDevShellValue>({
     close: () => undefined,
 });
 
+/** The Ask Dev key: Cmd+J on macOS, Ctrl+J elsewhere (either works anywhere in the shell). */
+export const isAskDevKey = (event: KeyboardEvent) =>
+    (event.metaKey || event.ctrlKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === "j";
+
+/** A field that owns the keystroke: a text input, a select, a textarea or an editable region. */
+function isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return (
+        target.isContentEditable ||
+        target.closest('[contenteditable]:not([contenteditable="false"])') !== null ||
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT"
+    );
+}
+
 /** The launcher of the bar that is shown at this breakpoint (the other bar is `display: none`). */
 function visibleLauncher(): HTMLElement | null {
     const all = document.querySelectorAll<HTMLElement>("[data-ask-dev-launcher]");
@@ -70,6 +89,23 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
         // After the panel unmounts: its own focus is gone, the launcher is the way back.
         queueMicrotask(() => visibleLauncher()?.focus());
     }, [setOpen]);
+
+    // Cmd/Ctrl+J toggles the panel, only where the launcher would be drawn (same gate). Not in a field,
+    // and not while another modal owns the keyboard. The browser default (downloads, address bar) is
+    // suppressed only when the shortcut acts.
+    useEffect(() => {
+        if (!eligible) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.defaultPrevented || !isAskDevKey(event)) return;
+            if (isEditableTarget(event.target)) return;
+            if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+            event.preventDefault();
+            if (open) close();
+            else setOpen(true);
+        };
+        document.addEventListener("keydown", onKeyDown);
+        return () => document.removeEventListener("keydown", onKeyDown);
+    }, [eligible, open, close, setOpen]);
 
     const value = useMemo(() => ({ open, setOpen, close }), [open, setOpen, close]);
     return <AskDevShellContext.Provider value={value}>{children}</AskDevShellContext.Provider>;
