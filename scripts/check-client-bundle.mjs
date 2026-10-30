@@ -105,6 +105,16 @@ export const PATTERN_RULES = [
         benign: "createHash",
         value: false,
     },
+    {
+        // CHAOS-11930: the Ask Dev test-mode answer seam (`testModeAnswer.ts`) is for `next dev`
+        // under Playwright only; a production build must have dropped it.
+        id: "K6",
+        what: "Ask Dev test-mode answer seam",
+        pattern: /ask-dev:test-mode-answer/,
+        seed: "ask-dev:test-mode-answer",
+        benign: "ask-dev-transcript",
+        value: false,
+    },
 ];
 
 /** Prerendered files the server sends as is; they reach the browser although they are not in `static`. */

@@ -244,8 +244,8 @@ describe("client bundle check", () => {
 describe("the pattern rules", () => {
     const byId = Object.fromEntries(PATTERN_RULES.map((rule) => [rule.id, rule]));
 
-    it("are these five, and a rule is never added or dropped without this test", () => {
-        expect(PATTERN_RULES.map((rule) => rule.id)).toEqual(["K1", "K2", "K3", "K4", "K5"]);
+    it("are these six, and a rule is never added or dropped without this test", () => {
+        expect(PATTERN_RULES.map((rule) => rule.id)).toEqual(["K1", "K2", "K3", "K4", "K5", "K6"]);
         expect(PATTERN_RULES.filter((rule) => rule.value).map((rule) => rule.id)).toEqual([
             "K1",
             "K4",

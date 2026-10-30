@@ -1,0 +1,52 @@
+{
+    "producer": "kiac cluster askdev-1, acr-api image docker.io/askdev/acr-api@sha256:3f5c12060f07a674b653ac4d2fc9b51fe9644f30b01e3656d1bb4b099daeacd6 (acr main eabe6e6c), org 70d529e0 (real synced data)",
+    "how": "node .acr-dev/ask-stream.mjs \"<question>\" with RAW=1: the POST /api/v1/context-fabric/investigations SSE stream; each file is its result event as received. Not edited.",
+    "sha256_compact": "sha256 of JSON.stringify of the parsed file (formatting-independent).",
+    "captures": [
+        {
+            "file": "kiac_project_status_partial.event.json",
+            "question": "What is the status of the Go Worker Runtime Migration project over the last 30 days?",
+            "status": "partial",
+            "result_id": "result_12b5069196d7adaf4208939a97b449ca",
+            "captured_at": "2026-10-30T18:31:07.277587424Z",
+            "stream_ms": 35598,
+            "sha256_compact": "db6eba432637602144b5864f09d183e3f9defeafa07dc720b2d12f6fab090c04"
+        },
+        {
+            "file": "kiac_project_readiness_partial.event.json",
+            "question": "Is the Go Worker Runtime Migration project ready to finish, judging by the last 30 days?",
+            "status": "partial",
+            "result_id": "result_89720ee49dd34c470fd62c2e0dcbc9d1",
+            "captured_at": "2026-10-30T18:32:22.860161971Z",
+            "stream_ms": 26948,
+            "sha256_compact": "6a0680aead7483672774fb39d9df7be1ba49aaee85e905f8a9993c7fa354fc8f"
+        },
+        {
+            "file": "kiac_team_open_work_degraded.event.json",
+            "question": "Which of the projects the Fullchaos team owns carry the most open work right now?",
+            "status": "degraded",
+            "result_id": "result_ddea615c7e0f2033d2abbffa98c79ca3",
+            "captured_at": "2026-10-30T18:29:34.816486925Z",
+            "stream_ms": 67215,
+            "sha256_compact": "e90134a0900cc9a251e6c1716cd09a2070ba236af7dbb467b447910b1678d92a"
+        },
+        {
+            "file": "kiac_project_status_clarification.event.json",
+            "question": "What is the status of the Go Worker Runtime Migration project?",
+            "status": "clarification_required",
+            "result_id": "result_008a739129ba7735e58ae85bcd5e7a37",
+            "captured_at": "2026-10-30T18:29:26.022248629Z",
+            "stream_ms": 4365,
+            "sha256_compact": "aa112ae545bbe9a93a5c20ca7e5c7490db70679081c38f34701663f837dbdb47"
+        },
+        {
+            "file": "kiac_unresolved_no_match.event.json",
+            "question": "What work remains to finish the Go Worker Runtime Migration project?",
+            "status": "no_match",
+            "result_id": "result_7b5addeb63a2a3df11cd4b7f84ef6ede",
+            "captured_at": "2026-10-30T18:31:43.302492134Z",
+            "stream_ms": 12392,
+            "sha256_compact": "fe4d2916372e42d321f46bb6d56988505154e7b144b8720464c9a0b79d35f795"
+        }
+    ]
+}
