@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
     authHeaders,
+    envFault,
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
@@ -20,7 +21,7 @@ import {
  *
  * Runs in the live-e2e suite (real backend required); skips cleanly otherwise.
  */
-test.describe("organization deletion / offboarding", () => {
+test.describe("organization deletion / offboarding @guided", () => {
     test.describe.configure({ mode: "serial" });
 
     const email = testEmail("offboard");
@@ -59,7 +60,7 @@ test.describe("organization deletion / offboarding", () => {
 
     test("dry-run returns a deletion plan without deleting", async ({ request }) => {
         if (!superToken || !orgId) {
-            test.skip(true, "Backend unavailable or org not provisioned");
+            envFault("Backend unavailable or org not provisioned");
             return;
         }
 
@@ -94,7 +95,7 @@ test.describe("organization deletion / offboarding", () => {
 
     test("real delete removes the organization", async ({ request }) => {
         if (!superToken || !orgId) {
-            test.skip(true, "Backend unavailable or org not provisioned");
+            envFault("Backend unavailable or org not provisioned");
             return;
         }
 
@@ -118,7 +119,7 @@ test.describe("organization deletion / offboarding", () => {
 
     test("offboarded user's org access is invalidated", async ({ request }) => {
         if (!userToken || !orgId) {
-            test.skip(true, "Backend unavailable or org not provisioned");
+            envFault("Backend unavailable or org not provisioned");
             return;
         }
 
