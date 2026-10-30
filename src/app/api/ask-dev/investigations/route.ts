@@ -12,12 +12,15 @@ import {
     streamRequest,
     type PreparedInvestigation,
 } from "@/lib/ask-dev/investigation.server";
+import { InvestigationEventGate } from "@/lib/ask-dev/investigation-events";
 import {
     KEEPALIVE_FRAME,
     KEEPALIVE_INTERVAL_MS,
+    MAX_EVENT_BYTES,
     MAX_STREAM_BYTES,
     errorFrame,
 } from "@/lib/ask-dev/sse-frames";
+import { SseEventTooLargeError, SseParser, type SseEvent } from "@/lib/ask-dev/sse-parser";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -106,9 +109,11 @@ function retryAfter(response: Response): number | undefined {
 
 /**
  * Streams the run to the browser. The first byte (a keepalive comment) is written before ACR
- * answers, and a keepalive follows every 10 s, so no hop sees a silent connection. Bytes from ACR
- * are relayed unchanged; a failure after this point is a terminal `error` frame, because the
- * status line has already been sent. Browser abort aborts ACR.
+ * answers, and a keepalive follows every 10 s until the terminal, so no hop sees a silent
+ * connection. ACR's stream is parsed incrementally; each event is validated and written again
+ * whole (`InvestigationEventGate`), never as raw bytes, so a keepalive never lands inside an
+ * event. A failure after this point is a terminal `error` frame, because the status line has
+ * already been sent; the browser gets exactly one terminal. Browser abort aborts ACR.
  */
 function relay(
     prepared: PreparedInvestigation,
@@ -127,6 +132,9 @@ function relay(
     // Why web itself stopped the upstream call. A timer that wins is logged, never silent.
     let cause: "deadline" | "stalled" | undefined;
     let headersReceived = false;
+    // Set when the browser has its terminal, ACR's or web's: nothing is written after it.
+    let terminalWritten = false;
+    const gate = new InvestigationEventGate();
 
     const body = new ReadableStream<Uint8Array>({
         async start(controller) {
@@ -155,12 +163,20 @@ function relay(
                         code,
                         phase,
                         status: error.status,
+                        reserved_result_id: gate.reservedResultId,
+                        last_seq: gate.lastSeq,
+                        after_terminal: terminalWritten,
                         elapsed_ms: deadline.elapsedMs(),
                         remaining_ms: deadline.remainingMs(),
                         run_timeout_ms: deadline.runTimeoutMs,
                     },
-                    "ask-dev investigation failed after the stream opened",
+                    terminalWritten
+                        ? "ask-dev upstream failed after the terminal event; nothing more is written"
+                        : "ask-dev investigation failed after the stream opened",
                 );
+                if (terminalWritten) return;
+                terminalWritten = true;
+                clearInterval(keepalive);
                 write(
                     errorFrame({
                         code,
@@ -233,8 +249,8 @@ function relay(
                             upstream.code,
                             retryAfter(response),
                         ),
-                        // 406 is the stream-off answer (plan 2.7.1). The pinned error.v1 enum has no
-                        // `stream_unavailable` code yet, so the status decides.
+                        // 406 is the stream-off answer (plan 2.7.1): the status decides, whatever
+                        // the wire code.
                         response.status === 406 ? "stream_unavailable" : undefined,
                     );
                     return;
@@ -266,6 +282,87 @@ function relay(
                     else upstreamAbort.signal.addEventListener("abort", onAbort, { once: true });
                 });
                 aborted.catch(() => undefined);
+                const parser = new SseParser(MAX_EVENT_BYTES);
+                // An upstream that breaks the contract: logged by reason, never by content, then
+                // one `invalid_upstream` terminal, and ACR is aborted.
+                const invalidUpstream = (
+                    reason: string,
+                    detail: { seq?: number; errors?: readonly string[] } = {},
+                    code: "malformed_response" | "response_too_large" = "malformed_response",
+                ): void => {
+                    logger.warn(
+                        {
+                            request_id: requestId,
+                            branch: "invalid_upstream",
+                            reason,
+                            seq: detail.seq,
+                            schema_errors: detail.errors,
+                            reserved_result_id: gate.reservedResultId,
+                            last_seq: gate.lastSeq,
+                            events: gate.written,
+                        },
+                        "ask-dev upstream event stream broke the contract; aborting upstream",
+                    );
+                    upstreamAbort.abort();
+                    fail(
+                        new AcrRuntimeError(
+                            code,
+                            code === "response_too_large"
+                                ? "Agent Context Runtime returned an oversized response."
+                                : "Agent Context Runtime returned an invalid response.",
+                        ),
+                        "invalid_upstream",
+                        "streaming",
+                    );
+                };
+                // Writes each validated event; reports false when the stream must stop.
+                const relayEvents = (events: readonly SseEvent[]): boolean => {
+                    for (const event of events) {
+                        const verdict = gate.accept(event);
+                        if (verdict.kind === "invalid") {
+                            invalidUpstream(verdict.reason, verdict);
+                            return false;
+                        }
+                        if (verdict.kind === "after_terminal") {
+                            logger.warn(
+                                {
+                                    request_id: requestId,
+                                    branch: verdict.duplicateTerminal
+                                        ? "duplicate_terminal"
+                                        : "event_after_terminal",
+                                    event_type: verdict.eventType,
+                                    terminal: gate.terminal,
+                                    reserved_result_id: gate.reservedResultId,
+                                    last_seq: gate.lastSeq,
+                                },
+                                verdict.duplicateTerminal
+                                    ? "ask-dev dropped a second terminal event from upstream"
+                                    : "ask-dev dropped an upstream event that followed the terminal event",
+                            );
+                            continue;
+                        }
+                        if (verdict.seqGap > 0) {
+                            logger.warn(
+                                {
+                                    request_id: requestId,
+                                    branch: "seq_gap",
+                                    seq: verdict.event.seq,
+                                    seq_gap: verdict.seqGap,
+                                    reserved_result_id: gate.reservedResultId,
+                                },
+                                "ask-dev upstream skipped event numbers; an event was lost on the way",
+                            );
+                        }
+                        write(verdict.frame);
+                        if (verdict.terminal) {
+                            // ACR's terminal is the browser's terminal; read on only to log
+                            // what follows, until ACR closes.
+                            terminalWritten = true;
+                            clearInterval(keepalive);
+                        }
+                    }
+                    return true;
+                };
                 let received = 0;
                 armStall();
                 for (;;) {
@@ -274,17 +371,58 @@ function relay(
                     armStall();
                     received += next.value.byteLength;
                     if (received > MAX_STREAM_BYTES) {
-                        upstreamAbort.abort();
-                        fail(
-                            new AcrRuntimeError(
-                                "response_too_large",
-                                "Agent Context Runtime returned an oversized response.",
-                            ),
-                            "invalid_upstream",
-                        );
+                        invalidUpstream("stream_too_large", {}, "response_too_large");
                         return;
                     }
-                    controller.enqueue(next.value);
+                    let events: SseEvent[];
+                    try {
+                        events = parser.push(next.value);
+                    } catch (error) {
+                        if (error instanceof SseEventTooLargeError) {
+                            invalidUpstream("event_too_large", {}, "response_too_large");
+                        } else {
+                            invalidUpstream("malformed_frame");
+                        }
+                        return;
+                    }
+                    if (!relayEvents(events)) return;
+                }
+                const { discardedPartialEvent } = parser.end();
+                if (gate.terminal === undefined) {
+                    // ACR closed the stream with no terminal: neither an answer nor a failure.
+                    logger.warn(
+                        {
+                            request_id: requestId,
+                            branch: "interrupted",
+                            reason: "eof_without_terminal",
+                            discarded_partial_event: discardedPartialEvent,
+                            reserved_result_id: gate.reservedResultId,
+                            last_seq: gate.lastSeq,
+                            events: gate.written,
+                            elapsed_ms: deadline.elapsedMs(),
+                        },
+                        "ask-dev upstream ended without a terminal event",
+                    );
+                    fail(
+                        new AcrRuntimeError(
+                            acrRuntimeErrorCodes.interrupted,
+                            "The run ended before it finished.",
+                            { retryable: true },
+                        ),
+                        undefined,
+                        "streaming",
+                    );
+                } else if (discardedPartialEvent) {
+                    logger.warn(
+                        {
+                            request_id: requestId,
+                            branch: "event_after_terminal",
+                            discarded_partial_event: true,
+                            reserved_result_id: gate.reservedResultId,
+                            last_seq: gate.lastSeq,
+                        },
+                        "ask-dev dropped an incomplete upstream frame that followed the terminal event",
+                    );
                 }
             } catch (error) {
                 if (browser.aborted) return;

@@ -10,6 +10,12 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 import { auth } from "@/lib/auth";
 import request from "@/lib/ask-dev/__tests__/captures/context_fabric_investigation_request.v1.json";
+import {
+    acceptedEvent,
+    acrFrame,
+    acrStream,
+    resultEvent,
+} from "@/lib/ask-dev/__tests__/event-fixtures";
 import { POST } from "./route";
 
 const server = setupServer();
@@ -319,7 +325,7 @@ describe("POST /api/ask-dev/investigations — the submission id", () => {
 });
 
 describe("POST /api/ask-dev/investigations — the stream", () => {
-    it("writes a keepalive as the first bytes, relays ACR's events unchanged, and signs one assertion for the exact body", async () => {
+    it("writes a keepalive as the first bytes, relays ACR's validated events, and signs one assertion for the exact body", async () => {
         installOps(ENTITLED);
         let seenBody = "";
         let seenRequestId: string | null = null;
@@ -338,9 +344,7 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
                         thread: upstream.headers.get("x-acr-thread-id"),
                     };
                     assertion = decodeAssertion(upstream.headers.get("x-acr-web-assertion") ?? "");
-                    return sse(
-                        'event: accepted\ndata: {"seq":1}\n\nevent: result\ndata: {"seq":2}\n\n',
-                    );
+                    return sse(acrStream(acceptedEvent(), resultEvent(2)));
                 },
             ),
         );
@@ -356,8 +360,7 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
         expect(response.headers.get("x-accel-buffering")).toBe("no");
         const text = await readAll(response);
         expect(text.startsWith(": keepalive\n\n")).toBe(true);
-        expect(text).toContain('event: accepted\ndata: {"seq":1}\n\n');
-        expect(text).toContain('event: result\ndata: {"seq":2}\n\n');
+        expect(text).toBe(`: keepalive\n\n${acrStream(acceptedEvent(), resultEvent(2))}`);
         expect(seenHeaders).toEqual({
             accept: "text/event-stream",
             authorization: null,
@@ -441,7 +444,7 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
             http.post(
                 `${ACR}/api/v1/context-fabric/investigations`,
                 () =>
-                    new HttpResponse("event: result\ndata: {}\n\n", {
+                    new HttpResponse(acrStream(acceptedEvent(), resultEvent(2)), {
                         headers: { "Content-Type": "Text/Event-Stream; charset=utf-8" },
                     }),
             ),
@@ -452,7 +455,7 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
             http.post(
                 `${ACR}/api/v1/context-fabric/investigations`,
                 () =>
-                    new HttpResponse("event: result\ndata: {}\n\n", {
+                    new HttpResponse(acrStream(acceptedEvent(), resultEvent(2)), {
                         headers: { "Content-Type": "text/event-streams" },
                     }),
             ),
@@ -502,9 +505,7 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
                 return new HttpResponse(
                     new ReadableStream({
                         start(controller) {
-                            controller.enqueue(
-                                encoder.encode('event: accepted\ndata: {"seq":1}\n\n'),
-                            );
+                            controller.enqueue(encoder.encode(acrFrame(acceptedEvent())));
                         },
                     }),
                     { headers: { "Content-Type": "text/event-stream" } },
@@ -514,8 +515,13 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
 
         const response = await post();
         const reader = response.body!.getReader();
-        await reader.read();
-        await reader.read();
+        const decoder = new TextDecoder();
+        let seen = "";
+        // Read until `accepted` has been relayed: the upstream is live and valid, so only the
+        // browser's cancel can abort it.
+        while (!seen.includes("event: accepted"))
+            seen += decoder.decode((await reader.read()).value);
+        expect(upstreamCancelled).toBe(false);
         await reader.cancel();
         await vi.waitFor(() => expect(upstreamCancelled).toBe(true));
     });

@@ -23,6 +23,12 @@ vi.mock("@/lib/logger", () => ({
 
 import { auth } from "@/lib/auth";
 import request from "@/lib/ask-dev/__tests__/captures/context_fabric_investigation_request.v1.json";
+import {
+    acceptedEvent,
+    acrFrame,
+    heartbeatEvent,
+    resultEvent,
+} from "@/lib/ask-dev/__tests__/event-fixtures";
 import { POST } from "./route";
 import { logger } from "@/lib/logger";
 
@@ -365,7 +371,7 @@ describe("Ask Dev deadline chain: the stream", () => {
                         start(controller) {
                             const push = (text: string): void =>
                                 controller.enqueue(encoder.encode(text));
-                            push('event: accepted\ndata: {"seq":1}\n\n');
+                            push(acrFrame(acceptedEvent()));
                             script(push, () => controller.close());
                         },
                     }),
@@ -421,9 +427,9 @@ describe("Ask Dev deadline chain: the stream", () => {
         });
         const read = await drain(await post());
         await vi.advanceTimersByTimeAsync(25_000);
-        push('event: heartbeat\ndata: {"seq":2}\n\n');
+        push(acrFrame(heartbeatEvent(2, 10_000)));
         await vi.advanceTimersByTimeAsync(25_000);
-        push('event: heartbeat\ndata: {"seq":3}\n\n');
+        push(acrFrame(heartbeatEvent(3, 20_000)));
         await vi.advanceTimersByTimeAsync(25_000);
         // 75 s of run time and no stall: each byte moved the window.
         expect(state.aborted).toBe(false);
@@ -436,7 +442,11 @@ describe("Ask Dev deadline chain: the stream", () => {
         const warn = vi.mocked(logger.warn);
         vi.stubEnv("ASK_DEV_RUN_TIMEOUT_MS", "60000");
         const state = upstream((push) => {
-            setInterval(() => push("event: heartbeat\ndata: {}\n\n"), 10_000);
+            let seq = 1;
+            setInterval(() => {
+                seq += 1;
+                push(acrFrame(heartbeatEvent(seq, (seq - 1) * 10_000)));
+            }, 10_000);
         });
         const response = await post();
         const read = await drain(response);
@@ -460,12 +470,18 @@ describe("Ask Dev deadline chain: the stream", () => {
 
     it("lets a run that finishes at W - 10 s complete with no error frame and no leftover timer", async () => {
         vi.stubEnv("ASK_DEV_RUN_TIMEOUT_MS", "60000");
+        let result = "";
         const state = upstream((push, close) => {
             // ACR's heartbeat every 10 s keeps the stall window open until the result at 50 s.
-            const heartbeat = setInterval(() => push("event: heartbeat\ndata: {}\n\n"), 10_000);
+            let seq = 1;
+            const heartbeat = setInterval(() => {
+                seq += 1;
+                push(acrFrame(heartbeatEvent(seq, (seq - 1) * 10_000)));
+            }, 10_000);
             setTimeout(() => {
                 clearInterval(heartbeat);
-                push('event: result\ndata: {"seq":2}\n\n');
+                result = acrFrame(resultEvent(seq + 1));
+                push(result);
                 close();
             }, 50_000);
         });
@@ -473,7 +489,8 @@ describe("Ask Dev deadline chain: the stream", () => {
         await vi.advanceTimersByTimeAsync(50_000);
         const text = await read.text;
 
-        expect(text).toContain('event: result\ndata: {"seq":2}\n\n');
+        expect(result).not.toBe("");
+        expect(text).toContain(result);
         expect(frames(text)).toEqual([]);
         // No web timer won: nothing logged as a deadline or a stall, and none is left running.
         const branches = warnings(vi.mocked(logger.warn)).map((w) => w.branch);

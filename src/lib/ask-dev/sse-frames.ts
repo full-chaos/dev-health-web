@@ -7,6 +7,15 @@ export const KEEPALIVE_INTERVAL_MS = 10_000;
 /** Largest upstream stream web relays before it stops the run (plan §2.7.7). */
 export const MAX_STREAM_BYTES = 8 * 1_024 * 1_024;
 
+/**
+ * ACR's largest answer: the `max_serialized_bytes` maximum of the pinned `InvestigationOptions`
+ * (`context_fabric_common.v1`). A test holds it to the pin.
+ */
+export const ACR_MAX_SERIALIZED_BYTES = 1_048_576;
+
+/** Largest single upstream event web parses: ACR's largest answer plus 64 KiB (plan §2.7.7). */
+export const MAX_EVENT_BYTES = ACR_MAX_SERIALIZED_BYTES + 64 * 1_024;
+
 export type WebErrorFrame = {
     readonly code: string;
     readonly message: string;
@@ -18,8 +27,12 @@ export type WebErrorFrame = {
 };
 
 /**
- * The terminal frame web writes when the run cannot continue. It is a web-origin event
- * (`source: "web"`): ACR's own `error` event is relayed unchanged. I-S06 owns the closed set.
+ * The terminal frame web writes when the run cannot continue: a web-origin event (`source: "web"`,
+ * no `id`). ACR's own events, its `error` included, are validated and written again by web
+ * (`investigation-events.ts`). After the stream opens, the web-only codes are `interrupted` (ACR
+ * ended the stream with no terminal, or the run reached its deadline), `stalled`,
+ * `invalid_upstream`, `stream_unavailable` and `budget_exhausted`; ACR refusals that arrive
+ * before `accepted` keep their mapped codes.
  */
 export function errorFrame(error: WebErrorFrame): string {
     const data = {
