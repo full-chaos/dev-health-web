@@ -352,6 +352,67 @@ function relay(
     });
 }
 
+async function readThenPrepare(
+    request: Request,
+    deadline: RunDeadline,
+    setupSignal: AbortSignal,
+): Promise<PreparedInvestigation> {
+    return prepareInvestigation({
+        body: await readRequestJson(request, MAX_REQUEST_BYTES),
+        signal: AbortSignal.any([request.signal, setupSignal]),
+        submissionId: request.headers.get("x-acr-submission-id"),
+        threadId: request.headers.get("x-acr-thread-id"),
+        deadline,
+    });
+}
+
+/**
+ * The per-call auth chain (`prepareInvestigation`), held to the run deadline: D covers setup too,
+ * so a body read or a session read that never returns ends in a 504 at D, and the setup reads see
+ * the same abort.
+ */
+async function prepareWithinDeadline(
+    request: Request,
+    requestId: string,
+    deadline: RunDeadline,
+): Promise<PreparedInvestigation> {
+    const setupAbort = new AbortController();
+    let setupTimer: ReturnType<typeof setTimeout> | undefined;
+    const setupDeadline = new Promise<never>((_, reject) => {
+        setupTimer = setTimeout(() => {
+            logger.warn(
+                {
+                    request_id: requestId,
+                    branch: "setup_deadline",
+                    phase: "setup",
+                    elapsed_ms: deadline.elapsedMs(),
+                    run_timeout_ms: deadline.runTimeoutMs,
+                },
+                "ask-dev run deadline reached during setup",
+            );
+            setupAbort.abort();
+            reject(
+                new AcrRuntimeError(
+                    acrRuntimeErrorCodes.timeout,
+                    "Agent Context Runtime did not respond in time.",
+                    { retryable: true, status: 504 },
+                ),
+            );
+        }, deadline.remainingMs());
+    });
+    setupDeadline.catch(() => undefined);
+    try {
+        // Promise.race handles both sides, so the loser's later failure is never unhandled. The
+        // call stays directly under `await`: the auth-profile gate's call walk follows it there.
+        return await Promise.race([
+            readThenPrepare(request, deadline, setupAbort.signal),
+            setupDeadline,
+        ]);
+    } finally {
+        clearTimeout(setupTimer);
+    }
+}
+
 export async function POST(request: Request): Promise<Response> {
     const requestId = randomUUID();
     // t0 is the first line of the handler: the run deadline D = t0 + W covers setup too.
@@ -370,49 +431,7 @@ export async function POST(request: Request): Promise<Response> {
                 status: 403,
             });
         }
-        // D covers setup too: a body read or a session read that never returns ends in a 504 at
-        // D, and the setup reads see the same abort.
-        const setupAbort = new AbortController();
-        let setupTimer: ReturnType<typeof setTimeout> | undefined;
-        const setupDeadline = new Promise<never>((_, reject) => {
-            setupTimer = setTimeout(() => {
-                logger.warn(
-                    {
-                        request_id: requestId,
-                        branch: "setup_deadline",
-                        phase: "setup",
-                        elapsed_ms: deadline.elapsedMs(),
-                        run_timeout_ms: deadline.runTimeoutMs,
-                    },
-                    "ask-dev run deadline reached during setup",
-                );
-                setupAbort.abort();
-                reject(
-                    new AcrRuntimeError(
-                        acrRuntimeErrorCodes.timeout,
-                        "Agent Context Runtime did not respond in time.",
-                        { retryable: true, status: 504 },
-                    ),
-                );
-            }, deadline.remainingMs());
-        });
-        setupDeadline.catch(() => undefined);
-        let prepared: PreparedInvestigation;
-        try {
-            const preparing = (async () =>
-                prepareInvestigation({
-                    body: await readRequestJson(request, MAX_REQUEST_BYTES),
-                    signal: AbortSignal.any([request.signal, setupAbort.signal]),
-                    submissionId: request.headers.get("x-acr-submission-id"),
-                    threadId: request.headers.get("x-acr-thread-id"),
-                    deadline,
-                }))();
-            // When D wins the race, a later failure of the setup must not surface unhandled.
-            preparing.catch(() => undefined);
-            prepared = await Promise.race([preparing, setupDeadline]);
-        } finally {
-            clearTimeout(setupTimer);
-        }
+        const prepared = await prepareWithinDeadline(request, requestId, deadline);
         return relay(prepared, requestId, request.signal, deadline);
     } catch (error) {
         const runtimeError = toRuntimeError(error);
