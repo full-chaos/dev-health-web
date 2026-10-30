@@ -1,0 +1,208 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_b2d71099f7303a92952bc10cdc135809",
+    "seq": 8,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_d3181dbf4e7dbe6fc2ac2f6ff0286175",
+        "request_id": "req_b2d71099f7303a92952bc10cdc135809",
+        "generated_at": "2026-10-30T19:43:14.465939213Z",
+        "status": "no_match",
+        "question": "What is the status of the Web team over the last 30 days?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "the status of the Web team over the last 30 days",
+            "subject_terms": ["Web"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "flow"
+                },
+                {
+                    "kind": "health"
+                },
+                {
+                    "kind": "incidents"
+                },
+                {
+                    "kind": "investment"
+                },
+                {
+                    "kind": "workload"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [],
+            "committed": [],
+            "clarification_prompt": "Retrieval matched one or more subjects only by semantic similarity, which is not enough to identify a subject. Name the subject you mean, or rephrase the question so it names one."
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["flow", "health", "incidents", "investment", "workload"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "narrowing": [
+                {
+                    "stage": "cardinality",
+                    "basis": "canonical_id_lexical",
+                    "before": 50,
+                    "after": 18
+                }
+            ],
+            "requirements": [
+                {
+                    "requirement": "health/subject/team",
+                    "obligation": "health",
+                    "role": "subject",
+                    "subject": "team",
+                    "kind": "read",
+                    "fact_kinds": ["health"],
+                    "scope": "single_subject",
+                    "quantifier": "at_least_one"
+                },
+                {
+                    "requirement": "state/subject/team",
+                    "obligation": "state",
+                    "role": "subject",
+                    "subject": "team",
+                    "kind": "read",
+                    "fact_kinds": [
+                        "flow",
+                        "health",
+                        "investment",
+                        "landscape",
+                        "readiness",
+                        "workload"
+                    ],
+                    "scope": "single_subject",
+                    "quantifier": "corroborated"
+                }
+            ]
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "No option found for this question could be chosen to answer it, so no subject was confirmed and no canonical facts were read. Rewording the question may let it be answered."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T19:43:14.46574813Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": false
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna"
+        },
+        "deterministic_answer": "No investigation subject could be resolved for this question.",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "structure_needs": {
+            "missing": ["subject_candidate", "subject_anchor", "subject_handle"],
+            "candidate_options": [
+                {
+                    "receipt_id": "candr_7dd4cdb978de7e02243f4089",
+                    "option_id": "opt_61a84b21a49209d7",
+                    "label": "Dev Health Web Redesign",
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:3831247a-868e-49b2-8745-4c23f985aac5",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_06b2accf34b3fb0a55090e7d",
+                    "option_id": "opt_fd77ac8c801fce5c",
+                    "label": "full-chaos/dev-health-web",
+                    "kind": "repository",
+                    "canonical_id": "repository:d29d160a-95fe-5b45-d4c1-fd1f5427b772",
+                    "offer_source": "engine"
+                }
+            ]
+        },
+        "completeness": {
+            "terminal_status": "no_match",
+            "terminal_reason": "limitation_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "refusal_basis": "declared_kind_unmatched",
+            "state": "partial",
+            "outcomes": [
+                {
+                    "stage": "planning",
+                    "requirement": "health/subject/team",
+                    "obligation": "health",
+                    "outcome": "not_attempted",
+                    "impact": "dimension",
+                    "cause_coverage": "answer_terminated_before_attempt",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "state/subject/team",
+                    "obligation": "state",
+                    "outcome": "not_attempted",
+                    "impact": "dimension",
+                    "cause_coverage": "answer_terminated_before_attempt",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                }
+            ]
+        },
+        "refusal_basis": "declared_kind_unmatched"
+    }
+}

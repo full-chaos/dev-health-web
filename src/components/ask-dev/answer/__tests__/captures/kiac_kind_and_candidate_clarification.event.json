@@ -1,0 +1,188 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_4043516b5db48d643966873d15b8cf1d",
+    "seq": 8,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_59b8df202b474f5361129069fb533ac7",
+        "request_id": "req_4043516b5db48d643966873d15b8cf1d",
+        "generated_at": "2026-10-30T19:42:09.114501879Z",
+        "status": "clarification_required",
+        "question": "How healthy is dev-health over the last 30 days?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "Assess the health of dev-health over the last 30 days.",
+            "subject_terms": ["dev-health"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "health"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [],
+            "committed": [],
+            "clarification_prompt": "Retrieval matched one or more subjects only by semantic similarity, which is not enough to identify a subject. Name the subject you mean, or rephrase the question so it names one."
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["health"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "narrowing": [
+                {
+                    "stage": "cardinality",
+                    "basis": "canonical_id_lexical",
+                    "before": 50,
+                    "after": 18
+                }
+            ]
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "One authorized subject matched the question but could not be confirmed as its subject, so no canonical facts were read until it is confirmed."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T19:42:09.114350088Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": false
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna"
+        },
+        "deterministic_answer": "Clarification is required before this question can be answered. Retrieval matched one or more subjects only by semantic similarity, which is not enough to identify a subject. Name the subject you mean, or rephrase the question so it names one.",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "structure_needs": {
+            "missing": ["expected_kind", "subject_candidate", "subject_anchor", "subject_handle"],
+            "kind_options": [
+                {
+                    "receipt_id": "kindr_fed1841c97bb7221820310c4",
+                    "option_id": "opt_f9091e8f82f2336b",
+                    "label": "a project",
+                    "kind": "project",
+                    "offer_source": "engine",
+                    "phrasing": "a project"
+                },
+                {
+                    "receipt_id": "kindr_bdfd281f5058235d721b5c0b",
+                    "option_id": "opt_4e625564cbb3511b",
+                    "label": "a repository",
+                    "kind": "repository",
+                    "offer_source": "engine",
+                    "phrasing": "a repository"
+                }
+            ],
+            "candidate_options": [
+                {
+                    "receipt_id": "candr_38440badf0881e11414edc7f",
+                    "option_id": "opt_1f1cbf4a0c0da398",
+                    "label": "Dev Health Web Redesign",
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:3831247a-868e-49b2-8745-4c23f985aac5",
+                    "offer_source": "engine",
+                    "phrasing": "Dev Health Web Redesign"
+                },
+                {
+                    "receipt_id": "candr_0f060292bee6594baec8f220",
+                    "option_id": "opt_d5656f3cfc91fba3",
+                    "label": "Dev Health Agent Context Runtime (Context Fabric)",
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:60997592-f9f4-462b-87c3-ef82671df270",
+                    "offer_source": "engine",
+                    "phrasing": "Dev Health Agent Context Runtime (Context Fabric)"
+                },
+                {
+                    "receipt_id": "candr_18856cc3e11bdda593d11945",
+                    "option_id": "opt_7ddd357085cc99ac",
+                    "label": "Dev Health Ops",
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:6241316a-85be-42ce-b243-8e41f2b18c8d",
+                    "offer_source": "engine",
+                    "phrasing": "Dev Health Ops"
+                },
+                {
+                    "receipt_id": "candr_91e560024c4606224c7972a3",
+                    "option_id": "opt_786e820a84785c72",
+                    "label": "full-chaos/dev-health-acr",
+                    "kind": "repository",
+                    "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                    "offer_source": "engine",
+                    "phrasing": "full-chaos/dev-health-acr"
+                },
+                {
+                    "receipt_id": "candr_5df23e6c493167ec553c0aea",
+                    "option_id": "opt_7dde1f1ce1068f8f",
+                    "label": "full-chaos/dev-health-ops",
+                    "kind": "repository",
+                    "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                    "offer_source": "engine",
+                    "phrasing": "full-chaos/dev-health-ops"
+                }
+            ]
+        },
+        "completeness": {
+            "terminal_status": "clarification_required",
+            "terminal_reason": "clarification_reason_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "state": "not_derived"
+        }
+    }
+}
