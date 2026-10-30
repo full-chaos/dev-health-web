@@ -10,6 +10,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { labelRows, labelWidth } from "./completionRangeLabelRows";
 import { echarts } from "@/lib/echartsInit";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([LineChart]);
 
@@ -143,9 +144,9 @@ export function CompletionRangeChart({
                     if (!data) return "";
                     const point = byDay.get(data[0]) ?? { day: data[0], share: data[1] };
                     const lines = tooltipLines(point)
-                        .map((line) => `<div style="margin-top: 4px;">${line}</div>`)
+                        .map((line) => `<div style="margin-top: 4px;">${escapeHtml(line)}</div>`)
                         .join("");
-                    return `<div style="font-weight: 600;">${dayLabel(point.day)}</div>${lines}`;
+                    return `<div style="font-weight: 600;">${escapeHtml(dayLabel(point.day))}</div>${lines}`;
                 },
             },
             // room above the plot for the rows of marker labels
