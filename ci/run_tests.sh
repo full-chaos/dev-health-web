@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|live-e2e-guided|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|live-e2e-guided|live-e2e-two-pass|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -462,6 +462,13 @@ case "${tier}" in
     ;;
   live-e2e)
     run_live_e2e
+    ;;
+  live-e2e-two-pass)
+    status=0
+    run_live_e2e || status=$?
+    bash ci/live-e2e-restart-go-api.sh || exit 1
+    LIVE_GUIDED_ONBOARDING=1 LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e || status=$?
+    exit "${status}"
     ;;
   live-e2e-guided)
     LIVE_GUIDED_ONBOARDING=1 LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e
