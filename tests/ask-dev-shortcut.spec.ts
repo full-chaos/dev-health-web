@@ -43,6 +43,11 @@ test("Control+J toggles the panel and the browser default is suppressed", async 
 }) => {
     await setScenario(request, "provisioned");
     await page.goto("/dashboard");
+    // Hydrated: a click on the launcher opens the panel, so the shell's listeners are attached.
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
+    await expect(page.getByTestId(PANEL)).toBeVisible();
+    await page.getByTestId("ask-dev-panel-close").click();
+    await expect(page.getByTestId(PANEL)).toHaveCount(0);
     await recordJ(page);
     const panel = page.getByTestId(PANEL);
     await expect(panel).toHaveCount(0);
@@ -74,13 +79,17 @@ test("the palette opens Ask Dev, and offers it only when the launcher is offered
 }) => {
     await setScenario(request, "provisioned");
     await page.goto("/dashboard");
+    // Hydrated: the palette trigger responds to a click before Control+K is relied on.
+    await page.getByTestId("command-palette-trigger").click();
+    await expect(page.getByTestId("command-palette")).toBeVisible();
+    await page.keyboard.press("Escape");
     await page.keyboard.press("Control+K");
     await page.getByRole("option", { name: /^Ask Dev/ }).click();
     await expect(page.getByTestId(PANEL)).toBeVisible();
 
     await setScenario(request, "unprovisioned");
     await page.goto("/dashboard");
-    await page.keyboard.press("Control+K");
+    await page.getByTestId("command-palette-trigger").click();
     await expect(page.getByTestId("command-palette")).toBeVisible();
     await expect(page.getByRole("option", { name: /^Ask Dev/ })).toHaveCount(0);
     await page.keyboard.press("Escape");
