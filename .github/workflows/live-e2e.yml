@@ -563,7 +563,8 @@ jobs:
                   set -euo pipefail
                   kill "$(cat /tmp/dev-health-go-api.pid)"
                   for i in {1..30}; do kill -0 "$(cat /tmp/dev-health-go-api.pid)" 2>/dev/null || break; sleep 1; done
-                  xargs -0 -a /tmp/dev-health-go-api.environ env AUTH_AUTO_CREATE_ORG_ON_REGISTER=false \
+                  mapfile -d '' -t saved_env </tmp/dev-health-go-api.environ
+                  env "${saved_env[@]}" AUTH_AUTO_CREATE_ORG_ON_REGISTER=false \
                     nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
                     >/tmp/dev-health-go-api-guided.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
