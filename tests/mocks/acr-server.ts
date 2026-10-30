@@ -99,6 +99,36 @@ let investigationReads = 0;
 app.get("/__test/investigation-reads", (_request, response) => {
     response.json({ count: investigationReads });
 });
+// CHAOS-11923: the owner-checked submission status. `sub_other_principal` stands for another
+// principal's submission (one 404, the same as for an unknown id).
+let submissionReads = 0;
+app.get("/__test/submission-reads", (_request, response) => {
+    response.json({ count: submissionReads });
+});
+app.get("/api/v1/context-fabric/investigations/submissions/:submissionId", (request, response) => {
+    submissionReads += 1;
+    if ((request.header("x-acr-web-assertion") ?? "") === "") {
+        response.status(401).json({ error: "bad ask-dev call" });
+        return;
+    }
+    if (request.params.submissionId === "sub_other_principal") {
+        response.status(404).json({
+            error: { code: "not_found", http_status: 404, message: "redacted", retryable: false },
+            request_id: "acr_req_0002",
+            schema_version: "error.v1",
+        });
+        return;
+    }
+    response.json({
+        reserved_result_id: "res_0a1b2c3d4e5f",
+        result_id: "res_0a1b2c3d4e5f",
+        schema_version: "context_fabric_submission_status.v1",
+        state: "done",
+        submission_id: request.params.submissionId,
+        thread_id: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        updated_at: "2026-10-30T07:00:00Z",
+    });
+});
 app.get("/api/v1/context-fabric/investigations/:resultId", (request, response) => {
     investigationReads += 1;
     if ((request.header("x-acr-web-assertion") ?? "") === "") {
