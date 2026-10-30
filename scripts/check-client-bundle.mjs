@@ -106,12 +106,14 @@ export const PATTERN_RULES = [
         value: false,
     },
     {
-        // CHAOS-11930: the Ask Dev test-mode answer seam (`testModeAnswer.ts`) is for `next dev`
-        // under Playwright only; a production build must have dropped it.
+        // CHAOS-11930, CHAOS-3440: the Ask Dev test-mode seam (`testModeAnswer.ts`: turns in, the
+        // chosen receipts and the narrower re-ask out) is for `next dev` under Playwright only; a
+        // production build must have dropped it. The prefix is matched, so a key composed at run
+        // time from it is caught too.
         id: "K6",
         what: "Ask Dev test-mode answer seam",
-        pattern: /ask-dev:test-mode-answer/,
-        seed: "ask-dev:test-mode-answer",
+        pattern: /ask-dev:test-mode-/,
+        seed: "ask-dev:test-mode-choice",
         benign: "ask-dev-transcript",
         value: false,
     },

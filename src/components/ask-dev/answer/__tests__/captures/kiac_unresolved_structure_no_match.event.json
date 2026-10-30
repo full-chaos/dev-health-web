@@ -1,0 +1,122 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_69684d368cb640de8b709579d9739a42",
+    "seq": 8,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_4902eb9fbe0a52eecb1a7a9bd972adaf",
+        "request_id": "req_69684d368cb640de8b709579d9739a42",
+        "generated_at": "2026-10-30T19:41:47.899191259Z",
+        "status": "no_match",
+        "question": "What is the status of Migration over the last 30 days?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "Determine the status of Migration over the last 30 days.",
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "status"
+                }
+            ],
+            "clarification_needed": true,
+            "clarification_reason": "What kind of subject is “Migration”—a work item, project, repository, team, or another entity?"
+        },
+        "subject_resolution": {
+            "candidates": [],
+            "committed": []
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["status"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "narrowing": [
+                {
+                    "stage": "cardinality",
+                    "basis": "canonical_id_lexical",
+                    "before": 50,
+                    "after": 18
+                }
+            ]
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "Retrieval found no candidate for this question in this organization's graph, so no canonical facts were read. This search is not exhaustive, so it does not confirm that no matching subject exists."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T19:41:47.899022134Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": false
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna"
+        },
+        "deterministic_answer": "No investigation subject could be resolved for this question.",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "structure_needs": {
+            "missing": ["subject_anchor", "subject_handle"]
+        },
+        "completeness": {
+            "terminal_status": "no_match",
+            "terminal_reason": "limitation_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "state": "not_derived"
+        }
+    }
+}

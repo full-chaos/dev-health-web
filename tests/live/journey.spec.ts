@@ -14,6 +14,7 @@
 import { expect, test } from "@playwright/test";
 import {
     authHeaders,
+    envFault,
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
@@ -69,7 +70,7 @@ test("POST /register \u2192 accepted (201 or 202)", async ({ request }) => {
         headers: { Origin: liveBackendUrl },
     });
     if (res.status() === 429) {
-        test.skip(true, "Register rate-limited (429)");
+        envFault("Register rate-limited (429)");
         return;
     }
     expect([201, 202]).toContain(res.status());
@@ -92,7 +93,9 @@ test("POST /register \u2192 accepted (201 or 202)", async ({ request }) => {
     }
 });
 
-test("POST /login after fresh registration \u2192 needs_onboarding true", async ({ request }) => {
+test("POST /login after fresh registration \u2192 needs_onboarding true @guided", async ({
+    request,
+}) => {
     test.skip(
         !liveGuidedOnboarding,
         "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless needs_onboarding assertion",
@@ -103,7 +106,7 @@ test("POST /login after fresh registration \u2192 needs_onboarding true", async 
         headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) {
-        test.skip(true, "Registration failed \u2014 backend may be unavailable");
+        envFault("Registration failed \u2014 backend may be unavailable");
         return;
     }
 
@@ -111,7 +114,7 @@ test("POST /login after fresh registration \u2192 needs_onboarding true", async 
     const suToken = await getSuperuserToken(request);
     const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
     if (!suToken || !userId) {
-        test.skip(true, "Cannot verify user \u2014 superuser unavailable");
+        envFault("Cannot verify user \u2014 superuser unavailable");
         return;
     }
     await verifyUser(request, userId, suToken);
@@ -128,7 +131,7 @@ test("POST /login after fresh registration \u2192 needs_onboarding true", async 
 // Onboarding Journey (serial — tests depend on each other)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test.describe("onboarding journey", () => {
+test.describe("onboarding journey @guided", () => {
     test.describe.configure({ mode: "serial" });
     test.skip(
         !liveGuidedOnboarding,
@@ -157,7 +160,7 @@ test.describe("onboarding journey", () => {
 
     test("POST /onboard with org_name → success, returns org_id", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -175,7 +178,7 @@ test.describe("onboarding journey", () => {
 
     test("re-login after onboarding → needs_onboarding false", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -187,7 +190,7 @@ test.describe("onboarding journey", () => {
 
     test("second POST /onboard → 400 (already onboarded)", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -242,7 +245,7 @@ test.describe("credentials journey", () => {
 
     test("POST /credentials → created credential", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -281,7 +284,7 @@ test.describe("credentials journey", () => {
 
     test("POST /credentials/test → success false (fake token expected)", async ({ request }) => {
         if (!token || !credentialId) {
-            test.skip(true, "No token or credential — skipping test check");
+            envFault("No token or credential — skipping test check");
             return;
         }
 
@@ -316,7 +319,7 @@ test.describe("credentials journey", () => {
 
     test("GET /credentials → array includes the created credential", async ({ request }) => {
         if (!token || !credentialId) {
-            test.skip(true, "No token or credential — skipping list check");
+            envFault("No token or credential — skipping list check");
             return;
         }
 
@@ -379,7 +382,7 @@ test.describe("sync journey", () => {
 
     test("POST /sync-configs → created; POST trigger → 202", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -421,7 +424,7 @@ test.describe("sync journey", () => {
 
     test("GET /sync-configs/:id/jobs → returns array", async ({ request }) => {
         if (!token || !syncConfigId) {
-            test.skip(true, "No token or sync config — skipping jobs check");
+            envFault("No token or sync config — skipping jobs check");
             return;
         }
 

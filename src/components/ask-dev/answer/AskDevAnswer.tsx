@@ -19,6 +19,7 @@ import {
     type AnswerFinding,
     type AnswerResult,
 } from "./answerModel";
+import { AskDevCoverage } from "./AskDevCoverage";
 import { SafeAnswerText } from "./SafeAnswerText";
 import { nonBlank } from "@/lib/ask-dev/conversation";
 
@@ -159,8 +160,8 @@ function FindingsPart({
  * Then the drivers (check 8), the strongest pressures, and the findings in three separate parts
  * (remaining work, readiness gaps, conflicts: completion and readiness are never merged). The
  * current state and a differing service sentence sit behind "More detail". Every served string is
- * inert text through `SafeAnswerText`. Coverage, completeness, limitations and evidence links are
- * CHAOS-11932's.
+ * inert text through `SafeAnswerText`. After the findings, how complete the answer is: coverage,
+ * completeness, limitations and evidence references (CHAOS-11932, `AskDevCoverage`).
  */
 export function AskDevAnswer({ result }: { result: AnswerResult }) {
     const lead = leadSentence(result);
@@ -258,6 +259,8 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
                         findings={result.conflicts}
                         testId="ask-dev-answer-conflicts"
                     />
+
+                    <AskDevCoverage result={result} />
                 </>
             ) : null}
 

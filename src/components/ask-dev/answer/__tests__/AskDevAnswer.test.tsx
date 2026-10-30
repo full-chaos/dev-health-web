@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "@/test/utils";
 
+import { validateAcrContract } from "@/lib/acr/contracts";
 import { validateInvestigationResult } from "@/lib/ask-dev/investigation-result";
 
 import { AskDevAnswer } from "../AskDevAnswer";
@@ -34,6 +37,7 @@ const EVENTS = {
     "kiac_unresolved_no_match.event.json": unresolvedNoMatch,
 } as const;
 
+const CAPTURES = join(__dirname, "captures");
 const resultOf = (event: { result: unknown }) => event.result as AnswerResult;
 const copyOf = (event: { result: unknown }) => structuredClone(resultOf(event));
 
@@ -48,11 +52,13 @@ function precedes(first: Element, second: Element): boolean {
 }
 
 describe("captured fixtures", () => {
+    // Every capture the index names, read from disk: none can be listed without being checked.
     it.each(index.captures)(
         "$file is the unedited producer output and a valid ACR answer",
         (entry) => {
-            const event = EVENTS[entry.file as keyof typeof EVENTS];
-            expect(event, `${entry.file} is imported here`).toBeDefined();
+            const event = JSON.parse(readFileSync(join(CAPTURES, entry.file), "utf8")) as {
+                result: unknown;
+            };
             const digest = createHash("sha256").update(JSON.stringify(event)).digest("hex");
             expect(digest).toBe(entry.sha256_compact);
             expect(validateInvestigationResult(event.result)).toMatchObject({ valid: true });
@@ -60,8 +66,50 @@ describe("captured fixtures", () => {
         },
     );
 
-    it("imports every capture the index names", () => {
-        expect(Object.keys(EVENTS).sort()).toEqual(index.captures.map((c) => c.file).sort());
+    // CHAOS-3440: frames from acr's own producers at the pinned commit, for what kiac never
+    // produced (anchor offers, a 413 budget refusal). Each is a whole stream event, checked
+    // against the pinned event contract, and kept as received.
+    type EncoderEntry = {
+        file: string;
+        event_type: string;
+        sha256_compact: string;
+        status?: string;
+        schema_version?: string;
+        error_code?: string;
+        axis?: string;
+    };
+    it.each(index.encoder_captures.captures as EncoderEntry[])(
+        "$file is the unedited acr encoder frame and a valid ACR event",
+        (entry) => {
+            const event = JSON.parse(readFileSync(join(CAPTURES, entry.file), "utf8")) as {
+                type: string;
+                result?: { status: string; schema_version: string };
+                error?: { error: { code: string; details?: Record<string, unknown> } };
+            };
+            const digest = createHash("sha256").update(JSON.stringify(event)).digest("hex");
+            expect(digest).toBe(entry.sha256_compact);
+            expect(
+                validateAcrContract("context_fabric_investigation_event.v1.schema.json", event),
+            ).toEqual({ valid: true, errors: [] });
+            expect(event.type).toBe(entry.event_type);
+            if (event.type === "result") {
+                expect(validateInvestigationResult(event.result)).toMatchObject({ valid: true });
+                expect(event.result?.status).toBe(entry.status);
+                expect(event.result?.schema_version).toBe(entry.schema_version);
+            } else {
+                expect(event.error?.error.code).toBe(entry.error_code);
+                const continuation = event.error?.error.details?.narrower_continuation as
+                    { axis: string } | undefined;
+                expect(continuation?.axis ?? "none").toBe(entry.axis);
+            }
+        },
+    );
+
+    it("indexes every capture file in the directory", () => {
+        const files = readdirSync(CAPTURES).filter((f) => f.endsWith(".event.json"));
+        const indexed = [...index.captures, ...index.encoder_captures.captures].map((c) => c.file);
+        expect(files.sort()).toEqual(indexed.sort());
+        for (const file of Object.keys(EVENTS)) expect(files).toContain(file);
     });
 });
 
