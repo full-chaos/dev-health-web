@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import forbidden from "./scrub-forbidden.sha256.json";
@@ -14,6 +14,9 @@ import forbidden from "./scrub-forbidden.sha256.json";
  * encoded reference is caught as well.
  */
 const CAPTURES = join(__dirname, "captures");
+// CHAOS-11941: every JSON file of the E8 render-shape oracle (its captures AND its MANIFEST.json,
+// whose free-text `questions_tried` quote kiac questions) is checked the same way.
+const ORACLE_DIR = join(__dirname, "../../../../lib/ask-dev/render/__oracle__");
 const FORBIDDEN = new Set(forbidden.sha256);
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/giu;
 const HEX8 = /(?<![0-9a-z])[0-9a-f]{8}(?![0-9a-z])/giu;
@@ -75,24 +78,35 @@ function candidates(text: string): string[] {
     ];
 }
 
-const files = readdirSync(CAPTURES).filter((file) => file.endsWith(".json"));
+const files = [
+    ...readdirSync(CAPTURES)
+        .filter((file) => file.endsWith(".json"))
+        .map((file) => join(CAPTURES, file)),
+    ...readdirSync(ORACLE_DIR, { recursive: true, encoding: "utf8" })
+        .filter((file) => file.endsWith(".json"))
+        .map((file) => join(ORACLE_DIR, file)),
+];
 
 describe("capture fixtures hold no scrubbed org value (CHAOS-12159)", () => {
     it("has a forbidden list and capture files to check", () => {
         expect(FORBIDDEN.size).toBeGreaterThan(300);
-        expect(files.length).toBeGreaterThan(20);
+        expect(files.length).toBeGreaterThan(40);
+        expect(files).toContain(join(ORACLE_DIR, "MANIFEST.json"));
     });
 
-    it.each(files)("%s holds none of the forbidden values", (file) => {
-        const strings = stringsOf(JSON.parse(readFileSync(join(CAPTURES, file), "utf8")));
-        const hits = new Set<string>();
-        for (const text of strings) {
-            for (const candidate of candidates(text)) {
-                const digest = sha256(candidate);
-                if (FORBIDDEN.has(digest)) hits.add(digest.slice(0, 12));
+    it.each(files.map((file) => [relative(join(__dirname, "../../../../.."), file), file]))(
+        "%s holds none of the forbidden values",
+        (_name, file) => {
+            const strings = stringsOf(JSON.parse(readFileSync(file, "utf8")));
+            const hits = new Set<string>();
+            for (const text of strings) {
+                for (const candidate of candidates(text)) {
+                    const digest = sha256(candidate);
+                    if (FORBIDDEN.has(digest)) hits.add(digest.slice(0, 12));
+                }
             }
-        }
-        // The digest prefix names the hit without printing the value.
-        expect([...hits]).toEqual([]);
-    });
+            // The digest prefix names the hit without printing the value.
+            expect([...hits]).toEqual([]);
+        },
+    );
 });

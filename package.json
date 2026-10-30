@@ -47,6 +47,7 @@
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
         "ask-dev-oracle:check": "bash scripts/ask-dev-oracle/check.sh",
+        "test:ask-dev-oracle": "bash scripts/ask-dev-oracle/render-check.sh",
         "test:ci": "bash ci/run_tests.sh ci"
     },
     "dependencies": {
