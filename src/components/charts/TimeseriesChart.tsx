@@ -7,6 +7,7 @@ import { LineChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
+import { escapeHtml } from "./escapeHtml";
 import { buildTooltip, dotRing, lineMark, pointSymbolSize } from "./chartConventions";
 import { orderTimeseriesPoints, type TimeseriesPoint } from "./timeseriesData";
 import { echarts } from "@/lib/echartsInit";
@@ -90,7 +91,7 @@ export function TimeseriesChart({
                                 const item = entry as NumericChartParam;
                                 const label = item.name ?? "Value";
                                 // ECharts hands a raw-null data point to the formatter as `undefined`.
-                                return `${item.marker ?? ""}${label}: ${formatValue(item.value ?? null)}`;
+                                return `${item.marker ?? ""}${escapeHtml(label)}: ${escapeHtml(formatValue(item.value ?? null))}`;
                             })
                             .join("<br/>");
                     },
