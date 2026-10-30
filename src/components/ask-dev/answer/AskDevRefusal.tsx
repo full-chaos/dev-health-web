@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
     REFUSAL_COPY,
+    isBudgetRefusal,
     narrowingAxis,
     nothingLeftToCut,
     overrunSentence,
@@ -28,15 +29,30 @@ export function AskDevRefusal({
     onReask?: (reask: NarrowerReask) => void;
 }) {
     const { refusal } = turn;
+    const [sent, setSent] = useState(false);
+    // Only a budget refusal says what did not fit: any other terminal error claims nothing about size
+    // and offers no narrower re-ask.
+    if (!isBudgetRefusal(refusal)) {
+        return (
+            <article className="space-y-2" data-testid="ask-dev-refusal" data-kind="other">
+                <span className={`${PILL} text-foreground`} data-testid="ask-dev-answer-status">
+                    {REFUSAL_COPY.otherStatus}
+                </span>
+                <p className="text-sm text-foreground" data-testid="ask-dev-answer-lead">
+                    {REFUSAL_COPY.otherLead}
+                </p>
+            </article>
+        );
+    }
     const axis = narrowingAxis(refusal);
     const overrun = overrunSentence(refusal);
-    const [sent, setSent] = useState(false);
     const retryable = refusal.error.error.retryable;
 
     return (
         <article
             className="space-y-3"
             data-testid="ask-dev-refusal"
+            data-kind="budget"
             data-axis={axis ?? "none"}
             data-live={onReask !== undefined && !sent ? "true" : "false"}
         >

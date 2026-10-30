@@ -108,4 +108,6 @@ export const REFUSAL_COPY = {
     reask: "Ask a narrower question",
     reasked: "Question back in the composer",
     priorTurnNote: "An earlier turn: it can no longer be re-asked from here.",
+    otherStatus: "No answer",
+    otherLead: "The service ended this question without an answer.",
 } as const;

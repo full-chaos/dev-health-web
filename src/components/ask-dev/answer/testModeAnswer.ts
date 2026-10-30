@@ -61,7 +61,10 @@ export function asTranscriptResult(value: unknown): TranscriptResult | null {
     return value as TranscriptResult;
 }
 
-/** A question and the error event ACR ended its stream with; anything else is not a refusal. */
+/**
+ * A question and the budget refusal ACR ended its stream with; anything else is not a refusal turn.
+ * Another terminal error (a timeout, a rate limit) is not a budget refusal and is refused here.
+ */
 export function asRefusalTurn(value: unknown): RefusalTurn | null {
     if (!isRecord(value) || typeof value.question !== "string") return null;
     const event = value.refusal;
@@ -70,7 +73,7 @@ export function asRefusalTurn(value: unknown): RefusalTurn | null {
     const envelope = event.error;
     if (!isRecord(envelope) || envelope.schema_version !== "error.v1") return null;
     const error = envelope.error;
-    if (!isRecord(error) || typeof error.code !== "string") return null;
+    if (!isRecord(error) || error.code !== "budget_refusal") return null;
     if (typeof error.retryable !== "boolean") return null;
     return value as RefusalTurn;
 }

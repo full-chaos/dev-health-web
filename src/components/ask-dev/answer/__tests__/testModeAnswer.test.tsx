@@ -64,6 +64,25 @@ describe("asTranscriptResult, asRefusalTurn, asTranscriptTurns", () => {
                 },
             }),
         ],
+        [
+            // A copy of a real refusal with another terminal error's code and status.
+            "another terminal error (a 504)",
+            () => ({
+                question: "q",
+                refusal: {
+                    ...budgetRefusal,
+                    error: {
+                        ...budgetRefusal.error,
+                        error: {
+                            ...budgetRefusal.error.error,
+                            code: "upstream_unavailable",
+                            http_status: 504,
+                            retryable: true,
+                        },
+                    },
+                },
+            }),
+        ],
     ])("refuses a refusal turn with %s", async (_label, make) => {
         const { asRefusalTurn } = await load("true");
         expect(asRefusalTurn(make())).toBeNull();

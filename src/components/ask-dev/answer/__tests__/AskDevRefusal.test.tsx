@@ -124,6 +124,21 @@ describe("AskDevRefusal: the narrower re-ask", () => {
         expect(onReask).toHaveBeenCalledTimes(1);
     });
 
+    it("never shows another terminal error as too large, nor offers a narrower re-ask", () => {
+        // A copy of a real budget refusal with a 504's code: only a budget refusal speaks of size.
+        const turn = structuredClone(turnOf("evidence_window"));
+        const error = turn.refusal.error.error as { code: string; http_status: number };
+        error.code = "upstream_unavailable";
+        error.http_status = 504;
+        render(<AskDevRefusal turn={turn} onReask={vi.fn()} />);
+        expect(screen.getByTestId("ask-dev-answer-status")).toHaveTextContent(
+            REFUSAL_COPY.otherStatus,
+        );
+        expect(screen.queryByText(REFUSAL_COPY.status)).toBeNull();
+        expect(screen.queryByTestId("ask-dev-refusal-narrower")).toBeNull();
+        expect(screen.queryAllByRole("button")).toEqual([]);
+    });
+
     it("is read-only on a prior turn", () => {
         render(<AskDevRefusal turn={turnOf("scope_anchor")} />);
         expect(screen.queryAllByRole("button")).toEqual([]);
