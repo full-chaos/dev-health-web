@@ -4803,60 +4803,6 @@ export interface ContextFabricSubmissionStatusV1 {
     updated_at: string;
 }
 
-/**
- * One page of the caller's own Ask Dev conversations: GET /api/v1/context-fabric/threads. Newest last_turn_at first, then thread_id. A deleted or expired thread is not listed.
- */
-export interface ContextFabricThreadListV1 {
-    schema_version: "context_fabric_thread_list.v1";
-    /**
-     * @maxItems 50
-     */
-    threads: ThreadSummary[];
-    /**
-     * Present when more threads follow this page, and only on a page that lists at least one thread: pass it back as the cursor query parameter. Opaque.
-     */
-    next_cursor?: string;
-}
-
-/**
- * The caller's own Ask Dev conversation: GET /api/v1/context-fabric/threads/{thread_id}. A thread is the submission records one principal admitted with one X-ACR-Thread-ID, in admission order, plus its retention. It names each turn's result by id and carries no answer content; read a result with GET /api/v1/context-fabric/investigations/{result_id}, which decides the read again. Another principal's thread, an unknown, deleted, expired or malformed id get the same 404 not_found.
- */
-export interface ContextFabricThreadV1 {
-    schema_version: "context_fabric_thread.v1";
-    thread_id: string;
-    /**
-     * 0: kept until 24 hours after the last turn. 30: kept until 30 days after the last turn. Set by X-ACR-Thread-Retention-Days on a turn; the latest turn that named one decides, and a thread whose turns named none has 0.
-     */
-    retention_days: 0 | 30;
-    /**
-     * Every turn of the thread, at most 1000000 (a turn past it is refused 409 thread_closed). Turns before the served page are read with the before query parameter and earlier_turns_cursor.
-     */
-    turn_count: number;
-    /**
-     * The first turn's admitted_at.
-     */
-    created_at: string;
-    /**
-     * The latest turn's admitted_at.
-     */
-    last_turn_at: string;
-    /**
-     * last_turn_at plus 24 hours (retention_days 0) or 30 days (retention_days 30). From it on, the thread and the results of its turns are not served on unknown read, and the retention job removes them.
-     */
-    expires_at: string;
-    /**
-     * One page of at most 100 turns, oldest first (admitted_at, then submission_id): the latest turns, or the turns before the cursor the before query parameter named.
-     *
-     * @minItems 1
-     * @maxItems 100
-     */
-    turns: [ThreadTurn, ...ThreadTurn[]];
-    /**
-     * Present when turns earlier than this page exist: pass it back as the before query parameter. Opaque.
-     */
-    earlier_turns_cursor?: string;
-}
-
 export type ACRContextPacketItemV1 = {
     schema_version: "context_packet_item.v1";
     packet_item_id: string;
