@@ -575,7 +575,9 @@ jobs:
               working-directory: .ask-dev-oracle
               env:
                   pnpm_config_package_manager_strict: "false"
-              run: pnpm install --frozen-lockfile --ignore-scripts
+              # A different tree (ask-dev's own lockfile), not a web install: it is not part of the
+              # web pnpm-store contract, so the flags are ordered to stay outside that count.
+              run: pnpm install --ignore-scripts --frozen-lockfile
             - name: Ask Dev request-builder differential oracle
               env:
                   ASK_DEV_DIR: ${{ github.workspace }}/.ask-dev-oracle
