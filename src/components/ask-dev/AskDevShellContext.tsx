@@ -12,6 +12,7 @@ import {
 import { usePathname } from "next/navigation";
 
 import { useAdminTier } from "@/components/admin/AdminTierContext";
+import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
 import { claimRightDrawer, releaseRightDrawer } from "@/lib/shell/rightDrawer";
 
@@ -98,7 +99,12 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.defaultPrevented || !isAskDevKey(event)) return;
             if (isEditableTarget(event.target)) return;
-            if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+            // Another modal owns the keyboard. The Ask Dev sheet (below `md` the panel is a modal
+            // `Drawer`) is not "another": the shortcut must be able to close it.
+            const others = document.querySelectorAll(
+                `[role="dialog"][aria-modal="true"]:not(#${ASK_DEV_PANEL_ID})`,
+            );
+            if (others.length > 0) return;
             event.preventDefault();
             if (open) close();
             else setOpen(true);

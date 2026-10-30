@@ -225,6 +225,48 @@ describe("Ask Dev panel — mobile (modal sheet)", () => {
         expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
     });
 
+    it("Ctrl+J closes the sheet and suppresses the browser default (CHAOS-11935)", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+        expect(screen.getByRole("dialog", { name: "Ask Dev" })).toBeInTheDocument();
+
+        const event = new KeyboardEvent("keydown", {
+            key: "j",
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true,
+        });
+        act(() => {
+            document.body.dispatchEvent(event);
+        });
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(screen.queryByRole("dialog", { name: "Ask Dev" })).toBeNull();
+    });
+
+    it("Ctrl+J does nothing while another modal sits over the sheet", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+        const other = document.createElement("div");
+        other.setAttribute("role", "dialog");
+        other.setAttribute("aria-modal", "true");
+        document.body.append(other);
+
+        const event = new KeyboardEvent("keydown", {
+            key: "j",
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true,
+        });
+        act(() => {
+            document.body.dispatchEvent(event);
+        });
+        other.remove();
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(screen.getByRole("dialog", { name: "Ask Dev" })).toBeInTheDocument();
+    });
+
     it("points the launcher at the sheet it opened", async () => {
         renderShell();
 
