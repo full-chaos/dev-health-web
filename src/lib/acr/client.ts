@@ -544,6 +544,10 @@ export class AcrRuntimeClient {
                     path: input.path,
                     permissions: input.permissions,
                     privateKey: this.config.privateKey,
+                    ...(input.permissions.includes("credential:issue") &&
+                    input.authorization.provenance !== undefined
+                        ? { provenance: input.authorization.provenance }
+                        : {}),
                     repositoryScopes: input.authorization.repositoryScopes,
                     subject: input.authorization.subject,
                 }),

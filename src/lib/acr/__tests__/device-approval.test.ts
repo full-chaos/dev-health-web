@@ -11,7 +11,18 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 import { auth } from "@/lib/auth";
 import { approveDeviceAuthorization, previewDeviceAuthorization } from "../service";
 
-const server = setupServer();
+// Every credential:issue call reads the impersonation state from Ops first (CHAOS-12095).
+const server = setupServer(
+    http.get("http://ops.example.test/api/v1/admin/impersonate/status", () =>
+        HttpResponse.json({
+            expires_at: null,
+            is_impersonating: false,
+            target_email: null,
+            target_org_id: null,
+            target_user_id: null,
+        }),
+    ),
+);
 const temporaryPaths: string[] = [];
 let publicKey = generateKeyPairSync("ed25519").publicKey;
 
