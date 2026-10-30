@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
+import { AskDevShellProvider } from "@/components/ask-dev/AskDevShellContext";
 import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -54,7 +55,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     }, []);
 
     return (
-        <>
+        <AskDevShellProvider>
             <a
                 href="#main-content"
                 className="sr-only rounded-(--radius-sm) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
@@ -115,6 +116,6 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                     </FilterPendingProvider>
                 </div>
             </div>
-        </>
+        </AskDevShellProvider>
     );
 }
