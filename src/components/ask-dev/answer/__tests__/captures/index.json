@@ -101,6 +101,42 @@
             "captured_at": "2026-10-30T19:41:43.998423924Z",
             "stream_ms": 3952,
             "sha256_compact": "c933354ca899d4fa164d06674bc90c034cada0bbc266fe6e620f0049d844af4d"
+        },
+        {
+            "file": "kiac_repo_merged_prs_degraded.event.json",
+            "question": "How many pull requests were merged in full-chaos/dev-health-ops over the last 7 days?",
+            "status": "degraded",
+            "result_id": "result_aa79363e719d664230852770305f2648",
+            "captured_at": "2026-10-30T20:27:11.551681259Z",
+            "stream_ms": 27490,
+            "sha256_compact": "10565a2761f0eced8781db8fa3b364579c0d461d71f31c6e9194be5159dee691"
+        },
+        {
+            "file": "kiac_repo_ci_rate_complete.event.json",
+            "question": "What is the CI success rate of full-chaos/dev-health-web over the last 30 days?",
+            "status": "complete",
+            "result_id": "result_388f6da8a895e9d858e8002895d2a857",
+            "captured_at": "2026-10-30T20:27:30.513057503Z",
+            "stream_ms": 18838,
+            "sha256_compact": "2f939c89bf8d9df7755c9deac7e702ca1926757f057457289a73ae228ddba665"
+        },
+        {
+            "file": "kiac_repo_incidents_degraded.event.json",
+            "question": "How many incidents affected full-chaos/dev-health-ops over the last 30 days?",
+            "status": "degraded",
+            "result_id": "result_953a872bf5cc6f870de31e84d08fe9d8",
+            "captured_at": "2026-10-30T20:28:20.20333747Z",
+            "stream_ms": 14046,
+            "sha256_compact": "6e0cd468464bfadaa7341b5feffa5d9a8600323bc76c094c60769749069c6a73"
+        },
+        {
+            "file": "kiac_repo_owner_complete.event.json",
+            "question": "Which team owns full-chaos/dev-health-acr?",
+            "status": "complete",
+            "result_id": "result_5440efde5470d4ebc4960b2df926a6ca",
+            "captured_at": "2026-10-30T20:28:59.032571167Z",
+            "stream_ms": 23246,
+            "sha256_compact": "807f69a8053076d6997dd66a8e6e6bd3dbd540d9d545d2cbc290d42a92791bb7"
         }
     ],
     "encoder_captures": {

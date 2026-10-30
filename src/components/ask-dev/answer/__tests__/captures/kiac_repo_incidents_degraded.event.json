@@ -1,0 +1,1710 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_46e41d66adf9ffd820263dbac156207a",
+    "seq": 12,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_953a872bf5cc6f870de31e84d08fe9d8",
+        "request_id": "req_46e41d66adf9ffd820263dbac156207a",
+        "generated_at": "2026-10-30T20:28:20.20333747Z",
+        "status": "degraded",
+        "question": "How many incidents affected full-chaos/dev-health-ops over the last 30 days?",
+        "interpretation": {
+            "shape": "explicit_cohort",
+            "requested_judgment": "Count incidents affecting full-chaos/dev-health-ops over the last 30 days",
+            "subject_terms": ["full-chaos/dev-health-ops"],
+            "time_context": { "axis": "current" },
+            "fact_requirements": [{ "kind": "incidents" }],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [
+                {
+                    "receipt_id": "2434000c-49f7-52e9-b62e-4f132236164b",
+                    "subject": {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    },
+                    "state": "proposed",
+                    "matched_terms": ["full-chaos/dev-health-ops"],
+                    "match_reasons": ["Exact canonical subject label match."],
+                    "confidence": 1,
+                    "evidence_ref_ids": ["acr:v1:repository:920f9442-07df-4217-4dc4-c5833c0b8268"],
+                    "provider": "github",
+                    "match_mechanisms": ["exact", "lexical"]
+                }
+            ],
+            "committed": []
+        },
+        "answer_plan": {
+            "family": "scoped_cohort_status",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table"],
+            "fact_kinds": [
+                "incidents",
+                "health",
+                "workload",
+                "readiness",
+                "operational_deficiencies",
+                "investment"
+            ],
+            "axes": ["subject_anchor", "expected_kind", "window"],
+            "budget": {
+                "max_items": 66,
+                "max_serialized_bytes": 262144,
+                "max_members": 50,
+                "synthesis_headroom": 16,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "requirements": [
+                {
+                    "requirement": "count/member/incident",
+                    "obligation": "count",
+                    "role": "member",
+                    "subject": "incident",
+                    "kind": "computed",
+                    "step": "membership_cardinality",
+                    "step_execution": "server_executed",
+                    "input_class": "resolved_member_set",
+                    "scope": "each_member",
+                    "quantifier": "exact"
+                }
+            ]
+        },
+        "direct_judgment": "This investigation is degraded: coverage was limited.",
+        "current_state": "No canonical facts were observed to describe the current state.",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [
+            {
+                "path_id": "2922c9c7-ea58-5b36-9b83-8ac031f72350",
+                "nodes": [
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    },
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:CHAOS",
+                            "label": "Fullchaos"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "source_asserted",
+                        "observed_at": "2026-10-30T20:00:15.198Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "acr:v1:team:linear:CHAOS"
+                        ]
+                    }
+                ],
+                "why_relevant": "full-chaos/dev-health-ops owned by team linear:CHAOS",
+                "evidence_ref_ids": [
+                    "acr:v1:repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                    "acr:v1:team:linear:CHAOS"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "4b1fdd85-738b-538f-a8aa-dddb570c3b55",
+                "nodes": [
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    },
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:CHAOS",
+                            "label": "Fullchaos"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T20:00:15.198Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "acr:v1:team:linear:CHAOS"
+                        ]
+                    }
+                ],
+                "why_relevant": "full-chaos/dev-health-ops owned by team linear:CHAOS",
+                "evidence_ref_ids": [
+                    "acr:v1:repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                    "acr:v1:team:linear:CHAOS"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "4715f623-dfa8-58b9-a0dc-61bcf494b2cd",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25505788772",
+                        "label": "CI Code Quality: Scheduled #25505788772"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25505788772",
+                            "label": "CI Code Quality: Scheduled #25505788772"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-07T15:36:35Z",
+                        "valid_from": "2026-05-07T15:34:23Z",
+                        "valid_to": "2026-05-07T15:36:35Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25505788772"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Code Quality: Scheduled #25505788772 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25505788772"],
+                "truncated": false
+            },
+            {
+                "path_id": "f570f36c-bfdc-5b58-b122-b799cbd12e16",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559913436",
+                        "label": "CI uv in /. for python-multipart - Update #1355739317 #25559913436"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559913436",
+                            "label": "CI uv in /. for python-multipart - Update #1355739317 #25559913436"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:04:08Z",
+                        "valid_from": "2026-05-08T14:03:00Z",
+                        "valid_to": "2026-05-08T14:04:08Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559913436"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI uv in /. for python-multipart - Update #1355739317 #25559913436 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559913436"],
+                "truncated": false
+            },
+            {
+                "path_id": "5853b0e5-e157-5d4d-8b16-25815e85982f",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559968454",
+                        "label": "CI Automatic Dependency Submission (Python) #25559968454"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559968454",
+                            "label": "CI Automatic Dependency Submission (Python) #25559968454"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:05:14Z",
+                        "valid_from": "2026-05-08T14:04:09Z",
+                        "valid_to": "2026-05-08T14:05:14Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559968454"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Automatic Dependency Submission (Python) #25559968454 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559968454"],
+                "truncated": false
+            },
+            {
+                "path_id": "62cc12a5-7551-5cda-9e3e-4cf5069e1c90",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971203",
+                        "label": "CI Build Docker images #25559971203"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971203",
+                            "label": "CI Build Docker images #25559971203"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:04:29Z",
+                        "valid_from": "2026-05-08T14:04:12Z",
+                        "valid_to": "2026-05-08T14:04:29Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971203"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Build Docker images #25559971203 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971203"],
+                "truncated": false
+            },
+            {
+                "path_id": "0f57e112-30d4-51c9-bfd9-559e30e89d28",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971233",
+                        "label": "CI Governance Gate #25559971233"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971233",
+                            "label": "CI Governance Gate #25559971233"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:04:21Z",
+                        "valid_from": "2026-05-08T14:04:12Z",
+                        "valid_to": "2026-05-08T14:04:21Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971233"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Governance Gate #25559971233 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971233"],
+                "truncated": false
+            },
+            {
+                "path_id": "6e2d24d4-a7b4-50e2-a08e-a0779acd38c6",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971246",
+                        "label": "CI Security Scan #25559971246"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971246",
+                            "label": "CI Security Scan #25559971246"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:05:17Z",
+                        "valid_from": "2026-05-08T14:04:13Z",
+                        "valid_to": "2026-05-08T14:05:17Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971246"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Security Scan #25559971246 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971246"],
+                "truncated": false
+            },
+            {
+                "path_id": "88987bd6-9ee9-51aa-aedc-a6bdd3396260",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971255",
+                        "label": "CI CodeQL #25559971255"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971255",
+                            "label": "CI CodeQL #25559971255"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:06:39Z",
+                        "valid_from": "2026-05-08T14:04:13Z",
+                        "valid_to": "2026-05-08T14:06:39Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971255"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI CodeQL #25559971255 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971255"],
+                "truncated": false
+            },
+            {
+                "path_id": "4587edc6-49e1-5e80-a9b0-56aa4338c27f",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971267",
+                        "label": "CI Tests #25559971267"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971267",
+                            "label": "CI Tests #25559971267"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:04:33Z",
+                        "valid_from": "2026-05-08T14:04:13Z",
+                        "valid_to": "2026-05-08T14:04:33Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971267"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Tests #25559971267 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971267"],
+                "truncated": false
+            },
+            {
+                "path_id": "6c64ff0e-4246-5a03-8ab3-213f68e63840",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971285",
+                        "label": "CI Lint #25559971285"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971285",
+                            "label": "CI Lint #25559971285"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:04:42Z",
+                        "valid_from": "2026-05-08T14:04:13Z",
+                        "valid_to": "2026-05-08T14:04:42Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971285"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Lint #25559971285 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971285"],
+                "truncated": false
+            },
+            {
+                "path_id": "cc00ec71-96b9-5790-913d-61058297f21d",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971297",
+                        "label": "CI Live Backend E2E #25559971297"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971297",
+                            "label": "CI Live Backend E2E #25559971297"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:04:33Z",
+                        "valid_from": "2026-05-08T14:04:13Z",
+                        "valid_to": "2026-05-08T14:04:33Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971297"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Live Backend E2E #25559971297 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971297"],
+                "truncated": false
+            },
+            {
+                "path_id": "31c64901-8519-55bf-a9a8-d661dc6076ab",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971334",
+                        "label": "CI Typecheck #25559971334"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25559971334",
+                            "label": "CI Typecheck #25559971334"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T14:04:33Z",
+                        "valid_from": "2026-05-08T14:04:13Z",
+                        "valid_to": "2026-05-08T14:04:33Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971334"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Typecheck #25559971334 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971334"],
+                "truncated": false
+            },
+            {
+                "path_id": "063f74e2-1142-573e-bb2b-900ba6fe50db",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565450137",
+                        "label": "CI github_actions in /. - Update #1355948458 #25565450137"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565450137",
+                            "label": "CI github_actions in /. - Update #1355948458 #25565450137"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:58:33Z",
+                        "valid_from": "2026-05-08T15:55:46Z",
+                        "valid_to": "2026-05-08T15:58:33Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565450137"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI github_actions in /. - Update #1355948458 #25565450137 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565450137"],
+                "truncated": false
+            },
+            {
+                "path_id": "7956a41c-1cea-5c80-8d4c-4b6d3c4d6ec3",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587509",
+                        "label": "CI CodeQL #25565587509"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587509",
+                            "label": "CI CodeQL #25565587509"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T16:00:36Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T16:00:36Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587509"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI CodeQL #25565587509 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587509"],
+                "truncated": false
+            },
+            {
+                "path_id": "8b67694f-a612-51e0-a139-4bd5e70351e0",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587538",
+                        "label": "CI Tests #25565587538"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587538",
+                            "label": "CI Tests #25565587538"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:58:55Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T15:58:55Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587538"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Tests #25565587538 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587538"],
+                "truncated": false
+            },
+            {
+                "path_id": "7b8e3922-a68c-5dcf-bd71-4c6f5784dc90",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587539",
+                        "label": "CI Build Docker images #25565587539"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587539",
+                            "label": "CI Build Docker images #25565587539"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:58:53Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T15:58:53Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587539"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Build Docker images #25565587539 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587539"],
+                "truncated": false
+            },
+            {
+                "path_id": "b17a6afd-f36d-50bb-86e1-14ab3cfbb13f",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587543",
+                        "label": "CI Typecheck #25565587543"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587543",
+                            "label": "CI Typecheck #25565587543"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:58:49Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T15:58:49Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587543"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Typecheck #25565587543 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587543"],
+                "truncated": false
+            },
+            {
+                "path_id": "63389658-8488-5730-846c-a828a4eb1e09",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587563",
+                        "label": "CI Lint #25565587563"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587563",
+                            "label": "CI Lint #25565587563"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:58:51Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T15:58:51Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587563"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Lint #25565587563 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587563"],
+                "truncated": false
+            },
+            {
+                "path_id": "a22448fb-70cd-58be-9a2a-600995459f46",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587568",
+                        "label": "CI Live Backend E2E #25565587568"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587568",
+                            "label": "CI Live Backend E2E #25565587568"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:58:47Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T15:58:47Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587568"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Live Backend E2E #25565587568 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587568"],
+                "truncated": false
+            },
+            {
+                "path_id": "02d8e158-3804-504f-a384-b701d0e2e593",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587570",
+                        "label": "CI Governance Gate #25565587570"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587570",
+                            "label": "CI Governance Gate #25565587570"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:58:49Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T15:58:49Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587570"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Governance Gate #25565587570 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587570"],
+                "truncated": false
+            },
+            {
+                "path_id": "9cc8c373-64ee-59d7-a9a2-11463f3ff0df",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587616",
+                        "label": "CI Security Scan #25565587616"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565587616",
+                            "label": "CI Security Scan #25565587616"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T15:59:37Z",
+                        "valid_from": "2026-05-08T15:58:36Z",
+                        "valid_to": "2026-05-08T15:59:37Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587616"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Security Scan #25565587616 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587616"],
+                "truncated": false
+            },
+            {
+                "path_id": "3638a57c-e1d1-5e60-8a18-d0aa94f337b8",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565598628",
+                        "label": "CI Automatic Dependency Submission (Python) #25565598628"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25565598628",
+                            "label": "CI Automatic Dependency Submission (Python) #25565598628"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-08T16:00:13Z",
+                        "valid_from": "2026-05-08T15:58:50Z",
+                        "valid_to": "2026-05-08T16:00:13Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565598628"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI Automatic Dependency Submission (Python) #25565598628 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565598628"],
+                "truncated": false
+            },
+            {
+                "path_id": "faba2fe5-16f8-5524-9ad4-de7c9ffd019d",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25595577099",
+                        "label": "CI uv in /. for GitPython, python-multipart - Update #1357659839 #25595577099"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25595577099",
+                            "label": "CI uv in /. for GitPython, python-multipart - Update #1357659839 #25595577099"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T07:41:07Z",
+                        "valid_from": "2026-05-09T07:40:16Z",
+                        "valid_to": "2026-05-09T07:41:07Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25595577099"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI uv in /. for GitPython, python-multipart - Update #1357659839 #25595577099 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25595577099"],
+                "truncated": false
+            },
+            {
+                "path_id": "71e327e0-eeb8-5fa5-a2ba-6c819ac90fce",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25620409711",
+                        "label": "CI CodeQL #25620409711"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:25620409711",
+                            "label": "CI CodeQL #25620409711"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-10T05:08:07Z",
+                        "valid_from": "2026-05-10T05:05:45Z",
+                        "valid_to": "2026-05-10T05:08:07Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25620409711"
+                        ]
+                    }
+                ],
+                "why_relevant": "CI CodeQL #25620409711 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25620409711"],
+                "truncated": false
+            },
+            {
+                "path_id": "b6498002-d440-5de9-85d9-2381ce05672a",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1090",
+                        "label": "fix(sync): no-op strict reference discovery for non-import-capable providers (CHAOS-2740)"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1090",
+                            "label": "fix(sync): no-op strict reference discovery for non-import-capable providers (CHAOS-2740)"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-07-08T02:37:10.724Z",
+                        "valid_from": "2026-06-30T01:05:11Z",
+                        "valid_to": "2026-06-30T01:05:23Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1090"
+                        ]
+                    }
+                ],
+                "why_relevant": "fix(sync): no-op strict reference discovery for non-import-capable providers (CHAOS-2740) belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1090"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "22950324-c60e-5562-80b4-f92750155650",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1651",
+                        "label": "CHAOS-3675 PR 2/3: real ClickHouse-backed EvidenceCandidateResolver (incidents)"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1651",
+                            "label": "CHAOS-3675 PR 2/3: real ClickHouse-backed EvidenceCandidateResolver (incidents)"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T00:47:25.353Z",
+                        "valid_from": "2026-08-10T01:45:48Z",
+                        "valid_to": "2026-08-10T01:57:02Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1651"
+                        ]
+                    }
+                ],
+                "why_relevant": "CHAOS-3675 PR 2/3: real ClickHouse-backed EvidenceCandidateResolver (incidents) belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1651"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "d706dac3-d7f6-521d-b79c-bdb6522c03bd",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:2046",
+                        "label": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:2046",
+                            "label": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-16T23:57:35.364Z",
+                        "valid_from": "2026-08-31T12:34:25Z",
+                        "valid_to": "2026-08-31T13:21:24Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:2046"
+                        ]
+                    }
+                ],
+                "why_relevant": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:2046"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "503e73a4-41db-546c-9925-da9ba406bf2d",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:5247",
+                        "label": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:5247",
+                            "label": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-29T22:00:41.731Z",
+                        "valid_from": "2026-10-29T18:44:21Z",
+                        "valid_to": "2026-10-29T21:18:37Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:5247"
+                        ]
+                    }
+                ],
+                "why_relevant": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:5247"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "fc17ff07-3181-5108-81d2-7943f5e3c056",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:893",
+                        "label": "fix(cli): sync teams exits non-zero on no-op (CHAOS-2391)"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:893",
+                            "label": "fix(cli): sync teams exits non-zero on no-op (CHAOS-2391)"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-08-05T13:02:55.193Z",
+                        "valid_from": "2026-06-14T03:13:47Z",
+                        "valid_to": "2026-06-14T13:17:04Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:893"
+                        ]
+                    }
+                ],
+                "why_relevant": "fix(cli): sync teams exits non-zero on no-op (CHAOS-2391) belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:893"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "e79b0ca1-7e87-5172-85ad-2c9a5a7c6a68",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1831",
+                        "label": "ci: companion no-op go-quality check for non-Go change sets"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1831",
+                            "label": "ci: companion no-op go-quality check for non-Go change sets"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-08-20T22:27:49Z",
+                        "valid_from": "2026-08-20T22:18:30Z",
+                        "valid_to": "2026-08-20T22:27:47Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1831"
+                        ]
+                    }
+                ],
+                "why_relevant": "ci: companion no-op go-quality check for non-Go change sets belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1831"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "5cffd880-a298-5233-9f36-f743b55f34b1",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#2046",
+                        "label": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#2046",
+                            "label": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-08-31T13:21:26Z",
+                        "valid_from": "2026-08-31T12:34:25Z",
+                        "valid_to": "2026-08-31T13:21:24Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#2046"
+                        ]
+                    }
+                ],
+                "why_relevant": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#2046"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "dec02ee9-0673-5e17-87ef-8495262a4843",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5247",
+                        "label": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5247",
+                            "label": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-29T21:18:38Z",
+                        "valid_from": "2026-10-29T18:44:21Z",
+                        "valid_to": "2026-10-29T21:18:37Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#5247"
+                        ]
+                    }
+                ],
+                "why_relevant": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#5247"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "b1638f9d-39ad-55ef-99fa-734f9c8a288a",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#2046",
+                        "label": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding"
+                    },
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#2046",
+                            "label": "Fix Go-facing DSN normalization gaps, a no-op comparator allowlist, and add tie-boundary seeding"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:CHAOS",
+                            "label": "Fullchaos"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#2046:linear%3ACHAOS:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#2046 owned by team linear:CHAOS",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#2046:linear%3ACHAOS:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "929e9dab-2035-5f17-840d-09b18539f290",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5247",
+                        "label": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs"
+                    },
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5247",
+                            "label": "test: CHAOS-11888 pin no-op success finalize and unsupported coverage pairs"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:CHAOS",
+                            "label": "Fullchaos"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T20:04:09.956Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5247:linear%3ACHAOS:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#5247 owned by team linear:CHAOS",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5247:linear%3ACHAOS:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "967611f7-85a0-5240-8473-41779d464faf",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1831",
+                        "label": "ci: companion no-op go-quality check for non-Go change sets"
+                    },
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1831",
+                            "label": "ci: companion no-op go-quality check for non-Go change sets"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:CHAOS",
+                            "label": "Fullchaos"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1831:linear%3ACHAOS:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#1831 owned by team linear:CHAOS",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1831:linear%3ACHAOS:repo_ownership"
+                ],
+                "truncated": false
+            }
+        ],
+        "conflicts": [],
+        "limitations": [
+            "No incident was found under full-chaos/dev-health-ops in the supplied relationship graph.",
+            "Incident facts were pruned because the resolved subject is a repository, while the incident capability supports incidents and teams. The available data therefore supports 0 incidents listed, not a complete incident-history guarantee.",
+            "A candidate subject was identified but not committed: the evidence assembled for it does not support naming it as the answer to this question."
+        ],
+        "evidence_ref_ids": ["acr:v1:repository:920f9442-07df-4217-4dc4-c5833c0b8268"],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "canonical_fact:incidents",
+                    "state": "pruned",
+                    "reason": "no resolved subject has a kind this capability supports (resolved kinds: repositories; supported kinds: incidents, teams)",
+                    "label": "Canonical facts — incident",
+                    "state_label": "not needed"
+                },
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T20:28:11.752203258Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": true,
+            "degraded_reasons": ["no_member_found:incident"],
+            "details": [
+                {
+                    "detail_id": "cov-01",
+                    "source": "context-fabric:graph",
+                    "code": "graph_no_member_found",
+                    "degrading": true,
+                    "kind": "incident",
+                    "label": "No incident was found under the named subject, so none are listed",
+                    "phrasing": "No incident was found under the named subject, so none are listed",
+                    "raw": "no_member_found:incident"
+                },
+                {
+                    "detail_id": "cov-02",
+                    "source": "canonical_fact:incidents",
+                    "code": "fact_pruned",
+                    "degrading": false,
+                    "fact_kind": "incidents",
+                    "source_state": "pruned",
+                    "supported_kinds": ["incident", "team"],
+                    "label": "Incident facts do not apply to what was asked",
+                    "phrasing": "Incident facts do not apply to what was asked",
+                    "raw": "no resolved subject has a kind this capability supports (resolved kinds: repositories; supported kinds: incidents, teams)"
+                }
+            ]
+        },
+        "evidence_ref_labels": {
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25505788772": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25505788772",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559913436": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559913436",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559968454": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559968454",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971203": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971203",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971233": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971233",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971246": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971246",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971255": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971255",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971267": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971267",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971285": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971285",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971297": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971297",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25559971334": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25559971334",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565450137": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565450137",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587509": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587509",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587538": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587538",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587539": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587539",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587543": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587543",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587563": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587563",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587568": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587568",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587570": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587570",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565587616": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565587616",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25565598628": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25565598628",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25595577099": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25595577099",
+            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:25620409711": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:25620409711",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1090": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:1090",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1651": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:1651",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:2046": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:2046",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:5247": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:5247",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:893": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:893",
+            "acr:v1:repository:920f9442-07df-4217-4dc4-c5833c0b8268": "Repository: 920f9442-07df-4217-4dc4-c5833c0b8268",
+            "acr:v1:team:linear:CHAOS": "Team: linear:CHAOS",
+            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#1831:linear%3ACHAOS:repo_ownership": "Work item/team link: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1831:linear:CHAOS:repo_ownership",
+            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#2046:linear%3ACHAOS:repo_ownership": "Work item/team link: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#2046:linear:CHAOS:repo_ownership",
+            "acr:v1:work-item-team.v2:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr%3Afull-chaos/dev-health-ops#5247:linear%3ACHAOS:repo_ownership": "Work item/team link: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#5247:linear:CHAOS:repo_ownership",
+            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1831": "Work item: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#1831",
+            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#2046": "Work item: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#2046",
+            "acr:v1:work-item:920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#5247": "Work item: 920f9442-07df-4217-4dc4-c5833c0b8268:ghpr:full-chaos/dev-health-ops#5247"
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "context-fabric-synthesis.v27+gpt-5.6-luna",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna",
+            "synthesis_source": "server"
+        },
+        "deterministic_answer": "This investigation is degraded: coverage was limited.",
+        "warnings": [
+            "The count is coverage-limited because incident records were not available for the resolved repository subject."
+        ],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "completeness": {
+            "terminal_status": "degraded",
+            "terminal_reason": "degraded_reason_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "state": "degraded",
+            "outcomes": [
+                {
+                    "stage": "planning",
+                    "requirement": "count/member/incident",
+                    "obligation": "count",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "assembled_result",
+                    "requirement": "count/member/incident",
+                    "obligation": "count",
+                    "outcome": "unavailable",
+                    "impact": "dimension",
+                    "cause_coverage": "computed_population_absent",
+                    "cause_observed": true,
+                    "served": 0,
+                    "declared": 0
+                }
+            ]
+        }
+    }
+}

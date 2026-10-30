@@ -19,7 +19,14 @@ type AnswerFields =
     | "remaining_work"
     | "readiness_gaps"
     | "conflicts"
-    | "versions";
+    | "versions"
+    // CHAOS-11932: coverage, completeness, limitations and evidence references.
+    | "completeness"
+    | "coverage"
+    | "limitations"
+    | "warnings"
+    | "evidence_ref_ids"
+    | "evidence_ref_labels";
 
 export type AnswerResult =
     | Pick<ACRContextFabricInvestigationResultV1, AnswerFields>
