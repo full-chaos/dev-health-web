@@ -137,6 +137,16 @@
             "captured_at": "2026-10-30T20:28:59.032571167Z",
             "stream_ms": 23246,
             "sha256_compact": "807f69a8053076d6997dd66a8e6e6bd3dbd540d9d545d2cbc290d42a92791bb7"
+        },
+        {
+            "file": "kiac_repo_owner_status_corrected.event.json",
+            "question": "Which team owns full-chaos/dev-health-acr?",
+            "status": "partial",
+            "result_id": "result_48c1cccd0a06108e8175e2ad722a2424",
+            "captured_at": "2026-10-30T21:28:32.353741717Z",
+            "stream_ms": 25650,
+            "completeness_authority": "on",
+            "sha256_compact": "7e1335ac7cecf5560b15fca2c32b273e9aac06d5dc6b81c3a57e0f8c6e379cca"
         }
     ],
     "encoder_captures": {
@@ -226,5 +236,6 @@
                 "sha256_compact": "ab9ea8671a10f84c599da57b48e329495beaec0dc17d9a17075ea2dd0d7830bf"
             }
         ]
-    }
+    },
+    "completeness_authority": "Captures taken before 2026-10-30T21:25Z ran with ACR's server completeness authority OFF (the model's status stands). From then on kiac askdev-1 runs with ACR_CONTEXT_FABRIC_SERVER_COMPLETENESS_AUTHORITY_ENABLED=true and ..._SYMMETRIC_ENABLED=true (CHAOS-12154, same image). Each entry captured after that says completeness_authority: on."
 }
