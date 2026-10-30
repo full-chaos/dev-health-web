@@ -7,6 +7,8 @@ import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
 
+import { AskDevShellProvider, useAskDevShell } from "@/components/ask-dev/AskDevShellContext";
+
 import { CommandPalette } from "./CommandPalette";
 
 const nav = vi.hoisted(() => ({ push: vi.fn(), search: "", pathname: "/dashboard" }));
@@ -220,5 +222,44 @@ describe("CommandPalette", () => {
             .getAllByRole("option")
             .map((o) => o.textContent);
         expect(withAll.length).toBeGreaterThanOrEqual(without.length);
+    });
+
+    describe("Ask Dev entry", () => {
+        function AskDevState() {
+            const { open } = useAskDevShell();
+            return <output data-testid="ask-dev-state">{open ? "open" : "closed"}</output>;
+        }
+        const withAskDev = (features: Record<string, boolean>) =>
+            render(
+                <AdminTierProvider tier="community" features={features}>
+                    <AskDevShellProvider>
+                        <AskDevState />
+                        <CommandPalette />
+                    </AskDevShellProvider>
+                </AdminTierProvider>,
+            );
+
+        it("opens the Ask Dev panel from the palette and navigates nowhere", async () => {
+            const user = userEvent.setup();
+            withAskDev({ ask_dev: true, agent_context_runtime: true });
+            press({ key: "k", metaKey: true });
+            await user.click(within(palette()).getByRole("option", { name: /^Ask Dev/ }));
+            await act(async () => {});
+            expect(screen.getByTestId("ask-dev-state").textContent).toBe("open");
+            expect(nav.push).not.toHaveBeenCalled();
+            expect(screen.queryByTestId("command-palette")).toBeNull();
+        });
+
+        it("omits the entry without the entitlements and on an excluded route", () => {
+            const { unmount } = withAskDev({ ask_dev: true });
+            press({ key: "k", metaKey: true });
+            expect(within(palette()).queryByRole("option", { name: /^Ask Dev/ })).toBeNull();
+            unmount();
+
+            nav.pathname = "/agent-context";
+            withAskDev({ ask_dev: true, agent_context_runtime: true });
+            press({ key: "k", metaKey: true });
+            expect(within(palette()).queryByRole("option", { name: /^Ask Dev/ })).toBeNull();
+        });
     });
 });

@@ -135,10 +135,20 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
         if (!hasSubject) releaseRightDrawer("evidence");
     }, [hasSubject]);
     // The open subject and a counter, for the event handlers only (never read during render).
-    const current = useRef<{ subject: EvidenceSubject | null; id: number }>({
+    const current = useRef<{
+        subject: EvidenceSubject | null;
+        id: number;
+        path: string | null;
+    }>({
         subject: null,
         id: 0,
+        path: null,
     });
+    // No open subject (closed, or dropped by a navigation): forget the subject, so that coming
+    // back to its path never calls an `onClose` of a page visit that is over.
+    useEffect(() => {
+        if (!hasSubject) current.current = { ...current.current, subject: null, path: null };
+    }, [hasSubject]);
 
     // Drop the subject of another path during render (no effect, no extra paint). React renders
     // again before it commits, so the drawer is never shown on another path, and it does not
@@ -150,7 +160,7 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     // A peer drawer opened: drop the subject, with the same hooks as `close`, and keep the claim.
     const closeFromPeer = useCallback(() => {
         const previous = current.current.subject;
-        current.current = { subject: null, id: current.current.id };
+        current.current = { subject: null, id: current.current.id, path: null };
         previous?.onClose?.();
         setState(null);
     }, []);
@@ -158,9 +168,12 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     const open = useCallback(
         (subject: EvidenceSubject) => {
             const previous = current.current.subject;
-            if (previous !== null && previous !== subject) previous.onClose?.();
+            // A subject opened on another path was dropped by the navigation: forget it, and do
+            // not call its `onClose` (the opener left the page).
+            const dropped = current.current.path !== pathname;
+            if (previous !== null && previous !== subject && !dropped) previous.onClose?.();
             const id = current.current.id + 1;
-            current.current = { subject, id };
+            current.current = { subject, id, path: pathname };
             setState({ subject, path: pathname, id });
             // One right drawer at a time: this one takes the edge from the filters or Ask Dev.
             claimRightDrawer("evidence", closeFromPeer);
@@ -171,7 +184,7 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     );
     const close = useCallback(() => {
         const previous = current.current.subject;
-        current.current = { subject: null, id: current.current.id };
+        current.current = { subject: null, id: current.current.id, path: null };
         previous?.onClose?.();
         setState(null);
         releaseRightDrawer("evidence");

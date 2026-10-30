@@ -17,9 +17,16 @@ import { Search } from "lucide-react";
 import { useAdminNav } from "@/components/admin/AdminTabs";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { Dialog } from "@/components/ui/Dialog";
+import { useAskDevShell } from "@/components/ask-dev/AskDevShellContext";
+import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
 import { navAreas } from "@/lib/navigation/areas";
 
-import { filterPaletteEntries, paletteEntries } from "./commandPaletteEntries";
+import {
+    ASK_DEV_PALETTE_ENTRY,
+    filterPaletteEntries,
+    paletteEntries,
+    type PaletteEntry,
+} from "./commandPaletteEntries";
 import { shellHref } from "./shellHref";
 import { useShellNavParams } from "./useShellNavParams";
 
@@ -45,16 +52,23 @@ function Palette({ onClose }: { onClose: () => void }) {
     const [query, setQuery] = useState("");
     const [active, setActive] = useState(0);
 
-    const entries = useMemo(
-        () => paletteEntries(navAreas, features, undefined, { isPlatformAdmin }),
-        [features, isPlatformAdmin],
-    );
+    const { setOpen: setAskDevOpen } = useAskDevShell();
+    const askDev = isAskDevEnabled(features) && !isAskDevExcludedPath(pathname);
+    const entries = useMemo(() => {
+        const list = paletteEntries(navAreas, features, undefined, { isPlatformAdmin });
+        return askDev ? [ASK_DEV_PALETTE_ENTRY, ...list] : list;
+    }, [features, isPlatformAdmin, askDev]);
     const results = useMemo(() => filterPaletteEntries(entries, query), [entries, query]);
     const current = results[Math.min(active, results.length - 1)];
 
-    const go = (path: string) => {
+    const go = (entry: PaletteEntry) => {
         onClose();
-        router.push(shellHref(path, params));
+        if (entry.action === "open-ask-dev") {
+            // After the dialog unmounts, so its focus return does not take focus from the panel.
+            queueMicrotask(() => setAskDevOpen(true));
+            return;
+        }
+        router.push(shellHref(entry.path, params));
     };
 
     return (
@@ -91,7 +105,7 @@ function Palette({ onClose }: { onClose: () => void }) {
                         );
                     } else if (event.key === "Enter" && current) {
                         event.preventDefault();
-                        go(current.path);
+                        go(current);
                     }
                 }}
                 className="border-b border-(--card-stroke) bg-transparent px-5 py-3 text-sm text-foreground placeholder:text-(--ink-muted) rounded-none! focus-visible:outline-none! focus-visible:shadow-[inset_0_-2px_0_var(--accent-2)]"
@@ -105,6 +119,30 @@ function Palette({ onClose }: { onClose: () => void }) {
                     <ul id={listId} role="listbox" aria-label="Destinations">
                         {results.map((entry) => {
                             const selected = entry === current;
+                            if (entry.action) {
+                                return (
+                                    <li key={entry.id} role="presentation">
+                                        <button
+                                            type="button"
+                                            id={`palette-${entry.id}`}
+                                            role="option"
+                                            aria-selected={selected}
+                                            tabIndex={-1}
+                                            onClick={() => go(entry)}
+                                            className={`flex w-full items-center justify-between gap-3 rounded-(--radius-sm) px-3 py-2 text-left text-sm ${
+                                                selected
+                                                    ? "bg-(--accent-2)/10 text-foreground"
+                                                    : "text-(--text-secondary) hover:bg-(--surface-raised)"
+                                            }`}
+                                        >
+                                            <span className="font-medium">{entry.label}</span>
+                                            <span className="text-xs text-(--ink-muted)">
+                                                {entry.areaLabel}
+                                            </span>
+                                        </button>
+                                    </li>
+                                );
+                            }
                             return (
                                 <li key={entry.id} role="presentation">
                                     <Link
