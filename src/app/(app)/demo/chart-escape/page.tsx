@@ -1,11 +1,12 @@
 "use client";
 
+import { PageHeader } from "@/components/shell/PageHeader";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
 
 // Test-mode fixture: served names are attacker-controlled text (synced provider data).
 // The tooltip must show them as literal text. Used by tests/chart-tooltip-escape.spec.ts.
-export const HOSTILE_NAMES = [
+const HOSTILE_NAMES = [
     "<img src=x onerror=alert(1)>",
     "</div><a href=javascript:alert(1)>x</a>",
     "&amp;",
@@ -14,6 +15,10 @@ export const HOSTILE_NAMES = [
 export default function ChartEscapeDemo() {
     return (
         <div className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
+            <PageHeader
+                title="Chart tooltip escaping"
+                subtitle="Hostile served names render as literal text."
+            />
             <div data-testid="escape-vertical-bar">
                 <VerticalBarChart
                     categories={HOSTILE_NAMES}
