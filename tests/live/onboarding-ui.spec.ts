@@ -172,7 +172,15 @@ test("full signup then explicit workspace creation reaches dashboard @guided", a
     await page.getByLabel("Organization Name").fill("UI Journey Org");
     await page.getByRole("button", { name: "Create Workspace" }).click();
 
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+    // With the guided flag on, workspace creation routes through the integration step
+    // (skippable) and the completion page before the dashboard (CHAOS-12138: this spec
+    // asserted the old direct redirect and had never run flag-on).
+    await expect(page).toHaveURL(/\/auth\/onboard\/integration/, { timeout: 30_000 });
+    await page.getByRole("button", { name: "Skip for now" }).click();
+    await expect(page).toHaveURL(/\/auth\/onboard\/complete/, { timeout: 30_000 });
+    await page.getByRole("link", { name: "Go to dashboard" }).click();
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "Home" })).toBeVisible({
         timeout: 10_000,
     });
