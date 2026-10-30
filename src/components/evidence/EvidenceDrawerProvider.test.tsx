@@ -286,6 +286,27 @@ describe("EvidenceDrawerProvider and the right edge", () => {
 
         expect(onClose).not.toHaveBeenCalled();
     });
+
+    it("forgets a subject that a navigation dropped: the next open on the new page does not call its onClose", async () => {
+        resetRightDrawerForTest();
+        const onClose = vi.fn();
+        const tree = () => (
+            <EvidenceDrawerProvider>
+                <ContentPage onClose={onClose} />
+            </EvidenceDrawerProvider>
+        );
+        const view = render(tree());
+        await userEvent.click(screen.getByRole("button", { name: "Row button" }));
+        nav.pathname = "/explore";
+        view.rerender(tree());
+        expect(screen.queryByRole("dialog")).toBeNull();
+
+        // Evidence opens on the new page.
+        await userEvent.click(screen.getByTestId("canvas-mark"));
+
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+    });
 });
 
 describe("useEvidenceDrawer", () => {
