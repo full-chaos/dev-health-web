@@ -9,6 +9,7 @@ import { useChartColors, useChartTheme } from "./chartTheme";
 import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber, formatPercent } from "@/lib/formatters";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([PieChart]);
 
@@ -92,9 +93,9 @@ export function NestedPieChart2D({
                         };
                         const value = typeof p.value === "number" ? formatNumber(p.value) : p.value;
                         return `
-              <div style="font-weight: 600; margin-bottom: 4px;">${p.seriesName}</div>
+              <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(p.seriesName)}</div>
               <div style="font-(--font-mono)">
-                ${p.name}: <strong>${value}</strong> ${unit}
+                ${escapeHtml(p.name)}: <strong>${escapeHtml(value)}</strong> ${escapeHtml(unit)}
                 <span style="color: ${chartTheme.muted}; margin-left: 8px;">(${formatPercent(p.percent)})</span>
               </div>
             `;

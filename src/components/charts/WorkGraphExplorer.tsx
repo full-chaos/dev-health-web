@@ -33,6 +33,7 @@ import {
 import { ChartTypeToggle } from "./ChartTypeToggle";
 import { nameOrUnresolved, UNRESOLVED } from "@/lib/labels/unresolved";
 import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([GraphChart]);
 
@@ -486,10 +487,10 @@ export function WorkGraphExplorer({
                     if (p.dataType === "node") {
                         const nodeId = p.data?.id ?? "";
                         const type = nodeId.split(":")[0];
-                        return `<strong>${type}</strong><br/>${p.data?.name ?? UNRESOLVED}`;
+                        return `<strong>${escapeHtml(type)}</strong><br/>${escapeHtml(p.data?.name ?? UNRESOLVED)}`;
                     }
                     if (p.dataType === "edge") {
-                        return `${p.data?.edgeType ?? "relates"}`;
+                        return escapeHtml(p.data?.edgeType ?? "relates");
                     }
                     return "";
                 },

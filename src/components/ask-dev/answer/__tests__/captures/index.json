@@ -1,0 +1,230 @@
+{
+    "producer": "kiac cluster askdev-1, acr-api image docker.io/askdev/acr-api@sha256:3f5c12060f07a674b653ac4d2fc9b51fe9644f30b01e3656d1bb4b099daeacd6 (acr main eabe6e6c), org 70d529e0 (real synced data)",
+    "how": "node .acr-dev/ask-stream.mjs \"<question>\" with RAW=1: the POST /api/v1/context-fabric/investigations SSE stream; each file is its result event as received. Not edited.",
+    "sha256_compact": "sha256 of JSON.stringify of the parsed file (formatting-independent).",
+    "captures": [
+        {
+            "file": "kiac_project_status_partial.event.json",
+            "question": "What is the status of the Go Worker Runtime Migration project over the last 30 days?",
+            "status": "partial",
+            "result_id": "result_12b5069196d7adaf4208939a97b449ca",
+            "captured_at": "2026-10-30T18:31:07.277587424Z",
+            "stream_ms": 35598,
+            "sha256_compact": "db6eba432637602144b5864f09d183e3f9defeafa07dc720b2d12f6fab090c04"
+        },
+        {
+            "file": "kiac_project_readiness_partial.event.json",
+            "question": "Is the Go Worker Runtime Migration project ready to finish, judging by the last 30 days?",
+            "status": "partial",
+            "result_id": "result_89720ee49dd34c470fd62c2e0dcbc9d1",
+            "captured_at": "2026-10-30T18:32:22.860161971Z",
+            "stream_ms": 26948,
+            "sha256_compact": "6a0680aead7483672774fb39d9df7be1ba49aaee85e905f8a9993c7fa354fc8f"
+        },
+        {
+            "file": "kiac_team_open_work_degraded.event.json",
+            "question": "Which of the projects the Fullchaos team owns carry the most open work right now?",
+            "status": "degraded",
+            "result_id": "result_ddea615c7e0f2033d2abbffa98c79ca3",
+            "captured_at": "2026-10-30T18:29:34.816486925Z",
+            "stream_ms": 67215,
+            "sha256_compact": "e90134a0900cc9a251e6c1716cd09a2070ba236af7dbb467b447910b1678d92a"
+        },
+        {
+            "file": "kiac_project_status_clarification.event.json",
+            "question": "What is the status of the Go Worker Runtime Migration project?",
+            "status": "clarification_required",
+            "result_id": "result_008a739129ba7735e58ae85bcd5e7a37",
+            "captured_at": "2026-10-30T18:29:26.022248629Z",
+            "stream_ms": 4365,
+            "sha256_compact": "aa112ae545bbe9a93a5c20ca7e5c7490db70679081c38f34701663f837dbdb47"
+        },
+        {
+            "file": "kiac_unresolved_no_match.event.json",
+            "question": "What work remains to finish the Go Worker Runtime Migration project?",
+            "status": "no_match",
+            "result_id": "result_7b5addeb63a2a3df11cd4b7f84ef6ede",
+            "captured_at": "2026-10-30T18:31:43.302492134Z",
+            "stream_ms": 12392,
+            "sha256_compact": "fe4d2916372e42d321f46bb6d56988505154e7b144b8720464c9a0b79d35f795"
+        },
+        {
+            "file": "kiac_blocked_now_window_clarification.event.json",
+            "question": "What is blocked right now?",
+            "status": "clarification_required",
+            "result_id": "result_2542b0e1a3dbf1bac66d41faa42dd094",
+            "captured_at": "2026-10-30T19:40:32.50964067Z",
+            "stream_ms": 5676,
+            "sha256_compact": "59204328a9934cf5c3d2a1923a0c621b60190857a4f6f664e4a61f862936976d"
+        },
+        {
+            "file": "kiac_work_item_handle_clarification.event.json",
+            "question": "What is the status of CHAOS-11930 over the last 30 days?",
+            "status": "clarification_required",
+            "result_id": "result_13a137ad063087d9d5b74fdbc163e5bd",
+            "captured_at": "2026-10-30T19:41:58.95459714Z",
+            "stream_ms": 5054,
+            "sha256_compact": "fcc994cb8e6185a7cc4951ff41186e99087eb680a1e29e4185cf2b98eba0331d"
+        },
+        {
+            "file": "kiac_kind_and_candidate_clarification.event.json",
+            "question": "How healthy is dev-health over the last 30 days?",
+            "status": "clarification_required",
+            "result_id": "result_59b8df202b474f5361129069fb533ac7",
+            "captured_at": "2026-10-30T19:42:04.120053085Z",
+            "stream_ms": 9053,
+            "sha256_compact": "5463fe4a38f3c654d2312a0c92f465260aee914ee055e588e0809d8a5cb7743f"
+        },
+        {
+            "file": "kiac_kind_candidate_handle_clarification.event.json",
+            "question": "How is atlassian doing over the last 30 days?",
+            "status": "clarification_required",
+            "result_id": "result_f374a93b392f3bbeb0898fadb88baa07",
+            "captured_at": "2026-10-30T19:44:06.736964931Z",
+            "stream_ms": 8646,
+            "sha256_compact": "74bed5bbeafac8289218a899d17c868a1b4886b1b6a98062b4625889d855ec9b"
+        },
+        {
+            "file": "kiac_team_candidate_no_match.event.json",
+            "question": "What is the status of the Web team over the last 30 days?",
+            "status": "no_match",
+            "result_id": "result_d3181dbf4e7dbe6fc2ac2f6ff0286175",
+            "captured_at": "2026-10-30T19:43:09.293630669Z",
+            "stream_ms": 6210,
+            "sha256_compact": "fd94ba80fb5c03e6757572dc6094536f358ba2bc6df037669a83a8db71ad8e9f"
+        },
+        {
+            "file": "kiac_unresolved_structure_no_match.event.json",
+            "question": "What is the status of Migration over the last 30 days?",
+            "status": "no_match",
+            "result_id": "result_4902eb9fbe0a52eecb1a7a9bd972adaf",
+            "captured_at": "2026-10-30T19:41:43.998423924Z",
+            "stream_ms": 3952,
+            "sha256_compact": "c933354ca899d4fa164d06674bc90c034cada0bbc266fe6e620f0049d844af4d"
+        },
+        {
+            "file": "kiac_repo_merged_prs_degraded.event.json",
+            "question": "How many pull requests were merged in full-chaos/dev-health-ops over the last 7 days?",
+            "status": "degraded",
+            "result_id": "result_aa79363e719d664230852770305f2648",
+            "captured_at": "2026-10-30T20:27:11.551681259Z",
+            "stream_ms": 27490,
+            "sha256_compact": "10565a2761f0eced8781db8fa3b364579c0d461d71f31c6e9194be5159dee691"
+        },
+        {
+            "file": "kiac_repo_ci_rate_complete.event.json",
+            "question": "What is the CI success rate of full-chaos/dev-health-web over the last 30 days?",
+            "status": "complete",
+            "result_id": "result_388f6da8a895e9d858e8002895d2a857",
+            "captured_at": "2026-10-30T20:27:30.513057503Z",
+            "stream_ms": 18838,
+            "sha256_compact": "2f939c89bf8d9df7755c9deac7e702ca1926757f057457289a73ae228ddba665"
+        },
+        {
+            "file": "kiac_repo_incidents_degraded.event.json",
+            "question": "How many incidents affected full-chaos/dev-health-ops over the last 30 days?",
+            "status": "degraded",
+            "result_id": "result_953a872bf5cc6f870de31e84d08fe9d8",
+            "captured_at": "2026-10-30T20:28:20.20333747Z",
+            "stream_ms": 14046,
+            "sha256_compact": "6e0cd468464bfadaa7341b5feffa5d9a8600323bc76c094c60769749069c6a73"
+        },
+        {
+            "file": "kiac_repo_owner_complete.event.json",
+            "question": "Which team owns full-chaos/dev-health-acr?",
+            "status": "complete",
+            "result_id": "result_5440efde5470d4ebc4960b2df926a6ca",
+            "captured_at": "2026-10-30T20:28:59.032571167Z",
+            "stream_ms": 23246,
+            "sha256_compact": "807f69a8053076d6997dd66a8e6e6bd3dbd540d9d545d2cbc290d42a92791bb7"
+        }
+    ],
+    "encoder_captures": {
+        "producer": "acr eabe6e6c4ca797c4a10f9a8378e32ad598bbdc74 (the web ACR pin), its real producers run in-process by scratch Go tests (not committed): internal/contextfabric/graphrank zz_web3440_material_test.go and internal/api zz_web3440_capture_test.go, served by a real http.Server and read with serveStream. Used where kiac has no capture: no kiac question produced anchor_options or a 413 budget_refusal.",
+        "how": "WEB3440_OUT=<dir> go test ./internal/contextfabric/graphrank/ -run TestWeb3440AnchorMaterial, then ./internal/api/ -run TestWeb3440: each file is the data line of the stream's terminal frame (result or error) as received. Not edited.",
+        "inputs": "Set by the capture test, not measured live: the anchor claimants (two real kiac repository names and ids) and the refusal's measurements (overrun, items, bytes). Everything else (receipt and option ids, schema version, status, sentences, error envelope, continuation) is the producer's own output.",
+        "captured_at": "2026-10-30T20:14:00Z",
+        "captures": [
+            {
+                "file": "acr_encoder_anchor_v1_clarification.event.json",
+                "event_type": "result",
+                "question": "How is dev-health doing right now?",
+                "status": "clarification_required",
+                "schema_version": "context_fabric_investigation_result.v1",
+                "result_id": "result_d8cb84508995cb31f9374863ab7daf9b",
+                "function": "internal/contextfabric/graphrank anchorOfferMaterial(claimants, claimants, true, false) -> contextfabric.NewEngine(...).Investigate (composeStructureNeeds mints the ancr_ receipts) -> internal/api ContextFabricInvestigationHandler, stream path",
+                "sha256_compact": "3f80a73feb41fbca232ff2f5f3026a7bfc5bf48611bd1572e36ea679936974aa"
+            },
+            {
+                "file": "acr_encoder_anchor_v2_clarification.event.json",
+                "event_type": "result",
+                "question": "How is dev-health doing right now?",
+                "status": "clarification_required",
+                "schema_version": "context_fabric_investigation_result.v2",
+                "result_id": "result_36057d683e5d4305987c9c86c1e43b64",
+                "function": "internal/contextfabric/graphrank anchorOfferMaterial(claimants, claimants, true, true) -> contextfabric.NewEngine(...).Investigate (composeStructureNeeds mints the ancr_ receipts) -> internal/api ContextFabricInvestigationHandler, stream path",
+                "sha256_compact": "77058dfda2fc9ef64461acc4e21cd64c14ef7750fc4af3cf98b6242b12b1f2cb"
+            },
+            {
+                "file": "acr_encoder_budget_refusal_evidence_window.event.json",
+                "event_type": "error",
+                "question": "What changed in full-chaos/dev-health-ops over the last 90 days?",
+                "error_code": "budget_refusal",
+                "question_family": "subject_investigation",
+                "axis": "evidence_window",
+                "function": "internal/api/context_fabric_routes.go writeContextFabricError -> writeContextFabricFailure -> writeError (413 budget_refusal), streamed by internal/api/context_fabric_event_stream.go; the AnswerBudgetRefusal's NarrowerContinuationAxis is LookupQuestionFamily(subject_investigation).NarrowerContinuationAxis",
+                "sha256_compact": "c947ccbc0a6ac9b4a30c4eb7618ef6a50f2faba4f66ac1d26ed852a9c7090c5a"
+            },
+            {
+                "file": "acr_encoder_budget_refusal_result_count.event.json",
+                "event_type": "error",
+                "question": "Which repositories have the most open work?",
+                "error_code": "budget_refusal",
+                "question_family": "discovered_cohort_ranking",
+                "axis": "result_count",
+                "function": "internal/api/context_fabric_routes.go writeContextFabricError -> writeContextFabricFailure -> writeError (413 budget_refusal), streamed by internal/api/context_fabric_event_stream.go; the AnswerBudgetRefusal's NarrowerContinuationAxis is LookupQuestionFamily(discovered_cohort_ranking).NarrowerContinuationAxis",
+                "sha256_compact": "7aee39f66b1916e6bc709ac449e0ae52084a703d7c778071a05e70603f62a28f"
+            },
+            {
+                "file": "acr_encoder_budget_refusal_scope_anchor.event.json",
+                "event_type": "error",
+                "question": "What is the status of every project the Web team owns?",
+                "error_code": "budget_refusal",
+                "question_family": "scoped_cohort_status",
+                "axis": "scope_anchor",
+                "function": "internal/api/context_fabric_routes.go writeContextFabricError -> writeContextFabricFailure -> writeError (413 budget_refusal), streamed by internal/api/context_fabric_event_stream.go; the AnswerBudgetRefusal's NarrowerContinuationAxis is LookupQuestionFamily(scoped_cohort_status).NarrowerContinuationAxis",
+                "sha256_compact": "13ca39a74cb8635191d8dd1486b67fa9957cea43c987c5463eac9e95a75a1acb"
+            },
+            {
+                "file": "acr_encoder_budget_refusal_group_selection.event.json",
+                "event_type": "error",
+                "question": "How is each team's open work doing?",
+                "error_code": "budget_refusal",
+                "question_family": "grouped_cohort_status",
+                "axis": "group_selection",
+                "function": "internal/api/context_fabric_routes.go writeContextFabricError -> writeContextFabricFailure -> writeError (413 budget_refusal), streamed by internal/api/context_fabric_event_stream.go; the AnswerBudgetRefusal's NarrowerContinuationAxis is LookupQuestionFamily(grouped_cohort_status).NarrowerContinuationAxis",
+                "sha256_compact": "3d97d0140c3c014391cd09c00de4e7dbb70e29efd576ca13ccb90ee9861859eb"
+            },
+            {
+                "file": "acr_encoder_budget_refusal_comparison_pair.event.json",
+                "event_type": "error",
+                "question": "Compare Dev Health Ops, Dev Health Web Redesign and Ask Dev over the last 30 days.",
+                "error_code": "budget_refusal",
+                "question_family": "explicit_comparison",
+                "axis": "comparison_pair",
+                "function": "internal/api/context_fabric_routes.go writeContextFabricError -> writeContextFabricFailure -> writeError (413 budget_refusal), streamed by internal/api/context_fabric_event_stream.go; the AnswerBudgetRefusal's NarrowerContinuationAxis is LookupQuestionFamily(explicit_comparison).NarrowerContinuationAxis",
+                "sha256_compact": "cc2400032bda4f9f77e0254ce378d8fab1ef5daca8d8a2858062d5758f00b93c"
+            },
+            {
+                "file": "acr_encoder_budget_refusal_none.event.json",
+                "event_type": "error",
+                "question": "Tell me everything.",
+                "error_code": "budget_refusal",
+                "question_family": "unclassified",
+                "axis": "none",
+                "function": "internal/api/context_fabric_routes.go writeContextFabricError -> writeContextFabricFailure -> writeError (413 budget_refusal), streamed by internal/api/context_fabric_event_stream.go; the AnswerBudgetRefusal's NarrowerContinuationAxis is LookupQuestionFamily(unclassified).NarrowerContinuationAxis",
+                "sha256_compact": "ab9ea8671a10f84c599da57b48e329495beaec0dc17d9a17075ea2dd0d7830bf"
+            }
+        ]
+    }
+}

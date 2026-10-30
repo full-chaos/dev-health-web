@@ -14,6 +14,7 @@ import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { rampColor, rampPosition } from "@/lib/heatmapRamp";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([EChartsHeatmapChart]);
 
@@ -107,17 +108,18 @@ export function HeatmapChart({
                             const xLabel = values[0];
                             const yLabel = values[1];
                             if (raw === "-") {
-                                return [`<strong>${yLabel}</strong> · ${xLabel}`, "No data"].join(
-                                    "<br/>",
-                                );
+                                return [
+                                    `<strong>${escapeHtml(yLabel)}</strong> · ${escapeHtml(xLabel)}`,
+                                    "No data",
+                                ].join("<br/>");
                             }
                             const formatted =
                                 typeof raw === "number"
                                     ? formatNumber(raw, { maximumFractionDigits: 2 })
                                     : raw;
                             return [
-                                `<strong>${yLabel}</strong> · ${xLabel}`,
-                                `${formatted} ${data.legend.unit}`,
+                                `<strong>${escapeHtml(yLabel)}</strong> · ${escapeHtml(xLabel)}`,
+                                `${escapeHtml(formatted)} ${escapeHtml(data.legend.unit)}`,
                             ].join("<br/>");
                         },
                     },

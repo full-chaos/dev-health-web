@@ -1,0 +1,31 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "error",
+    "request_id": "req_0123456789abcdef0123456789abcdef",
+    "seq": 2,
+    "reserved_result_id": "result_ecf6698bd43aafef45e7bd3ab4ebf600",
+    "error": {
+        "schema_version": "error.v1",
+        "request_id": "req_0123456789abcdef0123456789abcdef",
+        "error": {
+            "code": "budget_refusal",
+            "message": "The Context Fabric answer did not fit the response budget",
+            "http_status": 413,
+            "retryable": false,
+            "details": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "measured_bytes": 301877,
+                "measured_items": 22,
+                "narrower_continuation": {
+                    "axis": "evidence_window",
+                    "family": "subject_investigation"
+                },
+                "nothing_left_to_cut": true,
+                "overrun": "bytes",
+                "question_family": "subject_investigation",
+                "retry_attempted": false
+            }
+        }
+    }
+}

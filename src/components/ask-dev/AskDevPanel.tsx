@@ -9,6 +9,8 @@ import { Drawer } from "@/components/ui/Drawer";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
 
+import { AskDevTurn, turnKey } from "./answer/AskDevTurn";
+import { useTestModeTurns, type TestModeTurns } from "./answer/testModeAnswer";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { useAskDevShell } from "./AskDevShellContext";
 
@@ -24,8 +26,17 @@ const readDesktop = (): boolean => window.matchMedia?.(DESKTOP_QUERY).matches ??
 
 const TITLE = "Ask Dev";
 
-/** The conversation. Streamed answers will be appended here; a screen reader hears each addition. */
-function Transcript() {
+type Conversation = TestModeTurns;
+
+/**
+ * The conversation. Streamed answers will be appended here; a screen reader hears each addition.
+ * It renders the turns it is given in order (CHAOS-11930, CHAOS-3440), and the empty state without
+ * any. Only the last turn is live; every earlier turn is read-only, so an old receipt cannot be
+ * sent. The conversation store (CHAOS-11928) becomes the turn source; until then only test mode
+ * supplies turns (`useTestModeTurns`).
+ */
+function Transcript({ conversation }: { conversation: Conversation }) {
+    const { turns, onConfirm, onReask } = conversation;
     return (
         <div
             role="log"
@@ -33,9 +44,23 @@ function Transcript() {
             aria-relevant="additions"
             aria-label="Conversation"
             data-testid="ask-dev-transcript"
-            className="text-sm text-(--ink-muted)"
+            className="space-y-6 text-sm text-(--ink-muted)"
         >
-            <p>Your conversation will appear here.</p>
+            {turns.length === 0 ? (
+                <p>Your conversation will appear here.</p>
+            ) : (
+                turns.map((turn, index) => {
+                    const live = index === turns.length - 1;
+                    return (
+                        <AskDevTurn
+                            key={turnKey(turn)}
+                            turn={turn}
+                            onConfirm={live ? onConfirm : undefined}
+                            onReask={live ? onReask : undefined}
+                        />
+                    );
+                })
+            )}
         </div>
     );
 }
@@ -45,7 +70,13 @@ function Transcript() {
  * no backdrop, no scroll lock and no Tab trap. Focus moves into it when it opens; Escape and the
  * Close button close it and return focus to the launcher.
  */
-function DesktopPanel({ onClose }: { onClose: () => void }) {
+function DesktopPanel({
+    onClose,
+    conversation,
+}: {
+    onClose: () => void;
+    conversation: Conversation;
+}) {
     const titleId = useId();
     const panelRef = useRef<HTMLElement>(null);
     const closeRef = useRef(onClose);
@@ -91,7 +122,7 @@ function DesktopPanel({ onClose }: { onClose: () => void }) {
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
-                <Transcript />
+                <Transcript conversation={conversation} />
             </div>
         </aside>
     );
@@ -108,9 +139,10 @@ export function AskDevPanel() {
     const { features } = useAdminTier();
     const pathname = usePathname() ?? "";
     const desktop = useSyncExternalStore(subscribeDesktop, readDesktop, () => true);
+    const conversation = useTestModeTurns();
 
     if (!open || !isAskDevEnabled(features) || isAskDevExcludedPath(pathname)) return null;
-    if (desktop) return <DesktopPanel onClose={close} />;
+    if (desktop) return <DesktopPanel onClose={close} conversation={conversation} />;
     return (
         <Drawer
             open
@@ -121,7 +153,7 @@ export function AskDevPanel() {
             // Ask Dev claims the right edge itself (`AskDevShellProvider`).
             claimsRightEdge={false}
         >
-            <Transcript />
+            <Transcript conversation={conversation} />
         </Drawer>
     );
 }

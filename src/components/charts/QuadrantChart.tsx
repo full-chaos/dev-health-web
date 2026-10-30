@@ -19,6 +19,7 @@ import { Chart } from "./Chart";
 import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { formatQuadrantValue } from "./quadrantFormat";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([ScatterChart]);
 
@@ -322,9 +323,9 @@ export const buildQuadrantOption = ({
                 const entityLabel = isPersonScope ? "You" : chartEntityLabel(point.entity_label);
 
                 return [
-                    `<div style="font-weight: 600; margin-bottom: 4px;">${entityLabel}</div>`,
-                    `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${xLabel}</span> <span style="font-weight: 500;">${xValue}</span></div>`,
-                    `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${yLabel}</span> <span style="font-weight: 500;">${yValue}</span></div>`,
+                    `<div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(entityLabel)}</div>`,
+                    `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${escapeHtml(xLabel)}</span> <span style="font-weight: 500;">${escapeHtml(xValue)}</span></div>`,
+                    `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${escapeHtml(yLabel)}</span> <span style="font-weight: 500;">${escapeHtml(yValue)}</span></div>`,
                     `<div style="margin-top: 6px; font-size: 10px; opacity: 0.6;">Click to investigate pattern</div>`,
                 ].join("");
             },
