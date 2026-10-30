@@ -137,6 +137,16 @@
             "captured_at": "2026-10-30T20:28:59.032571167Z",
             "stream_ms": 23246,
             "sha256_compact": "8f5c82697acfa5661760958fd11da28f3eeb268a8c3b55818e8adf4f285fd53c"
+        },
+        {
+            "file": "kiac_repo_owner_status_corrected.event.json",
+            "question": "Which team owns full-chaos/dev-health-acr?",
+            "status": "partial",
+            "result_id": "result_48c1cccd0a06108e8175e2ad722a2424",
+            "captured_at": "2026-10-30T21:28:32.353741717Z",
+            "stream_ms": 25650,
+            "completeness_authority": "on",
+            "sha256_compact": "c6cb15bc93d383bda81a5ede7c5f2309b1fa1a34a12808ebd19718673ebb33d7"
         }
     ],
     "encoder_captures": {
@@ -227,5 +237,6 @@
             }
         ]
     },
-    "scrubbed": "2026-10-30: dev-health-web is public, so every organisation value in these captures was replaced by a stable synthetic value with the same shape: internal UUIDs -> 00000000-0000-4000-8000-<n>, the team -> Teamalpha, its tracker key -> TEAMA (issue keys TEAMA-<n>), the projects -> 'Synthetic Project <name>', free-text PR/work-item/CI-run/incident titles -> 'Synthetic <kind> title <n>', the organisation id prefix -> 0a0a0a0a. One map for every file, so cross-references still resolve. Keys, numbers, statuses, vocabulary, public repo names and the ACR-written structure are unchanged; sha256_compact is of the scrubbed file. The guard test capturesScrubbed.test.ts fails if a scrubbed value comes back."
+    "scrubbed": "2026-10-30: dev-health-web is public, so every organisation value in these captures was replaced by a stable synthetic value with the same shape: internal UUIDs -> 00000000-0000-4000-8000-<n>, the team -> Teamalpha, its tracker key -> TEAMA (issue keys TEAMA-<n>), the projects -> 'Synthetic Project <name>', free-text PR/work-item/CI-run/incident titles -> 'Synthetic <kind> title <n>', the organisation id prefix -> 0a0a0a0a. One map for every file, so cross-references still resolve. Keys, numbers, statuses, vocabulary, public repo names and the ACR-written structure are unchanged; sha256_compact is of the scrubbed file. The guard test capturesScrubbed.test.ts fails if a scrubbed value comes back.",
+    "completeness_authority": "Captures taken before 2026-10-30T21:25Z ran with ACR's server completeness authority OFF (the model's status stands). From then on kiac askdev-1 runs with ACR_CONTEXT_FABRIC_SERVER_COMPLETENESS_AUTHORITY_ENABLED=true and ..._SYMMETRIC_ENABLED=true (same image). Each entry captured after that says completeness_authority: on."
 }

@@ -76,7 +76,7 @@ export function factCountText(completeness: Completeness): string {
 }
 
 /** What each requirement needed, by obligation (open vocabulary). */
-const OBLIGATION_LABEL: Record<string, string> = {
+export const OBLIGATION_LABEL: Record<string, string> = {
     state: "Status",
     health: "Health",
     completion: "Completion",
