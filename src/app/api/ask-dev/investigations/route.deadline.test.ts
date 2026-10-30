@@ -483,6 +483,26 @@ describe("Ask Dev deadline chain: the stream", () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    it("ends in a terminal frame at D when a non-2xx answer never finishes its body", async () => {
+        vi.stubEnv("ASK_DEV_RUN_TIMEOUT_MS", "60000");
+        server.use(
+            http.post(
+                INVESTIGATIONS,
+                () =>
+                    new HttpResponse(new ReadableStream<Uint8Array>({ start: () => undefined }), {
+                        headers: { "Content-Type": "application/json" },
+                        status: 503,
+                    }),
+            ),
+        );
+        const read = await drain(await post());
+        await vi.advanceTimersByTimeAsync(60_000);
+
+        const text = await read.text;
+        expect(frames(text)).toHaveLength(1);
+        expect(frames(text)[0]).toMatchObject({ source: "web", retryable: true });
+    });
+
     it("reports an admission error when D ends together with the header wait (W = 15 s)", async () => {
         vi.stubEnv("ASK_DEV_RUN_TIMEOUT_MS", "15000");
         server.use(http.post(INVESTIGATIONS, () => new Promise<Response>(() => undefined)));

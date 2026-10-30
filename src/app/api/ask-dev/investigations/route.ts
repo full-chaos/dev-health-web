@@ -58,14 +58,22 @@ function toRuntimeError(error: unknown): AcrRuntimeError {
     });
 }
 
-async function readBoundedErrorBody(response: Response): Promise<unknown> {
+async function readBoundedErrorBody(response: Response, abort: AbortSignal): Promise<unknown> {
     try {
         const reader = response.body?.getReader();
         if (reader === undefined) return undefined;
+        // A read ends when web aborts upstream, whether or not the transport errors the body.
+        const aborted = new Promise<never>((_, reject) => {
+            const onAbort = (): void =>
+                reject(new DOMException("The upstream read was aborted.", "AbortError"));
+            if (abort.aborted) onAbort();
+            else abort.addEventListener("abort", onAbort, { once: true });
+        });
+        aborted.catch(() => undefined);
         const chunks: Uint8Array[] = [];
         let received = 0;
         for (;;) {
-            const next = await reader.read();
+            const next = await Promise.race([reader.read(), aborted]);
             if (next.done) break;
             received += next.value.byteLength;
             if (received > MAX_ERROR_BODY_BYTES) {
@@ -207,7 +215,9 @@ function relay(
                 );
                 headersReceived = true;
                 if (!response.ok) {
-                    const upstream = wireError(await readBoundedErrorBody(response));
+                    const upstream = wireError(
+                        await readBoundedErrorBody(response, upstreamAbort.signal),
+                    );
                     logger.warn(
                         {
                             request_id: requestId,
