@@ -11,6 +11,7 @@ import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { calcPercent, createAreaGradient } from "@/lib/chartUtils";
 import { formatNumber, formatPercent } from "@/lib/formatters";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([LineChart]);
 
@@ -203,16 +204,16 @@ export function StackedAreaChart({
                         const pct = calcPercent(value, dateTotal);
                         return `
               <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: ${entry.color}"></span>
-                <span>${entry.seriesName}: <strong>${formatNumber(value)}</strong> ${unit}</span>
+                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: ${escapeHtml(entry.color)}"></span>
+                <span>${escapeHtml(entry.seriesName)}: <strong>${formatNumber(value)}</strong> ${escapeHtml(unit)}</span>
                 <span style="color: ${chartTheme.muted}">(${formatPercent(pct)})</span>
               </div>
             `;
                     });
 
                     return `
-            <div style="font-weight: 600; margin-bottom: 8px;">${date}</div>
-            <div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">Total: ${formatNumber(dateTotal)} ${unit}</div>
+            <div style="font-weight: 600; margin-bottom: 8px;">${escapeHtml(date)}</div>
+            <div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">Total: ${formatNumber(dateTotal)} ${escapeHtml(unit)}</div>
             ${lines.join("")}
           `;
                 },

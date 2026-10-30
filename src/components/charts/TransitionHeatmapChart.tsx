@@ -12,6 +12,7 @@ import { pickTextColor, rampColor, rampPosition } from "@/lib/heatmapRamp";
 import { echarts } from "@/lib/echartsInit";
 import { calcPercent } from "@/lib/chartUtils";
 import { formatNumber, formatPercent } from "@/lib/formatters";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([HeatmapChart]);
 
@@ -172,12 +173,12 @@ export function TransitionHeatmapChart({
                     const percentOfOutgoing = calcPercent(count, outgoingTotal);
 
                     return `
-            <div style="font-weight: 600; margin-bottom: 4px;">${fromState} → ${toState}</div>
+            <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(fromState)} → ${escapeHtml(toState)}</div>
             <div style="font-family: var(--font-mono, monospace);">
-              <strong>${formatNumber(count)}</strong> ${unit}
+              <strong>${formatNumber(count)}</strong> ${escapeHtml(unit)}
             </div>
             <div style="margin-top: 4px; color: ${chartTheme.accent2};">
-              ${formatPercent(percentOfOutgoing)} of outgoing from "${fromState}"
+              ${formatPercent(percentOfOutgoing)} of outgoing from "${escapeHtml(fromState)}"
             </div>
           `;
                 },
