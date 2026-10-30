@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { auth } from "@/lib/auth";
 import { AcrRuntimeClient, type InvestigationStreamRequest } from "@/lib/acr/client";
 import { loadAcrRuntimeConfig } from "@/lib/acr/config";
@@ -16,7 +18,8 @@ export type PreparedInvestigation = {
     readonly authorization: OpsAuthorization;
     readonly body: string;
     readonly client: AcrRuntimeClient;
-    readonly submissionId?: string;
+    /** Always set: the client's id, or one minted here. ACR counts its shared limits only for runs that carry one. */
+    readonly submissionId: string;
     readonly threadId?: string;
 };
 
@@ -64,7 +67,9 @@ export async function prepareInvestigation(input: {
             { status: 403 },
         );
     }
-    const submissionId = optionalUuid(input.submissionId);
+    // A create without an id is still a submission: leaving the header out must not skip ACR's
+    // concurrency and allowance counting. A supplied but invalid id is refused, never replaced.
+    const submissionId = optionalUuid(input.submissionId) ?? randomUUID();
     const threadId = optionalUuid(input.threadId);
     if (!validateAcrContract(REQUEST_SCHEMA, input.body).valid) throw invalidRequest();
     const authorization = await resolveAskDevAuthorization({
@@ -85,7 +90,7 @@ export async function prepareInvestigation(input: {
         authorization,
         body: JSON.stringify(input.body),
         client: new AcrRuntimeClient(loadAcrRuntimeConfig()),
-        ...(submissionId === undefined ? {} : { submissionId }),
+        submissionId,
         ...(threadId === undefined ? {} : { threadId }),
     };
 }
@@ -140,7 +145,7 @@ export function streamRequest(
         requestId: input.requestId,
         signal: input.signal,
         waitBudgetSeconds: budget.seconds,
-        ...(prepared.submissionId === undefined ? {} : { submissionId: prepared.submissionId }),
+        submissionId: prepared.submissionId,
         ...(prepared.threadId === undefined ? {} : { threadId: prepared.threadId }),
     };
 }
