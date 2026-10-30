@@ -156,9 +156,9 @@
                 {
                     "receipt_id": "candr_7dd4cdb978de7e02243f4089",
                     "option_id": "opt_61a84b21a49209d7",
-                    "label": "Dev Health Web Redesign",
+                    "label": "Synthetic Project Gamma",
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:3831247a-868e-49b2-8745-4c23f985aac5",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000003",
                     "offer_source": "engine"
                 },
                 {
@@ -166,7 +166,7 @@
                     "option_id": "opt_fd77ac8c801fce5c",
                     "label": "full-chaos/dev-health-web",
                     "kind": "repository",
-                    "canonical_id": "repository:d29d160a-95fe-5b45-d4c1-fd1f5427b772",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
                     "offer_source": "engine"
                 }
             ]

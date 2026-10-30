@@ -14,24 +14,26 @@
             "shape": "explicit_cohort",
             "requested_judgment": "Which team owns full-chaos/dev-health-acr?",
             "subject_terms": ["full-chaos/dev-health-acr"],
-            "time_context": { "axis": "current" },
+            "time_context": {
+                "axis": "current"
+            },
             "fact_requirements": [],
             "clarification_needed": false
         },
         "subject_resolution": {
             "candidates": [
                 {
-                    "receipt_id": "79c49c63-ce5a-5d41-8983-4bd8f37b3052",
+                    "receipt_id": "00000000-0000-4000-8000-00000000009b",
                     "subject": {
                         "kind": "repository",
-                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                         "label": "full-chaos/dev-health-acr"
                     },
                     "state": "proposed",
                     "matched_terms": ["full-chaos/dev-health-acr"],
                     "match_reasons": ["Exact canonical subject label match."],
                     "confidence": 1,
-                    "evidence_ref_ids": ["acr:v1:repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7"],
+                    "evidence_ref_ids": ["acr:v1:repository:00000000-0000-4000-8000-000000000001"],
                     "provider": "github",
                     "match_mechanisms": ["exact", "lexical"]
                 }
@@ -97,12 +99,12 @@
                 {
                     "subject": {
                         "kind": "team",
-                        "canonical_id": "team:linear:CHAOS",
-                        "label": "Fullchaos"
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
                     },
                     "rank": 1,
                     "inclusion_reasons": ["Team that owns the repository the question names."],
-                    "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                    "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
                     "ranking_computed": true,
                     "attention_rank": 1,
                     "score": 42.5,
@@ -175,15 +177,19 @@
         "strongest_pressures": [],
         "drivers": [
             {
-                "driver_id": "ownership-fullchaos-dev-health-acr",
+                "driver_id": "ownership-teamalpha-dev-health-acr",
                 "standing": "principal",
                 "category": "relationship",
-                "title": "Fullchaos owns full-chaos/dev-health-acr",
-                "summary": "Fullchaos is the team identified as owning full-chaos/dev-health-acr.",
+                "title": "Teamalpha owns full-chaos/dev-health-acr",
+                "summary": "Teamalpha is the team identified as owning full-chaos/dev-health-acr.",
                 "affected_subjects": [
-                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
                 ],
-                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
                 "derivation": "model_extracted",
                 "epistemic_status": "source_asserted",
                 "confidence": 1,
@@ -193,12 +199,16 @@
                 "driver_id": "cohort-driver-01-1",
                 "standing": "principal",
                 "category": "readiness",
-                "title": "Fullchaos: readiness gap",
-                "summary": "readiness gap (weight 15, value 1.00) contributed 15.0 of Fullchaos's 42.5 attention points.",
+                "title": "Teamalpha: readiness gap",
+                "summary": "readiness gap (weight 15, value 1.00) contributed 15.0 of Teamalpha's 42.5 attention points.",
                 "affected_subjects": [
-                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
                 ],
-                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
                 "claimed_fact_ids": ["claim_cohort_530341cd76e14865502b62beedac1b31"],
                 "derivation": "rule_inferred",
                 "epistemic_status": "inferred",
@@ -209,12 +219,16 @@
                 "driver_id": "cohort-driver-01-2",
                 "standing": "contributing",
                 "category": "health",
-                "title": "Fullchaos: health risk",
-                "summary": "health risk (weight 25, value 0.50) contributed 12.5 of Fullchaos's 42.5 attention points.",
+                "title": "Teamalpha: health risk",
+                "summary": "health risk (weight 25, value 0.50) contributed 12.5 of Teamalpha's 42.5 attention points.",
                 "affected_subjects": [
-                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
                 ],
-                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
                 "claimed_fact_ids": ["claim_cohort_70b36b1f8eccb5ca7bc3acefb1c6dc32"],
                 "derivation": "rule_inferred",
                 "epistemic_status": "inferred",
@@ -225,12 +239,16 @@
                 "driver_id": "cohort-driver-01-3",
                 "standing": "contributing",
                 "category": "operational_deficiency",
-                "title": "Fullchaos: operational deficiencies",
-                "summary": "operational deficiencies (weight 20, value 0.50) contributed 10.0 of Fullchaos's 42.5 attention points.",
+                "title": "Teamalpha: operational deficiencies",
+                "summary": "operational deficiencies (weight 20, value 0.50) contributed 10.0 of Teamalpha's 42.5 attention points.",
                 "affected_subjects": [
-                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
                 ],
-                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
                 "claimed_fact_ids": ["claim_cohort_72ac71a2d8b1fa66aff0913b9b2947db"],
                 "derivation": "rule_inferred",
                 "epistemic_status": "inferred",
@@ -246,40 +264,46 @@
             "No relationship path was supplied; the ownership answer is supported by the supplied ownership-record rationale and team evidence.",
             "A candidate subject was identified but not committed: the evidence assembled for it does not support naming it as the answer to this question."
         ],
-        "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+        "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
         "claimed_facts": [
             {
                 "claim_id": "claim_cohort_530341cd76e14865502b62beedac1b31",
                 "kind": "readiness",
                 "subject": {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 },
                 "field": "estimate_coverage_ratio",
-                "value": { "number": 0 }
+                "value": {
+                    "number": 0
+                }
             },
             {
                 "claim_id": "claim_cohort_70b36b1f8eccb5ca7bc3acefb1c6dc32",
                 "kind": "health",
                 "subject": {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 },
                 "field": "severity",
-                "value": { "string": "elevated" }
+                "value": {
+                    "string": "elevated"
+                }
             },
             {
                 "claim_id": "claim_cohort_72ac71a2d8b1fa66aff0913b9b2947db",
                 "kind": "operational_deficiencies",
                 "subject": {
                     "kind": "team",
-                    "canonical_id": "team:linear:CHAOS",
-                    "label": "Fullchaos"
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
                 },
                 "field": "severity",
-                "value": { "string": "warning" }
+                "value": {
+                    "string": "warning"
+                }
             }
         ],
         "coverage": {
@@ -399,8 +423,8 @@
             ]
         },
         "evidence_ref_labels": {
-            "acr:v1:repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7": "Repository: 7b9583ee-4d24-2be7-4d09-34f815bebdd7",
-            "acr:v1:team:linear:CHAOS": "Team: linear:CHAOS"
+            "acr:v1:repository:00000000-0000-4000-8000-000000000001": "Repository: 00000000-0000-4000-8000-000000000001",
+            "acr:v1:team:linear:TEAMA": "Team: linear:TEAMA"
         },
         "versions": {
             "service_version": "0.0.0-dev",
