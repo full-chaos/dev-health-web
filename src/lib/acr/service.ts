@@ -12,6 +12,7 @@ import {
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import {
     compareScopeBytes,
+    type OpsAuthorization,
     resolveIssuanceProvenance,
     resolveOpsAuthorization,
     resolveOpsCredentialIssuanceAuthorization,
@@ -201,12 +202,22 @@ async function issuanceContext(signal: AbortSignal): Promise<IssuanceContext> {
     return { provenance, session };
 }
 
-function issuanceAuthorization(
-    context: IssuanceContext,
+type IssuanceCall = {
+    readonly authorization: OpsAuthorization;
+    readonly context: IssuanceContext;
+};
+
+/**
+ * The authorization of ONE `credential:issue` call. Each call reads the session and the Ops
+ * impersonation status again, so a context is never reused for a later call: an impersonation
+ * that starts between a preview and its approval refuses the approval.
+ */
+async function freshIssuance(
     repositoryScopes: readonly string[],
     signal: AbortSignal,
-): ReturnType<typeof resolveOpsCredentialIssuanceAuthorization> {
-    return resolveOpsCredentialIssuanceAuthorization({
+): Promise<IssuanceCall> {
+    const context = await issuanceContext(signal);
+    const authorization = await resolveOpsCredentialIssuanceAuthorization({
         accessToken: context.session.accessToken,
         orgId: context.session.orgId,
         // The claims follow ACR_OAUTH_ISSUER (an ACR without their parser refuses them); the
@@ -216,6 +227,7 @@ function issuanceAuthorization(
         signal,
         subject: context.session.subject,
     });
+    return { authorization, context };
 }
 
 function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
@@ -239,8 +251,7 @@ export async function approveDeviceAuthorization(input: {
     readonly userCode: string;
 }): Promise<{ readonly status: "approved" }> {
     const requestedScopes = canonicalApprovalScopes(input.repositoryScopes);
-    const context = await issuanceContext(input.signal);
-    const authorization = await issuanceAuthorization(context, requestedScopes, input.signal);
+    const { authorization } = await freshIssuance(requestedScopes, input.signal);
     const body = JSON.stringify({
         repository_scopes: requestedScopes,
         schema_version: "device_approval_request.v1",
@@ -260,8 +271,7 @@ export async function previewDeviceAuthorization(input: {
     readonly organizationIdHint?: string;
     readonly repositoryHints: readonly string[];
 }> {
-    const context = await issuanceContext(input.signal);
-    const authorization = await issuanceAuthorization(context, ["*"], input.signal);
+    const { authorization } = await freshIssuance(["*"], input.signal);
     const body = JSON.stringify({
         schema_version: "device_approval_preview_request.v1",
         user_code: input.userCode,
@@ -273,29 +283,11 @@ export async function previewDeviceAuthorization(input: {
     });
 }
 
-async function previewWith(
-    context: IssuanceContext,
-    handle: string,
-    signal: AbortSignal,
-): Promise<OAuthConsentPreview> {
-    const authorization = await issuanceAuthorization(context, ["*"], signal);
+async function previewConsent(handle: string, signal: AbortSignal): Promise<OAuthConsentPreview> {
+    const { authorization } = await freshIssuance(["*"], signal);
     return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentPreview({
         authorization,
         body: JSON.stringify({ action: "preview", handle }),
-        signal,
-    });
-}
-
-async function approveWith(
-    context: IssuanceContext,
-    handle: string,
-    repositoryScopes: readonly string[],
-    signal: AbortSignal,
-): Promise<{ readonly redirectUrl: string }> {
-    const authorization = await issuanceAuthorization(context, repositoryScopes, signal);
-    return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
-        authorization,
-        body: JSON.stringify({ action: "approve", handle, repository_scopes: repositoryScopes }),
         signal,
     });
 }
@@ -319,9 +311,7 @@ export async function previewOAuthConsent(input: {
     readonly handle: string;
     readonly signal: AbortSignal;
 }): Promise<OAuthConsentPreview> {
-    const handle = canonicalHandle(input.handle);
-    const context = await issuanceContext(input.signal);
-    return previewWith(context, handle, input.signal);
+    return previewConsent(canonicalHandle(input.handle), input.signal);
 }
 
 export type OAuthConsentOpening =
@@ -339,9 +329,9 @@ export async function openOAuthConsent(input: {
     readonly signal: AbortSignal;
 }): Promise<OAuthConsentOpening> {
     const handle = canonicalHandle(input.handle);
-    const context = await issuanceContext(input.signal);
-    const preview = await previewWith(context, handle, input.signal);
+    const preview = await previewConsent(handle, input.signal);
     if (!isFirstPartyBrowserClient(preview)) return { kind: "review", preview };
+    const { authorization, context } = await freshIssuance(["*"], input.signal);
     if (context.provenance.sessionId === undefined) {
         logger.warn(
             {
@@ -353,7 +343,11 @@ export async function openOAuthConsent(input: {
         );
         throw invalidOAuthConsentRequest();
     }
-    const decision = await approveWith(context, handle, ["*"], input.signal);
+    const decision = await new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
+        authorization,
+        body: JSON.stringify({ action: "approve", handle, repository_scopes: ["*"] }),
+        signal: input.signal,
+    });
     logger.info(
         { module: "acr-consent", orgId: context.session.orgId, userId: context.session.subject },
         "acr browser consent approved with no click",
@@ -372,22 +366,19 @@ export async function decideOAuthConsent(input: {
     readonly signal: AbortSignal;
 }): Promise<{ readonly redirectUrl: string }> {
     const handle = canonicalHandle(input.handle);
-    const requestedScopes =
-        input.action === "approve"
-            ? canonicalApprovalScopes(input.repositoryScopes ?? ["*"])
-            : undefined;
-    const context = await issuanceContext(input.signal);
-    if (requestedScopes === undefined) {
+    if (input.action === "deny") {
         // Denial carries no repository grant — the assertion still needs a
         // repository_scopes claim, so it is bound org-wide like preview.
-        const authorization = await issuanceAuthorization(context, ["*"], input.signal);
+        const { authorization } = await freshIssuance(["*"], input.signal);
         return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
             authorization,
             body: JSON.stringify({ action: "deny", handle }),
             signal: input.signal,
         });
     }
-    const preview = await previewWith(context, handle, input.signal);
+    const requestedScopes = canonicalApprovalScopes(input.repositoryScopes ?? ["*"]);
+    const preview = await previewConsent(handle, input.signal);
+    const { authorization, context } = await freshIssuance(requestedScopes, input.signal);
     if (isFirstPartyBrowserClient(preview)) {
         logger.warn(
             {
@@ -399,5 +390,9 @@ export async function decideOAuthConsent(input: {
         );
         throw invalidOAuthConsentRequest();
     }
-    return approveWith(context, handle, requestedScopes, input.signal);
+    return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
+        authorization,
+        body: JSON.stringify({ action: "approve", handle, repository_scopes: requestedScopes }),
+        signal: input.signal,
+    });
 }

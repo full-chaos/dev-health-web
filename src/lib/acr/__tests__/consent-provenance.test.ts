@@ -139,7 +139,14 @@ const BROWSER_PREVIEW = {
 
 const BROWSER_REDIRECT = `${WEB_ORIGIN}/ask-dev/oauth/callback?code=c0de&state=s7a7e&iss=${encodeURIComponent(ACR_ISSUER)}`;
 
-function installOps(input: { impersonating?: boolean; statusCode?: number } = {}): Observed {
+function installOps(
+    input: {
+        impersonating?: boolean;
+        /** The status read says "impersonating" from this read on (1-based); before it, "no". */
+        impersonatingFromRead?: number;
+        statusCode?: number;
+    } = {},
+): Observed {
     const observed: Observed = { acrBodies: [], acrClaims: [], statusReads: 0 };
     server.use(
         http.get(STATUS_URL, ({ request }) => {
@@ -148,8 +155,12 @@ function installOps(input: { impersonating?: boolean; statusCode?: number } = {}
             if (input.statusCode !== undefined && input.statusCode !== 200) {
                 return HttpResponse.json({ detail: "unavailable" }, { status: input.statusCode });
             }
+            const impersonating =
+                input.impersonating === true ||
+                (input.impersonatingFromRead !== undefined &&
+                    observed.statusReads >= input.impersonatingFromRead);
             return HttpResponse.json(
-                input.impersonating
+                impersonating
                     ? {
                           expires_at: "2026-10-30T21:00:00Z",
                           is_impersonating: true,
@@ -259,7 +270,8 @@ describe("credential:issue provenance", () => {
             expect(typeof claims.body_sha256).toBe("string");
         }
         expect(new Set(observed.acrClaims.map((claims) => claims.jti)).size).toBe(3);
-        expect(observed.statusReads).toBeGreaterThanOrEqual(2);
+        // One fresh status read per signed assertion: none is reused for a later call.
+        expect(observed.statusReads).toBe(observed.acrClaims.length);
     });
 
     it("Given a device approval, when approving, then the assertion carries the server session's sid and impersonating=false", async () => {
@@ -401,8 +413,8 @@ describe("provenance claims follow ACR_OAUTH_ISSUER", () => {
             for (const claims of observed.acrClaims) {
                 expect(Object.keys(claims).sort()).toEqual(PRE_PROVENANCE_CLAIMS);
             }
-            // The refusal's status read still runs while the claims are off.
-            expect(observed.statusReads).toBe(3);
+            // The refusal's status read still runs while the claims are off, once per assertion.
+            expect(observed.statusReads).toBe(4);
         },
     );
 
@@ -480,6 +492,35 @@ describe("impersonation refusal by state", () => {
             expect(observed.acrClaims).toHaveLength(0);
         },
     );
+
+    it("Given impersonation starts after the preview, when the route approves an MCP client, then the approval is refused and only the preview reached ACR", async () => {
+        const observed = installOps({ impersonatingFromRead: 2 });
+        installAcr(observed);
+
+        await expect(
+            decideOAuthConsent({
+                action: "approve",
+                handle: HANDLE,
+                repositoryScopes: ["full-chaos/platform"],
+                signal: signal(),
+            }),
+        ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
+        expect(observed.acrBodies).toEqual([{ action: "preview", handle: HANDLE }]);
+        expect(observed.statusReads).toBe(2);
+    });
+
+    it("Given impersonation starts after the preview, when the browser client's consent page loads, then nothing is approved and the page renders denied", async () => {
+        const observed = installOps({ impersonatingFromRead: 2 });
+        installAcr(observed, BROWSER_PREVIEW);
+
+        const element = (await OAuthAuthorizePage({
+            searchParams: Promise.resolve({ handle: HANDLE }),
+        })) as { props: Record<string, unknown> };
+
+        expect(redirectMock).not.toHaveBeenCalled();
+        expect(element.props).toMatchObject({ initialState: "denied" });
+        expect(observed.acrBodies).toEqual([{ action: "preview", handle: HANDLE }]);
+    });
 
     it("Given a same-org session flagged as impersonating, when the status read says no, then the consent is still refused", async () => {
         authenticate({ impersonated_org_id: "org-123", is_impersonating: true });
