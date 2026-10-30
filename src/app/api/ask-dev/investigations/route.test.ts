@@ -267,6 +267,57 @@ describe("POST /api/ask-dev/investigations — before the stream opens", () => {
     });
 });
 
+describe("POST /api/ask-dev/investigations — the submission id", () => {
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+
+    function recordSubmissionIds(): (string | null)[] {
+        const seen: (string | null)[] = [];
+        server.use(
+            http.post(`${ACR}/api/v1/context-fabric/investigations`, ({ request: upstream }) => {
+                seen.push(upstream.headers.get("x-acr-submission-id"));
+                return sse('event: accepted\ndata: {"seq":1}\n\n');
+            }),
+        );
+        return seen;
+    }
+
+    it("mints a submission id when the browser sends none, so ACR's shared limits always count the run", async () => {
+        installOps(ENTITLED);
+        const seen = recordSubmissionIds();
+
+        await readAll(await post());
+        await readAll(await post());
+        expect(seen).toHaveLength(2);
+        for (const id of seen) expect(id).toMatch(UUID);
+        expect(new Set(seen).size).toBe(2);
+    });
+
+    it("keeps a client-supplied id unchanged", async () => {
+        installOps(ENTITLED);
+        const seen = recordSubmissionIds();
+
+        await readAll(await post(request, { "X-ACR-Submission-ID": SUBMISSION }));
+
+        expect(seen).toEqual([SUBMISSION]);
+    });
+
+    it.each([
+        ["not a UUID", "not-a-uuid"],
+        ["present but empty", ""],
+    ])(
+        "still refuses a client-supplied id that is %s, and does not replace it with a minted one",
+        async (_name, value) => {
+            installOps(ENTITLED);
+            const seen = recordSubmissionIds();
+
+            const response = await post(request, { "X-ACR-Submission-ID": value });
+
+            expect(response.status).toBe(400);
+            expect(seen).toEqual([]);
+        },
+    );
+});
+
 describe("POST /api/ask-dev/investigations — the stream", () => {
     it("writes a keepalive as the first bytes, relays ACR's events unchanged, and signs one assertion for the exact body", async () => {
         installOps(ENTITLED);
