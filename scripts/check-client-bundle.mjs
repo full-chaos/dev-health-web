@@ -56,6 +56,10 @@ export const SERVER_ONLY_MODULES = [
         file: "src/lib/ask-dev/investigation.server.ts",
         markers: ["Ask Dev is unavailable while impersonating."],
     },
+    {
+        file: "src/lib/ask-dev/read.server.ts",
+        markers: ["ask-dev read refused"],
+    },
 ];
 
 /**

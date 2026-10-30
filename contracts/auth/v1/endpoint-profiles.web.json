@@ -9950,6 +9950,78 @@
                     "note": "One assertion per request, bound to the exact body bytes (body_sha256), path and repository scopes. No capabilities pre-call."
                 }
             ]
+        },
+        {
+            "id": "GET /api/ask-dev/investigations/[resultId] [dev-health-web]",
+            "surface_kind": "rest",
+            "method": "GET",
+            "route": "/api/ask-dev/investigations/[resultId]",
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/app/api/ask-dev/investigations/[resultId]/route.ts",
+                "line": 21
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "prepareRead() -> sessionOrError(await auth()) (401 without access_token/org_id/subject), then resolveAskDevAuthorization() re-reads BOTH agent_context_runtime and ask_dev entitlements and the repository catalog from ops on every call (403). Ownership of the result is decided by ACR on every read; another principal's or org's result and an unknown id answer the same 404.",
+                "anchor": {
+                    "path": "src/lib/ask-dev/read.server.ts",
+                    "line": 48,
+                    "line_end": 60
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "proxy.ts's session+org gate also runs ahead ('/api/ask-dev' is not PREFIX_PUBLIC_PATH nor ORG_EXEMPT_PATH; shouldProxyToOps keeps it local).",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 350,
+                        "line_end": 387
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": "ask_dev.investigation.replay",
+            "resource_resolver": "org and subject from the session; repository scopes from ops; the result id from the path (ACR path-parameter alphabet, else 404 before any session read).",
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Cache-Control: no-store.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": "agentContextRuntimeEntitlement + askDevEntitlement",
+            "disclosure_behavior": "Success: ACR's stored result (v1/v2 schema-checked), Cache-Control: no-store. Failure: JSON {error:{code,message,retryable,retryAfterSeconds?},request_id} with a safe message from safeAcrRuntimeMessage(). An ACR error body is never forwarded.",
+            "gaps": [
+                "GET only: no Origin check (safe method, no state change). The route starts no run and sends no POST to ACR.",
+                "ISSUER SURFACE: mints acr_web_assertion (permission context:read) for GET /api/v1/context-fabric/investigations/{result_id}; one assertion per call, signed in AcrRuntimeClient.request.",
+                "impersonation_policy: subject_to_impersonation_override is the closest closed value. A replay is allowed while impersonating (plan D-16: replay yes, new runs no) and reads as the session's own org and subject."
+            ],
+            "issued_credential": [
+                {
+                    "class_id": "acr_web_assertion",
+                    "direction": "outbound_to_dependency",
+                    "anchor": {
+                        "path": "src/lib/acr/assertion.ts",
+                        "line": 30,
+                        "line_end": 53,
+                        "note": "signWebAssertion() IS the mint. The investigation stream signs its own assertion in AcrRuntimeClient.openInvestigationStream (src/lib/acr/client.ts); every other ACR call funnels through AcrRuntimeClient.request. Both call signWebAssertion; there is no other mint path in the repo."
+                    },
+                    "issuer": "ACR_WEB_ASSERTION_ISSUER (deployment env var, read at src/lib/acr/config.ts:99; claim set at src/lib/acr/assertion.ts:38)",
+                    "audience": "ACR_WEB_ASSERTION_AUDIENCE (deployment env var, read at src/lib/acr/config.ts:98; claim set at src/lib/acr/assertion.ts:34)",
+                    "algorithm": "EdDSA (Ed25519). Header alg is a literal, not negotiated (src/lib/acr/assertion.ts:32); kid comes from ACR_WEB_ASSERTION_KID (src/lib/acr/config.ts:101).",
+                    "lifetime_seconds": 30,
+                    "key_source": "ACR_WEB_ASSERTION_KEY_FILE - a FILE PATH env var read at src/lib/acr/config.ts:100. readPrivateKey opens it O_NOFOLLOW, requires a regular file of 1..16384 bytes with no group/other permission bits, and rejects any key whose asymmetricKeyType is not ed25519. G-12 holds by construction here: web holds only this private key and acr verifies from a JWKS, so no key both signs and verifies.",
+                    "verified_by": "acr:internal/auth/web_assertion.go:90 (WebAssertionVerifier.Verify - Ed25519 JWKS keys, replay cache, and body-digest binding via internal/auth/web_assertion_binding.go)",
+                    "note": "One assertion per request, bound to the exact body bytes (body_sha256), path and repository scopes. No capabilities pre-call."
+                }
+            ]
         }
     ]
 }

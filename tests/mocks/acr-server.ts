@@ -12,6 +12,7 @@ import {
     setAcrMockControls,
     waitForContextPacketRelease,
 } from "./acr-fixtures";
+import investigationResultExample from "../../src/lib/ask-dev/__tests__/captures/context_fabric_investigation_result.v1.json";
 import { hardenMockServer } from "./serverSockets";
 
 const app = express();
@@ -91,6 +92,28 @@ app.post("/api/v1/context-fabric/investigations", (request, response) => {
     response.setHeader("Content-Type", "text/event-stream");
     response.write('event: accepted\ndata: {"seq":1}\n\n');
     response.end('event: result\ndata: {"seq":2}\n\n');
+});
+// CHAOS-11922: the replay read. `res_other_principal` stands for a result another principal or org
+// owns (ACR answers one 404 for it and for an unknown id); every other well-formed id is replayed.
+let investigationReads = 0;
+app.get("/__test/investigation-reads", (_request, response) => {
+    response.json({ count: investigationReads });
+});
+app.get("/api/v1/context-fabric/investigations/:resultId", (request, response) => {
+    investigationReads += 1;
+    if ((request.header("x-acr-web-assertion") ?? "") === "") {
+        response.status(401).json({ error: "bad ask-dev call" });
+        return;
+    }
+    if (request.params.resultId === "res_other_principal") {
+        response.status(404).json({
+            error: { code: "not_found", http_status: 404, message: "redacted", retryable: false },
+            request_id: "acr_req_0001",
+            schema_version: "error.v1",
+        });
+        return;
+    }
+    response.json(investigationResultExample);
 });
 app.post("/api/v1/agent-context/context-packets", async (request, response) => {
     const goal =

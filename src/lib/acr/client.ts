@@ -8,6 +8,7 @@ import type { AcrRuntimeConfig } from "./config";
 import capabilitiesContract from "./contracts/schemas/capabilities.v1.schema.json";
 import { validateAcrContract } from "./contracts";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
+import { validateInvestigationResult } from "@/lib/ask-dev/investigation-result";
 import { fetchBoundedJson } from "./http";
 import type { OpsAuthorization } from "./ops";
 
@@ -59,6 +60,8 @@ type AcrRequest = {
     readonly method: "GET" | "POST";
     readonly path: string;
     readonly permissions: readonly ("context:read" | "credential:issue" | "evidence:read")[];
+    /** Correlation id sent as `X-Request-ID`; a fresh one when omitted. */
+    readonly requestId?: string;
     readonly signal: AbortSignal;
 };
 
@@ -76,6 +79,12 @@ export type InvestigationStreamRequest = {
     readonly headerWaitMs: number;
     /** `X-ACR-Wait-Budget-Seconds`: the longest the caller will wait, in whole seconds. */
     readonly waitBudgetSeconds: number;
+};
+
+type AskDevReadRequest = {
+    readonly authorization: OpsAuthorization;
+    readonly requestId: string;
+    readonly signal: AbortSignal;
 };
 
 type ContextPacketRequest = {
@@ -416,6 +425,60 @@ export class AcrRuntimeClient {
         }
     }
 
+    /**
+     * Replays a stored result (`GET .../investigations/{result_id}`). Never a POST: it runs nothing.
+     * A fresh single-use assertion is signed for this call; ACR decides ownership again and answers
+     * the same 404 for another principal's result and an unknown one. The body is checked against
+     * the pinned result schemas (v1 or v2) before it is returned.
+     */
+    async investigationResult(
+        input: AskDevReadRequest & { readonly resultId: string },
+    ): Promise<unknown> {
+        const value = await this.request({
+            authorization: input.authorization,
+            errorMapper: (status, code, retryAfter) =>
+                this.investigationFailure(status, code, retryAfter),
+            method: "GET",
+            path: `${INVESTIGATIONS_PATH}/${encodeURIComponent(input.resultId)}`,
+            permissions: ["context:read"],
+            requestId: input.requestId,
+            signal: input.signal,
+        });
+        if (!validateInvestigationResult(value).valid) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        return value;
+    }
+
+    /**
+     * Reads the caller's own submission record (`GET .../investigations/submissions/{id}`). The
+     * record is keyed by the authenticated principal inside ACR; web adds nothing to that check.
+     */
+    async submissionStatus(
+        input: AskDevReadRequest & { readonly submissionId: string },
+    ): Promise<unknown> {
+        const value = await this.request({
+            authorization: input.authorization,
+            errorMapper: (status, code, retryAfter) =>
+                this.investigationFailure(status, code, retryAfter),
+            method: "GET",
+            path: `${INVESTIGATIONS_PATH}/submissions/${encodeURIComponent(input.submissionId)}`,
+            permissions: ["context:read"],
+            requestId: input.requestId,
+            signal: input.signal,
+        });
+        if (!validateAcrContract("context_fabric_submission_status.v1.schema.json", value).valid) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        return value;
+    }
+
     /** Maps a non-2xx investigation response (status, error.v1 body) to a runtime error. */
     investigationFailure(
         status: number,
@@ -547,7 +610,7 @@ export class AcrRuntimeClient {
                     repositoryScopes: input.authorization.repositoryScopes,
                     subject: input.authorization.subject,
                 }),
-                "X-Request-ID": randomUUID(),
+                "X-Request-ID": input.requestId ?? randomUUID(),
             },
             method: input.method,
             signal: input.signal,
