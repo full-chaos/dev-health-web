@@ -15,7 +15,6 @@ import {
     type EvidenceGroup,
     type Reading,
 } from "./coverageModel";
-import { SafeAnswerText } from "./SafeAnswerText";
 
 /** One mark per reading, so the kinds of "not fully known" differ by more than colour. */
 const READING_MARK: Record<Reading, string> = {
@@ -79,6 +78,10 @@ function EvidenceList({ groups, testId }: { groups: readonly EvidenceGroup[]; te
 }
 
 /**
+ * Served strings here (source labels, detail labels, limitations, warnings) are plain React text:
+ * escaped, and never turned into links (`SafeAnswerText` links bare URLs, which this block must
+ * not do: nothing in it opens anything).
+ *
  * How complete one answer is (CHAOS-11932, North Star checks 4, 5, 11 and 12): the completeness
  * the service derived, each requirement's outcome, each source and its state, what limited the
  * answer, the limitations and warnings it named, and its evidence references. The answer is shown
@@ -159,9 +162,7 @@ export function AskDevCoverage({ result }: { result: CoverageResult }) {
                             <li key={line.key} className="flex gap-1.5" data-reading={line.reading}>
                                 <Mark reading={line.reading} />
                                 <span>
-                                    <span className="text-foreground">
-                                        <SafeAnswerText text={line.label} />
-                                    </span>
+                                    <span className="text-foreground">{line.label}</span>
                                     <span className="text-(--ink-muted)">
                                         : {line.text}
                                         {line.observedAt === null
@@ -180,7 +181,7 @@ export function AskDevCoverage({ result }: { result: CoverageResult }) {
                     <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
                         {details.map((detail) => (
                             <li key={detail.detail_id} data-degrading={detail.degrading}>
-                                <SafeAnswerText text={detail.label} />
+                                {detail.label}
                             </li>
                         ))}
                     </ul>
@@ -193,9 +194,7 @@ export function AskDevCoverage({ result }: { result: CoverageResult }) {
                 ) : (
                     <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
                         {limitations.map((text, index) => (
-                            <li key={index}>
-                                <SafeAnswerText text={text} />
-                            </li>
+                            <li key={index}>{text}</li>
                         ))}
                     </ul>
                 )}
@@ -205,9 +204,7 @@ export function AskDevCoverage({ result }: { result: CoverageResult }) {
                 <Block title={COVERAGE_COPY.warningsTitle} testId="ask-dev-coverage-warnings">
                     <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
                         {warnings.map((text, index) => (
-                            <li key={index}>
-                                <SafeAnswerText text={text} />
-                            </li>
+                            <li key={index}>{text}</li>
                         ))}
                     </ul>
                 </Block>

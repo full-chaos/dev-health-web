@@ -202,6 +202,28 @@ describe("AskDevCoverage: limits shown with the answer (checks 4 and 5)", () => 
     });
 });
 
+describe("AskDevCoverage: served text is plain text, never a link", () => {
+    it("keeps a URL in a limitation, warning, source label or detail label as text", () => {
+        // A copy of a real answer with a URL in each served string the coverage block shows.
+        const url = "https://example.com/report";
+        const copy = copyOf(teamOpenWorkDegraded);
+        copy.limitations = [`See ${url} for the backlog.`];
+        copy.warnings = [`Warning at ${url}`];
+        copy.coverage.sources[0]!.label = `Flow ${url}`;
+        copy.coverage.details![0]!.label = `Detail ${url}`;
+        render(<AskDevCoverage result={copy} />);
+        expect(coverage().querySelectorAll("a")).toHaveLength(0);
+        for (const id of [
+            "ask-dev-coverage-limitations",
+            "ask-dev-coverage-warnings",
+            "ask-dev-coverage-sources",
+            "ask-dev-coverage-details",
+        ]) {
+            expect(block(id)).toHaveTextContent(url);
+        }
+    });
+});
+
 describe("AskDevCoverage: evidence references, not openable yet", () => {
     it("groups the cited and the full evidence by kind, with counts", () => {
         render(<AskDevCoverage result={statusPartial} />);
