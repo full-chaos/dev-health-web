@@ -1,0 +1,568 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_fb709d19f650845a35c93d1219ce11f9",
+    "seq": 8,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_f374a93b392f3bbeb0898fadb88baa07",
+        "request_id": "req_fb709d19f650845a35c93d1219ce11f9",
+        "generated_at": "2026-10-30T19:44:13.775811044Z",
+        "status": "clarification_required",
+        "question": "How is atlassian doing over the last 30 days?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "Assess how atlassian is doing over the last 30 days.",
+            "subject_terms": ["atlassian"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "flow"
+                },
+                {
+                    "kind": "health"
+                },
+                {
+                    "kind": "incidents"
+                },
+                {
+                    "kind": "investment"
+                },
+                {
+                    "kind": "workload"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [
+                {
+                    "receipt_id": "45807760-fa82-532f-8fdf-d2dd11eb2f25",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1702",
+                        "label": "CHAOS-3715: complete Jira Atlassian provider parity"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1702"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "cc8eb636-31ef-5f3e-9ee1-b8501e1ee16a",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:242",
+                        "label": "feat(jira): Integrate atlassian-client library and AGG GraphQL (Phases 0-5)"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:242"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "9e329c37-534d-5138-8b04-faeee91df775",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:249",
+                        "label": "Implement storage & metrics parity across backends"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:249"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "6500675a-73fc-5a1e-8ef4-a35563d4f3dc",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3042",
+                        "label": "feat(cli): CHAOS-6466 dho sync teams --provider jira syncs Atlassian Teams"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3042"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "e7d25fce-a925-5693-9af2-377f4ec54a88",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3114",
+                        "label": "test(cli): CHAOS-6714 compare the Atlassian Teams client with the upstream Python Teams client"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3114"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "f14bf142-00ad-56ac-95b5-3688d0cf81b5",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3129",
+                        "label": "test(cli): CHAOS-6729 build the Atlassian Teams oracle pages from the generated types"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3129"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "acc8821f-3025-546f-8f06-3a653d3e90f2",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3357",
+                        "label": "fix(sync): CHAOS-7002 Atlassian Teams sync uses the stored Jira integration credential"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3357"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "22db34dd-d2df-5d1d-8565-a39257287cb1",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3365",
+                        "label": "feat(sync): CHAOS-7020 resolve the Atlassian organization id from the cloud id"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3365"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "73e42c05-ed40-5bce-ac8c-fcfa8a76b22f",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3468",
+                        "label": "fix(sync): CHAOS-7132 send the Atlassian organization as an ARI, keep the Atlassian leg from failing discovery, and name every credential-invalid cause"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3468"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "0c166ca0-fde7-506e-8bf6-8b5bbadc759d",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3474",
+                        "label": "fix(sync): CHAOS-7132 send the Atlassian organization as an ARI, keep the Atlassian leg from failing discovery, and name every credential-invalid cause"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3474"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                }
+            ],
+            "committed": [],
+            "clarification_prompt": "Which subject did you mean: CHAOS-3715: complete Jira Atlassian provider parity, feat(jira): Integrate atlassian-client library and AGG GraphQL (Phases 0-5), Implement storage & metrics parity across backends?"
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["flow", "health", "incidents", "investment", "workload"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "narrowing": [
+                {
+                    "stage": "cardinality",
+                    "basis": "canonical_id_lexical",
+                    "before": 50,
+                    "after": 18
+                }
+            ]
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "The question matched more than one authorized subject, so no canonical facts were read until the intended subject is confirmed."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T19:44:13.775491044Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": false
+        },
+        "evidence_ref_labels": {
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:1702": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:1702",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:242": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:242",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:249": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:249",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3042": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3042",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3114": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3114",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3129": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3129",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3357": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3357",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3365": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3365",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3468": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3468",
+            "acr:v1:pull-request:920f9442-07df-4217-4dc4-c5833c0b8268:3474": "Pull request: 920f9442-07df-4217-4dc4-c5833c0b8268:3474"
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna"
+        },
+        "deterministic_answer": "Clarification is required before this question can be answered. Which subject did you mean: CHAOS-3715: complete Jira Atlassian provider parity, feat(jira): Integrate atlassian-client library and AGG GraphQL (Phases 0-5), Implement storage & metrics parity across backends?",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "structure_needs": {
+            "missing": ["expected_kind", "subject_candidate", "subject_anchor", "subject_handle"],
+            "kind_options": [
+                {
+                    "receipt_id": "kindr_deae832e964e3e9a0c1af75b",
+                    "option_id": "opt_56de5c44601c20da",
+                    "label": "a pull request",
+                    "kind": "pull_request",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "kindr_baa2355ff65b381852d38017",
+                    "option_id": "opt_eeb4cd98a01694a0",
+                    "label": "a pull request review",
+                    "kind": "pull_request_review",
+                    "offer_source": "engine"
+                }
+            ],
+            "handle_options": [
+                {
+                    "receipt_id": "handr_2767ad29e8acdf25287621d4",
+                    "option_id": "opt_22f7b8a1d3ac5d8e",
+                    "label": "pull request #1702",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "1702",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_5a0cf8b3f9398f1502b24a27",
+                    "option_id": "opt_dcb9d301a42753a1",
+                    "label": "pull request #242",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "242",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_3c75f28d57da2cea5238db37",
+                    "option_id": "opt_b9e7046e8b93464f",
+                    "label": "pull request #249",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "249",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_7adf436c7ab7341d80e0d16a",
+                    "option_id": "opt_64aa2c50cb6ae9ac",
+                    "label": "pull request #3042",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3042",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_7e7dc15c46e54e672577df9d",
+                    "option_id": "opt_f0c808076b864c6c",
+                    "label": "pull request #3114",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3114",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_5e61c5d2679e52fecf9e3f5c",
+                    "option_id": "opt_05395f869934ef94",
+                    "label": "pull request #3129",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3129",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_4b9d9763e7bfb89da56f9f21",
+                    "option_id": "opt_6fd1c803fd4a298f",
+                    "label": "pull request #3357",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3357",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_9a02fe10e3b12b6f031e80fb",
+                    "option_id": "opt_5dc02ed6a5db255a",
+                    "label": "pull request #3365",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3365",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_561ac322a0c37716e39c4541",
+                    "option_id": "opt_275d769479388899",
+                    "label": "pull request #3468",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3468",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_825ae9400ddec57358b42d1e",
+                    "option_id": "opt_34b98469d220d029",
+                    "label": "pull request #3474",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3474",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_e612ab4d56c8d397e74c6921",
+                    "option_id": "opt_521523252dc8c17a",
+                    "label": "pull request #3515",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3515",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_8f76bc1be342240a66c3534c",
+                    "option_id": "opt_094eb1c56498b6d9",
+                    "label": "pull request #3534",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3534",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_7c0bcb77b4f1bff8d53dd6c6",
+                    "option_id": "opt_0e754fabb483bcfe",
+                    "label": "pull request #3541",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3541",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_e3c9c86f5ec41aa2264a3134",
+                    "option_id": "opt_80c51e698ee6a274",
+                    "label": "pull request #3563",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3563",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_84350ebd6228e3f4dfbe3f63",
+                    "option_id": "opt_dee4558f7450d7d7",
+                    "label": "pull request #3622",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3622",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_10f5add40c9401dffea3508e",
+                    "option_id": "opt_18f61436feb14474",
+                    "label": "pull request #3641",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3641",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_71c471dd2dd936ca23bd7078",
+                    "option_id": "opt_c0ead7aa329af090",
+                    "label": "pull request #3681",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3681",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_5d840fdbf5764c35f9d39e87",
+                    "option_id": "opt_ad331d7a4860e71a",
+                    "label": "pull request #3869",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3869",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                }
+            ],
+            "candidate_options": [
+                {
+                    "receipt_id": "candr_70941be6d47b05d717e920d4",
+                    "option_id": "opt_315746250dfb06d2",
+                    "label": "CHAOS-3715: complete Jira Atlassian provider parity",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:1702",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_93537eddcfdd5ecebced6aa0",
+                    "option_id": "opt_a5d96ee1448ce343",
+                    "label": "feat(jira): Integrate atlassian-client library and AGG GraphQL (Phases 0-5)",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:242",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_d4dae4872837c10ebfeceee3",
+                    "option_id": "opt_45db93cd2cde93af",
+                    "label": "Implement storage & metrics parity across backends",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:249",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_30e67ddb9ddd88c3c117b2b4",
+                    "option_id": "opt_48afdd2b1b574555",
+                    "label": "feat(cli): CHAOS-6466 dho sync teams --provider jira syncs Atlassian Teams",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3042",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_17bacd1c9c4f0321a0fe7d9c",
+                    "option_id": "opt_aec8aa434cf3f4be",
+                    "label": "test(cli): CHAOS-6714 compare the Atlassian Teams client with the upstream Python Teams client",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:920f9442-07df-4217-4dc4-c5833c0b8268:3114",
+                    "offer_source": "engine"
+                }
+            ]
+        },
+        "completeness": {
+            "terminal_status": "clarification_required",
+            "terminal_reason": "clarification_reason_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "state": "not_derived"
+        }
+    }
+}

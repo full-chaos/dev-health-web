@@ -18,7 +18,17 @@ import {
     rightDrawerOwnerForTest,
 } from "@/lib/shell/rightDrawer";
 
+import type { TestModeTurns } from "./answer/testModeAnswer";
+import kindCandidate from "./answer/__tests__/captures/kiac_kind_and_candidate_clarification.event.json";
+import budgetRefusal from "./answer/__tests__/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
+
 const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
+
+// The panel's turn source (CHAOS-3440). No turns unless a test sets some.
+const turnsMock = vi.hoisted(() => ({
+    value: { turns: [], onConfirm: undefined, onReask: undefined } as unknown,
+}));
+vi.mock("./answer/testModeAnswer", () => ({ useTestModeTurns: () => turnsMock.value }));
 
 vi.mock("next/navigation", () => ({
     usePathname: () => navigationMock.pathname,
@@ -107,6 +117,7 @@ async function axeViolations(node: Element): Promise<string[]> {
 
 beforeEach(() => {
     navigationMock.pathname = "/dashboard";
+    turnsMock.value = { turns: [], onConfirm: undefined, onReask: undefined };
     resetRightDrawerForTest();
 });
 
@@ -208,6 +219,29 @@ describe("Ask Dev panel — desktop (non-modal right region)", () => {
         await userEvent.click(launcher());
 
         expect(await axeViolations(screen.getByTestId("ask-dev-panel"))).toEqual([]);
+    });
+
+    it("gives the sinks to the last turn only: every earlier turn is read-only (CHAOS-3440)", async () => {
+        const onConfirm = vi.fn();
+        const onReask = vi.fn();
+        const refusal = {
+            question: "What is the status of every project the Web team owns?",
+            refusal: budgetRefusal,
+        };
+        turnsMock.value = {
+            turns: [kindCandidate.result, refusal],
+            onConfirm,
+            onReask,
+        } as unknown as TestModeTurns;
+        renderShell();
+        await userEvent.click(launcher());
+
+        const turns = within(screen.getByTestId("ask-dev-panel")).getAllByTestId("ask-dev-turn");
+        expect(turns).toHaveLength(2);
+        expect(within(turns[0] as HTMLElement).queryAllByRole("button")).toEqual([]);
+        await userEvent.click(within(turns[1] as HTMLElement).getByTestId("ask-dev-refusal-reask"));
+        expect(onReask).toHaveBeenCalledWith({ question: refusal.question, axis: "scope_anchor" });
+        expect(onConfirm).not.toHaveBeenCalled();
     });
 });
 
