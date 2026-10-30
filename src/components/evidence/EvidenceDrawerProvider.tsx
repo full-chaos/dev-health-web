@@ -144,6 +144,11 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
         id: 0,
         path: null,
     });
+    // No open subject (closed, or dropped by a navigation): forget the subject, so that coming
+    // back to its path never calls an `onClose` of a page visit that is over.
+    useEffect(() => {
+        if (!hasSubject) current.current = { ...current.current, subject: null, path: null };
+    }, [hasSubject]);
 
     // Drop the subject of another path during render (no effect, no extra paint). React renders
     // again before it commits, so the drawer is never shown on another path, and it does not

@@ -307,6 +307,27 @@ describe("EvidenceDrawerProvider and the right edge", () => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
         expect(onClose).not.toHaveBeenCalled();
     });
+
+    it("does not call the onClose of a dropped subject after the user comes back to its path", async () => {
+        resetRightDrawerForTest();
+        const onClose = vi.fn();
+        const tree = () => (
+            <EvidenceDrawerProvider>
+                <ContentPage onClose={onClose} />
+            </EvidenceDrawerProvider>
+        );
+        const view = render(tree());
+        await userEvent.click(screen.getByRole("button", { name: "Row button" }));
+        nav.pathname = "/explore";
+        view.rerender(tree());
+        nav.pathname = "/dashboard";
+        view.rerender(tree());
+
+        await userEvent.click(screen.getByTestId("canvas-mark"));
+
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+    });
 });
 
 describe("useEvidenceDrawer", () => {
