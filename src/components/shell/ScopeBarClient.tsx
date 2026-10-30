@@ -1,7 +1,7 @@
 "use client";
 
 import { ListFilter } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { containsIdToken } from "@/lib/labels/idToken";
@@ -17,6 +17,7 @@ import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
+import { claimRightDrawer, releaseRightDrawer } from "@/lib/shell/rightDrawer";
 
 import { FilterDrawer } from "./FilterDrawer";
 import { SCOPE_BAR_LABEL_CLASS, SCOPE_BAR_ORG_FALLBACK, ScopeBarCard } from "./ScopeBarFrame";
@@ -108,6 +109,8 @@ export function ScopeBarClient({
     const [filtersMode, setFiltersMode] = useState<"drawer" | "inline" | null>(null);
     const filtersButtonRef = useRef<HTMLButtonElement>(null);
     const filtersOpen = filtersMode !== null;
+    // Unmounting drops the right-edge claim and its stale callback.
+    useEffect(() => () => releaseRightDrawer("filters"), []);
 
     const openFilters = () => {
         const wide =
@@ -116,10 +119,19 @@ export function ScopeBarClient({
                 : true;
         setOpenMenu(null);
         setFiltersMode(wide ? "drawer" : "inline");
+        // The drawer is a right drawer: it takes the edge from the evidence drawer or Ask Dev.
+        // (Below `md` the panel is inline under the bar, not a drawer.)
+        if (wide) claimRightDrawer("filters", closeFiltersFromPeer);
+    };
+    // A peer drawer opened: close without moving focus to this button.
+    const closeFiltersFromPeer = () => {
+        setOpenMenu(null);
+        setFiltersMode(null);
     };
     const closeFilters = () => {
         setOpenMenu(null);
         setFiltersMode(null);
+        releaseRightDrawer("filters");
         // Focus goes back to the control that opened the panel.
         filtersButtonRef.current?.focus();
     };

@@ -165,11 +165,12 @@ export function CommandPalette() {
                 type="button"
                 onClick={() => setOpen(true)}
                 data-testid="command-palette-trigger"
-                className="flex h-9 w-full max-w-95 flex-1 items-center gap-2.5 rounded-md border border-(--card-stroke) bg-(--background) px-3 text-left text-xs text-(--ink-muted) hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                className="flex h-9 w-full min-w-0 max-w-95 flex-1 items-center gap-2.5 rounded-md border border-(--card-stroke) bg-(--background) px-3 text-left text-xs text-(--ink-muted) hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
             >
-                <Search className="size-3.5" aria-hidden="true" />
-                {TRIGGER_LABEL}
-                <kbd className="ml-auto rounded-sm border border-(--card-stroke) bg-(--surface) px-1.25 text-label-caps">
+                <Search className="size-3.5 shrink-0" aria-hidden="true" />
+                {/* One line: a narrower content column (the Ask Dev panel is open) truncates the label. */}
+                <span className="min-w-0 truncate">{TRIGGER_LABEL}</span>
+                <kbd className="ml-auto shrink-0 whitespace-nowrap rounded-sm border border-(--card-stroke) bg-(--surface) px-1.25 text-label-caps">
                     {hint}
                 </kbd>
             </button>
