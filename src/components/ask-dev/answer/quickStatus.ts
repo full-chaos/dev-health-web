@@ -28,6 +28,14 @@ const OUTCOME_WORDS: Record<string, string> = {
     satisfied: "was read in full",
 };
 
+/** The served correction's direction (closed schema enum); anything else reads "changed". */
+const DIRECTION_VERB: Record<string, string> = {
+    complete_to_partial: "lowered",
+    complete_to_degraded: "lowered",
+    partial_to_degraded: "lowered",
+    degraded_to_partial: "raised",
+};
+
 function correctionNote(result: AnswerResult): string | null {
     const correction = result.status_correction;
     if (!correction) return null;
@@ -39,7 +47,10 @@ function correctionNote(result: AnswerResult): string | null {
         what === null || outcome === undefined
             ? ""
             : `: ${what} ${OUTCOME_WORDS[outcome] ?? outcome.replaceAll("_", " ")}`;
-    return `The service lowered this answer from ${correction.replaced_status} to ${result.status}${why}.`;
+    // The served pair names the direction: only degraded_to_partial raises a status (codex r1 P2).
+    const [from, to] = correction.direction.split("_to_");
+    const verb = DIRECTION_VERB[correction.direction] ?? "changed";
+    return `The service ${verb} this answer from ${from ?? correction.replaced_status} to ${to ?? result.status}${why}.`;
 }
 
 export function quickStatus(result: AnswerResult): QuickStatus {

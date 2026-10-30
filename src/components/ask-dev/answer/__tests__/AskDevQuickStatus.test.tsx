@@ -88,6 +88,24 @@ describe("a served status correction is shown as served, never re-derived", () =
         expect(note).toHaveTextContent("health was read only in part");
     });
 
+    it("says 'raised' for a degraded_to_partial correction, never 'lowered'", () => {
+        // A copy of the real corrected answer with the other schema direction (codex r1 P2 on
+        // #1621): ACR's symmetric authority can raise a degraded status to partial.
+        const copy = copyOf(ownerCorrected);
+        copy.status_correction = {
+            ...copy.status_correction!,
+            replaced_status: "degraded",
+            direction: "degraded_to_partial",
+            deciding_outcome: "satisfied",
+        };
+        render(<AskDevAnswer result={copy} />);
+        const note = within(quick()).getByTestId("ask-dev-answer-correction");
+        expect(note).toHaveTextContent(
+            "The service raised this answer from degraded to partial: health was read in full.",
+        );
+        expect(note).not.toHaveTextContent("lowered");
+    });
+
     it("does not upgrade a corrected status, whatever the completeness says", () => {
         // A copy of the corrected answer with completeness complete: the served status stands.
         const copy = copyOf(ownerCorrected);
