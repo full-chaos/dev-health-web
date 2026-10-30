@@ -558,6 +558,30 @@ jobs:
               with:
                   path: ${{ steps.pnpm-store.outputs.path }}
                   key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+            # Differential oracle for the Ask Dev request builder (CHAOS-11924): executes the REAL
+            # ask-dev builder at the pinned commit and diffs the committed cases. There is no
+            # fallback: if ask-dev cannot be fetched or installed, this job fails.
+            - name: Read the pinned ask-dev commit
+              id: ask-dev-pin
+              run: echo "sha=$(tr -d '[:space:]' < scripts/ask-dev-oracle/ASK_DEV_SHA)" >> "$GITHUB_OUTPUT"
+            - name: Check out ask-dev at the pinned commit
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/ask-dev
+                  ref: ${{ steps.ask-dev-pin.outputs.sha }}
+                  path: .ask-dev-oracle
+                  persist-credentials: false
+            - name: Install ask-dev dependencies
+              working-directory: .ask-dev-oracle
+              env:
+                  pnpm_config_package_manager_strict: "false"
+              # A different tree (ask-dev's own lockfile), not a web install: it is not part of the
+              # web pnpm-store contract, so the flags are ordered to stay outside that count.
+              run: pnpm install --ignore-scripts --frozen-lockfile
+            - name: Ask Dev request-builder differential oracle
+              env:
+                  ASK_DEV_DIR: ${{ github.workspace }}/.ask-dev-oracle
+              run: bash scripts/ask-dev-oracle/check.sh
             - run: bash ci/run_tests.sh unit
             - name: Rolldown parse baseline diagnostics (CHAOS-8789)
               # Diagnostic only, never fails the job. Reads the log that

@@ -38,3 +38,6 @@ src/lib/graphql/schema.graphql
 
 # Backend-registered GraphQL texts: byte equality is the contract (CHAOS-9078)
 src/lib/graphql/__tests__/fixtures/wire
+
+# Ask Dev differential oracle: raw output of the ask-dev producer, diffed byte for byte (CHAOS-11924)
+src/lib/ask-dev/__tests__/oracle
