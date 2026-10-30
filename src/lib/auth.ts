@@ -1,6 +1,6 @@
 import "server-only";
 import NextAuth, { CredentialsSignin } from "next-auth";
-import { decode, encode } from "next-auth/jwt";
+import { decode, encode, getToken } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
@@ -565,6 +565,49 @@ export async function auth(): Promise<Session | null> {
     if (!session?.access_token) return null;
     if (session.error) return null;
     return session;
+}
+
+/** The session cookie names Auth.js uses: the `__Secure-` one on https, the plain one on http. */
+const SESSION_COOKIE_NAMES = ["__Secure-authjs.session-token", "authjs.session-token"] as const;
+
+/**
+ * The Ops credentials of the signed-in session, for sign-out only (CHAOS-12096: the Ops logout
+ * revokes the session its refresh token belongs to). Read from the sealed session cookie of the
+ * request and nothing else: an `Authorization` header is never read. `null` when there is no
+ * cookie this server sealed, or the session holds no refresh token. Never log the result.
+ */
+export async function readSessionCredentialsForSignOut(request: Request): Promise<{
+    readonly accessToken?: string;
+    readonly refreshToken: string;
+    readonly userId?: string;
+} | null> {
+    const cookie = request.headers.get("cookie");
+    if (!authSecret || !cookie) return null;
+    const req = { headers: new Headers({ cookie }) };
+    for (const cookieName of SESSION_COOKIE_NAMES) {
+        const token = await getToken({
+            cookieName,
+            req,
+            secret: authSecret,
+            secureCookie: cookieName.startsWith("__Secure-"),
+        }).catch((error: unknown) => {
+            authLogger.warn(
+                { cookieName, errorName: thrownErrorName(error) },
+                "sign-out: the session cookie could not be read",
+            );
+            return null;
+        });
+        if (!token) continue;
+        const refreshToken = token.refresh_token;
+        if (typeof refreshToken !== "string" || refreshToken === "") return null;
+        const accessToken = token.access_token;
+        return {
+            ...(typeof accessToken === "string" && accessToken !== "" ? { accessToken } : {}),
+            refreshToken,
+            ...(typeof token.id === "string" ? { userId: token.id } : {}),
+        };
+    }
+    return null;
 }
 
 export async function requireSession(callbackUrl?: string): Promise<Session> {

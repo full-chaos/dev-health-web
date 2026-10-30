@@ -13,6 +13,8 @@ type SearchParams = Promise<{
     error?: string;
     from?: string;
     callbackUrl?: string;
+    /** CHAOS-12096: `partial` when sign-out could not revoke the Ops session. */
+    signedOut?: string;
 }>;
 
 export default async function SignInPage({ searchParams }: { searchParams: SearchParams }) {
@@ -43,6 +45,11 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
                 <div className="mb-4 w-full max-w-md p-3 text-sm text-(--positive) bg-(--positive)/12 rounded-md border border-(--positive)/30 text-center">
                     Account created successfully. Please sign in.
                 </div>
+            )}
+            {params.signedOut === "partial" && (
+                <Notice variant="warn" live={false} centered className="mb-4 w-full max-w-md">
+                    Signed out on this device; other sessions may stay active.
+                </Notice>
             )}
             {socialError && (
                 <Notice variant="danger" live={false} centered className="mb-4 w-full max-w-md">
