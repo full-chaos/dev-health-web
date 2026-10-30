@@ -4,7 +4,6 @@ import { formatPercent } from "@/lib/formatters";
 
 import {
     ANSWER_COPY,
-    ANSWER_STATUS_LABEL,
     DERIVATION_LABEL,
     EPISTEMIC_LABEL,
     FACT_KIND_LABEL,
@@ -20,6 +19,7 @@ import {
     type AnswerResult,
 } from "./answerModel";
 import { AskDevCoverage } from "./AskDevCoverage";
+import { quickStatus } from "./quickStatus";
 import { SafeAnswerText } from "./SafeAnswerText";
 import { nonBlank } from "@/lib/ask-dev/conversation";
 
@@ -115,15 +115,19 @@ function FindingItem({ finding }: { finding: AnswerFinding }) {
     );
 }
 
+/**
+ * One part of an answer: a labelled group, not a landmark. A transcript holds many answers, and a
+ * named `section` per part made their landmarks repeat (CHAOS-12157, axe `landmark-unique`).
+ */
 function Part({ title, testId, children }: { title: string; testId: string; children: ReactNode }) {
     const titleId = useId();
     return (
-        <section aria-labelledby={titleId} data-testid={testId} className="space-y-2">
+        <div role="group" aria-labelledby={titleId} data-testid={testId} className="space-y-2">
             <h3 id={titleId} className="text-sm font-semibold text-foreground">
                 {title}
             </h3>
             {children}
-        </section>
+        </div>
     );
 }
 
@@ -156,7 +160,8 @@ function FindingsPart({
 /**
  * The direct answer of one investigation result (CHAOS-11930): the quick answer first, the
  * details after. The quick answer is the judgment sentence with the answer's own status (check 3:
- * the state of the answer, never of the work) and, when a model wrote the analysis, an AI label.
+ * the state of the answer, never of the work; CHAOS-12157: "Full answer" only when its
+ * completeness is complete too, and a status ACR corrected is said to be corrected) and, when a model wrote the analysis, an AI label.
  * Then the drivers (check 8), the strongest pressures, and the findings in three separate parts
  * (remaining work, readiness gaps, conflicts: completion and readiness are never merged). The
  * current state and a differing service sentence sit behind "More detail". Every served string is
@@ -168,6 +173,7 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
     const summary = serviceSummary(result);
     const currentState = nonBlank(result.current_state);
     const modelWritten = isModelWritten(result);
+    const status = quickStatus(result);
     const hasAnalysis =
         result.drivers.length > 0 ||
         result.strongest_pressures.length > 0 ||
@@ -181,8 +187,12 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
         <article className="space-y-5" data-testid="ask-dev-answer" data-status={result.status}>
             <div className="space-y-2" data-testid="ask-dev-answer-quick">
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className={`${PILL} text-foreground`} data-testid="ask-dev-answer-status">
-                        {ANSWER_STATUS_LABEL[result.status] ?? result.status}
+                    <span
+                        className={`${PILL} text-foreground`}
+                        data-testid="ask-dev-answer-status"
+                        data-coverage={status.coverage ?? undefined}
+                    >
+                        {status.label}
                     </span>
                     {modelWritten ? (
                         <span
@@ -203,6 +213,22 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
                         <SafeAnswerText text={lead} />
                     )}
                 </p>
+                {status.completenessNote === null ? null : (
+                    <p
+                        className="text-sm text-foreground"
+                        data-testid="ask-dev-answer-completeness"
+                    >
+                        {status.completenessNote}
+                    </p>
+                )}
+                {status.correctionNote === null ? null : (
+                    <p
+                        className="text-xs text-(--ink-muted)"
+                        data-testid="ask-dev-answer-correction"
+                    >
+                        {status.correctionNote}
+                    </p>
+                )}
                 {modelWritten ? (
                     <p className="text-xs text-(--ink-muted)" data-testid="ask-dev-answer-ai-note">
                         {ANSWER_COPY.aiNote}

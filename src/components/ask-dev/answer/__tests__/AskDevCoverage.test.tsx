@@ -54,7 +54,10 @@ describe("the captures carry what each test needs", () => {
 describe("AskDevCoverage: completeness (checks 11 and 12)", () => {
     it("never reads a 'complete' status as complete when completeness was not derived", () => {
         render(<AskDevAnswer result={ciComplete} />);
-        expect(screen.getByTestId("ask-dev-answer-status")).toHaveTextContent("Full answer");
+        // CHAOS-12157: the pill itself no longer says "Full answer" either.
+        expect(screen.getByTestId("ask-dev-answer-status")).toHaveTextContent(
+            "Answer, not fully covered",
+        );
         expect(block("ask-dev-coverage-state")).toHaveTextContent(COMPLETENESS_TEXT.not_derived);
         expect(readingOf("ask-dev-coverage-state")).toBe("unknown");
     });
