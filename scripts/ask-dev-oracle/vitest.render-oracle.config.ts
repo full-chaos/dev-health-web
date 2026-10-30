@@ -51,6 +51,8 @@ function exposePrivateFunctions(): Plugin {
 
 export default defineConfig({
     root: import.meta.dirname,
+    // Keep vitest's cache out of scripts/ (the root above would put it in scripts/.../node_modules).
+    cacheDir: path.join(web, "node_modules/.vite-ask-dev-render-oracle"),
     plugins: [exposePrivateFunctions()],
     resolve: {
         alias: [
