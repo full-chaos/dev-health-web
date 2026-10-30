@@ -287,12 +287,9 @@ describe("POST /api/ask-dev/investigations — the submission id", () => {
 
         await readAll(await post());
         await readAll(await post());
-        // An empty header is "none" too.
-        await readAll(await post(request, { "X-ACR-Submission-ID": "" }));
-
-        expect(seen).toHaveLength(3);
+        expect(seen).toHaveLength(2);
         for (const id of seen) expect(id).toMatch(UUID);
-        expect(new Set(seen).size).toBe(3);
+        expect(new Set(seen).size).toBe(2);
     });
 
     it("keeps a client-supplied id unchanged", async () => {
@@ -304,15 +301,21 @@ describe("POST /api/ask-dev/investigations — the submission id", () => {
         expect(seen).toEqual([SUBMISSION]);
     });
 
-    it("still refuses an invalid client-supplied id, and does not replace it with a minted one", async () => {
-        installOps(ENTITLED);
-        const seen = recordSubmissionIds();
+    it.each([
+        ["not a UUID", "not-a-uuid"],
+        ["present but empty", ""],
+    ])(
+        "still refuses a client-supplied id that is %s, and does not replace it with a minted one",
+        async (_name, value) => {
+            installOps(ENTITLED);
+            const seen = recordSubmissionIds();
 
-        const response = await post(request, { "X-ACR-Submission-ID": "not-a-uuid" });
+            const response = await post(request, { "X-ACR-Submission-ID": value });
 
-        expect(response.status).toBe(400);
-        expect(seen).toEqual([]);
-    });
+            expect(response.status).toBe(400);
+            expect(seen).toEqual([]);
+        },
+    );
 });
 
 describe("POST /api/ask-dev/investigations — the stream", () => {

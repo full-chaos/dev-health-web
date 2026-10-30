@@ -69,6 +69,8 @@ export async function prepareInvestigation(input: {
     }
     // A create without an id is still a submission: leaving the header out must not skip ACR's
     // concurrency and allowance counting. A supplied but invalid id is refused, never replaced.
+    // A header that is present but empty is a supplied id that is not a UUID: refused, not minted.
+    if (input.submissionId === "") throw invalidRequest();
     const submissionId = optionalUuid(input.submissionId) ?? randomUUID();
     const threadId = optionalUuid(input.threadId);
     if (!validateAcrContract(REQUEST_SCHEMA, input.body).valid) throw invalidRequest();
