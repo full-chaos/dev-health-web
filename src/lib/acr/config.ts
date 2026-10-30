@@ -146,6 +146,17 @@ function exactOrigin(raw: string | undefined): string | undefined {
  * is that client's. `undefined` when ACR_OAUTH_ISSUER or the web origin (AUTH_URL, NEXTAUTH_URL)
  * is unset or not an origin: then no client is first-party and every client sees the consent page.
  */
+/**
+ * Whether `credential:issue` assertions carry the `sid` and `impersonating` claims (CHAOS-12095).
+ * ACR refuses an assertion with a claim it does not know, and only an ACR with the browser-class
+ * parser (CHAOS-12123) knows these two. ACR_OAUTH_ISSUER is set in the same deploy that rolls ACR
+ * to that parser, so the claims follow it: unset, the assertion is the one this web sent before.
+ * Only the claims are gated; the impersonation refusal holds either way.
+ */
+export function issuanceProvenanceClaimsEnabled(): boolean {
+    return (process.env.ACR_OAUTH_ISSUER?.trim() ?? "") !== "";
+}
+
 export function loadFirstPartyBrowserClient(): FirstPartyBrowserClient | undefined {
     const rawIssuer = process.env.ACR_OAUTH_ISSUER?.trim();
     const resource = exactOrigin(rawIssuer);

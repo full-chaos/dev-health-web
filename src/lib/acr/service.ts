@@ -4,7 +4,11 @@ import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import type { IssuanceProvenance } from "./assertion";
 import { AcrRuntimeClient, type OAuthConsentPreview } from "./client";
-import { loadAcrRuntimeConfig, loadFirstPartyBrowserClient } from "./config";
+import {
+    issuanceProvenanceClaimsEnabled,
+    loadAcrRuntimeConfig,
+    loadFirstPartyBrowserClient,
+} from "./config";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import {
     compareScopeBytes,
@@ -205,7 +209,9 @@ function issuanceAuthorization(
     return resolveOpsCredentialIssuanceAuthorization({
         accessToken: context.session.accessToken,
         orgId: context.session.orgId,
-        provenance: context.provenance,
+        // The claims follow ACR_OAUTH_ISSUER (an ACR without their parser refuses them); the
+        // impersonation refusal in issuanceContext does not.
+        provenance: issuanceProvenanceClaimsEnabled() ? context.provenance : undefined,
         repositoryScopes,
         signal,
         subject: context.session.subject,

@@ -355,6 +355,69 @@ describe("credential:issue provenance", () => {
     });
 });
 
+// The claim set this web signed before CHAOS-12095: an ACR without the browser-class parser
+// refuses any other claim, so with ACR_OAUTH_ISSUER unset the assertion must be exactly this.
+const PRE_PROVENANCE_CLAIMS = [
+    "aud",
+    "body_sha256",
+    "exp",
+    "iat",
+    "iss",
+    "jti",
+    "method",
+    "nbf",
+    "org_id",
+    "path",
+    "permissions",
+    "repository_scopes",
+    "sub",
+];
+
+describe("provenance claims follow ACR_OAUTH_ISSUER", () => {
+    it.each([
+        ["unset", ""],
+        ["blank", "   "],
+    ])(
+        "Given ACR_OAUTH_ISSUER is %s, when MCP consent and device approval run, then every assertion has exactly the pre-provenance claims",
+        async (_name, value) => {
+            vi.stubEnv("ACR_OAUTH_ISSUER", value);
+            const observed = installOps();
+            installAcr(observed);
+
+            await previewOAuthConsent({ handle: HANDLE, signal: signal() });
+            await decideOAuthConsent({
+                action: "approve",
+                handle: HANDLE,
+                repositoryScopes: ["full-chaos/platform"],
+                signal: signal(),
+            });
+            await approveDeviceAuthorization({
+                repositoryScopes: ["full-chaos/platform"],
+                signal: signal(),
+                userCode: "ABCD2345",
+            });
+
+            expect(observed.acrClaims).toHaveLength(4);
+            for (const claims of observed.acrClaims) {
+                expect(Object.keys(claims).sort()).toEqual(PRE_PROVENANCE_CLAIMS);
+            }
+            // The refusal's status read still runs while the claims are off.
+            expect(observed.statusReads).toBe(3);
+        },
+    );
+
+    it("Given ACR_OAUTH_ISSUER is set, when MCP consent runs, then the assertion has the pre-provenance claims plus sid and impersonating", async () => {
+        const observed = installOps();
+        installAcr(observed);
+
+        await previewOAuthConsent({ handle: HANDLE, signal: signal() });
+
+        expect(Object.keys(observed.acrClaims[0] ?? {}).sort()).toEqual(
+            [...PRE_PROVENANCE_CLAIMS, "impersonating", "sid"].sort(),
+        );
+    });
+});
+
 describe("impersonation refusal by state", () => {
     const refusals = [
         ["previewOAuthConsent", () => previewOAuthConsent({ handle: HANDLE, signal: signal() })],
@@ -390,6 +453,22 @@ describe("impersonation refusal by state", () => {
     it.each(refusals)(
         "Given a same-org impersonation reported by the Ops status read, when %s, then it is refused and ACR is never called",
         async (_name, call) => {
+            const observed = installOps({ impersonating: true });
+            installAcr(observed);
+
+            const error = await call().catch((caught: unknown) => caught);
+
+            expect(error).toBeInstanceOf(AcrRuntimeError);
+            expect(error).toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
+            expect(observed.statusReads).toBe(1);
+            expect(observed.acrClaims).toHaveLength(0);
+        },
+    );
+
+    it.each(refusals)(
+        "Given ACR_OAUTH_ISSUER is unset and a same-org impersonation, when %s, then it is still refused and ACR is never called",
+        async (_name, call) => {
+            vi.stubEnv("ACR_OAUTH_ISSUER", "");
             const observed = installOps({ impersonating: true });
             installAcr(observed);
 

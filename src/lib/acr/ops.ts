@@ -66,7 +66,8 @@ type ResolveOpsAuthorizationInput = {
 type ResolveOpsCredentialIssuanceAuthorizationInput = {
     readonly accessToken: string;
     readonly orgId: string;
-    readonly provenance: IssuanceProvenance;
+    /** Unset: the assertion carries no provenance claims (see `issuanceProvenanceClaimsEnabled`). */
+    readonly provenance: IssuanceProvenance | undefined;
     readonly repositoryScopes: readonly string[];
     readonly signal: AbortSignal;
     readonly subject: string;
@@ -197,7 +198,7 @@ export async function resolveOpsCredentialIssuanceAuthorization(
     await requireAcrEntitlement(input);
     return {
         orgId: input.orgId,
-        provenance: input.provenance,
+        ...(input.provenance === undefined ? {} : { provenance: input.provenance }),
         repositoryScopes: input.repositoryScopes,
         subject: input.subject,
     };
