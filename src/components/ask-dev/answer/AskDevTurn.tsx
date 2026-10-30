@@ -34,7 +34,10 @@ type TranscriptFields =
     | "limitations"
     | "warnings"
     | "evidence_ref_ids"
-    | "evidence_ref_labels";
+    | "evidence_ref_labels"
+    // CHAOS-11945: the claimed-fact tables and the answer's evidence window.
+    | "claimed_facts"
+    | "effective_evidence_window";
 
 /** One turn's result: what both the answer view and the clarification view read. */
 export type TranscriptResult =

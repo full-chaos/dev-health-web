@@ -19,6 +19,7 @@ import {
     type AnswerResult,
 } from "./answerModel";
 import { AskDevCoverage } from "./AskDevCoverage";
+import { ClaimedFactTables } from "./ClaimedFactTables";
 import { quickStatus } from "./quickStatus";
 import { SafeAnswerText } from "./SafeAnswerText";
 import { nonBlank } from "@/lib/ask-dev/conversation";
@@ -285,6 +286,8 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
                         findings={result.conflicts}
                         testId="ask-dev-answer-conflicts"
                     />
+
+                    <ClaimedFactTables result={result} />
 
                     <AskDevCoverage result={result} />
                 </>

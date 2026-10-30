@@ -28,7 +28,10 @@ type AnswerFields =
     | "evidence_ref_ids"
     | "evidence_ref_labels"
     // CHAOS-12157: the status ACR replaced, when its completeness authority corrected it.
-    | "status_correction";
+    | "status_correction"
+    // CHAOS-11945: the claimed-fact tables and the answer's evidence window.
+    | "claimed_facts"
+    | "effective_evidence_window";
 
 export type AnswerResult =
     | Pick<ACRContextFabricInvestigationResultV1, AnswerFields>
@@ -179,6 +182,14 @@ export const ANSWER_COPY = {
     noLead: "The service sent no answer sentence.",
     about: "About",
     confidence: "confidence",
+    // CHAOS-11945: the claimed-fact tables.
+    factTablesTitle: "Fact tables",
+    factTablesIntro: "The rows the service read for this answer, as it sent them.",
+    factTablesWindow: "Window",
+    factAlsoCited: "Also cited for",
+    factMeasureSuffix: "(measure)",
+    factCellAbsent: "not in this row",
+    factCellNull: "no value",
 } as const;
 
 export function evidenceCountText(count: number): string {
