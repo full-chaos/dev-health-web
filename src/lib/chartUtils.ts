@@ -1,3 +1,5 @@
+import { escapeHtml } from "@/components/charts/escapeHtml";
+
 /**
  * Shared chart formatting utilities for ECharts visualizations.
  */
@@ -127,10 +129,10 @@ export const buildTooltipHtml = (params: {
             : "";
 
     return `
-    <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
-    ${subtitle ? `<div style="font-size: 11px; color: ${mutedColor}; margin-bottom: 4px;">${subtitle}</div>` : ""}
+    <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(title)}</div>
+    ${subtitle ? `<div style="font-size: 11px; color: ${mutedColor}; margin-bottom: 4px;">${escapeHtml(subtitle)}</div>` : ""}
     <div style="font-family: var(--font-mono, monospace);">
-      <strong>${formattedValue}</strong> ${unit}
+      <strong>${escapeHtml(formattedValue)}</strong> ${escapeHtml(unit)}
       ${percentLine}
     </div>
     ${extra ? `<div style="margin-top: 4px; font-size: 11px; color: ${mutedColor};">${extra}</div>` : ""}

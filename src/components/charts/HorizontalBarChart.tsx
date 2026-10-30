@@ -10,6 +10,7 @@ import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
 import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([BarChart]);
 
@@ -83,7 +84,7 @@ export function HorizontalBarChart({
         // When full identifiers are supplied, show them in the axis tooltip so a
         // degraded short label (e.g. `#550e8400`) still traces to its real id.
         const heading = (idx >= 0 ? categoryTitles?.[idx] : undefined) ?? first.name ?? "";
-        return `${heading}<br/>${first.marker ?? ""}${formatValue(first.value)}`;
+        return `${escapeHtml(heading)}<br/>${first.marker ?? ""}${escapeHtml(formatValue(first.value))}`;
     };
 
     return (

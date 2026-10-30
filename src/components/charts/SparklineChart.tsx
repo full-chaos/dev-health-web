@@ -9,6 +9,7 @@ import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { buildTooltip, dotRing, lineMark, pointSymbolSize } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([LineChart]);
 
@@ -144,7 +145,7 @@ export function SparklineChart({
                         const label = formatSparklineTooltipDate(axisValue);
                         // ECharts hands a raw-null data point to the formatter as `undefined`.
                         const value = formatSparklineTooltipValue(first?.value ?? null);
-                        return `${first?.marker ?? ""}${label}: ${value}`;
+                        return `${first?.marker ?? ""}${escapeHtml(label)}: ${escapeHtml(value)}`;
                     },
                 }),
                 grid: isTile ? TILE_SPARK.grid : { left: 8, right: 8, top: 10, bottom: 10 },
