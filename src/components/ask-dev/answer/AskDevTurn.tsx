@@ -28,7 +28,13 @@ type TranscriptFields =
     | "structure_needs"
     | "window_clarification"
     | "subject_resolution"
-    | "versions";
+    | "versions"
+    | "completeness"
+    | "coverage"
+    | "limitations"
+    | "warnings"
+    | "evidence_ref_ids"
+    | "evidence_ref_labels";
 
 /** One turn's result: what both the answer view and the clarification view read. */
 export type TranscriptResult =

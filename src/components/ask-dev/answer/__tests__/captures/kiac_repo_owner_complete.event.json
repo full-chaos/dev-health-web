@@ -1,0 +1,485 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_5b6e42f9cd53999aeccc4253e9aa34b2",
+    "seq": 13,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_5440efde5470d4ebc4960b2df926a6ca",
+        "request_id": "req_5b6e42f9cd53999aeccc4253e9aa34b2",
+        "generated_at": "2026-10-30T20:28:59.032571167Z",
+        "status": "complete",
+        "question": "Which team owns full-chaos/dev-health-acr?",
+        "interpretation": {
+            "shape": "explicit_cohort",
+            "requested_judgment": "Which team owns full-chaos/dev-health-acr?",
+            "subject_terms": ["full-chaos/dev-health-acr"],
+            "time_context": { "axis": "current" },
+            "fact_requirements": [],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [
+                {
+                    "receipt_id": "79c49c63-ce5a-5d41-8983-4bd8f37b3052",
+                    "subject": {
+                        "kind": "repository",
+                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "label": "full-chaos/dev-health-acr"
+                    },
+                    "state": "proposed",
+                    "matched_terms": ["full-chaos/dev-health-acr"],
+                    "match_reasons": ["Exact canonical subject label match."],
+                    "confidence": 1,
+                    "evidence_ref_ids": ["acr:v1:repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7"],
+                    "provider": "github",
+                    "match_mechanisms": ["exact", "lexical"]
+                }
+            ],
+            "committed": []
+        },
+        "answer_plan": {
+            "family": "scoped_cohort_status",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "member_kind": "team",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table"],
+            "fact_kinds": [
+                "health",
+                "workload",
+                "readiness",
+                "operational_deficiencies",
+                "investment"
+            ],
+            "axes": ["subject_anchor", "expected_kind", "window"],
+            "budget": {
+                "max_items": 66,
+                "max_serialized_bytes": 262144,
+                "max_members": 50,
+                "synthesis_headroom": 16,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "requirements": [
+                {
+                    "requirement": "health/member/team",
+                    "obligation": "health",
+                    "role": "member",
+                    "subject": "team",
+                    "kind": "read",
+                    "fact_kinds": ["health"],
+                    "scope": "each_member",
+                    "quantifier": "at_least_one"
+                },
+                {
+                    "requirement": "state/member/team",
+                    "obligation": "state",
+                    "role": "member",
+                    "subject": "team",
+                    "kind": "read",
+                    "fact_kinds": [
+                        "flow",
+                        "health",
+                        "investment",
+                        "landscape",
+                        "readiness",
+                        "workload"
+                    ],
+                    "scope": "each_member",
+                    "quantifier": "corroborated"
+                }
+            ]
+        },
+        "cohort": {
+            "kind": "team",
+            "members": [
+                {
+                    "subject": {
+                        "kind": "team",
+                        "canonical_id": "team:linear:CHAOS",
+                        "label": "Fullchaos"
+                    },
+                    "rank": 1,
+                    "inclusion_reasons": ["Team that owns the repository the question names."],
+                    "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                    "ranking_computed": true,
+                    "attention_rank": 1,
+                    "score": 42.5,
+                    "ranking_basis": [
+                        "investment_mix",
+                        "health.compounding_risk",
+                        "operational_deficiencies.severity",
+                        "readiness.coverage_gap",
+                        "workload.forecast_pressure"
+                    ],
+                    "data_completeness": "complete",
+                    "outcome": "qualified",
+                    "drivers": [
+                        {
+                            "signal": "investment_mix",
+                            "value": 0,
+                            "weight": 30,
+                            "weight_contributed": 0,
+                            "window": "current",
+                            "concentration": 0.52659815879,
+                            "concentration_method": "max_share"
+                        },
+                        {
+                            "signal": "health.compounding_risk",
+                            "value": 0.5,
+                            "weight": 25,
+                            "weight_contributed": 12.5,
+                            "window": "current",
+                            "source_claimed_fact_ids": [
+                                "claim_cohort_70b36b1f8eccb5ca7bc3acefb1c6dc32"
+                            ]
+                        },
+                        {
+                            "signal": "operational_deficiencies.severity",
+                            "value": 0.5,
+                            "weight": 20,
+                            "weight_contributed": 10,
+                            "window": "current",
+                            "source_claimed_fact_ids": [
+                                "claim_cohort_72ac71a2d8b1fa66aff0913b9b2947db"
+                            ]
+                        },
+                        {
+                            "signal": "readiness.coverage_gap",
+                            "value": 1,
+                            "weight": 15,
+                            "weight_contributed": 15,
+                            "window": "current",
+                            "source_claimed_fact_ids": [
+                                "claim_cohort_530341cd76e14865502b62beedac1b31"
+                            ]
+                        },
+                        {
+                            "signal": "workload.forecast_pressure",
+                            "value": 0.5,
+                            "weight": 10,
+                            "weight_contributed": 5,
+                            "window": "current"
+                        }
+                    ]
+                }
+            ],
+            "rationale": "Teams were read from the ownership records of the repository the question names in the authorized Context Fabric graph.",
+            "complete": true,
+            "truncated": false,
+            "score_meaning": "attention"
+        },
+        "direct_judgment": "This investigation is complete.",
+        "current_state": "No canonical facts were observed to describe the current state.",
+        "strongest_pressures": [],
+        "drivers": [
+            {
+                "driver_id": "driver_repository_owner",
+                "standing": "principal",
+                "category": "relationship",
+                "title": "Fullchaos owns full-chaos/dev-health-acr.",
+                "summary": "Fullchaos is identified as the team that owns full-chaos/dev-health-acr.",
+                "affected_subjects": [
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "derivation": "model_extracted",
+                "epistemic_status": "source_asserted",
+                "confidence": 1,
+                "current": true
+            },
+            {
+                "driver_id": "cohort-driver-01-1",
+                "standing": "principal",
+                "category": "readiness",
+                "title": "Fullchaos: readiness gap",
+                "summary": "readiness gap (weight 15, value 1.00) contributed 15.0 of Fullchaos's 42.5 attention points.",
+                "affected_subjects": [
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "claimed_fact_ids": ["claim_cohort_530341cd76e14865502b62beedac1b31"],
+                "derivation": "rule_inferred",
+                "epistemic_status": "inferred",
+                "confidence": 0.95,
+                "current": true
+            },
+            {
+                "driver_id": "cohort-driver-01-2",
+                "standing": "contributing",
+                "category": "health",
+                "title": "Fullchaos: health risk",
+                "summary": "health risk (weight 25, value 0.50) contributed 12.5 of Fullchaos's 42.5 attention points.",
+                "affected_subjects": [
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "claimed_fact_ids": ["claim_cohort_70b36b1f8eccb5ca7bc3acefb1c6dc32"],
+                "derivation": "rule_inferred",
+                "epistemic_status": "inferred",
+                "confidence": 0.95,
+                "current": true
+            },
+            {
+                "driver_id": "cohort-driver-01-3",
+                "standing": "contributing",
+                "category": "operational_deficiency",
+                "title": "Fullchaos: operational deficiencies",
+                "summary": "operational deficiencies (weight 20, value 0.50) contributed 10.0 of Fullchaos's 42.5 attention points.",
+                "affected_subjects": [
+                    { "kind": "team", "canonical_id": "team:linear:CHAOS", "label": "Fullchaos" }
+                ],
+                "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+                "claimed_fact_ids": ["claim_cohort_72ac71a2d8b1fa66aff0913b9b2947db"],
+                "derivation": "rule_inferred",
+                "epistemic_status": "inferred",
+                "confidence": 0.95,
+                "current": true
+            }
+        ],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "A candidate subject was identified but not committed: the evidence assembled for it does not support naming it as the answer to this question."
+        ],
+        "evidence_ref_ids": ["acr:v1:team:linear:CHAOS"],
+        "claimed_facts": [
+            {
+                "claim_id": "claim_cohort_530341cd76e14865502b62beedac1b31",
+                "kind": "readiness",
+                "subject": {
+                    "kind": "team",
+                    "canonical_id": "team:linear:CHAOS",
+                    "label": "Fullchaos"
+                },
+                "field": "estimate_coverage_ratio",
+                "value": { "number": 0 }
+            },
+            {
+                "claim_id": "claim_cohort_70b36b1f8eccb5ca7bc3acefb1c6dc32",
+                "kind": "health",
+                "subject": {
+                    "kind": "team",
+                    "canonical_id": "team:linear:CHAOS",
+                    "label": "Fullchaos"
+                },
+                "field": "severity",
+                "value": { "string": "elevated" }
+            },
+            {
+                "claim_id": "claim_cohort_72ac71a2d8b1fa66aff0913b9b2947db",
+                "kind": "operational_deficiencies",
+                "subject": {
+                    "kind": "team",
+                    "canonical_id": "team:linear:CHAOS",
+                    "label": "Fullchaos"
+                },
+                "field": "severity",
+                "value": { "string": "warning" }
+            }
+        ],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "canonical_fact:health",
+                    "state": "truncated",
+                    "reason": "canonical fact result was truncated",
+                    "label": "Canonical facts — health",
+                    "state_label": "partially included"
+                },
+                {
+                    "source": "canonical_fact:investment",
+                    "state": "available",
+                    "reason": "investment_units_uncategorized: 1024 of 2777 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count; investment_units_uncategorized: 4009 of 12529 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count",
+                    "label": "Canonical facts — investment",
+                    "state_label": "available"
+                },
+                {
+                    "source": "canonical_fact:operational_deficiencies",
+                    "state": "available",
+                    "reason": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams)",
+                    "label": "Canonical facts — operational deficiency",
+                    "state_label": "available"
+                },
+                {
+                    "source": "canonical_fact:readiness",
+                    "state": "truncated",
+                    "reason": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams, projects)",
+                    "label": "Canonical facts — readiness",
+                    "state_label": "partially included"
+                },
+                {
+                    "source": "canonical_fact:workload",
+                    "state": "available",
+                    "reason": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams, projects)",
+                    "label": "Canonical facts — workload",
+                    "state_label": "available"
+                },
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T20:28:42.694325299Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": true,
+            "degraded_reasons": [
+                "Health: canonical fact result was truncated",
+                "Readiness: 1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams, projects)"
+            ],
+            "details": [
+                {
+                    "detail_id": "cov-01",
+                    "source": "canonical_fact:health",
+                    "code": "fact_provider_reported",
+                    "degrading": true,
+                    "fact_kind": "health",
+                    "source_state": "truncated",
+                    "supported_kinds": ["repository", "team", "project"],
+                    "label": "Only part of the health facts could be included",
+                    "raw": "Health: canonical fact result was truncated"
+                },
+                {
+                    "detail_id": "cov-02",
+                    "source": "canonical_fact:readiness",
+                    "code": "fact_provider_reported",
+                    "degrading": true,
+                    "fact_kind": "readiness",
+                    "source_state": "truncated",
+                    "supported_kinds": ["team", "project"],
+                    "skipped_kinds": ["repository"],
+                    "narrowed": true,
+                    "label": "Only part of the readiness facts could be included; some subjects were skipped",
+                    "raw": "Readiness: 1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams, projects)"
+                },
+                {
+                    "detail_id": "cov-03",
+                    "source": "canonical_fact:investment",
+                    "code": "fact_provider_reported",
+                    "degrading": false,
+                    "fact_kind": "investment",
+                    "source_state": "available",
+                    "supported_kinds": ["team", "project", "repository", "organization"],
+                    "label": "Investment facts were limited",
+                    "raw": "investment_units_uncategorized: 1024 of 2777 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count; investment_units_uncategorized: 4009 of 12529 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count"
+                },
+                {
+                    "detail_id": "cov-04",
+                    "source": "canonical_fact:operational_deficiencies",
+                    "code": "fact_narrowed",
+                    "degrading": false,
+                    "fact_kind": "operational_deficiencies",
+                    "source_state": "available",
+                    "supported_kinds": ["team"],
+                    "skipped_kinds": ["repository"],
+                    "count": 1,
+                    "narrowed": true,
+                    "label": "1 subject was skipped for operational deficiency facts",
+                    "raw": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams)"
+                },
+                {
+                    "detail_id": "cov-05",
+                    "source": "canonical_fact:workload",
+                    "code": "fact_narrowed",
+                    "degrading": false,
+                    "fact_kind": "workload",
+                    "source_state": "available",
+                    "supported_kinds": ["team", "project"],
+                    "skipped_kinds": ["repository"],
+                    "count": 1,
+                    "narrowed": true,
+                    "label": "1 subject was skipped for workload facts",
+                    "raw": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams, projects)"
+                }
+            ]
+        },
+        "evidence_ref_labels": {
+            "acr:v1:repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7": "Repository: 7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+            "acr:v1:team:linear:CHAOS": "Team: linear:CHAOS"
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "context-fabric-synthesis.v27+gpt-5.6-luna",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna",
+            "synthesis_source": "server"
+        },
+        "deterministic_answer": "This investigation is complete.",
+        "warnings": [],
+        "reused": false,
+        "completeness": {
+            "terminal_status": "complete",
+            "claimed_facts_count": 3,
+            "rows_count": 0,
+            "state": "partial",
+            "outcomes": [
+                {
+                    "stage": "planning",
+                    "requirement": "health/member/team",
+                    "obligation": "health",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "state/member/team",
+                    "obligation": "state",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "assembled_result",
+                    "requirement": "health/member/team",
+                    "obligation": "health",
+                    "outcome": "narrowed",
+                    "impact": "depth",
+                    "cause_coverage": "fact_provider_reported",
+                    "cause_observed": true,
+                    "served": 1,
+                    "declared": 1
+                },
+                {
+                    "stage": "assembled_result",
+                    "requirement": "state/member/team",
+                    "obligation": "state",
+                    "outcome": "narrowed",
+                    "impact": "depth",
+                    "cause_coverage": "fact_provider_reported",
+                    "cause_observed": true,
+                    "served": 1,
+                    "declared": 4,
+                    "refinements": [
+                        {
+                            "stage": "assembled_result",
+                            "coverage": "fact_provider_reported",
+                            "before": 4,
+                            "after": 1
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
