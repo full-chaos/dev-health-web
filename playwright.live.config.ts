@@ -47,6 +47,11 @@ export default defineConfig({
                 NODE_OPTIONS: nextDevNodeOptions(),
                 PLAYWRIGHT_TEST: "true",
                 BACKEND_URL: liveBackendUrl,
+                // The Next proxy has its own register limiter (5/hour per IP, fail-closed) that answered
+                // 429 to the browser signup test in CI (CHAOS-12138). The test-mode bypass is the same
+                // one the other playwright configs use; the backend limiter is still in the path.
+                DEV_HEALTH_TEST_MODE: "true",
+                NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
                 ...(guided ? { NEXT_PUBLIC_GUIDED_ONBOARDING: "true" } : {}),
             },
         },
