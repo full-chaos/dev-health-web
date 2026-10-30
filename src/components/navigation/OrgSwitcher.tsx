@@ -20,15 +20,13 @@ type OrganizationsResponse = {
     organizations: OrganizationOption[];
 };
 
+/**
+ * The switch route answers the active org and a sealed handoff of the new token pair, which the
+ * page passes to update() and cannot read (CHAOS-12088).
+ */
 type SwitchOrgResponse = {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-    user: {
-        org_id?: string | null;
-        role?: string;
-        is_superuser?: boolean;
-    };
+    org_id?: string | null;
+    sessionHandoff?: string;
 };
 
 /**
@@ -164,9 +162,9 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
                 return;
             }
             const data = (await response.json()) as SwitchOrgResponse;
-            await update({ activeOrg: data });
+            await update({ sessionHandoff: data.sessionHandoff });
             setState((current) =>
-                current ? { ...current, active_org_id: data.user.org_id ?? orgId } : current,
+                current ? { ...current, active_org_id: data.org_id ?? orgId } : current,
             );
             router.refresh();
         });

@@ -50,16 +50,8 @@ describe("OrgSwitcher", () => {
                         ],
                     });
                 }
-                return Response.json({
-                    access_token: "new-access",
-                    refresh_token: "new-refresh",
-                    expires_in: 3600,
-                    user: {
-                        org_id: "org-data",
-                        role: "admin",
-                        is_superuser: false,
-                    },
-                });
+                // The switch route answers the active org and a sealed handoff (CHAOS-12088).
+                return Response.json({ org_id: "org-data", sessionHandoff: "sealed-handoff" });
             }),
         );
     });
@@ -79,12 +71,12 @@ describe("OrgSwitcher", () => {
 
         fireEvent.change(select, { target: { value: "org-data" } });
 
+        // The page passes the sealed handoff on, unread; it sends no token (CHAOS-12088).
         await waitFor(() =>
-            expect(mockUpdate).toHaveBeenCalledWith(
-                expect.objectContaining({ activeOrg: expect.any(Object) }),
-            ),
+            expect(mockUpdate).toHaveBeenCalledWith({ sessionHandoff: "sealed-handoff" }),
         );
         expect(mockRefresh).toHaveBeenCalled();
+        expect(screen.getByLabelText(/organization/i)).toHaveValue("org-data");
     });
 
     it("shows the current organization even when there is nothing to switch", async () => {

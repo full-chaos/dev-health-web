@@ -21,6 +21,10 @@ export default defineConfig({
                 test: {
                     name: "unit",
                     environment: "node",
+                    // next-auth imports `next/server` without an extension, which Node's ESM
+                    // resolver refuses for an external dependency. Inlined, Vite resolves it, so
+                    // a test can run the real handlers (CHAOS-12088 session endpoint test).
+                    server: { deps: { inline: ["next-auth"] } },
                     include: [
                         "src/lib/**/__tests__/**/*.test.ts",
                         "src/utils/**/__tests__/**/*.test.ts",
