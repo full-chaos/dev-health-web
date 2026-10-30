@@ -4,7 +4,7 @@
  * cookie, the same request a browser sends.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { encode } from "next-auth/jwt";
+import { decode, encode } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 
 const SECRET = "chaos-12088-route-test-secret";
@@ -142,4 +142,44 @@ describe("POST /api/auth/session (useSession().update)", () => {
             expect(await res.text()).not.toContain("planted-access");
         },
     );
+
+    // Bodies the guard does not parse: Auth.js must not read a token pair out of them either.
+    it.each([
+        [
+            "text/plain",
+            (csrfToken: string) => JSON.stringify({ csrfToken, data: { activeOrg: PLANT } }),
+        ],
+        [
+            "application/x-www-form-urlencoded",
+            (csrfToken: string) =>
+                new URLSearchParams({
+                    csrfToken,
+                    data: JSON.stringify({ activeOrg: PLANT }),
+                }).toString(),
+        ],
+    ] as const)("a %s update cannot plant a token pair either", async (type, makeBody) => {
+        const { cookie, token } = await csrf(await sessionCookie());
+        const res = await POST(
+            new NextRequest(`${ORIGIN}/api/auth/session`, {
+                method: "POST",
+                headers: { cookie, "content-type": type },
+                body: makeBody(token),
+            }),
+        );
+        expect(await res.text()).not.toContain("planted-access");
+        for (const set of res.headers.getSetCookie()) {
+            if (!set.startsWith(`${COOKIE}=`)) continue;
+            const value = set.split(";")[0].slice(COOKIE.length + 1);
+            if (!value) continue;
+            const decoded = await decode({ secret: SECRET, salt: COOKIE, token: value });
+            expect(decoded?.access_token).toBe(ACCESS);
+        }
+    });
 });
+
+const PLANT = {
+    access_token: "planted-access",
+    refresh_token: "planted-refresh",
+    expires_in: 3600,
+    user: { org_id: "org-evil", role: "owner" },
+};

@@ -117,4 +117,83 @@ describe("browserSafeAuthHandler (CHAOS-12088)", () => {
         expect(res.status).toBe(302);
         expect(handler).toHaveBeenCalledTimes(1);
     });
+
+    // The input domain of the update check, one cell per row: [label, content type, body, refused].
+    it.each([
+        ["no data", "application/json", { csrfToken: "c" }, false],
+        ["data null", "application/json", { csrfToken: "c", data: null }, false],
+        ["data string", "application/json", { csrfToken: "c", data: "activeOrg" }, false],
+        ["data array", "application/json", { csrfToken: "c", data: ["activeOrg"] }, false],
+        [
+            "other key",
+            "application/json",
+            { csrfToken: "c", data: { impersonationChanged: true } },
+            false,
+        ],
+        ["activeOrg object", "application/json", { csrfToken: "c", data: { activeOrg: {} } }, true],
+        ["activeOrg null", "application/json", { csrfToken: "c", data: { activeOrg: null } }, true],
+        [
+            "onboardComplete",
+            "application/json",
+            { csrfToken: "c", data: { onboardComplete: 1 } },
+            true,
+        ],
+        ["both keys", "application/json", { data: { activeOrg: {}, onboardComplete: {} } }, true],
+        ["json with charset", "application/json; charset=utf-8", { data: { activeOrg: {} } }, true],
+        ["upper-case type", "Application/JSON", { data: { activeOrg: {} } }, true],
+        ["text/plain JSON", "text/plain", { data: { activeOrg: {} } }, false],
+    ] as const)("update cell: %s (refused=%s)", async (_label, type, body, refused) => {
+        const handler = vi.fn(async () => json({ user: { id: "u" } }));
+        const res = await browserSafeAuthHandler(handler)(
+            new NextRequest(URL_SESSION, {
+                method: "POST",
+                headers: { "content-type": type },
+                body: JSON.stringify(body),
+            }),
+        );
+        expect(res.status).toBe(refused ? 400 : 200);
+        expect(handler).toHaveBeenCalledTimes(refused ? 0 : 1);
+    });
+
+    it("refuses nothing on a GET, whatever its query says", async () => {
+        const handler = vi.fn(async () => json(null));
+        const res = await browserSafeAuthHandler(handler)(
+            new NextRequest(`${URL_SESSION}?data=activeOrg`),
+        );
+        expect(res.status).toBe(200);
+    });
+
+    // The answer domain: [label, body, expected status, expected served body].
+    it.each([
+        ["tokens absent", { user: { id: "u" } }, 200, { user: { id: "u" } }],
+        ["token null", { user: { id: "u" }, access_token: null }, 200, { user: { id: "u" } }],
+        ["token empty", { user: { id: "u" }, access_token: "" }, 200, { user: { id: "u" } }],
+        ["refresh only", { user: { id: "u" }, refresh_token: "RT-9" }, 200, { user: { id: "u" } }],
+        [
+            "error kept",
+            { user: { id: "u" }, access_token: "AT-9", error: "refresh_unavailable" },
+            200,
+            { user: { id: "u" }, error: "refresh_unavailable" },
+        ],
+        [
+            "copied into error",
+            { access_token: "AT-9", error: "AT-9" },
+            500,
+            { error: "session_unavailable" },
+        ],
+        [
+            "copied into nested",
+            { access_token: "AT-9", user: { a: [{ b: "x AT-9 y" }] } },
+            500,
+            { error: "session_unavailable" },
+        ],
+        ["array body", ["a"], 200, ["a"]],
+        ["csrf answer", { csrfToken: "c" }, 200, { csrfToken: "c" }],
+    ] as const)("answer cell: %s", async (_label, body, status, served) => {
+        const res = await browserSafeAuthHandler(async () => json(body))(
+            new NextRequest(URL_SESSION),
+        );
+        expect(res.status).toBe(status);
+        expect(await res.json()).toEqual(served);
+    });
 });
