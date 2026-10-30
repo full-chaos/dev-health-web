@@ -74,9 +74,11 @@ test.describe("desktop (1280px)", () => {
         await expect(evidence).toContainText("Opening evidence from here is not available yet.");
         await expect(coverage.locator("a, button, [role=link], [tabindex]")).toHaveCount(0);
         expect(await evidence.textContent()).not.toMatch(/acr:v1|[0-9a-f]{8}-[0-9a-f]{4}-/u);
+        await page.waitForLoadState("networkidle");
         await coverage.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-desktop.png") });
-        await coverage.screenshot({ path: testInfo.outputPath("coverage-desktop-block.png") });
+        await evidence.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath("coverage-desktop-evidence.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
         expect(requests).toEqual([]);
     });
@@ -109,9 +111,11 @@ test.describe("mobile (390px)", () => {
         await expect(coverage.getByTestId("ask-dev-coverage-counts")).toHaveText(
             "No facts stand behind this answer.",
         );
+        await page.waitForLoadState("networkidle");
         await coverage.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-mobile.png") });
-        await coverage.screenshot({ path: testInfo.outputPath("coverage-mobile-block.png") });
+        await coverage.getByTestId("ask-dev-coverage-evidence").scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath("coverage-mobile-evidence.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
         for (const box of [coverage, sheet]) {
             expect(await box.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
