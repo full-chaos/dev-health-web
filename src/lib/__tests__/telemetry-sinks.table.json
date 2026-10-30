@@ -108,7 +108,11 @@
         "sentry": 0
     },
     "src/app/api/auth/change-password/route.ts": {
-        "log": 6,
+        "log": 7,
+        "sentry": 0
+    },
+    "src/app/api/auth/switch-org/route.ts": {
+        "log": 2,
         "sentry": 0
     },
     "src/app/error.tsx": {
@@ -179,6 +183,10 @@
         "log": 6,
         "sentry": 0
     },
+    "src/lib/authBrowserSession.ts": {
+        "log": 3,
+        "sentry": 0
+    },
     "src/lib/authSessionLog.ts": {
         "log": 1,
         "sentry": 0
@@ -209,6 +217,10 @@
     },
     "src/lib/investmentMix.ts": {
         "log": 1,
+        "sentry": 0
+    },
+    "src/lib/onboarding/actions.ts": {
+        "log": 7,
         "sentry": 0
     },
     "src/lib/onboarding/track.ts": {

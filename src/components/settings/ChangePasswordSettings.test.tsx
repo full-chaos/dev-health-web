@@ -36,16 +36,16 @@ describe("ChangePasswordSettings", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("adopts the fresh token pair and clears the fields on success", async () => {
-        const pair = { access_token: "a2", refresh_token: "r2", user: { org_id: "o" } };
+    it("re-reads the session the route updated and clears the fields on success", async () => {
         vi.stubGlobal(
             "fetch",
-            vi.fn().mockResolvedValue(new Response(JSON.stringify(pair), { status: 200 })),
+            vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 })),
         );
         const user = userEvent.setup();
         render(<ChangePasswordSettings />);
         await fill(user, "old-password-1", "new-password-long-1", "new-password-long-1");
-        await waitFor(() => expect(update).toHaveBeenCalledWith({ activeOrg: pair }));
+        // CHAOS-12088: no token pair passes through the page; update() carries no payload.
+        await waitFor(() => expect(update).toHaveBeenCalledWith());
         expect(
             await screen.findByText("Password changed. Your other sessions were signed out."),
         ).toBeInTheDocument();

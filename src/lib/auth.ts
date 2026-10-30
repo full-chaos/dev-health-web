@@ -220,7 +220,9 @@ const nextAuth = NextAuth({
                 }
             }
 
-            // Handle onboarding completion
+            // Handle onboarding completion. `onboardComplete` and `activeOrg` carry an Ops token
+            // pair; they come from server code only (`updateServerSession`), the HTTP route
+            // refuses them from a browser (CHAOS-12088).
             if (trigger === "update" && session?.onboardComplete) {
                 token.access_token = session.onboardComplete.access_token;
                 token.refresh_token = session.onboardComplete.refresh_token;
@@ -438,6 +440,19 @@ const nextAuth = NextAuth({
 });
 
 export const { handlers, signIn, signOut } = nextAuth;
+
+/**
+ * Writes an `update()` payload into the session cookie from server code (a route handler or a
+ * server action) and returns the server-side session. The only way an Ops token pair
+ * (`activeOrg`, `onboardComplete`) enters the session: the HTTP route refuses one from the browser
+ * (CHAOS-12088, `@/lib/authBrowserSession`).
+ */
+export async function updateServerSession(
+    data: { activeOrg: unknown } | { onboardComplete: unknown },
+): Promise<Session | null> {
+    // `unstable_update` types its argument as a Session; the jwt callback reads these keys.
+    return nextAuth.unstable_update(data as never);
+}
 
 import type { Session } from "next-auth";
 

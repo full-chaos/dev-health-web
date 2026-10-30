@@ -4,8 +4,8 @@ import { isValidationStatus } from "@/lib/actionFailure";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
+import { createWorkspace } from "@/lib/onboarding/actions";
 import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 
 type OnboardFormProps = {
@@ -21,7 +21,7 @@ type OnboardFormProps = {
 };
 
 export function OnboardForm({ plan, trialIntent = false, guided = false }: OnboardFormProps) {
-    const { data: session, update, status } = useSession();
+    const { status } = useSession();
     const [orgName, setOrgName] = useState("");
     const [loading, setLoading] = useState(false);
     const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team";
@@ -32,72 +32,31 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
         }
     }, [guided]);
 
-    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            const backendUrl = resolveOrigin();
-            const res = await fetch(`${backendUrl}/api/v1/auth/onboard`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token}`,
-                },
-                body: JSON.stringify({
-                    action: "create_org",
-                    org_name: orgName || undefined,
-                }),
-            });
+            // CHAOS-12088: a server action creates the workspace with the session's token and
+            // puts the new token pair into the session cookie. This page never holds a token.
+            const result = await createWorkspace(orgName);
 
-            if (!res.ok) {
-                if (res.status === 429) {
+            if (!result.ok) {
+                if (result.status === 429) {
                     toast.error("Too many requests. Please try again later.");
                     return;
                 }
-                try {
-                    const data = await res.json();
-                    toast.error(
-                        extractErrorMessage(
-                            isValidationStatus(res.status) ? data.detail : undefined,
-                            "Failed to create workspace",
-                        ),
-                    );
-                } catch {
-                    toast.error("Failed to create workspace");
-                }
+                toast.error(
+                    extractErrorMessage(
+                        isValidationStatus(result.status ?? undefined) ? result.detail : undefined,
+                        "Failed to create workspace",
+                    ),
+                );
                 return;
             }
 
-            const data = await res.json();
-
             if (guided) {
-                trackOnboardingEvent("workspace_created", { orgId: data.org_id ?? null });
-            }
-
-            const onboardingSession = {
-                access_token: data.access_token,
-                refresh_token: data.refresh_token,
-                org_id: data.org_id,
-                role: data.role,
-                expires_in: data.expires_in,
-            };
-
-            let sessionReady = false;
-
-            for (let attempt = 0; attempt < 5 && !sessionReady; attempt += 1) {
-                try {
-                    const result = await update({ onboardComplete: onboardingSession });
-                    if (result) {
-                        sessionReady = true;
-                    } else {
-                        await delay(300 * (attempt + 1));
-                    }
-                } catch {
-                    await delay(300 * (attempt + 1));
-                }
+                trackOnboardingEvent("workspace_created", { orgId: result.orgId });
             }
 
             // Guided onboarding ALWAYS routes through the integration step (the
@@ -115,14 +74,7 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
                 destination = "/dashboard";
             }
 
-            if (!sessionReady) {
-                window.location.href = destination;
-                return;
-            }
-
-            // Hard navigation ensures the middleware reads the freshly-updated session
-            // cookie. A soft router.push() can race with the Set-Cookie from the
-            // session update, causing the org-scoped guard to redirect back here.
+            // Hard navigation ensures the proxy reads the session cookie the action set.
             window.location.href = destination;
         } catch {
             toast.error("An error occurred. Please try again.");

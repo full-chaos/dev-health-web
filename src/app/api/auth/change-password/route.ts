@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { auth, updateServerSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { getBackendUrl } from "@/lib/origin";
 
@@ -70,7 +70,27 @@ export async function POST(request: Request) {
         }
         if (!data) return NextResponse.json({ error: genericFailure(502) }, { status: 502 });
         routeLogger.info({ status: response.status }, "change-password succeeded");
-        return NextResponse.json(data, { status: 200, headers: { "cache-control": "no-store" } });
+        // CHAOS-12088: the fresh token pair goes into the session cookie here, on the server;
+        // the browser never gets it. The password is already changed and ops has revoked the
+        // other sessions, so a failed write asks the user to sign in again.
+        try {
+            if (!(await updateServerSession({ activeOrg: data }))) {
+                throw new Error("no session to update");
+            }
+        } catch (error) {
+            routeLogger.error(
+                { err: error, userId: session.user?.id },
+                "change-password could not write the new token pair into the session",
+            );
+            return NextResponse.json(
+                { error: "Password changed. Sign in again to continue." },
+                { status: 502 },
+            );
+        }
+        return NextResponse.json(
+            { ok: true },
+            { status: 200, headers: { "cache-control": "no-store" } },
+        );
     }
 
     routeLogger.warn({ status: response.status }, "change-password refused");

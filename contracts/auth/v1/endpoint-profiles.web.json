@@ -511,17 +511,17 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/switch-org/route.ts",
-                "line": 6
+                "line": 9
             },
             "classification": "protected",
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "Inline `session.access_token` presence check; forwards Bearer + body {org_id} to ops POST /api/v1/auth/switch-org, which re-validates membership.",
+                "description": "Inline `session.access_token` presence check; forwards Bearer + body {org_id} to ops POST /api/v1/auth/switch-org, which re-validates membership. On success the new token pair is written into the session cookie server-side (updateServerSession).",
                 "anchor": {
                     "path": "src/app/api/auth/switch-org/route.ts",
-                    "line": 7,
-                    "line_end": 9
+                    "line": 10,
+                    "line_end": 13
                 }
             },
             "token_shape": {
@@ -534,13 +534,12 @@
             "action": "auth.switch_org",
             "resource_resolver": "org_id from request body, verified ops-side against caller's memberships (not verified web-side).",
             "tenant_requirement": "cross_org_superuser_only",
-            "current_state_cache_behavior": null,
+            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/switch-org/route.ts:61); the other responses were not inspected.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
-            "disclosure_behavior": "Passes through ops's status/body verbatim.",
+            "disclosure_behavior": "Passes ops's refusal status/body through verbatim. On success answers {org_id} only: the new token pair goes into the session cookie on the server and never reaches the page (CHAOS-12088); a 2xx without a pair or a failed session write answers a fixed 502.",
             "gaps": [
                 "FINDING: this is a mutating POST with NO explicit Origin/CSRF check -- unlike acr/device/route.ts (origin check) and _proxy.ts's hasValidMutationOrigin(). '/api/auth' also bypasses proxy.ts's own auth/org gate (PREFIX_PUBLIC_PATH). The only CSRF defense is the Auth.js session cookie's SameSite attribute (not independently verified in this pass -- next-auth default, not a repo-level override).",
-                "current_state_cache_behavior: searched the source from src/app/api/auth/switch-org/route.ts:6 to the next export for a cache directive (case-insensitive) (pattern (?i)Cache-Control|cache:|revalidate|no-store); not determined.",
                 "entitlement_requirement: searched the source from src/app/api/auth/switch-org/route.ts:6 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
@@ -576,10 +575,10 @@
             "action": "auth.change_password",
             "resource_resolver": "None: the target is always the caller (user id from the Bearer token, ops-side); the body names no user.",
             "tenant_requirement": "none",
-            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/change-password/route.ts:73); the other responses were not inspected.",
+            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/change-password/route.ts:92); the other responses were not inspected.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
-            "disclosure_behavior": "Never echoes a submitted value or a backend detail: repeats two known refusal texts and policy rule names, else a fixed message per status.",
+            "disclosure_behavior": "Never echoes a submitted value or a backend detail: repeats two known refusal texts and policy rule names, else a fixed message per status. On success answers {ok: true} only: the fresh token pair goes into the session cookie on the server and never reaches the page (CHAOS-12088); a failed session write answers a fixed 502.",
             "gaps": [
                 "FINDING: mutating POST with no explicit Origin/CSRF check, same as switch-org; the defense is the Auth.js session cookie SameSite attribute, and ops re-verifies the current password, which a cross-site request cannot supply.",
                 "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:23 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
@@ -646,7 +645,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/[...nextauth]/route.ts",
-                "line": 2
+                "line": 6
             },
             "classification": "public",
             "public_rationale": "NextAuth.js library router multiplexing signin/callback/session/csrf/providers/signout under this catch-all segment; this IS the surface that issues auth_js_browser_session, so it cannot itself require that class as a precondition.",
@@ -656,7 +655,7 @@
                 "anchor": {
                     "path": "src/lib/auth.ts",
                     "line": 80,
-                    "line_end": 235
+                    "line_end": 237
                 }
             },
             "token_shape": null,
@@ -667,7 +666,7 @@
             "current_state_cache_behavior": null,
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
-            "disclosure_behavior": "NextAuth CredentialsSignin subclasses (EmailVerificationRequired/AccountLocked/RateLimited) surface a closed `code` string on the client signIn() result; no raw backend response crosses this boundary.",
+            "disclosure_behavior": "NextAuth CredentialsSignin subclasses (EmailVerificationRequired/AccountLocked/RateLimited) surface a closed `code` string on the client signIn() result; no raw backend response crosses this boundary. CHAOS-12088: every JSON answer of this route passes browserSafeAuthHandlers (src/lib/authBrowserSession.ts): the Ops access and refresh tokens are removed from the session that useSession reads, an answer that still holds a token value under another key is refused (500), and a browser update() carrying a token pair (activeOrg, onboardComplete) is refused (400) before Auth.js reads it. Server code reads the token from the in-process session (auth()).",
             "gaps": [
                 "Internal NextAuth sub-routes (signin, callback/:provider, session, csrf, providers, signout, error) are library-owned dynamic dispatch, not independently anchorable per sub-path in this pass -- represented as one api_route row rather than a fabricated per-sub-route breakdown.",
                 "proxy.ts's PREFIX_PUBLIC_PATHS includes '/api/auth' (src/proxy.ts:96), so proxy.ts performs no session/org check ahead of this route -- reachable_validators is genuinely empty, not undetermined.",
@@ -9950,6 +9949,120 @@
                     "note": "One assertion per request, bound to the exact body bytes (body_sha256), path and repository scopes. No capabilities pre-call."
                 }
             ]
+        },
+        {
+            "id": "server_action:src/lib/onboarding/actions.ts#createWorkspace",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/onboarding/actions.ts",
+                "line": 37
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "sessionToken() (src/lib/onboarding/actions.ts:27-34) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboard, which re-validates it.",
+                "anchor": {
+                    "path": "src/lib/onboarding/actions.ts",
+                    "line": 27,
+                    "line_end": 34
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 350,
+                        "line_end": 368
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": "auth.onboard",
+            "resource_resolver": null,
+            "tenant_requirement": "none",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "exempt_no_org_context",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "Returns {ok, orgId} or {ok:false, status} plus ops's `detail` only for a validation answer (4xx except 401/403/429). The new workspace's token pair goes into the session cookie server-side (updateServerSession) and never reaches the page.",
+            "gaps": [
+                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:38.",
+                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:37 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:37 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
+        },
+        {
+            "id": "server_action:src/lib/onboarding/actions.ts#skipIntegrationStep",
+            "surface_kind": "server_action",
+            "method": null,
+            "route": null,
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/lib/onboarding/actions.ts",
+                "line": 111
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "sessionToken() (src/lib/onboarding/actions.ts:27-34) calls getToken() (src/lib/admin/server/_shared.ts:22-25), which throws AdminApiError(401,'Unauthorized') when auth() returns no session/access_token; the action then returns {ok:false,status:401} before any backend call. The token is forwarded as Authorization: Bearer to ops POST /api/v1/auth/onboarding/skip-integration, which re-validates it.",
+                "anchor": {
+                    "path": "src/lib/onboarding/actions.ts",
+                    "line": 27,
+                    "line_end": 34
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "src/proxy.ts's per-pathname auth() check (lines 348-366, gated by isPublicPath at 100-104) runs on any request matching the middleware matcher and would redirect an unauthenticated request to a non-public pathname to /auth/signin before this action's page could render. It does NOT own this action's credential validation: Server Action dispatch resolves the action id against a single global serverModuleMap independent of the request pathname (node_modules/next/dist/server/app-render/action-handler.js:375,805-816,1015-1024, Next.js 16.2.12) -- a POST carrying this action's id to a PUBLIC pathname bypasses proxy.ts's auth() check entirely while the action still executes. Action ids ship in client bundles/static chunks (typically unauthenticated); assume an id is obtainable by construction, not verified by probe.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 350,
+                        "line_end": 368
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": "auth.onboarding_skip_integration",
+            "resource_resolver": null,
+            "tenant_requirement": "none",
+            "current_state_cache_behavior": "No cache directive -- Server Actions are not cached; response reflects live backend state at invocation time.",
+            "impersonation_policy": "exempt_no_org_context",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "Returns {ok} or {ok:false, status}; no backend text.",
+            "gaps": [
+                "CHAOS-12088 (2026-10-30): moved here from a browser fetch that read the Ops token from useSession; the call to sessionToken() is at src/lib/onboarding/actions.ts:112.",
+                "resource_resolver: searched the source from src/lib/onboarding/actions.ts:111 to the next export for an org or resource identifier read (pattern org_id|orgId|resolveOrgId|getCurrentOrg|X-Org-Id|params|searchParams|formData); not determined.",
+                "entitlement_requirement: searched the source from src/lib/onboarding/actions.ts:111 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+            ],
+            "exposure": {
+                "reachability": "public_via_edge",
+                "source": "Chris's 2026-09-01 10:56 ruling: web is THE public auth boundary (ops is reached through web, all three surfaces -- JWT, OAuth, ACR grants -- are supported through it). Asserted per that ruling, not derived from an edge path-map or a probe -- this lane has no edge path-map access and ran no live probe."
+            }
         }
     ]
 }

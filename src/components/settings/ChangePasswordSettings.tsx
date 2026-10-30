@@ -12,8 +12,9 @@ const inputClass =
 
 /**
  * Change the signed-in user's own password. The server refuses a wrong current password, enforces
- * the password policy and signs every other session out; its answer carries a fresh token pair for
- * this one, which the session adopts. Nothing typed here is stored, logged or shown back.
+ * the password policy and signs every other session out; the route puts the fresh token pair for
+ * this session into the session cookie on the server (CHAOS-12088). Nothing typed here is stored,
+ * logged or shown back.
  */
 export function ChangePasswordSettings() {
     const { update } = useSession();
@@ -57,7 +58,8 @@ export function ChangePasswordSettings() {
                 });
                 return;
             }
-            await update({ activeOrg: body });
+            // The route already put the fresh token pair into the session cookie; re-read it.
+            await update();
             form.reset();
             setNotice({
                 kind: "ok",

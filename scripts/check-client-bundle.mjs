@@ -45,6 +45,7 @@ export const SERVER_ONLY_MODULES = [
         markers: ["/api/v1/auth/social-login", "/api/v1/auth/refresh"],
     },
     { file: "src/lib/authValidationMemo.ts", markers: ["authValidationMemo"] },
+    { file: "src/lib/authBrowserSession.ts", markers: ["unsupported_session_update"] },
     { file: "src/lib/impersonationStatusMemo.ts", markers: ["impersonationStatusShared"] },
     { file: "src/lib/serverEnv.server.ts", markers: ["TRUSTED_PROXY_HOPS"] },
     { file: "src/lib/acr/assertion.ts", markers: ["EdDSA"] },

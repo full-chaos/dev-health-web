@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { auth, updateServerSession } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getBackendUrl } from "@/lib/origin";
+
+const routeLogger = logger.child({ module: "switch-org" });
 
 export async function POST(request: Request) {
     const session = await auth();
@@ -29,5 +32,31 @@ export async function POST(request: Request) {
     });
 
     const data = await response.json().catch(() => ({ error: "Organization switch failed" }));
-    return NextResponse.json(data, { status: response.status });
+    if (!response.ok) {
+        return NextResponse.json(data, { status: response.status });
+    }
+
+    // CHAOS-12088: the new token pair goes into the session cookie here, on the server. The
+    // browser gets the active organization only, never a token.
+    const pair = data as { access_token?: unknown; user?: { org_id?: unknown } } | null;
+    if (typeof pair?.access_token !== "string" || !pair.access_token || !pair.user) {
+        routeLogger.error(
+            { status: response.status, orgId: payload.org_id },
+            "switch-org answer carried no token pair; session not changed",
+        );
+        return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
+    }
+    try {
+        if (!(await updateServerSession({ activeOrg: pair }))) {
+            throw new Error("no session to update");
+        }
+    } catch (error) {
+        routeLogger.error(
+            { err: error, orgId: payload.org_id, userId: session.user?.id },
+            "switch-org could not write the new token pair into the session",
+        );
+        return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
+    }
+    const orgId = typeof pair.user.org_id === "string" ? pair.user.org_id : payload.org_id;
+    return NextResponse.json({ org_id: orgId }, { headers: { "cache-control": "no-store" } });
 }

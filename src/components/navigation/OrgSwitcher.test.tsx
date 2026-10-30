@@ -50,16 +50,8 @@ describe("OrgSwitcher", () => {
                         ],
                     });
                 }
-                return Response.json({
-                    access_token: "new-access",
-                    refresh_token: "new-refresh",
-                    expires_in: 3600,
-                    user: {
-                        org_id: "org-data",
-                        role: "admin",
-                        is_superuser: false,
-                    },
-                });
+                // The switch route answers the active org only (CHAOS-12088).
+                return Response.json({ org_id: "org-data" });
             }),
         );
     });
@@ -79,12 +71,11 @@ describe("OrgSwitcher", () => {
 
         fireEvent.change(select, { target: { value: "org-data" } });
 
-        await waitFor(() =>
-            expect(mockUpdate).toHaveBeenCalledWith(
-                expect.objectContaining({ activeOrg: expect.any(Object) }),
-            ),
-        );
+        // The route already wrote the new token pair into the session cookie: the page only
+        // re-reads the session, and sends no token of its own (CHAOS-12088).
+        await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith());
         expect(mockRefresh).toHaveBeenCalled();
+        expect(screen.getByLabelText(/organization/i)).toHaveValue("org-data");
     });
 
     it("shows the current organization even when there is nothing to switch", async () => {

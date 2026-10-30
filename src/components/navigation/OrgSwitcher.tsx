@@ -20,15 +20,9 @@ type OrganizationsResponse = {
     organizations: OrganizationOption[];
 };
 
+/** The switch route writes the new token pair into the session cookie; the page gets the org only. */
 type SwitchOrgResponse = {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-    user: {
-        org_id?: string | null;
-        role?: string;
-        is_superuser?: boolean;
-    };
+    org_id?: string | null;
 };
 
 /**
@@ -164,9 +158,10 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
                 return;
             }
             const data = (await response.json()) as SwitchOrgResponse;
-            await update({ activeOrg: data });
+            // Re-read the session the route already changed; no token passes through the page.
+            await update();
             setState((current) =>
-                current ? { ...current, active_org_id: data.user.org_id ?? orgId } : current,
+                current ? { ...current, active_org_id: data.org_id ?? orgId } : current,
             );
             router.refresh();
         });

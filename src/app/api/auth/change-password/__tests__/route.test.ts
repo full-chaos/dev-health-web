@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn(), updateServerSession: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://ops.example.test" }));
 
-import { auth } from "@/lib/auth";
+import { auth, updateServerSession } from "@/lib/auth";
 import { POST } from "../route";
 
 const SECRET_CURRENT = "current-secret-value-1";
@@ -37,6 +37,8 @@ describe("POST /api/auth/change-password", () => {
             access_token: "session-access",
             expires: "2026-12-31T00:00:00.000Z",
         } as never);
+        vi.mocked(updateServerSession).mockReset();
+        vi.mocked(updateServerSession).mockResolvedValue({ user: { id: "u" } } as never);
     });
 
     it("refuses an anonymous caller before any backend call", async () => {
@@ -54,12 +56,18 @@ describe("POST /api/auth/change-password", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("forwards the bearer and both passwords, and returns the fresh pair uncached", async () => {
-        const fetchMock = backend(200, { access_token: "a2", refresh_token: "r2", user: {} });
+    it("forwards the bearer and both passwords, and writes the fresh pair into the session only", async () => {
+        const pair = { access_token: "a2", refresh_token: "r2", user: {} };
+        const fetchMock = backend(200, pair);
         const response = await call({ current_password: SECRET_CURRENT, new_password: SECRET_NEW });
         expect(response.status).toBe(200);
         expect(response.headers.get("cache-control")).toBe("no-store");
-        expect(await response.json()).toMatchObject({ access_token: "a2", refresh_token: "r2" });
+        // CHAOS-12088: the pair goes into the session cookie on the server, never to the page.
+        expect(updateServerSession).toHaveBeenCalledWith({ activeOrg: pair });
+        const text = await response.text();
+        expect(JSON.parse(text)).toEqual({ ok: true });
+        expect(text).not.toContain("a2");
+        expect(text).not.toContain("r2");
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(url).toBe("http://ops.example.test/api/v1/auth/change-password");
         expect((init.headers as Record<string, string>).Authorization).toBe(
@@ -97,6 +105,19 @@ describe("POST /api/auth/change-password", () => {
             error: "The new password was not accepted.",
             violations: ["Password must include at least one letter"],
         });
+    });
+
+    it.each([
+        ["throws", () => vi.mocked(updateServerSession).mockRejectedValue(new Error("cookie"))],
+        ["finds no session", () => vi.mocked(updateServerSession).mockResolvedValue(null)],
+    ])("answers 502 without the pair when the session write %s", async (_label, arrange) => {
+        arrange();
+        backend(200, { access_token: "a2", refresh_token: "r2", user: {} });
+        const response = await call({ current_password: SECRET_CURRENT, new_password: SECRET_NEW });
+        expect(response.status).toBe(502);
+        const text = await response.text();
+        expect(JSON.parse(text)).toEqual({ error: "Password changed. Sign in again to continue." });
+        expect(text).not.toContain("a2");
     });
 
     it("answers a generic 502 when the backend is unreachable", async () => {
