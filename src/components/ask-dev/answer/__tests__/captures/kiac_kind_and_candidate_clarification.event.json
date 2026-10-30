@@ -133,36 +133,36 @@
                 {
                     "receipt_id": "candr_38440badf0881e11414edc7f",
                     "option_id": "opt_1f1cbf4a0c0da398",
-                    "label": "Dev Health Web Redesign",
+                    "label": "Synthetic Project Gamma",
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:3831247a-868e-49b2-8745-4c23f985aac5",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000003",
                     "offer_source": "engine",
-                    "phrasing": "Dev Health Web Redesign"
+                    "phrasing": "Synthetic Project Gamma"
                 },
                 {
                     "receipt_id": "candr_0f060292bee6594baec8f220",
                     "option_id": "opt_d5656f3cfc91fba3",
-                    "label": "Dev Health Agent Context Runtime (Context Fabric)",
+                    "label": "Synthetic Project Delta (Runtime)",
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:60997592-f9f4-462b-87c3-ef82671df270",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000004",
                     "offer_source": "engine",
-                    "phrasing": "Dev Health Agent Context Runtime (Context Fabric)"
+                    "phrasing": "Synthetic Project Delta (Runtime)"
                 },
                 {
                     "receipt_id": "candr_18856cc3e11bdda593d11945",
                     "option_id": "opt_7ddd357085cc99ac",
-                    "label": "Dev Health Ops",
+                    "label": "Synthetic Project Alpha",
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:6241316a-85be-42ce-b243-8e41f2b18c8d",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000005",
                     "offer_source": "engine",
-                    "phrasing": "Dev Health Ops"
+                    "phrasing": "Synthetic Project Alpha"
                 },
                 {
                     "receipt_id": "candr_91e560024c4606224c7972a3",
                     "option_id": "opt_786e820a84785c72",
                     "label": "full-chaos/dev-health-acr",
                     "kind": "repository",
-                    "canonical_id": "repository:7b9583ee-4d24-2be7-4d09-34f815bebdd7",
+                    "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
                     "offer_source": "engine",
                     "phrasing": "full-chaos/dev-health-acr"
                 },
@@ -171,7 +171,7 @@
                     "option_id": "opt_7dde1f1ce1068f8f",
                     "label": "full-chaos/dev-health-ops",
                     "kind": "repository",
-                    "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                    "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                     "offer_source": "engine",
                     "phrasing": "full-chaos/dev-health-ops"
                 }
