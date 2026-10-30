@@ -13,13 +13,13 @@ import { logger } from "@/lib/logger";
  * 2. Revoke the ACR token family with its refresh token, at ACR's revocation endpoint (the browser
  *    calls ACR directly). Nothing is sent when the browser holds no family.
  * 3. Clear the ACR token state in every tab.
- * 4. NextAuth `signOut()`.
+ * 4. NextAuth `signOut()`: to the same place as before on success; to the sign-in page with the
+ *    partial notice when step 1 failed.
  *
  * A failed step never stops a later one. No token or credential value is logged.
  */
 
 export const SESSION_REVOKE_PATH = "/api/auth/revoke-session";
-export const SIGNED_OUT_REDIRECT = "/auth/signin";
 /** The sign-in page shows the partial sign-out notice for `signedOut=partial`. */
 export const SIGNED_OUT_PARTIAL_REDIRECT = "/auth/signin?signedOut=partial";
 
@@ -32,7 +32,8 @@ export type SignOutDeps = {
     readonly fetch: typeof fetch;
     readonly hook: AcrSignOutHook;
     readonly log: { readonly error: LogFn; readonly info: LogFn; readonly warn: LogFn };
-    readonly signOut: (options: { readonly redirectTo: string }) => Promise<unknown>;
+    /** No options: NextAuth's own default destination (unchanged from before). */
+    readonly signOut: (options?: { readonly redirectTo: string }) => Promise<unknown>;
 };
 
 export type SignOutOutcome = {
@@ -55,7 +56,8 @@ function defaultDeps(): SignOutDeps {
             info: (fields, message) => log.info(fields, message),
             warn: (fields, message) => log.warn(fields, message),
         },
-        signOut: (options) => signOut({ redirectTo: options.redirectTo }),
+        signOut: (options) =>
+            options === undefined ? signOut() : signOut({ redirectTo: options.redirectTo }),
     };
 }
 
@@ -101,11 +103,11 @@ async function revokeAcrFamily(deps: SignOutDeps): Promise<boolean | null> {
     }
     if (family === null) return null;
     try {
+        // RFC 7009 form; the optional token_type_hint is left out (ACR finds the family by the token).
         const response = await deps.fetch(family.revocationEndpoint, {
             body: new URLSearchParams({
                 client_id: family.clientId,
                 token: family.refreshToken,
-                token_type_hint: "refresh_token",
             }).toString(),
             cache: "no-store",
             credentials: "omit",
@@ -150,8 +152,6 @@ export async function signOutEverywhere(
         { familyRevoked, sessionRevoked, step: "next_auth_sign_out" },
         "sign-out: signing out of this device",
     );
-    await deps.signOut({
-        redirectTo: sessionRevoked ? SIGNED_OUT_REDIRECT : SIGNED_OUT_PARTIAL_REDIRECT,
-    });
+    await deps.signOut(sessionRevoked ? undefined : { redirectTo: SIGNED_OUT_PARTIAL_REDIRECT });
     return { familyRevoked, sessionRevoked };
 }

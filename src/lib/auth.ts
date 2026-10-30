@@ -571,15 +571,16 @@ export async function auth(): Promise<Session | null> {
 const SESSION_COOKIE_NAMES = ["__Secure-authjs.session-token", "authjs.session-token"] as const;
 
 /**
- * The Ops credentials of the signed-in session, for sign-out only (CHAOS-12096: the Ops logout
- * revokes the session its refresh token belongs to). Read from the sealed session cookie of the
- * request and nothing else: an `Authorization` header is never read. `null` when there is no
- * cookie this server sealed, or the session holds no refresh token. Never log the result.
+ * The Ops tokens of the signed-in session, for sign-out only (CHAOS-12096: the Ops logout revokes
+ * the session its refresh token belongs to). Read from the sealed session cookie of the request
+ * and nothing else: an `Authorization` header is never read, and no refresh runs (a refresh would
+ * rotate the credential the logout names). `null` unless the cookie is one this server sealed and
+ * holds both tokens. Never log the result.
  */
 export async function readSessionCredentialsForSignOut(request: Request): Promise<{
-    readonly accessToken?: string;
-    readonly refreshToken: string;
-    readonly userId?: string;
+    readonly access_token: string;
+    readonly refresh_token: string;
+    readonly user_id?: string;
 } | null> {
     const cookie = request.headers.get("cookie");
     if (!authSecret || !cookie) return null;
@@ -598,13 +599,13 @@ export async function readSessionCredentialsForSignOut(request: Request): Promis
             return null;
         });
         if (!token) continue;
-        const refreshToken = token.refresh_token;
+        const { access_token: accessToken, refresh_token: refreshToken } = token;
+        if (typeof accessToken !== "string" || accessToken === "") return null;
         if (typeof refreshToken !== "string" || refreshToken === "") return null;
-        const accessToken = token.access_token;
         return {
-            ...(typeof accessToken === "string" && accessToken !== "" ? { accessToken } : {}),
-            refreshToken,
-            ...(typeof token.id === "string" ? { userId: token.id } : {}),
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            ...(typeof token.id === "string" ? { user_id: token.id } : {}),
         };
     }
     return null;

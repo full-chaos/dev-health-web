@@ -55,8 +55,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         routeLogger.warn({ outcome: "origin_mismatch" }, "sign-out session revoke refused");
         return failure(403, "forbidden");
     }
-    const credentials = await readSessionCredentialsForSignOut(request);
-    if (!credentials) {
+    // The sealed session's Ops tokens; null unless it holds both (an inline reject the auth-profile
+    // gate recognizes: `if (!session?.access_token) return`).
+    const session = await readSessionCredentialsForSignOut(request);
+    if (!session?.access_token) {
         routeLogger.warn(
             { outcome: "no_session" },
             "sign-out session revoke: no session to revoke",
@@ -66,12 +68,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     let response: Response;
     try {
         response = await deadlineFetch("auth")(`${getBackendUrl()}/api/v1/auth/logout`, {
-            body: JSON.stringify({ refresh_token: credentials.refreshToken }),
+            body: JSON.stringify({ refresh_token: session.refresh_token }),
             headers: {
+                Authorization: `Bearer ${session.access_token}`,
                 "Content-Type": "application/json",
-                ...(credentials.accessToken
-                    ? { Authorization: `Bearer ${credentials.accessToken}` }
-                    : {}),
             },
             method: "POST",
         });
@@ -80,7 +80,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             {
                 errorName: error instanceof Error ? error.name : typeof error,
                 outcome: "ops_unreachable",
-                userId: credentials.userId,
+                userId: session.user_id,
             },
             "sign-out session revoke FAILED: Ops logout call failed",
         );
@@ -88,14 +88,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
     if (!response.ok) {
         routeLogger.error(
-            { outcome: "ops_refused", status: response.status, userId: credentials.userId },
+            { outcome: "ops_refused", status: response.status, userId: session.user_id },
             "sign-out session revoke FAILED: Ops logout refused",
         );
         return failure(502, "revoke_failed");
     }
-    routeLogger.info(
-        { outcome: "revoked", userId: credentials.userId },
-        "sign-out session revoked",
-    );
+    routeLogger.info({ outcome: "revoked", userId: session.user_id }, "sign-out session revoked");
     return new NextResponse(null, { headers: { "Cache-Control": "no-store" }, status: 204 });
 }

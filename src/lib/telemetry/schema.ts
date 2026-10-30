@@ -34,6 +34,7 @@ export const APP_ROUTES: readonly string[] = [
     "/api/auth/[...nextauth]",
     "/api/auth/change-password",
     "/api/auth/organizations",
+    "/api/auth/revoke-session",
     "/api/auth/switch-org",
     "/api/feedback",
     "/auth/error",

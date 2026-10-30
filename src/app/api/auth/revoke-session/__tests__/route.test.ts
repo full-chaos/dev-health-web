@@ -139,6 +139,40 @@ describe("POST /api/auth/revoke-session", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it("Given a session with no access token, then it answers 401 and calls nothing", async () => {
+        const response = await POST(
+            revokeRequest({ cookie: await sessionCookie(undefined, { access_token: undefined }) }),
+        );
+
+        expect(response.status).toBe(401);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["no access token", { access_token: undefined }],
+        ["no refresh token", { refresh_token: undefined }],
+        ["an empty refresh token", { refresh_token: "" }],
+    ])(
+        "Given a session cookie with %s, then the sign-out reader returns null",
+        async (_name, token) => {
+            const { readSessionCredentialsForSignOut } = await import("@/lib/auth");
+
+            await expect(
+                readSessionCredentialsForSignOut(
+                    revokeRequest({ cookie: await sessionCookie(undefined, token) }),
+                ),
+            ).resolves.toBeNull();
+        },
+    );
+
+    it("Given a full session cookie, then the sign-out reader returns both tokens and the user id", async () => {
+        const { readSessionCredentialsForSignOut } = await import("@/lib/auth");
+
+        await expect(
+            readSessionCredentialsForSignOut(revokeRequest({ cookie: await sessionCookie() })),
+        ).resolves.toEqual({ access_token: ACCESS, refresh_token: REFRESH, user_id: "user-1" });
+    });
+
     it("Given a cookie signed with another secret, then it answers 401 and calls nothing", async () => {
         const value = await encode({
             salt: "__Secure-authjs.session-token",

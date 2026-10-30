@@ -8,7 +8,6 @@ import type { AcrSignOutHook } from "@/lib/ask-dev/acr-sign-out";
 import {
     SESSION_REVOKE_PATH,
     SIGNED_OUT_PARTIAL_REDIRECT,
-    SIGNED_OUT_REDIRECT,
     signOutEverywhere,
     type SignOutDeps,
 } from "../signOutEverywhere";
@@ -71,7 +70,7 @@ function harness(input: {
             hook,
             log: { error: capture("error"), info: capture("info"), warn: capture("warn") },
             signOut: async (options) => {
-                steps.push(`signOut:${options.redirectTo}`);
+                steps.push(`signOut:${options?.redirectTo ?? "default"}`);
             },
         },
         fetchMock,
@@ -86,7 +85,7 @@ describe("signOutEverywhere", () => {
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual(["ops:204", "acr:200", "clear", `signOut:${SIGNED_OUT_REDIRECT}`]);
+        expect(h.steps).toEqual(["ops:204", "acr:200", "clear", "signOut:default"]);
         expect(outcome).toEqual({ familyRevoked: true, sessionRevoked: true });
     });
 
@@ -95,13 +94,7 @@ describe("signOutEverywhere", () => {
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual([
-            "ops:503",
-            "ops:204",
-            "acr:200",
-            "clear",
-            `signOut:${SIGNED_OUT_REDIRECT}`,
-        ]);
+        expect(h.steps).toEqual(["ops:503", "ops:204", "acr:200", "clear", "signOut:default"]);
         expect(outcome.sessionRevoked).toBe(true);
     });
 
@@ -134,7 +127,7 @@ describe("signOutEverywhere", () => {
 
         const outcome = await signOutEverywhere(h.deps);
 
-        expect(h.steps).toEqual(["ops:204", "clear", `signOut:${SIGNED_OUT_REDIRECT}`]);
+        expect(h.steps).toEqual(["ops:204", "clear", "signOut:default"]);
         expect(outcome.familyRevoked).toBeNull();
     });
 
@@ -154,7 +147,6 @@ describe("signOutEverywhere", () => {
         expect(Object.fromEntries(new URLSearchParams(String(init.body)))).toEqual({
             client_id: CLIENT_ID,
             token: REFRESH,
-            token_type_hint: "refresh_token",
         });
     });
 
@@ -168,7 +160,7 @@ describe("signOutEverywhere", () => {
 
             const outcome = await signOutEverywhere(h.deps);
 
-            expect(h.steps.slice(-2)).toEqual(["clear", `signOut:${SIGNED_OUT_REDIRECT}`]);
+            expect(h.steps.slice(-2)).toEqual(["clear", "signOut:default"]);
             expect(outcome.familyRevoked).toBe(false);
         },
     );
@@ -178,7 +170,7 @@ describe("signOutEverywhere", () => {
 
         await signOutEverywhere(h.deps);
 
-        expect(h.steps.at(-1)).toBe(`signOut:${SIGNED_OUT_REDIRECT}`);
+        expect(h.steps.at(-1)).toBe("signOut:default");
     });
 
     it("Given every failure path, then no log line carries the refresh token", async () => {

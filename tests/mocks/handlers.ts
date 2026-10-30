@@ -2567,6 +2567,8 @@ function buildSetupStatus() {
 export const handlers = [
     ...pagerDutyHandlers,
     // ---- Auth (for e2e test authentication) ----
+    // Sign-out step 1 (CHAOS-12096): web's /api/auth/revoke-session calls Ops logout.
+    http.post("*/api/v1/auth/logout", () => HttpResponse.json({ message: "Logout successful" })),
     http.post("*/api/v1/auth/login", async ({ request }) => {
         const body = (await request.json()) as {
             email?: string;

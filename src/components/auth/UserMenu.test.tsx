@@ -134,7 +134,8 @@ describe("UserMenu", () => {
             expect(fetchMock.mock.invocationCallOrder[0]).toBeLessThan(
                 signOutMock.mock.invocationCallOrder[0] ?? 0,
             );
-            expect(signOutMock).toHaveBeenCalledWith({ redirectTo: "/auth/signin" });
+            // Success keeps NextAuth's own destination, as before this change.
+            expect(signOutMock).toHaveBeenCalledWith();
         });
 
         it("retries a failed Ops revoke once, still signs out, and lands on the partial notice", async () => {
