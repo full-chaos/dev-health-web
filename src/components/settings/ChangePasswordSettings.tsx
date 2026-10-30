@@ -12,8 +12,8 @@ const inputClass =
 
 /**
  * Change the signed-in user's own password. The server refuses a wrong current password, enforces
- * the password policy and signs every other session out; the route puts the fresh token pair for
- * this session into the session cookie on the server (CHAOS-12088). Nothing typed here is stored,
+ * the password policy and signs every other session out; the session adopts the fresh token pair
+ * through a sealed handoff the page cannot read (CHAOS-12088). Nothing typed here is stored,
  * logged or shown back.
  */
 export function ChangePasswordSettings() {
@@ -49,6 +49,7 @@ export function ChangePasswordSettings() {
             const body = (await response.json().catch(() => ({}))) as {
                 error?: string;
                 violations?: string[];
+                sessionHandoff?: string;
             };
             if (!response.ok) {
                 setNotice({
@@ -58,8 +59,8 @@ export function ChangePasswordSettings() {
                 });
                 return;
             }
-            // The route already put the fresh token pair into the session cookie; re-read it.
-            await update();
+            // A sealed handoff of the fresh token pair: the page passes it on and cannot read it.
+            await update({ sessionHandoff: body.sessionHandoff });
             form.reset();
             setNotice({
                 kind: "ok",

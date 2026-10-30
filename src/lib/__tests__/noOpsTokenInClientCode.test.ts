@@ -21,9 +21,14 @@ const clientModules = sourceFiles(SRC)
             /^\s*["']use client["'];?/u.test(text) || /from\s+["']next-auth\/react["']/u.test(text),
     );
 
-/** A read of a token key: `.access_token`, `["refresh_token"]`, `accessToken` on a session. */
-const READS_TOKEN =
-    /\??\.(?:access_token|refresh_token)\b|\[\s*["'](?:access|refresh)_token["']\s*\]/u;
+/**
+ * Any mention of a token key in a client module: a property read (`session.access_token`), a
+ * bracket read, a destructure (`const { access_token } = session`), a type field or a string.
+ * Broad on purpose: a client module has no reason to name the key. A later module that must (an
+ * OAuth client parsing its own token answer) is listed in ALLOWED with the reason.
+ */
+const READS_TOKEN = /\b(?:access_token|refresh_token)\b/u;
+const ALLOWED: Record<string, string> = {};
 /** A browser `update()` that carries a token pair: only server code writes tokens into the session. */
 const WRITES_TOKEN_PAIR = /\bupdate\(\s*\{\s*(?:activeOrg|onboardComplete)\b/u;
 
@@ -38,14 +43,20 @@ describe("no Ops token in client code (CHAOS-12088)", () => {
     it("the patterns match the defects they exist for", () => {
         expect(READS_TOKEN.test("Authorization: `Bearer ${session?.access_token}`")).toBe(true);
         expect(READS_TOKEN.test('const t = session["refresh_token"];')).toBe(true);
+        expect(READS_TOKEN.test("const { access_token } = session;")).toBe(true);
+        expect(READS_TOKEN.test("const { access_token: t } = useSession().data;")).toBe(true);
+        expect(READS_TOKEN.test("type Pair = { refresh_token: string };")).toBe(true);
+        expect(READS_TOKEN.test("const accessTokenLabel = 'x';")).toBe(false);
         expect(WRITES_TOKEN_PAIR.test("await update({ activeOrg: data });")).toBe(true);
         expect(WRITES_TOKEN_PAIR.test("await update({ onboardComplete: pair })")).toBe(true);
         expect(WRITES_TOKEN_PAIR.test("await update({ impersonationChanged: true })")).toBe(false);
         expect(READS_TOKEN.test("const orgId = session?.user?.org_id;")).toBe(false);
     });
 
-    it("no client module reads a token from the session", () => {
-        const hits = clientModules.filter(({ text }) => READS_TOKEN.test(text)).map((m) => m.file);
+    it("no client module names a token key (read, destructure, type or string)", () => {
+        const hits = clientModules
+            .filter(({ file, text }) => !(file in ALLOWED) && READS_TOKEN.test(text))
+            .map((m) => m.file);
         expect(hits).toEqual([]);
     });
 

@@ -20,8 +20,13 @@ beforeEach(() => {
 });
 
 // The page session carries no token (CHAOS-12088); the form never needs one.
+const mockUpdate = vi.fn();
 vi.mock("next-auth/react", () => ({
-    useSession: () => ({ data: { user: { id: "user-1" } }, status: "authenticated" }),
+    useSession: () => ({
+        data: { user: { id: "user-1" } },
+        status: "authenticated",
+        update: mockUpdate,
+    }),
 }));
 
 const mockCreateWorkspace = vi.fn();
@@ -51,12 +56,17 @@ vi.mock("@/lib/onboarding/track", () => {
 import { resetOnboardingOnceTracking } from "@/lib/onboarding/track";
 import { OnboardForm } from "./OnboardForm";
 
-const created = { ok: true, orgId: "org-123" } as const;
+const created = { ok: true, orgId: "org-123", sessionHandoff: "sealed-handoff" } as const;
 
 describe("OnboardForm", () => {
+    beforeEach(() => {
+        mockUpdate.mockResolvedValue({ user: { org_id: "org-123" } });
+    });
+
     afterEach(() => {
         vi.restoreAllMocks();
         mockCreateWorkspace.mockReset();
+        mockUpdate.mockReset();
         mockTrack.mockReset();
         resetOnboardingOnceTracking();
     });
@@ -93,6 +103,7 @@ describe("OnboardForm", () => {
 
         await waitFor(() => {
             expect(mockCreateWorkspace).toHaveBeenCalledWith("Test Org");
+            expect(mockUpdate).toHaveBeenCalledWith({ sessionHandoff: "sealed-handoff" });
             expect(locationHref).toBe("/dashboard");
         });
         // CHAOS-12088: no request from the page carries a token; the action holds it.
@@ -197,6 +208,37 @@ describe("OnboardForm", () => {
             expect(screen.getByText("Failed to create workspace")).toBeInTheDocument();
         });
         expect(screen.queryByText("stack trace")).not.toBeInTheDocument();
+    });
+
+    it("retries the session update while next-auth is busy, then navigates", async () => {
+        mockCreateWorkspace.mockResolvedValue(created);
+        mockUpdate
+            .mockResolvedValueOnce(undefined)
+            .mockRejectedValueOnce(new Error("busy"))
+            .mockResolvedValueOnce({ user: { org_id: "org-123" } });
+
+        renderWithToaster(<OnboardForm />);
+        const user = userEvent.setup();
+        await user.click(screen.getByRole("button", { name: "Create Workspace" }));
+
+        await waitFor(() => expect(locationHref).toBe("/dashboard"), { timeout: 4000 });
+        expect(mockUpdate).toHaveBeenCalledTimes(3);
+    });
+
+    it("navigates after five failed updates; the next page routes by the backend state", async () => {
+        mockCreateWorkspace.mockResolvedValue(created);
+        mockUpdate.mockResolvedValue(undefined);
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        try {
+            renderWithToaster(<OnboardForm />);
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+            await user.click(screen.getByRole("button", { name: "Create Workspace" }));
+            await vi.advanceTimersByTimeAsync(5000);
+            await waitFor(() => expect(locationHref).toBe("/dashboard"));
+            expect(mockUpdate).toHaveBeenCalledTimes(5);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it("emits workspace_setup_started on mount in guided mode", () => {

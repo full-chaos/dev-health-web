@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { auth, updateServerSession } from "@/lib/auth";
+import { auth, sealSessionHandoff } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { getBackendUrl } from "@/lib/origin";
 
@@ -22,23 +22,48 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
     }
 
-    const response = await fetch(`${getBackendUrl()}/api/v1/auth/switch-org`, {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ org_id: payload.org_id }),
-    });
-
-    const data = await response.json().catch(() => ({ error: "Organization switch failed" }));
-    if (!response.ok) {
-        return NextResponse.json(data, { status: response.status });
+    let response: Response;
+    try {
+        response = await fetch(`${getBackendUrl()}/api/v1/auth/switch-org`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ org_id: payload.org_id }),
+        });
+    } catch (error) {
+        routeLogger.error({ err: error, orgId: payload.org_id }, "switch-org backend call failed");
+        return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
     }
 
-    // CHAOS-12088: the new token pair goes into the session cookie here, on the server. The
-    // browser gets the active organization only, never a token.
-    const pair = data as { access_token?: unknown; user?: { org_id?: unknown } } | null;
+    if (!response.ok) {
+        // A fixed answer: no backend body reaches the page (CHAOS-12088).
+        routeLogger.warn(
+            { status: response.status, orgId: payload.org_id },
+            "switch-org refused by the backend",
+        );
+        return NextResponse.json(
+            { error: "Organization switch failed" },
+            { status: response.status },
+        );
+    }
+    const data: unknown = await response.json().catch((error: unknown) => {
+        routeLogger.error(
+            { err: error, status: response.status, orgId: payload.org_id },
+            "switch-org answer was not JSON",
+        );
+        return null;
+    });
+
+    // CHAOS-12088: the page gets the active organization and a sealed handoff of the new token
+    // pair (it passes the handoff to update() and cannot read it), never a token in clear.
+    const pair = data as {
+        access_token?: unknown;
+        refresh_token?: string;
+        expires_in?: number;
+        user?: { org_id?: unknown; role?: string; is_superuser?: boolean };
+    } | null;
     if (typeof pair?.access_token !== "string" || !pair.access_token || !pair.user) {
         routeLogger.error(
             { status: response.status, orgId: payload.org_id },
@@ -46,17 +71,28 @@ export async function POST(request: Request) {
         );
         return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
     }
+    const orgId = typeof pair.user.org_id === "string" ? pair.user.org_id : payload.org_id;
+    let sessionHandoff: string;
     try {
-        if (!(await updateServerSession({ activeOrg: pair }))) {
-            throw new Error("no session to update");
-        }
+        sessionHandoff = await sealSessionHandoff(
+            "activeOrg",
+            {
+                access_token: pair.access_token,
+                refresh_token: pair.refresh_token,
+                expires_in: pair.expires_in,
+                user: { org_id: orgId, role: pair.user.role, is_superuser: pair.user.is_superuser },
+            },
+            session.user?.id ?? "",
+        );
     } catch (error) {
         routeLogger.error(
             { err: error, orgId: payload.org_id, userId: session.user?.id },
-            "switch-org could not write the new token pair into the session",
+            "switch-org could not seal the new token pair",
         );
         return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
     }
-    const orgId = typeof pair.user.org_id === "string" ? pair.user.org_id : payload.org_id;
-    return NextResponse.json({ org_id: orgId }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json(
+        { org_id: orgId, sessionHandoff },
+        { headers: { "cache-control": "no-store" } },
+    );
 }

@@ -111,8 +111,12 @@
         "log": 7,
         "sentry": 0
     },
+    "src/app/api/auth/organizations/route.ts": {
+        "log": 3,
+        "sentry": 0
+    },
     "src/app/api/auth/switch-org/route.ts": {
-        "log": 2,
+        "log": 5,
         "sentry": 0
     },
     "src/app/error.tsx": {
@@ -180,7 +184,7 @@
         "sentry": 0
     },
     "src/lib/auth.ts": {
-        "log": 6,
+        "log": 8,
         "sentry": 0
     },
     "src/lib/authBrowserSession.ts": {

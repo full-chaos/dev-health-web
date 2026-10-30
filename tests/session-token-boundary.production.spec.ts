@@ -88,6 +88,21 @@ test("no Ops token reaches page JS while /dashboard loads with data", async ({ p
         text: JSON.stringify({ error: "unsupported_session_update" }),
     });
 
+    // A handoff the server did not seal changes nothing.
+    const forged = await page.evaluate(async () => {
+        const csrf = (await (await fetch("/api/auth/csrf")).json()) as { csrfToken: string };
+        const res = await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ csrfToken: csrf.csrfToken, data: { sessionHandoff: "forged" } }),
+        });
+        return { status: res.status, text: await res.text() };
+    });
+    expect(forged.status).toBe(200);
+    expect((JSON.parse(forged.text) as { user?: { org_id?: string } }).user?.org_id).toBe(
+        body.user?.org_id,
+    );
+
     const html = await page.content();
     expect(hitsIn(html)).toEqual([]);
 

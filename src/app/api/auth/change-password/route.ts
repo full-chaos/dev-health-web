@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { auth, updateServerSession } from "@/lib/auth";
+import { auth, sealSessionHandoff } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { getBackendUrl } from "@/lib/origin";
 
@@ -70,17 +70,39 @@ export async function POST(request: Request) {
         }
         if (!data) return NextResponse.json({ error: genericFailure(502) }, { status: 502 });
         routeLogger.info({ status: response.status }, "change-password succeeded");
-        // CHAOS-12088: the fresh token pair goes into the session cookie here, on the server;
-        // the browser never gets it. The password is already changed and ops has revoked the
-        // other sessions, so a failed write asks the user to sign in again.
+        // CHAOS-12088: the page gets a sealed handoff of the fresh token pair for this session (it
+        // passes it to update() and cannot read it), never a token in clear. The password is
+        // already changed and ops has revoked the other sessions, so a failed seal asks the user
+        // to sign in again.
+        const pair = data as {
+            access_token?: unknown;
+            refresh_token?: string;
+            expires_in?: number;
+            user?: { org_id?: string; role?: string; is_superuser?: boolean };
+        };
+        let sessionHandoff: string;
         try {
-            if (!(await updateServerSession({ activeOrg: data }))) {
-                throw new Error("no session to update");
+            if (typeof pair.access_token !== "string" || !pair.access_token || !pair.user) {
+                throw new Error("the answer carried no token pair");
             }
+            sessionHandoff = await sealSessionHandoff(
+                "activeOrg",
+                {
+                    access_token: pair.access_token,
+                    refresh_token: pair.refresh_token,
+                    expires_in: pair.expires_in,
+                    user: {
+                        org_id: pair.user.org_id,
+                        role: pair.user.role,
+                        is_superuser: pair.user.is_superuser,
+                    },
+                },
+                session.user?.id ?? "",
+            );
         } catch (error) {
             routeLogger.error(
                 { err: error, userId: session.user?.id },
-                "change-password could not write the new token pair into the session",
+                "change-password could not seal the new token pair",
             );
             return NextResponse.json(
                 { error: "Password changed. Sign in again to continue." },
@@ -88,7 +110,7 @@ export async function POST(request: Request) {
             );
         }
         return NextResponse.json(
-            { ok: true },
+            { ok: true, sessionHandoff },
             { status: 200, headers: { "cache-control": "no-store" } },
         );
     }

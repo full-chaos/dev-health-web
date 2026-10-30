@@ -20,9 +20,13 @@ type OrganizationsResponse = {
     organizations: OrganizationOption[];
 };
 
-/** The switch route writes the new token pair into the session cookie; the page gets the org only. */
+/**
+ * The switch route answers the active org and a sealed handoff of the new token pair, which the
+ * page passes to update() and cannot read (CHAOS-12088).
+ */
 type SwitchOrgResponse = {
     org_id?: string | null;
+    sessionHandoff?: string;
 };
 
 /**
@@ -158,8 +162,7 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
                 return;
             }
             const data = (await response.json()) as SwitchOrgResponse;
-            // Re-read the session the route already changed; no token passes through the page.
-            await update();
+            await update({ sessionHandoff: data.sessionHandoff });
             setState((current) =>
                 current ? { ...current, active_org_id: data.org_id ?? orgId } : current,
             );

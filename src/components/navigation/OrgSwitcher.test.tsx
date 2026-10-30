@@ -50,8 +50,8 @@ describe("OrgSwitcher", () => {
                         ],
                     });
                 }
-                // The switch route answers the active org only (CHAOS-12088).
-                return Response.json({ org_id: "org-data" });
+                // The switch route answers the active org and a sealed handoff (CHAOS-12088).
+                return Response.json({ org_id: "org-data", sessionHandoff: "sealed-handoff" });
             }),
         );
     });
@@ -71,9 +71,10 @@ describe("OrgSwitcher", () => {
 
         fireEvent.change(select, { target: { value: "org-data" } });
 
-        // The route already wrote the new token pair into the session cookie: the page only
-        // re-reads the session, and sends no token of its own (CHAOS-12088).
-        await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith());
+        // The page passes the sealed handoff on, unread; it sends no token (CHAOS-12088).
+        await waitFor(() =>
+            expect(mockUpdate).toHaveBeenCalledWith({ sessionHandoff: "sealed-handoff" }),
+        );
         expect(mockRefresh).toHaveBeenCalled();
         expect(screen.getByLabelText(/organization/i)).toHaveValue("org-data");
     });

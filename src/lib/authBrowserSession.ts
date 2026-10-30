@@ -13,8 +13,8 @@ import { logger } from "@/lib/logger";
  *
  * - every JSON answer of the HTTP route loses the token keys, and is refused (500) if a token value
  *   is still in it under another key;
- * - a browser `update()` may not carry a token pair (`activeOrg`, `onboardComplete`). Only server
- *   code writes tokens into the session, through `updateServerSession` in `@/lib/auth`.
+ * - a browser `update()` may not carry a token pair in clear (`activeOrg`, `onboardComplete`). A new
+ *   pair reaches the session only as a sealed handoff (`sealSessionHandoff` in `@/lib/auth`).
  */
 
 const log = logger.child({ module: "auth-browser-session" });
@@ -22,7 +22,7 @@ const log = logger.child({ module: "auth-browser-session" });
 /** Session keys that hold an Ops credential. Server code reads them; the browser never gets them. */
 export const SERVER_ONLY_SESSION_KEYS = ["access_token", "refresh_token"] as const;
 
-/** `update()` payload keys that carry an Ops token pair. Server code only (`updateServerSession`). */
+/** `update()` payload keys that carry an Ops token pair in clear. Never accepted from a browser. */
 export const SERVER_ONLY_UPDATE_KEYS = ["activeOrg", "onboardComplete"] as const;
 
 type AuthRouteHandler = (request: NextRequest) => Promise<Response>;

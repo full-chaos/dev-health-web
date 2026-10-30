@@ -36,16 +36,22 @@ describe("ChangePasswordSettings", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("re-reads the session the route updated and clears the fields on success", async () => {
+    it("adopts the sealed handoff and clears the fields on success", async () => {
         vi.stubGlobal(
             "fetch",
-            vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 })),
+            vi.fn().mockResolvedValue(
+                new Response(JSON.stringify({ ok: true, sessionHandoff: "sealed-handoff" }), {
+                    status: 200,
+                }),
+            ),
         );
         const user = userEvent.setup();
         render(<ChangePasswordSettings />);
         await fill(user, "old-password-1", "new-password-long-1", "new-password-long-1");
-        // CHAOS-12088: no token pair passes through the page; update() carries no payload.
-        await waitFor(() => expect(update).toHaveBeenCalledWith());
+        // CHAOS-12088: the page passes the sealed handoff on, unread; no token pair in clear.
+        await waitFor(() =>
+            expect(update).toHaveBeenCalledWith({ sessionHandoff: "sealed-handoff" }),
+        );
         expect(
             await screen.findByText("Password changed. Your other sessions were signed out."),
         ).toBeInTheDocument();

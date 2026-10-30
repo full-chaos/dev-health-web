@@ -21,7 +21,7 @@ type OnboardFormProps = {
 };
 
 export function OnboardForm({ plan, trialIntent = false, guided = false }: OnboardFormProps) {
-    const { status } = useSession();
+    const { update, status } = useSession();
     const [orgName, setOrgName] = useState("");
     const [loading, setLoading] = useState(false);
     const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team";
@@ -32,13 +32,15 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
         }
     }, [guided]);
 
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            // CHAOS-12088: a server action creates the workspace with the session's token and
-            // puts the new token pair into the session cookie. This page never holds a token.
+            // CHAOS-12088: a server action creates the workspace with the session's token. The
+            // new token pair comes back sealed: this page passes it to update() and cannot read it.
             const result = await createWorkspace(orgName);
 
             if (!result.ok) {
@@ -59,6 +61,21 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
                 trackOnboardingEvent("workspace_created", { orgId: result.orgId });
             }
 
+            // next-auth's update() does nothing while a session read is running: try again.
+            let sessionReady = false;
+            for (let attempt = 0; attempt < 5 && !sessionReady; attempt += 1) {
+                try {
+                    const updated = await update({ sessionHandoff: result.sessionHandoff });
+                    if (updated) {
+                        sessionReady = true;
+                    } else {
+                        await delay(300 * (attempt + 1));
+                    }
+                } catch {
+                    await delay(300 * (attempt + 1));
+                }
+            }
+
             // Guided onboarding ALWAYS routes through the integration step (the
             // team-trial intent is preserved as query params and resolved at the
             // completion step). Only the legacy single-page flow keeps the direct
@@ -74,7 +91,9 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
                 destination = "/dashboard";
             }
 
-            // Hard navigation ensures the proxy reads the session cookie the action set.
+            // Hard navigation ensures the proxy reads the freshly-updated session cookie. A soft
+            // router.push() can race with the Set-Cookie of the session update. When the update
+            // did not land, the destination routes by the backend's onboarding state.
             window.location.href = destination;
         } catch {
             toast.error("An error occurred. Please try again.");
