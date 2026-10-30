@@ -28,7 +28,7 @@
             "result_id": "result_ddea615c7e0f2033d2abbffa98c79ca3",
             "captured_at": "2026-10-30T18:29:34.816486925Z",
             "stream_ms": 67215,
-            "sha256_compact": "3912ac5beb9d8a8d6c8a5983a391660a564fddab31ae95b8eee0df8562abf291"
+            "sha256_compact": "b6ea0036ce013dcc7434776a4e165b8dac771ad12df2c67f38e2f49cb516f47b"
         },
         {
             "file": "kiac_project_status_clarification.event.json",
@@ -109,7 +109,7 @@
             "result_id": "result_aa79363e719d664230852770305f2648",
             "captured_at": "2026-10-30T20:27:11.551681259Z",
             "stream_ms": 27490,
-            "sha256_compact": "569b34dde7c640702b0e1c2da54c8101d5f8eb9fe602404c0e976f5220de493c"
+            "sha256_compact": "27e13d5c6a93cea6022729f9d272c1b4d66081570ca539c7eafa554a2c98679f"
         },
         {
             "file": "kiac_repo_ci_rate_complete.event.json",
@@ -127,7 +127,7 @@
             "result_id": "result_953a872bf5cc6f870de31e84d08fe9d8",
             "captured_at": "2026-10-30T20:28:20.20333747Z",
             "stream_ms": 14046,
-            "sha256_compact": "8d10edac375413f9397cce93e408462841f19c09cce9a2fea2327553a735704a"
+            "sha256_compact": "5062c1262ff71334efe29a7e2b96292801f7260579718f14521229a17e75689a"
         },
         {
             "file": "kiac_repo_owner_complete.event.json",
@@ -237,6 +237,6 @@
             }
         ]
     },
-    "scrubbed": "CHAOS-12159 (2026-10-30): dev-health-web is public, so every org value in these captures was replaced by a stable synthetic value with the same shape: internal UUIDs -> 00000000-0000-4000-8000-<n>, the team -> Teamalpha, its Linear key -> TEAMA (issue keys TEAMA-<n>), the projects -> 'Synthetic Project <name>', free-text PR/work-item/CI-run/incident titles -> 'Synthetic <kind> title <n>', the org id prefix -> 0a0a0a0a. One map for every file, so cross-references still resolve. Keys, numbers, statuses, vocabulary, public repo names and the ACR-written structure are unchanged; sha256_compact is of the scrubbed file. The guard test capturesScrubbed.test.ts fails if a scrubbed value comes back.",
-    "completeness_authority": "Captures taken before 2026-10-30T21:25Z ran with ACR's server completeness authority OFF (the model's status stands). From then on kiac askdev-1 runs with ACR_CONTEXT_FABRIC_SERVER_COMPLETENESS_AUTHORITY_ENABLED=true and ..._SYMMETRIC_ENABLED=true (CHAOS-12154, same image). Each entry captured after that says completeness_authority: on."
+    "scrubbed": "2026-10-30: dev-health-web is public, so every organisation value in these captures was replaced by a stable synthetic value with the same shape: internal UUIDs -> 00000000-0000-4000-8000-<n>, the team -> Teamalpha, its tracker key -> TEAMA (issue keys TEAMA-<n>), the projects -> 'Synthetic Project <name>', free-text PR/work-item/CI-run/incident titles -> 'Synthetic <kind> title <n>', the organisation id prefix -> 0a0a0a0a. One map for every file, so cross-references still resolve. Keys, numbers, statuses, vocabulary, public repo names and the ACR-written structure are unchanged; sha256_compact is of the scrubbed file. The guard test capturesScrubbed.test.ts fails if a scrubbed value comes back.",
+    "completeness_authority": "Captures taken before 2026-10-30T21:25Z ran with ACR's server completeness authority OFF (the model's status stands). From then on kiac askdev-1 runs with ACR_CONTEXT_FABRIC_SERVER_COMPLETENESS_AUTHORITY_ENABLED=true and ..._SYMMETRIC_ENABLED=true (same image). Each entry captured after that says completeness_authority: on."
 }
