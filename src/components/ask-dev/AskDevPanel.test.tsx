@@ -429,6 +429,28 @@ describe("two shared drawers are two owners", () => {
         expect(screen.getByRole("dialog", { name: "Second drawer" })).toBeInTheDocument();
         expect(screen.queryByRole("dialog", { name: "First drawer" })).toBeNull();
     });
+
+    it("hands the page lock and the focus over to the second drawer, and unlocks when it closes", async () => {
+        document.body.style.overflow = "";
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <TwoDrawers />
+            </AdminTierProvider>,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Open first" }));
+        await act(async () =>
+            screen.getByRole("button", { name: "Open second", hidden: true }).click(),
+        );
+
+        const second = screen.getByRole("dialog", { name: "Second drawer" });
+        expect(document.body.style.overflow).toBe("hidden");
+        expect(second).toContainElement(document.activeElement as HTMLElement);
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(document.body.style.overflow).toBe("");
+    });
 });
 
 describe("Ask Dev state follows where it is allowed", () => {

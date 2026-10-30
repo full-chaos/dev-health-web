@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react"
 import { X } from "lucide-react";
 
 import { BodyPortal, usePortalMounted } from "@/components/ui/BodyPortal";
+import { lockBodyScroll } from "@/lib/a11y/bodyScrollLock";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 import type { RightDrawerOwner } from "@/lib/shell/rightDrawer";
 import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
@@ -70,11 +71,7 @@ export function Drawer({
 
     useEffect(() => {
         if (!open) return;
-        const previous = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        return () => {
-            document.body.style.overflow = previous;
-        };
+        return lockBodyScroll();
     }, [open]);
 
     if (!open) return null;
