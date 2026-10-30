@@ -202,13 +202,13 @@
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ATEAMA:repo_ownership"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-ops#3745 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ATEAMA:repo_ownership"
                 ],
                 "truncated": false
             },
@@ -243,13 +243,13 @@
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ATEAMA:repo_ownership"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-ops#1923 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ATEAMA:repo_ownership"
                 ],
                 "truncated": false
             },
@@ -284,13 +284,13 @@
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ATEAMA:repo_ownership"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-ops#1548 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ATEAMA:repo_ownership"
                 ],
                 "truncated": false
             },
@@ -325,13 +325,13 @@
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ATEAMA:repo_ownership"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-web#1272 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ATEAMA:repo_ownership"
                 ],
                 "truncated": false
             },
@@ -366,13 +366,13 @@
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ATEAMA:repo_ownership"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-ops#3128 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ATEAMA:repo_ownership"
                 ],
                 "truncated": false
             },
@@ -407,13 +407,13 @@
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ATEAMA:repo_ownership"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-web#903 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ATEAMA:repo_ownership"
                 ],
                 "truncated": false
             },
@@ -448,13 +448,13 @@
                         "epistemic_status": "inferred",
                         "observed_at": "2026-10-30T02:30:11.742Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership"
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ATEAMA:repo_ownership"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-acr#411 owned by team linear:TEAMA",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership"
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ATEAMA:repo_ownership"
                 ],
                 "truncated": false
             },
@@ -1021,7 +1021,7 @@
                     },
                     {
                         "kind": "work_item",
-                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ACHAOS-11865",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ATEAMA-134",
                         "label": "Synthetic work item title 009"
                     }
                 ],
@@ -1035,7 +1035,7 @@
                         },
                         "to": {
                             "kind": "work_item",
-                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ACHAOS-11865",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ATEAMA-134",
                             "label": "Synthetic work item title 009"
                         },
                         "derivation": "graph_associated",
@@ -1044,13 +1044,13 @@
                         "valid_from": "2026-10-29T17:31:56Z",
                         "valid_to": "2026-10-29T19:32:29Z",
                         "evidence_ref_ids": [
-                            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ACHAOS-11865:relates_to%3Afwd"
+                            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ATEAMA-134:relates_to%3Afwd"
                         ]
                     }
                 ],
                 "why_relevant": "ghpr:full-chaos/dev-health-ops#5242 relates to Synthetic work item title 009",
                 "evidence_ref_ids": [
-                    "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ACHAOS-11865:relates_to%3Afwd"
+                    "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ATEAMA-134:relates_to%3Afwd"
                 ],
                 "truncated": false
             },
@@ -1688,14 +1688,14 @@
             "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:5242": "Pull request: 00000000-0000-4000-8000-000000000002:5242",
             "acr:v1:pull-request:00000000-0000-4000-8000-00000000002c:1272": "Pull request: 00000000-0000-4000-8000-00000000002c:1272",
             "acr:v1:team:linear:TEAMA": "Team: linear:TEAMA",
-            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ACHAOS-11865:relates_to%3Afwd": "Work item dependency: ghpr:full-chaos/dev-health-ops#5242:Synthetic work item title 009:relates_to:fwd",
-            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411:linear:TEAMA:repo_ownership",
-            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1548:linear:TEAMA:repo_ownership",
-            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923:linear:TEAMA:repo_ownership",
-            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3128:linear:TEAMA:repo_ownership",
-            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3745:linear:TEAMA:repo_ownership",
-            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#1272:linear:TEAMA:repo_ownership",
-            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ACHAOS:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#903:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ATEAMA-134:relates_to%3Afwd": "Work item dependency: ghpr:full-chaos/dev-health-ops#5242:Synthetic work item title 009:relates_to:fwd",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1548:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3128:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3745:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#1272:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#903:linear:TEAMA:repo_ownership",
             "acr:v1:work-item:00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411": "Work item: 00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411",
             "acr:v1:work-item:00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923": "Work item: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923"
         },

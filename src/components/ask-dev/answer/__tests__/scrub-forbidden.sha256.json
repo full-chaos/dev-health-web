@@ -1,5 +1,5 @@
 {
-    "about": "CHAOS-12159: sha256 (hex) of the lower-cased org-70d529e0 values scrubbed from the Ask Dev capture fixtures: the internal UUIDs, the org id prefix, the team and project names, and the free-text titles. Hashes only; the values are not in this repository after the scrub.",
+    "about": "sha256 (hex) of the lower-cased organisation values scrubbed from the Ask Dev capture fixtures: the internal UUIDs, the organisation id prefix, the team and project names, the free-text titles, and two tagged forms ('keyprefix:<tracker key>', 'linearkey:<tracker key>') for the team's tracker key. Hashes only; no value is in this repository after the scrub.",
     "sha256": [
         "006c9b1dd38dc998f9ec40c1d077d8a7e79d6e8b682edf886cae794f9922439e",
         "00e7122bbd09e26d04554b2d8b80ff210dcc395eb65835c889cd24e83acf6c79",
@@ -106,6 +106,7 @@
         "3b9ac09f8bd3437b788a09a2d099e4be2c678e83f7af57cc741e5575b0eb64de",
         "3d27e52d3b02183b03be5fa73e6e0a5bd2565efd653eac327423ee1b20b75a41",
         "3da6c6b109ad386be1a94a3b62c1f0222182dda73e8db395a104a87b25eea442",
+        "3df5cbcc6bf76510ef5006ed9b299b821527afe73767f50780cc8ace18e4ab4c",
         "3ef8c607abd91c2b031dca16a773eabbf6e2c456f03cfa60bcc2c042b550d20a",
         "3f573b1549a2659c6988fdfd986462cedcfe242ea5f1c50c3ca9d8ed96a7d7d2",
         "3fa540f0d3bedaa846c585e70f24f7232a361fecca9a019342c5ec584f89d0b6",
@@ -113,6 +114,7 @@
         "4000b9d463e506d5704865ff2a74763630352856b5ff4109db0292ae4716e5fe",
         "40675fcc654470688e4199eeffdb2b648d984fc62f8aa25c16627a917c6f8e64",
         "40d569b8011822d3b13961da7c205a8125d04d9bc506059b4e9d7878104b5e4d",
+        "41b3a41754450dcc40f7beb4f4851d04afb7f7245f3842f23128497ddb88c70b",
         "434c64266e94325593218b4debc7c1c5a93fc25badfaedbd3085d0c4c10caab2",
         "4355bc3d19e2b15ba6ce5d2a1f2821d56b876825115bdf7be0913e63a839e9d4",
         "44980eb17d8d9415da7fe3e9d6f02a884e54518cb69b731bc472b3ab9073dbf5",

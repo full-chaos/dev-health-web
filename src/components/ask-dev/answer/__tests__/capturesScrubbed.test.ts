@@ -6,17 +6,22 @@ import { describe, expect, it } from "vitest";
 import forbidden from "./scrub-forbidden.sha256.json";
 
 /**
- * CHAOS-12159. dev-health-web is public: a capture fixture must not hold the org-70d529e0 values
- * scrubbed from it (internal UUIDs, the org id, team and project names, free-text titles). The
- * forbidden values are kept only as sha256 hashes of their lower-cased form; every string in every
- * capture file (object keys too) is checked as a whole, by UUID, by 8-hex token and by word
- * n-gram, so a value inside a sentence or an id is caught as well.
+ * CHAOS-12159. dev-health-web is public: a capture fixture must not hold the organisation values
+ * scrubbed from it (internal UUIDs, the organisation id, team and project names, free-text titles,
+ * the team's tracker key). The forbidden values are kept only as sha256 hashes of their lower-cased
+ * form; every string in every capture file (object keys too) is checked as a whole, by UUID, by
+ * 8-hex token, by word n-gram and by tracker-key form, so a value inside a sentence, an id or an
+ * encoded reference is caught as well.
  */
 const CAPTURES = join(__dirname, "captures");
 const FORBIDDEN = new Set(forbidden.sha256);
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/giu;
 const HEX8 = /(?<![0-9a-z])[0-9a-f]{8}(?![0-9a-z])/giu;
 const MAX_NGRAM = 8;
+/** `<key>-<n>` issue keys, also behind an encoded colon (`extkey%3A<key>-<n>`). */
+const ISSUE_KEY = /(?<![a-z0-9])([a-z][a-z0-9]{1,9})-\d{1,7}(?![a-z0-9])/gu;
+/** A tracker team key in a reference (`linear:<key>`, `linear%3A<key>`). */
+const LINEAR_KEY = /linear:([a-z0-9]+)/gu;
 
 const sha256 = (value: string) => createHash("sha256").update(value.toLowerCase()).digest("hex");
 
@@ -50,6 +55,11 @@ function candidates(text: string): string[] {
         w.replace(/^["'(]+|(?:'s)?["',.;:!?)]+$/gu, "").replace(/'s$/u, ""),
     );
     const alnum = lower.split(/[^a-z0-9]+/u).filter(Boolean);
+    const decoded = lower.replaceAll("%3a", ":");
+    // Tagged forms: a tracker key is a plain word too (it can sit inside a public repo slug), so it
+    // is only forbidden where it acts as a key.
+    const keyPrefixes = [...decoded.matchAll(ISSUE_KEY)].map((m) => `keyprefix:${m[1]}`);
+    const linearKeys = [...decoded.matchAll(LINEAR_KEY)].map((m) => `linearkey:${m[1]}`);
     return [
         lower,
         ...(lower.match(UUID) ?? []),
@@ -60,6 +70,8 @@ function candidates(text: string): string[] {
         // word, while multi-word runs of a public repo slug (`full-chaos/dev-health-ops`) may
         // spell a project name and are allowed.
         ...alnum,
+        ...keyPrefixes,
+        ...linearKeys,
     ];
 }
 
