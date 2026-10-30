@@ -4803,6 +4803,60 @@ export interface ContextFabricSubmissionStatusV1 {
     updated_at: string;
 }
 
+/**
+ * One page of the caller's own Ask Dev conversations: GET /api/v1/context-fabric/threads. Newest last_turn_at first, then thread_id. A deleted or expired thread is not listed.
+ */
+export interface ContextFabricThreadListV1 {
+    schema_version: "context_fabric_thread_list.v1";
+    /**
+     * @maxItems 50
+     */
+    threads: ThreadSummary[];
+    /**
+     * Present when more threads follow this page, and only on a page that lists at least one thread: pass it back as the cursor query parameter. Opaque.
+     */
+    next_cursor?: string;
+}
+
+/**
+ * The caller's own Ask Dev conversation: GET /api/v1/context-fabric/threads/{thread_id}. A thread is the submission records one principal admitted with one X-ACR-Thread-ID, in admission order, plus its retention. It names each turn's result by id and carries no answer content; read a result with GET /api/v1/context-fabric/investigations/{result_id}, which decides the read again. Another principal's thread, an unknown, deleted, expired or malformed id get the same 404 not_found.
+ */
+export interface ContextFabricThreadV1 {
+    schema_version: "context_fabric_thread.v1";
+    thread_id: string;
+    /**
+     * 0: kept until 24 hours after the last turn. 30: kept until 30 days after the last turn. Set by X-ACR-Thread-Retention-Days on a turn; the latest turn that named one decides, and a thread whose turns named none has 0.
+     */
+    retention_days: 0 | 30;
+    /**
+     * Every turn of the thread, at most 1000000 (a turn past it is refused 409 thread_closed). Turns before the served page are read with the before query parameter and earlier_turns_cursor.
+     */
+    turn_count: number;
+    /**
+     * The first turn's admitted_at.
+     */
+    created_at: string;
+    /**
+     * The latest turn's admitted_at.
+     */
+    last_turn_at: string;
+    /**
+     * last_turn_at plus 24 hours (retention_days 0) or 30 days (retention_days 30). From it on, the thread and the results of its turns are not served on unknown read, and the retention job removes them.
+     */
+    expires_at: string;
+    /**
+     * One page of at most 100 turns, oldest first (admitted_at, then submission_id): the latest turns, or the turns before the cursor the before query parameter named.
+     *
+     * @minItems 1
+     * @maxItems 100
+     */
+    turns: [ThreadTurn, ...ThreadTurn[]];
+    /**
+     * Present when turns earlier than this page exist: pass it back as the before query parameter. Opaque.
+     */
+    earlier_turns_cursor?: string;
+}
+
 export type ACRContextPacketItemV1 = {
     schema_version: "context_packet_item.v1";
     packet_item_id: string;
@@ -5118,7 +5172,7 @@ export interface ACRErrorV1 {
     request_id: string;
     error: {
         /**
-         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted.
+         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. submission_required is the 400 of a create-investigation request by a browser-class credential that names no single well-formed X-ACR-Submission-ID (missing, malformed or repeated): refused before admission and model work, nothing ran, and it is not retryable as sent. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted. thread_closed is the 409 of a create-investigation request whose X-ACR-Thread-ID, or X-ACR-Submission-ID, belongs to a conversation of the caller that was deleted, has expired or is full (1000000 turns): nothing ran, and the request is not retryable under those ids; start a new conversation.
          */
         code:
             | "invalid_request"
@@ -5142,8 +5196,10 @@ export interface ACRErrorV1 {
             | "submission_in_progress"
             | "submission_unsaved"
             | "submission_abandoned"
+            | "submission_required"
             | "concurrency_limited"
-            | "allowance_exhausted";
+            | "allowance_exhausted"
+            | "thread_closed";
         message: string;
         http_status: number;
         retryable: boolean;
@@ -8126,18 +8182,19 @@ export type DriverJudgment = {
     current: boolean;
 };
 /**
- * CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire.
+ * CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire. CHAOS-11601: as_of (date-time) is the third form, a current-state snapshot read at that instant with no read window; it is legal only with no start, end or relative_id.
  */
 export type EffectiveEvidenceWindow = EffectiveEvidenceWindow1 & {
     start?: string;
     end?: string;
+    as_of?: string;
     relative_id?: RelativeWindowID;
     /**
      * Open vocabulary; documented values: trend_assessment, recent_activity_lookup, state_snapshot, explicit_window. A client must tolerate values it does not know.
      */
     window_class?: string;
     /**
-     * Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed. A client must tolerate values it does not know.
+     * Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed, server_default. A client must tolerate values it does not know.
      */
     provenance: string;
     /**
@@ -10938,7 +10995,7 @@ export interface WindowExpandOption {
     candidate_kind?: SubjectKind;
 }
 /**
- * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1.
+ * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1. CHAOS-11975: anchor_options, when present, is non-empty. A v2 result carries at least one membership-verify anchor option (ACR's validator refuses one without); the schema states only the non-empty rule in this release, and requires structure_needs and anchor_options from the next one (a field is optional for one release before it becomes required).
  */
 export interface StructureNeedsV2 {
     /**
@@ -11178,10 +11235,10 @@ export interface StructureNeedsV2 {
               KindOption,
           ];
     /**
+     * @minItems 1
      * @maxItems 20
      */
     anchor_options?:
-        | []
         | [AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2, AnchorOptionV2]
