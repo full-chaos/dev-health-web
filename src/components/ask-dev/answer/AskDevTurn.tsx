@@ -34,7 +34,12 @@ type TranscriptFields =
     | "limitations"
     | "warnings"
     | "evidence_ref_ids"
-    | "evidence_ref_labels";
+    | "evidence_ref_labels"
+    // CHAOS-11944: the cohort ranking.
+    | "cohort"
+    | "interpretation"
+    | "render_shapes"
+    | "effective_evidence_window";
 
 /** One turn's result: what both the answer view and the clarification view read. */
 export type TranscriptResult =

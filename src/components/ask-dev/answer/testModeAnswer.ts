@@ -62,6 +62,8 @@ export function asTranscriptResult(value: unknown): TranscriptResult | null {
     if (!isRecord(value.versions)) return null;
     if (!isRecord(value.subject_resolution)) return null;
     if (!isRecord(value.coverage) || !Array.isArray(value.coverage.sources)) return null;
+    if (!isRecord(value.interpretation) || typeof value.interpretation.shape !== "string")
+        return null;
     return value as TranscriptResult;
 }
 
