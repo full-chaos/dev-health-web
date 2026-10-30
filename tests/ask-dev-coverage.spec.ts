@@ -83,14 +83,17 @@ test.describe("desktop (1280px)", () => {
         expect(requests).toEqual([]);
     });
 
-    test("a 'Full answer' whose completeness was not derived says it is not known", async ({
+    test("a 'complete' status whose completeness was not derived says it is not known", async ({
         page,
     }) => {
         await seedAnswer(page, CI_COMPLETE);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        await expect(panel.getByTestId("ask-dev-answer-status")).toHaveText("Full answer");
+        // CHAOS-12157: the pill does not say "Full answer" either.
+        await expect(panel.getByTestId("ask-dev-answer-status")).toHaveText(
+            "Answer, not fully covered",
+        );
         const state = panel.getByTestId("ask-dev-coverage-state");
         await expect(state).toHaveAttribute("data-reading", "unknown");
         await expect(state).toContainText("Completeness is not known");
