@@ -20,7 +20,13 @@ import { OccurrenceLedger, placementFor } from "../placement";
 import { verifyRenderShape } from "../verify";
 import { admissionReason, verifyRenderShapeReason } from "../verify-reasons";
 import { WINDOW_NOT_STATED, windowText } from "../window-text";
-import { logWithheld, withheldLogFields } from "../withheld-log";
+import {
+    logWithheld,
+    UNLISTED,
+    WITHHELD_REASONS,
+    withheldLogFields,
+    type WithheldReason,
+} from "../withheld-log";
 import { plants } from "../__oracle__/plants";
 
 /**
@@ -253,14 +259,14 @@ describe("window text (§11.2)", () => {
 });
 
 describe("the withheld log line (§5.4)", () => {
+    const ids = {
+        resultId: "result_0123456789abcdef",
+        requestId: "request_0123456789abcdef01234567",
+    };
+
     it("logs ids and closed vocabularies only, and an ACR-form shape_id only", () => {
         const shape = cohortBase.render_shapes[0];
-        const fields = withheldLogFields(
-            { resultId: "result_x", requestId: "req_x" },
-            0,
-            shape,
-            "chart_score_without_drivers",
-        );
+        const fields = withheldLogFields(ids, 0, shape, "chart_score_without_drivers");
         expect(Object.keys(fields).sort()).toEqual(
             [
                 "event",
@@ -275,6 +281,13 @@ describe("the withheld log line (§5.4)", () => {
                 "shape_index",
             ].sort(),
         );
+        expect(fields).toMatchObject({
+            result_id: ids.resultId,
+            request_id: ids.requestId,
+            selected_by: shape.selected_by,
+            kind: shape.kind,
+            reason: "chart_score_without_drivers",
+        });
         const text = JSON.stringify(fields);
         for (const point of shape.series.flatMap((s: any) => s.points)) {
             expect(text).not.toContain(point.label);
@@ -282,28 +295,60 @@ describe("the withheld log line (§5.4)", () => {
         }
         expect(text).not.toContain(shape.title);
         const odd = withheldLogFields(
-            { resultId: "r", requestId: "q" },
+            ids,
             1,
             { ...shape, shape_id: "team:secret" },
-            "x",
+            "render_error",
         );
         expect(odd).toMatchObject({ shape_id_ok: false });
         expect(odd).not.toHaveProperty("shape_id");
     });
 
-    it("writes one warn line through the logger", () => {
-        logMock.warn.mockClear();
-        logWithheld(
-            { resultId: "r", requestId: "q" },
-            0,
-            cohortBase.render_shapes[0],
-            "palette_exhausted",
+    it("passes every listed reason through unchanged", () => {
+        for (const reason of WITHHELD_REASONS) {
+            expect(withheldLogFields(ids, 0, cohortBase.render_shapes[0], reason).reason).toBe(
+                reason,
+            );
+        }
+    });
+
+    // codex r2 P2: a caller passing free text (an error message, a served label) must not reach the log.
+    it("logs free text in any string field as unlisted, never the text", () => {
+        const secret = "customer=Acme private incident title";
+        const shape = {
+            ...cohortBase.render_shapes[0],
+            shape_id: "rs_1",
+            selected_by: secret,
+            kind: secret,
+            presentation: secret,
+        };
+        const fields = withheldLogFields(
+            { resultId: secret, requestId: secret },
+            Number.NaN,
+            shape,
+            secret as WithheldReason,
         );
+        expect(fields).toMatchObject({
+            result_id: UNLISTED,
+            request_id: UNLISTED,
+            shape_index: -1,
+            selected_by: UNLISTED,
+            kind: UNLISTED,
+            presentation: UNLISTED,
+            reason: UNLISTED,
+        });
+        expect(JSON.stringify(fields)).not.toContain("Acme");
+    });
+
+    it("writes one warn line through the logger, with the free text replaced", () => {
+        logMock.warn.mockClear();
+        logWithheld(ids, 0, cohortBase.render_shapes[0], "customer=Acme" as WithheldReason);
         expect(logger.warn).toBe(logMock.warn);
         expect(logMock.warn).toHaveBeenCalledTimes(1);
         expect(logMock.warn.mock.calls[0]![0]).toMatchObject({
             event: "ask_dev_render_withheld",
-            reason: "palette_exhausted",
+            reason: UNLISTED,
         });
+        expect(JSON.stringify(logMock.warn.mock.calls[0])).not.toContain("Acme");
     });
 });

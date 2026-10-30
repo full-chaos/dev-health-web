@@ -1,4 +1,5 @@
 import type { RenderShape } from "@/lib/ask-dev/render/contracts";
+import type { WithheldReason } from "@/lib/ask-dev/render/withheld-log";
 
 /**
  * Where a served shape goes, and the occurrence ledger (CHAOS-11941, E8 design §4.1, §4.3, G4).
@@ -22,7 +23,7 @@ export function placementFor(shape: RenderShape): Placement {
 export type Outcome =
     | { readonly kind: "PENDING"; readonly component: string }
     | { readonly kind: "DRAWN" }
-    | { readonly kind: "WITHHELD"; readonly reason: string };
+    | { readonly kind: "WITHHELD"; readonly reason: WithheldReason };
 
 export type LedgerViolation =
     | { readonly kind: "missing_outcome"; readonly index: number }
