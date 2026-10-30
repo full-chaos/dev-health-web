@@ -7,12 +7,11 @@ import { AcrRuntimeError, acrRuntimeErrorCodes } from "@/lib/acr/errors";
 import { sessionOrError } from "@/lib/acr/service";
 import { resolveAskDevAuthorization, type OpsAuthorization } from "@/lib/acr/ops";
 import { validateAcrContract } from "@/lib/acr/contracts";
+import { logger } from "@/lib/logger";
+import { HEADER_WAIT_MAX_MS, SETUP_STEP_MAX_MS, type RunDeadline } from "./deadline";
 
 const REQUEST_SCHEMA = "context_fabric_investigation_request.v1.schema.json";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-/** Longest wait for ACR to answer with headers (admission). I-11 replaces it with the run deadline. */
-export const HEADER_WAIT_MS = 15_000;
-
 export type PreparedInvestigation = {
     readonly authorization: OpsAuthorization;
     readonly body: string;
@@ -50,6 +49,8 @@ export async function prepareInvestigation(input: {
     readonly signal: AbortSignal;
     readonly submissionId: string | null;
     readonly threadId: string | null;
+    /** The run's absolute deadline; each setup read is bounded by what is left of it. */
+    readonly deadline: RunDeadline;
 }): Promise<PreparedInvestigation> {
     const rawSession = await auth();
     const session = sessionOrError(rawSession);
@@ -70,6 +71,7 @@ export async function prepareInvestigation(input: {
         accessToken: session.accessToken,
         orgId: session.orgId,
         signal: input.signal,
+        stepTimeoutMs: () => input.deadline.boundedMs(SETUP_STEP_MAX_MS),
         subject: session.subject,
     });
     if (authorization.repositoryScopes.length === 0) {
@@ -88,16 +90,56 @@ export async function prepareInvestigation(input: {
     };
 }
 
+/**
+ * The upstream call for a prepared run, sized from what is left of the deadline NOW (after
+ * setup): the budget header is `floor(D - now - 5 s)` seconds and the header wait is
+ * `min(15 s, D - now)`. When the budget is below ACR's minimum it throws `budget_exhausted` and
+ * ACR is never called.
+ */
 export function streamRequest(
     prepared: PreparedInvestigation,
-    input: { readonly requestId: string; readonly signal: AbortSignal },
+    input: {
+        readonly requestId: string;
+        readonly signal: AbortSignal;
+        readonly deadline: RunDeadline;
+    },
 ): InvestigationStreamRequest {
+    const budget = input.deadline.waitBudget();
+    if (!budget.ok) {
+        logger.warn(
+            {
+                request_id: input.requestId,
+                phase: "setup",
+                branch: "budget_exhausted",
+                elapsed_ms: input.deadline.elapsedMs(),
+                remaining_ms: input.deadline.remainingMs(),
+                run_timeout_ms: input.deadline.runTimeoutMs,
+                wait_budget_seconds: budget.seconds,
+            },
+            "ask-dev run budget exhausted by setup; ACR not called",
+        );
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.budgetExhausted,
+            "Dev ran out of time before the question could start.",
+            { retryable: true },
+        );
+    }
+    logger.info(
+        {
+            request_id: input.requestId,
+            elapsed_ms: input.deadline.elapsedMs(),
+            run_timeout_ms: input.deadline.runTimeoutMs,
+            wait_budget_seconds: budget.seconds,
+        },
+        "ask-dev run budget computed after setup",
+    );
     return {
         authorization: prepared.authorization,
         body: prepared.body,
-        headerWaitMs: HEADER_WAIT_MS,
+        headerWaitMs: input.deadline.boundedMs(HEADER_WAIT_MAX_MS),
         requestId: input.requestId,
         signal: input.signal,
+        waitBudgetSeconds: budget.seconds,
         ...(prepared.submissionId === undefined ? {} : { submissionId: prepared.submissionId }),
         ...(prepared.threadId === undefined ? {} : { threadId: prepared.threadId }),
     };

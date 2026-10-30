@@ -74,6 +74,8 @@ export type InvestigationStreamRequest = {
     readonly threadId?: string;
     /** Longest wait for the response headers (admission), in milliseconds. */
     readonly headerWaitMs: number;
+    /** `X-ACR-Wait-Budget-Seconds`: the longest the caller will wait, in whole seconds. */
+    readonly waitBudgetSeconds: number;
 };
 
 type ContextPacketRequest = {
@@ -351,7 +353,10 @@ export class AcrRuntimeClient {
      */
     async openInvestigationStream(input: InvestigationStreamRequest): Promise<Response> {
         input.signal.throwIfAborted();
-        const headerTimeout = AbortSignal.timeout(input.headerWaitMs);
+        // A plain timer (not `AbortSignal.timeout`) so the wait is visible to fake timers, and so
+        // it is cleared the moment headers arrive.
+        const headerTimeout = new AbortController();
+        const headerTimer = setTimeout(() => headerTimeout.abort(), input.headerWaitMs);
         const headers: Record<string, string> = {
             Accept: "text/event-stream",
             "Cache-Control": "no-store",
@@ -368,6 +373,7 @@ export class AcrRuntimeClient {
                 repositoryScopes: input.authorization.repositoryScopes,
                 subject: input.authorization.subject,
             }),
+            "X-ACR-Wait-Budget-Seconds": String(input.waitBudgetSeconds),
             "X-Request-ID": input.requestId,
         };
         if (input.submissionId !== undefined) headers["X-ACR-Submission-ID"] = input.submissionId;
@@ -376,7 +382,7 @@ export class AcrRuntimeClient {
         const upstream = new AbortController();
         const abortUpstream = (): void => upstream.abort();
         input.signal.addEventListener("abort", abortUpstream, { once: true });
-        headerTimeout.addEventListener("abort", abortUpstream, { once: true });
+        headerTimeout.signal.addEventListener("abort", abortUpstream, { once: true });
         try {
             const response = await fetch(clientUrl(this.config, INVESTIGATIONS_PATH), {
                 body: input.body,
@@ -386,11 +392,10 @@ export class AcrRuntimeClient {
                 redirect: "error",
                 signal: upstream.signal,
             });
-            headerTimeout.removeEventListener("abort", abortUpstream);
             return response;
         } catch (error) {
             if (input.signal.aborted) throw error;
-            if (headerTimeout.aborted) {
+            if (headerTimeout.signal.aborted) {
                 throw new AcrRuntimeError(
                     acrRuntimeErrorCodes.timeout,
                     "Agent Context Runtime did not respond in time.",
@@ -403,6 +408,11 @@ export class AcrRuntimeClient {
                 "Agent Context Runtime is temporarily unavailable.",
                 { cause: error, retryable: true },
             );
+        } finally {
+            clearTimeout(headerTimer);
+            // Headers (or a failure) ended the header wait. `input.signal` keeps governing the
+            // body: the caller aborts it to stop the stream.
+            headerTimeout.signal.removeEventListener("abort", abortUpstream);
         }
     }
 

@@ -30,6 +30,11 @@ export const acrRuntimeErrorCodes = {
     noRepository: "no_repository",
     // Ask Dev (CHAOS-11921): a mutating call whose `Origin` is not this site.
     originRefused: "origin_refused",
+    // Ask Dev deadline chain (CHAOS-3608), web-origin terminals: setup left less than ACR's
+    // minimum wait budget; no upstream bytes for the stall window; the run reached its deadline.
+    budgetExhausted: "budget_exhausted",
+    stalled: "stalled",
+    interrupted: "interrupted",
     interpretationRejected: "interpretation_rejected",
     synthesisRejected: "synthesis_rejected",
 } as const;
@@ -70,6 +75,12 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
     switch (code) {
         case acrRuntimeErrorCodes.alreadyCompleted:
             return "This request was already completed.";
+        case acrRuntimeErrorCodes.budgetExhausted:
+            return "Dev ran out of time before the question could start. Ask again.";
+        case acrRuntimeErrorCodes.stalled:
+            return "The answer stopped arriving. Ask again.";
+        case acrRuntimeErrorCodes.interrupted:
+            return "The run was interrupted before it finished. Ask again.";
         case acrRuntimeErrorCodes.configuration:
         case acrRuntimeErrorCodes.unavailable:
         case acrRuntimeErrorCodes.upstream:
