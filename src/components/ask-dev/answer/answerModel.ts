@@ -26,7 +26,9 @@ type AnswerFields =
     | "limitations"
     | "warnings"
     | "evidence_ref_ids"
-    | "evidence_ref_labels";
+    | "evidence_ref_labels"
+    // CHAOS-12157: the status ACR replaced, when its completeness authority corrected it.
+    | "status_correction";
 
 export type AnswerResult =
     | Pick<ACRContextFabricInvestigationResultV1, AnswerFields>
