@@ -18,6 +18,9 @@ const OPS_TOKENS = [
 
 type Scan = { url: string; hits: string[] };
 
+/** A body read that does not end (a stream, a discarded prefetch) is counted out, loudly, not awaited. */
+const BODY_READ_MS = 5_000;
+
 function hitsIn(text: string): string[] {
     return OPS_TOKENS.filter((token) => text.includes(token));
 }
@@ -28,20 +31,29 @@ test("no Ops token reaches page JS while /dashboard loads with data", async ({ p
     const unread: string[] = [];
     page.on("response", (response: Response) => {
         if (new URL(response.url()).origin !== origin) return;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timedOut = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+                () => reject(new Error(`no body in ${BODY_READ_MS} ms`)),
+                BODY_READ_MS,
+            );
+        });
         scans.push(
-            response
-                .text()
+            Promise.race([response.text(), timedOut])
                 .then((text) => ({ url: response.url(), hits: hitsIn(text) }))
                 .catch((error: unknown) => {
-                    // A redirect or an aborted prefetch has no body to read; it is counted out.
+                    // A redirect, a discarded prefetch or an unended stream: counted out, and named.
                     unread.push(`${response.status()} ${response.url()} ${String(error)}`);
                     return null;
-                }),
+                })
+                .finally(() => clearTimeout(timer)),
         );
     });
 
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
+    // Data the server render read from the ops mock with the session token.
+    await expect(page.getByTestId("cockpit-top-change-evidence")).toHaveText("Open evidence");
 
     // What `useSession` reads: the signed-in user, and no token under any key.
     const session = await page.evaluate(async () => {
@@ -69,9 +81,12 @@ test("no Ops token reaches page JS while /dashboard loads with data", async ({ p
                 data: { activeOrg: { access_token: "planted", user: { org_id: "x" } } },
             }),
         });
-        return res.status;
+        return { status: res.status, text: await res.text() };
     });
-    expect(planted).toBe(400);
+    expect(planted).toEqual({
+        status: 400,
+        text: JSON.stringify({ error: "unsupported_session_update" }),
+    });
 
     const html = await page.content();
     expect(hitsIn(html)).toEqual([]);
@@ -79,6 +94,12 @@ test("no Ops token reaches page JS while /dashboard loads with data", async ({ p
     const results = (await Promise.all(scans)).filter((scan): scan is Scan => scan !== null);
     // No answers read means the measurement did not happen.
     expect(results.length, `answers read (unreadable: ${unread.join(", ")})`).toBeGreaterThan(3);
-    expect(results.some((scan) => new URL(scan.url).pathname === "/api/auth/session")).toBe(true);
+    // Unread answers are only redirects and prefetches the page discarded, never a stalled body.
+    expect(unread.filter((line) => line.includes(`no body in ${BODY_READ_MS} ms`))).toEqual([]);
+    const read = new Set(results.map((scan) => new URL(scan.url).pathname));
+    // The page document and the session answer must be among the bytes read.
+    expect([...read], `unreadable: ${unread.join(", ")}`).toEqual(
+        expect.arrayContaining(["/dashboard", "/api/auth/session"]),
+    );
     expect(results.filter((scan) => scan.hits.length > 0)).toEqual([]);
 });
