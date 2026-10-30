@@ -353,6 +353,9 @@ jobs:
                   nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
                     >/tmp/dev-health-go-api.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
+                  # CHAOS-12138: keep the exact environment so the guided-onboarding pass can restart go-api
+                  # with one flag changed (see "Restart go-api for the guided-onboarding pass").
+                  cp /proc/$(cat /tmp/dev-health-go-api.pid)/environ /tmp/dev-health-go-api.environ
                   nohup /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
                     >/tmp/dev-health-query-api.log 2>&1 &
                   echo $! >/tmp/dev-health-query-api.pid
@@ -548,9 +551,36 @@ jobs:
                   PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
                   TEST_SUPERUSER_EMAIL: admin@devhealth.example
                   TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
-                  TEST_TARGET_USER_ID: ${{ secrets.TEST_TARGET_USER_ID }}
-                  TEST_SUPERUSER_TARGET_USER_ID: ${{ secrets.TEST_SUPERUSER_TARGET_USER_ID }}
+                  # Impersonation targets are provisioned by the specs through the API
+                  # (tests/live/helpers.ts provisionUser); no secret is involved.
               run: bash ci/run_tests.sh live-e2e
+
+            # CHAOS-12138: the orgless onboarding specs (tagged @guided) only hold when the backend does
+            # not auto-create an org on register. Restart go-api with that one flag changed, keeping the
+            # rest of its environment, and run only those specs. Skips fail both passes.
+            - name: Restart go-api for the guided-onboarding pass
+              run: |
+                  set -euo pipefail
+                  kill "$(cat /tmp/dev-health-go-api.pid)"
+                  for i in {1..30}; do kill -0 "$(cat /tmp/dev-health-go-api.pid)" 2>/dev/null || break; sleep 1; done
+                  xargs -0 -a /tmp/dev-health-go-api.environ env AUTH_AUTO_CREATE_ORG_ON_REGISTER=false \
+                    nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
+                    >/tmp/dev-health-go-api-guided.log 2>&1 &
+                  echo $! >/tmp/dev-health-go-api.pid
+                  ok=0
+                  for i in {1..60}; do
+                    if curl -fsS http://127.0.0.1:8002/healthz >/dev/null; then ok=1; break; fi
+                    sleep 2
+                  done
+                  [ "${ok}" -eq 1 ] || { echo "::error::go-api did not restart"; cat /tmp/dev-health-go-api-guided.log; exit 1; }
+              working-directory: dev-health-ops
+
+            - name: Run live backend e2e tier (guided onboarding)
+              env:
+                  PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
+                  TEST_SUPERUSER_EMAIL: admin@devhealth.example
+                  TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
+              run: bash ci/run_tests.sh live-e2e-guided
 
             - name: Upload Playwright report
               if: always()

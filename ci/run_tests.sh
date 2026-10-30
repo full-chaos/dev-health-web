@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|live-e2e-guided|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -410,9 +410,17 @@ run_e2e_context_fabric() {
   run_isolated_e2e_suite context-fabric test:e2e:context-fabric
 }
 
+# CHAOS-12138: a skipped live test is an environment fault, not a pass. Run the tier, then fail
+# on any skipped test and print the counts. The gate runs even when playwright failed, so the
+# summary always shows; the first non-zero status wins.
 run_live_e2e() {
   install_playwright_browser
-  run_pnpm_script test:e2e:live
+  local json="${LIVE_E2E_JSON:-playwright-report/live-results.json}"
+  rm -f "${json}"
+  local status=0
+  LIVE_E2E_JSON="${json}" run_pnpm_script test:e2e:live || status=$?
+  node ci/live-e2e-skip-gate.mjs "${json}" "${LIVE_E2E_LABEL:-default}" || status=$?
+  return "${status}"
 }
 
 case "${tier}" in
@@ -454,6 +462,9 @@ case "${tier}" in
     ;;
   live-e2e)
     run_live_e2e
+    ;;
+  live-e2e-guided)
+    LIVE_GUIDED_ONBOARDING=1 LIVE_E2E_JSON=playwright-report/live-results-guided.json LIVE_E2E_LABEL=guided run_live_e2e
     ;;
   design-lint)
     run_pnpm_script design-lint
