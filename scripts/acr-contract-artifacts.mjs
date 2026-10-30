@@ -173,6 +173,7 @@ function insertUnique(target, key, value, context) {
 // bundle; that is separate work.
 const TYPE_GENERATION_EXCLUDED = new Set([
     "context_fabric_answer_projection.v1.schema.json",
+    "context_fabric_investigation_event.v1.schema.json",
     "context_fabric_investigation_result.v2.schema.json",
     "oauth_token_exchange_error.v1.schema.json",
     "token_exchange_response.v1.schema.json",

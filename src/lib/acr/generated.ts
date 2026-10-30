@@ -4781,6 +4781,28 @@ export type ACRContextFabricInvestigationResultV1 = {
     };
 };
 
+/**
+ * The caller's own submission record (CHAOS-11913): GET /api/v1/context-fabric/investigations/submissions/{submission_id}. Served to the principal that admitted the submission only; unknown other caller, and an unknown id, get the same 404 not_found. A client that lost a create response polls this and replays result_id when state is done.
+ */
+export interface ContextFabricSubmissionStatusV1 {
+    schema_version: "context_fabric_submission_status.v1";
+    submission_id: string;
+    /**
+     * running: the run is live. done: result_id names the final result. done_unsaved: the answer was served but not stored, so there is nothing to replay. abandoned: the run ended without an answer, or ran past its budget plus 30 seconds. No state runs the request again.
+     */
+    state: "running" | "done" | "done_unsaved" | "abandoned";
+    reserved_result_id: string;
+    /**
+     * Present exactly when state is done: the reserved id, or the reused answer's id when the run served one. Read it with GET /api/v1/context-fabric/investigations/{result_id}, which decides the read again.
+     */
+    result_id?: string;
+    /**
+     * The X-ACR-Thread-ID the submission was admitted with, when it named one.
+     */
+    thread_id?: string;
+    updated_at: string;
+}
+
 export type ACRContextPacketItemV1 = {
     schema_version: "context_packet_item.v1";
     packet_item_id: string;
@@ -5095,6 +5117,9 @@ export interface ACRErrorV1 {
     schema_version: "error.v1";
     request_id: string;
     error: {
+        /**
+         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted.
+         */
         code:
             | "invalid_request"
             | "budget_refusal"
@@ -5111,7 +5136,14 @@ export interface ACRErrorV1 {
             | "store_unavailable"
             | "interpretation_rejected"
             | "synthesis_rejected"
-            | "internal_error";
+            | "internal_error"
+            | "stream_unavailable"
+            | "submission_mismatch"
+            | "submission_in_progress"
+            | "submission_unsaved"
+            | "submission_abandoned"
+            | "concurrency_limited"
+            | "allowance_exhausted";
         message: string;
         http_status: number;
         retryable: boolean;
@@ -5122,9 +5154,9 @@ export interface ACRErrorV1 {
             reason?: string;
             field?: string;
             /**
-             * On a 429 rate_limited: which limit refused the request. request_budget is the organization's request budget; capabilities_budget is the capabilities handshake's own budget, spent by the caller-resolution call every MCP request makes; the credential was already decided in both cases. A consumer treats a value outside this enum as absent.
+             * On a 429 rate_limited: which limit refused the request. request_budget is the organization's request budget; capabilities_budget is the capabilities handshake's own budget, spent by the caller-resolution call every MCP request makes; the credential was already decided in both cases. On a 429 concurrency_limited (CHAOS-11914): principal or org, the shared running-run limit that refused the submission. A consumer treats a value outside this enum as absent.
              */
-            limit?: "request_budget" | "capabilities_budget";
+            limit?: "request_budget" | "capabilities_budget" | "principal" | "org";
             /**
              * On a 504 upstream_unavailable: which deadline ended the investigation. model is one model attempt reaching its own timeout (ACR_CONTEXT_FABRIC_MODEL_TIMEOUT) before the request deadline; request is the request deadline (ACR_REQUEST_TIMEOUT or the caller's shorter wait budget). Absent when the answer cannot tell which. A consumer treats a value outside this enum as absent.
              */
