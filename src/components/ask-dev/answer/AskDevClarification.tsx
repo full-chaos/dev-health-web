@@ -37,7 +37,8 @@ function OfferGroup({
 }) {
     const titleId = useId();
     return (
-        <section
+        <div
+            role="group"
             aria-labelledby={titleId}
             className="space-y-2"
             data-testid="ask-dev-clarification-family"
@@ -82,7 +83,7 @@ function OfferGroup({
                     })}
                 </ul>
             )}
-        </section>
+        </div>
     );
 }
 

@@ -115,15 +115,19 @@ function FindingItem({ finding }: { finding: AnswerFinding }) {
     );
 }
 
+/**
+ * One part of an answer: a labelled group, not a landmark. A transcript holds many answers, and a
+ * named `section` per part made their landmarks repeat (CHAOS-12157, axe `landmark-unique`).
+ */
 function Part({ title, testId, children }: { title: string; testId: string; children: ReactNode }) {
     const titleId = useId();
     return (
-        <section aria-labelledby={titleId} data-testid={testId} className="space-y-2">
+        <div role="group" aria-labelledby={titleId} data-testid={testId} className="space-y-2">
             <h3 id={titleId} className="text-sm font-semibold text-foreground">
                 {title}
             </h3>
             {children}
-        </section>
+        </div>
     );
 }
 

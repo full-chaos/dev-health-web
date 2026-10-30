@@ -96,3 +96,19 @@ describe("a served status correction is shown as served, never re-derived", () =
         expect(pill()).toHaveTextContent(ANSWER_STATUS_LABEL.partial);
     });
 });
+
+describe("two answered turns in one transcript", () => {
+    it("repeat no landmark: an answer's parts are groups, not named regions", async () => {
+        // Found by the e2e axe check of this ticket: the first transcript with two answers.
+        const axe = (await import("axe-core")).default;
+        const { container } = render(
+            <div>
+                <AskDevAnswer result={knobOff} />
+                <AskDevAnswer result={corrected} />
+            </div>,
+        );
+        const result = await axe.run(container, { runOnly: ["landmark-unique"] });
+        expect(result.violations.map((v) => v.id)).toEqual([]);
+        expect(container.querySelectorAll("section[aria-labelledby]")).toHaveLength(0);
+    });
+});

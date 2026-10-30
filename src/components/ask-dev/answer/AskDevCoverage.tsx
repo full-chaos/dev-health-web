@@ -48,12 +48,12 @@ function Block({
 }) {
     const titleId = useId();
     return (
-        <section aria-labelledby={titleId} data-testid={testId} className="space-y-1.5">
+        <div role="group" aria-labelledby={titleId} data-testid={testId} className="space-y-1.5">
             <h4 id={titleId} className="text-xs font-semibold text-(--ink-muted)">
                 {title}
             </h4>
             {children}
-        </section>
+        </div>
     );
 }
 
@@ -102,7 +102,8 @@ export function AskDevCoverage({ result }: { result: CoverageResult }) {
     const warnings = result.warnings ?? [];
 
     return (
-        <section
+        <div
+            role="group"
             aria-labelledby={titleId}
             className="space-y-3 rounded-(--radius-sm) border border-(--card-stroke) p-3"
             data-testid="ask-dev-coverage"
@@ -241,6 +242,6 @@ export function AskDevCoverage({ result }: { result: CoverageResult }) {
                     </div>
                 )}
             </Block>
-        </section>
+        </div>
     );
 }
