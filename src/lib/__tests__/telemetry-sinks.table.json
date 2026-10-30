@@ -159,6 +159,14 @@
         "log": 1,
         "sentry": 0
     },
+    "src/lib/acr/ops.ts": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/lib/acr/service.ts": {
+        "log": 4,
+        "sentry": 0
+    },
     "src/lib/actionFailure.ts": {
         "log": 3,
         "sentry": 0
