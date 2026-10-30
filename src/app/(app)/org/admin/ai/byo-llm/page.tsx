@@ -5,6 +5,7 @@ import { ByoLlmOwnModelToggle } from "@/components/admin/llm/ByoLlmOwnModelToggl
 import { ByoLlmPromptCacheToggle } from "@/components/admin/llm/ByoLlmPromptCacheToggle";
 import { ByoLlmErrorStates } from "@/components/admin/llm/ByoLlmErrorStates";
 import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
+import { ByoLlmCategorizeOptIn } from "@/components/admin/llm/ByoLlmCategorizeOptIn";
 import { ByoLlmPurposeOverrides } from "@/components/admin/llm/ByoLlmPurposeOverrides";
 import { ByoLlmSpendSummary } from "@/components/admin/llm/ByoLlmSpendSummary";
 import {
@@ -52,6 +53,10 @@ export default function ByoLlmAISetupPage() {
             <ByoLlmAiFeaturesToggle
                 loadAction={getServiceModelSetting}
                 saveAction={setServiceModelSetting}
+            />
+            <ByoLlmCategorizeOptIn
+                loadSettingsAction={getLLMSettings}
+                saveAction={upsertLLMSettings}
             />
             <ByoLlmPurposeOverrides
                 loadSettingsAction={getLLMSettings}
