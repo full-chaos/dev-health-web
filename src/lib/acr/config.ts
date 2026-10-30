@@ -116,3 +116,42 @@ export function loadAcrRuntimeConfig(): AcrRuntimeConfig {
         timeoutMs: parsed.data.timeoutMs,
     };
 }
+
+export type FirstPartyBrowserClient = {
+    /** ACR's OAuth issuer: the resource ACR binds for its first-party browser client only. */
+    readonly resource: string;
+    /** This web app's public origin: where that client's redirects come back to. */
+    readonly webOrigin: string;
+};
+
+function exactOrigin(raw: string | undefined): string | undefined {
+    const value = raw?.trim();
+    if (!value) return undefined;
+    try {
+        const url = new URL(value);
+        return (url.protocol === "https:" || url.protocol === "http:") &&
+            url.username === "" &&
+            url.password === ""
+            ? url.origin
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * The first-party browser client of ACR's OAuth server (CHAOS-12095, design T4c). ACR binds its
+ * own issuer (`ACR_OAUTH_ISSUER`, the acr-api resource) only for a configured first-party browser
+ * client, and refuses it for every other client (CHAOS-12123), so a consent request bound to it
+ * is that client's. `undefined` when ACR_OAUTH_ISSUER or the web origin (AUTH_URL, NEXTAUTH_URL)
+ * is unset or not an origin: then no client is first-party and every client sees the consent page.
+ */
+export function loadFirstPartyBrowserClient(): FirstPartyBrowserClient | undefined {
+    const rawIssuer = process.env.ACR_OAUTH_ISSUER?.trim();
+    const resource = exactOrigin(rawIssuer);
+    const webOrigin = exactOrigin(process.env.AUTH_URL ?? process.env.NEXTAUTH_URL);
+    if (resource === undefined || resource !== rawIssuer || webOrigin === undefined) {
+        return undefined;
+    }
+    return { resource, webOrigin };
+}

@@ -2,7 +2,9 @@ import "server-only";
 
 import { z } from "zod";
 
+import { logger } from "@/lib/logger";
 import { getBackendUrl } from "@/lib/origin";
+import type { IssuanceProvenance } from "./assertion";
 import { fetchBoundedJson } from "./http";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import { ACR_REPOSITORY_SCOPES_QUERY } from "./queries";
@@ -32,7 +34,14 @@ const scopesSchema = z
     })
     .loose();
 
+const impersonationStatusSchema = z.object({ is_impersonating: z.boolean() }).loose();
+
+/** The Ops session id form ACR accepts as `sid`: 1-256 printable ASCII characters, no space. */
+const sessionIdPattern = /^[\x21-\x7e]{1,256}$/u;
+
 export type OpsAuthorization = {
+    /** Set for `credential:issue` only (CHAOS-12095); signed as `sid` and `impersonating`. */
+    readonly provenance?: IssuanceProvenance;
     readonly orgId: string;
     readonly repositoryScopes: readonly string[];
     readonly subject: string;
@@ -57,6 +66,7 @@ type ResolveOpsAuthorizationInput = {
 type ResolveOpsCredentialIssuanceAuthorizationInput = {
     readonly accessToken: string;
     readonly orgId: string;
+    readonly provenance: IssuanceProvenance;
     readonly repositoryScopes: readonly string[];
     readonly signal: AbortSignal;
     readonly subject: string;
@@ -187,9 +197,87 @@ export async function resolveOpsCredentialIssuanceAuthorization(
     await requireAcrEntitlement(input);
     return {
         orgId: input.orgId,
+        provenance: input.provenance,
         repositoryScopes: input.repositoryScopes,
         subject: input.subject,
     };
+}
+
+/**
+ * The claims of the Ops access token the web server holds in its sealed session. The token
+ * reached this server from Ops, never from the browser, and the browser cannot read or change
+ * the session that carries it; Ops checks its signature on every Ops call. `undefined` when it
+ * is not a JWT.
+ */
+function opsTokenClaims(accessToken: string): Readonly<Record<string, unknown>> | undefined {
+    const parts = accessToken.split(".");
+    if (parts.length !== 3 || !parts[1]) return undefined;
+    try {
+        const value: unknown = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+        return typeof value === "object" && value !== null && !Array.isArray(value)
+            ? (value as Record<string, unknown>)
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Derives the provenance of a `credential:issue` assertion (CHAOS-12095, design T4c) on the web
+ * server only: `sessionId` is the `sid` of the server's own Ops session token, and
+ * `impersonating` is true when ANY of these says so — a fresh Ops impersonation status read, the
+ * session's impersonation state, an org that differs from the real org, or an Ops token minted
+ * for an impersonation (`impersonating_user_id`). The status read is not cached; a failed read
+ * fails closed. Nothing here reads the request the browser sent.
+ */
+export async function resolveIssuanceProvenance(input: {
+    readonly accessToken: string;
+    readonly sessionImpersonating: boolean;
+    readonly signal: AbortSignal;
+    readonly subject: string;
+}): Promise<IssuanceProvenance> {
+    const status = await fetchBoundedJson({
+        headers: opsHeaders(input.accessToken),
+        method: "GET",
+        signal: input.signal,
+        timeoutMs: 5_000,
+        url: backendUrl("/api/v1/admin/impersonate/status"),
+    });
+    const parsed = status.status === 200 ? impersonationStatusSchema.safeParse(status.value) : null;
+    if (!parsed?.success) {
+        logger.warn(
+            {
+                module: "acr-issuance",
+                reason: parsed ? "malformed" : "status",
+                status: status.status,
+                userId: input.subject,
+            },
+            "acr credential issue refused: impersonation status read failed",
+        );
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.unavailable,
+            "Agent Context Runtime is temporarily unavailable.",
+            { retryable: true },
+        );
+    }
+    const claims = opsTokenClaims(input.accessToken);
+    const impersonatedToken =
+        typeof claims?.["impersonating_user_id"] === "string" &&
+        claims["impersonating_user_id"] !== "";
+    const rawSessionId = claims?.["sid"];
+    const sessionId =
+        typeof rawSessionId === "string" && sessionIdPattern.test(rawSessionId)
+            ? rawSessionId
+            : undefined;
+    if (rawSessionId !== undefined && sessionId === undefined) {
+        logger.warn(
+            { module: "acr-issuance", reason: "unusable_sid", userId: input.subject },
+            "acr credential issue: the Ops session token has an unusable sid; none is signed",
+        );
+    }
+    const impersonating =
+        parsed.data.is_impersonating || input.sessionImpersonating || impersonatedToken;
+    return sessionId === undefined ? { impersonating } : { impersonating, sessionId };
 }
 
 export async function resolveOpsAuthorization(

@@ -5,14 +5,14 @@ const redirectMock = vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
 });
 const authMock = vi.fn();
-const previewOAuthConsentMock = vi.fn();
+const openOAuthConsentMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
     redirect: (url: string) => redirectMock(url),
 }));
 vi.mock("@/lib/auth", () => ({ auth: () => authMock() }));
 vi.mock("@/lib/acr/service", () => ({
-    previewOAuthConsent: (input: unknown) => previewOAuthConsentMock(input),
+    openOAuthConsent: (input: unknown) => openOAuthConsentMock(input),
 }));
 vi.mock("@/components/acr/OAuthConsentForm", () => ({
     OAuthConsentForm: (props: {
@@ -44,14 +44,17 @@ describe("OAuthAuthorizePage", () => {
             access_token: "ops-token",
             user: { id: "user-1", org_id: "org-1", real_org_id: "org-1" },
         });
-        previewOAuthConsentMock.mockResolvedValue({
-            clientKind: "dynamic",
-            clientName: "Claude Code",
-            clientSelfAsserted: true,
-            expiresAt: "2026-09-22T12:40:00Z",
-            redirectOrigin: "http://localhost:53141",
-            resource: "https://mcp.fullchaos.dev/mcp",
-            scopes: ["context:read", "evidence:read"],
+        openOAuthConsentMock.mockResolvedValue({
+            kind: "review",
+            preview: {
+                clientKind: "dynamic",
+                clientName: "Claude Code",
+                clientSelfAsserted: true,
+                expiresAt: "2026-09-22T12:40:00Z",
+                redirectOrigin: "http://localhost:53141",
+                resource: "https://mcp.fullchaos.dev/mcp",
+                scopes: ["context:read", "evidence:read"],
+            },
         });
     });
 
@@ -83,14 +86,15 @@ describe("OAuthAuthorizePage", () => {
         await expect(OAuthAuthorizePage({ searchParams: searchParams(HANDLE) })).rejects.toThrow(
             `NEXT_REDIRECT:/auth/signin?callbackUrl=${encodeURIComponent(`/acr/authorize?handle=${HANDLE}`)}`,
         );
-        expect(previewOAuthConsentMock).not.toHaveBeenCalled();
+        expect(openOAuthConsentMock).not.toHaveBeenCalled();
     });
 
-    it("renders the denied state while impersonating, without previewing", async () => {
-        authMock.mockResolvedValue({
-            access_token: "ops-token",
-            user: { id: "user-1", org_id: "org-impersonated", real_org_id: "org-1" },
-        });
+    it("renders the denied state when the server step refuses an impersonating session", async () => {
+        // The refusal itself (by the impersonation state, same org included) is pinned in
+        // src/lib/acr/__tests__/consent-provenance.test.ts against the real service.
+        openOAuthConsentMock.mockRejectedValue(
+            new AcrRuntimeError(acrRuntimeErrorCodes.notEntitled, "redacted", { status: 403 }),
+        );
 
         render(await OAuthAuthorizePage({ searchParams: searchParams(HANDLE) }));
 
@@ -98,7 +102,18 @@ describe("OAuthAuthorizePage", () => {
             "data-initial-state",
             "denied",
         );
-        expect(previewOAuthConsentMock).not.toHaveBeenCalled();
+    });
+
+    it("redirects with no click when the server step approved the first-party browser client", async () => {
+        openOAuthConsentMock.mockResolvedValue({
+            kind: "approved",
+            redirectUrl: "https://app.example.test/ask-dev/oauth/callback?code=c&state=s",
+        });
+
+        await expect(OAuthAuthorizePage({ searchParams: searchParams(HANDLE) })).rejects.toThrow(
+            "NEXT_REDIRECT:https://app.example.test/ask-dev/oauth/callback?code=c&state=s",
+        );
+        expect(screen.queryByTestId("oauth-consent-form")).toBeNull();
     });
 
     it("renders the preview once signed in with a matching org", async () => {
@@ -116,7 +131,7 @@ describe("OAuthAuthorizePage", () => {
         [acrRuntimeErrorCodes.invalidRequest, "invalid"],
         [acrRuntimeErrorCodes.unavailable, "unavailable"],
     ] as const)("renders the matching state when ACR reports %s", async (code, expectedState) => {
-        previewOAuthConsentMock.mockRejectedValue(new AcrRuntimeError(code, "redacted"));
+        openOAuthConsentMock.mockRejectedValue(new AcrRuntimeError(code, "redacted"));
 
         render(await OAuthAuthorizePage({ searchParams: searchParams(HANDLE) }));
 

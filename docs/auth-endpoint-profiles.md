@@ -197,17 +197,31 @@ Every mint funnels through `signWebAssertion`: the private
 - `keyId` (JWT `kid`) is a separate env var (`ACR_WEB_ASSERTION_KID`),
   independently validated as `[A-Za-z0-9._-]{1,128}`.
 
-Positive pattern worth copying platform-wide (per orchestrator's known
-facts about acr's `authenticateWebAssertion` rejecting dual
-`X-ACR-Web-Assertion`+`Authorization`): `approveDeviceAuthorization()` and
-`previewDeviceAuthorization()` in `src/lib/acr/service.ts` (lines 149-218)
-explicitly **refuse to issue an assertion while impersonating** — they
-compare `rawSession.user.real_org_id` against the impersonation-resolved
-`session.orgId` and throw `403 notEntitled` on mismatch. No other web route
-in this inventory has an equivalent explicit impersonation block; the other
-two minting routes rely only on `session.user.org_id` already being
-impersonation-resolved (`resolveActiveOrgId()`), which is weaker (silently
-scopes to the impersonated org rather than refusing).
+### `credential:issue` provenance and the impersonation refusal (CHAOS-12095)
+
+Every `credential:issue` call (`previewDeviceAuthorization`, `approveDeviceAuthorization`,
+`previewOAuthConsent`, `openOAuthConsent`, `decideOAuthConsent` in `src/lib/acr/service.ts`) starts
+in `issuanceContext()`. The web **server** derives two values, and the browser never supplies them
+(`resolveIssuanceProvenance()` in `src/lib/acr/ops.ts`):
+
+- `sid`: the session id claim of the server's own Ops session token (the token in the sealed
+  session; the browser cannot read or change it). A token with no usable `sid` signs none.
+- `impersonating`: true when any of these says so: a fresh Ops status read
+  (`GET /api/v1/admin/impersonate/status`, not cached; a failed read fails closed with 503), the
+  session's impersonation state, an org that differs from the real org, or an Ops token that
+  carries `impersonating_user_id`.
+
+While `impersonating` is true, issuance is refused with `403 notEntitled` before any ACR call, also
+for an impersonation inside the same organization (chris decision 6). Otherwise both values are
+signed into the assertion as the `sid` and `impersonating` claims, which ACR parses (CHAOS-12123).
+Assertions for other permissions carry neither claim. ACR's claim decoder refuses unknown claims:
+an ACR without that parser refuses every `credential:issue` assertion of this web (401).
+
+The first-party browser client (ACR's own issuer is its resource; `ACR_OAUTH_ISSUER`) gets no
+consent click (chris decision 2): `openOAuthConsent()` approves it from the consent page's server
+render, server to server through ACR's consent route, with the live org scope grant (`["*"]`). It
+needs a session with a `sid`. The approve button route refuses that client (400). Third-party MCP
+clients keep the consent page and the repository choice.
 
 ### Ask Dev route (CHAOS-11921)
 
