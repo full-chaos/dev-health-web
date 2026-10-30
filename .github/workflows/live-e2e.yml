@@ -353,6 +353,9 @@ jobs:
                   nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
                     >/tmp/dev-health-go-api.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
+                  # CHAOS-12138: keep the exact environment so the guided-onboarding pass can restart go-api
+                  # with one flag changed (see "Restart go-api for the guided-onboarding pass").
+                  cp /proc/$(cat /tmp/dev-health-go-api.pid)/environ /tmp/dev-health-go-api.environ
                   nohup /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
                     >/tmp/dev-health-query-api.log 2>&1 &
                   echo $! >/tmp/dev-health-query-api.pid
@@ -548,9 +551,11 @@ jobs:
                   PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
                   TEST_SUPERUSER_EMAIL: admin@devhealth.example
                   TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
-                  TEST_TARGET_USER_ID: ${{ secrets.TEST_TARGET_USER_ID }}
-                  TEST_SUPERUSER_TARGET_USER_ID: ${{ secrets.TEST_SUPERUSER_TARGET_USER_ID }}
-              run: bash ci/run_tests.sh live-e2e
+                  # Impersonation targets are provisioned by the specs through the API
+                  # (tests/live/helpers.ts provisionUser); no secret is involved.
+              # CHAOS-12138: two passes in one tier -- the default backend, then go-api restarted with
+              # AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for the @guided specs. Any skip fails either pass.
+              run: bash ci/run_tests.sh live-e2e-two-pass
 
             - name: Upload Playwright report
               if: always()
