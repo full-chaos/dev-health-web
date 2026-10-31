@@ -94,7 +94,12 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             }),
             "metrics/quadrant",
         ),
-        loadScopePageEntities({ routeId: "flow_metrics", view: "metrics", filters }),
+        loadScopePageEntities({
+            routeId: "flow_metrics",
+            view: "metrics",
+            tab: activeTab.id,
+            filters,
+        }),
     ]);
 
     if (!health.ok) {

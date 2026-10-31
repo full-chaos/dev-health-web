@@ -106,6 +106,20 @@ describe("loadScopePageEntities", () => {
         ]);
     });
 
+    it("keeps a repository scope where the scope bar locks nothing (codex r3 on #1647)", async () => {
+        // The bar locks the scope only on a view with page filters; Complexity has none, so its
+        // repository scope is the page's scope and its reads use it.
+        await expect(
+            loadScopePageEntities({
+                routeId: "complexity",
+                view: "complexity",
+                filters: filter({ scope: { level: "repo", ids: ["dev-health-web"] } }),
+            }),
+        ).resolves.toEqual([
+            { kind: "repository", id: "repository:repo-1", label: "dev-health-web" },
+        ]);
+    });
+
     it("on a failed read (empty maps) labels the team by its id and proposes no repository", async () => {
         fetchFilterNames.mockResolvedValue({ teams: {}, repos: {}, developers: {} });
         await expect(

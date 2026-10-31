@@ -154,6 +154,21 @@ test.describe("each approved page states its context", () => {
         );
     });
 
+    test("complexity: a repository scope stays the page's scope, and is sent by its id", async ({
+        page,
+    }) => {
+        // The scope bar locks only a view with page filters; Complexity has none (codex r3 on
+        // #1647). Sent after any rewrite of the URL, so a one-render proposal would fail here.
+        const panel = await expectChips(
+            page,
+            `/complexity?f=${filter({ scope: { level: "repo", ids: ["dev-health-web"] } })}`,
+            ["Repository:dev-health-web"],
+        );
+        expect(await askAndReadScope(page, panel)).toEqual({
+            subject_hints: [{ ...WEB_REPO, source: SOURCE }],
+        });
+    });
+
     test("cognitive load: the organization, the team and the repository filter", async ({
         page,
     }) => {
