@@ -16,6 +16,8 @@ const nav = vi.hoisted(() => {
         pathname: "/dashboard",
         search: "",
         pushes: [] as string[],
+        /** A navigation that has not finished yet: `push` records the route and stays put. */
+        hold: false,
         listeners,
         go(href: string) {
             const url = new URL(href, "http://localhost");
@@ -38,7 +40,7 @@ vi.mock("next/navigation", async () => {
         useRouter: () => ({
             push: (href: string) => {
                 nav.pushes.push(href);
-                nav.go(href);
+                if (!nav.hold) nav.go(href);
             },
             replace: vi.fn(),
             refresh: vi.fn(),
@@ -58,6 +60,7 @@ import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { resetRightDrawerForTest, rightDrawerOwnerForTest } from "@/lib/shell/rightDrawer";
 
 import { AskDevFullPage, FULL_PAGE_COPY } from "../AskDevFullPage";
+import { AskDevLauncher } from "../AskDevLauncher";
 import { AskDevPanel } from "../AskDevPanel";
 import { TRANSCRIPT_COPY } from "../AskDevConversationView";
 import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
@@ -65,6 +68,7 @@ import {
     AskDevConversationProvider,
     partitionTag,
     UNSAVED_CONVERSATION_KEY,
+    useAskDevNotSaved,
 } from "../conversation/AskDevConversationContext";
 import { COMPOSER_COPY } from "../conversation/AskDevComposer";
 import type { AskDevTransport } from "../conversation/transport";
@@ -85,6 +89,11 @@ const subscribe = (listener: () => void) => {
     return () => nav.listeners.delete(listener);
 };
 
+/** What `useAskDevNotSaved` says, for the hook's own contract. */
+function NotSavedProbe() {
+    return <output data-testid="not-saved-probe">{String(useAskDevNotSaved())}</output>;
+}
+
 /** The page the route shows: `/dev`, or another page with a launcher-like opener. */
 function Page() {
     const pathname = useSyncExternalStore(subscribe, () => nav.pathname);
@@ -102,8 +111,10 @@ function renderShell(transport: AskDevTransport | null, features: Record<string,
         <AdminTierProvider tier="team" features={features}>
             <AskDevShellProvider>
                 <AskDevConversationProvider transport={transport}>
+                    <AskDevLauncher placement="top-bar" />
                     <Page />
                     <AskDevPanel />
+                    <NotSavedProbe />
                 </AskDevConversationProvider>
             </AskDevShellProvider>
         </AdminTierProvider>,
@@ -122,6 +133,7 @@ async function askInPanel(question = "Which projects are at risk?") {
 }
 
 beforeEach(() => {
+    nav.hold = false;
     nav.pushes.length = 0;
     nav.go("/dashboard?f=team");
     window.sessionStorage.clear();
@@ -160,6 +172,19 @@ describe("Expand: the full page shows the same run, and nothing is sent again", 
         gate.resolve();
         expect(await within(page()).findByTestId("ask-dev-answer")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(1);
+    });
+
+    it("closes the panel at once, before the route has changed", async () => {
+        const transport = new FakeTransport();
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        renderShell(transport);
+        await askInPanel();
+        await within(panel()).findByTestId("ask-dev-answer");
+        nav.hold = true;
+        await userEvent.click(within(panel()).getByRole("button", { name: "Open full page" }));
+        expect(nav.pushes).toEqual(["/dev"]);
+        expect(nav.pathname).toBe("/dashboard");
+        expect(screen.queryByRole("complementary", { name: "Ask Dev" })).toBeNull();
     });
 
     it("after the answer: /dev shows it, with no new request", async () => {
@@ -268,6 +293,23 @@ describe("a reload loses the conversation, and says so (plan §2.5)", () => {
         );
         await within(panel()).findByTestId("ask-dev-answer");
         expect(within(panel()).queryByTestId("ask-dev-not-saved")).toBeNull();
+        // The hook itself says so too: the lost conversation is no longer the tab's state.
+        expect(screen.getByTestId("not-saved-probe")).toHaveTextContent("false");
+    });
+});
+
+describe("/dev is the surface: no panel, launcher or shortcut there", () => {
+    it("draws no launcher on /dev, and Ctrl+J opens no panel", async () => {
+        nav.go("/dev");
+        renderShell(new FakeTransport());
+        expect(screen.queryByRole("button", { name: "Open Ask Dev" })).toBeNull();
+        await userEvent.keyboard("{Control>}j{/Control}");
+        expect(screen.queryByRole("complementary", { name: "Ask Dev" })).toBeNull();
+    });
+
+    it("draws the launcher on other pages", () => {
+        renderShell(new FakeTransport());
+        expect(screen.getByRole("button", { name: "Open Ask Dev" })).toBeInTheDocument();
     });
 });
 
