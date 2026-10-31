@@ -117,6 +117,36 @@ describe("the browser ACR config in runtime-config.js (CHAOS-12302)", () => {
         expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_ACR_WEB_ORIGIN");
     });
 
+    it("ignores the public keys set directly: only ACR_OAUTH_ISSUER turns the client on (r1)", () => {
+        const { publicEnv } = runGenerator({
+            NEXT_PUBLIC_ACR_OAUTH_ISSUER: "https://acr.fullchaos.dev",
+            NEXT_PUBLIC_ACR_WEB_ORIGIN: "https://www.fullchaos.dev",
+            AUTH_URL: "https://www.fullchaos.dev",
+        });
+        expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_ACR_OAUTH_ISSUER");
+        expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_ACR_WEB_ORIGIN");
+    });
+
+    it("takes both values from the server settings, never from a directly set public key", () => {
+        const { publicEnv } = runGenerator({
+            ACR_OAUTH_ISSUER: "https://acr.fullchaos.dev",
+            AUTH_URL: "https://www.fullchaos.dev",
+            NEXT_PUBLIC_ACR_OAUTH_ISSUER: "https://evil.example",
+            NEXT_PUBLIC_ACR_WEB_ORIGIN: "https://evil.example",
+        });
+        expect(publicEnv.NEXT_PUBLIC_ACR_OAUTH_ISSUER).toBe("https://acr.fullchaos.dev");
+        expect(publicEnv.NEXT_PUBLIC_ACR_WEB_ORIGIN).toBe("https://www.fullchaos.dev");
+    });
+
+    it("drops a directly set web origin when AUTH_URL gives none", () => {
+        const { publicEnv } = runGenerator({
+            ACR_OAUTH_ISSUER: "https://acr.fullchaos.dev",
+            AUTH_URL: "not a url",
+            NEXT_PUBLIC_ACR_WEB_ORIGIN: "https://evil.example",
+        });
+        expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_ACR_WEB_ORIGIN");
+    });
+
     it("never carries a server secret alongside", () => {
         const { contents } = runGenerator({
             ACR_OAUTH_ISSUER: "https://acr.fullchaos.dev",

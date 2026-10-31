@@ -4,6 +4,11 @@ import { createPrivateKey, type KeyObject } from "node:crypto";
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { z } from "zod";
 
+import {
+    acrBrowserClientConfig,
+    type AcrBrowserClientConfig,
+} from "@/lib/ask-dev/acr-browser-config";
+
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 
 const configSchema = z.object({
@@ -165,4 +170,15 @@ export function loadFirstPartyBrowserClient(): FirstPartyBrowserClient | undefin
         return undefined;
     }
     return { resource, webOrigin };
+}
+
+/**
+ * The ACR browser client web serves the metadata document for (CHAOS-12302). It is built from T4c's
+ * first-party pair, so every client web serves is one T4c approves with no click. On top of that it
+ * applies the browser client's own rules (`acrBrowserClientConfig`).
+ */
+export function serverAcrClientConfig(): AcrBrowserClientConfig | undefined {
+    const firstParty = loadFirstPartyBrowserClient();
+    if (firstParty === undefined) return undefined;
+    return acrBrowserClientConfig(firstParty.resource, firstParty.webOrigin);
 }

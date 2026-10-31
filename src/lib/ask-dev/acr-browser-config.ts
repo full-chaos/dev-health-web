@@ -11,8 +11,9 @@
  * - Anything else, or no issuer, is no client: the browser client is off.
  *
  * Default-off: prod sets `ACR_OAUTH_ISSUER` only in the T13 roll. The same value already gates
- * T4c's consent claims (`src/lib/acr/config.ts`). The issuer and the web origin are public values,
- * not secrets: the browser reads them from runtime config (`scripts/write-runtime-config.mjs`).
+ * T4c's consent claims (`src/lib/acr/config.ts`). The server's view (`serverAcrClientConfig`) lives
+ * there, built from T4c's first-party pair. The issuer and the web origin are public values, not
+ * secrets: the browser reads them from runtime config (`scripts/runtime-config-acr.mjs`).
  */
 
 /** Where web serves its client ID metadata document. */
@@ -24,7 +25,10 @@ export const ACR_OAUTH_CALLBACK_PATH = "/ask-dev/oauth/callback";
 /** ACR's development-only static browser client (acr `internal/auth/oauth.go`), never fetched. */
 export const ACR_DEV_BROWSER_CLIENT_ID = "https://localhost/acr/dev-browser-client";
 
-/** The runtime config keys the browser reads (written at start-up from the server values). */
+/**
+ * The runtime config keys the browser reads. `scripts/runtime-config-acr.mjs` writes them and keeps
+ * its own copy; the parity test holds the two equal.
+ */
 export const ACR_ISSUER_PUBLIC_KEY = "NEXT_PUBLIC_ACR_OAUTH_ISSUER";
 export const ACR_WEB_ORIGIN_PUBLIC_KEY = "NEXT_PUBLIC_ACR_WEB_ORIGIN";
 
@@ -111,12 +115,6 @@ export function acrBrowserClientConfig(
 /** The issuer origin the CSP may add to `connect-src`, or `undefined` (adds nothing). */
 export function acrIssuerOriginForCsp(raw: string | undefined): string | undefined {
     return issuerOrigin(raw);
-}
-
-/** The server's view: `ACR_OAUTH_ISSUER` and the web origin (AUTH_URL, else NEXTAUTH_URL). */
-export function serverAcrClientConfig(): AcrBrowserClientConfig | undefined {
-    const authUrl = process.env.AUTH_URL?.trim() || process.env.NEXTAUTH_URL;
-    return acrBrowserClientConfig(process.env.ACR_OAUTH_ISSUER, authUrl);
 }
 
 type RuntimeWindow = {

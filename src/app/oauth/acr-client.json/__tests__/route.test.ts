@@ -35,6 +35,14 @@ function configure(issuer: string, authUrl: string) {
 
 const CONTROL = /[\u0000-\u001f\u007f]/u;
 
+const DECODED = [
+    "client_id",
+    "client_name",
+    "redirect_uris",
+    "token_endpoint_auth_method",
+    "token_endpoint_auth_methods_supported",
+];
+
 /** acr's CIMD and client-id rules, mirrored for the document web serves. */
 function acrAccepts(document: Record<string, unknown>, fetchedFrom: string): string[] {
     const problems: string[] = [];
@@ -66,8 +74,16 @@ function acrAccepts(document: Record<string, unknown>, fetchedFrom: string): str
     const name = document.client_name;
     if (typeof name !== "string" || name.length > 200 || CONTROL.test(name))
         problems.push("client_name");
-    const keys = Object.keys(document).map((key) => key.toLowerCase());
-    if (new Set(keys).size !== keys.length) problems.push("duplicate member");
+    // acr decodes only these five members (`internal/auth/oauth.go:167-173`) with encoding/json
+    // and no DisallowUnknownFields (`oauth_client_metadata.go:135`), so other members are ignored.
+    // `unambiguousClientMetadataObject` (`:177`) refuses two names equal ignoring case, and a name
+    // equal to a decoded one only ignoring case.
+    const keys = Object.keys(document);
+    const lower = keys.map((key) => key.toLowerCase());
+    if (new Set(lower).size !== lower.length) problems.push("duplicate member");
+    if (keys.some((key) => DECODED.some((name) => key !== name && key.toLowerCase() === name))) {
+        problems.push("case variant of a decoded member");
+    }
     return problems;
 }
 
@@ -125,5 +141,13 @@ describe("GET /oauth/acr-client.json", () => {
         ).toContain("auth_method_unsupported");
         expect(acrAccepts({ ...good, client_name: "x".repeat(201) }, url)).toContain("client_name");
         expect(acrAccepts({ ...good, Client_Name: "dup" }, url)).toContain("duplicate member");
+        expect(acrAccepts({ ...good, CLIENT_ID: url }, url)).toContain("duplicate member");
+        expect(acrAccepts({ ...good, Redirect_URIs: [] }, url)).toContain(
+            "case variant of a decoded member",
+        );
+        // Members acr does not decode are ignored, as the advertised grant and response types are.
+        expect(
+            acrAccepts({ ...good, grant_types: ["refresh_token"], response_types: ["code"] }, url),
+        ).toEqual([]);
     });
 });

@@ -6,8 +6,8 @@ import {
     ACR_OAUTH_CALLBACK_PATH,
     acrBrowserClientConfig,
     browserAcrClientConfig,
-    serverAcrClientConfig,
 } from "../acr-browser-config";
+import { serverAcrClientConfig } from "@/lib/acr/config";
 
 /**
  * CHAOS-12302 (c1 of the T13 split): the one place web decides which ACR OAuth client it is.
@@ -106,11 +106,18 @@ describe("serverAcrClientConfig", () => {
         );
     });
 
-    it("falls back to NEXTAUTH_URL", () => {
+    it("falls back to NEXTAUTH_URL when AUTH_URL is unset, as T4c does", () => {
+        vi.stubEnv("ACR_OAUTH_ISSUER", "https://acr.fullchaos.dev");
+        vi.stubEnv("AUTH_URL", undefined);
+        vi.stubEnv("NEXTAUTH_URL", "https://www.fullchaos.dev");
+        expect(serverAcrClientConfig()?.webOrigin).toBe("https://www.fullchaos.dev");
+    });
+
+    it("is off when AUTH_URL is set but empty, as T4c is (r1)", () => {
         vi.stubEnv("ACR_OAUTH_ISSUER", "https://acr.fullchaos.dev");
         vi.stubEnv("AUTH_URL", "");
         vi.stubEnv("NEXTAUTH_URL", "https://www.fullchaos.dev");
-        expect(serverAcrClientConfig()?.webOrigin).toBe("https://www.fullchaos.dev");
+        expect(serverAcrClientConfig()).toBeUndefined();
     });
 
     it("is off when ACR_OAUTH_ISSUER is unset", () => {

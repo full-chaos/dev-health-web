@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { ACR_PUBLIC_KEYS, acrPublicEnv } from "./runtime-config-acr.mjs";
+
 const outputPath = path.join(process.cwd(), "public", "runtime-config.js");
 const publicEnv = Object.fromEntries(
     Object.entries(process.env).filter(
@@ -17,19 +19,11 @@ if (
 
 publicEnv.NEXT_PUBLIC_DOCS_URL = publicEnv.NEXT_PUBLIC_DOCS_URL || "/docs";
 
-// CHAOS-12302: the browser's ACR OAuth client needs the issuer and this app's own origin. Both are
-// public values; they come from the server settings (one source), and only when ACR_OAUTH_ISSUER
-// is set, so the browser client stays off without it. Never a secret: nothing else is copied.
-const acrIssuer = process.env.ACR_OAUTH_ISSUER?.trim();
-if (acrIssuer) {
-    publicEnv.NEXT_PUBLIC_ACR_OAUTH_ISSUER = acrIssuer;
-    const authUrl = process.env.AUTH_URL?.trim() || process.env.NEXTAUTH_URL?.trim();
-    try {
-        if (authUrl) publicEnv.NEXT_PUBLIC_ACR_WEB_ORIGIN = new URL(authUrl).origin;
-    } catch {
-        // Not a URL: no web origin, so the browser client stays off.
-    }
-}
+// CHAOS-12302: the browser's ACR OAuth client values come only from the server settings, and only
+// when ACR_OAUTH_ISSUER is set. The same keys set directly in the environment are dropped first, so
+// they cannot turn the client on past that switch.
+for (const key of ACR_PUBLIC_KEYS) delete publicEnv[key];
+Object.assign(publicEnv, acrPublicEnv(process.env));
 
 const payload = {
     publicEnv,

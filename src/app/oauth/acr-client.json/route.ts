@@ -1,4 +1,4 @@
-import { serverAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
+import { serverAcrClientConfig } from "@/lib/acr/config";
 
 /**
  * The client ID metadata document of web's first-party ACR browser client (CHAOS-12302, c1 of the
