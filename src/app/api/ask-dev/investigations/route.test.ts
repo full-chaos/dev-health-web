@@ -477,7 +477,9 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
         expect(text).toContain('"code":"stream_unavailable"');
         expect(text).not.toContain("event: result");
         // codex r1 on #1639: the words match the code, never "temporarily unavailable".
-        expect(text).toContain("Ask Dev answers are turned off here right now.");
+        expect(text).toContain(
+            "Ask Dev cannot stream answers on this deployment right now. Contact your administrator.",
+        );
         expect(text).not.toContain("temporarily");
     });
 
@@ -492,7 +494,9 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
             );
             const text = await readAll(await post());
             expect(text).toContain('"code":"stream_unavailable"');
-            expect(text).toContain("Ask Dev answers are turned off here right now.");
+            expect(text).toContain(
+                "Ask Dev cannot stream answers on this deployment right now. Contact your administrator.",
+            );
         },
     );
 

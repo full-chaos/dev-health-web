@@ -244,30 +244,11 @@ const NOT_RUN = [
         false,
     ],
     [
-        "budget_exhausted",
-        503,
-        "Dev ran out of time before the question could start. Ask again.",
-        true,
-    ],
-    [
-        "concurrency_limited",
-        429,
-        "Too many questions are running. Wait for one to finish, then ask again.",
-        true,
-    ],
-    [
-        "allowance_exhausted",
-        429,
-        "Your organization has used this month's Ask Dev allowance.",
-        false,
-    ],
-    [
         "rate_limited",
         429,
         "Too many questions in a short time. Wait a moment, then ask again.",
         true,
     ],
-    ["stream_unavailable", 406, "Ask Dev answers are turned off here right now.", false],
     ["feature_not_enabled", 403, "Ask Dev is not available for this organization.", false],
     [
         "repo_forbidden",

@@ -1,25 +1,17 @@
 "use client";
 
 import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { Drawer } from "@/components/ui/Drawer";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
+import { isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
 
-import { AskDevTurn, turnKey } from "./answer/AskDevTurn";
-import { useTestModeTurns, type TestModeTurns } from "./answer/testModeAnswer";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
+import { AskDevComposerSlot, AskDevTranscript, useHasComposer } from "./AskDevConversationView";
 import { useAskDevShell } from "./AskDevShellContext";
-import { AskDevComposer } from "./conversation/AskDevComposer";
-import {
-    useAskDevConversation,
-    type AskDevConversation,
-} from "./conversation/AskDevConversationContext";
-import { AskDevConversationTurn } from "./conversation/AskDevConversationTurn";
-import { carryOfChoice } from "./conversation/conversationStore";
 
 /** The `md` breakpoint, as the shell uses it: from here up the panel is a right region. */
 const DESKTOP_QUERY = "(min-width: 768px)";
@@ -33,92 +25,38 @@ const readDesktop = (): boolean => window.matchMedia?.(DESKTOP_QUERY).matches ??
 
 const TITLE = "Ask Dev";
 
-type Conversation = TestModeTurns;
-
-const EMPTY_TRANSCRIPT = "Your conversation will appear here.";
-
-/** The transcript region; a screen reader hears each added turn. */
-function TranscriptLog({ children }: { children: ReactNode }) {
-    return (
-        <div
-            role="log"
-            aria-live="polite"
-            aria-relevant="additions"
-            aria-label="Conversation"
-            data-testid="ask-dev-transcript"
-            className="space-y-6 text-sm text-(--ink-muted)"
-        >
-            {children}
-        </div>
-    );
-}
-
-/**
- * The store's conversation (CHAOS-11928): every turn in order, the empty state without any. Only the
- * last turn is live, and only while no run is in flight; every earlier turn is read-only, so an old
- * receipt cannot be sent.
- */
-function ConversationTranscript({ live }: { live: AskDevConversation }) {
-    const { store, snapshot } = live;
-    const { turns } = snapshot;
-    return (
-        <TranscriptLog>
-            {turns.length === 0 ? (
-                <p>{EMPTY_TRANSCRIPT}</p>
-            ) : (
-                turns.map((turn, index) => {
-                    const usable = index === turns.length - 1 && !snapshot.inFlight;
-                    return (
-                        <AskDevConversationTurn
-                            key={`turn-${String(turn.id)}`}
-                            turn={turn}
-                            onConfirm={
-                                usable
-                                    ? (choice) => store.submit(turn.question, carryOfChoice(choice))
-                                    : undefined
-                            }
-                            onReask={usable ? (reask) => store.submit(reask.question) : undefined}
-                            onRetry={usable ? () => store.retry(turn.id) : undefined}
-                        />
-                    );
-                })
-            )}
-        </TranscriptLog>
-    );
-}
-
-/**
- * Test mode with no scripted transport: the turns a Playwright run put into session storage
- * (CHAOS-11930, CHAOS-3440), in order. Only the last turn is live.
- */
-function Transcript({ conversation }: { conversation: Conversation }) {
-    const { turns, onConfirm, onReask } = conversation;
-    return (
-        <TranscriptLog>
-            {turns.length === 0 ? (
-                <p>{EMPTY_TRANSCRIPT}</p>
-            ) : (
-                turns.map((turn, index) => {
-                    const live = index === turns.length - 1;
-                    return (
-                        <AskDevTurn
-                            key={turnKey(turn)}
-                            turn={turn}
-                            onConfirm={live ? onConfirm : undefined}
-                            onReask={live ? onReask : undefined}
-                        />
-                    );
-                })
-            )}
-        </TranscriptLog>
-    );
-}
-
 /**
  * The desktop panel: a non-modal region on the right. The page behind it stays usable, so there is
  * no backdrop, no scroll lock and no Tab trap. Focus moves into it when it opens; Escape and the
  * Close button close it and return focus to the launcher.
  */
+const ICON_BUTTON =
+    "inline-flex h-8.75 w-8.75 shrink-0 items-center justify-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)";
+
+/**
+ * CHAOS-11934: opens the same conversation on the full page `/dev`. Only the route changes: the
+ * store is above both, so a running investigation goes on and nothing is sent again.
+ */
+function ExpandButton({ withText = false }: { withText?: boolean }) {
+    const { expand } = useAskDevShell();
+    return (
+        <button
+            type="button"
+            onClick={expand}
+            aria-label={withText ? undefined : CTA_LABELS.askDevExpand}
+            data-testid="ask-dev-expand"
+            className={
+                withText
+                    ? "inline-flex items-center gap-2 rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                    : ICON_BUTTON
+            }
+        >
+            <Maximize2 aria-hidden="true" className="h-4 w-4" />
+            {withText ? CTA_LABELS.askDevExpand : null}
+        </button>
+    );
+}
+
 function DesktopPanel({
     onClose,
     children,
@@ -163,12 +101,13 @@ function DesktopPanel({
                 <h2 id={titleId} className="min-w-0 flex-1 text-h3 font-semibold text-foreground">
                     {TITLE}
                 </h2>
+                <ExpandButton />
                 <button
                     type="button"
                     onClick={onClose}
                     aria-label={CTA_LABELS.close}
                     data-testid="ask-dev-panel-close"
-                    className="inline-flex h-8.75 w-8.75 shrink-0 items-center justify-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                    className={ICON_BUTTON}
                 >
                     <X aria-hidden="true" className="h-4 w-4" />
                 </button>
@@ -190,28 +129,15 @@ export function AskDevPanel() {
     const { features } = useAdminTier();
     const pathname = usePathname() ?? "";
     const desktop = useSyncExternalStore(subscribeDesktop, readDesktop, () => true);
-    const testModeTurns = useTestModeTurns();
-    const live = useAskDevConversation();
+    const hasComposer = useHasComposer();
 
-    if (!open || !isAskDevEnabled(features) || isAskDevExcludedPath(pathname)) return null;
+    if (!open || !isAskDevEnabled(features) || !isAskDevPanelPath(pathname)) return null;
     // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent.
-    const transcript = live ? (
-        <ConversationTranscript live={live} />
-    ) : (
-        <Transcript conversation={testModeTurns} />
-    );
-    const composer = live ? (
-        <AskDevComposer
-            inFlight={live.snapshot.inFlight}
-            ready={live.snapshot.ready}
-            onSubmit={(question) => live.store.submit(question)}
-            onCancel={() => live.store.cancel()}
-        />
-    ) : null;
+    const composer = hasComposer ? <AskDevComposerSlot /> : null;
     if (desktop) {
         return (
             <DesktopPanel onClose={close} footer={composer}>
-                {transcript}
+                <AskDevTranscript />
             </DesktopPanel>
         );
     }
@@ -224,9 +150,11 @@ export function AskDevPanel() {
             panelId={ASK_DEV_PANEL_ID}
             // Ask Dev claims the right edge itself (`AskDevShellProvider`).
             claimsRightEdge={false}
+            // The sheet header has only Close: the full page link sits in its action row.
+            footer={<ExpandButton withText />}
         >
             <div className="space-y-6">
-                {transcript}
+                <AskDevTranscript />
                 {composer}
             </div>
         </Drawer>

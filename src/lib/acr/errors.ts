@@ -95,11 +95,11 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
         case acrRuntimeErrorCodes.accessDenied:
             return "Ask Dev is not available in this session. Sign in again with your own account, or ask an admin to add you to this organization.";
         case acrRuntimeErrorCodes.concurrencyLimited:
-            return "Too many questions are running. Wait for one to finish, then ask again.";
+            return "Too many questions are running at once. Try again shortly.";
         case acrRuntimeErrorCodes.allowanceExhausted:
             return "Your organization has used this month's Ask Dev allowance.";
         case acrRuntimeErrorCodes.streamUnavailable:
-            return "Ask Dev answers are turned off here right now.";
+            return "Ask Dev cannot stream answers on this deployment right now. Contact your administrator.";
         case acrRuntimeErrorCodes.budgetRefusal:
             return "This question needs more than one answer can hold. Ask a narrower question.";
         case acrRuntimeErrorCodes.submissionInProgress:
@@ -117,7 +117,7 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
         case acrRuntimeErrorCodes.askDevRateLimited:
             return "Too many questions in a short time. Wait a moment, then ask again.";
         case acrRuntimeErrorCodes.budgetExhausted:
-            return "Dev ran out of time before the question could start. Ask again.";
+            return "Ask Dev ran out of time before the question could start. Ask again.";
         case acrRuntimeErrorCodes.stalled:
             return "The answer stopped arriving. Ask again.";
         case acrRuntimeErrorCodes.interrupted:

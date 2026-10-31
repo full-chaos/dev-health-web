@@ -4,6 +4,7 @@ import { AcrRuntimeClient } from "../client";
 import {
     NOT_RUN_COPY,
     STOPPED_COPY,
+    TURN_STATUS_COPY,
 } from "@/components/ask-dev/conversation/AskDevConversationTurn";
 
 import type { NotRunReason } from "@/components/ask-dev/conversation/conversationStore";
@@ -58,14 +59,10 @@ describe("investigationFailure: refusals keep their own code", () => {
 
     // codex r2 on #1639: every reason the panel shows has an Ask Dev code in the client with the
     // same words; none is excluded. A new reason without one is a compile error here.
-    it("says the same words as the conversation store, for every reason", () => {
+    it("says the same words as the conversation store, for every not-run reason", () => {
         const webCodeOf: Record<NotRunReason, AcrRuntimeErrorCode> = {
             access_denied: "access_denied",
             no_repository: "no_repository",
-            budget_exhausted: "budget_exhausted",
-            concurrency_limited: "concurrency_limited",
-            allowance_exhausted: "allowance_exhausted",
-            stream_unavailable: "stream_unavailable",
             not_entitled: "ask_dev_not_entitled",
             repo_forbidden: "ask_dev_repo_forbidden",
             budget_refusal: "budget_refusal",
@@ -74,6 +71,22 @@ describe("investigationFailure: refusals keep their own code", () => {
         for (const [reason, copy] of Object.entries(NOT_RUN_COPY) as [NotRunReason, string][]) {
             expect(safeAcrRuntimeMessage(webCodeOf[reason])).toBe(copy);
         }
+    });
+
+    // The codes the panel shows with its own states (CHAOS-11929): the client says the same words.
+    it("says the same words as the panel's own states for the shared codes", () => {
+        expect(safeAcrRuntimeMessage("concurrency_limited")).toBe(
+            TURN_STATUS_COPY.limited.concurrency,
+        );
+        expect(safeAcrRuntimeMessage("allowance_exhausted")).toBe(
+            TURN_STATUS_COPY.limited.allowance,
+        );
+        expect(safeAcrRuntimeMessage("stream_unavailable")).toBe(
+            TURN_STATUS_COPY.streamUnavailable,
+        );
+        expect(safeAcrRuntimeMessage("budget_exhausted")).toBe(
+            TURN_STATUS_COPY.deadline.budget_exhausted,
+        );
     });
 });
 

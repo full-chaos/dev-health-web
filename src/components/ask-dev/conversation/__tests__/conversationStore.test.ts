@@ -11,7 +11,7 @@ import {
     type ConversationStoreOptions,
 } from "../conversationStore";
 import { isCorrelationId } from "../keys";
-import { TransportRefusal } from "../transport";
+import { TransportFailure, TransportRefusal } from "../transport";
 import {
     accepted,
     acrError,
@@ -120,7 +120,11 @@ describe("thread and submission keys (plan §2.5, INV-2)", () => {
         transport.statuses.push(null);
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "failed", retry: true });
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: true,
+            reference: last(store).request.request_id,
+        });
 
         expect(store.retry(last(store).id)).toBe(true);
         await settled(store);
@@ -139,7 +143,12 @@ describe("thread and submission keys (plan §2.5, INV-2)", () => {
         transport.scripts.push([accepted(), errorEvent("timeout")]);
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "failed", retry: false });
+        // ACR's own request id is the reference to quote (plan §2.7.8 "other errors").
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: "req_test",
+        });
         expect(store.retry(last(store).id)).toBe(false);
         expect(transport.calls).toHaveLength(1);
     });
@@ -202,7 +211,9 @@ describe("partition, abort, clear and generation (D-20)", () => {
         transport.scripts.push([accepted()]);
         transport.statuses.push(status("running"));
         store.submit("Which projects are at risk?");
-        await vi.waitFor(() => expect(last(store).outcome).toEqual({ kind: "recovering" }));
+        await vi.waitFor(() =>
+            expect(last(store).outcome).toEqual({ kind: "recovering", startedAt: clock }),
+        );
         await vi.waitFor(() => expect(transport.statusCalls).toHaveLength(1));
 
         store.setPartition(ORG_B);
@@ -295,7 +306,12 @@ describe("terminals", () => {
         ]);
         store.submit("Which projects are at risk?");
         await vi.waitFor(() =>
-            expect(last(store).outcome).toEqual({ kind: "running", stage: "reading_facts" }),
+            expect(last(store).outcome).toEqual({
+                kind: "running",
+                startedAt: clock,
+                stage: "reading_facts",
+                stages: { reading_facts: "started" },
+            }),
         );
         expect(last(store).reservedResultId).toBe("result_reserved_0042");
         gate.resolve();
@@ -451,7 +467,11 @@ describe("recovery by submission status (plan §2.7.5)", () => {
         transport.statuses.push(status("done", "result_missing_0001"));
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "failed", retry: true });
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: true,
+            reference: last(store).request.request_id,
+        });
     });
 });
 
@@ -527,8 +547,9 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
 
     it.each([
         ["submission_unsaved", { kind: "unsaved" }],
-        ["submission_abandoned", { kind: "interrupted" }],
-        ["submission_mismatch", { kind: "failed", retry: false }],
+        // Plan §2.7.8: each submission state has its own copy, so abandoned is not interrupted.
+        ["submission_abandoned", { kind: "abandoned" }],
+        ["submission_mismatch", { kind: "mismatch", reference: "req_test" }],
     ] as const)("ends %s as %j", async (code, outcome) => {
         const store = makeStore();
         transport.scripts.push([refuse(code)]);
@@ -574,7 +595,11 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
         ]);
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "failed", retry: false });
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: "req_test",
+        });
         expect(log.error).toHaveBeenCalledWith(
             expect.objectContaining({ code: "submission_required" }),
             "ask-dev create sent without a submission id",
@@ -586,9 +611,6 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
     it.each([
         ["access_denied", 403, false],
         ["no_repository", 409, false],
-        ["budget_exhausted", 503, true],
-        ["concurrency_limited", 429, true],
-        ["allowance_exhausted", 429, false],
     ] as const)("ends a %s refusal (%i) as not run, retry %s", async (code, status, retry) => {
         const store = makeStore();
         transport.scripts.push(
@@ -609,7 +631,6 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
 
     // codex r1 on #1639: the rest of the create vocabulary before a run.
     it.each([
-        ["stream_unavailable", 406, "stream_unavailable"],
         ["feature_not_enabled", 403, "not_entitled"],
         ["feature_not_enabled", 501, "not_entitled"],
         ["insufficient_scope", 403, "not_entitled"],
@@ -645,6 +666,18 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
         expect(transport.calls[1]!.submissionId).toBe(transport.calls[0]!.submissionId);
     });
 
+    // ACR's per-call access read left too little budget before admission: main's deadline state.
+    it("ends ACR's budget_exhausted (503) as the budget deadline, with no retry", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(503, acrError("budget_exhausted", 503, true)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "deadline", deadline: "budget_exhausted" });
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
     it("logs an invalid request as a defect", async () => {
         const store = makeStore();
         transport.scripts.push([
@@ -652,7 +685,7 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
         ]);
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "failed", retry: false });
+        expect(last(store).outcome).toMatchObject({ kind: "failed", retry: false });
         expect(log.error).toHaveBeenCalledWith(
             expect.objectContaining({ code: "invalid_request" }),
             "ask-dev investigation request refused as invalid",
@@ -682,4 +715,336 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
             "ask-dev submission id reused for a different request",
         );
     });
+});
+
+// CHAOS-11929 (I-S07): every panel state of plan §2.7.8 is its own outcome, decided by the store.
+describe("panel states (plan §2.7.8)", () => {
+    const stage = (
+        name: "interpreting" | "resolving_subjects" | "reading_facts",
+        state: "started" | "completed",
+    ) => ({
+        seq: 0,
+        request_id: "request_test",
+        type: "stage" as const,
+        stage: name,
+        state,
+        elapsed_ms: 5,
+    });
+    const deadlineError = (deadline: unknown) => ({
+        ...errorEvent("upstream_unavailable"),
+        type: "error" as const,
+        reserved_result_id: "result_reserved_0001",
+        error: {
+            ...acrError("upstream_unavailable", 504, false),
+            error: {
+                ...acrError("upstream_unavailable", 504, false).error,
+                details: { deadline },
+            },
+        } as ReturnType<typeof acrError>,
+    });
+    const limitRefusal = (code: string, details: Record<string, unknown>, retryable: boolean) => {
+        const error = acrError(code, 429, retryable);
+        return new TransportRefusal(
+            429,
+            { ...error, error: { ...error.error, details } } as ReturnType<typeof acrError>,
+            30,
+        );
+    };
+
+    it("records every stage the stream named, keeping a completed stage completed", async () => {
+        const store = makeStore();
+        const gate = deferred();
+        transport.scripts.push([
+            accepted(),
+            stage("interpreting", "started"),
+            stage("interpreting", "completed"),
+            stage("reading_facts", "started"),
+            // A late start of a completed stage changes nothing.
+            stage("interpreting", "started"),
+            { wait: gate.promise },
+            resultEvent(PARTIAL),
+        ]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() =>
+            expect(last(store).outcome).toEqual({
+                kind: "running",
+                startedAt: clock,
+                stage: "reading_facts",
+                stages: { interpreting: "completed", reading_facts: "started" },
+            }),
+        );
+        gate.resolve();
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "answered", result: PARTIAL });
+    });
+
+    it("restarts the elapsed time on a retry", async () => {
+        const store = makeStore();
+        const gate = deferred();
+        transport.scripts.push([{ fail: new TypeError("network") }], [{ wait: gate.promise }]);
+        transport.statuses.push(null);
+        const first = clock;
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        clock += 60_000;
+        expect(store.retry(last(store).id)).toBe(true);
+        expect(last(store).outcome).toEqual({
+            kind: "running",
+            startedAt: first + 60_000,
+            stages: {},
+        });
+        gate.resolve();
+        await settled(store);
+    });
+
+    it.each([
+        ["model", { kind: "deadline", deadline: "model" }],
+        ["request", { kind: "deadline", deadline: "request" }],
+    ] as const)(
+        "ends an ACR %s deadline terminal as its deadline state",
+        async (which, outcome) => {
+            const store = makeStore();
+            transport.scripts.push([accepted(), deadlineError(which)]);
+            store.submit("Which projects are at risk?");
+            await settled(store);
+            expect(last(store).outcome).toEqual(outcome);
+            expect(store.retry(last(store).id)).toBe(false);
+            expect(transport.statusCalls).toEqual([]);
+        },
+    );
+
+    it("treats a deadline outside the contract's enum as absent: another error", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted(), deadlineError("socket")]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: "req_test",
+        });
+    });
+
+    // codex r2 on #1638: `details.deadline` is defined on a 504 only (error.v1). A retryable 503
+    // that carries it is not a deadline: it stays a retryable failure, so Retry is offered.
+    it("reads details.deadline on a 504 only: a retryable 503 with it stays retryable", async () => {
+        const store = makeStore();
+        const error = acrError("upstream_unavailable", 503, true);
+        transport.scripts.push(
+            [
+                {
+                    fail: new TransportRefusal(503, {
+                        ...error,
+                        error: { ...error.error, details: { deadline: "request" } },
+                    } as ReturnType<typeof acrError>),
+                },
+            ],
+            [
+                accepted(),
+                {
+                    ...deadlineError("model"),
+                    error: {
+                        ...deadlineError("model").error,
+                        error: { ...deadlineError("model").error.error, http_status: 503 },
+                    },
+                },
+            ],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "failed", retry: true, reference: "req_test" });
+        store.submit("And now?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: "req_test",
+        });
+    });
+
+    it("reads details.deadline on upstream_unavailable only", async () => {
+        const store = makeStore();
+        const error = acrError("internal_error", 504, false);
+        transport.scripts.push([
+            {
+                fail: new TransportRefusal(504, {
+                    ...error,
+                    error: { ...error.error, details: { deadline: "model" } },
+                } as ReturnType<typeof acrError>),
+            },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: "req_test",
+        });
+    });
+
+    it("ends a 504 deadline before the stream as its deadline state", async () => {
+        const store = makeStore();
+        const error = deadlineError("request").error;
+        transport.scripts.push([{ fail: new TransportRefusal(504, error) }]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "deadline", deadline: "request" });
+    });
+
+    it.each([
+        ["concurrency_limited", { limit: "principal" }, true, "principal"],
+        ["concurrency_limited", { limit: "org" }, true, "org"],
+        ["concurrency_limited", {}, true, "concurrency"],
+        ["concurrency_limited", { limit: "request_budget" }, true, "concurrency"],
+        ["allowance_exhausted", {}, false, "allowance"],
+    ] as const)(
+        "ends a 429 %s %j as limited %s, with Retry-After",
+        async (code, details, retryable, limit) => {
+            const store = makeStore();
+            transport.scripts.push([{ fail: limitRefusal(code, details, retryable) }]);
+            store.submit("Which projects are at risk?");
+            await settled(store);
+            expect(last(store).outcome).toEqual({
+                kind: "limited",
+                limit,
+                retry: retryable,
+                retryAfterSeconds: 30,
+            });
+            expect(transport.statusCalls).toEqual([]);
+        },
+    );
+
+    it("retries a retryable limit under the same key with the identical request", async () => {
+        const store = makeStore();
+        transport.scripts.push(
+            [{ fail: limitRefusal("concurrency_limited", { limit: "principal" }, true) }],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(store.retry(last(store).id)).toBe(true);
+        await settled(store);
+        const [first, again] = transport.calls;
+        expect(again!.submissionId).toBe(first!.submissionId);
+        expect(again!.request).toBe(first!.request);
+        expect(last(store).outcome).toEqual({ kind: "answered", result: PARTIAL });
+    });
+
+    // codex r1 on #1638 asked for a new key after a retryable refusal before the stream. The
+    // contract (X-ACR-Submission-ID) runs a request at most once per key, and a repeat of an
+    // admitted key never runs again; a NEW key is what could run it twice. So Retry keeps the key,
+    // and if ACR had admitted the first call, the repeat's 409 makes the store follow that run.
+    it("retries a retryable refusal under its key, and follows the run if ACR had admitted it", async () => {
+        const store = makeStore();
+        const unavailable = new TransportRefusal(503, acrError("upstream_unavailable", 503, true));
+        transport.scripts.push(
+            [{ fail: unavailable }],
+            [
+                {
+                    fail: new TransportRefusal(
+                        409,
+                        acrError("submission_in_progress", 409, true),
+                        3,
+                    ),
+                },
+            ],
+        );
+        transport.statuses.push(status("done", PARTIAL.result_id));
+        transport.results.set(PARTIAL.result_id, PARTIAL);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "failed", retry: true, reference: "req_test" });
+
+        expect(store.retry(last(store).id)).toBe(true);
+        await settled(store);
+        const [first, again] = transport.calls;
+        expect(transport.calls).toHaveLength(2);
+        expect(again!.submissionId).toBe(first!.submissionId);
+        expect(again!.request).toBe(first!.request);
+        expect(transport.readCalls).toEqual([PARTIAL.result_id]);
+        expect(last(store).outcome).toEqual({ kind: "answered", result: PARTIAL });
+    });
+
+    it("does not retry a limit ACR marks not retryable", async () => {
+        const store = makeStore();
+        transport.scripts.push([{ fail: limitRefusal("allowance_exhausted", {}, false) }]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(store.retry(last(store).id)).toBe(false);
+        expect(transport.calls).toHaveLength(1);
+    });
+
+    it("ends a 406 stream_unavailable as its own state, not retryable", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(406, acrError("stream_unavailable", 406, false)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "stream_unavailable" });
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
+    it.each([
+        ["stalled", true, { kind: "stalled" }],
+        ["admission_timeout", false, { kind: "deadline", deadline: "admission" }],
+        ["budget_exhausted", false, { kind: "deadline", deadline: "budget_exhausted" }],
+    ] as const)(
+        "ends a transport %s as its own state, without polling",
+        async (reason, afterAccepted, outcome) => {
+            const store = makeStore();
+            transport.scripts.push([
+                ...(afterAccepted ? [accepted()] : []),
+                { fail: new TransportFailure(reason) },
+            ]);
+            store.submit("Which projects are at risk?");
+            await settled(store);
+            expect(last(store).outcome).toEqual(outcome);
+            expect(transport.statusCalls).toEqual([]);
+            expect(transport.readCalls).toEqual([]);
+            expect(store.retry(last(store).id)).toBe(false);
+        },
+    );
+
+    it("ends an invalid upstream stream as another error with this turn's reference", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted(), { fail: new TransportFailure("invalid_upstream") }]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: last(store).request.request_id,
+        });
+        expect(transport.statusCalls).toEqual([]);
+    });
+
+    it("never shows an ACR request id that is not a plain id", async () => {
+        const store = makeStore();
+        const hostile = errorEvent("internal_error");
+        if (hostile.type !== "error") throw new Error("not an error event");
+        transport.scripts.push([
+            accepted(),
+            { ...hostile, error: { ...hostile.error, request_id: "<img src=x onerror=alert(1)>" } },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: last(store).request.request_id,
+        });
+    });
+
+    it.each([[-1], [1.5], [Number.NaN], [Number.POSITIVE_INFINITY]])(
+        "drops a Retry-After that is not a whole number of seconds (%s)",
+        (seconds) => {
+            const refusal = new TransportRefusal(
+                429,
+                acrError("concurrency_limited", 429, true),
+                seconds,
+            );
+            expect(refusal.retryAfterSeconds).toBeUndefined();
+        },
+    );
 });

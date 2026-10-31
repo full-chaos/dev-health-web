@@ -49,6 +49,9 @@ const SETINTERVAL_ALLOWLIST = new Set<string>([
     // CHAOS-11921: the 10 s SSE keepalive comment the Ask Dev route writes to the browser. It
     // enqueues a constant string; it fetches nothing and reads no Python API.
     "src/app/api/ask-dev/investigations/route.ts",
+    // CHAOS-11929: the 1 s elapsed-time tick of a running Ask Dev turn — no fetch, purely
+    // `setNow(Date.now())`.
+    "src/components/ask-dev/conversation/AskDevProgress.tsx",
 ]);
 
 const TEST_FILE_PATTERN = /\.(test|spec)\.[jt]sx?$/;

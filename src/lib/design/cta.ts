@@ -19,6 +19,10 @@ export const CTA_LABELS = {
     askDevSend: "Send",
     /** The Ask Dev composer: stop the run in flight (a disconnect, plan §2.7.4). */
     askDevStop: "Stop",
+    /** The Ask Dev panel: open the same conversation on the full page `/dev` (CHAOS-11934). */
+    askDevExpand: "Open full page",
+    /** The Ask Dev full page: go back and show the same conversation in the panel (CHAOS-11934). */
+    askDevMinimize: "Minimize to panel",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */

@@ -1,4 +1,7 @@
-import type { ACRContextFabricInvestigationRequestV1 as InvestigationRequest } from "@/lib/acr/generated";
+import type {
+    ACRErrorV1,
+    ACRContextFabricInvestigationRequestV1 as InvestigationRequest,
+} from "@/lib/acr/generated";
 import {
     buildConversationTurns,
     deriveParentReference,
@@ -18,10 +21,12 @@ import type { ClarificationChoice } from "../answer/clarificationModel";
 import type { RefusalEvent } from "../answer/refusalModel";
 import { newSubmissionId, newThreadId } from "./keys";
 import {
+    TransportFailure,
     TransportRefusal,
     type AskDevTransport,
     type InvestigationEvent,
     type InvestigationStage,
+    type TransportFailureReason,
 } from "./transport";
 
 /**
@@ -45,23 +50,76 @@ import {
 /** §2.7.5: the status poll interval while recovering a dropped run. */
 export const STATUS_POLL_INTERVAL_MS = 3_000;
 
+/** What the stream said about one stage: started, then (usually) completed. */
+export type StageState = "started" | "completed";
+
+/** Every stage the stream named, with the furthest state it reached. A stage ACR skipped is absent. */
+export type StageProgress = Readonly<Partial<Record<InvestigationStage, StageState>>>;
+
+/**
+ * Which deadline ended the run (plan §2.7.6, §2.7.8 "deadline"): `model` and `request` are ACR's
+ * (`504 upstream_unavailable`, `details.deadline`); `admission` (no headers in time) and
+ * `budget_exhausted` (nothing sent) are the browser transport's.
+ */
+export type DeadlineKind = "model" | "request" | "admission" | "budget_exhausted";
+
+/**
+ * Which shared limit refused a new submission (plan §2.9, §2.7.8 "429"). `concurrency` is a
+ * `concurrency_limited` whose `details.limit` is absent or outside the contract's enum.
+ */
+export type LimitKind = "principal" | "org" | "concurrency" | "allowance";
+
 export type TurnOutcome =
-    /** The stream is open; `stage` is the last stage ACR started. */
-    | { readonly kind: "running"; readonly stage?: InvestigationStage | undefined }
+    /**
+     * The stream is open. `stage` is the last stage ACR started; `stages` is every stage it named.
+     * `startedAt` is when this run began (epoch ms, the store's clock).
+     */
+    | {
+          readonly kind: "running";
+          readonly startedAt: number;
+          readonly stage?: InvestigationStage | undefined;
+          readonly stages: StageProgress;
+      }
     /** The stream dropped; the store is polling the submission status. */
-    | { readonly kind: "recovering" }
+    | { readonly kind: "recovering"; readonly startedAt: number }
     | { readonly kind: "answered"; readonly result: TranscriptResult }
     /** ACR ended the stream with a budget refusal (`AskDevRefusal` renders it). */
     | { readonly kind: "refused"; readonly refusal: RefusalEvent }
     /**
-     * The run did not answer. `retry` is true only when sending the same request under the same
-     * key again is safe and useful: ACR never admitted it, or it answered and the replay failed.
+     * The run did not answer, for a reason with no state of its own (plan §2.7.8 "other errors").
+     * `retry` is true only when sending the same request under the same key again is safe and
+     * useful: ACR never admitted it, or it answered and the replay failed. `reference` is a
+     * correlation code to quote: ACR's `request_id` when it sent one, else this turn's.
      */
-    | { readonly kind: "failed"; readonly retry: boolean }
+    | {
+          readonly kind: "failed";
+          readonly retry: boolean;
+          readonly reference?: string | undefined;
+      }
+    /** A deadline ended the run before an answer. The way on is a new question. */
+    | { readonly kind: "deadline"; readonly deadline: DeadlineKind }
+    /**
+     * A shared limit refused the submission; nothing was admitted. `retryAfterSeconds` is ACR's
+     * `Retry-After`; `retry` is ACR's `retryable` (the same key may be sent again).
+     */
+    | {
+          readonly kind: "limited";
+          readonly limit: LimitKind;
+          readonly retry: boolean;
+          readonly retryAfterSeconds?: number | undefined;
+      }
+    /** `406 stream_unavailable`: the deployment has the event stream turned off. Not retryable. */
+    | { readonly kind: "stream_unavailable" }
+    /** `409 submission_mismatch`: the key was reused for another request (a defect). */
+    | { readonly kind: "mismatch"; readonly reference?: string | undefined }
     /** `done_unsaved`: the answer was served but not stored; there is nothing to replay. */
     | { readonly kind: "unsaved" }
-    /** `abandoned`, a lost record or the deadline: the run ended without an answer. */
+    /** `409 submission_abandoned`: this key's run ended without an answer. */
+    | { readonly kind: "abandoned" }
+    /** A dropped run whose status read found no answer (`abandoned`, a lost record, the deadline). */
     | { readonly kind: "interrupted" }
+    /** No bytes for 30 s after `accepted`: the browser transport aborted the stream. */
+    | { readonly kind: "stalled" }
     | { readonly kind: "canceled" }
     /**
      * `409 thread_closed`: ACR closed this conversation (deleted, expired or full). Nothing ran; the
@@ -69,24 +127,60 @@ export type TurnOutcome =
      */
     | { readonly kind: "thread_closed" }
     /**
-     * ACR refused the call before anything ran (CHAOS-12201): the user's access, no repository in
-     * scope, too little wait budget, or a shared limit. `retry` only where nothing was admitted and
-     * sending the same request again can help.
+     * ACR refused the call before anything ran, for a reason with its own guidance (CHAOS-12201):
+     * the user's access, no repository in scope, Ask Dev not entitled, a repository not available, a
+     * question too large, or ACR's rate limit. `retry` only where nothing was admitted and sending
+     * the same request again can help.
      */
     | { readonly kind: "not_run"; readonly reason: NotRunReason; readonly retry: boolean }
     /**
-     * ACR stopped a run after it started, with a terminal error that has its own meaning (codex r3
-     * on #1639). The key is spent: the way on is a new question, never a same-key retry.
+     * ACR stopped a run after it started, with a terminal error that has its own meaning
+     * (CHAOS-12201). The key is spent: the way on is a new question, never a same-key retry.
      */
     | { readonly kind: "stopped"; readonly reason: StoppedReason };
+
+/** ACR's refusals before a run that have no state of their own above (error.v1). */
+export type NotRunReason =
+    | "access_denied"
+    | "no_repository"
+    | "not_entitled"
+    | "repo_forbidden"
+    | "budget_refusal"
+    | "rate_limited";
 
 /** Terminal errors after admission that are neither an outage nor a refusal turn. */
 export type StoppedReason = "rate_limited" | "interpretation_rejected" | "synthesis_rejected";
 
+/** Whether a same-key retry is offered, decided from the closed code, never from the wire's flag. */
+const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
+    access_denied: false,
+    no_repository: false,
+    not_entitled: false,
+    repo_forbidden: false,
+    // Before the stream there is no reserved result to show as a refusal turn; ask narrower.
+    budget_refusal: false,
+    // ACR's rate limit before admission: nothing ran, so the same key may be sent again.
+    rate_limited: true,
+};
+
+/** ACR's codes before a run → the reason shown (two codes share "not entitled"). */
+const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
+    access_denied: "access_denied",
+    no_repository: "no_repository",
+    feature_not_enabled: "not_entitled",
+    insufficient_scope: "not_entitled",
+    repo_forbidden: "repo_forbidden",
+    budget_refusal: "budget_refusal",
+    rate_limited: "rate_limited",
+};
+
+const notRunReasonOf = (code: string): NotRunReason | undefined =>
+    Object.hasOwn(NOT_RUN_REASON_OF, code) ? NOT_RUN_REASON_OF[code] : undefined;
+
 /**
  * The one map of terminal error codes in the stream that keep their own meaning (CHAOS-12201).
- * `budget_refusal` (a refusal turn) and `thread_closed` (a new conversation) need the event or the
- * thread and are decided apart; any other code is the generic failure: the key is spent.
+ * `budget_refusal` (a refusal turn), `thread_closed` (a new conversation) and a 504 deadline need
+ * the event or the thread and are decided apart; any other code is the generic failure.
  */
 const TERMINAL_OUTCOMES: Readonly<Record<string, TurnOutcome>> = {
     // The owner canceled the run (ACR run lease): the canceled state, not a failure.
@@ -103,52 +197,6 @@ const TERMINAL_OUTCOMES: Readonly<Record<string, TurnOutcome>> = {
 
 const terminalOutcomeOf = (code: string): TurnOutcome | undefined =>
     Object.hasOwn(TERMINAL_OUTCOMES, code) ? TERMINAL_OUTCOMES[code] : undefined;
-
-/** ACR's refusals before a run, each with its own guidance (error.v1). */
-export type NotRunReason =
-    | "access_denied"
-    | "no_repository"
-    | "budget_exhausted"
-    | "concurrency_limited"
-    | "allowance_exhausted"
-    | "stream_unavailable"
-    | "not_entitled"
-    | "repo_forbidden"
-    | "budget_refusal"
-    | "rate_limited";
-
-/** Whether a same-key retry is offered, decided from the closed code, never from the wire's flag. */
-const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
-    access_denied: false,
-    no_repository: false,
-    budget_exhausted: true,
-    concurrency_limited: true,
-    allowance_exhausted: false,
-    stream_unavailable: false,
-    not_entitled: false,
-    repo_forbidden: false,
-    // Before the stream there is no reserved result to show as a refusal turn; ask narrower.
-    budget_refusal: false,
-    rate_limited: true,
-};
-
-/** ACR's codes before a run → the reason shown (two codes share "not entitled"). */
-const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
-    access_denied: "access_denied",
-    no_repository: "no_repository",
-    budget_exhausted: "budget_exhausted",
-    concurrency_limited: "concurrency_limited",
-    allowance_exhausted: "allowance_exhausted",
-    stream_unavailable: "stream_unavailable",
-    feature_not_enabled: "not_entitled",
-    insufficient_scope: "not_entitled",
-    repo_forbidden: "repo_forbidden",
-    budget_refusal: "budget_refusal",
-    rate_limited: "rate_limited",
-};
-
-const notRunReasonOf = (code: string): NotRunReason | undefined =>
-    Object.hasOwn(NOT_RUN_REASON_OF, code) ? NOT_RUN_REASON_OF[code] : undefined;
 
 export type StoreTurn = {
     readonly id: number;
@@ -173,6 +221,11 @@ export type ConversationSnapshot = {
     readonly inFlight: boolean;
     /** False while signed out or before the session is known: a submit is refused. */
     readonly ready: boolean;
+    /**
+     * The (org, principal) key these turns belong to; `null` before the first bind or while signed
+     * out (CHAOS-11934: the reload marker names the conversation's own partition, not the session's).
+     */
+    readonly partition: string | null;
 };
 
 /** What a follow-up carries beyond the question (a clarification choice, CHAOS-3440). */
@@ -229,6 +282,49 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
 
 const IN_FLIGHT = new Set<TurnOutcome["kind"]>(["running", "recovering"]);
 
+/** A correlation code the panel may show: a plain id, never free text. */
+const REFERENCE_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
+
+/**
+ * ACR's `details.deadline` of a `504 upstream_unavailable`; a value outside the enum is absent.
+ * error.v1 defines it on a 504 only: another status that carries it is not a deadline.
+ */
+function deadlineOf(error: ACRErrorV1): DeadlineKind | undefined {
+    if (error.error.code !== "upstream_unavailable" || error.error.http_status !== 504) {
+        return undefined;
+    }
+    const deadline: unknown = error.error.details?.deadline;
+    return deadline === "model" || deadline === "request" ? deadline : undefined;
+}
+
+/** The shared limit a 429 names; a `details.limit` outside the enum is absent. */
+function limitOf(error: ACRErrorV1): LimitKind {
+    if (error.error.code === "allowance_exhausted") return "allowance";
+    const limit: unknown = error.error.details?.limit;
+    return limit === "principal" || limit === "org" ? limit : "concurrency";
+}
+
+/**
+ * One `stage` event applied to a running turn. A stage keeps its furthest state (a late `started`
+ * after `completed` changes nothing); `stage` follows the last stage ACR started.
+ */
+function advanceStage(
+    turn: StoreTurn,
+    event: Extract<InvestigationEvent, { type: "stage" }>,
+): StoreTurn {
+    const { outcome } = turn;
+    if (outcome.kind !== "running") return turn;
+    if (outcome.stages[event.stage] === "completed") return turn;
+    return {
+        ...turn,
+        outcome: {
+            ...outcome,
+            stage: event.state === "started" ? event.stage : outcome.stage,
+            stages: { ...outcome.stages, [event.stage]: event.state },
+        },
+    };
+}
+
 /** The builders' timeline shape: a user turn, then its assistant turn (ids 2n and 2n + 1). */
 function toSourceTurns(turns: readonly StoreTurn[]): ConversationSourceTurn[] {
     return turns.flatMap((turn): ConversationSourceTurn[] => [
@@ -250,6 +346,8 @@ function toSourceTurns(turns: readonly StoreTurn[]): ConversationSourceTurn[] {
 type ActiveRun = {
     readonly turnId: number;
     readonly controller: AbortController;
+    /** When the run began (epoch ms): the panel's elapsed time counts from it. */
+    readonly startedAt: number;
     /** Fires at the run's deadline D (plan §2.7.6 "abort at D"), whatever the run is waiting on. */
     timer: ReturnType<typeof setTimeout> | undefined;
 };
@@ -272,6 +370,7 @@ export class ConversationStore {
         turns: [],
         inFlight: false,
         ready: false,
+        partition: null,
     };
 
     constructor(options: ConversationStoreOptions) {
@@ -296,7 +395,7 @@ export class ConversationStore {
     setPartition(key: string | null): void {
         if (this.partition !== undefined && key !== this.partition) this.clear("partition_changed");
         this.partition = key;
-        this.commit({ ...this.snapshot, ready: key !== null });
+        this.commit({ ...this.snapshot, ready: key !== null, partition: key });
     }
 
     /**
@@ -344,7 +443,7 @@ export class ConversationStore {
             createdAt: new Date(this.now()).toISOString(),
             submissionId: newSubmissionId(this.uuid()),
             request,
-            outcome: { kind: "running" },
+            outcome: this.running(),
         };
         this.commit({
             ...this.snapshot,
@@ -358,16 +457,22 @@ export class ConversationStore {
 
     /**
      * Sends the last turn's request again under its own `submission_id` (INV-2: the only reuse of a
-     * key). Only for a `failed` turn that allows it, and only when no run is in flight.
+     * key). Only for a `failed` or `limited` turn that allows it (nothing was admitted, or the
+     * answer is stored), and only when no run is in flight.
      */
     retry(turnId: number): boolean {
         const last = this.snapshot.turns[this.snapshot.turns.length - 1];
         if (last?.id !== turnId || this.snapshot.inFlight || !this.snapshot.ready) return false;
-        const retryable =
-            (last.outcome.kind === "failed" || last.outcome.kind === "not_run") &&
-            last.outcome.retry;
-        if (!retryable) return false;
-        this.setOutcome(turnId, { kind: "running" }, true);
+        const { outcome } = last;
+        if (
+            (outcome.kind !== "failed" &&
+                outcome.kind !== "limited" &&
+                outcome.kind !== "not_run") ||
+            !outcome.retry
+        ) {
+            return false;
+        }
+        this.setOutcome(turnId, this.running(), true);
         void this.run(turnId);
         return true;
     }
@@ -388,6 +493,11 @@ export class ConversationStore {
         );
         active.controller.abort();
         this.setOutcome(active.turnId, { kind: "canceled" }, false);
+    }
+
+    /** A run that just began: no stage yet, and the elapsed time counts from now. */
+    private running(): TurnOutcome {
+        return { kind: "running", startedAt: this.now(), stages: {} };
     }
 
     private commit(next: ConversationSnapshot): void {
@@ -463,7 +573,13 @@ export class ConversationStore {
         const turn = this.turn(turnId);
         const threadId = this.snapshot.threadId;
         if (turn === undefined || threadId === null) return;
-        const run: ActiveRun = { turnId, controller: new AbortController(), timer: undefined };
+        const startedAt = turn.outcome.kind === "running" ? turn.outcome.startedAt : this.now();
+        const run: ActiveRun = {
+            turnId,
+            controller: new AbortController(),
+            startedAt,
+            timer: undefined,
+        };
         this.active = run;
         const deadline = this.now() + this.runTimeoutMs;
         run.timer = setTimeout(() => this.expire(run), Math.max(0, deadline - this.now()));
@@ -490,6 +606,10 @@ export class ConversationStore {
                 await this.refused(run, deadline, error);
                 return;
             }
+            if (error instanceof TransportFailure) {
+                this.transportFailed(run, error.reason);
+                return;
+            }
             logger.warn(
                 { err: error, submission_id: submissionId, request_id: requestId },
                 "ask-dev stream dropped",
@@ -514,9 +634,7 @@ export class ConversationStore {
                 );
                 return false;
             case "stage":
-                if (event.state === "started") {
-                    this.setOutcome(run.turnId, { kind: "running", stage: event.stage }, true);
-                }
+                this.update(run.turnId, (turn) => advanceStage(turn, event), true);
                 return false;
             case "heartbeat":
                 return false;
@@ -549,7 +667,18 @@ export class ConversationStore {
                 } else {
                     // ACR closed the submission with this terminal: the same key cannot run again,
                     // so the way on is a new question.
-                    this.settle(run, terminalOutcomeOf(code) ?? { kind: "failed", retry: false });
+                    const deadline = deadlineOf(event.error);
+                    this.settle(
+                        run,
+                        terminalOutcomeOf(code) ??
+                            (deadline === undefined
+                                ? {
+                                      kind: "failed",
+                                      retry: false,
+                                      reference: this.reference(run, event.error),
+                                  }
+                                : { kind: "deadline", deadline }),
+                    );
                 }
                 return true;
             }
@@ -575,13 +704,26 @@ export class ConversationStore {
                 this.settle(run, { kind: "unsaved" });
                 return;
             case "submission_abandoned":
-                this.settle(run, { kind: "interrupted" });
+                this.settle(run, { kind: "abandoned" });
                 return;
             case "canceled":
                 this.settle(run, { kind: "canceled" });
                 return;
             case "run_lost":
                 this.settle(run, { kind: "interrupted" });
+                return;
+            case "budget_exhausted":
+                // ACR's per-call access read left too little wait budget; nothing ran (CHAOS-12201).
+                this.settle(run, { kind: "deadline", deadline: "budget_exhausted" });
+                return;
+            case "invalid_request":
+                // The store builds every request from the contract: a defect, never a user error.
+                logger.error(fields, "ask-dev investigation request refused as invalid");
+                this.settle(run, {
+                    kind: "failed",
+                    retry: false,
+                    reference: this.reference(run, refusal.error),
+                });
                 return;
             case "thread_closed":
                 // The contract: nothing ran, not retryable under these ids; start a new
@@ -592,19 +734,46 @@ export class ConversationStore {
             case "submission_required":
                 // The store sends a submission id on every create: a defect, never a user error.
                 logger.error(fields, "ask-dev create sent without a submission id");
-                this.settle(run, { kind: "failed", retry: false });
-                return;
-            case "invalid_request":
-                // The store builds every request from the contract: a defect, never a user error.
-                logger.error(fields, "ask-dev investigation request refused as invalid");
-                this.settle(run, { kind: "failed", retry: false });
+                this.settle(run, {
+                    kind: "failed",
+                    retry: false,
+                    reference: this.reference(run, refusal.error),
+                });
                 return;
             case "submission_mismatch":
                 // The store reused a key for another request: a defect, never a user error.
                 logger.error(fields, "ask-dev submission id reused for a different request");
-                this.settle(run, { kind: "failed", retry: false });
+                this.settle(run, {
+                    kind: "mismatch",
+                    reference: this.reference(run, refusal.error),
+                });
                 return;
-            default:
+            case "concurrency_limited":
+            case "allowance_exhausted": {
+                const limit = limitOf(refusal.error);
+                logger.info(
+                    {
+                        submission_id: fields.submission_id,
+                        status: fields.status,
+                        code: fields.code,
+                        limit,
+                        retry_after_seconds: refusal.retryAfterSeconds,
+                    },
+                    "ask-dev submission refused by a shared limit",
+                );
+                this.settle(run, {
+                    kind: "limited",
+                    limit,
+                    retry: refusal.error.error.retryable,
+                    retryAfterSeconds: refusal.retryAfterSeconds,
+                });
+                return;
+            }
+            case "stream_unavailable":
+                logger.warn(fields, "ask-dev event stream turned off on this deployment");
+                this.settle(run, { kind: "stream_unavailable" });
+                return;
+            default: {
                 const reason = notRunReasonOf(code);
                 if (reason !== undefined) {
                     logger.info(fields, "ask-dev investigation not run");
@@ -612,8 +781,57 @@ export class ConversationStore {
                     return;
                 }
                 logger.warn(fields, "ask-dev investigation refused before the stream");
-                this.settle(run, { kind: "failed", retry: refusal.error.error.retryable });
+                const deadlineKind = deadlineOf(refusal.error);
+                this.settle(
+                    run,
+                    deadlineKind === undefined
+                        ? {
+                              kind: "failed",
+                              retry: refusal.error.error.retryable,
+                              reference: this.reference(run, refusal.error),
+                          }
+                        : { kind: "deadline", deadline: deadlineKind },
+                );
+            }
         }
+    }
+
+    /**
+     * The browser transport ended the run itself (`TransportFailure`). Its abort is a disconnect,
+     * which ends ACR's run (plan §2.7.4), so there is nothing to poll for: the turn ends with the
+     * reason's own state.
+     */
+    private transportFailed(run: ActiveRun, reason: TransportFailureReason): void {
+        const turn = this.turn(run.turnId);
+        logger.warn(
+            { submission_id: turn?.submissionId, request_id: turn?.request.request_id, reason },
+            "ask-dev transport ended the run",
+        );
+        switch (reason) {
+            case "stalled":
+                this.settle(run, { kind: "stalled" });
+                return;
+            case "admission_timeout":
+                this.settle(run, { kind: "deadline", deadline: "admission" });
+                return;
+            case "budget_exhausted":
+                this.settle(run, { kind: "deadline", deadline: "budget_exhausted" });
+                return;
+            case "invalid_upstream":
+                this.settle(run, { kind: "failed", retry: false, reference: this.reference(run) });
+                return;
+        }
+    }
+
+    /**
+     * The correlation code a failed turn shows: ACR's `request_id` from its `error.v1`, when it is a
+     * plain id, else the `request_id` this turn sent. Never free text.
+     */
+    private reference(run: ActiveRun, error?: ACRErrorV1): string | undefined {
+        if (error !== undefined && REFERENCE_PATTERN.test(error.request_id))
+            return error.request_id;
+        const own = this.turn(run.turnId)?.request.request_id;
+        return own !== undefined && REFERENCE_PATTERN.test(own) ? own : undefined;
     }
 
     /**
@@ -627,7 +845,7 @@ export class ConversationStore {
         const submissionId = turn.submissionId;
         const requestId = turn.request.request_id;
         const signal = run.controller.signal;
-        this.setOutcome(run.turnId, { kind: "recovering" }, true);
+        this.setOutcome(run.turnId, { kind: "recovering", startedAt: run.startedAt }, true);
         for (;;) {
             let status;
             try {
@@ -651,7 +869,9 @@ export class ConversationStore {
                 );
                 this.settle(
                     run,
-                    accepted ? { kind: "interrupted" } : { kind: "failed", retry: true },
+                    accepted
+                        ? { kind: "interrupted" }
+                        : { kind: "failed", retry: true, reference: this.reference(run) },
                 );
                 return;
             }
@@ -695,7 +915,7 @@ export class ConversationStore {
                 "ask-dev result replay failed",
             );
             // The submission is done: the same key replays the stored result, it never runs again.
-            this.settle(run, { kind: "failed", retry: true });
+            this.settle(run, { kind: "failed", retry: true, reference: this.reference(run) });
             return;
         }
         if (!this.owns(run)) return;

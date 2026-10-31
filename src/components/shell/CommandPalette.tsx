@@ -18,7 +18,7 @@ import { useAdminNav } from "@/components/admin/AdminTabs";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { Dialog } from "@/components/ui/Dialog";
 import { useAskDevShell } from "@/components/ask-dev/AskDevShellContext";
-import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
+import { isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
 import { navAreas } from "@/lib/navigation/areas";
 
 import {
@@ -53,7 +53,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     const [active, setActive] = useState(0);
 
     const { setOpen: setAskDevOpen } = useAskDevShell();
-    const askDev = isAskDevEnabled(features) && !isAskDevExcludedPath(pathname);
+    const askDev = isAskDevEnabled(features) && isAskDevPanelPath(pathname);
     const entries = useMemo(() => {
         const list = paletteEntries(navAreas, features, undefined, { isPlatformAdmin });
         return askDev ? [ASK_DEV_PALETTE_ENTRY, ...list] : list;

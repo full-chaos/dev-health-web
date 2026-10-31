@@ -15,6 +15,8 @@ import { windowText } from "@/lib/ask-dev/render/window-text";
 import { CohortChartSlot } from "../render/RenderShapes";
 
 import type { AnswerResult } from "./answerModel";
+import { InvestmentRollupLabel } from "./InvestmentRollupLabel";
+import { rollupForSubject } from "./investmentRollup";
 
 /**
  * The cohort ranking of one answer (CHAOS-11944, E8 design §10). The gate is `webCohortRanking`
@@ -167,7 +169,16 @@ function ScoreCell({ row }: { row: RankedCohortRow }) {
  * full-width detail row right below it. A member's two rows share one `tbody`, and the detail row
  * names the member for a screen reader.
  */
-function RankingTable({ cohort, rows }: { cohort: Cohort; rows: readonly RankedCohortRow[] }) {
+function RankingTable({
+    cohort,
+    rows,
+    claims,
+}: {
+    cohort: Cohort;
+    rows: readonly RankedCohortRow[];
+    /** The answer's claimed facts: a member served the owning-team roll-up is labelled. */
+    claims: NonNullable<AnswerResult["claimed_facts"]>;
+}) {
     const kind = kindWords(cohort.kind);
     return (
         <table
@@ -241,6 +252,10 @@ function RankingTable({ cohort, rows }: { cohort: Cohort; rows: readonly RankedC
                                     · {RANKING_COPY.rowWindow} {humanizeTerm(row.window)}
                                 </span>
                             </p>
+                            <RowRollup
+                                claims={claims}
+                                canonicalId={row.member.subject.canonical_id}
+                            />
                             {row.topDrivers.length === 0 ? (
                                 <p
                                     className="text-(--ink-muted)"
@@ -262,6 +277,23 @@ function RankingTable({ cohort, rows }: { cohort: Cohort; rows: readonly RankedC
                 </tbody>
             ))}
         </table>
+    );
+}
+
+/** CHAOS-12178: a member whose investment claim is the owning team's roll-up says so. */
+function RowRollup({
+    claims,
+    canonicalId,
+}: {
+    claims: NonNullable<AnswerResult["claimed_facts"]>;
+    canonicalId: string;
+}) {
+    const rollup = rollupForSubject(claims, canonicalId);
+    if (rollup === null) return null;
+    return (
+        <p>
+            <InvestmentRollupLabel rollup={rollup} />
+        </p>
     );
 }
 
@@ -376,7 +408,7 @@ export function AskDevCohortRanking({ result }: { result: AnswerResult }) {
                     <WindowLine result={result} />
                     <IncompleteNotice cohort={cohort} />
                     <CohortChartSlot />
-                    <RankingTable cohort={cohort} rows={rows} />
+                    <RankingTable cohort={cohort} rows={rows} claims={result.claimed_facts ?? []} />
                     <CoverageNotes cohort={cohort} ranked={rows} />
                 </Group>
             );
