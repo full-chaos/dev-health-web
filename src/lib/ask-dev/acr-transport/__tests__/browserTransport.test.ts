@@ -707,16 +707,6 @@ describe("submissionStatus and readResult", () => {
     });
 });
 
-describe("attach, until T14b serves it (CHAOS-12336)", () => {
-    it("refuses locally and sends nothing", () => {
-        const signal = new AbortController().signal;
-        expect(() => transport().attach({ submissionId: SUBMISSION, signal })).toThrow(
-            /CHAOS-12336/u,
-        );
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
-});
-
 describe("logs", () => {
     it("never carry the token, the question or a URL", async () => {
         const body = sseBody();

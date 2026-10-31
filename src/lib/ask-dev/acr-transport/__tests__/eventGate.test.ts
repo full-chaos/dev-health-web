@@ -281,3 +281,124 @@ describe("after the terminal", () => {
         });
     });
 });
+
+// CHAOS-12336 (T14b, the lead's ruling 1 = A): an attach after a cursor starts mid-run. The rules
+// that need no earlier event hold at once; the stage rules hold from the first stage event on.
+describe("an attach after a cursor", () => {
+    const resumed = (after = 5) =>
+        new InvestigationEventGate(
+            validateInvestigationEventEnvelope,
+            { submissionId: SUBMISSION },
+            { resumeAfter: after },
+        );
+
+    it("starts at the event after the cursor, then grows by one", () => {
+        expect(
+            kinds(feed([heartbeatEvent(6, 40_000), heartbeatEvent(7, 45_000)], resumed())),
+        ).toEqual(["event", "event"]);
+        expect(kinds(feed([heartbeatEvent(7, 40_000)], resumed()))).toEqual(["invalid:seq_gap"]);
+        expect(kinds(feed([heartbeatEvent(5, 40_000)], resumed()))).toEqual(["invalid:seq_gap"]);
+        expect(kinds(feed([{ ...accepted(), seq: 6 }], resumed()))).toEqual([
+            "invalid:accepted_repeated",
+        ]);
+    });
+
+    it("takes request_id from its first event and holds it", () => {
+        expect(
+            kinds(
+                feed(
+                    [
+                        { ...heartbeatEvent(6, 40_000), request_id: "req_resumed" },
+                        { ...heartbeatEvent(7, 41_000), request_id: "req_resumed" },
+                        { ...heartbeatEvent(8, 42_000), request_id: "req_other" },
+                    ],
+                    resumed(),
+                ),
+            ),
+        ).toEqual(["event", "event", "invalid:request_id_changed"]);
+    });
+
+    it("checks elapsed_ms from its first value on (the store checks the join)", () => {
+        expect(
+            kinds(feed([heartbeatEvent(6, 90_000), heartbeatEvent(7, 89_000)], resumed())),
+        ).toEqual(["event", "invalid:elapsed_regressed"]);
+        expect(
+            kinds(feed([heartbeatEvent(6, 90_000), heartbeatEvent(7, 101_001)], resumed())),
+        ).toEqual(["event", "invalid:silence"]);
+    });
+
+    it("before a stage event, the stage rules wait: the open stage is not known", () => {
+        expect(
+            kinds(
+                feed(
+                    [
+                        { ...heartbeatEvent(6, 40_000), stage: "reading_facts" },
+                        heartbeatEvent(7, 41_000),
+                    ],
+                    resumed(),
+                ),
+            ),
+        ).toEqual(["event", "event"]);
+        expect(kinds(feed([{ ...errorEvent(6), stage: "synthesizing" }], resumed()))).toEqual([
+            "event",
+        ]);
+        expect(kinds(feed([resultEvent(6)], resumed()))).toEqual(["event"]);
+    });
+
+    it("a stage event after the join re-arms every stage rule", () => {
+        const closed = stageEvent(6, "reading_facts", "completed", 40_000);
+        // A heartbeat must name no stage now; one naming the stage that closed breaks it.
+        expect(
+            kinds(
+                feed([closed, { ...heartbeatEvent(7, 41_000), stage: "reading_facts" }], resumed()),
+            ),
+        ).toEqual(["event", "invalid:heartbeat_stage"]);
+        // An error names the last stage started: the one that closed.
+        expect(
+            kinds(feed([closed, { ...errorEvent(7), stage: "interpreting" }], resumed())),
+        ).toEqual(["event", "invalid:error_stage"]);
+        expect(
+            kinds(feed([closed, { ...errorEvent(7), stage: "reading_facts" }], resumed())),
+        ).toEqual(["event", "event"]);
+        // No earlier stage starts again.
+        expect(
+            kinds(feed([closed, stageEvent(7, "interpreting", "started", 41_000)], resumed())),
+        ).toEqual(["event", "invalid:stage_order"]);
+        // A result waits for the open stage to close.
+        expect(
+            kinds(
+                feed(
+                    [closed, stageEvent(7, "synthesizing", "started", 41_000), resultEvent(8)],
+                    resumed(),
+                ),
+            ),
+        ).toEqual(["event", "event", "invalid:result_stage_open"]);
+        // A stage that opens after the join: a heartbeat must name it.
+        expect(
+            kinds(
+                feed(
+                    [stageEvent(6, "synthesizing", "started", 40_000), heartbeatEvent(7, 41_000)],
+                    resumed(),
+                ),
+            ),
+        ).toEqual(["event", "invalid:heartbeat_stage"]);
+    });
+
+    it("with no cursor, the whole grammar holds from accepted, and no thread is asked for", () => {
+        const fromStart = new InvestigationEventGate(validateInvestigationEventEnvelope, {
+            submissionId: SUBMISSION,
+        });
+        const verdicts = feed(CAPTURED, fromStart);
+        expect(kinds(verdicts).every((kind) => kind === "event")).toBe(true);
+        expect(
+            kinds(
+                feed(
+                    [{ ...accepted(), submission_id: "sub_other" }],
+                    new InvestigationEventGate(validateInvestigationEventEnvelope, {
+                        submissionId: SUBMISSION,
+                    }),
+                ),
+            ),
+        ).toEqual(["invalid:submission_mismatch"]);
+    });
+});

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const log = vi.hoisted(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
@@ -10,9 +10,11 @@ import type { AcrBrowserClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import {
     TransportFailure,
     type AskDevTransport,
+    type InvestigationEvent,
 } from "@/components/ask-dev/conversation/transport";
 
 import { createAcrBrowserTransport } from "../browserTransport";
+import { acceptedEvent, acrFrame, CAPTURED_EVENTS, heartbeatEvent } from "./eventFixtures";
 
 /**
  * CHAOS-12336 (T14b): the thread, delete, feedback and cancel calls of the browser's ACR transport,
@@ -143,6 +145,35 @@ beforeEach(() => {
     fetchMock = vi.fn();
     for (const level of Object.values(log)) level.mockReset();
 });
+
+afterEach(() => {
+    vi.useRealTimers();
+});
+
+type EventObject = Record<string, unknown> & { readonly seq: number; readonly type: string };
+/** The captured run's submission: an attach with no cursor replays its `accepted`. */
+const RUN = String(acceptedEvent().submission_id);
+const CAPTURED = CAPTURED_EVENTS as EventObject[];
+const frames = (events: readonly EventObject[]) => events.map(acrFrame).join("");
+const sseResponse = (body: BodyInit) =>
+    new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+
+async function collect(events: AsyncIterable<InvestigationEvent>): Promise<InvestigationEvent[]> {
+    const out: InvestigationEvent[] = [];
+    for await (const event of events) out.push(event);
+    return out;
+}
+
+/** A body that stays open: push frames, never close. */
+function openBody() {
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({
+        start(c) {
+            controller = c;
+        },
+    });
+    return { stream, push: (text: string) => controller.enqueue(new TextEncoder().encode(text)) };
+}
 
 describe("listThreads", () => {
     it("GET /threads with the limit and the cursor, checked and mapped", async () => {
@@ -333,6 +364,111 @@ describe("cancel", () => {
     });
 });
 
+describe("attach", () => {
+    const attach = (lastEventId?: number, t = transport()) =>
+        t.attach({ submissionId: RUN, lastEventId, signal });
+
+    it("GET …/events with exactly Accept: text/event-stream; no cursor replays from accepted", async () => {
+        fetchMock.mockResolvedValueOnce(sseResponse(frames(CAPTURED)));
+        const events = await collect(attach());
+        expect(events.map((event) => event.seq)).toEqual(CAPTURED.map((event) => event.seq));
+        expectAcrCall(0, "GET", `${API}/investigations/submissions/${RUN}/events`);
+        const { init } = sent(0);
+        expect((init.headers as Record<string, string>).Accept).toBe("text/event-stream");
+        expect(init.headers).not.toHaveProperty("Last-Event-ID");
+    });
+
+    it("a cursor is sent as Last-Event-ID, and the stream resumes after it", async () => {
+        fetchMock.mockResolvedValueOnce(sseResponse(frames(CAPTURED.slice(3))));
+        const events = await collect(attach(3));
+        expect(events[0]?.seq).toBe(4);
+        expect(events.at(-1)?.type).toBe("result");
+        expect(sent(0).init.headers).toMatchObject({ "Last-Event-ID": "3" });
+    });
+
+    it("a cursor that is not a safe integer of 0 or more sends nothing", async () => {
+        for (const bad of [1.5, -1, 2 ** 53, Number.NaN]) {
+            await expect(collect(attach(bad)), String(bad)).rejects.toThrow(/Last-Event-ID/u);
+        }
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("404 and 410 cursor_expired are refusals; a non-SSE answer is invalid_upstream", async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse(errorEnvelope("not_found", 404), 404));
+        await expect(collect(attach(3))).rejects.toMatchObject({
+            name: "TransportRefusal",
+            status: 404,
+        });
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse(errorEnvelope("cursor_expired", 410, { reason: "expired" }), 410),
+        );
+        await expect(collect(attach(3))).rejects.toMatchObject({
+            name: "TransportRefusal",
+            status: 410,
+            error: { error: { code: "cursor_expired" } },
+        });
+        fetchMock.mockResolvedValueOnce(jsonResponse({}, 200));
+        await expect(collect(attach())).rejects.toEqual(new TransportFailure("invalid_upstream"));
+    });
+
+    it("a break of the stream after the cursor is invalid_upstream", async () => {
+        // The cursor is 3: the next event must be 4.
+        fetchMock.mockResolvedValueOnce(sseResponse(frames(CAPTURED.slice(4))));
+        await expect(collect(attach(3))).rejects.toEqual(new TransportFailure("invalid_upstream"));
+    });
+
+    it("a result the full schema refuses is invalid_upstream (option (c))", async () => {
+        fetchMock.mockResolvedValueOnce(sseResponse(frames(CAPTURED)));
+        const strict = createAcrBrowserTransport(CONFIG, {
+            fetch: fetchMock as unknown as typeof fetch,
+            now: () => 1_800_000_000_000,
+            token: () => token,
+            envelope: streamEnvelopeValidators,
+            validators: async () => ({
+                ...streamValidators,
+                validateInvestigationEvent: () => false,
+            }),
+        });
+        await expect(collect(attach(undefined, strict))).rejects.toEqual(
+            new TransportFailure("invalid_upstream"),
+        );
+    });
+
+    it("no headers in 15 s is admission_timeout; no byte for 30 s is stalled", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementationOnce(
+            (_url: string, init: RequestInit) =>
+                new Promise((_ok, fail) =>
+                    init.signal!.addEventListener("abort", () => fail(init.signal!.reason)),
+                ),
+        );
+        const waiting = collect(attach(3)).then(
+            () => "ended",
+            (error: unknown) => error,
+        );
+        await vi.advanceTimersByTimeAsync(15_000);
+        expect(await waiting).toEqual(new TransportFailure("admission_timeout"));
+
+        const body = openBody();
+        fetchMock.mockResolvedValueOnce(sseResponse(body.stream));
+        const stalling = collect(attach(3)).then(
+            () => "ended",
+            (error: unknown) => error,
+        );
+        await vi.advanceTimersByTimeAsync(0);
+        body.push(frames([heartbeatEvent(4, 40_000)]));
+        await vi.advanceTimersByTimeAsync(29_999);
+        body.push(": keepalive\n\n");
+        await vi.advanceTimersByTimeAsync(29_999);
+        let settled = false;
+        void stalling.then(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await stalling).toEqual(new TransportFailure("stalled"));
+    });
+});
+
 describe("every T14b call", () => {
     const calls: [string, (t: AskDevTransport, s: AbortSignal) => Promise<unknown>][] = [
         ["listThreads", (t, s) => t.listThreads({ limit: 20, signal: s })],
@@ -344,6 +480,7 @@ describe("every T14b call", () => {
             (t, s) => t.setFeedback({ resultId: RESULT, correct: "yes", useful: "yes", signal: s }),
         ],
         ["cancel", (t, s) => t.cancel({ submissionId: SUBMISSION, signal: s })],
+        ["attach", (t, s) => collect(t.attach({ submissionId: RUN, lastEventId: 3, signal: s }))],
     ];
 
     it("no token: authorization_required, and nothing is sent", async () => {
@@ -381,13 +518,22 @@ describe("every T14b call", () => {
         }
     });
 
-    it("an aborted call sends nothing and ends with the abort", async () => {
+    it("an aborted call reads no token, sends nothing and ends with the abort", async () => {
         const reason = new DOMException("gone", "AbortError");
         const controller = new AbortController();
         controller.abort(reason);
+        const tokenRead = vi.fn(() => token);
+        const unread = createAcrBrowserTransport(CONFIG, {
+            fetch: fetchMock as unknown as typeof fetch,
+            now: () => 1_800_000_000_000,
+            token: tokenRead,
+            envelope: streamEnvelopeValidators,
+            validators: async () => streamValidators,
+        });
         for (const [name, run] of calls) {
-            await expect(run(transport(), controller.signal), name).rejects.toBe(reason);
+            await expect(run(unread, controller.signal), name).rejects.toBe(reason);
         }
+        expect(tokenRead).not.toHaveBeenCalled();
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
