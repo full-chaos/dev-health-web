@@ -145,6 +145,54 @@ export class TransportFailure extends Error {
     }
 }
 
+/** A turn's submission state, as a thread serves it (`context_fabric_thread.v1` `ThreadTurn`). */
+export type ThreadTurnState = "running" | "done" | "done_unsaved" | "abandoned";
+
+/**
+ * One turn of a thread, as the store reads it (CHAOS-11956). The thread schemas are excluded from
+ * `generated.ts` (`scripts/acr-contract-artifacts.mjs`), so these are narrow views of the fields
+ * the store uses, built only from a body that passed `parseThread` (`@/lib/acr/threadContract`).
+ */
+export type ThreadTurnView = {
+    readonly submissionId: string;
+    readonly state: ThreadTurnState;
+    /** The question as the caller sent it; `null` on a turn admitted before ACR recorded it. */
+    readonly question: string | null;
+    /** On a `done` turn ACR would serve now: the final result's id. */
+    readonly resultId: string | null;
+    /** On a `done` turn ACR would not serve now (`result_withheld`). */
+    readonly resultWithheld: boolean;
+    readonly admittedAt: string;
+};
+
+/** The caller's own conversation: one page of turns, oldest first. */
+export type ThreadView = {
+    readonly threadId: string;
+    readonly turnCount: number;
+    readonly createdAt: string;
+    readonly lastTurnAt: string;
+    readonly expiresAt: string;
+    readonly turns: readonly ThreadTurnView[];
+    /** Opaque; present when earlier turns exist (pass it back as `before`). */
+    readonly earlierTurnsCursor: string | null;
+};
+
+/** One row of the caller's conversation list (`context_fabric_thread_list.v1` `ThreadSummary`). */
+export type ThreadSummaryView = {
+    readonly threadId: string;
+    readonly turnCount: number;
+    readonly createdAt: string;
+    readonly lastTurnAt: string;
+    readonly expiresAt: string;
+};
+
+/** One page of the list: newest `last_turn_at` first, then `thread_id`. */
+export type ThreadListView = {
+    readonly threads: readonly ThreadSummaryView[];
+    /** Opaque; present when more threads follow (pass it back as `cursor`). */
+    readonly nextCursor: string | null;
+};
+
 export type AskDevTransport = {
     /**
      * Opens one investigation stream (`Accept: text/event-stream`). It yields the events in `seq`
@@ -162,8 +210,41 @@ export type AskDevTransport = {
         submissionId: string,
         signal: AbortSignal,
     ) => Promise<ContextFabricSubmissionStatusV1 | null>;
-    /** `GET …/investigations/{result_id}`: replays a stored result, which ACR authorizes again. */
+    /**
+     * `GET …/investigations/{result_id}`: replays a stored result, which ACR authorizes again. ACR's
+     * 404 (not the caller's, or not served now) throws a `TransportRefusal` with status 404.
+     */
     readonly readResult: (resultId: string, signal: AbortSignal) => Promise<TranscriptResult>;
+    /**
+     * `GET /api/v1/context-fabric/threads?limit&cursor` (CHAOS-11956): one page of the caller's
+     * conversations. The body is checked with `parseThreadList` before it is mapped; a body that
+     * fails it throws `TransportFailure("invalid_upstream")`. A 400 (a stale or foreign cursor)
+     * throws a `TransportRefusal`.
+     */
+    readonly listThreads: (call: {
+        readonly cursor?: string | undefined;
+        readonly limit: number;
+        readonly signal: AbortSignal;
+    }) => Promise<ThreadListView>;
+    /**
+     * `GET /api/v1/context-fabric/threads/{thread_id}?before` (CHAOS-11956): the caller's own
+     * conversation, or `null` for ACR's 404 (another principal's, unknown, deleted, expired or
+     * malformed: the same answer). Checked with `parseThread`, as above.
+     */
+    readonly readThread: (call: {
+        readonly threadId: string;
+        readonly before?: string | undefined;
+        readonly signal: AbortSignal;
+    }) => Promise<ThreadView | null>;
+    /**
+     * `DELETE /api/v1/context-fabric/threads/{thread_id}` (CHAOS-11956). ACR answers 204 for the
+     * caller's own thread and for any other well-formed id alike, so it resolves for both. A delete
+     * closes the thread; it does not stop a running turn.
+     */
+    readonly deleteThread: (call: {
+        readonly threadId: string;
+        readonly signal: AbortSignal;
+    }) => Promise<void>;
 };
 
 /**

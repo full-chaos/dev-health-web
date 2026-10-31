@@ -23,14 +23,21 @@ const BUTTON =
 export function AskDevComposer({
     inFlight,
     ready,
+    locked,
     onSubmit,
     onCancel,
 }: {
     inFlight: boolean;
     /** False while signed out: the composer says so and sends nothing. */
     ready: boolean;
+    /**
+     * Why the conversation takes no question now (it is restoring, or read-only; CHAOS-11956):
+     * the composer says so and sends nothing.
+     */
+    locked?: string | undefined;
     onSubmit: (question: string) => boolean;
-    onCancel: () => void;
+    /** Stop; absent when the run in flight cannot be stopped from here. */
+    onCancel?: (() => void) | undefined;
 }) {
     const [draft, setDraft] = useState("");
     const fieldId = useId();
@@ -63,7 +70,7 @@ export function AskDevComposer({
                 data-testid="ask-dev-composer-input"
                 rows={3}
                 value={draft}
-                disabled={!ready}
+                disabled={!ready || locked !== undefined}
                 placeholder={COMPOSER_COPY.placeholder}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={onKeyDown}
@@ -71,9 +78,13 @@ export function AskDevComposer({
             />
             {!ready ? (
                 <p className="text-sm text-(--ink-muted)">{COMPOSER_COPY.signedOut}</p>
+            ) : locked !== undefined ? (
+                <p className="text-sm text-(--ink-muted)" data-testid="ask-dev-composer-locked">
+                    {locked}
+                </p>
             ) : null}
             <div className="flex justify-end gap-2">
-                {inFlight ? (
+                {inFlight && onCancel ? (
                     <button
                         type="button"
                         data-testid="ask-dev-composer-stop"
@@ -86,7 +97,7 @@ export function AskDevComposer({
                 <button
                     type="submit"
                     data-testid="ask-dev-composer-send"
-                    disabled={!ready || inFlight || blank}
+                    disabled={!ready || locked !== undefined || inFlight || blank}
                     className={`${BUTTON} bg-(--accent-2) text-(--surface) hover:opacity-90`}
                 >
                     {CTA_LABELS.askDevSend}

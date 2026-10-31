@@ -1,0 +1,608 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+import { validateAcrContract } from "../contracts";
+import { parseThread, parseThreadList } from "../threadContract";
+
+/**
+ * Differential oracle: `parseThread` / `parseThreadList` (eval-free, shipped to the browser) must
+ * reach the same verdict as Ajv (`validateAcrContract`, node only) on every input. Cases are
+ * derived by walking the vendored schema files, not from a hand list of fields, so a pin bump that
+ * adds a field or moves a bound changes the cases and breaks the parser if it did not follow.
+ */
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const SCHEMA_DIR = path.resolve(HERE, "../contracts/schemas");
+
+type Schema = {
+    readonly type?: string;
+    readonly $ref?: string;
+    readonly enum?: readonly unknown[];
+    readonly const?: unknown;
+    readonly minLength?: number;
+    readonly maxLength?: number;
+    readonly minimum?: number;
+    readonly maximum?: number;
+    readonly minItems?: number;
+    readonly maxItems?: number;
+    readonly format?: string;
+    readonly pattern?: string;
+    readonly required?: readonly string[];
+    readonly properties?: Readonly<Record<string, Schema>>;
+    readonly items?: Schema;
+    readonly if?: Schema;
+    readonly then?: Schema & { readonly oneOf?: readonly Schema[] };
+    readonly $defs?: Readonly<Record<string, Schema>>;
+};
+
+type Json = unknown;
+type Case = { readonly label: string; readonly body: Json };
+type Step = string | number;
+
+const DELETE = Symbol("delete");
+
+function loadSchema(file: string): Schema {
+    return JSON.parse(fs.readFileSync(path.join(SCHEMA_DIR, file), "utf8")) as Schema;
+}
+
+function clone<T>(value: T): T {
+    return structuredClone(value);
+}
+
+// Returns a copy of `root` with the node at `steps` replaced (or removed).
+function applyAt(root: Json, steps: readonly Step[], value: unknown): Json {
+    if (steps.length === 0) return value === DELETE ? undefined : clone(value);
+    const copy = clone(root) as Record<string | number, unknown>;
+    let node = copy;
+    for (const step of steps.slice(0, -1)) node = node[step] as Record<string | number, unknown>;
+    const last = steps[steps.length - 1] as Step;
+    if (value === DELETE) {
+        if (Array.isArray(node)) node.splice(last as number, 1);
+        else delete node[last];
+    } else {
+        node[last] = clone(value);
+    }
+    return copy;
+}
+
+const TYPE_SWAPS: readonly unknown[] = [
+    "x",
+    "",
+    "1",
+    0,
+    1,
+    -1,
+    1.5,
+    1e21,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    true,
+    false,
+    null,
+    {},
+    [],
+    { a: 1 },
+    [1],
+];
+
+const DATE_TIMES: readonly string[] = [
+    "2026-01-02T03:04:05Z",
+    "2026-01-02T03:04:05z",
+    "2026-01-02t03:04:05Z",
+    "2026-01-02 03:04:05Z",
+    "2026-01-02T03:04:05",
+    "2026-01-02T03:04:05.123Z",
+    "2026-01-02T03:04:05.Z",
+    "2026-01-02T03:04:05.123456789+05:30",
+    "2026-01-02T03:04:05-23:59",
+    "2026-01-02T03:04:05+24:00",
+    "2026-01-02T03:04:05+00:60",
+    "2026-01-02T03:04:05+0530",
+    "2026-01-02T03:04:05+05",
+    "2026-13-01T00:00:00Z",
+    "2026-00-10T00:00:00Z",
+    "2026-02-30T00:00:00Z",
+    "2026-02-29T00:00:00Z",
+    "2024-02-29T00:00:00Z",
+    "2100-02-29T00:00:00Z",
+    "2000-02-29T00:00:00Z",
+    "2026-04-31T00:00:00Z",
+    "2026-01-00T00:00:00Z",
+    "2026-01-32T00:00:00Z",
+    "2026-01-02T24:00:00Z",
+    "2026-01-02T23:60:00Z",
+    "2026-01-02T23:59:60Z",
+    "2016-12-31T23:59:60Z",
+    "2016-12-31T23:59:60+00:00",
+    "2016-12-31T23:59:60+01:00",
+    "2017-01-01T00:59:60+01:00",
+    "2026-01-02T23:59:61Z",
+    "2026-01-02T03:04:05Z ",
+    " 2026-01-02T03:04:05Z",
+    "2026-01-02T03:04:05Z\n",
+    "2026-01-02T03:04:05ZZ",
+    "2026-01-02T03:04:05T03:04:05Z",
+    "２０２６-01-02T03:04:05Z",
+    "2026-1-2T3:4:5Z",
+    "0000-01-01T00:00:00Z",
+    "9999-12-31T23:59:59Z",
+];
+
+function repeatChar(char: string, count: number): string {
+    return char.repeat(Math.max(0, count));
+}
+
+// Values a string node's keywords make worth testing, around each bound and the pattern.
+function stringCandidates(node: Schema, current: unknown): unknown[] {
+    const out: unknown[] = [];
+    const { minLength, maxLength } = node;
+    const lengths = new Set<number>();
+    if (minLength !== undefined)
+        [minLength - 1, minLength, minLength + 1].forEach((n) => lengths.add(n));
+    if (maxLength !== undefined)
+        [maxLength - 1, maxLength, maxLength + 1].forEach((n) => lengths.add(n));
+    for (const length of lengths) {
+        if (length < 0) continue;
+        out.push(repeatChar("a", length), repeatChar("7", length));
+        // Astral: 1 code point, 2 UTF-16 units; the bound is on code points.
+        out.push(repeatChar("\u{1F600}", length));
+        // Mixed with a pattern-legal tail so the pattern is not what decides.
+        out.push(repeatChar("\u{1F600}", Math.max(0, length - 8)) + "abcdefgh");
+        // A lone surrogate counts as one.
+        out.push(repeatChar("a", Math.max(0, length - 1)) + "\uD800");
+        out.push("\uD800" + repeatChar("a", Math.max(0, length - 1)));
+        out.push(repeatChar("\uD83D", length));
+    }
+    if (node.pattern !== undefined) {
+        const base = typeof current === "string" ? current : "abcdefgh";
+        out.push(
+            base + " ",
+            " " + base,
+            base + "\n",
+            "\n" + base,
+            base + "!",
+            "!" + base,
+            base.slice(0, -1) + "/",
+            base.replace(/./, "é"),
+            "",
+        );
+    }
+    if (node.format === "date-time") out.push(...DATE_TIMES);
+    return out;
+}
+
+function numberCandidates(node: Schema): unknown[] {
+    const out: unknown[] = [];
+    const bounds = [node.minimum, node.maximum].filter((n): n is number => n !== undefined);
+    for (const bound of bounds) out.push(bound - 1, bound, bound + 1, bound + 0.5, bound - 0.5);
+    out.push(0, 1, -1, 2, 29, 30, 31, 100, 1.0, -0);
+    return out;
+}
+
+function resolve(node: Schema, root: Schema): Schema {
+    if (node.$ref === undefined) return node;
+    const prefix = "#/$defs/";
+    if (!node.$ref.startsWith(prefix)) throw new Error(`unsupported $ref ${node.$ref}`);
+    const target = root.$defs?.[node.$ref.slice(prefix.length)];
+    if (target === undefined) throw new Error(`unresolved $ref ${node.$ref}`);
+    return target;
+}
+
+type Collector = {
+    readonly push: (label: string, body: Json) => void;
+};
+
+// Walks one base body against the schema, emitting a case for every mutation the schema invites.
+function walk(
+    rawNode: Schema,
+    root: Schema,
+    base: Json,
+    steps: readonly Step[],
+    value: unknown,
+    out: Collector,
+): void {
+    const node = resolve(rawNode, root);
+    const where = steps.join(".") || "<root>";
+    const replace = (label: string, candidate: unknown): void =>
+        out.push(`${where} <- ${label}`, applyAt(base, steps, candidate));
+
+    TYPE_SWAPS.forEach((candidate, index) => replace(`swap#${index}`, candidate));
+    if (steps.length > 0) replace("deleted", DELETE);
+
+    if (node.enum !== undefined) {
+        for (const member of node.enum) replace(`enum ${JSON.stringify(member)}`, member);
+        for (const alien of ["__not_in_enum__", "Done", "DONE", 2, 31, -1, 0.5]) {
+            replace(`outside enum ${JSON.stringify(alien)}`, alien);
+        }
+    }
+    if (node.const !== undefined) {
+        replace("const", node.const);
+        for (const alien of [false, true, "other", 0, 1, null, `${String(node.const)} `]) {
+            replace(`not const ${JSON.stringify(alien)}`, alien);
+        }
+    }
+    if (node.type === "string") {
+        stringCandidates(node, value).forEach((candidate, index) =>
+            replace(`string#${index}`, candidate),
+        );
+    }
+    if (node.type === "integer" || node.minimum !== undefined || node.maximum !== undefined) {
+        numberCandidates(node).forEach((candidate, index) => replace(`number#${index}`, candidate));
+    }
+
+    if (node.type === "array" && Array.isArray(value)) {
+        const item = value[0];
+        const sizes = new Set<number>([0, 1, 2]);
+        for (const bound of [node.minItems, node.maxItems]) {
+            if (bound !== undefined) [bound - 1, bound, bound + 1].forEach((n) => sizes.add(n));
+        }
+        for (const size of sizes) {
+            if (size < 0) continue;
+            replace(
+                `array size ${size}`,
+                Array.from({ length: size }, () => clone(item)),
+            );
+        }
+        if (node.items !== undefined) {
+            value.forEach((element, index) =>
+                walk(node.items as Schema, root, base, [...steps, index], element, out),
+            );
+        }
+    }
+
+    if (node.type === "object" && typeof value === "object" && value !== null) {
+        const record = value as Record<string, unknown>;
+        for (const key of node.required ?? []) {
+            out.push(`${where}.${key} required`, applyAt(base, [...steps, key], DELETE));
+        }
+        // additionalProperties:false is asserted by the schema file; a pin bump to `true` would fail
+        // the Ajv side of the comparison for the cases below only if the parser disagreed.
+        for (const extra of [
+            "extra",
+            "Extra",
+            "",
+            "__proto__",
+            "constructor",
+            "result_id ",
+            "x".repeat(300),
+        ]) {
+            const copy = clone(record);
+            Object.defineProperty(copy, extra, {
+                value: 1,
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
+            out.push(`${where} + unknown "${extra.slice(0, 12)}"`, applyAt(base, steps, copy));
+        }
+        for (const [key, child] of Object.entries(node.properties ?? {})) {
+            if (key in record) {
+                walk(child, root, base, [...steps, key], record[key], out);
+            } else {
+                // Optional property absent from this base: still probe every candidate for it.
+                const childNode = resolve(child, root);
+                const here = [...steps, key];
+                const emit = (label: string, candidate: unknown): void =>
+                    out.push(
+                        `${where}.${key} (absent) <- ${label}`,
+                        applyAt(base, here, candidate),
+                    );
+                TYPE_SWAPS.forEach((candidate, index) => emit(`swap#${index}`, candidate));
+                if (childNode.const !== undefined) {
+                    emit("const", childNode.const);
+                    emit("not const", false);
+                }
+                if (childNode.type === "string") {
+                    stringCandidates(childNode, undefined).forEach((candidate, index) =>
+                        emit(`string#${index}`, candidate),
+                    );
+                    emit("valid", "abcdefgh");
+                }
+            }
+        }
+    }
+}
+
+// Cases for the ThreadTurn if/then/else, derived from the schema's own `then.oneOf` keys.
+function conditionalCases(
+    turnNode: Schema,
+    base: Json,
+    turnPath: readonly Step[],
+    out: Collector,
+): void {
+    const stateEnum = turnNode.properties?.state?.enum ?? [];
+    const exclusive = (turnNode.then?.oneOf ?? []).map((branch) => branch.required?.[0] as string);
+    if (exclusive.length !== 2 || stateEnum.length === 0) {
+        throw new Error(
+            "ThreadTurn conditional has an unexpected shape; the oracle must be updated",
+        );
+    }
+    const values: Record<string, unknown[]> = {
+        result_id: ["res-12345678", "short"],
+        result_withheld: [true, false],
+    };
+    for (const state of stateEnum) {
+        for (const aValue of [DELETE, ...(values[exclusive[0] as string] ?? [])]) {
+            for (const bValue of [DELETE, ...(values[exclusive[1] as string] ?? [])]) {
+                let body = applyAt(base, [...turnPath, "state"], state);
+                body = applyAt(body, [...turnPath, exclusive[0] as string], aValue);
+                body = applyAt(body, [...turnPath, exclusive[1] as string], bValue);
+                out.push(
+                    `${String(state)} / ${exclusive[0]}=${String(aValue)} / ${exclusive[1]}=${String(bValue)}`,
+                    body,
+                );
+            }
+        }
+    }
+}
+
+const NON_OBJECTS: readonly unknown[] = [
+    undefined,
+    null,
+    true,
+    0,
+    "x",
+    "{}",
+    [],
+    [{}],
+    () => 1,
+    new Date(0),
+    new Map(),
+    Object.create(null),
+];
+
+function collect(label: string): { cases: Case[]; push: Collector["push"] } {
+    const cases: Case[] = [];
+    return {
+        cases,
+        push: (caseLabel, body) => cases.push({ label: `${label}: ${caseLabel}`, body }),
+    };
+}
+
+const TS = "2026-01-02T03:04:05Z";
+const turn = (extra: Record<string, unknown>): Record<string, unknown> => ({
+    submission_id: "sub-12345678",
+    state: "running",
+    admitted_at: TS,
+    updated_at: "2026-01-02T03:04:06.5+01:00",
+    ...extra,
+});
+
+const THREAD_BASES: readonly Record<string, unknown>[] = [
+    {
+        schema_version: "context_fabric_thread.v1",
+        thread_id: "thread-12345678",
+        retention_days: 30,
+        turn_count: 5,
+        created_at: TS,
+        last_turn_at: TS,
+        expires_at: "2026-02-01T03:04:05Z",
+        earlier_turns_cursor: "Y3Vyc29y_-0",
+        turns: [
+            turn({ question: "Why did cycle time rise? \u{1F600}" }),
+            turn({ state: "done", result_id: "res-12345678", question: "q" }),
+            turn({ state: "done", result_withheld: true }),
+            turn({ state: "done_unsaved" }),
+            turn({ state: "abandoned", question: "gave up" }),
+        ],
+    },
+    {
+        schema_version: "context_fabric_thread.v1",
+        thread_id: "thread-87654321",
+        retention_days: 0,
+        turn_count: 1,
+        created_at: TS,
+        last_turn_at: TS,
+        expires_at: "2026-01-03T03:04:05Z",
+        turns: [turn({})],
+    },
+];
+
+const summary = (id: string): Record<string, unknown> => ({
+    thread_id: id,
+    retention_days: 0,
+    turn_count: 3,
+    created_at: TS,
+    last_turn_at: TS,
+    expires_at: "2026-01-03T03:04:05Z",
+});
+
+const LIST_BASES: readonly Record<string, unknown>[] = [
+    {
+        schema_version: "context_fabric_thread_list.v1",
+        threads: [
+            summary("thread-12345678"),
+            { ...summary("thread-87654321"), retention_days: 30 },
+        ],
+        next_cursor: "bmV4dA",
+    },
+    { schema_version: "context_fabric_thread_list.v1", threads: [] },
+];
+
+type Suite = {
+    readonly name: string;
+    readonly file: string;
+    readonly bases: readonly Record<string, unknown>[];
+    readonly parse: (value: unknown) => unknown;
+    readonly expectedView: (body: Record<string, unknown>) => unknown;
+    readonly floor: number;
+};
+
+const str = (value: unknown): string | null => (typeof value === "string" ? value : null);
+
+function expectedThread(body: Record<string, unknown>): unknown {
+    return {
+        threadId: body.thread_id,
+        turnCount: body.turn_count,
+        createdAt: body.created_at,
+        lastTurnAt: body.last_turn_at,
+        expiresAt: body.expires_at,
+        earlierTurnsCursor: str(body.earlier_turns_cursor),
+        turns: (body.turns as Record<string, unknown>[]).map((t) => ({
+            submissionId: t.submission_id,
+            state: t.state,
+            question: str(t.question),
+            resultId: str(t.result_id),
+            resultWithheld: t.result_withheld === true,
+            admittedAt: t.admitted_at,
+        })),
+    };
+}
+
+function expectedList(body: Record<string, unknown>): unknown {
+    return {
+        nextCursor: str(body.next_cursor),
+        threads: (body.threads as Record<string, unknown>[]).map((t) => ({
+            threadId: t.thread_id,
+            turnCount: t.turn_count,
+            createdAt: t.created_at,
+            lastTurnAt: t.last_turn_at,
+            expiresAt: t.expires_at,
+        })),
+    };
+}
+
+const SUITES: readonly Suite[] = [
+    {
+        name: "thread",
+        file: "context_fabric_thread.v1.schema.json",
+        bases: THREAD_BASES,
+        parse: parseThread,
+        expectedView: expectedThread,
+        floor: 3000,
+    },
+    {
+        name: "thread list",
+        file: "context_fabric_thread_list.v1.schema.json",
+        bases: LIST_BASES,
+        parse: parseThreadList,
+        expectedView: expectedList,
+        floor: 800,
+    },
+];
+
+function buildCases(suite: Suite): Case[] {
+    const root = loadSchema(suite.file);
+    const { cases, push } = collect(suite.name);
+    for (const [index, base] of suite.bases.entries()) {
+        const baseOut = { push: (l: string, b: Json): void => push(`base${index} ${l}`, b) };
+        walk(root, root, base, [], base, baseOut);
+        baseOut.push("pristine", base);
+        // ThreadTurn conditional, once per turn position of each base.
+        const turnNode = root.$defs?.ThreadTurn;
+        if (turnNode !== undefined && Array.isArray(base.turns)) {
+            for (let at = 0; at < (base.turns as unknown[]).length; at += 1) {
+                conditionalCases(turnNode, base, ["turns", at], {
+                    push: (l, b) => baseOut.push(`turn${at} ${l}`, b),
+                });
+            }
+        }
+    }
+    // Root-level if/then (list: a cursor only follows a page with at least one thread).
+    if (root.if?.required !== undefined && root.then?.properties !== undefined) {
+        const cursorKey = root.if.required[0] as string;
+        const arrayKey = Object.keys(root.then.properties)[0] as string;
+        for (const [index, base] of suite.bases.entries()) {
+            for (const withCursor of [true, false]) {
+                const next = clone(base);
+                if (withCursor) next[cursorKey] = "bmV4dA";
+                else delete next[cursorKey];
+                for (const size of [0, 1]) {
+                    const items = (base[arrayKey] as unknown[]).slice(0, size);
+                    next[arrayKey] = clone(items);
+                    push(
+                        `base${index} root if/then cursor=${withCursor} ${arrayKey}=${size}`,
+                        clone(next),
+                    );
+                }
+            }
+        }
+    }
+    for (const [index, value] of NON_OBJECTS.entries()) push(`top-level #${index}`, value);
+    push("top-level empty object", {});
+    return cases;
+}
+
+describe.each(SUITES)("thread contract differential: $name", (suite) => {
+    const cases = buildCases(suite);
+    const verdicts = cases.map((c) => validateAcrContract(suite.file, c.body).valid);
+
+    it("generates enough cases, both valid and invalid", () => {
+        const valid = verdicts.filter(Boolean).length;
+        console.info(
+            `[${suite.name}] ${cases.length} cases, ${valid} valid, ${cases.length - valid} invalid`,
+        );
+        expect(cases.length).toBeGreaterThan(suite.floor);
+        expect(valid).toBeGreaterThan(30);
+        expect(cases.length - valid).toBeGreaterThan(suite.floor / 2);
+    });
+
+    it("bases are valid under Ajv", () => {
+        for (const base of suite.bases) {
+            expect(validateAcrContract(suite.file, base).valid).toBe(true);
+        }
+    });
+
+    it("agrees with Ajv on every case", () => {
+        const disagreements: string[] = [];
+        cases.forEach((c, index) => {
+            const mine = suite.parse(c.body) !== null;
+            if (mine !== verdicts[index]) {
+                disagreements.push(
+                    `${c.label}: parser=${mine} ajv=${String(verdicts[index])} body=${safeStringify(c.body)}`,
+                );
+            }
+        });
+        expect(disagreements.slice(0, 10)).toEqual([]);
+        expect(disagreements).toHaveLength(0);
+    });
+
+    it("maps valid cases field by field", () => {
+        let checked = 0;
+        cases.forEach((c, index) => {
+            if (verdicts[index] !== true) return;
+            expect(suite.parse(c.body), c.label).toEqual(
+                suite.expectedView(c.body as Record<string, unknown>),
+            );
+            checked += 1;
+        });
+        expect(checked).toBeGreaterThan(30);
+    });
+
+    it("answers with eval and Function disabled", () => {
+        const realFunction = globalThis.Function;
+        const realEval = globalThis.eval;
+        const answers: boolean[] = [];
+        // A `function`, not an arrow: `new Function(...)` must reach the throw, not "not a constructor".
+        const trap = function trap(): never {
+            throw new Error("dynamic code evaluation attempted");
+        };
+        try {
+            globalThis.Function = trap as unknown as FunctionConstructor;
+            globalThis.eval = trap;
+            for (const c of cases) answers.push(suite.parse(c.body) !== null);
+        } finally {
+            globalThis.Function = realFunction;
+            globalThis.eval = realEval;
+        }
+        expect(answers).toHaveLength(cases.length);
+        expect(answers.filter(Boolean).length).toBe(verdicts.filter(Boolean).length);
+        // The trap itself must be live, or the check above proves nothing.
+        try {
+            globalThis.Function = trap as unknown as FunctionConstructor;
+            expect(() => new Function("return 1")).toThrow("dynamic code evaluation attempted");
+        } finally {
+            globalThis.Function = realFunction;
+        }
+    });
+});
+
+function safeStringify(value: unknown): string {
+    try {
+        return JSON.stringify(value)?.slice(0, 300) ?? String(value);
+    } catch {
+        return String(value);
+    }
+}
