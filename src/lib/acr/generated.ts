@@ -5118,7 +5118,7 @@ export interface ACRErrorV1 {
     request_id: string;
     error: {
         /**
-         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted.
+         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. submission_required is the 400 of a create-investigation request by a browser-class credential that names no single well-formed X-ACR-Submission-ID (missing, malformed or repeated): refused before admission and model work, nothing ran, and it is not retryable as sent. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted. thread_closed is the 409 of a create-investigation request whose X-ACR-Thread-ID, or X-ACR-Submission-ID, belongs to a conversation of the caller that was deleted, has expired or is full (1000000 turns): nothing ran, and the request is not retryable under those ids; start a new conversation.
          */
         code:
             | "invalid_request"
@@ -5142,8 +5142,10 @@ export interface ACRErrorV1 {
             | "submission_in_progress"
             | "submission_unsaved"
             | "submission_abandoned"
+            | "submission_required"
             | "concurrency_limited"
-            | "allowance_exhausted";
+            | "allowance_exhausted"
+            | "thread_closed";
         message: string;
         http_status: number;
         retryable: boolean;
@@ -8126,18 +8128,19 @@ export type DriverJudgment = {
     current: boolean;
 };
 /**
- * CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire.
+ * CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire. CHAOS-11601: as_of (date-time) is the third form, a current-state snapshot read at that instant with no read window; it is legal only with no start, end or relative_id.
  */
 export type EffectiveEvidenceWindow = EffectiveEvidenceWindow1 & {
     start?: string;
     end?: string;
+    as_of?: string;
     relative_id?: RelativeWindowID;
     /**
      * Open vocabulary; documented values: trend_assessment, recent_activity_lookup, state_snapshot, explicit_window. A client must tolerate values it does not know.
      */
     window_class?: string;
     /**
-     * Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed. A client must tolerate values it does not know.
+     * Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed, server_default. A client must tolerate values it does not know.
      */
     provenance: string;
     /**
@@ -10938,7 +10941,7 @@ export interface WindowExpandOption {
     candidate_kind?: SubjectKind;
 }
 /**
- * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1.
+ * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1. CHAOS-11975: anchor_options, when present, is non-empty. A v2 result carries at least one membership-verify anchor option (ACR's validator refuses one without); the schema states only the non-empty rule in this release, and requires structure_needs and anchor_options from the next one (a field is optional for one release before it becomes required).
  */
 export interface StructureNeedsV2 {
     /**
@@ -11178,10 +11181,10 @@ export interface StructureNeedsV2 {
               KindOption,
           ];
     /**
+     * @minItems 1
      * @maxItems 20
      */
     anchor_options?:
-        | []
         | [AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2, AnchorOptionV2]

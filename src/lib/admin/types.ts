@@ -908,17 +908,26 @@ export interface LLMSettingsResponse {
     concurrency?: number | null;
     /** Per-purpose overrides, present only when at least one is stored. */
     purposes?: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
+    /** The org's opt-in to categorize on its own model; absent until first saved. */
+    categorize_byo?: boolean;
 }
 
 /** Purposes a BYO override can be set for; the default row serves the rest. */
-export type LLMPurpose = "investigate" | "explain";
+export type LLMPurpose = "investigate" | "explain" | "categorize";
 
 export const LLM_PURPOSES: LLMPurpose[] = ["investigate", "explain"];
 
 export const LLM_PURPOSE_LABELS: Record<LLMPurpose, string> = {
     investigate: "Investigation",
     explain: "Explanations",
+    categorize: "Categorization",
 };
+
+/** The only provider the categorize override takes, and the only one it takes. Never in LLM_PROVIDERS. */
+export const CATEGORIZE_PROVIDER = "clef";
+export const CATEGORIZE_PROVIDER_LABEL = "Cloudflare Workers AI";
+/** The models the categorize override accepts; the backend refuses any other. */
+export const CATEGORIZE_MODELS = ["clef", "clef-flash"] as const;
 
 /** One stored override; the api_key is masked. */
 export interface LLMPurposeSettings {
@@ -945,6 +954,8 @@ export interface LLMPurposeUpsert {
 export interface LLMSettingsUpsert {
     provider: string;
     model: string;
+    /** Opt in or out of categorize on the org's own model. Omit to leave it unchanged. */
+    categorize_byo?: boolean;
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;

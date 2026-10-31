@@ -39,7 +39,9 @@ type TranscriptFields =
     | "cohort"
     | "interpretation"
     | "render_shapes"
-    | "effective_evidence_window";
+    | "effective_evidence_window"
+    // CHAOS-11945: the claimed-fact tables (their window is effective_evidence_window above).
+    | "claimed_facts";
 
 /** One turn's result: what both the answer view and the clarification view read. */
 export type TranscriptResult =

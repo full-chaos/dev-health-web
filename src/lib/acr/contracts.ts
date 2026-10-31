@@ -13,6 +13,8 @@ import contextFabricInvestigationResponseV2Schema from "./contracts/schemas/cont
 import contextFabricInvestigationResultSchema from "./contracts/schemas/context_fabric_investigation_result.v1.schema.json";
 import contextFabricInvestigationResultV2Schema from "./contracts/schemas/context_fabric_investigation_result.v2.schema.json";
 import contextFabricSubmissionStatusSchema from "./contracts/schemas/context_fabric_submission_status.v1.schema.json";
+import contextFabricThreadListSchema from "./contracts/schemas/context_fabric_thread_list.v1.schema.json";
+import contextFabricThreadSchema from "./contracts/schemas/context_fabric_thread.v1.schema.json";
 import contextPacketItemSchema from "./contracts/schemas/context_packet_item.v1.schema.json";
 import contextPacketRequestSchema from "./contracts/schemas/context_packet_request.v1.schema.json";
 import contextPacketSchema from "./contracts/schemas/context_packet.v1.schema.json";
@@ -57,6 +59,8 @@ export const acrSchemas = {
     contextFabricInvestigationResult: contextFabricInvestigationResultSchema,
     contextFabricInvestigationResultV2: contextFabricInvestigationResultV2Schema,
     contextFabricSubmissionStatus: contextFabricSubmissionStatusSchema,
+    contextFabricThreadList: contextFabricThreadListSchema,
+    contextFabricThread: contextFabricThreadSchema,
     contextPacketItem: contextPacketItemSchema,
     contextPacketRequest: contextPacketRequestSchema,
     contextPacket: contextPacketSchema,
@@ -102,6 +106,8 @@ const acrSchemaFiles = {
     "context_fabric_investigation_result.v1.schema.json": contextFabricInvestigationResultSchema,
     "context_fabric_investigation_result.v2.schema.json": contextFabricInvestigationResultV2Schema,
     "context_fabric_submission_status.v1.schema.json": contextFabricSubmissionStatusSchema,
+    "context_fabric_thread_list.v1.schema.json": contextFabricThreadListSchema,
+    "context_fabric_thread.v1.schema.json": contextFabricThreadSchema,
     "context_packet_item.v1.schema.json": contextPacketItemSchema,
     "context_packet_request.v1.schema.json": contextPacketRequestSchema,
     "context_packet.v1.schema.json": contextPacketSchema,

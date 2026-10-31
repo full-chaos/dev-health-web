@@ -17,6 +17,9 @@ vi.mock("@/components/admin/llm/ByoLlmSettings", () => ({
 vi.mock("@/components/admin/llm/ByoLlmPurposeOverrides", () => ({
     ByoLlmPurposeOverrides: () => <section>BYO purpose models</section>,
 }));
+vi.mock("@/components/admin/llm/ByoLlmCategorizeOptIn", () => ({
+    ByoLlmCategorizeOptIn: () => <section>Categorize opt-in</section>,
+}));
 vi.mock("@/components/admin/llm/ByoLlmSpendSummary", () => ({
     ByoLlmSpendSummary: () => <section>BYO spend summary</section>,
 }));
