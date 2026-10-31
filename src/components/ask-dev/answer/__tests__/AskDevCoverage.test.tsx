@@ -4,13 +4,7 @@ import { render, screen, within } from "@/test/utils";
 import { AskDevAnswer } from "../AskDevAnswer";
 import { AskDevCoverage } from "../AskDevCoverage";
 import type { AnswerResult } from "../answerModel";
-import {
-    COMPLETENESS_TEXT,
-    COVERAGE_COPY,
-    evidenceGroups,
-    sourceLines,
-    type CoverageResult,
-} from "../coverageModel";
+import { COVERAGE_COPY, evidenceGroups, sourceLines, type CoverageResult } from "../coverageModel";
 import ciRateComplete from "./captures/kiac_repo_ci_rate_complete.event.json";
 import incidentsDegraded from "./captures/kiac_repo_incidents_degraded.event.json";
 import ownerComplete from "./captures/kiac_repo_owner_complete.event.json";
@@ -54,18 +48,17 @@ describe("the captures carry what each test needs", () => {
 describe("AskDevCoverage: completeness (checks 11 and 12)", () => {
     it("never reads a 'complete' status as complete when completeness was not derived", () => {
         render(<AskDevAnswer result={ciComplete} />);
-        // CHAOS-12157: the pill itself no longer says "Full answer" either.
-        expect(screen.getByTestId("ask-dev-answer-status")).toHaveTextContent(
-            "Answer, not fully covered",
-        );
-        expect(block("ask-dev-coverage-state")).toHaveTextContent(COMPLETENESS_TEXT.not_derived);
-        expect(readingOf("ask-dev-coverage-state")).toBe("unknown");
+        // CHAOS-12157: the pill never says "Full answer" here. CHAOS-12245: it says a plain
+        // "Answer", and nothing is said about completeness.
+        expect(screen.getByTestId("ask-dev-answer-status")).toHaveTextContent(/^Answer$/u);
+        expect(within(coverage()).queryByTestId("ask-dev-coverage-state")).toBeNull();
     });
 
-    it("says a 'complete' status read only part of what it needed when the rows say so", () => {
+    it("says what a 'complete' status read only in part when the rows say so", () => {
         render(<AskDevCoverage result={owner} />);
-        expect(block("ask-dev-coverage-state")).toHaveTextContent(COMPLETENESS_TEXT.partial);
-        expect(readingOf("ask-dev-coverage-state")).toBe("sparse");
+        expect(block("ask-dev-coverage-state")).toHaveTextContent(
+            "Missing data: health read in part (1 of 1); status read in part (1 of 4).",
+        );
         expect(block("ask-dev-coverage-requirements")).toHaveTextContent(
             "Status: read in part: 1 of 4",
         );
@@ -77,7 +70,9 @@ describe("AskDevCoverage: completeness (checks 11 and 12)", () => {
             "No facts stand behind this answer.",
         );
         expect(readingOf("ask-dev-coverage-counts")).toBe("zero");
-        expect(block("ask-dev-coverage-state")).toHaveTextContent(COMPLETENESS_TEXT.degraded);
+        expect(block("ask-dev-coverage-state")).toHaveTextContent(
+            "Missing data: count not available.",
+        );
     });
 
     it("states the facts and rows served", () => {
@@ -96,13 +91,12 @@ describe("AskDevCoverage: completeness (checks 11 and 12)", () => {
         expect(block("ask-dev-coverage-requirements")).not.toHaveTextContent("read in full");
     });
 
-    it("says completeness is not known when the result carries none", () => {
+    it("says nothing about completeness when the result carries none (CHAOS-12245)", () => {
         // A copy of a real answer without completeness (an older stored result has none).
         const copy = copyOf(projectStatusPartial) as unknown as Record<string, unknown>;
         delete copy.completeness;
         render(<AskDevCoverage result={copy as unknown as CoverageResult} />);
-        expect(block("ask-dev-coverage-state")).toHaveTextContent(COMPLETENESS_TEXT.absent);
-        expect(readingOf("ask-dev-coverage-state")).toBe("unknown");
+        expect(within(coverage()).queryByTestId("ask-dev-coverage-state")).toBeNull();
         expect(within(coverage()).queryByTestId("ask-dev-coverage-counts")).toBeNull();
     });
 });
