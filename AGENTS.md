@@ -11,10 +11,11 @@ Frontend: Next.js 16 + React Server Components, TypeScript, Tailwind v4, **pnpm*
 | Design & Style Framework                          | [`docs/design-system.md`](docs/design-system.md), [`docs/design-lint.md`](docs/design-lint.md)                             |
 | GraphQL client / investment                       | [`docs/graphql-client.md`](docs/graphql-client.md), [`docs/graphql-investment.md`](docs/graphql-investment.md)             |
 | Team attribution (render-only boundary)           | [`docs/architecture/team-attribution-boundary.md`](docs/architecture/team-attribution-boundary.md)                         |
-| Ask Dev thread seam (history, reattach, feedback) | [`docs/architecture/ask-dev-thread-seam.md`](docs/architecture/ask-dev-thread-seam.md)                                     |
 | Visualizations                                    | [`docs/visualizations.md`](docs/visualizations.md)                                                                         |
 | Testing tiers & governance                        | [`README.md`](README.md), [`ci/run_tests.sh`](ci/run_tests.sh), [`docs/testing-governance.md`](docs/testing-governance.md) |
 | Visual-evidence runbook                           | [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md)                                                             |
+| Ask Dev (panel, page context)                     | [`docs/ask-dev.md`](docs/ask-dev.md)                                                                                       |
+| Ask Dev thread seam (history, reattach, feedback) | [`docs/architecture/ask-dev-thread-seam.md`](docs/architecture/ask-dev-thread-seam.md)                                     |
 
 ## Layout (`src/`)
 
