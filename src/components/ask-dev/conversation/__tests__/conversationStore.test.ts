@@ -746,6 +746,41 @@ describe("panel states (plan §2.7.8)", () => {
         expect(last(store).outcome).toEqual({ kind: "answered", result: PARTIAL });
     });
 
+    // codex r1 on #1638 asked for a new key after a retryable refusal before the stream. The
+    // contract (X-ACR-Submission-ID) runs a request at most once per key, and a repeat of an
+    // admitted key never runs again; a NEW key is what could run it twice. So Retry keeps the key,
+    // and if ACR had admitted the first call, the repeat's 409 makes the store follow that run.
+    it("retries a retryable refusal under its key, and follows the run if ACR had admitted it", async () => {
+        const store = makeStore();
+        const unavailable = new TransportRefusal(503, acrError("upstream_unavailable", 503, true));
+        transport.scripts.push(
+            [{ fail: unavailable }],
+            [
+                {
+                    fail: new TransportRefusal(
+                        409,
+                        acrError("submission_in_progress", 409, true),
+                        3,
+                    ),
+                },
+            ],
+        );
+        transport.statuses.push(status("done", PARTIAL.result_id));
+        transport.results.set(PARTIAL.result_id, PARTIAL);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "failed", retry: true, reference: "req_test" });
+
+        expect(store.retry(last(store).id)).toBe(true);
+        await settled(store);
+        const [first, again] = transport.calls;
+        expect(transport.calls).toHaveLength(2);
+        expect(again!.submissionId).toBe(first!.submissionId);
+        expect(again!.request).toBe(first!.request);
+        expect(transport.readCalls).toEqual([PARTIAL.result_id]);
+        expect(last(store).outcome).toEqual({ kind: "answered", result: PARTIAL });
+    });
+
     it("does not retry a limit ACR marks not retryable", async () => {
         const store = makeStore();
         transport.scripts.push([{ fail: limitRefusal("allowance_exhausted", {}, false) }]);
