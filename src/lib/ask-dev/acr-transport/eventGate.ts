@@ -5,6 +5,7 @@ import {
 } from "@/components/ask-dev/conversation/transport";
 import { asTranscriptResult } from "@/components/ask-dev/answer/testModeAnswer";
 
+import { ACR_MAX_SILENCE_MS } from "./limits";
 import type { SseEvent } from "./sseParser";
 
 /**
@@ -18,12 +19,19 @@ import type { SseEvent } from "./sseParser";
  * - the SSE `event` field is the event's `type`, and the SSE `id` field is its `seq`;
  * - the outer `request_id` stays the one of `accepted` (a reused result's nested `request_id` may
  *   differ: only the outer one is checked);
- * - `elapsed_ms` never goes back, on the events that carry it (`stage`, `heartbeat`);
+ * - `elapsed_ms` never goes back, on the events that carry it (`stage`, `heartbeat`), and no two
+ *   consecutive values (`accepted` counting as 0) are more than 11 s apart;
  * - stages follow their one order, each `started` then `completed`, a stage may be skipped, and no
  *   stage starts while another is open;
- * - an `error` names the `reserved_result_id` of `accepted`;
+ * - a `heartbeat` names the open stage, or none when none is open;
+ * - a `result` comes with no stage open;
+ * - an `error` names the `reserved_result_id` of `accepted`, and the last stage started (or none
+ *   when none started);
  * - `accepted` names the thread and the submission the request sent;
  * - a `result` is a transcript result the views can read.
+ *
+ * These are the rules of ACR's own stream check (`ContextFabricInvestigationEventStreamCheck`, in
+ * `internal/contracts/v1`), which its route writer and its consumer tests share.
  *
  * Any break before a valid terminal is `invalid`: the transport aborts and the run ends with
  * `invalid_upstream`. After the terminal, a later event is reported as `after_terminal`: it is
@@ -40,7 +48,11 @@ export type InvalidEventReason =
     | "seq_gap"
     | "request_id_changed"
     | "elapsed_regressed"
+    | "silence"
     | "stage_order"
+    | "heartbeat_stage"
+    | "result_stage_open"
+    | "error_stage"
     | "reserved_mismatch"
     | "thread_mismatch"
     | "submission_mismatch"
@@ -80,7 +92,8 @@ export class InvestigationEventGate {
     private seq = 0;
     private requestId: string | undefined;
     private reserved: string | undefined;
-    private elapsed = -1;
+    /** The last `elapsed_ms`; `accepted` counts as 0. */
+    private elapsed = 0;
     /** The index of the last stage that started, and whether it is still open. */
     private lastStage = -1;
     private stageOpen = false;
@@ -135,10 +148,18 @@ export class InvestigationEventGate {
         }
         if (event.elapsed_ms !== undefined) {
             if (event.elapsed_ms < this.elapsed) return invalid("elapsed_regressed");
+            if (event.elapsed_ms - this.elapsed > ACR_MAX_SILENCE_MS) return invalid("silence");
         }
         if (event.type === "stage" && !this.stageMoves(event)) return invalid("stage_order");
+        if (event.type === "heartbeat" && event.stage !== this.openStage()) {
+            return invalid("heartbeat_stage");
+        }
+        if (event.type === "result" && this.stageOpen) return invalid("result_stage_open");
         if (event.type === "error" && event.reserved_result_id !== this.reserved) {
             return invalid("reserved_mismatch");
+        }
+        if (event.type === "error" && event.stage !== this.lastStarted()) {
+            return invalid("error_stage");
         }
         if (event.type === "result" && asTranscriptResult(event.result) === null) {
             return invalid("result_shape");
@@ -154,6 +175,14 @@ export class InvestigationEventGate {
         const terminal = event.type === "result" || event.type === "error";
         if (terminal) this.terminalType = event.type as "result" | "error";
         return { kind: "event", event: value as InvestigationEvent, terminal };
+    }
+
+    private lastStarted(): InvestigationStage | undefined {
+        return this.lastStage < 0 ? undefined : INVESTIGATION_STAGES[this.lastStage];
+    }
+
+    private openStage(): InvestigationStage | undefined {
+        return this.stageOpen ? this.lastStarted() : undefined;
     }
 
     /** `started` only for a later stage while none is open; `completed` only for the open one. */

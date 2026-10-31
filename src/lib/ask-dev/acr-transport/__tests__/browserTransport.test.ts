@@ -370,7 +370,8 @@ describe("investigate: the full checks load in parallel (option (c))", () => {
             stream(
                 accepted(),
                 stageEvent(2, "interpreting", "started", 5),
-                heartbeatEvent(3, 10),
+                // A heartbeat names the open stage (ACR's stream grammar).
+                { ...heartbeatEvent(3, 10), stage: "interpreting" },
                 stageEvent(4, "interpreting", "completed", 20),
             ),
         );
@@ -569,6 +570,43 @@ describe("submissionStatus and readResult", () => {
             new TransportFailure("authorization_required"),
         );
         expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("status and replay: a call aborted before or during the token read sends nothing (codex r2)", async () => {
+        const reason = new DOMException("deadline", "AbortError");
+        const before = new AbortController();
+        before.abort(reason);
+        // Aborted before the call: the token store is not even read.
+        const tokenRead = vi.fn(() => token);
+        const unread = createAcrBrowserTransport(CONFIG, {
+            fetch: fetchMock as unknown as typeof fetch,
+            now: () => now,
+            token: tokenRead,
+            envelope: streamEnvelopeValidators,
+            validators: async () => streamValidators,
+        });
+        await expect(unread.submissionStatus(SUBMISSION, before.signal)).rejects.toBe(reason);
+        await expect(unread.readResult("result_x", before.signal)).rejects.toBe(reason);
+        expect(tokenRead).not.toHaveBeenCalled();
+        // Aborted while the token store answers.
+        for (const read of [
+            (t: AskDevTransport, s: AbortSignal) => t.submissionStatus(SUBMISSION, s),
+            (t: AskDevTransport, s: AbortSignal) => t.readResult("result_x", s),
+        ]) {
+            const during = new AbortController();
+            const t = createAcrBrowserTransport(CONFIG, {
+                fetch: fetchMock as unknown as typeof fetch,
+                now: () => now,
+                token: async () => {
+                    during.abort(reason);
+                    return { kind: "token", token: TOKEN, issuer: ISSUER };
+                },
+                envelope: streamEnvelopeValidators,
+                validators: async () => streamValidators,
+            });
+            await expect(read(t, during.signal)).rejects.toBe(reason);
+        }
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("replay: the stored result, checked against result v1 or v2", async () => {

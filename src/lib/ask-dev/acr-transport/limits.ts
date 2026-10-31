@@ -17,5 +17,12 @@ export const MAX_STREAM_BYTES = 8 * 1_024 * 1_024;
 /** Largest JSON body (status, replay, refusal) the browser reads: an answer plus 64 KiB. */
 export const MAX_BODY_BYTES = MAX_EVENT_BYTES;
 
+/**
+ * The longest step between two consecutive `elapsed_ms` values of a stream (`accepted` counting as
+ * 0): ACR's heartbeat interval, 10 s, plus its 1 s of slack. The pinned event schema states it; a
+ * test holds it there.
+ */
+export const ACR_MAX_SILENCE_MS = 11_000;
+
 /** The client version ACR requires on every protected route (426 without it; design §1.2). */
 export const ACR_CLIENT_VERSION = "0.1.0";

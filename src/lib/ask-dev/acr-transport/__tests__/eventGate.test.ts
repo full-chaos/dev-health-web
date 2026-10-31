@@ -63,6 +63,30 @@ describe("the real capture passes, every event in order", () => {
         expect(g.lastSeq).toBe(CAPTURED.at(-1)!.seq);
     });
 
+    it("passes ACR's stage rules: a heartbeat naming the open stage, an error naming the last stage started, 11 s of silence", () => {
+        const verdicts = feed([
+            accepted(),
+            heartbeatEvent(2, 11_000),
+            stageEvent(3, "interpreting", "started", 11_005),
+            { ...heartbeatEvent(4, 22_005), stage: "interpreting" },
+            stageEvent(5, "interpreting", "completed", 22_010),
+            heartbeatEvent(6, 33_010),
+            { ...errorEvent(7), stage: "interpreting" },
+        ]);
+        expect(kinds(verdicts)).toEqual(Array(7).fill("event"));
+        expect(verdicts.at(-1)).toMatchObject({ kind: "event", terminal: true });
+    });
+
+    it("passes a result once the open stage completed", () => {
+        const verdicts = feed([
+            accepted(),
+            stageEvent(2, "interpreting", "started", 5),
+            stageEvent(3, "interpreting", "completed", 6),
+            resultEvent(4),
+        ]);
+        expect(verdicts.at(-1)).toMatchObject({ kind: "event", terminal: true });
+    });
+
     it("lets a reused result's nested request_id differ from the stream's", () => {
         const result = resultEvent(2) as EventObject & { result: Record<string, unknown> };
         const reused = { ...result, result: { ...result.result, request_id: "req_other_run" } };
@@ -123,6 +147,47 @@ describe("any break before a terminal is invalid", () => {
                 stageEvent(3, "synthesizing", "started", 6),
             ],
             "stage_order",
+        ],
+        // ACR's stream check (`ContextFabricInvestigationEventStreamCheck`): codex r2.
+        [
+            "a result while a stage is open",
+            [accepted(), stageEvent(2, "interpreting", "started", 5), resultEvent(3)],
+            "result_stage_open",
+        ],
+        [
+            "a heartbeat naming no stage while one is open",
+            [accepted(), stageEvent(2, "interpreting", "started", 5), heartbeatEvent(3, 10)],
+            "heartbeat_stage",
+        ],
+        [
+            "a heartbeat naming a stage while none is open",
+            [accepted(), { ...heartbeatEvent(2, 10), stage: "interpreting" }],
+            "heartbeat_stage",
+        ],
+        [
+            "an error naming no stage after one started",
+            [
+                accepted(),
+                stageEvent(2, "interpreting", "started", 5),
+                stageEvent(3, "interpreting", "completed", 6),
+                errorEvent(4),
+            ],
+            "error_stage",
+        ],
+        [
+            "an error naming a stage when none started",
+            [accepted(), { ...errorEvent(2), stage: "interpreting" }],
+            "error_stage",
+        ],
+        [
+            "more than 11 s between two elapsed_ms values (accepted counts as 0)",
+            [accepted(), heartbeatEvent(2, 11_001)],
+            "silence",
+        ],
+        [
+            "more than 11 s between two later elapsed_ms values",
+            [accepted(), heartbeatEvent(2, 10_000), heartbeatEvent(3, 21_001)],
+            "silence",
         ],
         [
             "an error naming another reserved result",

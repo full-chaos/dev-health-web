@@ -193,7 +193,10 @@ export function createAcrBrowserTransport(
         operation: string,
         signal: AbortSignal,
     ): Promise<{ readonly response: Response; readonly body: unknown }> {
+        if (signal.aborted) throw signal.reason;
         const token = await bearer();
+        // The signal may end while the token store answers: then nothing is sent.
+        if (signal.aborted) throw signal.reason;
         const controller = new AbortController();
         const stop = () => controller.abort(signal.reason);
         signal.addEventListener("abort", stop, { once: true });
