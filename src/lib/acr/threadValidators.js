@@ -1535,6 +1535,13 @@ const schema33 = {
                     pattern:
                         "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
                 },
+                first_question: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 8000,
+                    description:
+                        "Additive: the question recorded on the thread's true first turn (the first in admitted_at, then submission_id order), as the caller sent it. Absent when that turn recorded none (admitted before the service recorded questions). Read from the turn, never a separate copy, so a delete or retention that erases the turn's question erases it here too.",
+                },
             },
         },
     },
@@ -1578,6 +1585,13 @@ const schema34 = {
             format: "date-time",
             pattern:
                 "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+        },
+        first_question: {
+            type: "string",
+            minLength: 1,
+            maxLength: 8000,
+            description:
+                "Additive: the question recorded on the thread's true first turn (the first in admitted_at, then submission_id order), as the caller sent it. Absent when that turn recorded none (admitted before the service recorded questions). Read from the turn, never a separate copy, so a delete or retention that erases the turn's question erases it here too.",
         },
     },
 };
@@ -1855,7 +1869,8 @@ function validate21(
                                 key1 === "turn_count" ||
                                 key1 === "created_at" ||
                                 key1 === "last_turn_at" ||
-                                key1 === "expires_at"
+                                key1 === "expires_at" ||
+                                key1 === "first_question"
                             )) {
                                 const err14 = {
                                     instancePath: instancePath + "/threads/" + i0,
@@ -2226,8 +2241,63 @@ function validate21(
                                 errors++;
                             }
                         }
+                        if (data3.first_question !== undefined) {
+                            let data10 = data3.first_question;
+                            if (typeof data10 === "string") {
+                                if (func2(data10) > 8000) {
+                                    const err33 = {
+                                        instancePath:
+                                            instancePath + "/threads/" + i0 + "/first_question",
+                                        schemaPath:
+                                            "#/$defs/ThreadSummary/properties/first_question/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 8000 },
+                                        message: "must NOT have more than 8000 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err33];
+                                    } else {
+                                        vErrors.push(err33);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data10) < 1) {
+                                    const err34 = {
+                                        instancePath:
+                                            instancePath + "/threads/" + i0 + "/first_question",
+                                        schemaPath:
+                                            "#/$defs/ThreadSummary/properties/first_question/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err34];
+                                    } else {
+                                        vErrors.push(err34);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err35 = {
+                                    instancePath:
+                                        instancePath + "/threads/" + i0 + "/first_question",
+                                    schemaPath:
+                                        "#/$defs/ThreadSummary/properties/first_question/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err35];
+                                } else {
+                                    vErrors.push(err35);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        const err33 = {
+                        const err36 = {
                             instancePath: instancePath + "/threads/" + i0,
                             schemaPath: "#/$defs/ThreadSummary/type",
                             keyword: "type",
@@ -2235,15 +2305,15 @@ function validate21(
                             message: "must be object",
                         };
                         if (vErrors === null) {
-                            vErrors = [err33];
+                            vErrors = [err36];
                         } else {
-                            vErrors.push(err33);
+                            vErrors.push(err36);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err34 = {
+                const err37 = {
                     instancePath: instancePath + "/threads",
                     schemaPath: "#/properties/threads/type",
                     keyword: "type",
@@ -2251,18 +2321,18 @@ function validate21(
                     message: "must be array",
                 };
                 if (vErrors === null) {
-                    vErrors = [err34];
+                    vErrors = [err37];
                 } else {
-                    vErrors.push(err34);
+                    vErrors.push(err37);
                 }
                 errors++;
             }
         }
         if (data.next_cursor !== undefined) {
-            let data10 = data.next_cursor;
-            if (typeof data10 === "string") {
-                if (func2(data10) > 512) {
-                    const err35 = {
+            let data11 = data.next_cursor;
+            if (typeof data11 === "string") {
+                if (func2(data11) > 512) {
+                    const err38 = {
                         instancePath: instancePath + "/next_cursor",
                         schemaPath: "#/properties/next_cursor/maxLength",
                         keyword: "maxLength",
@@ -2270,14 +2340,14 @@ function validate21(
                         message: "must NOT have more than 512 characters",
                     };
                     if (vErrors === null) {
-                        vErrors = [err35];
+                        vErrors = [err38];
                     } else {
-                        vErrors.push(err35);
+                        vErrors.push(err38);
                     }
                     errors++;
                 }
-                if (func2(data10) < 1) {
-                    const err36 = {
+                if (func2(data11) < 1) {
+                    const err39 = {
                         instancePath: instancePath + "/next_cursor",
                         schemaPath: "#/properties/next_cursor/minLength",
                         keyword: "minLength",
@@ -2285,14 +2355,14 @@ function validate21(
                         message: "must NOT have fewer than 1 characters",
                     };
                     if (vErrors === null) {
-                        vErrors = [err36];
+                        vErrors = [err39];
                     } else {
-                        vErrors.push(err36);
+                        vErrors.push(err39);
                     }
                     errors++;
                 }
-                if (!pattern11.test(data10)) {
-                    const err37 = {
+                if (!pattern11.test(data11)) {
+                    const err40 = {
                         instancePath: instancePath + "/next_cursor",
                         schemaPath: "#/properties/next_cursor/pattern",
                         keyword: "pattern",
@@ -2300,14 +2370,14 @@ function validate21(
                         message: 'must match pattern "' + "^[A-Za-z0-9_-]{1,512}$" + '"',
                     };
                     if (vErrors === null) {
-                        vErrors = [err37];
+                        vErrors = [err40];
                     } else {
-                        vErrors.push(err37);
+                        vErrors.push(err40);
                     }
                     errors++;
                 }
             } else {
-                const err38 = {
+                const err41 = {
                     instancePath: instancePath + "/next_cursor",
                     schemaPath: "#/properties/next_cursor/type",
                     keyword: "type",
@@ -2315,15 +2385,15 @@ function validate21(
                     message: "must be string",
                 };
                 if (vErrors === null) {
-                    vErrors = [err38];
+                    vErrors = [err41];
                 } else {
-                    vErrors.push(err38);
+                    vErrors.push(err41);
                 }
                 errors++;
             }
         }
     } else {
-        const err39 = {
+        const err42 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -2331,9 +2401,9 @@ function validate21(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err39];
+            vErrors = [err42];
         } else {
-            vErrors.push(err39);
+            vErrors.push(err42);
         }
         errors++;
     }
