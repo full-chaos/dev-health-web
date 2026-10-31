@@ -59,6 +59,9 @@ test.describe("desktop (1280px)", () => {
         await seedAnswer(page, OPEN_WORK);
         const requests: string[] = [];
         page.on("request", (r) => {
+            // A data call only: a JS chunk is code, and the bundler may name one after the
+            // evidence components (`/_next/static/chunks/src_components_evidence_*.js`; CHAOS-11929).
+            if (new URL(r.url()).pathname.startsWith("/_next/")) return;
             if (/\/api\/ask-dev|agent-context|context-fabric|evidence/u.test(r.url()))
                 requests.push(r.url());
         });
