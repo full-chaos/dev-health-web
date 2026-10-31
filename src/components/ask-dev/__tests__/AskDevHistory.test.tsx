@@ -52,9 +52,11 @@ vi.mock("next/navigation", async () => {
         }),
     };
 });
+/** The signed-in org; a test switches it to model an org switch. */
+const session = vi.hoisted(() => ({ org: "org-1" }));
 vi.mock("next-auth/react", () => ({
     useSession: () => ({
-        data: { user: { id: "user-1", org_id: "org-1" }, expires: "2099-01-01" },
+        data: { user: { id: "user-1", org_id: session.org }, expires: "2099-01-01" },
         status: "authenticated",
     }),
 }));
@@ -145,6 +147,7 @@ const page = () => screen.getByTestId("ask-dev-page");
 const panel = () => screen.getByRole("complementary", { name: "Ask Dev" });
 
 beforeEach(() => {
+    session.org = "org-1";
     nav.writes.length = 0;
     nav.go("/dashboard");
     window.sessionStorage.clear();
@@ -407,5 +410,44 @@ describe("restored turns in the transcript (design §3.2)", () => {
         expect(await within(page()).findByTestId("ask-dev-answer")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(0);
         expect(within(page()).getByText(TURN_STATUS_COPY.unsaved)).toBeInTheDocument();
+    });
+});
+
+describe("the composer draft belongs to one conversation (codex r2 on #1648)", () => {
+    const field = () => within(page()).getByRole("textbox", { name: COMPOSER_COPY.label });
+
+    it("selecting another conversation drops the draft", async () => {
+        const transport = seeded();
+        nav.go(`/dev?thread=${THREAD_A}`);
+        renderShell(transport);
+        await within(page()).findByTestId("ask-dev-answer");
+        await userEvent.type(field(), "A draft for conversation A");
+        const rows = await within(screen.getByTestId("ask-dev-page-history")).findAllByTestId(
+            "ask-dev-history-open",
+        );
+        await userEvent.click(rows[1]!);
+        await waitFor(() => expect(nav.search).toBe(`?thread=${THREAD_B}`));
+        await within(page()).findByTestId("ask-dev-answer");
+        expect(field()).toHaveValue("");
+    });
+
+    it("an org switch drops the draft, so it can never be sent to the other org", async () => {
+        const transport = new FakeTransport();
+        nav.go("/dev");
+        const view = renderShell(transport);
+        await userEvent.type(field(), "org A confidential question");
+        session.org = "org-2";
+        view.rerender(
+            <AdminTierProvider tier="team" features={ON}>
+                <AskDevShellProvider>
+                    <AskDevConversationProvider transport={transport}>
+                        <Page />
+                        <AskDevPanel />
+                    </AskDevConversationProvider>
+                </AskDevShellProvider>
+            </AdminTierProvider>,
+        );
+        await waitFor(() => expect(field()).toHaveValue(""));
+        expect(transport.calls).toHaveLength(0);
     });
 });

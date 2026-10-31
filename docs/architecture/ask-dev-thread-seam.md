@@ -45,6 +45,8 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
 5. **Only a local selection writes the URL:** a history row, a new conversation, the first submit or a delete. An incoming selection (from the URL or the hint) never writes it, so back is never undone. The URL sync reads the store's current snapshot, not the render's.
 6. **Selecting the thread already shown is a no-op.** A malformed or unavailable id gives a read-only neutral state with "New conversation".
 
+7. **A composer draft belongs to one selection.** Any selection change or partition clear drops it, so it is never sent into another conversation or org.
+
 ## Store rules
 
 - **Turn identity.** Each turn carries `threadId`, `origin` (`submitted` or `restored`) and `submissionId`, its stable key across pages. A restored turn has no request: it is never sent again, and its only action is "Load again", a GET. A question ACR did not record shows as "Question not recorded". It is left out of `conversation`, and its clarification is read-only. The parent reference reads only the immediate predecessor.

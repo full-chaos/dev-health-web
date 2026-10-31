@@ -262,6 +262,10 @@ export function AskDevComposerSlot() {
         <div className="space-y-2">
             <AskDevContextChips />
             <AskDevComposer
+                // A draft belongs to one conversation of one (org, principal): every selection
+                // change and every partition clear bumps `selection`, and a new key drops the
+                // draft, so it is never sent into another conversation or org (codex r2 on #1648).
+                key={`composer-${String(live.snapshot.selection)}`}
                 inFlight={live.snapshot.inFlight}
                 ready={live.snapshot.ready}
                 locked={lockedReason(live)}
