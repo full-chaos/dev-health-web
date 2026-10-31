@@ -53,12 +53,17 @@ export const KNOWN_PRERENDERED = new Map(
  * not `data-src`), and not a JSON data type. A nonce attribute does not count (r1 on web #1670): HTML fixed at build time
  * cannot carry the nonce the proxy draws per request, so every inline script in it is blocked.
  */
-/** The attributes of a tag's text, by lower-case name: quoted values are read whole (r2). */
+/**
+ * The attributes of a tag's text, by lower-case name: quoted values are read whole (r2), and a
+ * repeated attribute keeps its first value, as HTML parsing does (r3).
+ */
 function attributesOf(text) {
     const attributes = new Map();
     const ATTRIBUTE = /([^\s"'=<>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/gu;
     for (const match of text.matchAll(ATTRIBUTE)) {
-        attributes.set(match[1].toLowerCase(), match[2] ?? match[3] ?? match[4] ?? "");
+        // HTML keeps the first of a repeated attribute and drops the rest (r3).
+        const name = match[1].toLowerCase();
+        if (!attributes.has(name)) attributes.set(name, match[2] ?? match[3] ?? match[4] ?? "");
     }
     return attributes;
 }

@@ -74,6 +74,18 @@ describe("inlineScripts", () => {
         expect(inlineScripts('<script SRC="/a.js" async></script>')).toBe(0);
     });
 
+    it("reads a repeated attribute as HTML does: the first one wins (r3)", () => {
+        expect(
+            inlineScripts(
+                '<script type="text/javascript" type="application/json">window.run()</script>',
+            ),
+        ).toBe(1);
+        expect(
+            inlineScripts('<script type="application/json" type="text/javascript">{}</script>'),
+        ).toBe(0);
+        expect(inlineScripts('<script src="/a.js" src="">x</script>')).toBe(0);
+    });
+
     it("counts a nonced inline script too: a prerendered page cannot carry the per-request nonce (r1)", () => {
         expect(inlineScripts('<script nonce="build-time-value">window.run()</script>')).toBe(1);
         expect(inlineScripts(DYNAMIC_HTML)).toBe(1);
