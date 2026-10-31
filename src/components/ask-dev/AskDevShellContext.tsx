@@ -14,7 +14,7 @@ import { usePathname } from "next/navigation";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
-import { claimRightDrawer, releaseRightDrawer } from "@/lib/shell/rightDrawer";
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 type AskDevShellValue = {
     /** The Ask Dev panel is open. Opening only changes this flag: it sends no request. */
@@ -67,24 +67,19 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
     // (Set during render, as the evidence drawer does: no effect, no extra paint.)
     const eligible = isAskDevEnabled(features) && !isAskDevExcludedPath(pathname);
     if (open && !eligible) setOpenState(false);
-    // ...and gives the right edge back (a claim must not outlive the panel it belongs to).
-    useEffect(() => {
-        if (!eligible) releaseRightDrawer("ask-dev");
-    }, [eligible]);
-    // Leaving the shell (sign-out, another route group) drops the claim and its stale callback.
-    useEffect(() => () => releaseRightDrawer("ask-dev"), []);
 
     // Another right drawer took the edge: close without moving focus (that drawer has it).
     const closeFromPeer = useCallback(() => setOpenState(false), []);
 
-    const setOpen = useCallback(
-        (next: boolean) => {
-            setOpenState(next);
-            if (next) claimRightDrawer("ask-dev", closeFromPeer);
-            else releaseRightDrawer("ask-dev");
-        },
-        [closeFromPeer],
-    );
+    // The panel holds the right edge exactly while it is open (CHAOS-12207). Held by an effect, as
+    // the shared `Drawer` holds it: an effect that runs again (StrictMode under `next dev`, an open
+    // that lands while the shell is still hydrating) claims it again, where an imperative claim in
+    // `setOpen` was released by the mount effects' re-run and left the panel open with no claim.
+    // Closing, an excluded route or a lost entitlement (both close it during render, above) and
+    // leaving the shell release it.
+    useRightDrawerClaim("ask-dev", open, closeFromPeer);
+
+    const setOpen = useCallback((next: boolean) => setOpenState(next), []);
     const close = useCallback(() => {
         setOpen(false);
         // After the panel unmounts: its own focus is gone, the launcher is the way back.
