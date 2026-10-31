@@ -6,15 +6,16 @@ import {
     useContext,
     useEffect,
     useMemo,
+    useRef,
     useState,
     type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
-import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
-import { claimRightDrawer, releaseRightDrawer } from "@/lib/shell/rightDrawer";
+import { ASK_DEV_FULL_PAGE_PATH, isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 type AskDevShellValue = {
     /** The Ask Dev panel is open. Opening only changes this flag: it sends no request. */
@@ -23,12 +24,24 @@ type AskDevShellValue = {
     readonly setOpen: (next: boolean) => void;
     /** Closes the panel and returns focus to the launcher that is visible. */
     readonly close: () => void;
+    /**
+     * CHAOS-11934: shows the same conversation on the full page `/dev`. Only the route changes: the
+     * conversation store lives above both, so a running investigation goes on and nothing is sent.
+     */
+    readonly expand: () => void;
+    /** Leaves `/dev` for the page the panel was expanded from, and opens the panel there. */
+    readonly minimize: () => void;
 };
+
+/** Where Minimize goes when the full page was not opened from the panel (a link, a reload). */
+export const MINIMIZE_FALLBACK_PATH = "/dashboard";
 
 const AskDevShellContext = createContext<AskDevShellValue>({
     open: false,
     setOpen: () => undefined,
     close: () => undefined,
+    expand: () => undefined,
+    minimize: () => undefined,
 });
 
 /** The Ask Dev key: Cmd+J on macOS, Ctrl+J elsewhere (either works anywhere in the shell). */
@@ -65,26 +78,21 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
     // The panel is open only where Ask Dev is allowed. A client navigation to an excluded route, or
     // an entitlement that turns off, closes it for good: coming back does not reopen it by itself.
     // (Set during render, as the evidence drawer does: no effect, no extra paint.)
-    const eligible = isAskDevEnabled(features) && !isAskDevExcludedPath(pathname);
+    const eligible = isAskDevEnabled(features) && isAskDevPanelPath(pathname);
     if (open && !eligible) setOpenState(false);
-    // ...and gives the right edge back (a claim must not outlive the panel it belongs to).
-    useEffect(() => {
-        if (!eligible) releaseRightDrawer("ask-dev");
-    }, [eligible]);
-    // Leaving the shell (sign-out, another route group) drops the claim and its stale callback.
-    useEffect(() => () => releaseRightDrawer("ask-dev"), []);
 
     // Another right drawer took the edge: close without moving focus (that drawer has it).
     const closeFromPeer = useCallback(() => setOpenState(false), []);
 
-    const setOpen = useCallback(
-        (next: boolean) => {
-            setOpenState(next);
-            if (next) claimRightDrawer("ask-dev", closeFromPeer);
-            else releaseRightDrawer("ask-dev");
-        },
-        [closeFromPeer],
-    );
+    // The panel holds the right edge exactly while it is open (CHAOS-12207). Held by an effect, as
+    // the shared `Drawer` holds it: an effect that runs again (StrictMode under `next dev`, an open
+    // that lands while the shell is still hydrating) claims it again, where an imperative claim in
+    // `setOpen` was released by the mount effects' re-run and left the panel open with no claim.
+    // Closing, an excluded route or a lost entitlement (both close it during render, above) and
+    // leaving the shell release it.
+    useRightDrawerClaim("ask-dev", open, closeFromPeer);
+
+    const setOpen = useCallback((next: boolean) => setOpenState(next), []);
     const close = useCallback(() => {
         setOpen(false);
         // After the panel unmounts: its own focus is gone, the launcher is the way back.
@@ -113,7 +121,34 @@ export function AskDevShellProvider({ children }: { children: ReactNode }) {
         return () => document.removeEventListener("keydown", onKeyDown);
     }, [eligible, open, close, setOpen]);
 
-    const value = useMemo(() => ({ open, setOpen, close }), [open, setOpen, close]);
+    const router = useRouter();
+    // The page the panel was expanded from (path and query), for Minimize.
+    const returnTo = useRef<string | null>(null);
+    // Minimize asked for the panel; it opens once the route it went to allows it.
+    const [openOnArrival, setOpenOnArrival] = useState(false);
+
+    const expand = useCallback(() => {
+        returnTo.current = `${window.location.pathname}${window.location.search}`;
+        setOpen(false);
+        router.push(ASK_DEV_FULL_PAGE_PATH);
+    }, [router, setOpen]);
+
+    const minimize = useCallback(() => {
+        setOpenOnArrival(true);
+        router.push(returnTo.current ?? MINIMIZE_FALLBACK_PATH);
+    }, [router]);
+
+    // Set during render, as the eligibility close above: no effect, no extra paint. The open panel
+    // then holds the right edge through `useRightDrawerClaim` above (CHAOS-12207).
+    if (openOnArrival && eligible) {
+        setOpenOnArrival(false);
+        setOpenState(true);
+    }
+
+    const value = useMemo(
+        () => ({ open, setOpen, close, expand, minimize }),
+        [open, setOpen, close, expand, minimize],
+    );
     return <AskDevShellContext.Provider value={value}>{children}</AskDevShellContext.Provider>;
 }
 

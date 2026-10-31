@@ -7,6 +7,8 @@ import { logger } from "@/lib/logger";
 import { FactTrendSlot } from "../render/RenderShapes";
 
 import { ANSWER_COPY, FACT_KIND_LABEL, labelFor, type AnswerResult } from "./answerModel";
+import { InvestmentRollupLabel } from "./InvestmentRollupLabel";
+import { rollupsOfClaims, type InvestmentRollup } from "./investmentRollup";
 import {
     claimedFactTables,
     type FactTableCell,
@@ -35,7 +37,14 @@ function Cell({ cell }: { cell: FactTableCell }) {
     );
 }
 
-function FactTable({ model }: { model: FactTableModel }) {
+function FactTable({
+    model,
+    rollups,
+}: {
+    model: FactTableModel;
+    /** CHAOS-12178: the owning-team roll-ups among the table's cited claims. */
+    rollups: readonly InvestmentRollup[];
+}) {
     const title = `${labelFor(FACT_KIND_LABEL, model.kind)} · ${humanizeTerm(model.tableField)}`;
     const claimIds = model.claimIds.join(" ");
     return (
@@ -55,6 +64,17 @@ function FactTable({ model }: { model: FactTableModel }) {
                     <p className="text-xs text-(--ink-muted)">
                         {ANSWER_COPY.factAlsoCited}:{" "}
                         {model.alsoFields.map((field) => humanizeTerm(field)).join(", ")}
+                    </p>
+                )}
+                {rollups.length === 0 ? null : (
+                    <p className="mt-1 flex flex-wrap gap-1">
+                        {rollups.map((rollup) => (
+                            <InvestmentRollupLabel
+                                key={rollup.subject.canonical_id}
+                                rollup={rollup}
+                                named={rollups.length > 1}
+                            />
+                        ))}
                     </p>
                 )}
             </div>
@@ -139,7 +159,11 @@ export function ClaimedFactTables({ result }: { result: AnswerResult }) {
             </p>
             <p className="text-xs text-(--ink-muted)">{ANSWER_COPY.factTablesIntro}</p>
             {models.map((model) => (
-                <FactTable key={model.claimIds[0]} model={model} />
+                <FactTable
+                    key={model.claimIds[0]}
+                    model={model}
+                    rollups={rollupsOfClaims(facts ?? [], model.claimIds)}
+                />
             ))}
         </div>
     );

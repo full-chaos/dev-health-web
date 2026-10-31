@@ -21,6 +21,8 @@ import {
 import { AskDevCohortRanking } from "./AskDevCohortRanking";
 import { AskDevCoverage } from "./AskDevCoverage";
 import { ClaimedFactTables } from "./ClaimedFactTables";
+import { InvestmentRollupLabel } from "./InvestmentRollupLabel";
+import { rollupsOfClaims } from "./investmentRollup";
 import { claimedFactTables } from "./claimedFactTablesModel";
 import { AnswerWithheldNotice, RenderShapesProvider } from "../render/RenderShapes";
 import { quickStatus } from "./quickStatus";
@@ -44,7 +46,15 @@ function SubjectLine({ subjects }: { subjects: readonly { label: string }[] | un
  * how sure the source is, where it comes from, its confidence, what it is about and how much
  * evidence backs it. A driver whose explanation is blank says so instead of standing alone.
  */
-function DriverItem({ driver }: { driver: AnswerDriver }) {
+function DriverItem({
+    driver,
+    claims,
+}: {
+    driver: AnswerDriver;
+    /** The answer's claimed facts: a cited roll-up claim is labelled (CHAOS-12178). */
+    claims: NonNullable<AnswerResult["claimed_facts"]>;
+}) {
+    const rollups = rollupsOfClaims(claims, driver.claimed_fact_ids ?? []);
     const summary = nonBlank(driver.summary);
     const qualification = nonBlank(driver.qualification);
     const sourceState =
@@ -59,6 +69,7 @@ function DriverItem({ driver }: { driver: AnswerDriver }) {
             className="rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface-raised) p-3"
             data-testid="ask-dev-answer-driver"
             data-standing={driver.standing}
+            data-category={driver.category}
         >
             <div className="flex items-start justify-between gap-2">
                 <p className="min-w-0 text-sm font-semibold text-foreground">
@@ -90,6 +101,20 @@ function DriverItem({ driver }: { driver: AnswerDriver }) {
                 {confidence === null ? null : ` · ${ANSWER_COPY.confidence} ${confidence}`}
                 {sourceState === null ? null : ` · ${sourceState}`}
             </p>
+            {rollups.length === 0 ? null : (
+                <p
+                    className="mt-2 flex flex-wrap gap-1"
+                    data-testid="ask-dev-answer-driver-rollups"
+                >
+                    {rollups.map((rollup) => (
+                        <InvestmentRollupLabel
+                            key={rollup.subject.canonical_id}
+                            rollup={rollup}
+                            named={rollups.length > 1}
+                        />
+                    ))}
+                </p>
+            )}
             <SubjectLine subjects={driver.affected_subjects} />
             <p className="text-xs text-(--ink-muted)">
                 {evidenceCountText(driver.evidence_ref_ids.length)}
@@ -268,7 +293,11 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
                                     </p>
                                     <ul className="space-y-2">
                                         {result.drivers.map((driver) => (
-                                            <DriverItem key={driver.driver_id} driver={driver} />
+                                            <DriverItem
+                                                key={driver.driver_id}
+                                                driver={driver}
+                                                claims={facts ?? []}
+                                            />
                                         ))}
                                     </ul>
                                 </>

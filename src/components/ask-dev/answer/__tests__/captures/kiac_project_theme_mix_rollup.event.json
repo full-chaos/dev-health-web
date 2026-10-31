@@ -1,0 +1,1600 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_c35755eec0a193508b2814882908bab4",
+    "seq": 14,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_9f6952729cf994259ac543a176dfcaff",
+        "request_id": "req_c35755eec0a193508b2814882908bab4",
+        "generated_at": "2026-10-31T06:58:04.346730673Z",
+        "status": "partial",
+        "question": "What is the investment mix by theme of the Synthetic Project November project over the last 30 days?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "Assess the Synthetic Project November project's investment mix by theme over the last 30 days",
+            "subject_terms": ["Synthetic Project November"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "investment"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [
+                {
+                    "receipt_id": "00000000-0000-4000-8000-900000000047",
+                    "subject": {
+                        "kind": "project",
+                        "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                        "label": "Synthetic Project November"
+                    },
+                    "state": "committed",
+                    "matched_terms": ["Synthetic Project November"],
+                    "match_reasons": ["Exact canonical subject label match."],
+                    "confidence": 1,
+                    "evidence_ref_ids": [
+                        "acr:v1:project:linear:00000000-0000-4000-8000-900000000004"
+                    ],
+                    "provider": "linear",
+                    "match_mechanisms": ["exact", "lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-900000000048",
+                    "subject": {
+                        "kind": "project",
+                        "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000008",
+                        "label": "Synthetic Project Romeo"
+                    },
+                    "state": "proposed",
+                    "matched_terms": ["Synthetic Project November"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:project:linear:00000000-0000-4000-8000-900000000008"
+                    ],
+                    "provider": "linear",
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-900000000049",
+                    "subject": {
+                        "kind": "pull_request_review",
+                        "canonical_id": "pull_request_review.v2:00000000-0000-4000-8000-900000000027:56:4800381168",
+                        "label": "PR #56 review"
+                    },
+                    "state": "proposed",
+                    "matched_terms": ["Synthetic Project November"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:review.v2:00000000-0000-4000-8000-900000000027:56:4800381168"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-900000000050",
+                    "subject": {
+                        "kind": "pull_request_review",
+                        "canonical_id": "pull_request_review.v2:00000000-0000-4000-8000-900000000021:1931:5035414657",
+                        "label": "PR #1931 review"
+                    },
+                    "state": "proposed",
+                    "matched_terms": ["Synthetic Project November"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:review.v2:00000000-0000-4000-8000-900000000021:1931:5035414657"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-900000000051",
+                    "subject": {
+                        "kind": "pull_request_review",
+                        "canonical_id": "pull_request_review.v2:00000000-0000-4000-8000-900000000021:1931:5035523031",
+                        "label": "PR #1931 review"
+                    },
+                    "state": "proposed",
+                    "matched_terms": ["Synthetic Project November"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:review.v2:00000000-0000-4000-8000-900000000021:1931:5035523031"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-900000000052",
+                    "subject": {
+                        "kind": "pull_request_review",
+                        "canonical_id": "pull_request_review.v2:00000000-0000-4000-8000-900000000021:1931:5036060860",
+                        "label": "PR #1931 review"
+                    },
+                    "state": "proposed",
+                    "matched_terms": ["Synthetic Project November"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:review.v2:00000000-0000-4000-8000-900000000021:1931:5036060860"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                }
+            ],
+            "committed": [
+                {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                }
+            ],
+            "commit_decision_digests": [
+                {
+                    "subject": {
+                        "kind": "project",
+                        "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                        "label": "Synthetic Project November"
+                    },
+                    "commit_gate": "exact_index",
+                    "search_truncated": true,
+                    "alias_lookup_complete": true,
+                    "identity_lookup": "complete"
+                }
+            ]
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["investment"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "narrowing": [
+                {
+                    "stage": "cardinality",
+                    "basis": "canonical_id_lexical",
+                    "before": 50,
+                    "after": 18
+                }
+            ],
+            "requirements": [
+                {
+                    "requirement": "allocation_breakdown/subject/project",
+                    "obligation": "allocation_breakdown",
+                    "role": "subject",
+                    "subject": "project",
+                    "kind": "read",
+                    "fact_kinds": ["investment"],
+                    "scope": "single_subject",
+                    "quantifier": "at_least_one"
+                }
+            ]
+        },
+        "direct_judgment": "Synthetic Project November's investment mix appears quality-led in the supplied current window. This investigation is partial: some canonical or graph coverage was unavailable.",
+        "current_state": "Current observed values: population window: current (Synthetic Project November); rollup basis: team project ownership via owned repos work unit investments (Synthetic Project November); uncategorized unit count: 1722 (Synthetic Project November); uncategorized unit share: 0.26 (Synthetic Project November); work unit count: 5011 (Synthetic Project November). Derived values, which suggest rather than observe: theme feature delivery: 0.17 (Synthetic Project November); theme maintenance: 0.16 (Synthetic Project November); theme operational: 0.04 (Synthetic Project November); quality theme share: 0.58 (Synthetic Project November); theme risk: 0.05 (Synthetic Project November).",
+        "strongest_pressures": [
+            "Quality work appears to be the largest investment theme for Synthetic Project November at 58% of the categorized mix.",
+            "The investment mix appears to include a substantial coverage gap because 26% of work units are uncategorized and excluded from the theme mix."
+        ],
+        "drivers": [
+            {
+                "driver_id": "driver-synthetic-november-investment-mix",
+                "standing": "principal",
+                "category": "investment",
+                "title": "Synthetic Project November's investment mix appears quality-led in the supplied current window",
+                "summary": "For Synthetic Project November, the investment mix appears to lean toward quality work at 58%, followed by delivery at 17%, maintenance at 16%, risk at 5%, and operational work at 4%. The mix is based on the owning team's roll-up across owned repositories, not measurable project-owned work.",
+                "affected_subjects": [
+                    {
+                        "kind": "project",
+                        "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                        "label": "Synthetic Project November"
+                    }
+                ],
+                "evidence_ref_ids": ["acr:v1:project:linear:00000000-0000-4000-8000-900000000004"],
+                "claimed_fact_ids": [
+                    "claim-investment-020",
+                    "claim-investment-021",
+                    "claim-investment-022",
+                    "claim-investment-023",
+                    "claim-investment-024",
+                    "claim-investment-025"
+                ],
+                "derivation": "canonical_structured",
+                "epistemic_status": "observed",
+                "confidence": 0.99,
+                "current": true
+            }
+        ],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [
+            {
+                "path_id": "00000000-0000-4000-8000-900000000053",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-900000000021:ghpr%3Afull-chaos/dev-health-ops#5308",
+                        "label": "Synthetic work item title 002"
+                    },
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-900000000054:extkey%3ATEAMA-10983",
+                        "label": "Synthetic work item title 003"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "RELATES_TO",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-900000000021:ghpr%3Afull-chaos/dev-health-ops#5308",
+                            "label": "Synthetic work item title 002"
+                        },
+                        "to": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-900000000054:extkey%3ATEAMA-10983",
+                            "label": "Synthetic work item title 003"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-30T23:01:55.402Z",
+                        "valid_from": "2026-10-30T15:41:50Z",
+                        "valid_to": "2026-10-30T22:58:56Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5308:extkey%3ATEAMA-10983:relates_to%3Afwd"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#5308 relates to Synthetic work item title 003",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5308:extkey%3ATEAMA-10983:relates_to%3Afwd"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000055",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-900000000027:1431",
+                        "label": "Synthetic pull request title 006"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000027",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-900000000027:1431",
+                            "label": "Synthetic pull request title 006"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000027",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T00:01:40.353Z",
+                        "valid_from": "2026-10-16T12:42:11Z",
+                        "valid_to": "2026-10-16T20:21:18Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-900000000027:1431"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 006 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-900000000027:1431"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000056",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857344",
+                        "label": "Synthetic CI run title 015"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857344",
+                            "label": "Synthetic CI run title 015"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T22:58:56Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T22:58:56Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857344"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 015 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857344"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000057",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857356",
+                        "label": "Synthetic CI run title 016"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857356",
+                            "label": "Synthetic CI run title 016"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:00:34Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T23:00:34Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857356"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 016 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857356"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000058",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857359",
+                        "label": "Synthetic CI run title 017"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857359",
+                            "label": "Synthetic CI run title 017"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T22:49:58Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T22:49:58Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857359"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 017 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857359"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000059",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857365",
+                        "label": "Synthetic CI run title 018"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857365",
+                            "label": "Synthetic CI run title 018"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T22:57:01Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T22:57:01Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857365"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 018 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857365"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000060",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857369",
+                        "label": "Synthetic CI run title 019"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857369",
+                            "label": "Synthetic CI run title 019"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T22:58:23Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T22:58:23Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857369"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 019 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857369"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000061",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857373",
+                        "label": "Synthetic CI run title 020"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857373",
+                            "label": "Synthetic CI run title 020"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:05:01Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T23:05:01Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857373"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 020 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857373"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000062",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857378",
+                        "label": "Synthetic CI run title 021"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857378",
+                            "label": "Synthetic CI run title 021"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T22:56:41Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T22:56:41Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857378"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 021 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857378"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000063",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857413",
+                        "label": "Synthetic CI run title 022"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857413",
+                            "label": "Synthetic CI run title 022"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:04:50Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T23:04:50Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857413"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 022 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857413"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000064",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857417",
+                        "label": "Synthetic CI run title 023"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092857417",
+                            "label": "Synthetic CI run title 023"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:05:03Z",
+                        "valid_from": "2026-10-10T22:49:44Z",
+                        "valid_to": "2026-10-10T23:05:03Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857417"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 023 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857417"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000065",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092868389",
+                        "label": "Synthetic CI run title 024"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38092868389",
+                            "label": "Synthetic CI run title 024"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T22:54:33Z",
+                        "valid_from": "2026-10-10T22:49:56Z",
+                        "valid_to": "2026-10-10T22:54:33Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092868389"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 024 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38092868389"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000066",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741134",
+                        "label": "Synthetic CI run title 025"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741134",
+                            "label": "Synthetic CI run title 025"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:09:19Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:09:19Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741134"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 025 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741134"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000067",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741150",
+                        "label": "Synthetic CI run title 026"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741150",
+                            "label": "Synthetic CI run title 026"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:11:48Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:11:48Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741150"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 026 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741150"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000068",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741153",
+                        "label": "Synthetic CI run title 027"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741153",
+                            "label": "Synthetic CI run title 027"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:16:42Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:16:42Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741153"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 027 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741153"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000069",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741161",
+                        "label": "Synthetic CI run title 028"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741161",
+                            "label": "Synthetic CI run title 028"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:04:54Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:04:54Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741161"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 028 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741161"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000070",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741166",
+                        "label": "Synthetic CI run title 029"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741166",
+                            "label": "Synthetic CI run title 029"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:07:56Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:07:56Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741166"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 029 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741166"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000071",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741175",
+                        "label": "Synthetic CI run title 030"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741175",
+                            "label": "Synthetic CI run title 030"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:07:51Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:07:51Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741175"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 030 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741175"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000072",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741218",
+                        "label": "Synthetic CI run title 031"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741218",
+                            "label": "Synthetic CI run title 031"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:27:12Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:27:12Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741218"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 031 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741218"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000073",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741221",
+                        "label": "Synthetic CI run title 032"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741221",
+                            "label": "Synthetic CI run title 032"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:25:11Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:25:11Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741221"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 032 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741221"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000074",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741287",
+                        "label": "Synthetic CI run title 033"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093741287",
+                            "label": "Synthetic CI run title 033"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:06:58Z",
+                        "valid_from": "2026-10-10T23:04:28Z",
+                        "valid_to": "2026-10-10T23:06:58Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741287"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 033 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741287"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000075",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093764272",
+                        "label": "Synthetic CI run title 034"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38093764272",
+                            "label": "Synthetic CI run title 034"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:08:16Z",
+                        "valid_from": "2026-10-10T23:04:51Z",
+                        "valid_to": "2026-10-10T23:08:16Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093764272"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 034 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38093764272"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000076",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38095056803",
+                        "label": "Synthetic CI run title 035"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38095056803",
+                            "label": "Synthetic CI run title 035"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:29:12Z",
+                        "valid_from": "2026-10-10T23:26:54Z",
+                        "valid_to": "2026-10-10T23:29:12Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056803"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 035 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056803"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000077",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38095056815",
+                        "label": "Synthetic CI run title 036"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38095056815",
+                            "label": "Synthetic CI run title 036"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:29:15Z",
+                        "valid_from": "2026-10-10T23:26:54Z",
+                        "valid_to": "2026-10-10T23:29:15Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056815"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 036 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056815"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-900000000078",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38095056819",
+                        "label": "Synthetic CI run title 037"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-900000000021:38095056819",
+                            "label": "Synthetic CI run title 037"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-900000000021",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-10T23:29:26Z",
+                        "valid_from": "2026-10-10T23:26:54Z",
+                        "valid_to": "2026-10-10T23:29:26Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056819"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 037 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056819"],
+                "truncated": false
+            }
+        ],
+        "conflicts": [],
+        "limitations": [
+            "The supplied investment fact labels the population window as current and does not explicitly expose a thirty-day boundary.",
+            "The mix is an owning-team roll-up across nine repositories because the project has zero measurable project-owned work units.",
+            "Uncategorized work is excluded from the theme mix; the supplied fact reports 1,722 uncategorized units out of 6,733 work units in the window."
+        ],
+        "evidence_ref_ids": ["acr:v1:project:linear:00000000-0000-4000-8000-900000000004"],
+        "claimed_facts": [
+            {
+                "claim_id": "claim-investment-020",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "theme_feature_delivery",
+                "value": {
+                    "number": 0.17407204577
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-021",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "theme_maintenance",
+                "value": {
+                    "number": 0.15723271166
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-022",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "theme_operational",
+                "value": {
+                    "number": 0.039247797302
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-023",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "theme_quality",
+                "value": {
+                    "number": 0.58100536796
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-024",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "theme_risk",
+                "value": {
+                    "number": 0.048442077306
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-025",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "uncategorized_unit_share",
+                "value": {
+                    "number": 0.25575523540769346
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-026",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "work_unit_count",
+                "value": {
+                    "integer": 5011
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-027",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "uncategorized_unit_count",
+                "value": {
+                    "integer": 1722
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-028",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "rollup_basis",
+                "value": {
+                    "string": "team_project_ownership_via_owned_repos_work_unit_investments"
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            },
+            {
+                "claim_id": "claim-investment-029",
+                "kind": "investment",
+                "subject": {
+                    "kind": "project",
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-900000000004",
+                    "label": "Synthetic Project November"
+                },
+                "field": "population_window",
+                "value": {
+                    "string": "current"
+                },
+                "fact_id": "fact_ef6c6453e6fa8ad4114cc5b7",
+                "investment_mix": {
+                    "investment_mix_source": "owning_team_rollup",
+                    "rollup_basis": "team_project_ownership_via_owned_repos_work_unit_investments",
+                    "work_unit_count": 5011,
+                    "project_own_work_unit_count": 0
+                }
+            }
+        ],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "canonical_fact:investment",
+                    "state": "available",
+                    "reason": "investment_project_owning_team_rollup for 1 of 1 projects with an investment fact: the theme mix is the owning teams' roll-up, not the project's own, because the project has no measurable work of its own in the window; investment_units_uncategorized: 1722 of 6733 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count",
+                    "label": "Canonical facts — investment",
+                    "state_label": "available"
+                },
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-31T06:57:37.138770217Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": false,
+            "details": [
+                {
+                    "detail_id": "cov-01",
+                    "source": "canonical_fact:investment",
+                    "code": "fact_provider_reported",
+                    "degrading": false,
+                    "fact_kind": "investment",
+                    "source_state": "available",
+                    "supported_kinds": ["team", "project", "repository", "organization"],
+                    "label": "Investment facts were limited",
+                    "phrasing": "The investment mix comes from the owning team's roll-up rather than the project's own measurable work, and uncategorized work is excluded.",
+                    "raw": "investment_project_owning_team_rollup for 1 of 1 projects with an investment fact: the theme mix is the owning teams' roll-up, not the project's own, because the project has no measurable work of its own in the window; investment_units_uncategorized: 1722 of 6733 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count"
+                }
+            ]
+        },
+        "evidence_ref_labels": {
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857344": "CI run: 00000000-0000-4000-8000-900000000021:38092857344",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857356": "CI run: 00000000-0000-4000-8000-900000000021:38092857356",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857359": "CI run: 00000000-0000-4000-8000-900000000021:38092857359",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857365": "CI run: 00000000-0000-4000-8000-900000000021:38092857365",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857369": "CI run: 00000000-0000-4000-8000-900000000021:38092857369",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857373": "CI run: 00000000-0000-4000-8000-900000000021:38092857373",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857378": "CI run: 00000000-0000-4000-8000-900000000021:38092857378",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857413": "CI run: 00000000-0000-4000-8000-900000000021:38092857413",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092857417": "CI run: 00000000-0000-4000-8000-900000000021:38092857417",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38092868389": "CI run: 00000000-0000-4000-8000-900000000021:38092868389",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741134": "CI run: 00000000-0000-4000-8000-900000000021:38093741134",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741150": "CI run: 00000000-0000-4000-8000-900000000021:38093741150",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741153": "CI run: 00000000-0000-4000-8000-900000000021:38093741153",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741161": "CI run: 00000000-0000-4000-8000-900000000021:38093741161",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741166": "CI run: 00000000-0000-4000-8000-900000000021:38093741166",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741175": "CI run: 00000000-0000-4000-8000-900000000021:38093741175",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741218": "CI run: 00000000-0000-4000-8000-900000000021:38093741218",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741221": "CI run: 00000000-0000-4000-8000-900000000021:38093741221",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093741287": "CI run: 00000000-0000-4000-8000-900000000021:38093741287",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38093764272": "CI run: 00000000-0000-4000-8000-900000000021:38093764272",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056803": "CI run: 00000000-0000-4000-8000-900000000021:38095056803",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056815": "CI run: 00000000-0000-4000-8000-900000000021:38095056815",
+            "acr:v1:ci:00000000-0000-4000-8000-900000000021:38095056819": "CI run: 00000000-0000-4000-8000-900000000021:38095056819",
+            "acr:v1:project:linear:00000000-0000-4000-8000-900000000004": "Project: linear:00000000-0000-4000-8000-900000000004",
+            "acr:v1:project:linear:00000000-0000-4000-8000-900000000008": "Project: linear:00000000-0000-4000-8000-900000000008",
+            "acr:v1:pull-request:00000000-0000-4000-8000-900000000027:1431": "Pull request: 00000000-0000-4000-8000-900000000027:1431",
+            "acr:v1:review.v2:00000000-0000-4000-8000-900000000027:56:4800381168": "Review: 00000000-0000-4000-8000-900000000027:56:4800381168",
+            "acr:v1:review.v2:00000000-0000-4000-8000-900000000021:1931:5035414657": "Review: 00000000-0000-4000-8000-900000000021:1931:5035414657",
+            "acr:v1:review.v2:00000000-0000-4000-8000-900000000021:1931:5035523031": "Review: 00000000-0000-4000-8000-900000000021:1931:5035523031",
+            "acr:v1:review.v2:00000000-0000-4000-8000-900000000021:1931:5036060860": "Review: 00000000-0000-4000-8000-900000000021:1931:5036060860",
+            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5308:extkey%3ATEAMA-10983:relates_to%3Afwd": "Work item dependency: ghpr:full-chaos/dev-health-ops#5308:Synthetic work item title 003:relates_to:fwd"
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v258",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "context-fabric-synthesis.v28+gpt-5.6-luna",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna",
+            "synthesis_source": "server"
+        },
+        "deterministic_answer": "Synthetic Project November's investment mix appears quality-led in the supplied current window. This investigation is partial: some canonical or graph coverage was unavailable.",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-10-01T00:00:00Z",
+            "end": "2026-10-31T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "completeness": {
+            "terminal_status": "partial",
+            "terminal_reason": "limitation_disclosed",
+            "claimed_facts_count": 10,
+            "rows_count": 0,
+            "state": "complete",
+            "outcomes": [
+                {
+                    "stage": "planning",
+                    "requirement": "allocation_breakdown/subject/project",
+                    "obligation": "allocation_breakdown",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "assembled_result",
+                    "requirement": "allocation_breakdown/subject/project",
+                    "obligation": "allocation_breakdown",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 1,
+                    "declared": 1
+                }
+            ]
+        }
+    }
+}

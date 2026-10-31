@@ -410,8 +410,10 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
         expect(response.status).toBe(200);
         const frame = /event: error\ndata: (.+)\n\n/u.exec(text);
         expect(frame, text).not.toBeNull();
+        // codex r2 on #1639: ACR's rate limit has its own code and words, never an outage.
         expect(JSON.parse(frame![1]!)).toMatchObject({
-            code: "upstream",
+            code: "ask_dev_rate_limited",
+            message: "Too many questions in a short time. Wait a moment, then ask again.",
             request_id: response.headers.get("x-request-id"),
             retry_after_seconds: 7,
             retryable: true,
@@ -474,7 +476,29 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
 
         expect(text).toContain('"code":"stream_unavailable"');
         expect(text).not.toContain("event: result");
+        // codex r1 on #1639: the words match the code, never "temporarily unavailable".
+        expect(text).toContain(
+            "Ask Dev cannot stream answers on this deployment right now. Contact your administrator.",
+        );
+        expect(text).not.toContain("temporarily");
     });
+
+    it.each(["stream_unavailable", "internal_error"])(
+        "says the stream is off for a 406 with %s, whatever the body's code",
+        async (wireCode) => {
+            installOps(ENTITLED);
+            server.use(
+                http.post(`${ACR}/api/v1/context-fabric/investigations`, () =>
+                    HttpResponse.json(errorV1(wireCode, 406), { status: 406 }),
+                ),
+            );
+            const text = await readAll(await post());
+            expect(text).toContain('"code":"stream_unavailable"');
+            expect(text).toContain(
+                "Ask Dev cannot stream answers on this deployment right now. Contact your administrator.",
+            );
+        },
+    );
 
     it("treats a 200 JSON answer as an invalid upstream, never as a result", async () => {
         installOps(ENTITLED);

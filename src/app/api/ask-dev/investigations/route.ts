@@ -228,14 +228,19 @@ function relay(
                         "ask-dev investigation refused by ACR",
                     );
                     fail(
-                        prepared.client.investigationFailure(
-                            response.status,
-                            upstream.code,
-                            retryAfter(response),
-                        ),
-                        // 406 is the stream-off answer (plan 2.7.1). The pinned error.v1 enum has no
-                        // `stream_unavailable` code yet, so the status decides.
-                        response.status === 406 ? "stream_unavailable" : undefined,
+                        // 406 is the stream-off answer (plan 2.7.1), whatever the body's code: the
+                        // status decides, and the words follow the same code (CHAOS-12201).
+                        response.status === 406
+                            ? new AcrRuntimeError(
+                                  acrRuntimeErrorCodes.streamUnavailable,
+                                  "ACR answered 406: the event stream is off.",
+                                  { status: 406 },
+                              )
+                            : prepared.client.investigationFailure(
+                                  response.status,
+                                  upstream.code,
+                                  retryAfter(response),
+                              ),
                     );
                     return;
                 }

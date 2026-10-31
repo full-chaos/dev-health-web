@@ -169,6 +169,8 @@ describe("sync-acr-contracts", () => {
             "schemas/context_fabric_investigation_response.v2.schema.json",
             "schemas/context_fabric_investigation_result.v1.schema.json",
             "schemas/context_fabric_investigation_result.v2.schema.json",
+            "schemas/context_fabric_result_feedback.v1.schema.json",
+            "schemas/context_fabric_result_feedback_request.v1.schema.json",
             "schemas/context_fabric_submission_status.v1.schema.json",
             "schemas/context_fabric_thread.v1.schema.json",
             "schemas/context_fabric_thread_list.v1.schema.json",

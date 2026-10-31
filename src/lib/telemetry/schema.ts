@@ -62,6 +62,7 @@ export const APP_ROUTES: readonly string[] = [
     "/demo",
     "/demo/chart-escape",
     "/deployments/[deployment_id]",
+    "/dev",
     "/diagnose",
     "/diagnose/work-graph",
     "/explore",

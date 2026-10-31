@@ -1,7 +1,7 @@
 "use client";
 
 import { ListFilter } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { containsIdToken } from "@/lib/labels/idToken";
@@ -17,7 +17,7 @@ import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
-import { claimRightDrawer, releaseRightDrawer } from "@/lib/shell/rightDrawer";
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 import { FilterDrawer } from "./FilterDrawer";
 import { SCOPE_BAR_LABEL_CLASS, SCOPE_BAR_ORG_FALLBACK, ScopeBarCard } from "./ScopeBarFrame";
@@ -109,8 +109,6 @@ export function ScopeBarClient({
     const [filtersMode, setFiltersMode] = useState<"drawer" | "inline" | null>(null);
     const filtersButtonRef = useRef<HTMLButtonElement>(null);
     const filtersOpen = filtersMode !== null;
-    // Unmounting drops the right-edge claim and its stale callback.
-    useEffect(() => () => releaseRightDrawer("filters"), []);
 
     const openFilters = () => {
         const wide =
@@ -119,19 +117,21 @@ export function ScopeBarClient({
                 : true;
         setOpenMenu(null);
         setFiltersMode(wide ? "drawer" : "inline");
-        // The drawer is a right drawer: it takes the edge from the evidence drawer or Ask Dev.
-        // (Below `md` the panel is inline under the bar, not a drawer.)
-        if (wide) claimRightDrawer("filters", closeFiltersFromPeer);
     };
     // A peer drawer opened: close without moving focus to this button.
     const closeFiltersFromPeer = () => {
         setOpenMenu(null);
         setFiltersMode(null);
     };
+    // The drawer is a right drawer: while it is open it holds the edge (it takes it from the
+    // evidence drawer or Ask Dev). Below `md` the panel is inline under the bar, not a drawer, and
+    // takes no claim. Held by an effect, as the shared `Drawer` holds it (CHAOS-12211): an imperative
+    // claim in `openFilters` was released by StrictMode's re-run of this component's mount effects
+    // under `next dev` when the open landed before them. Closing and unmounting release it.
+    useRightDrawerClaim("filters", filtersMode === "drawer", closeFiltersFromPeer);
     const closeFilters = () => {
         setOpenMenu(null);
         setFiltersMode(null);
-        releaseRightDrawer("filters");
         // Focus goes back to the control that opened the panel.
         filtersButtonRef.current?.focus();
     };

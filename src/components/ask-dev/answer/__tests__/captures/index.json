@@ -147,6 +147,26 @@
             "stream_ms": 25650,
             "completeness_authority": "on",
             "sha256_compact": "c6cb15bc93d383bda81a5ede7c5f2309b1fa1a34a12808ebd19718673ebb33d7"
+        },
+        {
+            "file": "kiac_projects_feature_investment_rollup.event.json",
+            "question": "Which projects carry the most feature delivery investment over the last 30 days?",
+            "status": "partial",
+            "result_id": "result_d0d07028ccd9054c6f5b759179c526f6",
+            "captured_at": "2026-10-31T06:53:41.970766542Z",
+            "stream_ms": 34564,
+            "producer": "kiac cluster askdev-1, acr-api image docker.io/askdev/acr-api@sha256:71053013aecca294e9135f51b4d3d9d23664e72fbd6c63db46bbecedca6b8991 (acr main 33ada20a, which serves the investment_mix disclosure of acr #1800); scrubbed with the same rules and one map for both files",
+            "sha256_compact": "a60e95d9853433b3e09e0a03c2416a49939e38a0918d1bf61f28251c452a425b"
+        },
+        {
+            "file": "kiac_project_theme_mix_rollup.event.json",
+            "question": "What is the investment mix by theme of the Synthetic Project November project over the last 30 days?",
+            "status": "partial",
+            "result_id": "result_9f6952729cf994259ac543a176dfcaff",
+            "captured_at": "2026-10-31T06:57:32.683837465Z",
+            "stream_ms": 31743,
+            "producer": "kiac cluster askdev-1, acr-api image docker.io/askdev/acr-api@sha256:71053013aecca294e9135f51b4d3d9d23664e72fbd6c63db46bbecedca6b8991 (acr main 33ada20a, which serves the investment_mix disclosure of acr #1800); scrubbed with the same rules and one map for both files",
+            "sha256_compact": "8a82edc4cdb9cc23974255b1bac456eb24da0cc3086a04b5be8bce880385b607"
         }
     ],
     "encoder_captures": {

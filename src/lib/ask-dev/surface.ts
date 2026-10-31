@@ -27,6 +27,21 @@ export function isAskDevExcludedPath(pathname: string): boolean {
 }
 
 /**
+ * The Ask Dev full page (plan §2.5, D-13; CHAOS-11934). It shows the tab's one conversation, the
+ * same store the panel shows, so the panel and its launcher are not drawn there.
+ */
+export const ASK_DEV_FULL_PAGE_PATH = "/dev";
+
+export function isAskDevFullPage(pathname: string): boolean {
+    return pathname === ASK_DEV_FULL_PAGE_PATH || pathname.startsWith(`${ASK_DEV_FULL_PAGE_PATH}/`);
+}
+
+/** Where the panel, its launcher, its shortcut and its palette entry may appear. */
+export function isAskDevPanelPath(pathname: string): boolean {
+    return !isAskDevExcludedPath(pathname) && !isAskDevFullPage(pathname);
+}
+
+/**
  * Ask Dev is on only when BOTH entitlements are on. The server route checks the same two again on
  * every call; this only decides whether the shell draws the launcher, so a user is not offered a
  * button that the route would refuse.

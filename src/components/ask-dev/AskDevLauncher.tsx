@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import fcLogo from "@/assets/fc-logo.svg";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { isAskDevEnabled, isAskDevExcludedPath } from "@/lib/ask-dev/surface";
+import { isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
 
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { useAskDevShell } from "./AskDevShellContext";
@@ -25,7 +25,7 @@ export function AskDevLauncher({ placement }: AskDevLauncherProps) {
     const pathname = usePathname() ?? "";
     const { features } = useAdminTier();
     const { open, setOpen } = useAskDevShell();
-    if (!isAskDevEnabled(features) || isAskDevExcludedPath(pathname)) return null;
+    if (!isAskDevEnabled(features) || !isAskDevPanelPath(pathname)) return null;
     return (
         <button
             type="button"

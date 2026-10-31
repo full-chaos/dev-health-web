@@ -35,6 +35,22 @@ export const acrRuntimeErrorCodes = {
     budgetExhausted: "budget_exhausted",
     stalled: "stalled",
     interrupted: "interrupted",
+    // CHAOS-12201: ACR's per-call access read refused the user (error.v1 `access_denied`, 403), and
+    // the shared Ask Dev limits (429): running questions, and the monthly allowance.
+    accessDenied: "access_denied",
+    concurrencyLimited: "concurrency_limited",
+    allowanceExhausted: "allowance_exhausted",
+    // CHAOS-12201: the rest of the create-investigation vocabulary that is not an outage.
+    streamUnavailable: "stream_unavailable",
+    submissionInProgress: "submission_in_progress",
+    submissionUnsaved: "submission_unsaved",
+    threadClosed: "thread_closed",
+    canceled: "canceled",
+    budgetRefusal: "budget_refusal",
+    // Ask Dev's own words for codes other products' routes show generically (codex r2 on #1639).
+    askDevNotEntitled: "ask_dev_not_entitled",
+    askDevRepoForbidden: "ask_dev_repo_forbidden",
+    askDevRateLimited: "ask_dev_rate_limited",
     interpretationRejected: "interpretation_rejected",
     synthesisRejected: "synthesis_rejected",
 } as const;
@@ -75,8 +91,33 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
     switch (code) {
         case acrRuntimeErrorCodes.alreadyCompleted:
             return "This request was already completed.";
+        // CHAOS-12201: the conversation store says the same words (`NOT_RUN_COPY`); a test holds them equal.
+        case acrRuntimeErrorCodes.accessDenied:
+            return "Ask Dev is not available in this session. Sign in again with your own account, or ask an admin to add you to this organization.";
+        case acrRuntimeErrorCodes.concurrencyLimited:
+            return "Too many questions are running at once. Try again shortly.";
+        case acrRuntimeErrorCodes.allowanceExhausted:
+            return "Your organization has used this month's Ask Dev allowance.";
+        case acrRuntimeErrorCodes.streamUnavailable:
+            return "Ask Dev cannot stream answers on this deployment right now. Contact your administrator.";
+        case acrRuntimeErrorCodes.budgetRefusal:
+            return "This question needs more than one answer can hold. Ask a narrower question.";
+        case acrRuntimeErrorCodes.submissionInProgress:
+            return "This question is still running. Wait a moment, then try again.";
+        case acrRuntimeErrorCodes.submissionUnsaved:
+            return "The answer was shown but not saved — ask again";
+        case acrRuntimeErrorCodes.threadClosed:
+            return "This conversation has ended (deleted, expired or full). Ask again to start a new one.";
+        case acrRuntimeErrorCodes.canceled:
+            return "Canceled. If the answer had already finished, it is kept.";
+        case acrRuntimeErrorCodes.askDevNotEntitled:
+            return "Ask Dev is not available for this organization.";
+        case acrRuntimeErrorCodes.askDevRepoForbidden:
+            return "A repository this question needs is not available to you. If it was connected just now, wait for its first sync.";
+        case acrRuntimeErrorCodes.askDevRateLimited:
+            return "Too many questions in a short time. Wait a moment, then ask again.";
         case acrRuntimeErrorCodes.budgetExhausted:
-            return "Dev ran out of time before the question could start. Ask again.";
+            return "Ask Dev ran out of time before the question could start. Ask again.";
         case acrRuntimeErrorCodes.stalled:
             return "The answer stopped arriving. Ask again.";
         case acrRuntimeErrorCodes.interrupted:
@@ -96,7 +137,7 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
         case acrRuntimeErrorCodes.malformedResponse:
             return "Agent Context Runtime returned an invalid response.";
         case acrRuntimeErrorCodes.noRepository:
-            return "Connect a repository to ask Dev a question.";
+            return "No repository is available to you here. Connect a repository, or ask an admin for access to one.";
         case acrRuntimeErrorCodes.originRefused:
             return "The request was rejected.";
         case acrRuntimeErrorCodes.notEntitled:
