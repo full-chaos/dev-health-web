@@ -15,6 +15,10 @@
 export const CTA_LABELS = {
     /** The Ask Dev launcher in the app shell (CHAOS-3247: the accessible name). */
     openAskDev: "Open Ask Dev",
+    /** The Ask Dev composer: send the question (CHAOS-11928). */
+    askDevSend: "Send",
+    /** The Ask Dev composer: stop the run in flight (a disconnect, plan §2.7.4). */
+    askDevStop: "Stop",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */

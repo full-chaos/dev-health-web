@@ -314,5 +314,13 @@
     "src/components/ask-dev/render/RenderShapes.tsx": {
         "log": 2,
         "sentry": 0
+    },
+    "src/components/ask-dev/conversation/conversationStore.ts": {
+        "log": 11,
+        "sentry": 0
+    },
+    "src/components/ask-dev/conversation/testModeTransport.ts": {
+        "log": 2,
+        "sentry": 0
     }
 }

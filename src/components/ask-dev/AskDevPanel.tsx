@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -13,6 +13,13 @@ import { AskDevTurn, turnKey } from "./answer/AskDevTurn";
 import { useTestModeTurns, type TestModeTurns } from "./answer/testModeAnswer";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { useAskDevShell } from "./AskDevShellContext";
+import { AskDevComposer } from "./conversation/AskDevComposer";
+import {
+    useAskDevConversation,
+    type AskDevConversation,
+} from "./conversation/AskDevConversationContext";
+import { AskDevConversationTurn } from "./conversation/AskDevConversationTurn";
+import { carryOfChoice } from "./conversation/conversationStore";
 
 /** The `md` breakpoint, as the shell uses it: from here up the panel is a right region. */
 const DESKTOP_QUERY = "(min-width: 768px)";
@@ -28,15 +35,10 @@ const TITLE = "Ask Dev";
 
 type Conversation = TestModeTurns;
 
-/**
- * The conversation. Streamed answers will be appended here; a screen reader hears each addition.
- * It renders the turns it is given in order (CHAOS-11930, CHAOS-3440), and the empty state without
- * any. Only the last turn is live; every earlier turn is read-only, so an old receipt cannot be
- * sent. The conversation store (CHAOS-11928) becomes the turn source; until then only test mode
- * supplies turns (`useTestModeTurns`).
- */
-function Transcript({ conversation }: { conversation: Conversation }) {
-    const { turns, onConfirm, onReask } = conversation;
+const EMPTY_TRANSCRIPT = "Your conversation will appear here.";
+
+/** The transcript region; a screen reader hears each added turn. */
+function TranscriptLog({ children }: { children: ReactNode }) {
     return (
         <div
             role="log"
@@ -46,8 +48,55 @@ function Transcript({ conversation }: { conversation: Conversation }) {
             data-testid="ask-dev-transcript"
             className="space-y-6 text-sm text-(--ink-muted)"
         >
+            {children}
+        </div>
+    );
+}
+
+/**
+ * The store's conversation (CHAOS-11928): every turn in order, the empty state without any. Only the
+ * last turn is live, and only while no run is in flight; every earlier turn is read-only, so an old
+ * receipt cannot be sent.
+ */
+function ConversationTranscript({ live }: { live: AskDevConversation }) {
+    const { store, snapshot } = live;
+    const { turns } = snapshot;
+    return (
+        <TranscriptLog>
             {turns.length === 0 ? (
-                <p>Your conversation will appear here.</p>
+                <p>{EMPTY_TRANSCRIPT}</p>
+            ) : (
+                turns.map((turn, index) => {
+                    const usable = index === turns.length - 1 && !snapshot.inFlight;
+                    return (
+                        <AskDevConversationTurn
+                            key={`turn-${String(turn.id)}`}
+                            turn={turn}
+                            onConfirm={
+                                usable
+                                    ? (choice) => store.submit(turn.question, carryOfChoice(choice))
+                                    : undefined
+                            }
+                            onReask={usable ? (reask) => store.submit(reask.question) : undefined}
+                            onRetry={usable ? () => store.retry(turn.id) : undefined}
+                        />
+                    );
+                })
+            )}
+        </TranscriptLog>
+    );
+}
+
+/**
+ * Test mode with no scripted transport: the turns a Playwright run put into session storage
+ * (CHAOS-11930, CHAOS-3440), in order. Only the last turn is live.
+ */
+function Transcript({ conversation }: { conversation: Conversation }) {
+    const { turns, onConfirm, onReask } = conversation;
+    return (
+        <TranscriptLog>
+            {turns.length === 0 ? (
+                <p>{EMPTY_TRANSCRIPT}</p>
             ) : (
                 turns.map((turn, index) => {
                     const live = index === turns.length - 1;
@@ -61,7 +110,7 @@ function Transcript({ conversation }: { conversation: Conversation }) {
                     );
                 })
             )}
-        </div>
+        </TranscriptLog>
     );
 }
 
@@ -72,10 +121,13 @@ function Transcript({ conversation }: { conversation: Conversation }) {
  */
 function DesktopPanel({
     onClose,
-    conversation,
+    children,
+    footer,
 }: {
     onClose: () => void;
-    conversation: Conversation;
+    children: ReactNode;
+    /** The composer, pinned under the scrolling transcript. */
+    footer: ReactNode;
 }) {
     const titleId = useId();
     const panelRef = useRef<HTMLElement>(null);
@@ -121,9 +173,8 @@ function DesktopPanel({
                     <X aria-hidden="true" className="h-4 w-4" />
                 </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-5">
-                <Transcript conversation={conversation} />
-            </div>
+            <div className="flex-1 overflow-y-auto p-5">{children}</div>
+            {footer ? <div className="border-t border-(--card-stroke) p-4">{footer}</div> : null}
         </aside>
     );
 }
@@ -139,10 +190,31 @@ export function AskDevPanel() {
     const { features } = useAdminTier();
     const pathname = usePathname() ?? "";
     const desktop = useSyncExternalStore(subscribeDesktop, readDesktop, () => true);
-    const conversation = useTestModeTurns();
+    const testModeTurns = useTestModeTurns();
+    const live = useAskDevConversation();
 
     if (!open || !isAskDevEnabled(features) || isAskDevExcludedPath(pathname)) return null;
-    if (desktop) return <DesktopPanel onClose={close} conversation={conversation} />;
+    // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent.
+    const transcript = live ? (
+        <ConversationTranscript live={live} />
+    ) : (
+        <Transcript conversation={testModeTurns} />
+    );
+    const composer = live ? (
+        <AskDevComposer
+            inFlight={live.snapshot.inFlight}
+            ready={live.snapshot.ready}
+            onSubmit={(question) => live.store.submit(question)}
+            onCancel={() => live.store.cancel()}
+        />
+    ) : null;
+    if (desktop) {
+        return (
+            <DesktopPanel onClose={close} footer={composer}>
+                {transcript}
+            </DesktopPanel>
+        );
+    }
     return (
         <Drawer
             open
@@ -153,7 +225,10 @@ export function AskDevPanel() {
             // Ask Dev claims the right edge itself (`AskDevShellProvider`).
             claimsRightEdge={false}
         >
-            <Transcript conversation={conversation} />
+            <div className="space-y-6">
+                {transcript}
+                {composer}
+            </div>
         </Drawer>
     );
 }
