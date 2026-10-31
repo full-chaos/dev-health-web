@@ -185,11 +185,11 @@ describe("a ranked cohort", () => {
         expect(within(ranking()).getByTestId("ask-dev-ranking-incomplete").textContent).toMatch(
             /truncated/u,
         );
-        const unrankedText = within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent;
-        expect(unrankedText).toBe(
+        const unranked = within(ranking()).getByTestId("ask-dev-ranking-unranked");
+        expect(unranked.textContent).toBe(
             `Not ranked by the service: ${truncated.cohort.members[3].subject.label} (outcome Provisional, ${driversOf(truncated.cohort.members[3])}).`,
         );
-        expect(unrankedText).not.toMatch(RAW_COMPLETENESS);
+        expect(rawWordsIn(unranked, RAW_COMPLETENESS)).toEqual([]);
         expect(rows()).toHaveLength(3);
         unmount();
         const incomplete = copy(REPOS);
@@ -369,7 +369,7 @@ describe("a member that serves no driver rows (CHAOS-12283)", () => {
             ["teamalpha", "partial", "insufficient_evidence"],
         ]);
         render(<AskDevCohortRanking result={SEED} />);
-        const missingLines = cellsOf("ask-dev-ranking-missing-signals").map((c) => c.textContent);
+        const missingLines = cellsOf("ask-dev-ranking-missing-signals");
         for (const member of noDrivers) {
             const row = rows().find(
                 (r) =>
@@ -384,13 +384,15 @@ describe("a member that serves no driver rows (CHAOS-12283)", () => {
             );
             expect(within(row).queryByTestId("ask-dev-ranking-completeness")).toBeNull();
             expect(rawWordsIn(row, RAW_COMPLETENESS)).toEqual([]);
-            const line = missingLines.find((text) =>
-                text?.startsWith(`${member.subject.label} — ${RANKING_COPY.missingSignals}: `),
+            const line = missingLines.find((cell) =>
+                cell.textContent?.startsWith(
+                    `${member.subject.label} — ${RANKING_COPY.missingSignals}: `,
+                ),
             );
-            expect(line, member.subject.label).toBe(
+            expect(line?.textContent, member.subject.label).toBe(
                 `${member.subject.label} — ${RANKING_COPY.missingSignals}: ${member.missing_signals.map(humanizeTerm).join(", ")}`,
             );
-            expect(line).not.toMatch(RAW_COMPLETENESS);
+            expect(rawWordsIn(line!, RAW_COMPLETENESS)).toEqual([]);
         }
     });
 
