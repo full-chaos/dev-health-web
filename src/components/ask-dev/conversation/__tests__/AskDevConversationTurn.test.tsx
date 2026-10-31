@@ -9,6 +9,7 @@ vi.mock(
 );
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
+import { rawWordsIn } from "@/test/rawWords";
 import { buildInvestigationRequest } from "@/lib/ask-dev/request-builder";
 
 import {
@@ -63,7 +64,8 @@ function expectNoAnswerContent(container: HTMLElement) {
         expect(container.querySelector(`[data-testid="${marker}"]`), marker).toBeNull();
     }
     expect(container.querySelector('[data-testid*="score"]')).toBeNull();
-    expect(container.textContent).not.toMatch(/no issues|coverage|complete(?:ness)?\b/iu);
+    // CHAOS-12312: node by node; `textContent` glues "complete" to the next text, past `\b`.
+    expect(rawWordsIn(container, /no issues|coverage|complete(?:ness)?\b/iu)).toEqual([]);
 }
 
 afterEach(() => {
@@ -140,6 +142,9 @@ describe("each panel state has its own copy and no answer content (plan §2.7.8)
             TURN_STATUS_COPY.failedRetry,
         ],
         ["thread closed", { kind: "thread_closed" }, TURN_STATUS_COPY.threadClosed],
+        // CHAOS-11957: Stop through the cancel endpoint.
+        ["canceling (202)", { kind: "canceling", startedAt: STARTED }, TURN_STATUS_COPY.canceling],
+        ["stopped or interrupted", { kind: "halted" }, TURN_STATUS_COPY.halted],
     ];
 
     it.each(cases)("%s", (_name, outcome, copy) => {
@@ -360,5 +365,53 @@ describe("AskDevConversationTurn: stopped runs", () => {
 
     it("tells the user to wait a moment after a rate limit", () => {
         expect(STOPPED_COPY.rate_limited).toMatch(/Wait a moment/u);
+    });
+});
+
+describe("AskDevConversationTurn: Stop's progress (CHAOS-11957)", () => {
+    const running: TurnOutcome = { kind: "running", startedAt: STARTED, stages: {} };
+
+    it("says Stopping… while ACR has not answered", () => {
+        render(<AskDevConversationTurn turn={{ ...turn(running), stop: "requested" }} />);
+        expect(screen.getByTestId("ask-dev-turn-stop")).toHaveTextContent(
+            TURN_STATUS_COPY.stopRequested,
+        );
+    });
+
+    it("says a run without a lease cannot be stopped, and keeps its progress", () => {
+        render(<AskDevConversationTurn turn={{ ...turn(running), stop: "not_leased" }} />);
+        expect(screen.getByTestId("ask-dev-turn-stop")).toHaveTextContent(
+            TURN_STATUS_COPY.stopNotLeased,
+        );
+        expect(screen.getByTestId("ask-dev-turn-status")).toHaveTextContent(
+            TURN_STATUS_COPY.running,
+        );
+    });
+
+    it("keeps counting the elapsed time while it cancels", () => {
+        render(<AskDevConversationTurn turn={turn({ kind: "canceling", startedAt: STARTED })} />);
+        expect(screen.getByTestId("ask-dev-elapsed")).toBeInTheDocument();
+        expect(screen.queryByTestId("ask-dev-turn-stop")).toBeNull();
+    });
+});
+
+describe("AskDevConversationTurn: the observation cap (E6 design v5 N4)", () => {
+    it("shows a last-seen time only when a read confirmed it", () => {
+        const { rerender } = render(
+            <AskDevConversationTurn turn={turn({ kind: "unconfirmed" })} />,
+        );
+        expect(screen.getByTestId("ask-dev-turn-status")).toHaveTextContent(
+            TURN_STATUS_COPY.unconfirmed,
+        );
+        expect(screen.queryByTestId("ask-dev-turn-last-seen")).toBeNull();
+        expect(screen.getByTestId("ask-dev-turn").textContent).not.toContain("still running");
+        rerender(
+            <AskDevConversationTurn
+                turn={turn({ kind: "unconfirmed", lastSeenRunningAt: STARTED })}
+            />,
+        );
+        expect(screen.getByTestId("ask-dev-turn-last-seen")).toHaveTextContent(
+            TURN_STATUS_COPY.lastSeenRunning,
+        );
     });
 });

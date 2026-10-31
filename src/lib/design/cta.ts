@@ -37,6 +37,10 @@ export const CTA_LABELS = {
     askDevShowMoreConversations: "Show more",
     /** Ask Dev history: delete one past conversation, after a confirm (CHAOS-11956). */
     askDevDeleteConversation: "Delete conversation",
+    /** Ask Dev sign-in callback: go back to where the sign-in started (CHAOS-12303). */
+    askDevReturn: "Return to Ask Dev",
+    /** Ask Dev sign-in start: try to reach ACR again (CHAOS-12303). */
+    askDevTryAgain: "Try again",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */

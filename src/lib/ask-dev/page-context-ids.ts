@@ -11,8 +11,10 @@
  * - team: `team:<teams.id>` (`contextfabric.TeamCanonicalID`)
  * - pull request: `pull_request:<repo id>:<number>` (`pullRequestCanonicalID`)
  *
- * Pinned against every id of these kinds in the real (scrubbed) ACR captures, a fixture oracle
- * from real producer output; CHAOS-12230 replaces it with vectors ACR generates from its builders.
+ * Pinned to the canonical-id vectors ACR generates by executing its own builders (acr #1827,
+ * CHAOS-12230), vendored at the web pin (`src/lib/acr/contracts/examples/
+ * context_fabric_canonical_id_vectors.v1.json`; CHAOS-12280): every vector of these kinds builds its
+ * id byte for byte. A new builder here must be checked against them too.
  * A building block only: the registry (`page-context.ts`) still bounds and filters what is sent.
  */
 

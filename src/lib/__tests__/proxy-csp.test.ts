@@ -88,3 +88,43 @@ describe("proxy Content-Security-Policy", () => {
         expect(csp).not.toContain("'unsafe-eval'");
     });
 });
+
+describe("proxy Content-Security-Policy: the ACR origin (CHAOS-12302)", () => {
+    async function policyWithIssuer(issuer: string | undefined) {
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
+        vi.stubEnv("ACR_OAUTH_ISSUER", issuer);
+        const response = await proxy(request());
+        // The nonce differs per request: compare the policies without it.
+        return (response.headers.get("Content-Security-Policy") ?? "").replace(
+            /'nonce-[A-Za-z0-9_-]+'/u,
+            "'nonce-N'",
+        );
+    }
+
+    it("adds exactly the issuer origin to connect-src, and changes nothing else", async () => {
+        const without = await policyWithIssuer(undefined);
+        const withIssuer = await policyWithIssuer("https://acr.fullchaos.dev");
+        expect(withIssuer).not.toBe(without);
+        expect(withIssuer.replace(" https://acr.fullchaos.dev", "")).toBe(without);
+        const connect = withIssuer
+            .split("; ")
+            .find((directive) => directive.startsWith("connect-src "));
+        expect(connect?.split(" ")).toContain("https://acr.fullchaos.dev");
+    });
+
+    it("is unchanged when ACR_OAUTH_ISSUER is unset or empty", async () => {
+        const unset = await policyWithIssuer(undefined);
+        expect(await policyWithIssuer("")).toBe(unset);
+        expect(unset).not.toContain("acr.");
+    });
+
+    it.each([
+        ["a path", "https://acr.fullchaos.dev/oauth"],
+        ["http on a public host", "http://acr.fullchaos.dev"],
+        ["a wildcard", "https://*.fullchaos.dev"],
+        ["a second source", "https://acr.fullchaos.dev https://evil.example"],
+    ])("adds nothing for an issuer with %s", async (_, issuer) => {
+        expect(await policyWithIssuer(issuer)).toBe(await policyWithIssuer(undefined));
+    });
+});

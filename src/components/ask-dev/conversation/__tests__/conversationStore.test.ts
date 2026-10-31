@@ -257,7 +257,9 @@ describe("partition, abort, clear and generation (D-20)", () => {
 });
 
 describe("cancel (plan §2.7.4)", () => {
-    it("aborts the stream, says so, and drops a late answer", async () => {
+    // CHAOS-11957: Stop asks ACR's cancel endpoint first. Without the run lease ACR answers
+    // `not_leased` (the fake's default), and the disconnect this tab holds is the cancel.
+    it("without a lease, disconnects, says so, and drops a late answer", async () => {
         const store = makeStore();
         const gate = deferred();
         transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
@@ -265,7 +267,8 @@ describe("cancel (plan §2.7.4)", () => {
         await vi.waitFor(() => expect(last(store).reservedResultId).toBeDefined());
 
         store.cancel();
-        expect(transport.calls[0]!.signal.aborted).toBe(true);
+        await vi.waitFor(() => expect(transport.calls[0]!.signal.aborted).toBe(true));
+        expect(transport.cancelCalls).toEqual([transport.calls[0]!.submissionId]);
         expect(last(store).outcome).toEqual({ kind: "canceled" });
         expect(store.getSnapshot().inFlight).toBe(false);
         expect(log.info).toHaveBeenCalledWith(
@@ -985,8 +988,21 @@ describe("panel states (plan §2.7.8)", () => {
         expect(store.retry(last(store).id)).toBe(false);
     });
 
+    // CHAOS-11957 (codex r3 on #1657): a stall after `accepted` now attaches to the run's events
+    // and reads its status before it says so (`conversationStore.reattach.test.ts`); the other
+    // reasons still end the turn at once.
+    it("ends a stall after accepted as stalled once the run is gone: one attach, then the status", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted(), { fail: new TransportFailure("stalled") }]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "stalled" });
+        expect(transport.attachCalls).toHaveLength(1);
+        expect(transport.statusCalls.length).toBeGreaterThan(0);
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
     it.each([
-        ["stalled", true, { kind: "stalled" }],
         ["admission_timeout", false, { kind: "deadline", deadline: "admission" }],
         ["budget_exhausted", false, { kind: "deadline", deadline: "budget_exhausted" }],
     ] as const)(

@@ -4,9 +4,12 @@ vi.mock(
     "@/lib/echartsInit",
     async () => (await import("../../render/__tests__/echartsStub")).echartsStubModule,
 );
+import { rawWordsIn } from "@/test/rawWords";
 import { render, screen, within } from "@/test/utils";
 
 import { AskDevAnswer } from "../AskDevAnswer";
+import { humanizeTerm } from "@/lib/ask-dev/facts/fact-rows";
+
 import { AskDevCohortRanking, RANKING_COPY } from "../AskDevCohortRanking";
 import type { AnswerResult } from "../answerModel";
 import mergedPrsDegraded from "./captures/kiac_repo_merged_prs_degraded.event.json";
@@ -26,6 +29,7 @@ const copy = (result: AnswerResult): any => structuredClone(result);
 
 /** A completeness word ACR serves (CHAOS-12245): never display text, in any case. */
 const RAW_COMPLETENESS = /\b(complete|partial|degraded|not_derived)\b/iu;
+
 /** A member's served driver rows, as the view counts them (never mapped back from the enum). */
 const driversOf = (member: any) => `${member.drivers.length} of 5 drivers`;
 
@@ -181,11 +185,11 @@ describe("a ranked cohort", () => {
         expect(within(ranking()).getByTestId("ask-dev-ranking-incomplete").textContent).toMatch(
             /truncated/u,
         );
-        const unrankedText = within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent;
-        expect(unrankedText).toBe(
+        const unranked = within(ranking()).getByTestId("ask-dev-ranking-unranked");
+        expect(unranked.textContent).toBe(
             `Not ranked by the service: ${truncated.cohort.members[3].subject.label} (outcome Provisional, ${driversOf(truncated.cohort.members[3])}).`,
         );
-        expect(unrankedText).not.toMatch(RAW_COMPLETENESS);
+        expect(rawWordsIn(unranked, RAW_COMPLETENESS)).toEqual([]);
         expect(rows()).toHaveLength(3);
         unmount();
         const incomplete = copy(REPOS);
@@ -275,7 +279,7 @@ describe("a ranked cohort", () => {
             const cell = within(detail).getByTestId("ask-dev-ranking-completeness");
             const member = REPOS.cohort!.members.find((m) => m.subject.label === name);
             expect(cell.textContent).toBe(driversOf(member));
-            expect(detail.textContent).not.toMatch(RAW_COMPLETENESS);
+            expect(rawWordsIn(detail, RAW_COMPLETENESS)).toEqual([]);
         }
         expect(document.querySelectorAll("section, [role=region], [tabindex]")).toHaveLength(0);
     });
@@ -338,11 +342,71 @@ describe("a member's data completeness, as its served driver rows (CHAOS-12245)"
             (r) => within(r).getByTestId("ask-dev-ranking-name").textContent === first,
         )!;
         expect(within(row).queryByTestId("ask-dev-ranking-completeness")).toBeNull();
-        expect(row.textContent).not.toMatch(RAW_COMPLETENESS);
+        expect(rawWordsIn(row, RAW_COMPLETENESS)).toEqual([]);
         const unranked = within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent;
         expect(unranked).toBe(
             `Not ranked by the service: ${noDrivers.cohort.members[3].subject.label} (outcome Provisional).`,
         );
+    });
+});
+
+/**
+ * CHAOS-12283, decision (a): a member with a completeness value but no driver rows gets nothing
+ * more. ACR serves driver rows only for a qualified or provisional outcome; an insufficient_evidence
+ * or not_applicable member serves `missing_signals` instead. The view already says what is known:
+ * its outcome, that no drivers were reported, and which signals are missing. Never the state word,
+ * never a number.
+ */
+describe("a member that serves no driver rows (CHAOS-12283)", () => {
+    it("the seed answer: each no-driver member shows its outcome, No drivers reported and its missing signals, never a completeness word", () => {
+        const members = (SEED as any).cohort.members as any[];
+        const noDrivers = members.filter(
+            (m) => m.data_completeness !== undefined && m.drivers === undefined,
+        );
+        // Real ACR output holds both shapes: degraded with no rows, and partial with no rows.
+        expect(noDrivers.map((m) => [m.subject.label, m.data_completeness, m.outcome])).toEqual([
+            ["Teambeta", "degraded", "insufficient_evidence"],
+            ["teamalpha", "partial", "insufficient_evidence"],
+        ]);
+        render(<AskDevCohortRanking result={SEED} />);
+        const missingLines = cellsOf("ask-dev-ranking-missing-signals");
+        for (const member of noDrivers) {
+            const row = rows().find(
+                (r) =>
+                    within(r).getByTestId("ask-dev-ranking-name").textContent ===
+                    member.subject.label,
+            )!;
+            expect(within(row).getByTestId("ask-dev-ranking-outcome").textContent).toBe(
+                "Insufficient evidence",
+            );
+            expect(within(row).getByTestId("ask-dev-ranking-no-drivers").textContent).toBe(
+                RANKING_COPY.driversEmpty,
+            );
+            expect(within(row).queryByTestId("ask-dev-ranking-completeness")).toBeNull();
+            expect(rawWordsIn(row, RAW_COMPLETENESS)).toEqual([]);
+            const line = missingLines.find((cell) =>
+                cell.textContent?.startsWith(
+                    `${member.subject.label} — ${RANKING_COPY.missingSignals}: `,
+                ),
+            );
+            expect(line?.textContent, member.subject.label).toBe(
+                `${member.subject.label} — ${RANKING_COPY.missingSignals}: ${member.missing_signals.map(humanizeTerm).join(", ")}`,
+            );
+            expect(rawWordsIn(line!, RAW_COMPLETENESS)).toEqual([]);
+        }
+    });
+
+    it("a pull-request cohort whose members serve no driver rows shows no member at all, so no completeness text", () => {
+        const members = (PRS as any).cohort.members as any[];
+        // codex r1 on #1660: `every` holds for an empty list, so the premise is pinned by count.
+        expect(members).toHaveLength(25);
+        expect(
+            members.every((m) => m.drivers === undefined && m.data_completeness === "degraded"),
+        ).toBe(true);
+        render(<AskDevCohortRanking result={PRS} />);
+        expect(screen.getByTestId("ask-dev-ranking-not-shown")).toBeTruthy();
+        expect(rawWordsIn(document.body, RAW_COMPLETENESS)).toEqual([]);
+        expectNothingOfTheCohort(PRS);
     });
 });
 

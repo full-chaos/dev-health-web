@@ -184,6 +184,9 @@ const TYPE_GENERATION_EXCLUDED = new Set([
     "mcp_read_relationships_response.v1.schema.json",
     "context_fabric_thread.v1.schema.json",
     "context_fabric_thread_list.v1.schema.json",
+    // CHAOS-12280: its $defs Vector is referenced but not declared by the flat generator; web reads
+    // the vectors in a test only, through a narrow type of its own.
+    "context_fabric_canonical_id_vectors.v1.schema.json",
 ]);
 
 async function dtoModule(schemaFiles, prettierOptions) {
@@ -308,7 +311,7 @@ async function validatorModule(schemaFiles, exampleFiles, prettierOptions) {
 const requireFromScripts = createRequire(import.meta.url);
 
 /**
- * The validators that ship to the browser (CHAOS-11956), by export name. Ask Dev reads these bodies
+ * The validators that ship to the browser (CHAOS-11956, CHAOS-11958), by export name. Ask Dev reads these bodies
  * in the browser, where production CSP has no 'unsafe-eval', so the runtime Ajv of `contracts.ts`
  * (it compiles with `new Function`) cannot run there. Ajv standalone generates their code here,
  * from the vendored schemas, with the options of `contracts.ts`: no hand-written second
@@ -317,6 +320,8 @@ const requireFromScripts = createRequire(import.meta.url);
 const STANDALONE_VALIDATORS = Object.freeze({
     validateThread: "context_fabric_thread.v1.schema.json",
     validateThreadList: "context_fabric_thread_list.v1.schema.json",
+    // CHAOS-11958: the feedback body (GET and POST …/investigations/feedback/{result_id}).
+    validateResultFeedback: "context_fabric_result_feedback.v1.schema.json",
 });
 
 // Standalone code reaches Ajv's runtime helpers with `require`; the browser module imports them.

@@ -52,11 +52,13 @@ describe("ACR REST contract boundary", () => {
             "schemas/expanded_evidence.v1.schema.json",
             "examples/context_packet.v1.json",
             "examples/expanded_evidence.v1.json",
+            "examples/context_fabric_canonical_id_vectors.v1.json",
             "schemas/acr_client_credential.v1.schema.json",
             "schemas/agent_episode.v1.schema.json",
             "schemas/agent_episode_create.v1.schema.json",
             "schemas/context_fabric_common.v1.schema.json",
             "schemas/context_fabric_answer_projection.v1.schema.json",
+            "schemas/context_fabric_canonical_id_vectors.v1.schema.json",
             "schemas/context_fabric_investigation_event.v1.schema.json",
             "schemas/context_fabric_investigation_request.v1.schema.json",
             "schemas/context_fabric_investigation_response.v1.schema.json",
@@ -91,7 +93,7 @@ describe("ACR REST contract boundary", () => {
             "schemas/token_exchange_response.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("1b9313540242fc1da3a322e74ff742d5443ccfae");
+        expect(manifest.source_commit).toBe("53bdb0b65b81d7ae7b63816c993ff95ee696b9bd");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {

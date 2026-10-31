@@ -19,6 +19,8 @@ A page can tell Ask Dev which entities it shows. The next question then sends th
 
     Never use a URL id, a GraphQL row id or a name. ACR commits a hint on the caller's identity only when the hint has its exact canonical id. Any other id falls back to a statistical match on the label.
 
+    `SUBJECT_ID` is tested against the canonical-id vectors that ACR generates from its own builders, vendored at the ACR pin (CHAOS-12280). A new kind needs a builder there and a check against those vectors. ACR logs at most one counts-only Info line per subject resolution, `context fabric resolution trace: page hint lookup` (exact hit, label fallback and unresolved, by kind; acr `graphrank/tracer.go`), which shows any drift live.
+
 - **One of each, bounded by the route map.** A page proposes each entity it shows, and only when there is exactly one of it. The approved routes, and the kinds each route takes, are in `PAGE_CONTEXT_ROUTES` (`src/lib/ask-dev/page-context.ts`). For example, complexity takes repositories only.
     - The organization goes first. It is proposed only when the shell and the session name the same organization.
     - A team or a repository is the scope that the page settles on after its scope bar's lock (`loadScopePageEntities`). A filter repository name becomes its id only when the served id-to-name map gives exactly one id for it.
@@ -33,6 +35,19 @@ A page can tell Ask Dev which entities it shows. The next question then sends th
 ## Conversations: history, reload, reattach, feedback
 
 A conversation is ACR's thread. The panel and `/dev` share one history; a reload or `/dev?thread=<id>` restores a conversation with no new investigation, and a delete works from either surface (CHAOS-11956). The seam calls, the selection rules, the restore barrier, the ownership tokens, the cancel state machine and the browser contract checks are in [`architecture/ask-dev-thread-seam.md`](architecture/ask-dev-thread-seam.md).
+
+A history row is titled by its thread's first question when ACR serves `first_question` (CHAOS-12238). ACR serves it only while `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED` is on, which is off by default.
+
+- The question is inert text on one line, with the full text on hover or focus. The date and the question count are below it.
+- With no first question (a legacy turn, or the switch off), or only blanks, the row keeps its name "Conversation of <date> · <n> questions". A row is never blank.
+- The question is never logged and never reported.
+
+An answer has "Correct?" and "Useful?" controls (CHAOS-11958). A clarification or a no-match has none.
+
+- Each is yes or no. Pressing the chosen value again clears it. There is no free text.
+- One state per answer, in the panel and on `/dev`. ACR stores it and authorizes every read and write. ACR's 404 hides the controls.
+- A failed save is rolled back and says "Feedback was not saved."
+- No feedback goes to product telemetry. The logs carry the result id and a status, never a choice.
 
 ## Answer completeness
 

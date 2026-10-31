@@ -14,7 +14,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const SOURCE_COMMIT = "1b9313540242fc1da3a322e74ff742d5443ccfae";
+const SOURCE_COMMIT = "53bdb0b65b81d7ae7b63816c993ff95ee696b9bd";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
     printWidth: 100,
@@ -36,6 +36,8 @@ const PRIMARY_SOURCE_PATHS = [
     "contracts/jsonschema/v1/expanded_evidence.v1.schema.json",
     "contracts/examples/v1/context_packet.v1.json",
     "contracts/examples/v1/expanded_evidence.v1.json",
+    // CHAOS-12280: the canonical-id vectors ACR generates from its own builders (acr #1827).
+    "contracts/examples/v1/context_fabric_canonical_id_vectors.v1.json",
 ];
 // The copied OpenAPI document references these response schemas. Keep this closure explicit and ordered.
 const DEPENDENCY_CLOSURE_PATHS = [
@@ -44,6 +46,7 @@ const DEPENDENCY_CLOSURE_PATHS = [
     "contracts/jsonschema/v1/agent_episode_create.v1.schema.json",
     "contracts/jsonschema/v1/context_fabric_common.v1.schema.json",
     "contracts/jsonschema/v1/context_fabric_answer_projection.v1.schema.json",
+    "contracts/jsonschema/v1/context_fabric_canonical_id_vectors.v1.schema.json",
     "contracts/jsonschema/v1/context_fabric_investigation_event.v1.schema.json",
     "contracts/jsonschema/v1/context_fabric_investigation_request.v1.schema.json",
     "contracts/jsonschema/v1/context_fabric_investigation_response.v1.schema.json",

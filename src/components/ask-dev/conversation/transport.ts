@@ -58,7 +58,12 @@ export type InvestigationEvent =
           readonly state: "started" | "completed";
           readonly elapsed_ms: number;
       })
-    | (EventBase & { readonly type: "heartbeat"; readonly stage?: InvestigationStage | undefined })
+    | (EventBase & {
+          readonly type: "heartbeat";
+          readonly stage?: InvestigationStage | undefined;
+          /** Milliseconds since `started_at` (CHAOS-11957: the attach continuity check reads it). */
+          readonly elapsed_ms: number;
+      })
     | (EventBase & { readonly type: "result"; readonly result: TranscriptResult })
     | (EventBase & {
           readonly type: "error";
@@ -188,6 +193,11 @@ export type ThreadSummaryView = {
     readonly createdAt: string;
     readonly lastTurnAt: string;
     readonly expiresAt: string;
+    /**
+     * The question of the thread's first turn, as the caller sent it (`first_question`, acr #1823;
+     * CHAOS-12238). `null` when ACR serves none: a legacy turn, or its switch is off.
+     */
+    readonly firstQuestion: string | null;
 };
 
 /** One page of the list: newest `last_turn_at` first, then `thread_id`. */
@@ -196,6 +206,33 @@ export type ThreadListView = {
     /** Opaque; present when more threads follow (pass it back as `cursor`). */
     readonly nextCursor: string | null;
 };
+
+/** One feedback flag (`context_fabric_result_feedback.v1`): yes, no, or unset. */
+export type FeedbackFlag = "yes" | "no" | "unset";
+
+/**
+ * The caller's feedback on one of its own results, as the feedback store reads it (CHAOS-11958):
+ * the two flags and nothing else. There is no free text in the contract.
+ */
+export type FeedbackView = {
+    readonly resultId: string;
+    readonly correct: FeedbackFlag;
+    readonly useful: FeedbackFlag;
+};
+
+/**
+ * ACR's answer to Stop (CHAOS-11957; acr `ContextFabricSubmissionCancelHandler`):
+ *
+ * - `running` (202): ACR recorded the cancel request (`t_req` is ACR's). The run ends on its own
+ *   terminal: `canceled`, or a result that finished first.
+ * - `final` (204): the submission is no longer running (done, done_unsaved or abandoned).
+ * - `not_leased` (409 `submission_in_progress`, `details.reason: not_leased`): the run has no lease,
+ *   so the cancel endpoint cannot stop it. Only the connection that owns it can (a disconnect).
+ */
+export type CancelAnswer =
+    | { readonly kind: "running" }
+    | { readonly kind: "final" }
+    | { readonly kind: "not_leased"; readonly retryAfterSeconds?: number | undefined };
 
 export type AskDevTransport = {
     /**
@@ -249,6 +286,52 @@ export type AskDevTransport = {
         readonly threadId: string;
         readonly signal: AbortSignal;
     }) => Promise<void>;
+    /**
+     * `GET …/investigations/feedback/{result_id}` (CHAOS-11958): the caller's feedback on one of
+     * its own results, or `null` for ACR's 404 (not the caller's Ask Dev result, or one ACR would
+     * not serve now: the same answer). A never-rated result reads `unset`/`unset`. The body is
+     * checked with `parseResultFeedback` before it is mapped; a body that fails it throws
+     * `TransportFailure("invalid_upstream")`.
+     */
+    readonly readFeedback: (call: {
+        readonly resultId: string;
+        readonly signal: AbortSignal;
+    }) => Promise<FeedbackView | null>;
+    /**
+     * `POST …/investigations/feedback/{result_id}` with the whole feedback (both flags; `unset`
+     * clears one): ACR answers what it stored, checked as above. ACR's 404 throws a
+     * `TransportRefusal` with status 404.
+     */
+    readonly setFeedback: (call: {
+        readonly resultId: string;
+        readonly correct: FeedbackFlag;
+        readonly useful: FeedbackFlag;
+        readonly signal: AbortSignal;
+    }) => Promise<FeedbackView>;
+    /**
+     * `GET …/investigations/submissions/{submission_id}/events` (CHAOS-11957): attaches to the
+     * caller's own leased run. The request sends exactly `Accept: text/event-stream`, and
+     * `Last-Event-ID` (a safe integer, in decimal) when `lastEventId` is given. The stream yields the
+     * run's own events after the cursor (from `accepted`, `seq` 1, without one), then the new ones,
+     * then the terminal. ACR's 404 (not the caller's open submission) and 410 `cursor_expired` (the
+     * cursor is outside the kept window, the run has no lease, or it ended) throw a
+     * `TransportRefusal`; the store then reads the submission status. The pre-header wait (15 s) and
+     * the stall rule (30 s with no byte; a `: keepalive` comment counts) throw a `TransportFailure`.
+     * The store checks the continuity of what it yields (`seq`, `request_id`, `elapsed_ms`).
+     */
+    readonly attach: (call: {
+        readonly submissionId: string;
+        readonly lastEventId?: number | undefined;
+        readonly signal: AbortSignal;
+    }) => AsyncIterable<InvestigationEvent>;
+    /**
+     * `POST …/investigations/submissions/{submission_id}/cancel` (CHAOS-11957). ACR's 404 (not the
+     * caller's open submission) throws a `TransportRefusal`.
+     */
+    readonly cancel: (call: {
+        readonly submissionId: string;
+        readonly signal: AbortSignal;
+    }) => Promise<CancelAnswer>;
 };
 
 /**

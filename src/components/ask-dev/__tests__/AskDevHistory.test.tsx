@@ -8,6 +8,18 @@ vi.mock(
     async () => (await import("../render/__tests__/echartsStub")).echartsStubModule,
 );
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+/** Every product telemetry event enters by `trackTelemetryEvent`: recorded, then passed on. */
+const telemetry = vi.hoisted(() => ({ track: vi.fn() }));
+vi.mock("@/lib/telemetry", async (importActual) => {
+    const actual = await importActual<typeof import("@/lib/telemetry")>();
+    return {
+        ...actual,
+        trackTelemetryEvent: (...args: Parameters<typeof actual.trackTelemetryEvent>) => {
+            telemetry.track(...args);
+            return actual.trackTelemetryEvent(...args);
+        },
+    };
+});
 
 /**
  * A router that changes the route the way Next does, and records every write: `push` and
@@ -61,7 +73,7 @@ vi.mock("next-auth/react", () => ({
     }),
 }));
 
-import { useSyncExternalStore } from "react";
+import { StrictMode, useSyncExternalStore } from "react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { resetRightDrawerForTest } from "@/lib/shell/rightDrawer";
@@ -73,7 +85,7 @@ import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
 import { AskDevConversationProvider } from "../conversation/AskDevConversationContext";
 import { TURN_STATUS_COPY } from "../conversation/AskDevConversationTurn";
 import { COMPOSER_COPY } from "../conversation/AskDevComposer";
-import { HISTORY_COPY, historyRowLabel } from "../conversation/AskDevHistory";
+import { HISTORY_COPY, historyRowLabel, historyRowMeta } from "../conversation/AskDevHistory";
 import { THREAD_HINT_KEY } from "../conversation/conversationStore";
 import { partitionTag } from "../conversation/keys";
 import type { AskDevTransport } from "../conversation/transport";
@@ -449,5 +461,140 @@ describe("the composer draft belongs to one conversation (codex r2 on #1648)", (
         );
         await waitFor(() => expect(field()).toHaveValue(""));
         expect(transport.calls).toHaveLength(0);
+    });
+});
+
+describe("Stop on a conversation restored while it runs (CHAOS-11957)", () => {
+    it("offers Stop for the restored run; without a lease it says the run cannot be stopped", async () => {
+        const transport = new FakeTransport();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB_A, "running")]));
+        transport.attachScripts.push([
+            {
+                seq: 1,
+                request_id: "request_run",
+                type: "accepted",
+                reserved_result_id: "result_reserved_0001",
+                // The page runs on the real clock: a run that started now, so D is ahead.
+                started_at: new Date().toISOString(),
+                budget_seconds: 110,
+            },
+            { wait: new Promise(() => undefined) },
+        ]);
+        nav.go(`/dev?thread=${THREAD_A}`);
+        renderShell(transport);
+        const stop = await within(page()).findByTestId("ask-dev-composer-stop");
+        await userEvent.click(stop);
+        expect(await within(page()).findByTestId("ask-dev-turn-stop")).toHaveTextContent(
+            TURN_STATUS_COPY.stopNotLeased,
+        );
+        expect(within(page()).queryByTestId("ask-dev-composer-stop")).toBeNull();
+        expect(transport.cancelCalls).toEqual([SUB_A]);
+        expect(transport.calls).toHaveLength(0);
+    });
+});
+
+describe("dev StrictMode remount (CHAOS-11957)", () => {
+    it("restores and attaches once: the first mount's thread read is dropped before any attach", async () => {
+        const transport = new FakeTransport();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB_A, "running")]));
+        const accepted = {
+            seq: 1,
+            request_id: "request_run",
+            type: "accepted" as const,
+            reserved_result_id: "result_reserved_0001",
+            started_at: new Date().toISOString(),
+            budget_seconds: 110,
+        };
+        const hold = { wait: new Promise<void>(() => undefined) };
+        transport.attachScripts.push([accepted, hold]);
+        window.sessionStorage.setItem(
+            THREAD_HINT_KEY,
+            JSON.stringify({
+                thread_id: THREAD_A,
+                partition: partitionTag(PARTITION),
+                expires_at: null,
+            }),
+        );
+        render(
+            <StrictMode>
+                <AdminTierProvider tier="team" features={ON}>
+                    <AskDevShellProvider>
+                        <AskDevConversationProvider transport={transport}>
+                            <Page />
+                            <AskDevPanel />
+                        </AskDevConversationProvider>
+                    </AskDevShellProvider>
+                </AdminTierProvider>
+            </StrictMode>,
+        );
+        await waitFor(() => expect(transport.attachCalls.length).toBeGreaterThanOrEqual(1));
+        expect(transport.attachCalls.every((call) => call.lastEventId === undefined)).toBe(true);
+        // Dev StrictMode mounts, unmounts (a clear) and mounts again: the first selection's thread
+        // read is stale before it can attach, so exactly one attach follows the run.
+        expect(transport.attachCalls).toHaveLength(1);
+        expect(transport.attachCalls[0]!.signal.aborted).toBe(false);
+        expect(transport.threadCalls).toHaveLength(2);
+        expect(transport.calls).toHaveLength(0);
+    });
+});
+
+describe("the first question as the row title (CHAOS-12238)", () => {
+    const QUESTION =
+        "Which teams are overloaded this quarter, and what is driving it across the platform org?";
+
+    async function historyOf(firstQuestionA: string | null) {
+        const transport = seeded();
+        transport.listPages.length = 0;
+        transport.listPages.push({
+            threads: [{ ...summary(THREAD_A), firstQuestion: firstQuestionA }, summary(THREAD_B)],
+            nextCursor: null,
+        });
+        renderShell(transport);
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        const list = await within(panel()).findByTestId("ask-dev-history-list");
+        return within(list).getAllByTestId("ask-dev-history-open");
+    }
+
+    it("titles a row by its first question on one line, with the full text on hover and focus, then the date and count", async () => {
+        const [a, b] = await historyOf(QUESTION);
+        const title = within(a!).getByTestId("ask-dev-history-question");
+        expect(title.textContent).toBe(QUESTION);
+        expect(title).toHaveAttribute("title", QUESTION);
+        expect(title).toHaveClass("truncate");
+        expect(title.className).toMatch(/group-hover:whitespace-normal/u);
+        expect(title.className).toMatch(/group-focus-visible:whitespace-normal/u);
+        expect(within(a!).getByTestId("ask-dev-history-meta").textContent).toBe(
+            historyRowMeta(summary(THREAD_A)),
+        );
+        expect(a).toHaveAccessibleName(expect.stringContaining(QUESTION));
+        // A row with no first question keeps the date-and-count label of CHAOS-11956.
+        expect(b).toHaveTextContent(historyRowLabel(summary(THREAD_B)));
+        expect(within(b!).queryByTestId("ask-dev-history-question")).toBeNull();
+    });
+
+    it("never shows a blank title: a blank first question keeps the date-and-count label", async () => {
+        const [a] = await historyOf("   \n\t ");
+        expect(within(a!).queryByTestId("ask-dev-history-question")).toBeNull();
+        expect(a).toHaveTextContent(historyRowLabel(summary(THREAD_A)));
+    });
+
+    it("shows the question as inert text, and logs or reports none of it", async () => {
+        // The logger is the file's mock: every level's calls are recorded. Every telemetry event
+        // enters by trackTelemetryEvent, recorded above (codex r1 on #1656: logs alone did not cover
+        // telemetry). Opening and hovering the row are the interactions it has.
+        const { logger } = await import("@/lib/logger");
+        telemetry.track.mockClear();
+        const hostile = '<img src=x onerror="alert(1)"> see https://evil.example/x';
+        const [a] = await historyOf(hostile);
+        await userEvent.click(a!);
+        await userEvent.hover(a!);
+        expect(within(a!).getByTestId("ask-dev-history-question").textContent).toBe(hostile);
+        expect(a!.querySelector("img, a")).toBeNull();
+        const calls = Object.values(logger).map(
+            (fn) => (fn as ReturnType<typeof vi.fn>).mock.calls,
+        );
+        expect(JSON.stringify(calls)).not.toContain("evil.example");
+        expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain("evil.example");
     });
 });

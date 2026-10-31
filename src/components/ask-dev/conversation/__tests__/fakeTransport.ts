@@ -4,8 +4,12 @@ import { join } from "node:path";
 import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
 
 import type { TranscriptResult } from "../../answer/AskDevTurn";
+import { TransportRefusal } from "../transport";
 import type {
     AskDevTransport,
+    CancelAnswer,
+    FeedbackFlag,
+    FeedbackView,
     InvestigateCall,
     InvestigationEvent,
     ThreadListView,
@@ -58,6 +62,37 @@ export const errorEvent = (
     reserved_result_id: reserved,
     error: acrError(code, 422, false),
 });
+
+/** One event at an explicit `seq` (an attach replays the run's own numbering). */
+export function at<E extends InvestigationEvent>(
+    seq: number,
+    event: E,
+    requestId = "request_test",
+): E {
+    return { ...event, seq, request_id: requestId };
+}
+
+export const stageEvent = (
+    stage: Extract<InvestigationEvent, { type: "stage" }>["stage"],
+    state: "started" | "completed",
+    elapsed: number,
+): InvestigationEvent => ({ ...base(), type: "stage", stage, state, elapsed_ms: elapsed });
+
+export const heartbeat = (elapsed: number): InvestigationEvent => ({
+    ...base(),
+    type: "heartbeat",
+    elapsed_ms: elapsed,
+});
+
+/** ACR's 410 for an attach (`details.reason`: not_logged, expired, ahead, ended). */
+export const cursorExpired = (reason = "not_logged") =>
+    new TransportRefusal(410, {
+        ...acrError("cursor_expired", 410, false),
+        error: {
+            ...acrError("cursor_expired", 410, false).error,
+            details: { reason },
+        },
+    } as ACRErrorV1);
 
 export function acrError(code: string, status: number, retryable: boolean): ACRErrorV1 {
     return {
@@ -122,6 +157,7 @@ export function summary(threadId: string, lastTurnAt = "2026-10-30T00:00:00Z"): 
         createdAt: "2026-10-29T00:00:00Z",
         lastTurnAt,
         expiresAt: "2026-11-29T00:00:00Z",
+        firstQuestion: null,
     };
 }
 
@@ -133,6 +169,18 @@ export class FakeTransport implements AskDevTransport {
     readonly calls: InvestigateCall[] = [];
     /** Streams whose every step was read (a consumer that stops early leaves one unfinished). */
     finishedStreams = 0;
+    /** Attaches in order; with none left, an attach is ACR's 410 `not_logged` (no lease). */
+    readonly attachScripts: Step[][] = [];
+    readonly attachCalls: {
+        readonly submissionId: string;
+        readonly lastEventId?: number | undefined;
+        readonly signal: AbortSignal;
+    }[] = [];
+    /** Stop's answers in order (the last one repeats); none is `not_leased` (no lease). */
+    readonly cancelAnswers: (CancelAnswer | { readonly fail: unknown })[] = [];
+    readonly cancelCalls: string[] = [];
+    /** A cancel waits for this before it answers. */
+    cancelGate: Promise<void> | undefined;
     readonly scripts: Step[][] = [];
     readonly statuses: (ContextFabricSubmissionStatusV1 | null | Error)[] = [];
     /** A status read or a replay that never answers (and ignores the abort signal). */
@@ -179,6 +227,33 @@ export class FakeTransport implements AskDevTransport {
             }
             done();
         })();
+    };
+
+    readonly attach = (call: {
+        readonly submissionId: string;
+        readonly lastEventId?: number | undefined;
+        readonly signal: AbortSignal;
+    }): AsyncIterable<InvestigationEvent> => {
+        this.attachCalls.push(call);
+        const steps = this.attachScripts.shift();
+        return (async function* () {
+            if (steps === undefined) throw cursorExpired();
+            for (const step of steps) {
+                if ("wait" in step) await step.wait;
+                else if ("fail" in step) throw step.fail;
+                else yield step;
+            }
+        })();
+    };
+
+    readonly cancel = async (call: { readonly submissionId: string }): Promise<CancelAnswer> => {
+        this.cancelCalls.push(call.submissionId);
+        if (this.cancelGate !== undefined) await this.cancelGate;
+        const next =
+            this.cancelAnswers.length > 1 ? this.cancelAnswers.shift() : this.cancelAnswers[0];
+        if (next === undefined) return { kind: "not_leased" };
+        if ("fail" in next) throw next.fail;
+        return next;
     };
 
     readonly submissionStatus = async (
@@ -236,5 +311,53 @@ export class FakeTransport implements AskDevTransport {
         this.deleteCalls.push(call.threadId);
         if (this.deleteGate !== undefined) await this.deleteGate;
         if (this.deleteFails !== undefined) throw this.deleteFails;
+    };
+
+    /** Feedback reads (CHAOS-11958): by `result_id`; no entry is never-rated; `null` is a 404. */
+    readonly feedback = new Map<string, FeedbackView | null | { readonly fail: unknown }>();
+    readonly feedbackReads: string[] = [];
+    /** A feedback read waits for this before it answers (and ignores the abort signal). */
+    feedbackReadGate: Promise<void> | undefined;
+    /**
+     * Feedback sets in order: each waits for its `gate` (if any; it ignores the abort signal), then
+     * throws its `fail`, or stores the body and answers it. Absent, a set stores at once.
+     */
+    readonly feedbackSets: { readonly gate?: Promise<void>; readonly fail?: unknown }[] = [];
+    readonly feedbackSetCalls: { resultId: string; correct: FeedbackFlag; useful: FeedbackFlag }[] =
+        [];
+
+    readonly readFeedback = async (call: {
+        readonly resultId: string;
+    }): Promise<FeedbackView | null> => {
+        this.feedbackReads.push(call.resultId);
+        if (this.feedbackReadGate !== undefined) await this.feedbackReadGate;
+        const answer = this.feedback.get(call.resultId);
+        if (answer === undefined)
+            return { resultId: call.resultId, correct: "unset", useful: "unset" };
+        if (answer !== null && "fail" in answer) throw answer.fail;
+        return answer;
+    };
+
+    readonly setFeedback = async (call: {
+        readonly resultId: string;
+        readonly correct: FeedbackFlag;
+        readonly useful: FeedbackFlag;
+        readonly signal: AbortSignal;
+    }): Promise<FeedbackView> => {
+        this.feedbackSetCalls.push({
+            resultId: call.resultId,
+            correct: call.correct,
+            useful: call.useful,
+        });
+        const step = this.feedbackSets.shift();
+        if (step?.gate !== undefined) await step.gate;
+        if (step !== undefined && "fail" in step) throw step.fail;
+        const stored: FeedbackView = {
+            resultId: call.resultId,
+            correct: call.correct,
+            useful: call.useful,
+        };
+        this.feedback.set(call.resultId, stored);
+        return stored;
     };
 }
