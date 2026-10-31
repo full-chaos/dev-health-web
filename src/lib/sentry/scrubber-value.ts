@@ -340,9 +340,20 @@ function scrubRecord(
     if (!enterContainer(value, entries.length, traversal, depth)) return FILTERED;
     try {
         const oauthContext = inheritedOAuthContext || isOAuthContextRecord(value);
+        // A property name is a channel too (r1 on web #1665): a credential shape in it is filtered,
+        // and names that collapse to the same marker stay distinct.
+        const names = new Set<string>();
+        const safeName = (key: string): string => {
+            const scrubbed = scrubCredentialShapes(key);
+            if (scrubbed === key) return key;
+            let name = FILTERED;
+            for (let index = 2; names.has(name); index += 1) name = `${FILTERED}#${index}`;
+            names.add(name);
+            return name;
+        };
         return Object.fromEntries(
             entries.map(([key, nestedValue]) => [
-                key,
+                safeName(key),
                 isSensitivePayloadFieldName(key) ||
                 (oauthContext && isSensitiveQueryParameterName(key))
                     ? FILTERED
@@ -365,5 +376,11 @@ export function scrubTelemetryPayload<Payload extends object>(payload: Payload):
         nodes: 0,
         characters: 0,
     });
-    return isRecord(scrubbed) ? { ...payload, ...scrubbed } : payload;
+    if (!isRecord(scrubbed)) return payload;
+    // The original is merged under the scrubbed copy; a property name with a credential shape was
+    // renamed there, so it must not come back from the original (r1 on web #1665).
+    const kept = Object.fromEntries(
+        Object.entries(payload).filter(([key]) => scrubCredentialShapes(key) === key),
+    );
+    return { ...kept, ...scrubbed } as Payload;
 }

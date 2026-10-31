@@ -531,7 +531,11 @@ test("scans a server action response for a refresh token too (CHAOS-12304)", asy
     );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
-    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID]);
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID] as [
+        string,
+        boolean,
+        string,
+    ]);
     await stop();
 
     expect(networkRecords.join("\n")).toMatch(secretPattern);

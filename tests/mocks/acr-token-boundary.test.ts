@@ -161,6 +161,46 @@ describe("tokenBoundaryViolations", () => {
             "access token in sessionStorage",
         ],
         [
+            "an access token as a request header name (r1)",
+            request(`${ACR.issuer}/x`, { headers: { [ACCESS]: "1" } }),
+            "access token outside Authorization",
+        ],
+        [
+            "an access token as a header name to another origin (r1)",
+            request(`${WEB}/x`, { headers: { [ACCESS]: "1" } }),
+            "access token to another origin",
+        ],
+        [
+            "a refresh token as a request header name (r1)",
+            request(ACR.tokenEndpoint, { method: "POST", headers: { [REFRESH]: "1" } }),
+            "refresh token in a request header",
+        ],
+        [
+            "an access token as a response header name (r1)",
+            response(`${WEB}/x`, { headers: { [ACCESS]: "1" } }),
+            "access token in a response header",
+        ],
+        [
+            "an access token as a localStorage key (r1)",
+            { kind: "storage", area: "local", key: ACCESS, value: "1" },
+            "access token in localStorage",
+        ],
+        [
+            "a refresh token as a localStorage key (r1)",
+            { kind: "storage", area: "local", key: REFRESH, value: "1" },
+            "refresh token in localStorage",
+        ],
+        [
+            "an access token as a sessionStorage key (r1)",
+            { kind: "storage", area: "session", key: ACCESS, value: "1" },
+            "access token in sessionStorage",
+        ],
+        [
+            "a refresh token as a sessionStorage key (r1)",
+            { kind: "storage", area: "session", key: REFRESH, value: "1" },
+            "refresh token in sessionStorage outside the family",
+        ],
+        [
             "a refresh token in another sessionStorage key",
             { kind: "storage", area: "session", key: "x", value: REFRESH },
             "refresh token in sessionStorage outside the family",

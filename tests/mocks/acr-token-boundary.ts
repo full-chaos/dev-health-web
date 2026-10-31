@@ -67,6 +67,13 @@ function requestViolations(
     if (REFRESH.test(observed.url)) out.add("refresh token in a URL");
     const toAcr = originOf(observed.url) === acr.issuer;
     for (const [name, value] of Object.entries(observed.headers)) {
+        // A header name is checked as well as its value (r1 on web #1665).
+        if (ACCESS.test(name)) {
+            out.add(
+                toAcr ? "access token outside Authorization" : "access token to another origin",
+            );
+        }
+        if (REFRESH.test(name)) out.add("refresh token in a request header");
         if (ACCESS.test(value)) {
             const bearer =
                 name.toLowerCase() === "authorization" &&
@@ -96,9 +103,10 @@ function responseViolations(
 ) {
     if (ACCESS.test(observed.url)) out.add("access token in a URL");
     if (REFRESH.test(observed.url)) out.add("refresh token in a URL");
-    for (const value of Object.values(observed.headers)) {
-        if (ACCESS.test(value)) out.add("access token in a response header");
-        if (REFRESH.test(value)) out.add("refresh token in a response header");
+    for (const [name, value] of Object.entries(observed.headers)) {
+        const header = `${name}: ${value}`;
+        if (ACCESS.test(header)) out.add("access token in a response header");
+        if (REFRESH.test(header)) out.add("refresh token in a response header");
     }
     const tokenResponse = sameEndpoint(observed.url, acr.tokenEndpoint) && observed.status === 200;
     if (!tokenResponse && ACCESS.test(observed.body)) out.add("access token in a response body");
@@ -123,17 +131,20 @@ export function tokenBoundaryViolations(
                 if (ACCESS.test(item.text)) out.add("access token in the console");
                 if (REFRESH.test(item.text)) out.add("refresh token in the console");
                 break;
-            case "storage":
+            case "storage": {
+                // The key is checked as well as the value (r1 on web #1665).
+                const entry = `${item.key}\n${item.value}`;
                 if (item.area === "local") {
-                    if (ACCESS.test(item.value)) out.add("access token in localStorage");
-                    if (REFRESH.test(item.value)) out.add("refresh token in localStorage");
+                    if (ACCESS.test(entry)) out.add("access token in localStorage");
+                    if (REFRESH.test(entry)) out.add("refresh token in localStorage");
                 } else {
-                    if (ACCESS.test(item.value)) out.add("access token in sessionStorage");
-                    if (REFRESH.test(item.value) && item.key !== FAMILY_KEY) {
+                    if (ACCESS.test(entry)) out.add("access token in sessionStorage");
+                    if (REFRESH.test(entry) && item.key !== FAMILY_KEY) {
                         out.add("refresh token in sessionStorage outside the family");
                     }
                 }
                 break;
+            }
         }
     }
     return [...out].sort();

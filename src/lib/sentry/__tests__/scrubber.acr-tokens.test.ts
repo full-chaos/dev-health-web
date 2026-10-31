@@ -2,7 +2,7 @@ import type { ErrorEvent } from "@sentry/nextjs";
 import { describe, expect, it } from "vitest";
 
 import { scrubBreadcrumb, scrubEvent } from "../scrubber";
-import { scrubTelemetryText } from "../scrubber-value";
+import { scrubTelemetryPayload, scrubTelemetryText } from "../scrubber-value";
 
 /**
  * CHAOS-12304 (c3; design §7): ACR's browser tokens never reach telemetry. The access token
@@ -33,6 +33,17 @@ describe("Sentry scrubbing of ACR browser tokens", () => {
         expect(JSON.stringify(event)).not.toMatch(/fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]/u);
         const crumb = scrubBreadcrumb({ message: `refresh ${REFRESH}` });
         expect(JSON.stringify(crumb)).not.toMatch(/acrrt_[A-Za-z0-9]/u);
+    });
+
+    it("filters a token used as a property name, nested too (r1)", () => {
+        const payload = scrubTelemetryPayload({
+            [ACCESS]: "telemetry",
+            nested: { [REFRESH]: { kept: "value" } },
+        });
+        expect(JSON.stringify(payload)).not.toMatch(/fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]/u);
+        expect(JSON.stringify(payload)).toContain("value");
+        const event = scrubEvent({ type: undefined, extra: { [REFRESH]: 1 } } as ErrorEvent);
+        expect(JSON.stringify(event)).not.toMatch(/acrrt_[A-Za-z0-9]/u);
     });
 
     it("does not take a token shape in code for a token", () => {
