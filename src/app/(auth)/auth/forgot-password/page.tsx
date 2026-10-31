@@ -1,5 +1,13 @@
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
+/**
+ * Rendered per request (CHAOS-12344). The proxy sends every page a per-request nonce CSP, and Next
+ * puts that nonce on its inline scripts only when it renders the page per request. Prerendered,
+ * the form never hydrated in production, and no reset request could be sent.
+ * `scripts/check-nonce-csp-pages.mjs` fails the build check if this page is prerendered again.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = {
     title: "Forgot Password | Full Chaos Dev Health",
     description: "Reset your dev-health password",
