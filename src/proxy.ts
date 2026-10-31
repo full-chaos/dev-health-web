@@ -98,6 +98,10 @@ const EXACT_PUBLIC_PATHS = [
     "/sitemap.xml",
     // CHAOS-12302: ACR fetches web's OAuth client metadata document with no credential.
     "/oauth/acr-client.json",
+    // CHAOS-12303 (r2, r3 on #1663): the ACR browser client's callback. Its URL carries a code, a
+    // state and an iss, so the page must run and scrub it before anything else; no sign-in
+    // redirect, auth timeout or org redirect may answer in its place. It reads no session.
+    "/ask-dev/oauth/callback",
 ];
 
 const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next", "/marketing"];
@@ -118,6 +122,9 @@ export function isPublicPath(pathname: string): boolean {
  * this stays in place even after ops's routes are gone for real, as
  * harmless defense in depth.
  */
+/** The ACR browser client's exact redirect URI path (CHAOS-12303). */
+const ACR_CALLBACK_PATH = "/ask-dev/oauth/callback";
+
 const DELETED_ASK_DEV_PATH_FAMILIES = [
     "/api/v1/dev",
     "/api/v1/admin/ask-dev",
@@ -274,7 +281,8 @@ export async function proxy(request: NextRequest) {
     // The OAuth consent handle lives in this URL — never let it leak via a
     // Referer header on an outbound navigation (belt-and-suspenders with the
     // page's own `no-referrer` metadata).
-    if (pathname.startsWith("/acr/authorize")) {
+    // CHAOS-12303: the ACR browser client's callback URL carries the authorization code and state.
+    if (pathname.startsWith("/acr/authorize") || pathname === ACR_CALLBACK_PATH) {
         response.headers.set("Referrer-Policy", "no-referrer");
     }
 
