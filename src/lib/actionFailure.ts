@@ -46,7 +46,7 @@ export function kindOfMethod(method: string | undefined): FailureKind {
     return method?.toUpperCase() === "GET" ? "read" : "action";
 }
 
-export type FailureResult = { error: string; status?: number; code?: string };
+export type FailureResult = { error: string; status?: number; code?: string; purposes?: string[] };
 
 /**
  * The failed result of a server action or a server read. The served text (`served`) survives only
@@ -63,6 +63,7 @@ export function failureResult(
         error?: unknown;
         userFacing?: boolean;
         code?: string;
+        purposes?: string[];
     },
 ): FailureResult {
     const served = typeof detail.served === "string" ? detail.served : undefined;
@@ -78,12 +79,22 @@ export function failureResult(
         return { error: served, ...(status !== undefined ? { status } : {}) };
     }
     if (kind === "action" && served && isValidationStatus(status)) {
-        return { error: served, status, ...(detail.code ? { code: detail.code } : {}) };
+        return {
+            error: served,
+            status,
+            ...(detail.code ? { code: detail.code } : {}),
+            ...(detail.code && detail.purposes ? { purposes: detail.purposes } : {}),
+        };
     }
     logger.error({ err: detail.error ?? served, status, operation }, "Server call failed");
+    // A failed READ keeps a served code (a closed identifier, never shown) and the ids it names, so the
+    // caller can tell one refusal from a transient failure (CHAOS-12173: unreadable BYO settings).
+    const keepCode = kind === "read" && detail.code !== undefined && isValidationStatus(status);
     return {
         error: kind === "read" ? READ_FAILED_MESSAGE : ACTION_FAILED_MESSAGE,
         ...(status !== undefined ? { status } : {}),
+        ...(keepCode ? { code: detail.code } : {}),
+        ...(keepCode && detail.purposes ? { purposes: detail.purposes } : {}),
     };
 }
 
@@ -114,6 +125,7 @@ export function failureFromError(operation: string, err: unknown): FailureResult
         detail?: unknown;
         method?: unknown;
         code?: unknown;
+        purposes?: unknown;
     };
     const isApi = err instanceof Error && e.name === "AdminApiError";
     const isUserFacing = err instanceof UserFacingActionError;
@@ -133,6 +145,7 @@ export function failureFromError(operation: string, err: unknown): FailureResult
             userFacing: isUserFacing,
             error: err,
             code: isApi && typeof e.code === "string" ? e.code : undefined,
+            purposes: isApi && Array.isArray(e.purposes) ? (e.purposes as string[]) : undefined,
         },
     );
 }

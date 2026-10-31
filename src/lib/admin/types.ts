@@ -966,7 +966,12 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
     /** The served `detail.error` code of a 4xx answer, when the backend names one. */
     code?: string;
+    /** The purposes a served answer names (CHAOS-12173: overrides whose saved key cannot be read). */
+    purposes?: string[];
 }
+
+/** go-api's 409 code for saved BYO settings the configured encryption key cannot decrypt (CHAOS-12172). */
+export const LLM_SETTINGS_UNDECRYPTABLE = "llm_settings_undecryptable";
 
 /** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */
 export type LLMModelListSource = "live" | "cache" | "catalog" | "unavailable";

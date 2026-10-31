@@ -5,12 +5,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Section } from "@/components/ui/Section";
-import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
+import { notifyByoLlmConfigChanged, onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
     LLM_PURPOSES,
+    LLM_SETTINGS_UNDECRYPTABLE,
     LLM_PURPOSE_LABELS,
     type LLMPurpose,
     type LLMPurposeSettings,
@@ -54,10 +55,13 @@ export function ByoLlmPurposeOverrides({
         const result = await loadSettingsAction();
         if (!result.data) {
             setLoaded(null);
-            // 402/403 mean BYO is gated; the default section already says so.
-            setLoadError(
-                result.status === 402 || result.status === 403 ? null : READ_FAILED_MESSAGE,
-            );
+            // 402/403 mean BYO is gated, and a 409 llm_settings_undecryptable means the saved key cannot be
+            // read (CHAOS-12173): the default section above says so and offers Replace and Remove.
+            const ownedAbove =
+                result.status === 402 ||
+                result.status === 403 ||
+                (result.status === 409 && result.code === LLM_SETTINGS_UNDECRYPTABLE);
+            setLoadError(ownedAbove ? null : READ_FAILED_MESSAGE);
             return;
         }
         setLoadError(null);
@@ -72,6 +76,9 @@ export function ByoLlmPurposeOverrides({
         // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
         void load();
     }, [load]);
+
+    // A save, Replace or Remove in the default section changes what this section shows.
+    useEffect(() => onByoLlmConfigChanged(() => void load()), [load]);
 
     if (loadError) {
         return (

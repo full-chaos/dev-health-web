@@ -889,11 +889,49 @@ const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
 const MOCK_PEOPLE: (typeof SAMPLE_PEOPLE)[number][] = [];
 
-let mockLlmDefault: Record<string, string | undefined> | null = {
+const MOCK_LLM_DEFAULT_SEED = {
     provider: "anthropic",
     model: "claude-large",
     api_key: "sk-d…1234",
-};
+} as const;
+let mockLlmDefault: Record<string, string | undefined> | null = { ...MOCK_LLM_DEFAULT_SEED };
+// CHAOS-12173: saved settings the configured key cannot decrypt (go-api's 409 llm_settings_undecryptable,
+// CHAOS-12172): the default key and/or named purpose overrides; or a transient read failure (500).
+let mockLlmUnreadable: { main: boolean; purposes: string[] } | null = null;
+let mockLlmTransient = false;
+/** `/__test/llm-settings-unreadable`: seed the unreadable or transient state, or reset (default config restored). */
+export function setMockLlmUnreadable(seed: {
+    unreadable: boolean;
+    purposes?: string[];
+    transient?: boolean;
+}): void {
+    mockLlmUnreadable = seed.unreadable
+        ? { main: true, purposes: [...(seed.purposes ?? [])] }
+        : null;
+    mockLlmTransient = seed.transient ?? false;
+    if (!seed.unreadable && !seed.transient) mockLlmDefault = { ...MOCK_LLM_DEFAULT_SEED };
+}
+function mockLlmUnreadableResponse() {
+    const state = mockLlmUnreadable;
+    if (!state) return null;
+    const settings = [
+        ...(state.main ? ["api_key"] : []),
+        ...state.purposes.map((purpose) => `purpose:${purpose}:api_key`),
+    ];
+    if (settings.length === 0) return null;
+    return HttpResponse.json(
+        {
+            detail: {
+                error: "llm_settings_undecryptable",
+                feature: "byo_llm",
+                message: "The saved key can no longer be read. Replace or remove it.",
+                settings,
+                purposes: state.purposes,
+            },
+        },
+        { status: 409 },
+    );
+}
 const mockLlmPurposes: Record<string, Record<string, string | undefined>> = {};
 function mockOwnModelBody() {
     return {
@@ -3677,9 +3715,22 @@ export const handlers = [
     ),
 
     // BYO LLM settings with per-purpose overrides (CHAOS-10040): one stateful org row.
-    http.get("*/api/v1/admin/llm-settings", () => HttpResponse.json(mockLlmSettingsBody())),
+    http.get("*/api/v1/admin/llm-settings", () => {
+        if (mockLlmTransient) {
+            return HttpResponse.json({ detail: "Internal Server Error" }, { status: 500 });
+        }
+        return mockLlmUnreadableResponse() ?? HttpResponse.json(mockLlmSettingsBody());
+    }),
     http.put("*/api/v1/admin/llm-settings", async ({ request }) => {
         const body = (await request.json()) as Record<string, string | undefined>;
+        // Replace: a new default key overwrites the unreadable one; a write that keeps it, or that
+        // leaves an override unreadable, is refused with the same 409 (as go-api's response read).
+        if (mockLlmUnreadable && !body.purpose) {
+            if (body.api_key) mockLlmUnreadable.main = false;
+            const refused = mockLlmUnreadableResponse();
+            if (refused) return refused;
+            mockLlmUnreadable = null;
+        }
         if (body.purpose) {
             if (!body.model)
                 return HttpResponse.json({ detail: "model required" }, { status: 422 });
@@ -3769,9 +3820,15 @@ export const handlers = [
     http.delete("*/api/v1/admin/llm-settings", ({ request }) => {
         const purpose = new URL(request.url).searchParams.get("purpose");
         if (purpose) {
+            if (mockLlmUnreadable) {
+                mockLlmUnreadable.purposes = mockLlmUnreadable.purposes.filter(
+                    (p) => p !== purpose,
+                );
+            }
             delete mockLlmPurposes[purpose];
             return HttpResponse.json({ deleted: true, purpose });
         }
+        if (mockLlmUnreadable) mockLlmUnreadable.main = false;
         mockLlmDefault = null;
         mockPromptCacheEnabled = false;
         return HttpResponse.json({ deleted: true });
