@@ -886,3 +886,64 @@ describe("codex r1 on #1648", () => {
         expect(signal.aborted).toBe(true);
     });
 });
+
+describe("codex r3 on #1648: every answer read blocks a follow-up", () => {
+    it("a failed answer read releases the barrier: a new question can go, with no parent", async () => {
+        seedThread(THREAD_A, [threadTurn(sub(1), "done", { resultId: resultId(1) })]);
+        transport.readErrors.set(resultId(1), new Error("network"));
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await loaded(store);
+        expect(kinds(store)).toEqual(["restore_failed"]);
+        expect(snap(store).replaying).toBe(false);
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        expect(store.submit("Something new?")).toBe(true);
+        expect(transport.calls[0]!.request.parent_result_id).toBeUndefined();
+    });
+
+    it("Load again on the last turn refuses a submit until its answer is read", async () => {
+        seedThread(THREAD_A, [threadTurn(sub(1), "done", { resultId: resultId(1) })]);
+        transport.readErrors.set(resultId(1), new Error("network"));
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await loaded(store);
+        transport.readErrors.delete(resultId(1));
+        const gate = deferred();
+        transport.readGates.set(resultId(1), gate.promise);
+        expect(store.reloadTurn(snap(store).turns[0]!.id)).toBe(true);
+        expect(store.submit("And the next?")).toBe(false);
+        expect(snap(store).replaying).toBe(true);
+
+        gate.resolve();
+        await vi.waitFor(() => expect(kinds(store)).toEqual(["answered"]));
+        expect(snap(store).replaying).toBe(false);
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        expect(store.submit("And the next?")).toBe(true);
+        expect(transport.calls[0]!.request.parent_result_id).toBe(resultId(1));
+    });
+
+    it("an earlier page's answer reads refuse a submit until they settle", async () => {
+        seedThread(THREAD_A, [threadTurn(sub(3), "done", { resultId: resultId(3) })], "cursor_1");
+        transport.threads.set(
+            `${THREAD_A}|cursor_1`,
+            threadView(THREAD_A, [threadTurn(sub(2), "done", { resultId: resultId(2) })]),
+        );
+        transport.results.set(resultId(2), answer(2));
+        const gate = deferred();
+        transport.readGates.set(resultId(2), gate.promise);
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await loaded(store);
+        store.loadEarlierTurns();
+        await vi.waitFor(() => expect(kinds(store)).toEqual(["restoring", "answered"]));
+        expect(store.submit("And the next?")).toBe(false);
+
+        gate.resolve();
+        await vi.waitFor(() => expect(kinds(store)).toEqual(["answered", "answered"]));
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        expect(store.submit("And the next?")).toBe(true);
+        expect(transport.calls[0]!.request.conversation?.map((turn) => turn.content)).toContain(
+            "Answer 2.",
+        );
+    });
+});

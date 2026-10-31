@@ -339,6 +339,12 @@ export type ConversationSnapshot = {
     readonly inFlight: boolean;
     /** A submitted run is in flight that Stop can end (an observed run has no Stop yet). */
     readonly stoppable: boolean;
+    /**
+     * An answer of this conversation is being read (a restore, "Load again", an earlier page or
+     * an observed run's final answer): a submit waits, so a follow-up never goes out without the
+     * answer it threads on (codex r3 on #1648).
+     */
+    readonly replaying: boolean;
     readonly history: HistorySnapshot;
     /** False while signed out or before the session is known: a submit is refused. */
     readonly ready: boolean;
@@ -641,6 +647,8 @@ export class ConversationStore {
     private readonly observed = new Map<string, ObservedRun>();
     /** Aborts every transcript read of the current selection (thread, replays, earlier pages). */
     private selectionAbort = new AbortController();
+    /** The `submission_id`s whose answer is queued or being read in this selection. */
+    private readonly replaying = new Set<string>();
     /** Answer reads waiting for a slot (at most `REPLAY_CONCURRENCY` run at a time). */
     private replayQueue: (() => Promise<void>)[] = [];
     private replaysRunning = 0;
@@ -673,6 +681,7 @@ export class ConversationStore {
         turns: [],
         inFlight: false,
         stoppable: false,
+        replaying: false,
         history: EMPTY_HISTORY,
         ready: false,
         partition: null,
@@ -752,6 +761,7 @@ export class ConversationStore {
             nonBlank(trimmed) === undefined ||
             !this.snapshot.ready ||
             this.snapshot.inFlight ||
+            this.replaying.size > 0 ||
             (thread.kind !== "new" && thread.kind !== "loaded")
         ) {
             return false;
@@ -988,6 +998,7 @@ export class ConversationStore {
             ...next,
             // An observed run blocks a submit as a submitted one does (E6 design v5 §3.3).
             inFlight: next.inFlight || this.observed.size > 0,
+            replaying: this.replaying.size > 0,
             stoppable: next.turns.some(
                 (turn) =>
                     turn.origin === "submitted" &&
@@ -1018,6 +1029,7 @@ export class ConversationStore {
         this.selectionAbort = new AbortController();
         this.replayQueue = [];
         this.replaysRunning = 0;
+        this.replaying.clear();
         this.restore = null;
         this.earlierCursor = null;
         this.restoredResultIds.clear();
@@ -1250,6 +1262,9 @@ export class ConversationStore {
         onSettled?: () => void,
     ): void {
         const signal = this.selectionAbort.signal;
+        this.replaying.add(submissionId);
+        // The snapshot says so at once: the composer locks before the read starts.
+        this.commit({ ...this.snapshot });
         this.replayQueue.push(() =>
             this.replayRestored(submissionId, resultId, selection, signal, counted, onSettled),
         );
@@ -1285,6 +1300,7 @@ export class ConversationStore {
             result = await this.transport.readResult(resultId, signal);
         } catch (error) {
             if (!this.ownsSelection(selection, "replay")) return;
+            this.replaying.delete(submissionId);
             onSettled?.();
             const unavailable = error instanceof TransportRefusal && error.status === 404;
             logger.warn(
@@ -1303,6 +1319,7 @@ export class ConversationStore {
             return;
         }
         if (!this.ownsSelection(selection, "replay")) return;
+        this.replaying.delete(submissionId);
         onSettled?.();
         this.updateRestored(submissionId, { kind: "answered", result });
         if (counted) this.restoreCounted(selection, "answered");

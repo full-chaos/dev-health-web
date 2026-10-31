@@ -166,6 +166,7 @@ function ConversationTranscript({ live }: { live: AskDevConversation }) {
                         index === turns.length - 1 &&
                         open &&
                         !snapshot.inFlight &&
+                        !snapshot.replaying &&
                         turn.threadId === snapshot.threadId;
                     // A question ACR did not record is never sent again (E6 design v5 §3.2).
                     const question = turn.question;
@@ -241,6 +242,8 @@ export function AskDevTranscript() {
 
 /** Why the composer takes no question now, or `undefined` when it does. */
 function lockedReason({ snapshot }: AskDevConversation): string | undefined {
+    if (snapshot.replaying && snapshot.thread.kind === "loaded")
+        return TRANSCRIPT_COPY.lockedRestoring;
     switch (snapshot.thread.kind) {
         case "restoring":
             return TRANSCRIPT_COPY.lockedRestoring;
