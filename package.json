@@ -37,7 +37,7 @@
         "graphql:wire-parity:check": "tsx scripts/graphql-wire-parity.ts check",
         "graphql:wire-parity:generate": "tsx scripts/graphql-wire-parity.ts generate",
         "auth-profiles:gate": "tsx ci/gate_web_auth_profiles.ts",
-        "test:e2e": "playwright test --project=authenticated --project=unauthenticated",
+        "test:e2e": "playwright test --project=authenticated --project=entitlement-scenario --project=unauthenticated",
         "test:e2e:customer-push": "playwright test -c playwright.customer-push.config.ts",
         "test:e2e:navigation": "playwright test -c playwright.navigation.config.ts",
         "test:e2e:pagerduty-final-qa": "playwright test --project=pagerduty-final-qa",

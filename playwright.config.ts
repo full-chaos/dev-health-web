@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { nextDevNodeOptions } from "./ci/next-dev-env";
 
@@ -34,6 +36,28 @@ const serverStdout = isCI ? "pipe" : "ignore";
 //    fully broken file of those stops its shard early.
 // 4. Logo canary: see the `shell-logo-canary` project below.
 const ciMaxFailures = 6;
+
+// CHAOS-12170. The mock's entitlement scenario (`POST /__test/entitlements`) is process-global: a
+// spec that sets it and a spec in another worker that sets it too read each other's scenario (the
+// Ask Dev launcher vanished mid-test in local multi-worker runs). Every spec of this suite that sets
+// it is found by its content, so a new one cannot be forgotten, and runs in the serial
+// `entitlement-scenario` project instead of the parallel `authenticated` one. Specs ignored by this
+// config (live, production harnesses) are not picked up.
+const ENTITLEMENT_ENDPOINT = "/__test/entitlements";
+const IGNORED_ELSEWHERE = /\.production\.spec\.ts$|^pagerduty-final-qa-p[0-3]\.spec\.ts$/u;
+export const entitlementScenarioSpecs: readonly string[] = readdirSync(
+    path.resolve(__dirname, "tests"),
+)
+    .filter((file) => file.endsWith(".spec.ts") && !IGNORED_ELSEWHERE.test(file))
+    .filter((file) =>
+        readFileSync(path.resolve(__dirname, "tests", file), "utf8").includes(ENTITLEMENT_ENDPOINT),
+    )
+    .sort();
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+const entitlementScenarioPattern = new RegExp(
+    `(?:^|/)(?:${entitlementScenarioSpecs.map(escapeRegExp).join("|")})$`,
+    "u",
+);
 
 // The guided first-run onboarding journey (auth-onboard.spec.ts) runs with
 // NEXT_PUBLIC_GUIDED_ONBOARDING enabled and therefore lives in its own config
@@ -110,8 +134,19 @@ export default defineConfig({
             },
         },
         {
+            // CHAOS-12170: the specs that set the process-global entitlement scenario, one at a time.
+            name: "entitlement-scenario",
+            testMatch: entitlementScenarioPattern,
+            dependencies: ["auth-setup", "shell-logo-canary"],
+            workers: 1,
+            use: {
+                storageState: authFile,
+            },
+        },
+        {
             name: "authenticated",
             testIgnore: [
+                entitlementScenarioPattern,
                 /auth-signin\.spec\.ts/,
                 /(?:^|\/)admin\.spec\.ts$/,
                 /auth\.setup\.ts/,

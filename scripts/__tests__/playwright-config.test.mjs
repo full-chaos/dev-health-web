@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import config from "../../playwright.config.ts";
 import customerPushConfig from "../../playwright.customer-push.config.ts";
@@ -103,8 +103,9 @@ describe("default Playwright web servers", () => {
 
     it("keeps stateful PagerDuty QA out of the canonical E2E command", () => {
         expect(packageJson.scripts["test:e2e"]).toBe(
-            "playwright test --project=authenticated --project=unauthenticated",
+            "playwright test --project=authenticated --project=entitlement-scenario --project=unauthenticated",
         );
+        expect(packageJson.scripts["test:e2e"]).not.toContain("pagerduty-final-qa");
         expect(packageJson.scripts["test:e2e:pagerduty-final-qa"]).toBe(
             "playwright test --project=pagerduty-final-qa",
         );
@@ -123,5 +124,53 @@ describe("default Playwright web servers", () => {
         // …but no workflow spends a runner on it per PR.
         expect(testsWorkflow).not.toContain("pagerduty-final-qa");
         expect(staticBuildWorkflow).not.toContain("pagerduty-final-qa");
+    });
+});
+
+// CHAOS-12170: the mock's entitlement scenario is process-global, so every spec of the default
+// suite that sets it runs in one serial project, never in the parallel `authenticated` one.
+describe("entitlement-scenario specs run one at a time", () => {
+    const testsDir = new URL("../../tests/", import.meta.url);
+    // An independent scan (not the config's own list): every default-suite spec that sets it.
+    const flipping = readdirSync(testsDir)
+        .filter((file) => file.endsWith(".spec.ts"))
+        .filter(
+            (file) => !/\.production\.spec\.ts$|^pagerduty-final-qa-p[0-3]\.spec\.ts$/u.test(file),
+        )
+        .filter((file) =>
+            readFileSync(new URL(file, testsDir), "utf8").includes("/__test/entitlements"),
+        )
+        .sort();
+    const project = (name) => config.projects?.find((candidate) => candidate.name === name);
+    const matches = (patterns, file) =>
+        [patterns]
+            .flat()
+            .some((pattern) => (pattern instanceof RegExp ? pattern.test(`tests/${file}`) : false));
+
+    it("finds the specs that set it, including the race canaries", () => {
+        expect(flipping).toContain("ask-dev-launcher.spec.ts");
+        expect(flipping).toContain("entitlement-scenario-race-a.spec.ts");
+        expect(flipping).toContain("entitlement-scenario-race-b.spec.ts");
+        expect(flipping.length).toBeGreaterThanOrEqual(15);
+    });
+
+    it("puts each of them in the serial project and none in the parallel one", () => {
+        const serial = project("entitlement-scenario");
+        const parallel = project("authenticated");
+        expect(serial?.workers).toBe(1);
+        for (const file of flipping) {
+            expect(matches(serial?.testMatch, file), `${file} in entitlement-scenario`).toBe(true);
+            expect(matches(parallel?.testIgnore, file), `${file} ignored by authenticated`).toBe(
+                true,
+            );
+        }
+        // A spec that does not set it stays in the parallel project.
+        expect(matches(serial?.testMatch, "ask-dev-not-a-real.spec.ts")).toBe(false);
+        expect(matches(parallel?.testIgnore, "filter-propagation.spec.ts")).toBe(false);
+    });
+
+    it("is selected by the default CI e2e script, so the specs still run in CI", () => {
+        expect(packageJson.scripts["test:e2e"]).toContain("--project=entitlement-scenario");
+        expect(packageJson.scripts["test:e2e"]).toContain("--project=authenticated");
     });
 });
