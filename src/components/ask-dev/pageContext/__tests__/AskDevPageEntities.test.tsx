@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { ShellOrganizationProvider } from "@/components/shell/ShellContext";
 import type { PageEntityInput } from "@/lib/ask-dev/page-context";
 
@@ -23,7 +24,7 @@ import { AskDevPageEntities } from "../AskDevPageEntities";
 // the active organization goes first, by ACR's id and the name the shell loaded.
 const ON = { ask_dev_contextual_entrypoints: true };
 const TEAM: PageEntityInput = { kind: "team", id: "team:linear:TEAMA", label: "Platform" };
-const ACME = { name: "Acme", hasData: true, lastMetricsAt: null };
+const ACME = { id: "org-1", name: "Acme", hasData: true, lastMetricsAt: null };
 
 function Proposed() {
     const { refs } = useAskDevPageProposal();
@@ -32,7 +33,7 @@ function Proposed() {
 
 function renderPage(props: {
     orgId?: string;
-    organization?: typeof ACME | null;
+    organization?: ActiveOrganizationData | null;
     entities?: readonly PageEntityInput[];
     withOrganization?: boolean;
 }) {
@@ -67,6 +68,26 @@ describe("AskDevPageEntities", () => {
                 TEAM,
             ]),
         );
+    });
+
+    it("proposes no organization while the shell and the session name different ones (codex r2 on #1647)", async () => {
+        // An org switch: the shell already shows the new organization; the session still holds the
+        // old one until the page refreshes. The id and the name must name the same organization.
+        renderPage({
+            orgId: "org-old",
+            organization: { ...ACME, id: "org-new", name: "New Org" },
+            entities: [TEAM],
+        });
+        await waitFor(() => expect(proposed()).toEqual([TEAM]));
+    });
+
+    it("proposes no organization when the shell does not say which one it shows", async () => {
+        renderPage({
+            orgId: "org-1",
+            organization: { name: "Acme", hasData: true, lastMetricsAt: null },
+            entities: [TEAM],
+        });
+        await waitFor(() => expect(proposed()).toEqual([TEAM]));
     });
 
     it("proposes no organization until its name is known, so a chip never shows an id", async () => {
