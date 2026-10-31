@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import opsCodes from "./testdata/ops-reason-codes.json";
 import {
     AUTH_UI_STATES,
+    CODE_STATES,
     DECISION_REASON_CODES,
     reasonToState,
     type AuthUiState,
@@ -139,4 +141,71 @@ describe("reasonStates", () => {
             expect(r.message.length).toBeGreaterThan(0);
         }
     });
+});
+
+describe("reasonStates CHAOS-10875 codes", () => {
+    it.each([
+        ...[
+            "session_expired",
+            "session_revoked",
+            "refresh_expired",
+            "refresh_unknown",
+            "refresh_reused",
+            "invalid_credentials",
+            "malformed",
+            "bad_signature",
+            "audience",
+            "issuer",
+            "not_yet_valid",
+            "missing_sub",
+            "missing_type",
+            "type_mismatch",
+            "revision_stale",
+            "principal_not_found",
+            "account_locked",
+            "email_unverified",
+            "replayed",
+            "nonce_mismatch",
+        ].map((c) => [c, "signin"]),
+        ["not_entitled", "entitlement"],
+        ["membership_required", "denied"],
+        ["provisioning_disabled", "denied"],
+        ["domain_not_allowed", "denied"],
+        ["provider_already_linked", "denied"],
+        ["identity_conflict", "denied"],
+        ["email_collision", "denied"],
+        ["store_unavailable", "unavailable"],
+        ["dependency_unavailable", "unavailable"],
+        ["signup_unavailable", "unavailable"],
+    ] as [string, AuthUiState][])("maps %s to %s", (code, state) => {
+        expect(reasonToState(code).state).toBe(state);
+    });
+
+    it("renders hidden membership_required as not found", () => {
+        expect(reasonToState("membership_required", { hidden: true }).state).toBe("notfound");
+    });
+
+    it("gives every account-existence code one identical state and message", () => {
+        const codes = [
+            "invalid_credentials",
+            "principal_not_found",
+            "account_locked",
+            "email_unverified",
+            "principal_deactivated",
+        ];
+        const first = reasonToState(codes[0]);
+        expect(first.state).toBe("signin");
+        for (const code of codes) {
+            for (const ctx of [{}, { hidden: true }, { entitlement: true }]) {
+                expect(reasonToState(code, ctx)).toEqual(first);
+            }
+        }
+    });
+
+    it.each([...opsCodes.decision_reason_code, ...opsCodes.auth_outcome_reason_codes])(
+        "pinned ops code %s is mapped",
+        (code) => {
+            expect(Object.hasOwn(CODE_STATES, code)).toBe(true);
+        },
+    );
 });
