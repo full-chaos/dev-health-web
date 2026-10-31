@@ -52,14 +52,16 @@ function svgOf(shape: RenderShape, result: Result, extra?: (option: Option) => v
 }
 
 /** Each drawn bar segment: series, data index, baseline y and height (SVG y grows downward). */
-function bars(svg: string): { series: number; data: number; bottom: number; height: number }[] {
-    const out: { series: number; data: number; bottom: number; height: number }[] = [];
+type Bar = { series: number; data: number; left: number; bottom: number; height: number };
+function bars(svg: string): Bar[] {
+    const out: Bar[] = [];
     for (const match of svg.matchAll(
         /<path d="M([-0-9.]+) ([-0-9.]+)l[-0-9.]+ 0l0 ([-0-9.]+)l[^"]*Z"[^>]*ecmeta_series_index="(\d+)" ecmeta_data_index="(\d+)" ecmeta_ssr_type="chart"/gu,
     )) {
         out.push({
             series: Number(match[4]),
             data: Number(match[5]),
+            left: Number(match[1]),
             bottom: Number(match[2]),
             height: -Number(match[3]),
         });
@@ -94,14 +96,15 @@ function unexpectedText(svg: string, shape: RenderShape): string[] {
         shape.presentation === "bars" && shape.series.length === 1
             ? new Set(shape.series[0]!.points.map((point) => formatDisplay(point.value)))
             : new Set<string>();
-    // A number is a value-axis tick (right-aligned left of the plot) or a single-series bar value;
-    // any other number is derived text (codex r1 on #1631: a numeric total must not pass).
+    // A number is a value-axis tick (right-aligned, left of every bar) or a single-series bar
+    // value; any other number is derived text (codex r1 and r2 on #1631).
+    const plotLeft = Math.min(...bars(svg).map((bar) => bar.left));
     return texts(svg)
         .filter(
-            ({ text, anchor }) =>
+            ({ text, anchor, x }) =>
                 !allowed.has(text) &&
                 !valueLabels.has(text) &&
-                !(TICK.test(text) && anchor === "end"),
+                !(TICK.test(text) && anchor === "end" && x < plotLeft),
         )
         .map(({ text }) => text);
 }
@@ -445,6 +448,26 @@ describe("SSR geometry (E8 §12.1)", () => {
         });
         expect(unexpectedText(planted, shape).length).toBeGreaterThan(0);
         expect(unexpectedText(svgOf(shape, result), shape)).toEqual([]);
+    });
+
+    it("the role check fails a numeric total even when it is right-aligned like a tick (codex r2)", () => {
+        const result = kiacRanking();
+        const shape = shapeOf(result, "cohort_driver_contribution");
+        const planted = svgOf(shape, result, (option) => {
+            option.series.push({
+                type: "bar",
+                name: shape.series[0]!.label,
+                stack: "s",
+                data: [0, 0, 0, 0],
+                label: {
+                    show: true,
+                    position: "insideTopRight",
+                    align: "right",
+                    formatter: () => "66.36",
+                },
+            } as unknown as Series);
+        });
+        expect(unexpectedText(planted, shape)).toContain("66.36");
     });
 
     it("hostile member names are escaped text: no element is made from them", async () => {
