@@ -209,9 +209,14 @@ const IN_FLIGHT = new Set<TurnOutcome["kind"]>(["running", "recovering"]);
 /** A correlation code the panel may show: a plain id, never free text. */
 const REFERENCE_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
 
-/** ACR's `details.deadline` of a `504 upstream_unavailable`; a value outside the enum is absent. */
+/**
+ * ACR's `details.deadline` of a `504 upstream_unavailable`; a value outside the enum is absent.
+ * error.v1 defines it on a 504 only: another status that carries it is not a deadline.
+ */
 function deadlineOf(error: ACRErrorV1): DeadlineKind | undefined {
-    if (error.error.code !== "upstream_unavailable") return undefined;
+    if (error.error.code !== "upstream_unavailable" || error.error.http_status !== 504) {
+        return undefined;
+    }
     const deadline: unknown = error.error.details?.deadline;
     return deadline === "model" || deadline === "request" ? deadline : undefined;
 }

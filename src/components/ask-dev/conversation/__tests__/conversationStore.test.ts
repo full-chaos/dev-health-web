@@ -698,6 +698,63 @@ describe("panel states (plan §2.7.8)", () => {
         });
     });
 
+    // codex r2 on #1638: `details.deadline` is defined on a 504 only (error.v1). A retryable 503
+    // that carries it is not a deadline: it stays a retryable failure, so Retry is offered.
+    it("reads details.deadline on a 504 only: a retryable 503 with it stays retryable", async () => {
+        const store = makeStore();
+        const error = acrError("upstream_unavailable", 503, true);
+        transport.scripts.push(
+            [
+                {
+                    fail: new TransportRefusal(503, {
+                        ...error,
+                        error: { ...error.error, details: { deadline: "request" } },
+                    } as ReturnType<typeof acrError>),
+                },
+            ],
+            [
+                accepted(),
+                {
+                    ...deadlineError("model"),
+                    error: {
+                        ...deadlineError("model").error,
+                        error: { ...deadlineError("model").error.error, http_status: 503 },
+                    },
+                },
+            ],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "failed", retry: true, reference: "req_test" });
+        store.submit("And now?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: "req_test",
+        });
+    });
+
+    it("reads details.deadline on upstream_unavailable only", async () => {
+        const store = makeStore();
+        const error = acrError("internal_error", 504, false);
+        transport.scripts.push([
+            {
+                fail: new TransportRefusal(504, {
+                    ...error,
+                    error: { ...error.error, details: { deadline: "model" } },
+                } as ReturnType<typeof acrError>),
+            },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: "req_test",
+        });
+    });
+
     it("ends a 504 deadline before the stream as its deadline state", async () => {
         const store = makeStore();
         const error = deadlineError("request").error;
