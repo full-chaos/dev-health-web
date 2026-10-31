@@ -5,7 +5,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // CHAOS-11930: the direct answer, drivers and findings in the real Ask Dev panel, from a real ACR
 // answer captured on the kiac stack (`src/components/ask-dev/answer/__tests__/captures/`). The
 // panel's test-mode answer source reads it from session storage; nothing is fetched.
-const MOCK = "http://127.0.0.1:8001";
+const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
 const KEY = "ask-dev:test-mode-answer";
 

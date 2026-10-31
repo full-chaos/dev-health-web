@@ -38,6 +38,9 @@ const ARRAY_FIELDS = [
     "remaining_work",
     "readiness_gaps",
     "conflicts",
+    "limitations",
+    "warnings",
+    "evidence_ref_ids",
 ] as const;
 const STRING_FIELDS = [
     "result_id",
@@ -58,6 +61,9 @@ export function asTranscriptResult(value: unknown): TranscriptResult | null {
     if (!ARRAY_FIELDS.every((field) => Array.isArray(value[field]))) return null;
     if (!isRecord(value.versions)) return null;
     if (!isRecord(value.subject_resolution)) return null;
+    if (!isRecord(value.coverage) || !Array.isArray(value.coverage.sources)) return null;
+    if (!isRecord(value.interpretation) || typeof value.interpretation.shape !== "string")
+        return null;
     return value as TranscriptResult;
 }
 

@@ -585,6 +585,46 @@
             ]
         },
         {
+            "id": "POST /api/auth/revoke-session [dev-health-web]",
+            "surface_kind": "rest",
+            "method": "POST",
+            "route": "/api/auth/revoke-session",
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/app/api/auth/revoke-session/route.ts",
+                "line": 53
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "Origin must equal the AUTH_URL/NEXTAUTH_URL origin (403), then readSessionCredentialsForSignOut reads the Ops access and refresh tokens from the sealed Auth.js session cookie only (an Authorization header is never read, no refresh runs); `if (!session?.access_token) return 401` when the cookie is missing, foreign or lacks either token. Forwards {refresh_token} + Bearer to ops POST /api/v1/auth/logout, which revokes the session that credential belongs to (CHAOS-12096, sign-out step 1).",
+                "anchor": {
+                    "path": "src/app/api/auth/revoke-session/route.ts",
+                    "line": 54,
+                    "line_end": 67
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [],
+            "action": "auth.logout",
+            "resource_resolver": "none: the session to revoke is the caller's own, named by the refresh token in the caller's sealed session cookie; no id comes from the request.",
+            "tenant_requirement": "none",
+            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:50 and :97).",
+            "impersonation_policy": "exempt_no_org_context",
+            "entitlement_requirement": null,
+            "disclosure_behavior": "204 with no body on success; refusals and Ops failures answer a fixed {error} code (forbidden, no_session, revoke_failed) with no Ops body and no token.",
+            "gaps": [
+                "entitlement_requirement: sign-out needs no entitlement; the route calls no entitlement gate."
+            ]
+        },
+        {
             "id": "POST /api/feedback [dev-health-web]",
             "surface_kind": "rest",
             "method": "POST",

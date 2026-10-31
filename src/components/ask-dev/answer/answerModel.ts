@@ -19,7 +19,24 @@ type AnswerFields =
     | "remaining_work"
     | "readiness_gaps"
     | "conflicts"
-    | "versions";
+    | "versions"
+    // CHAOS-11932: coverage, completeness, limitations and evidence references.
+    | "completeness"
+    | "coverage"
+    | "limitations"
+    | "warnings"
+    | "evidence_ref_ids"
+    | "evidence_ref_labels"
+    // CHAOS-12157: the status ACR replaced, when its completeness authority corrected it.
+    | "status_correction"
+    // CHAOS-11944: the cohort ranking (cohort, the question's shape, ACR's cohort-rule render shapes)
+    // and the answer window in its header.
+    | "cohort"
+    | "interpretation"
+    | "render_shapes"
+    | "effective_evidence_window"
+    // CHAOS-11945: the claimed-fact tables (their window is effective_evidence_window above).
+    | "claimed_facts";
 
 export type AnswerResult =
     | Pick<ACRContextFabricInvestigationResultV1, AnswerFields>
@@ -170,6 +187,14 @@ export const ANSWER_COPY = {
     noLead: "The service sent no answer sentence.",
     about: "About",
     confidence: "confidence",
+    // CHAOS-11945: the claimed-fact tables.
+    factTablesTitle: "Fact tables",
+    factTablesIntro: "The rows the service read for this answer, as it sent them.",
+    factTablesWindow: "Window",
+    factAlsoCited: "Also cited for",
+    factMeasureSuffix: "(measure)",
+    factCellAbsent: "not in this row",
+    factCellNull: "no value",
 } as const;
 
 export function evidenceCountText(count: number): string {

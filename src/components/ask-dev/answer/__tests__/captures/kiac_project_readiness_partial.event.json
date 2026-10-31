@@ -9,11 +9,11 @@
         "request_id": "req_65a2a938079374522702cb152025cd0f",
         "generated_at": "2026-10-30T18:32:49.260880135Z",
         "status": "partial",
-        "question": "Is the Go Worker Runtime Migration project ready to finish, judging by the last 30 days?",
+        "question": "Is the Synthetic Project Beta project ready to finish, judging by the last 30 days?",
         "interpretation": {
             "shape": "single_subject",
-            "requested_judgment": "Whether the Go Worker Runtime Migration project is ready to finish based on the last 30 days",
-            "subject_terms": ["Go Worker Runtime Migration"],
+            "requested_judgment": "Whether the Synthetic Project Beta project is ready to finish based on the last 30 days",
+            "subject_terms": ["Synthetic Project Beta"],
             "time_context": {
                 "axis": "current"
             },
@@ -27,18 +27,18 @@
         "subject_resolution": {
             "candidates": [
                 {
-                    "receipt_id": "126018b8-6465-550c-ad42-28419db16306",
+                    "receipt_id": "00000000-0000-4000-8000-000000000010",
                     "subject": {
                         "kind": "project",
-                        "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                        "label": "Go Worker Runtime Migration"
+                        "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                        "label": "Synthetic Project Beta"
                     },
                     "state": "committed",
-                    "matched_terms": ["Go Worker Runtime Migration"],
+                    "matched_terms": ["Synthetic Project Beta"],
                     "match_reasons": ["Exact canonical subject label match."],
                     "confidence": 1,
                     "evidence_ref_ids": [
-                        "acr:v1:project:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48"
+                        "acr:v1:project:linear:00000000-0000-4000-8000-000000000011"
                     ],
                     "provider": "linear",
                     "match_mechanisms": ["exact", "lexical"]
@@ -47,16 +47,16 @@
             "committed": [
                 {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 }
             ],
             "commit_decision_digests": [
                 {
                     "subject": {
                         "kind": "project",
-                        "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                        "label": "Go Worker Runtime Migration"
+                        "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                        "label": "Synthetic Project Beta"
                     },
                     "commit_gate": "exact_index",
                     "search_truncated": true,
@@ -136,7 +136,7 @@
             ]
         },
         "direct_judgment": "This investigation is partial: some canonical or graph coverage was unavailable.",
-        "current_state": "Current observed values: archived items: absent from source (Go Worker Runtime Migration); cancelled count: 308 (Go Worker Runtime Migration); completed count: 1246 (Go Worker Runtime Migration); completion ratio: 0.98 (Go Worker Runtime Migration); counted work items: 1265 (Go Worker Runtime Migration); member kind: work item (Go Worker Runtime Migration); rollup basis: project work item completion (Go Worker Runtime Migration); unknown status count: 19 (Go Worker Runtime Migration); work item count: 1573 (Go Worker Runtime Migration).",
+        "current_state": "Current observed values: archived items: absent from source (Synthetic Project Beta); cancelled count: 308 (Synthetic Project Beta); completed count: 1246 (Synthetic Project Beta); completion ratio: 0.98 (Synthetic Project Beta); counted work items: 1265 (Synthetic Project Beta); member kind: work item (Synthetic Project Beta); rollup basis: project work item completion (Synthetic Project Beta); unknown status count: 19 (Synthetic Project Beta); work item count: 1573 (Synthetic Project Beta).",
         "strongest_pressures": [
             "Readiness cannot be confirmed because the supplied completion fact has no dated last-30-days trend or explicit finish criteria.",
             "The project has 19 work items in unknown status, so completion is not fully resolved despite the recorded completion ratio."
@@ -151,26 +151,26 @@
                 "subjects": [
                     {
                         "kind": "project",
-                        "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                        "label": "Go Worker Runtime Migration"
+                        "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                        "label": "Synthetic Project Beta"
                     }
                 ],
-                "evidence_ref_ids": ["acr:v1:project:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48"],
+                "evidence_ref_ids": ["acr:v1:project:linear:00000000-0000-4000-8000-000000000011"],
                 "claimed_fact_ids": ["claim_completion_ratio_001", "claim_unknown_status_001"]
             }
         ],
         "paths": [
             {
-                "path_id": "115627bd-6ffb-5ea8-9422-86f077688c1c",
+                "path_id": "00000000-0000-4000-8000-000000000012",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128956133",
-                        "label": "CI Tests #31128956133"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128956133",
+                        "label": "Synthetic CI run title 001"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -179,12 +179,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128956133",
-                            "label": "CI Tests #31128956133"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128956133",
+                            "label": "Synthetic CI run title 001"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -193,25 +193,25 @@
                         "valid_from": "2026-08-06T22:22:46Z",
                         "valid_to": "2026-08-06T22:32:37Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956133"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956133"
                         ]
                     }
                 ],
-                "why_relevant": "CI Tests #31128956133 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956133"],
+                "why_relevant": "Synthetic CI run title 001 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956133"],
                 "truncated": false
             },
             {
-                "path_id": "6c60a1e0-a421-5ae8-a873-fb65f8e1da9c",
+                "path_id": "00000000-0000-4000-8000-000000000013",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128956441",
-                        "label": "CI Typecheck #31128956441"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128956441",
+                        "label": "Synthetic CI run title 002"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -220,12 +220,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128956441",
-                            "label": "CI Typecheck #31128956441"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128956441",
+                            "label": "Synthetic CI run title 002"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -234,25 +234,25 @@
                         "valid_from": "2026-08-06T22:22:48Z",
                         "valid_to": "2026-08-06T22:25:48Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956441"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956441"
                         ]
                     }
                 ],
-                "why_relevant": "CI Typecheck #31128956441 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956441"],
+                "why_relevant": "Synthetic CI run title 002 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956441"],
                 "truncated": false
             },
             {
-                "path_id": "f7df1512-f1c5-5c69-989f-c8c99fbcd1d0",
+                "path_id": "00000000-0000-4000-8000-000000000014",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128956745",
-                        "label": "CI Lint #31128956745"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128956745",
+                        "label": "Synthetic CI run title 003"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -261,12 +261,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128956745",
-                            "label": "CI Lint #31128956745"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128956745",
+                            "label": "Synthetic CI run title 003"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -275,25 +275,25 @@
                         "valid_from": "2026-08-06T22:22:49Z",
                         "valid_to": "2026-08-06T22:24:02Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956745"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956745"
                         ]
                     }
                 ],
-                "why_relevant": "CI Lint #31128956745 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956745"],
+                "why_relevant": "Synthetic CI run title 003 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956745"],
                 "truncated": false
             },
             {
-                "path_id": "7255e4ca-fc20-50df-8d56-0f08b8a45cc0",
+                "path_id": "00000000-0000-4000-8000-000000000015",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128957391",
-                        "label": "CI Integration Tests #31128957391"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128957391",
+                        "label": "Synthetic CI run title 004"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -302,12 +302,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128957391",
-                            "label": "CI Integration Tests #31128957391"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128957391",
+                            "label": "Synthetic CI run title 004"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -316,25 +316,25 @@
                         "valid_from": "2026-08-06T22:22:53Z",
                         "valid_to": "2026-08-06T22:24:01Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128957391"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128957391"
                         ]
                     }
                 ],
-                "why_relevant": "CI Integration Tests #31128957391 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128957391"],
+                "why_relevant": "Synthetic CI run title 004 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31128957391"],
                 "truncated": false
             },
             {
-                "path_id": "9cd09406-0504-55e9-be1d-4d6387936dad",
+                "path_id": "00000000-0000-4000-8000-000000000016",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128957709",
-                        "label": "CI CodeQL #31128957709"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128957709",
+                        "label": "Synthetic CI run title 005"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -343,12 +343,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128957709",
-                            "label": "CI CodeQL #31128957709"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128957709",
+                            "label": "Synthetic CI run title 005"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -357,25 +357,25 @@
                         "valid_from": "2026-08-06T22:22:54Z",
                         "valid_to": "2026-08-06T22:28:10Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128957709"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128957709"
                         ]
                     }
                 ],
-                "why_relevant": "CI CodeQL #31128957709 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128957709"],
+                "why_relevant": "Synthetic CI run title 005 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31128957709"],
                 "truncated": false
             },
             {
-                "path_id": "7e665ac5-afa4-51b6-917b-f36c741165b2",
+                "path_id": "00000000-0000-4000-8000-000000000017",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128958098",
-                        "label": "CI Docs Guards #31128958098"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128958098",
+                        "label": "Synthetic CI run title 006"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -384,12 +384,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128958098",
-                            "label": "CI Docs Guards #31128958098"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128958098",
+                            "label": "Synthetic CI run title 006"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -398,25 +398,25 @@
                         "valid_from": "2026-08-06T22:22:56Z",
                         "valid_to": "2026-08-06T22:23:44Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128958098"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128958098"
                         ]
                     }
                 ],
-                "why_relevant": "CI Docs Guards #31128958098 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128958098"],
+                "why_relevant": "Synthetic CI run title 006 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31128958098"],
                 "truncated": false
             },
             {
-                "path_id": "e48cbd18-64fe-55ab-be7e-eddc34ebb7a3",
+                "path_id": "00000000-0000-4000-8000-000000000018",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128958421",
-                        "label": "CI Build Docker images #31128958421"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128958421",
+                        "label": "Synthetic CI run title 007"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -425,12 +425,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31128958421",
-                            "label": "CI Build Docker images #31128958421"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31128958421",
+                            "label": "Synthetic CI run title 007"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -439,25 +439,25 @@
                         "valid_from": "2026-08-06T22:22:57Z",
                         "valid_to": "2026-08-06T22:25:23Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128958421"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128958421"
                         ]
                     }
                 ],
-                "why_relevant": "CI Build Docker images #31128958421 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128958421"],
+                "why_relevant": "Synthetic CI run title 007 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31128958421"],
                 "truncated": false
             },
             {
-                "path_id": "1bd34bf4-9dec-54af-9345-cbdfc4ae81d8",
+                "path_id": "00000000-0000-4000-8000-000000000019",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131519107",
-                        "label": "CI Tests #31131519107"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131519107",
+                        "label": "Synthetic CI run title 008"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -466,12 +466,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131519107",
-                            "label": "CI Tests #31131519107"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131519107",
+                            "label": "Synthetic CI run title 008"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -480,25 +480,25 @@
                         "valid_from": "2026-08-06T23:33:22Z",
                         "valid_to": "2026-08-06T23:43:38Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131519107"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131519107"
                         ]
                     }
                 ],
-                "why_relevant": "CI Tests #31131519107 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131519107"],
+                "why_relevant": "Synthetic CI run title 008 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31131519107"],
                 "truncated": false
             },
             {
-                "path_id": "4dea80e2-3929-5e4b-8940-4de577e650fa",
+                "path_id": "00000000-0000-4000-8000-00000000001a",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131521017",
-                        "label": "CI Typecheck #31131521017"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131521017",
+                        "label": "Synthetic CI run title 009"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -507,12 +507,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131521017",
-                            "label": "CI Typecheck #31131521017"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131521017",
+                            "label": "Synthetic CI run title 009"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -521,25 +521,25 @@
                         "valid_from": "2026-08-06T23:33:23Z",
                         "valid_to": "2026-08-06T23:36:53Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131521017"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131521017"
                         ]
                     }
                 ],
-                "why_relevant": "CI Typecheck #31131521017 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131521017"],
+                "why_relevant": "Synthetic CI run title 009 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31131521017"],
                 "truncated": false
             },
             {
-                "path_id": "bdbff831-00c1-5a69-9118-0184f9a8ba49",
+                "path_id": "00000000-0000-4000-8000-00000000001b",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131523151",
-                        "label": "CI Lint #31131523151"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131523151",
+                        "label": "Synthetic CI run title 010"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -548,12 +548,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131523151",
-                            "label": "CI Lint #31131523151"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131523151",
+                            "label": "Synthetic CI run title 010"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -562,25 +562,25 @@
                         "valid_from": "2026-08-06T23:33:25Z",
                         "valid_to": "2026-08-06T23:34:47Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131523151"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131523151"
                         ]
                     }
                 ],
-                "why_relevant": "CI Lint #31131523151 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131523151"],
+                "why_relevant": "Synthetic CI run title 010 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31131523151"],
                 "truncated": false
             },
             {
-                "path_id": "a87f939e-0125-55f2-bc99-43184dd6f4e1",
+                "path_id": "00000000-0000-4000-8000-00000000001c",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131524889",
-                        "label": "CI Integration Tests #31131524889"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131524889",
+                        "label": "Synthetic CI run title 011"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -589,12 +589,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31131524889",
-                            "label": "CI Integration Tests #31131524889"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31131524889",
+                            "label": "Synthetic CI run title 011"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -603,25 +603,25 @@
                         "valid_from": "2026-08-06T23:33:26Z",
                         "valid_to": "2026-08-06T23:34:33Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131524889"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131524889"
                         ]
                     }
                 ],
-                "why_relevant": "CI Integration Tests #31131524889 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131524889"],
+                "why_relevant": "Synthetic CI run title 011 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31131524889"],
                 "truncated": false
             },
             {
-                "path_id": "621fbd1e-8c4a-5a36-bf50-85ace5a7d12e",
+                "path_id": "00000000-0000-4000-8000-00000000001d",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299770",
-                        "label": "CI Documentation Cloudflare delivery #31542299770"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299770",
+                        "label": "Synthetic CI run title 012"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -630,12 +630,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299770",
-                            "label": "CI Documentation Cloudflare delivery #31542299770"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299770",
+                            "label": "Synthetic CI run title 012"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -644,25 +644,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:25:30Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299770"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299770"
                         ]
                     }
                 ],
-                "why_relevant": "CI Documentation Cloudflare delivery #31542299770 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299770"],
+                "why_relevant": "Synthetic CI run title 012 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299770"],
                 "truncated": false
             },
             {
-                "path_id": "92d59f3e-f0c7-5c99-8479-4ea52316e8fb",
+                "path_id": "00000000-0000-4000-8000-00000000001e",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299807",
-                        "label": "CI Security Scan #31542299807"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299807",
+                        "label": "Synthetic CI run title 013"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -671,12 +671,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299807",
-                            "label": "CI Security Scan #31542299807"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299807",
+                            "label": "Synthetic CI run title 013"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -685,25 +685,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:27:08Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299807"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299807"
                         ]
                     }
                 ],
-                "why_relevant": "CI Security Scan #31542299807 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299807"],
+                "why_relevant": "Synthetic CI run title 013 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299807"],
                 "truncated": false
             },
             {
-                "path_id": "d37000b8-a685-5fd7-a679-cf212ee3b5e1",
+                "path_id": "00000000-0000-4000-8000-00000000001f",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299827",
-                        "label": "CI Docs Guards #31542299827"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299827",
+                        "label": "Synthetic CI run title 014"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -712,12 +712,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299827",
-                            "label": "CI Docs Guards #31542299827"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299827",
+                            "label": "Synthetic CI run title 014"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -726,25 +726,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:25:21Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299827"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299827"
                         ]
                     }
                 ],
-                "why_relevant": "CI Docs Guards #31542299827 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299827"],
+                "why_relevant": "Synthetic CI run title 014 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299827"],
                 "truncated": false
             },
             {
-                "path_id": "dd471387-d5bd-5ea7-90fc-f135fadab14e",
+                "path_id": "00000000-0000-4000-8000-000000000020",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299854",
-                        "label": "CI Tests #31542299854"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299854",
+                        "label": "Synthetic CI run title 015"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -753,12 +753,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299854",
-                            "label": "CI Tests #31542299854"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299854",
+                            "label": "Synthetic CI run title 015"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -767,25 +767,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:32:55Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299854"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299854"
                         ]
                     }
                 ],
-                "why_relevant": "CI Tests #31542299854 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299854"],
+                "why_relevant": "Synthetic CI run title 015 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299854"],
                 "truncated": false
             },
             {
-                "path_id": "bd262c36-103d-51e3-add0-fb6882c1b615",
+                "path_id": "00000000-0000-4000-8000-000000000021",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299871",
-                        "label": "CI Live Backend E2E #31542299871"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299871",
+                        "label": "Synthetic CI run title 016"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -794,12 +794,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299871",
-                            "label": "CI Live Backend E2E #31542299871"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299871",
+                            "label": "Synthetic CI run title 016"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -808,25 +808,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:27:43Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299871"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299871"
                         ]
                     }
                 ],
-                "why_relevant": "CI Live Backend E2E #31542299871 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299871"],
+                "why_relevant": "Synthetic CI run title 016 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299871"],
                 "truncated": false
             },
             {
-                "path_id": "20672e10-d1bb-5962-b509-6321888dccf4",
+                "path_id": "00000000-0000-4000-8000-000000000022",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299882",
-                        "label": "CI Typecheck #31542299882"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299882",
+                        "label": "Synthetic CI run title 017"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -835,12 +835,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299882",
-                            "label": "CI Typecheck #31542299882"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299882",
+                            "label": "Synthetic CI run title 017"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -849,25 +849,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:28:01Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299882"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299882"
                         ]
                     }
                 ],
-                "why_relevant": "CI Typecheck #31542299882 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299882"],
+                "why_relevant": "Synthetic CI run title 017 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299882"],
                 "truncated": false
             },
             {
-                "path_id": "5bb980b6-9572-56eb-a990-c74050ee38de",
+                "path_id": "00000000-0000-4000-8000-000000000023",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299894",
-                        "label": "CI Governance Gate #31542299894"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299894",
+                        "label": "Synthetic CI run title 018"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -876,12 +876,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299894",
-                            "label": "CI Governance Gate #31542299894"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299894",
+                            "label": "Synthetic CI run title 018"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -890,25 +890,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:25:01Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299894"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299894"
                         ]
                     }
                 ],
-                "why_relevant": "CI Governance Gate #31542299894 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299894"],
+                "why_relevant": "Synthetic CI run title 018 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299894"],
                 "truncated": false
             },
             {
-                "path_id": "5a04c04f-ee2e-57e5-93a8-60076c4d3e8c",
+                "path_id": "00000000-0000-4000-8000-000000000024",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299905",
-                        "label": "CI Lint #31542299905"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299905",
+                        "label": "Synthetic CI run title 019"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -917,12 +917,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299905",
-                            "label": "CI Lint #31542299905"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299905",
+                            "label": "Synthetic CI run title 019"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -931,25 +931,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:26:14Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299905"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299905"
                         ]
                     }
                 ],
-                "why_relevant": "CI Lint #31542299905 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299905"],
+                "why_relevant": "Synthetic CI run title 019 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299905"],
                 "truncated": false
             },
             {
-                "path_id": "854c4549-e6e4-54f3-94f1-6c7b9b382fce",
+                "path_id": "00000000-0000-4000-8000-000000000025",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299922",
-                        "label": "CI CodeQL #31542299922"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299922",
+                        "label": "Synthetic CI run title 020"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -958,12 +958,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542299922",
-                            "label": "CI CodeQL #31542299922"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542299922",
+                            "label": "Synthetic CI run title 020"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -972,25 +972,25 @@
                         "valid_from": "2026-08-11T22:24:50Z",
                         "valid_to": "2026-08-11T22:30:40Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299922"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299922"
                         ]
                     }
                 ],
-                "why_relevant": "CI CodeQL #31542299922 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299922"],
+                "why_relevant": "Synthetic CI run title 020 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299922"],
                 "truncated": false
             },
             {
-                "path_id": "75aac00d-f291-5b1b-bb72-bc8baf77cf01",
+                "path_id": "00000000-0000-4000-8000-000000000026",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542300071",
-                        "label": "CI Build Docker images #31542300071"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542300071",
+                        "label": "Synthetic CI run title 021"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -999,12 +999,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31542300071",
-                            "label": "CI Build Docker images #31542300071"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31542300071",
+                            "label": "Synthetic CI run title 021"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -1013,25 +1013,25 @@
                         "valid_from": "2026-08-11T22:24:51Z",
                         "valid_to": "2026-08-11T22:27:54Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542300071"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542300071"
                         ]
                     }
                 ],
-                "why_relevant": "CI Build Docker images #31542300071 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542300071"],
+                "why_relevant": "Synthetic CI run title 021 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31542300071"],
                 "truncated": false
             },
             {
-                "path_id": "0e67caca-ea63-57e4-a7ac-20b3399a18c9",
+                "path_id": "00000000-0000-4000-8000-000000000027",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545101996",
-                        "label": "CI Tests #31545101996"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545101996",
+                        "label": "Synthetic CI run title 022"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -1040,12 +1040,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545101996",
-                            "label": "CI Tests #31545101996"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545101996",
+                            "label": "Synthetic CI run title 022"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -1054,25 +1054,25 @@
                         "valid_from": "2026-08-11T23:05:27Z",
                         "valid_to": "2026-08-11T23:13:21Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545101996"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545101996"
                         ]
                     }
                 ],
-                "why_relevant": "CI Tests #31545101996 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545101996"],
+                "why_relevant": "Synthetic CI run title 022 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31545101996"],
                 "truncated": false
             },
             {
-                "path_id": "bda10576-fdbb-5f4a-95ce-4c7a9d91306a",
+                "path_id": "00000000-0000-4000-8000-000000000028",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545102007",
-                        "label": "CI Documentation Cloudflare delivery #31545102007"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545102007",
+                        "label": "Synthetic CI run title 023"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -1081,12 +1081,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545102007",
-                            "label": "CI Documentation Cloudflare delivery #31545102007"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545102007",
+                            "label": "Synthetic CI run title 023"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -1095,25 +1095,25 @@
                         "valid_from": "2026-08-11T23:05:27Z",
                         "valid_to": "2026-08-11T23:06:00Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102007"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102007"
                         ]
                     }
                 ],
-                "why_relevant": "CI Documentation Cloudflare delivery #31545102007 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102007"],
+                "why_relevant": "Synthetic CI run title 023 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102007"],
                 "truncated": false
             },
             {
-                "path_id": "3f5f7049-e907-58bd-a8d1-3e1b1b3e3580",
+                "path_id": "00000000-0000-4000-8000-000000000029",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545102029",
-                        "label": "CI Security Scan #31545102029"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545102029",
+                        "label": "Synthetic CI run title 024"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -1122,12 +1122,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545102029",
-                            "label": "CI Security Scan #31545102029"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545102029",
+                            "label": "Synthetic CI run title 024"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -1136,25 +1136,25 @@
                         "valid_from": "2026-08-11T23:05:27Z",
                         "valid_to": "2026-08-11T23:07:35Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102029"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102029"
                         ]
                     }
                 ],
-                "why_relevant": "CI Security Scan #31545102029 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102029"],
+                "why_relevant": "Synthetic CI run title 024 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102029"],
                 "truncated": false
             },
             {
-                "path_id": "453b79b1-1c9f-593b-9ea2-c6ae65581e3d",
+                "path_id": "00000000-0000-4000-8000-00000000002a",
                 "nodes": [
                     {
                         "kind": "ci_pipeline_run",
-                        "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545102031",
-                        "label": "CI Governance Gate #31545102031"
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545102031",
+                        "label": "Synthetic CI run title 025"
                     },
                     {
                         "kind": "repository",
-                        "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                         "label": "full-chaos/dev-health-ops"
                     }
                 ],
@@ -1163,12 +1163,12 @@
                         "type": "BELONGS_TO_REPOSITORY",
                         "from": {
                             "kind": "ci_pipeline_run",
-                            "canonical_id": "ci_pipeline_run.v2:920f9442-07df-4217-4dc4-c5833c0b8268:31545102031",
-                            "label": "CI Governance Gate #31545102031"
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000002:31545102031",
+                            "label": "Synthetic CI run title 025"
                         },
                         "to": {
                             "kind": "repository",
-                            "canonical_id": "repository:920f9442-07df-4217-4dc4-c5833c0b8268",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
                             "label": "full-chaos/dev-health-ops"
                         },
                         "derivation": "graph_associated",
@@ -1177,12 +1177,12 @@
                         "valid_from": "2026-08-11T23:05:27Z",
                         "valid_to": "2026-08-11T23:05:41Z",
                         "evidence_ref_ids": [
-                            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102031"
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102031"
                         ]
                     }
                 ],
-                "why_relevant": "CI Governance Gate #31545102031 belongs to repository full-chaos/dev-health-ops",
-                "evidence_ref_ids": ["acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102031"],
+                "why_relevant": "Synthetic CI run title 025 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102031"],
                 "truncated": false
             }
         ],
@@ -1191,15 +1191,15 @@
             "The supplied data contains a current completion rollup but no dated last-30-days activity, trend, remaining-work detail, or explicit readiness threshold.",
             "Archived items are absent from the source, so the completion rollup may not describe archived work separately."
         ],
-        "evidence_ref_ids": ["acr:v1:project:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48"],
+        "evidence_ref_ids": ["acr:v1:project:linear:00000000-0000-4000-8000-000000000011"],
         "claimed_facts": [
             {
                 "claim_id": "claim_archived_items_001",
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "archived_items",
                 "value": {
@@ -1212,8 +1212,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "cancelled_count",
                 "value": {
@@ -1226,8 +1226,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "completed_count",
                 "value": {
@@ -1240,8 +1240,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "completion_ratio",
                 "value": {
@@ -1254,8 +1254,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "counted_work_items",
                 "value": {
@@ -1268,8 +1268,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "member_kind",
                 "value": {
@@ -1282,8 +1282,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "rollup_basis",
                 "value": {
@@ -1296,8 +1296,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "unknown_status_count",
                 "value": {
@@ -1310,8 +1310,8 @@
                 "kind": "actual_completion",
                 "subject": {
                     "kind": "project",
-                    "canonical_id": "project.v2:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48",
-                    "label": "Go Worker Runtime Migration"
+                    "canonical_id": "project.v2:linear:00000000-0000-4000-8000-000000000011",
+                    "label": "Synthetic Project Beta"
                 },
                 "field": "work_item_count",
                 "value": {
@@ -1339,32 +1339,32 @@
             "partial": false
         },
         "evidence_ref_labels": {
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956133": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31128956133",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956441": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31128956441",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128956745": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31128956745",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128957391": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31128957391",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128957709": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31128957709",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128958098": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31128958098",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31128958421": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31128958421",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131519107": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31131519107",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131521017": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31131521017",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131523151": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31131523151",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31131524889": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31131524889",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299770": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299770",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299807": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299807",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299827": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299827",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299854": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299854",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299871": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299871",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299882": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299882",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299894": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299894",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299905": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299905",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542299922": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542299922",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31542300071": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31542300071",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545101996": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31545101996",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102007": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31545102007",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102029": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31545102029",
-            "acr:v1:ci:920f9442-07df-4217-4dc4-c5833c0b8268:31545102031": "CI run: 920f9442-07df-4217-4dc4-c5833c0b8268:31545102031",
-            "acr:v1:project:linear:32f7879e-00ed-486f-884a-bfb4e93e2f48": "Project: linear:32f7879e-00ed-486f-884a-bfb4e93e2f48"
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956133": "CI run: 00000000-0000-4000-8000-000000000002:31128956133",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956441": "CI run: 00000000-0000-4000-8000-000000000002:31128956441",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128956745": "CI run: 00000000-0000-4000-8000-000000000002:31128956745",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128957391": "CI run: 00000000-0000-4000-8000-000000000002:31128957391",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128957709": "CI run: 00000000-0000-4000-8000-000000000002:31128957709",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128958098": "CI run: 00000000-0000-4000-8000-000000000002:31128958098",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31128958421": "CI run: 00000000-0000-4000-8000-000000000002:31128958421",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131519107": "CI run: 00000000-0000-4000-8000-000000000002:31131519107",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131521017": "CI run: 00000000-0000-4000-8000-000000000002:31131521017",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131523151": "CI run: 00000000-0000-4000-8000-000000000002:31131523151",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31131524889": "CI run: 00000000-0000-4000-8000-000000000002:31131524889",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299770": "CI run: 00000000-0000-4000-8000-000000000002:31542299770",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299807": "CI run: 00000000-0000-4000-8000-000000000002:31542299807",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299827": "CI run: 00000000-0000-4000-8000-000000000002:31542299827",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299854": "CI run: 00000000-0000-4000-8000-000000000002:31542299854",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299871": "CI run: 00000000-0000-4000-8000-000000000002:31542299871",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299882": "CI run: 00000000-0000-4000-8000-000000000002:31542299882",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299894": "CI run: 00000000-0000-4000-8000-000000000002:31542299894",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299905": "CI run: 00000000-0000-4000-8000-000000000002:31542299905",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542299922": "CI run: 00000000-0000-4000-8000-000000000002:31542299922",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31542300071": "CI run: 00000000-0000-4000-8000-000000000002:31542300071",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545101996": "CI run: 00000000-0000-4000-8000-000000000002:31545101996",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102007": "CI run: 00000000-0000-4000-8000-000000000002:31545102007",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102029": "CI run: 00000000-0000-4000-8000-000000000002:31545102029",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000002:31545102031": "CI run: 00000000-0000-4000-8000-000000000002:31545102031",
+            "acr:v1:project:linear:00000000-0000-4000-8000-000000000011": "Project: linear:00000000-0000-4000-8000-000000000011"
         },
         "versions": {
             "service_version": "0.0.0-dev",
