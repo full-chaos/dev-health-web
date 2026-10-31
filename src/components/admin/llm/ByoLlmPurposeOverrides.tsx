@@ -15,7 +15,7 @@ import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
     LLM_PURPOSES,
-    LLM_SETTINGS_UNDECRYPTABLE,
+    isUnreadableSettings,
     LLM_PURPOSE_LABELS,
     type LLMPurpose,
     type LLMPurposeSettings,
@@ -69,9 +69,7 @@ export function ByoLlmPurposeOverrides({
             // 402/403 mean BYO is gated, and a 409 llm_settings_undecryptable means the saved key cannot be
             // read (CHAOS-12173): the default section above says so and offers Replace and Remove.
             const ownedAbove =
-                result.status === 402 ||
-                result.status === 403 ||
-                (result.status === 409 && result.code === LLM_SETTINGS_UNDECRYPTABLE);
+                result.status === 402 || result.status === 403 || isUnreadableSettings(result);
             setLoadError(ownedAbove ? null : READ_FAILED_MESSAGE);
             return;
         }

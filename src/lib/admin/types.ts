@@ -984,6 +984,15 @@ export interface LLMSettingsActionResult<T> {
 /** go-api's 409 code for saved BYO settings the configured encryption key cannot decrypt (CHAOS-12172). */
 export const LLM_SETTINGS_UNDECRYPTABLE = "llm_settings_undecryptable";
 
+/**
+ * True when a BYO read failed because the saved key cannot be decrypted (CHAOS-12173). The BYO LLM
+ * card owns that state (it says so and offers Replace and Remove); every other card that reads a
+ * BYO route stays quiet instead of offering a Retry that can never help.
+ */
+export function isUnreadableSettings(result: { status?: number; code?: string }): boolean {
+    return result.status === 409 && result.code === LLM_SETTINGS_UNDECRYPTABLE;
+}
+
 /** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */
 export type LLMModelListSource = "live" | "cache" | "catalog" | "unavailable";
 

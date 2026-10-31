@@ -3746,6 +3746,9 @@ export const handlers = [
         mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
         return HttpResponse.json(mockLlmSettingsBody());
     }),
+    // CHAOS-12173: go-api's spend route reads the saved key too, so it answers the same 409 (CHAOS-12172).
+    // Otherwise unhandled here, as before.
+    http.get("*/api/v1/admin/llm-settings/spend", () => mockLlmUnreadableResponse() ?? undefined),
     // The platform catalog for the asked provider (no key needed), plus the provider's live list for the saved one.
     http.get("*/api/v1/admin/llm-settings/models", ({ request }) => {
         const asked =

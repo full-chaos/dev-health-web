@@ -17,7 +17,7 @@ import {
     LLM_PROVIDER_LABELS,
     LLM_PURPOSES,
     LLM_PURPOSE_LABELS,
-    LLM_SETTINGS_UNDECRYPTABLE,
+    isUnreadableSettings,
     type LLMBudgetResponse,
     type LLMPurpose,
     type LLMModelListResponse,
@@ -397,7 +397,7 @@ export function ByoLlmSettings({
                     ? result.error
                     : "BYO-LLM is not enabled for this organization.",
             });
-        } else if (result.status === 409 && result.code === LLM_SETTINGS_UNDECRYPTABLE) {
+        } else if (isUnreadableSettings(result)) {
             setUnreadable({ purposes: knownPurposes(result.purposes) });
         } else if (result.error) {
             setLoadError(READ_FAILED_MESSAGE);

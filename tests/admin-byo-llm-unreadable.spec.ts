@@ -50,8 +50,10 @@ for (const viewport of [
             );
             await expect(card.getByRole("button", { name: "Replace" })).toBeVisible();
             await expect(card.getByRole("button", { name: "Remove" })).toBeVisible();
-            await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+            // The other BYO cards read the same key: once they have loaded, none offers a Retry.
+            await expect(page.getByTestId("byo-llm-spend-unreadable")).toBeVisible();
             await page.waitForLoadState("networkidle");
+            await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
             await card.scrollIntoViewIfNeeded();
             await page.screenshot({ path: testInfo.outputPath(`unreadable-${viewport.name}.png`) });
             expect(await axeViolations(page, "[data-testid=byo-llm-unreadable]")).toEqual([]);

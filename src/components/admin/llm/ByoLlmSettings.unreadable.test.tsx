@@ -11,7 +11,9 @@ import { BYO_LLM_CONFIG_CHANGED } from "@/lib/admin/byoLlmConfigChanges";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { LLM_SETTINGS_UNDECRYPTABLE, type LLMSettingsActionResult } from "@/lib/admin/types";
+import { ByoLlmCategorizeOptIn } from "./ByoLlmCategorizeOptIn";
 import { ByoLlmPurposeOverrides } from "./ByoLlmPurposeOverrides";
+import { ByoLlmSpendSummary, SPEND_UNREADABLE } from "./ByoLlmSpendSummary";
 import { ByoLlmSettings, type ByoLlmSettingsProps } from "./ByoLlmSettings";
 
 // The card's words, as a contract (UNREADABLE_COPY in ByoLlmSettings.tsx).
@@ -193,5 +195,45 @@ describe("ByoLlmPurposeOverrides with saved settings that cannot be read", () =>
         await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
         window.dispatchEvent(new Event(BYO_LLM_CONFIG_CHANGED));
         await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    });
+});
+
+describe("the other BYO cards stay quiet when the saved key cannot be read", () => {
+    it("categorization: shows nothing, and reads again when the config changes", async () => {
+        const load = vi.fn().mockResolvedValue(UNREADABLE([]));
+        const { container } = render(
+            <ByoLlmCategorizeOptIn loadSettingsAction={load} saveAction={vi.fn()} />,
+        );
+        await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+        expect(container).toBeEmptyDOMElement();
+        window.dispatchEvent(new Event(BYO_LLM_CONFIG_CHANGED));
+        await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    });
+
+    it("categorization: a transient failure still offers Retry", async () => {
+        const load = vi.fn().mockResolvedValue(TRANSIENT);
+        render(<ByoLlmCategorizeOptIn loadSettingsAction={load} saveAction={vi.fn()} />);
+        expect(await screen.findByRole("button", { name: CTA_LABELS.retry })).toBeInTheDocument();
+    });
+
+    it("spend: says it shows again once the key is fixed, no Retry, and reads again on a config change", async () => {
+        const loadSpend = vi.fn().mockResolvedValue(UNREADABLE([]));
+        render(<ByoLlmSpendSummary loadSpendAction={loadSpend} />);
+        expect(await screen.findByTestId("byo-llm-spend-unreadable")).toHaveTextContent(
+            SPEND_UNREADABLE,
+        );
+        expect(screen.queryByRole("button", { name: CTA_LABELS.retry })).not.toBeInTheDocument();
+        loadSpend.mockResolvedValue({ data: { runs: [], unattributed: [] } });
+        window.dispatchEvent(new Event(BYO_LLM_CONFIG_CHANGED));
+        await waitFor(() => expect(loadSpend).toHaveBeenCalledTimes(2));
+        await waitFor(() =>
+            expect(screen.queryByTestId("byo-llm-spend-unreadable")).not.toBeInTheDocument(),
+        );
+    });
+
+    it("spend: a transient failure still offers Retry", async () => {
+        const loadSpend = vi.fn().mockResolvedValue(TRANSIENT);
+        render(<ByoLlmSpendSummary loadSpendAction={loadSpend} />);
+        expect(await screen.findByRole("button", { name: CTA_LABELS.retry })).toBeInTheDocument();
     });
 });
