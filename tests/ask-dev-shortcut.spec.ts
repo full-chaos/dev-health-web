@@ -84,7 +84,8 @@ test("the palette opens Ask Dev, and offers it only when the launcher is offered
     await expect(page.getByTestId("command-palette")).toBeVisible();
     await page.keyboard.press("Escape");
     await page.keyboard.press("Control+K");
-    await page.getByRole("option", { name: /^Ask Dev/ }).click();
+    // The panel action, not the "Ask Dev full page" entry of the nav row (CHAOS-12210).
+    await page.getByRole("option", { name: /Open the Ask Dev panel/ }).click();
     await expect(page.getByTestId(PANEL)).toBeVisible();
 
     await setScenario(request, "unprovisioned");
