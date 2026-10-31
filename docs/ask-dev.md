@@ -1,0 +1,27 @@
+# Ask Dev in web
+
+Ask Dev is the product surface over Context Fabric (ACR). web draws it: the panel, the `/dev` full page and the chips. ACR resolves, authorizes and answers.
+
+## Page context
+
+A page can tell Ask Dev which entities it shows. The next question then sends them to ACR as hints. Sources: CHAOS-11936 (the registry), CHAOS-3584 (the chips and the hints), CHAOS-11938 (the pages).
+
+- **How a page registers.** A server page renders `AskDevPageEntities` (`src/components/ask-dev/pageContext/AskDevPageEntities.tsx`). A client component calls `useAskDevPageContext`. Registering sends nothing.
+- **ACR canonical ids only.** Build each `id` with `SUBJECT_ID` (`src/lib/ask-dev/page-context-ids.ts`) from the natural keys that ops serves:
+    - `organization:<org id>`
+    - `repository:<repos.id>`
+    - `team:<teams.id>`
+    - `pull_request:<repo id>:<number>`
+
+    Never use a URL id, a GraphQL row id or a name. ACR commits a hint on the caller's identity only when the hint has its exact canonical id. Any other id falls back to a statistical match on the label.
+
+- **One of each, bounded by the route map.** A page proposes each entity it shows, and only when there is exactly one of it. The approved routes, and the kinds each route takes, are in `PAGE_CONTEXT_ROUTES` (`src/lib/ask-dev/page-context.ts`). For example, complexity takes repositories only.
+    - The organization goes first. It is proposed only when the shell and the session name the same organization.
+    - A team or a repository is the scope that the page settles on after its scope bar's lock (`loadScopePageEntities`). A filter repository name becomes its id only when the served id-to-name map gives exactly one id for it.
+- **Never sent:** filters, the time window, the role, a comparison, fingerprints, DOM text, or a person.
+- **Chips.** The proposal shows as chips above the composer, before submit. The user can remove each chip.
+    - Opening the panel sends nothing, and nothing is submitted on its own.
+    - Navigation changes the proposal; it never changes a question that was already sent.
+    - The chips that are left go with each next question as `requested_scope.subject_hints[]`, with `source: "ask_dev_page_context"`.
+    - A hint never binds a subject: ACR resolves and authorizes it again on every call.
+- **Gate.** The organization feature `ask_dev_contextual_entrypoints` must be on. Without it there are no chips and no page hints.

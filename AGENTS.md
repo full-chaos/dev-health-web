@@ -14,6 +14,7 @@ Frontend: Next.js 16 + React Server Components, TypeScript, Tailwind v4, **pnpm*
 | Visualizations                          | [`docs/visualizations.md`](docs/visualizations.md)                                                                         |
 | Testing tiers & governance              | [`README.md`](README.md), [`ci/run_tests.sh`](ci/run_tests.sh), [`docs/testing-governance.md`](docs/testing-governance.md) |
 | Visual-evidence runbook                 | [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md)                                                             |
+| Ask Dev (panel, page context)           | [`docs/ask-dev.md`](docs/ask-dev.md)                                                                                       |
 
 ## Layout (`src/`)
 

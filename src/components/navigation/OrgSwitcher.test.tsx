@@ -56,6 +56,26 @@ describe("OrgSwitcher", () => {
         );
     });
 
+    it("reports which organization it shows, by id, before and after a switch (CHAOS-11938)", async () => {
+        // Ask Dev page context pairs the session's organization id with this name only when this
+        // id is the same organization.
+        const onChange = vi.fn();
+        render(<OrgSwitcher onActiveOrganizationChange={onChange} />);
+        await waitFor(() =>
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ id: "org-empty", name: "Empty Org" }),
+            ),
+        );
+        fireEvent.change(await screen.findByLabelText(/organization/i), {
+            target: { value: "org-data" },
+        });
+        await waitFor(() =>
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ id: "org-data", name: "Data Org" }),
+            ),
+        );
+    });
+
     it("shows data state and updates the session when switching organizations", async () => {
         render(<OrgSwitcher />);
 

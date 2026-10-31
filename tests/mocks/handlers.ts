@@ -1715,6 +1715,51 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         dimension?: { dimension?: string } | string;
     };
 
+    // Data Confidence overview (CHAOS-11938 e2e): the three reads of `/data-health`, in the served
+    // shape. Without them the overview had no mock and the page could not render.
+    if (query.includes("GetConnectorsDataHealth")) {
+        return HttpResponse.json({
+            data: {
+                dataHealth: {
+                    connectors: [
+                        {
+                            provider: "github",
+                            scope: "full-chaos",
+                            lastSyncAt: "2026-10-30T12:00:00Z",
+                            rowsIngested: 1200,
+                            lastFailure: null,
+                        },
+                    ],
+                },
+            },
+        });
+    }
+    if (query.includes("DataHealthIdentity")) {
+        return HttpResponse.json({
+            data: {
+                dataHealth: {
+                    identityMapping: {
+                        unmappedCount: 0,
+                        unmappedIdentities: [],
+                        suggestedAliases: [],
+                    },
+                },
+            },
+        });
+    }
+    if (query.includes("GetMappingCoverageHealth")) {
+        return HttpResponse.json({
+            data: {
+                dataHealth: {
+                    mappingCoverage: {
+                        deployments: { totalRepos: 2, coveredRepos: 1, coveragePct: 50 },
+                        workItems: { totalRepos: 2, coveredRepos: 2, coveragePct: 100 },
+                    },
+                },
+            },
+        });
+    }
+
     // Platform product telemetry (CHAOS-8968): the prod shape. Two days with rows
     // inside a 30-day window, one org without a served name, empty event kinds.
     if (query.includes("ProductTelemetryPlatformDashboard")) {
@@ -2939,31 +2984,37 @@ export const handlers = [
             features:
                 scenario === "provisioned"
                     ? { ...MOCK_ORG_ENTITLEMENTS.features, agent_context_runtime: true }
-                    : scenario === "ask-dev-off"
+                    : scenario === "provisioned-investment"
                       ? {
                             ...MOCK_ORG_ENTITLEMENTS.features,
                             agent_context_runtime: true,
-                            ask_dev: false,
+                            investment_view: true,
                         }
-                      : scenario === "ask-dev-enabled"
+                      : scenario === "ask-dev-off"
                         ? {
                               ...MOCK_ORG_ENTITLEMENTS.features,
                               agent_context_runtime: true,
-                              ask_dev: true,
+                              ask_dev: false,
                           }
-                        : scenario === "investment-enabled"
-                          ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
-                          : scenario === "canonical-enabled"
-                            ? {
-                                  ...MOCK_ORG_ENTITLEMENTS.features,
-                                  canonical_incident_ingestion: true,
-                              }
-                            : scenario === "canonical-disabled"
+                        : scenario === "ask-dev-enabled"
+                          ? {
+                                ...MOCK_ORG_ENTITLEMENTS.features,
+                                agent_context_runtime: true,
+                                ask_dev: true,
+                            }
+                          : scenario === "investment-enabled"
+                            ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
+                            : scenario === "canonical-enabled"
                               ? {
                                     ...MOCK_ORG_ENTITLEMENTS.features,
-                                    canonical_incident_ingestion: false,
+                                    canonical_incident_ingestion: true,
                                 }
-                              : MOCK_ORG_ENTITLEMENTS.features,
+                              : scenario === "canonical-disabled"
+                                ? {
+                                      ...MOCK_ORG_ENTITLEMENTS.features,
+                                      canonical_incident_ingestion: false,
+                                  }
+                                : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 
@@ -3050,7 +3101,12 @@ export const handlers = [
                 "alex.harper@example.com": "Alex Harper",
                 "jordan.lee@example.com": "Jordan Lee",
             },
-            repo_names: {},
+            // CHAOS-11938: repository id -> name, as ops serves it (`toString(repos.id)`); the
+            // filter holds names, so a page maps a name back to its id through this.
+            repo_names: {
+                "00000000-0000-4000-8000-0000000e2e01": "dev-health-web",
+                "00000000-0000-4000-8000-0000000e2e02": "dev-health-ops",
+            },
             work_category: ["feature", "maintenance", "support"],
             issue_type: ["bug", "story", "task"],
             flow_stage: ["review", "build", "deploy"],

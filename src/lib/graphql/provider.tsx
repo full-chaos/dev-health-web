@@ -12,6 +12,8 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { UrqlProvider, ssrExchange, createClient } from "@urql/next";
+
+import { OrgIdContext } from "./orgIdContext";
 import type { SSRExchange } from "@urql/core";
 import { createGraphQLClientOptions } from "./providerClient";
 
@@ -19,8 +21,6 @@ interface GraphQLProviderProps {
     children: ReactNode;
     orgId?: string;
 }
-
-const OrgIdContext = createContext<string | undefined>(undefined);
 
 /**
  * Exposes the client-side `ssrExchange` instance so `HydrateUrqlResults`
@@ -72,12 +72,7 @@ export function GraphQLProvider({ children, orgId }: GraphQLProviderProps): Reac
     );
 }
 
-/**
- * Hook to access the current org ID from the GraphQL provider.
- */
-export function useOrgId(): string | undefined {
-    return useContext(OrgIdContext);
-}
+export { useOrgId } from "./orgIdContext";
 
 /**
  * Hook to access the client-side `ssrExchange` instance (CHAOS-1276 Phase C).

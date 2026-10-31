@@ -48,6 +48,11 @@ export function describeOrganizationData(
 
 /** Data state of the active organization, as the switcher shows it. */
 export type ActiveOrganizationData = {
+    /**
+     * The organization this card shows. Ask Dev page context (CHAOS-11938) proposes the organization
+     * only when this equals the session's: during a switch the card moves first. Absent: not known.
+     */
+    id?: string;
     name: string;
     hasData: boolean;
     lastMetricsAt: string | null;
@@ -134,6 +139,7 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
         onActiveOrganizationChange(
             activeOrg
                 ? {
+                      id: activeOrg.id,
                       name: activeOrg.name,
                       hasData: activeOrg.has_data,
                       lastMetricsAt: activeOrg.last_metrics_at ?? null,

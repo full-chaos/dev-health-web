@@ -42,6 +42,8 @@ import type { HeatmapResponse, MetricFilter } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
+import { loadScopePageEntities } from "@/lib/ask-dev/load-page-scope-entities";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -219,13 +221,17 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
     const onHotspots = activeTab === "hotspots";
 
     // Parallel pre-fetch — the queries are independent. The heatmap reads only on its own tab.
-    const [points, hotspotRows, heatmap, heatmapSummary] = await Promise.all([
+    const [points, hotspotRows, heatmap, heatmapSummary, scopeEntities] = await Promise.all([
         fetchComplexityTimeseries(orgId, sinceUtc, untilUtc, scopeInput),
         fetchHotspots(orgId, sinceUtc, untilUtc, scopeInput),
         onHotspots
             ? fetchHotspotHeatmap(heatmapRequest, filters, hasSessionOrg)
             : Promise.resolve(undefined),
         onHotspots ? fetchHotspotSummary(filters, hasSessionOrg) : Promise.resolve(undefined),
+        // Ask Dev page context (CHAOS-11938): the page's one repository, never on the demo org.
+        hasSessionOrg
+            ? loadScopePageEntities({ routeId: "complexity", view: "complexity", filters })
+            : Promise.resolve([]),
     ]);
 
     // The page's served values for the evidence drawer: the overview tiles, as they read there.
@@ -256,6 +262,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
             className="flex min-w-0 flex-1 flex-col gap-8 text-foreground"
             data-testid="complexity-page"
         >
+            <AskDevPageEntities entities={scopeEntities} />
             <PageHeader
                 title="Complexity Trends"
                 subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}
