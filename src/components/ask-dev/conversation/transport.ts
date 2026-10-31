@@ -20,6 +20,10 @@ import type { TranscriptResult } from "../answer/AskDevTurn";
  *
  * Authorization is not part of this seam: the transport attaches the credential, and ACR decides
  * every call again (INV-1). The store never sees a token.
+ *
+ * The thread calls (history, reload recovery, reattach, cancel, feedback), the selection rules, the
+ * ownership tokens and the browser contract checks are documented in
+ * `docs/architecture/ask-dev-thread-seam.md` (E6 web design v5).
  */
 
 /** ACR's closed stage vocabulary, in its one order (`context_fabric_investigation_event.v1`). */
