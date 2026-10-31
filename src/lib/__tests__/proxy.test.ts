@@ -146,6 +146,21 @@ describe("org-scoped route guard", () => {
         expect(res.status).not.toBe(303);
     });
 
+    it("never carries the ACR callback's code, state or iss into the sign-in URL (r2 on #1663)", async () => {
+        mockAuth.mockResolvedValue(null);
+
+        const res = await proxy(
+            makeRequest("/ask-dev/oauth/callback?code=c-1&state=s-1&iss=https%3A%2F%2Facr.example"),
+        );
+        const location = new URL(res.headers.get("Location")!);
+
+        expect(res.status).toBe(303);
+        expect(location.pathname).toBe("/auth/signin");
+        expect(location.searchParams.get("callbackUrl")).toBe("/ask-dev/oauth/callback");
+        expect(location.href).not.toMatch(/c-1|s-1|acr\.example/u);
+        expect(res.headers.get("Referrer-Policy")).toBe("no-referrer");
+    });
+
     it("preserves the requested path and query when redirecting to sign in", async () => {
         mockAuth.mockResolvedValue(null);
 

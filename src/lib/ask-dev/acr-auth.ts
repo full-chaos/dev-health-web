@@ -116,7 +116,8 @@ export type AcrCallbackFailure =
     | "token_refused"
     | "token_unavailable"
     | "invalid_token_response"
-    | "already_used";
+    | "already_used"
+    | "claim_unavailable";
 
 export type AcrCallbackOutcome =
     | { readonly kind: "authorized"; readonly returnTo: string }
@@ -343,32 +344,36 @@ function pendingFrom(value: unknown): PendingAuthorization | null {
 }
 
 /**
- * Claims the right to send this start's code, once across all tabs. `false` when a tab already
- * sent it. Without `localStorage` it allows the exchange: the pending entry is still single use in
- * this tab.
+ * Claims the right to send this start's code, once across all tabs. `spent` when a tab already
+ * sent it. `unavailable` when the marker cannot be written and read back (no `localStorage`, a
+ * refused or dropped write): then no code is sent, because the one-exchange rule cannot hold
+ * (fails closed, r2 on web #1663).
  */
-async function claimOnce(pending: PendingAuthorization): Promise<boolean> {
+async function claimOnce(
+    pending: PendingAuthorization,
+): Promise<"claimed" | "spent" | "unavailable"> {
     const shared = dependencies.shared();
-    if (shared === null) return true;
+    if (shared === null) return "unavailable";
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pending.state));
     const key = base64Url(new Uint8Array(digest));
     return dependencies.lock(ACR_LOCK, async () => {
         const now = dependencies.now();
-        const stored = readJson(shared, ACR_SPENT_KEY);
         const spent: Record<string, number> = {};
+        const stored = readJson(shared, ACR_SPENT_KEY);
         if (isRecord(stored)) {
             for (const [hash, expiresAt] of Object.entries(stored)) {
                 if (typeof expiresAt === "number" && expiresAt > now) spent[hash] = expiresAt;
             }
         }
-        if (key in spent) return false;
+        if (key in spent) return "spent";
         spent[key] = pending.expiresAt;
         try {
             shared.setItem(ACR_SPENT_KEY, JSON.stringify(spent));
         } catch {
-            // A full or blocked store: the pending entry is still single use in this tab.
+            return "unavailable";
         }
-        return true;
+        const written = readJson(shared, ACR_SPENT_KEY);
+        return isRecord(written) && written[key] === pending.expiresAt ? "claimed" : "unavailable";
     });
 }
 
@@ -479,7 +484,9 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     }
     const code = params.get("code");
     if (code === null || code === "") return fail("missing_code");
-    if (!(await claimOnce(pending))) return fail("already_used");
+    const claim = await claimOnce(pending);
+    if (claim === "spent") return fail("already_used");
+    if (claim === "unavailable") return fail("claim_unavailable");
     const answer = await exchangeCode(pending, code);
     if (answer.kind === "refused") return fail("token_refused");
     if (answer.kind === "unavailable") return fail("token_unavailable");

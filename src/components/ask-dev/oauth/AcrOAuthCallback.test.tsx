@@ -84,6 +84,7 @@ describe("AcrOAuthCallback (CHAOS-12303)", () => {
         ["already_used", "This sign-in link is not valid here"],
         ["expired", "Ask Dev could not connect"],
         ["token_unavailable", "Ask Dev could not connect"],
+        ["claim_unavailable", "Ask Dev could not connect"],
     ])("shows %s as a failure, naming nothing from the URL", async (reason, title) => {
         complete.mockResolvedValue({ kind: "failed", reason, returnTo: "/dev?thread=t1" });
         render(<AcrOAuthCallback />);

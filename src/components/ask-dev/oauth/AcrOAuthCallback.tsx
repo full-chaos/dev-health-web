@@ -16,7 +16,7 @@ type View =
     | { readonly kind: "failed"; readonly retry: boolean; readonly returnTo: string };
 
 /** The failures where starting again may help; the others ask the user to start from Ask Dev. */
-const RETRYABLE = new Set(["token_unavailable", "expired"]);
+const RETRYABLE = new Set(["token_unavailable", "expired", "claim_unavailable"]);
 
 function viewOf(outcome: Exclude<AcrCallbackOutcome, { kind: "authorized" }>): View {
     if (outcome.kind === "denied") return { kind: "denied", returnTo: outcome.returnTo };

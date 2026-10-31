@@ -528,6 +528,44 @@ describe("a duplicated tab (copied sessionStorage) — r1 on #1663", () => {
         expect(names).toEqual(["ask-dev:acr-authorization"]);
     });
 
+    it.each([
+        ["no shared storage", () => null],
+        [
+            "a shared store that refuses the write",
+            () => {
+                const refusing = new MemoryStorage();
+                refusing.setItem = () => {
+                    throw new Error("QuotaExceededError");
+                };
+                return refusing;
+            },
+        ],
+        [
+            "a shared store that drops the write",
+            () => {
+                const dropping = new MemoryStorage();
+                dropping.setItem = () => undefined;
+                return dropping;
+            },
+        ],
+    ])("fails closed with %s: no code is sent (r2 on #1663)", async (_, store) => {
+        const state = (await begin()).searchParams.get("state")!;
+        setAcrAuthDependenciesForTest({
+            now: () => now,
+            storage: () => storage,
+            shared: store as () => Storage | null,
+            config: () => CONFIG,
+            fetch: async (input, init) => {
+                calls.push({ url: String(input), init });
+                return tokenResponse();
+            },
+        });
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "failed", reason: "claim_unavailable" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
     it("stores no state in shared storage, only its hash, and drops it after the expiry", async () => {
         const state = (await begin()).searchParams.get("state")!;
         await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));

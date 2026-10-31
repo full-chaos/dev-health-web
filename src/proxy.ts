@@ -118,6 +118,9 @@ export function isPublicPath(pathname: string): boolean {
  * this stays in place even after ops's routes are gone for real, as
  * harmless defense in depth.
  */
+/** The ACR browser client's exact redirect URI path (CHAOS-12303). */
+const ACR_CALLBACK_PATH = "/ask-dev/oauth/callback";
+
 const DELETED_ASK_DEV_PATH_FAMILIES = [
     "/api/v1/dev",
     "/api/v1/admin/ask-dev",
@@ -275,7 +278,7 @@ export async function proxy(request: NextRequest) {
     // Referer header on an outbound navigation (belt-and-suspenders with the
     // page's own `no-referrer` metadata).
     // CHAOS-12303: the ACR browser client's callback URL carries the authorization code and state.
-    if (pathname.startsWith("/acr/authorize") || pathname === "/ask-dev/oauth/callback") {
+    if (pathname.startsWith("/acr/authorize") || pathname === ACR_CALLBACK_PATH) {
         response.headers.set("Referrer-Policy", "no-referrer");
     }
 
@@ -367,9 +370,12 @@ async function handleRequest(request: NextRequest) {
         const session = bounded.session;
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
+            // CHAOS-12303 (r2 on #1663): the ACR callback's query is a code, a state and an iss.
+            // It never goes into another URL; the callback asks the user to start again.
+            const returnSearch = pathname === ACR_CALLBACK_PATH ? "" : request.nextUrl.search;
             signInUrl.searchParams.set(
                 "callbackUrl",
-                sanitizeCallbackUrl(`${pathname}${request.nextUrl.search}`),
+                sanitizeCallbackUrl(`${pathname}${returnSearch}`),
             );
             const redirect = NextResponse.redirect(signInUrl, 303);
             redirect.headers.set("Content-Security-Policy", csp);
