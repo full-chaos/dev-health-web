@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { chartColors, fallbackTheme } from "@/components/charts/chartTheme";
 import { echarts } from "@/lib/echartsInit";
-import type { RenderShape } from "@/lib/ask-dev/render/contracts";
+import type { RenderSeries, RenderShape } from "@/lib/ask-dev/render/contracts";
 import { coverageCaption } from "@/lib/ask-dev/render/coverage-caption";
 import { formatDisplay } from "@/lib/ask-dev/render/format";
 import { barOption, chartHeight, shapePositions } from "@/lib/ask-dev/render/series-option";
@@ -78,6 +78,7 @@ const texts = (svg: string) =>
     [...svg.matchAll(/<text([^>]*)>([^<]*)<\/text>/gu)].map((match) => ({
         text: decode(match[2]!),
         x: Number(/translate\(([-0-9.]+)/u.exec(match[1]!)?.[1] ?? Number.NaN),
+        anchor: /text-anchor="([a-z]+)"/u.exec(match[1]!)?.[1] ?? "",
     }));
 const TICK = /^-?\d+(?:\.\d+)?$/u;
 
@@ -93,9 +94,16 @@ function unexpectedText(svg: string, shape: RenderShape): string[] {
         shape.presentation === "bars" && shape.series.length === 1
             ? new Set(shape.series[0]!.points.map((point) => formatDisplay(point.value)))
             : new Set<string>();
+    // A number is a value-axis tick (right-aligned left of the plot) or a single-series bar value;
+    // any other number is derived text (codex r1 on #1631: a numeric total must not pass).
     return texts(svg)
-        .map(({ text }) => text)
-        .filter((text) => !allowed.has(text) && !valueLabels.has(text) && !TICK.test(text));
+        .filter(
+            ({ text, anchor }) =>
+                !allowed.has(text) &&
+                !valueLabels.has(text) &&
+                !(TICK.test(text) && anchor === "end"),
+        )
+        .map(({ text }) => text);
 }
 
 describe("the fixtures are real, verifiable cohort shapes", () => {
@@ -160,6 +168,39 @@ describe("bar options (E8 §7.4)", () => {
         expect((option.xAxis.data as string[])[0]).toBe(top.subject.label);
         expect(option.series[0]!.data[0]).toBeNull();
         expect(option.series[1]!.data[0]).not.toBeNull();
+    });
+
+    it("two members with one label keep their own points: positions are members, not labels (codex r1)", () => {
+        const result = kiacRanking();
+        const stack = structuredClone(shapeOf(result, "cohort_driver_contribution"));
+        const [first, second] = [...result.cohort!.members]
+            .sort((a, b) => a.attention_rank! - b.attention_rank!)
+            .map((m) => m.subject.canonical_id);
+        for (const m of result.cohort!.members)
+            if (m.subject.canonical_id === first || m.subject.canonical_id === second)
+                m.subject.label = "Shared repository";
+        stack.series[0]!.points = stack.series[0]!.points.filter(
+            (p) => p.source.subject_canonical_id === first,
+        ) as RenderSeries["points"];
+        stack.series[1]!.points = stack.series[1]!.points.filter(
+            (p) => p.source.subject_canonical_id === second,
+        ) as RenderSeries["points"];
+        for (const series of stack.series)
+            for (const p of series.points) p.label = "Shared repository";
+        expect(verifyRenderShape(stack, withShapes(result, [stack]))).toBe(true);
+        const option = optionOf(stack, result);
+        expect(option.xAxis.data).toEqual(["Shared repository", "Shared repository"]);
+        expect(option.series[0]!.data).toEqual([stack.series[0]!.points[0]!.value, null]);
+        expect(option.series[1]!.data).toEqual([null, stack.series[1]!.points[0]!.value]);
+        const svg = svgOf(stack, result);
+        expect(
+            bars(svg)
+                .map((bar) => [bar.series, bar.data])
+                .sort(),
+        ).toEqual([
+            [0, 0],
+            [1, 1],
+        ]);
     });
 
     it("G3: no total anywhere in the option (no total series, label or axis-max text)", () => {
@@ -248,6 +289,34 @@ describe("coverage caption (E8 §7.4)", () => {
                 "1 team has no driver data.",
             ],
             mismatch: null,
+        });
+    });
+
+    it("the right count of the wrong members is a mismatch too: identity, not count (codex r1)", () => {
+        const result = seedRanking();
+        const template = result.cohort!.members[0]!;
+        const members = Array.from({ length: 65 }, (_, i) => ({
+            ...structuredClone(template),
+            subject: {
+                ...template.subject,
+                canonical_id: `team:${String(i + 1).padStart(3, "0")}`,
+                label: `Team ${i + 1}`,
+            },
+            attention_rank: i + 1,
+            score: 90 - i,
+            ranking_computed: true,
+        }));
+        const cohort = { ...result.cohort!, members } as typeof result.cohort;
+        const bars = structuredClone(shapeOf(result, "cohort_attention_score"));
+        // ACR selects ranks 1..64; this shape cites ranks 2..65 (64 members).
+        bars.series[0]!.points = members.slice(1, 65).map((m) => ({
+            label: m.subject.label,
+            value: m.score,
+            source: { kind: "cohort_member_score", subject_canonical_id: m.subject.canonical_id },
+        })) as RenderSeries["points"];
+        expect(coverageCaption(bars, cohort)).toEqual({
+            sentences: ["Shows 64 of 65 ranked teams."],
+            mismatch: { ranked: 65, scored: 65, expected: 64, cited: 64 },
         });
     });
 
@@ -345,6 +414,37 @@ describe("SSR geometry (E8 §12.1)", () => {
             (option.legend as { data: string[] }).data.push("Total");
         });
         expect(unexpectedText(withSeries, shape)).toContain("Total");
+    });
+
+    it("the role check fails a planted numeric total: a number is a tick or a single-bar value only (codex r1)", () => {
+        const result = kiacRanking();
+        const shape = shapeOf(result, "cohort_driver_contribution");
+        const positions = shapePositions(shape, result.cohort);
+        // The sum of each stack, printed above it: a derived number, with no word "total".
+        const sums = positions.map((position) =>
+            shape.series.reduce(
+                (sum, series) =>
+                    sum +
+                    (series.points.find((p) => p.source.subject_canonical_id === position.subject)
+                        ?.value ?? 0),
+                0,
+            ),
+        );
+        const planted = svgOf(shape, result, (option) => {
+            option.series.push({
+                type: "bar",
+                name: shape.series[0]!.label,
+                stack: "s",
+                data: sums.map(() => 0),
+                label: {
+                    show: true,
+                    position: "top",
+                    formatter: (p: { dataIndex: number }) => formatDisplay(sums[p.dataIndex]!),
+                },
+            } as unknown as Series);
+        });
+        expect(unexpectedText(planted, shape).length).toBeGreaterThan(0);
+        expect(unexpectedText(svgOf(shape, result), shape)).toEqual([]);
     });
 
     it("hostile member names are escaped text: no element is made from them", async () => {

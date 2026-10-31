@@ -52,14 +52,25 @@ export function coverageCaption(shape: RenderShape, cohort: Cohort | undefined):
     const noDrivers = stack
         ? candidates.filter((row) => (row.member.drivers ?? []).length === 0).length
         : 0;
-    const expected = candidates.length - noDrivers;
-    const cited = new Set(
+    // The members ACR's selection gives, and the members the shape cites: compared as sets, so the
+    // right count of the wrong members is a mismatch too (codex r1 on #1631).
+    const expectedIds = new Set(
+        candidates
+            .filter((row) => !stack || (row.member.drivers ?? []).length > 0)
+            .map((row) => id(row)),
+    );
+    const citedIds = new Set(
         shape.series.flatMap((series) =>
             series.points.map((point) => point.source.subject_canonical_id),
         ),
-    ).size;
+    );
+    const expected = expectedIds.size;
+    const cited = citedIds.size;
+    const same =
+        expected === cited &&
+        [...citedIds].every((cid) => cid !== undefined && expectedIds.has(cid));
 
-    if (cited !== expected) {
+    if (!same) {
         return {
             sentences: [`Shows ${cited} of ${ranked} ranked ${noun(ranked)}.`],
             mismatch: { ranked, scored: scored.length, expected, cited },

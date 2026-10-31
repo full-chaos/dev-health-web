@@ -1,7 +1,7 @@
 import type { BarSeriesOption, EChartsOption, LineSeriesOption } from "echarts";
 
 import {
-    cohortCategoryOrder,
+    cohortCategoryMembers,
     unionCategoryOrder,
     utcTimeOrder,
 } from "@/lib/ask-dev/render/category-order";
@@ -28,6 +28,8 @@ export type ShapePosition = {
     readonly label: string;
     /** UTC epoch ms on a time axis; `null` on a category axis. */
     readonly at: number | null;
+    /** A cohort-rule position is a member: its canonical id (two members may share a label). */
+    readonly subject?: string;
 };
 
 /**
@@ -39,14 +41,23 @@ export function shapePositions(shape: RenderShape, cohort?: Cohort): ShapePositi
     if (shape.axis_kind === "time") {
         return utcTimeOrder(shape).map(({ at, label }) => ({ key: String(at), label, at }));
     }
-    const labels = COHORT_SHAPE_RULES.includes(shape.selected_by)
-        ? cohortCategoryOrder(shape, cohort)
-        : unionCategoryOrder(shape);
-    return labels.map((label) => ({ key: label, label, at: null }));
+    if (COHORT_SHAPE_RULES.includes(shape.selected_by)) {
+        return cohortCategoryMembers(shape, cohort).map(({ id, label }) => ({
+            key: id,
+            label,
+            at: null,
+            subject: id,
+        }));
+    }
+    return unionCategoryOrder(shape).map((label) => ({ key: label, label, at: null }));
 }
 
 /** The served point of `series` at `position`, or `undefined` (a gap: never a zero). */
 export function pointAt(series: RenderSeries, position: ShapePosition): RenderPoint | undefined {
+    if (position.subject !== undefined)
+        return series.points.find(
+            (point) => point.source.subject_canonical_id === position.subject,
+        );
     return position.at === null
         ? series.points.find((point) => point.label === position.label)
         : series.points.find((point) => utcInstant(point.label) === position.at);
@@ -215,7 +226,9 @@ export function barOption(
             : { show: false },
         // The rotated member names and both axis names stay inside the chart (no clipped name).
         grid: {
-            left: 8,
+            // Slack for the first rotated name: font metrics differ by platform (Linux CI clipped
+            // a letter at 8 px).
+            left: 20,
             right: 16,
             top: legend ? 16 + LEGEND_ROW * shape.series.length : 16,
             bottom: 8,
