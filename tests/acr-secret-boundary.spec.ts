@@ -8,6 +8,9 @@ import {
     type Response,
 } from "@playwright/test";
 
+import { ACR_E2E_ISSUER, installCrossOriginAcr } from "./mocks/acr-browser-client";
+import { accessTokensIn, type Observed, tokenBoundaryViolations } from "./mocks/acr-token-boundary";
+
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
 
 const PROBE_ACTION_ID = "0".repeat(40);
@@ -89,10 +92,11 @@ function parseSetCookie(header: string, url: URL): JarCookie | null {
     return cookie;
 }
 
+// CHAOS-12304: the refresh token `acrrt_` is a secret too; `fcacr_` matching does not cover it.
 const secretPattern =
-    /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
+    /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 const clientChunkForbiddenPattern =
-    /ACR_API_ORIGIN|ACR_REQUEST_TIMEOUT_MS|ACR_WEB_ASSERTION_(?:KEY_FILE|KID|ISSUER|AUDIENCE)|BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
+    /ACR_API_ORIGIN|ACR_REQUEST_TIMEOUT_MS|ACR_WEB_ASSERTION_(?:KEY_FILE|KID|ISSUER|AUDIENCE)|BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 
 test.beforeEach(async ({ request }) => {
     const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
@@ -514,6 +518,24 @@ test("scans the full body of a server action response for secret material", asyn
     expect(actionCounts.intercepted).toBeGreaterThan(0);
     expect(actionCounts.scanned).toBe(actionCounts.intercepted);
     expect(networkRecords.join("\n")).toMatch(secretPattern);
+});
+
+test("scans a server action response for a refresh token too (CHAOS-12304)", async ({
+    baseURL,
+    page,
+}) => {
+    const { networkRecords, stop } = await watchNetwork(
+        page,
+        new URL(baseURL ?? "http://127.0.0.1:3001").origin,
+        { mutateActionBody: (body) => `${body}\nacrrt_PLANTED0123456789` },
+    );
+
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await page.evaluate(ACTION_PROBE, [CONTEXT_FABRIC_VALIDATION_PATH, false, PROBE_ACTION_ID]);
+    await stop();
+
+    expect(networkRecords.join("\n")).toMatch(secretPattern);
+    expect(networkRecords.join("\n")).not.toMatch(/fcacr_PLANTED/u);
 });
 
 test("a server action response the page cancels mid-stream is still scanned and does not fail the guard", async ({
@@ -1095,4 +1117,292 @@ test("a request seen without a recorded response fails the guard by name", async
         await fetch("/__no-response-event");
     });
     await expect(stop()).rejects.toThrow(/request seen but not recorded/u);
+});
+
+// CHAOS-12304 (c3 of the T13 split; design §7): ACR's browser tokens on the c2 flow. ACR runs on its
+// own loopback origin (`tests/mocks/acr-browser-client.ts`), so the page talks to it cross-origin
+// as it will in production. The observer records every request, response, console message and
+// storage entry of the page. `tokenBoundaryViolations` (`tests/mocks/acr-token-boundary.ts`, with
+// its own unit tests) names each place a token is where it must not be.
+const PROBE_PATH = "/__acr-boundary-probe";
+
+function observeTokens(page: Page) {
+    const observed: Observed[] = [];
+    const tasks: Promise<void>[] = [];
+    const unreadable: string[] = [];
+    page.on("request", (request) => {
+        tasks.push(
+            request.allHeaders().then((headers) => {
+                observed.push({
+                    kind: "request",
+                    url: request.url(),
+                    method: request.method(),
+                    headers,
+                    body: request.postData() ?? "",
+                });
+            }),
+        );
+    });
+    // Headers when a response starts; the body only once it is complete (requestfinished). A body
+    // that never ends (a long-lived stream) is not read: its URL and headers are still checked.
+    page.on("response", (response) => {
+        tasks.push(
+            response.allHeaders().then((headers) => {
+                observed.push({
+                    kind: "response",
+                    url: response.url(),
+                    status: response.status(),
+                    headers,
+                    body: "",
+                });
+            }),
+        );
+    });
+    page.on("requestfinished", (request) => {
+        tasks.push(
+            (async () => {
+                const response = await request.response();
+                if (response === null) return;
+                const status = response.status();
+                if (status >= 300 && status < 400) return;
+                try {
+                    const body = await response.text();
+                    observed.push({
+                        kind: "response",
+                        url: response.url(),
+                        status,
+                        headers: {},
+                        body,
+                    });
+                } catch {
+                    unreadable.push(response.url());
+                }
+            })(),
+        );
+    });
+    page.on("console", (message) => observed.push({ kind: "console", text: message.text() }));
+    /**
+     * Waits until every record started so far (and any it started) is in `observed`, for at most
+     * 10 s. A record still running then fails the scenario by name.
+     */
+    const settle = async () => {
+        const deadline = Date.now() + 10_000;
+        for (let settled = -1; settled !== tasks.length;) {
+            settled = tasks.length;
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const done = await Promise.race([
+                Promise.all(tasks).then(() => true),
+                new Promise<boolean>((resolve) => {
+                    timer = setTimeout(() => resolve(false), Math.max(deadline - Date.now(), 0));
+                }),
+            ]);
+            clearTimeout(timer);
+            expect(done, "token observer records still running after 10 s").toBe(true);
+        }
+    };
+    const finish = async () => {
+        await settle();
+        const storage = await page.evaluate(() => ({
+            local: { ...window.localStorage },
+            session: { ...window.sessionStorage },
+        }));
+        for (const [key, value] of Object.entries(storage.local)) {
+            observed.push({ kind: "storage", area: "local", key, value });
+        }
+        for (const [key, value] of Object.entries(storage.session)) {
+            observed.push({ kind: "storage", area: "session", key, value });
+        }
+        return { observed, unreadable };
+    };
+    return { observed, settle, finish };
+}
+
+type Plant = (tokens: { readonly access: string; readonly refresh: string }) => Promise<void>;
+
+/**
+ * The c2 flow, then the calls the next tickets make with its tokens: one data call with the access
+ * token (T14) and one revocation with the refresh token (c4).
+ */
+async function browserTokenScenario(page: Page, baseURL: string | undefined, plant?: Plant) {
+    const web = new URL(baseURL ?? "http://127.0.0.1:3001").origin;
+    // Another loopback origin, already in the app's CSP. The routes answer it, not a server.
+    const issuer = ACR_E2E_ISSUER;
+    const client = await installCrossOriginAcr(page.context(), web, issuer);
+    await page
+        .context()
+        .route(`${web}${PROBE_PATH}**`, (route) => route.fulfill({ status: 204, body: "" }));
+    const watch = observeTokens(page);
+
+    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
+    await page.waitForURL((url) => url.pathname === "/dashboard");
+    await watch.settle();
+
+    // The access token ACR issued: from its own /token answer, as the page received it.
+    const answers = client.answers
+        .filter((item) => item.url === client.endpoints.tokenEndpoint && item.status === 200)
+        .map((item) => item.body)
+        .join("\n");
+    const [access] = accessTokensIn(answers);
+    expect(access, "the page received an access token from ACR's /token").toMatch(
+        /^fcacr_[A-Za-z0-9_-]{43}$/u,
+    );
+    const family = await page.evaluate(
+        () =>
+            JSON.parse(window.sessionStorage.getItem("ask-dev:acr-family") ?? "null") as {
+                refreshToken: string;
+                clientId: string;
+            } | null,
+    );
+    expect(family?.refreshToken, "the c2 flow stored its family").toMatch(
+        /^acrrt_[A-Za-z0-9_-]{43}$/u,
+    );
+
+    await page.evaluate(
+        async ([acr, token]) => {
+            await fetch(`${acr}/api/v1/context-fabric/capabilities`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "X-ACR-Resource": acr,
+                    "X-ACR-Client-Version": "0.1.0",
+                },
+                credentials: "omit",
+            });
+        },
+        [issuer, access!] as const,
+    );
+    await page.evaluate(
+        async ([endpoint, token, clientId]) => {
+            await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ token, client_id: clientId }),
+                credentials: "omit",
+            });
+        },
+        [client.endpoints.revocationEndpoint, family!.refreshToken, family!.clientId] as const,
+    );
+    await plant?.({ access: access!, refresh: family!.refreshToken });
+
+    const { observed, unreadable } = await watch.finish();
+    // ACR's answers with their bodies, as the route gave them: the page may have navigated away
+    // before its own copy could be read back.
+    for (const answer of client.answers) observed.push({ kind: "response", ...answer });
+    return {
+        violations: tokenBoundaryViolations(observed, client.endpoints),
+        observed,
+        unreadable,
+        endpoints: client.endpoints,
+        access: access!,
+        refresh: family!.refreshToken,
+    };
+}
+
+test.describe("ACR browser tokens on the c2 flow (CHAOS-12304)", () => {
+    test("every token stays where it belongs: Authorization to ACR, /token, /revoke, the family", async ({
+        baseURL,
+        page,
+    }) => {
+        const run = await browserTokenScenario(page, baseURL);
+        expect(run.violations).toEqual([]);
+        // Every unreadable body is web's own; ACR's bodies come from the route that answered them.
+        expect(run.unreadable.filter((url) => !url.startsWith(run.endpoints.issuer))).toEqual([]);
+
+        // The scenario saw each allowed placement, so an empty list is not an observer that saw nothing.
+        const requests = run.observed.filter((item) => item.kind === "request");
+        expect(
+            requests.some(
+                (item) =>
+                    item.url.startsWith(`${run.endpoints.issuer}/api/`) &&
+                    item.headers.authorization === `Bearer ${run.access}`,
+            ),
+            "a data call carried the access token in Authorization to the ACR origin",
+        ).toBe(true);
+        expect(
+            requests.some(
+                (item) =>
+                    item.url === run.endpoints.revocationEndpoint &&
+                    item.body.includes(run.refresh),
+            ),
+            "the revocation carried the refresh token in its body",
+        ).toBe(true);
+        expect(
+            run.observed.some(
+                (item) =>
+                    item.kind === "storage" &&
+                    item.area === "session" &&
+                    item.key === "ask-dev:acr-family" &&
+                    item.value.includes(run.refresh),
+            ),
+            "the family holds the refresh token in sessionStorage",
+        ).toBe(true);
+    });
+
+    // Each planted leak is red by its own name, and by nothing else.
+    const plants: [string, (page: Page) => Plant, string][] = [
+        [
+            "an access token in a URL",
+            (page) =>
+                async ({ access }) => {
+                    await page.evaluate(
+                        async ([path, token]) => {
+                            await fetch(`${path}?t=${token}`);
+                        },
+                        [PROBE_PATH, access] as const,
+                    );
+                },
+            "access token in a URL",
+        ],
+        [
+            "an access token in localStorage",
+            (page) =>
+                async ({ access }) => {
+                    await page.evaluate(
+                        (token) => window.localStorage.setItem("probe", token),
+                        access,
+                    );
+                },
+            "access token in localStorage",
+        ],
+        [
+            "an access token sent to another origin (web's own server)",
+            (page) =>
+                async ({ access }) => {
+                    await page.evaluate(
+                        async ([path, token]) => {
+                            await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+                        },
+                        [PROBE_PATH, access] as const,
+                    );
+                },
+            "access token to another origin",
+        ],
+        [
+            "an access token in the console",
+            (page) =>
+                async ({ access }) => {
+                    await page.evaluate((token) => console.info(`probe ${token}`), access);
+                },
+            "access token in the console",
+        ],
+        [
+            "a refresh token in a non-ACR request",
+            (page) =>
+                async ({ refresh }) => {
+                    await page.evaluate(
+                        async ([path, token]) => {
+                            await fetch(path, { method: "POST", body: token });
+                        },
+                        [PROBE_PATH, refresh] as const,
+                    );
+                },
+            "refresh token in a non-ACR request",
+        ],
+    ];
+
+    for (const [title, plant, name] of plants) {
+        test(`planted: ${title} is red as "${name}"`, async ({ baseURL, page }) => {
+            const run = await browserTokenScenario(page, baseURL, plant(page));
+            expect(run.violations).toEqual([name]);
+        });
+    }
 });

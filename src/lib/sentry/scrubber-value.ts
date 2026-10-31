@@ -87,8 +87,9 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     ],
     [/\bbearer\s+[\w.~+/=-]{8,}/gi, `Bearer ${FILTERED}`],
     [/\beyJ[\w-]{4,}\.[\w-]{4,}\.[\w-]*/g, FILTERED],
+    // CHAOS-12304: ACR's browser access (`fcacr_`) and refresh (`acrrt_`) tokens, wherever they appear.
     [
-        /\b(?:gh[pousr]_|github_pat_|sk-|rk_live_|sk_live_|xox[abprs]-|svc_worker_)[\w-]{8,}/g,
+        /\b(?:gh[pousr]_|github_pat_|sk-|rk_live_|sk_live_|xox[abprs]-|svc_worker_|fcacr_|acrrt_)[\w-]{8,}/g,
         FILTERED,
     ],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
