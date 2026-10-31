@@ -144,7 +144,9 @@ describe("any break before a terminal is invalid", () => {
     // The pinned schema: on accepted, submission_id is optional ("echoed once the route binds the
     // investigation to a submission"). So a missing one is accepted; another one is not.
     it("accepts an accepted event with no submission id (the schema makes it optional)", () => {
-        const { submission_id: _omitted, ...withoutSubmission } = accepted();
+        expect(accepted()).toHaveProperty("submission_id", SUBMISSION);
+        const withoutSubmission: EventObject = { ...accepted() };
+        delete withoutSubmission.submission_id;
         expect(feed([withoutSubmission])).toEqual([expect.objectContaining({ kind: "event" })]);
     });
 
