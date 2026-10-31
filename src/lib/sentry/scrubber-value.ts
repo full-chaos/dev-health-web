@@ -80,6 +80,17 @@ const EMAIL_SHAPE = new RegExp(
 );
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
 // linear on a 16 KB scalar.
+/** `text` with each character either as is or as its `%XX` escape. */
+function escapedOrPlain(text: string): string {
+    return [...text]
+        .map((character) => `(?:${character}|%${character.charCodeAt(0).toString(16)})`)
+        .join("");
+}
+const ENCODED_ACR_TOKEN = new RegExp(
+    `(?:${escapedOrPlain("fcacr_")}|${escapedOrPlain("acrrt_")})(?:[\\w-]|%[0-9a-f]{2}){8,}`,
+    "gi",
+);
+
 const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: string) => string)]> = [
     [
         /-----BEGIN [A-Z ]{0,24}PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]{0,24}PRIVATE KEY-----|$)/g,
@@ -91,6 +102,11 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
         /\b(?:gh[pousr]_|github_pat_|sk-|rk_live_|sk_live_|xox[abprs]-|svc_worker_)[\w-]{8,}/g,
         FILTERED,
     ],
+    // CHAOS-12304: ACR's browser access (`fcacr_`) and refresh (`acrrt_`) tokens, wherever they appear:
+    // no word boundary, so `prefix_fcacr_…` or `abcacrrt_…` is filtered too (r2 on web #1665).
+    [/(?:fcacr|acrrt)_[\w-]{8,}/g, FILTERED],
+    // The same tokens percent-encoded in free text, any character escaped or not (r3 on web #1665).
+    [ENCODED_ACR_TOKEN, FILTERED],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b[a-z][a-z\d+.-]{0,31}:\/\/\S+/gi, filterSlashedUserinfo],
     // A password that holds a space. Prose such as `host:8080 word me@x` is removed too: fail safe.
@@ -339,9 +355,21 @@ function scrubRecord(
     if (!enterContainer(value, entries.length, traversal, depth)) return FILTERED;
     try {
         const oauthContext = inheritedOAuthContext || isOAuthContextRecord(value);
+        // A property name is a channel too (r1 on web #1665): a credential shape in it is filtered,
+        // and names that collapse to the same marker stay distinct.
+        // Every name the record already has is taken, so a renamed key never overwrites one (r2).
+        const names = new Set<string>(entries.map(([key]) => key));
+        const safeName = (key: string): string => {
+            const scrubbed = scrubCredentialShapes(key);
+            if (scrubbed === key) return key;
+            let name = FILTERED;
+            for (let index = 2; names.has(name); index += 1) name = `${FILTERED}#${index}`;
+            names.add(name);
+            return name;
+        };
         return Object.fromEntries(
             entries.map(([key, nestedValue]) => [
-                key,
+                safeName(key),
                 isSensitivePayloadFieldName(key) ||
                 (oauthContext && isSensitiveQueryParameterName(key))
                     ? FILTERED
@@ -364,5 +392,11 @@ export function scrubTelemetryPayload<Payload extends object>(payload: Payload):
         nodes: 0,
         characters: 0,
     });
-    return isRecord(scrubbed) ? { ...payload, ...scrubbed } : payload;
+    if (!isRecord(scrubbed)) return payload;
+    // The original is merged under the scrubbed copy; a property name with a credential shape was
+    // renamed there, so it must not come back from the original (r1 on web #1665).
+    const kept = Object.fromEntries(
+        Object.entries(payload).filter(([key]) => scrubCredentialShapes(key) === key),
+    );
+    return { ...kept, ...scrubbed } as Payload;
 }
