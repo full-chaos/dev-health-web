@@ -286,20 +286,26 @@ export class FeedbackStore {
 
     /**
      * A write failed: each flag the user has not changed since it was sent returns to what ACR
-     * confirmed (for a flag the write did not change, that is what it already shows). A flag the
-     * user changed again keeps that later choice, which is sent next.
+     * confirmed. A flag the user changed again keeps that later choice, which is sent next.
+     * "Not saved" shows only when a choice was actually rolled back (codex r2 on #1658): when every
+     * flag the write carried was changed again, nothing the user chose is lost.
      */
     private rollBack(resultId: string, sentAt: Readonly<Record<FeedbackQuestion, number>>): void {
         const entry = this.entries.get(resultId);
         if (entry === undefined) return;
         const changedAt = this.writesOf(resultId).changedAt;
         const desired = { ...entry.desired };
+        let rolledBack = false;
         for (const question of FEEDBACK_QUESTIONS) {
-            if (changedAt[question] === sentAt[question]) {
+            if (
+                changedAt[question] === sentAt[question] &&
+                desired[question] !== entry.confirmed[question]
+            ) {
                 desired[question] = entry.confirmed[question];
+                rolledBack = true;
             }
         }
-        this.put(resultId, { ...entry, desired, notSaved: true });
+        this.put(resultId, { ...entry, desired, notSaved: rolledBack });
     }
 
     /** True when an answer of `epoch` may still commit; else logs the dropped answer. */

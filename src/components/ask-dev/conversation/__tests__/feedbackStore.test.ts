@@ -239,6 +239,26 @@ describe("a choice and its write", () => {
         expect(entry().desired).toEqual({ correct: "no", useful: "unset" });
     });
 
+    // codex r2 on #1658 (P3): nothing the user chose was lost, so nothing says "not saved".
+    it("a failed write whose every flag the user changed again rolls nothing back and says nothing", async () => {
+        await ready();
+        const first = deferred();
+        transport.feedbackSets.push({ gate: first.promise, fail: new Error("network") });
+        store.choose(R1, "correct", "yes");
+        await flush();
+        store.choose(R1, "correct", "yes");
+        store.choose(R1, "correct", "yes");
+        first.resolve();
+        await flush();
+        expect(sets()).toEqual(["yes/unset", "yes/unset"]);
+        expect(entry()).toMatchObject({
+            confirmed: { correct: "yes", useful: "unset" },
+            desired: { correct: "yes", useful: "unset" },
+            notSaved: false,
+            saving: false,
+        });
+    });
+
     it("a failure after a newer success rolls back to what ACR confirmed last", async () => {
         await ready();
         store.choose(R1, "correct", "yes");
