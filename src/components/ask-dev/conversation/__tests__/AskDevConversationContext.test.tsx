@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import type { Session } from "next-auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -109,6 +111,35 @@ describe("AskDevConversationProvider", () => {
         await waitFor(() => expect(screen.getByTestId("turns")).toHaveTextContent("0"));
         expect(transport.calls[0]!.signal.aborted).toBe(true);
         gate.resolve();
+    });
+
+    // codex r1 on #1632: the server has no store (no run starts there), and hydration must render
+    // exactly what the server rendered; the store appears right after.
+    it("hydrates without a mismatch", async () => {
+        const transport = new FakeTransport();
+        const tree = (
+            <AskDevConversationProvider transport={transport}>
+                <Probe />
+            </AskDevConversationProvider>
+        );
+        vi.stubGlobal("window", undefined);
+        let html: string;
+        try {
+            html = renderToString(tree);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+        expect(html).toContain("none");
+        const container = document.createElement("div");
+        container.innerHTML = html;
+        document.body.appendChild(container);
+        const errors: unknown[] = [];
+        await act(async () => {
+            hydrateRoot(container, tree, { onRecoverableError: (error) => errors.push(error) });
+        });
+        expect(errors).toEqual([]);
+        await waitFor(() => expect(container.textContent).toBe("0"));
+        container.remove();
     });
 
     it("ends the run when the shell unmounts", async () => {

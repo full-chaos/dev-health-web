@@ -161,7 +161,12 @@ function toSourceTurns(turns: readonly StoreTurn[]): ConversationSourceTurn[] {
     ]);
 }
 
-type ActiveRun = { readonly turnId: number; readonly controller: AbortController };
+type ActiveRun = {
+    readonly turnId: number;
+    readonly controller: AbortController;
+    /** Fires at the run's deadline D (plan §2.7.6 "abort at D"), whatever the run is waiting on. */
+    timer: ReturnType<typeof setTimeout> | undefined;
+};
 
 export class ConversationStore {
     private readonly transport: AskDevTransport;
@@ -212,7 +217,7 @@ export class ConversationStore {
      */
     clear(reason: "partition_changed" | "unmounted"): void {
         const aborted = this.active;
-        this.active = null;
+        if (aborted !== null) this.release(aborted);
         aborted?.controller.abort();
         const generation = this.snapshot.generation + 1;
         logger.info(
@@ -277,7 +282,7 @@ export class ConversationStore {
     cancel(): void {
         const active = this.active;
         if (active === null) return;
-        this.active = null;
+        this.release(active);
         const turn = this.turn(active.turnId);
         logger.info(
             {
@@ -320,8 +325,33 @@ export class ConversationStore {
         return this.active === run;
     }
 
+    /** Lets the run go: nothing it still delivers changes the store after this. */
+    private release(run: ActiveRun): void {
+        if (this.active === run) this.active = null;
+        clearTimeout(run.timer);
+    }
+
+    /**
+     * The run reached its deadline D in any phase (streaming, recovering or replaying): it ends as
+     * interrupted, and the thread is free. A transport call that never answers cannot hold it.
+     */
+    private expire(run: ActiveRun): void {
+        if (!this.owns(run)) return;
+        const turn = this.turn(run.turnId);
+        logger.warn(
+            {
+                submission_id: turn?.submissionId,
+                request_id: turn?.request.request_id,
+                outcome: turn?.outcome.kind,
+            },
+            "ask-dev run reached its deadline",
+        );
+        this.settle(run, { kind: "interrupted" });
+        run.controller.abort();
+    }
+
     private settle(run: ActiveRun, outcome: TurnOutcome): void {
-        this.active = null;
+        this.release(run);
         this.setOutcome(run.turnId, outcome, false);
     }
 
@@ -329,9 +359,10 @@ export class ConversationStore {
         const turn = this.turn(turnId);
         const threadId = this.snapshot.threadId;
         if (turn === undefined || threadId === null) return;
-        const run: ActiveRun = { turnId, controller: new AbortController() };
+        const run: ActiveRun = { turnId, controller: new AbortController(), timer: undefined };
         this.active = run;
         const deadline = this.now() + this.runTimeoutMs;
+        run.timer = setTimeout(() => this.expire(run), Math.max(0, deadline - this.now()));
         const submissionId = turn.submissionId;
         const requestId = turn.request.request_id;
         let accepted = false;
@@ -340,6 +371,7 @@ export class ConversationStore {
                 request: turn.request,
                 submissionId: turn.submissionId,
                 threadId,
+                deadline,
                 signal: run.controller.signal,
             });
             for await (const event of events) {

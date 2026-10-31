@@ -81,6 +81,9 @@ export class FakeTransport implements AskDevTransport {
     readonly calls: InvestigateCall[] = [];
     readonly scripts: Step[][] = [];
     readonly statuses: (ContextFabricSubmissionStatusV1 | null | Error)[] = [];
+    /** A status read or a replay that never answers (and ignores the abort signal). */
+    statusHangs = false;
+    readHangs = false;
     readonly statusCalls: string[] = [];
     readonly results = new Map<string, TranscriptResult>();
     readonly readCalls: string[] = [];
@@ -101,6 +104,7 @@ export class FakeTransport implements AskDevTransport {
         submissionId: string,
     ): Promise<ContextFabricSubmissionStatusV1 | null> => {
         this.statusCalls.push(submissionId);
+        if (this.statusHangs) return new Promise<never>(() => undefined);
         const next = this.statuses.length > 1 ? this.statuses.shift() : this.statuses[0];
         if (next instanceof Error) throw next;
         return next ?? null;
@@ -108,6 +112,7 @@ export class FakeTransport implements AskDevTransport {
 
     readonly readResult = async (resultId: string): Promise<TranscriptResult> => {
         this.readCalls.push(resultId);
+        if (this.readHangs) return new Promise<never>(() => undefined);
         const result = this.results.get(resultId);
         if (result === undefined) throw new Error("no such result");
         return result;

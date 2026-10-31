@@ -63,6 +63,11 @@ export type InvestigateCall = {
     readonly submissionId: string;
     /** `X-ACR-Thread-ID`: one per conversation, sent on every turn. */
     readonly threadId: string;
+    /**
+     * The run's absolute deadline D (epoch ms). The transport computes ACR's wait-budget header from
+     * what is left of it (plan §2.7.6); the store aborts the run at D whatever it is waiting on.
+     */
+    readonly deadline: number;
     /** Aborting it is the only cancel (plan §2.7.4: a disconnect ends the run). */
     readonly signal: AbortSignal;
 };

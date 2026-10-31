@@ -397,6 +397,59 @@ describe("recovery by submission status (plan §2.7.5)", () => {
     });
 });
 
+// codex r1 on #1632: no wait of a run may outlive its deadline D (plan §2.7.6 "abort at D").
+describe("the run deadline bounds every wait", () => {
+    const D_MS = 40;
+
+    it("hands the transport the run's absolute deadline", async () => {
+        const store = makeStore();
+        transport.scripts.push([resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(transport.calls[0]!.deadline).toBe(clock + 120_000);
+    });
+
+    it.each([
+        [
+            "a stream that stops sending",
+            () => transport.scripts.push([accepted(), { wait: deferred().promise }]),
+        ],
+        [
+            "a status read that never answers",
+            () => {
+                transport.scripts.push([accepted()]);
+                transport.statusHangs = true;
+            },
+        ],
+        [
+            "a replay that never answers",
+            () => {
+                transport.scripts.push([accepted()]);
+                transport.statuses.push(status("done", PARTIAL.result_id));
+                transport.readHangs = true;
+            },
+        ],
+    ])("ends %s at the deadline as interrupted", async (_name, arrange) => {
+        const store = makeStore({ runTimeoutMs: D_MS });
+        arrange();
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(store.getSnapshot().inFlight).toBe(false), {
+            timeout: 2_000,
+        });
+        expect(last(store).outcome).toEqual({ kind: "interrupted" });
+        expect(transport.calls[0]!.signal.aborted).toBe(true);
+        expect(log.warn).toHaveBeenCalledWith(
+            expect.objectContaining({ submission_id: transport.calls[0]!.submissionId }),
+            "ask-dev run reached its deadline",
+        );
+        // The thread is free again.
+        transport.scripts.push([resultEvent(PARTIAL)]);
+        transport.statusHangs = false;
+        transport.readHangs = false;
+        expect(store.submit("Next question")).toBe(true);
+    });
+});
+
 describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
     const refuse = (code: string, retryable = false) => ({
         fail: new TransportRefusal(409, acrError(code, 409, retryable)),

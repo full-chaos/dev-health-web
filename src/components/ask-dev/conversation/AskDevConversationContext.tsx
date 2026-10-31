@@ -15,6 +15,10 @@ import { ConversationStore, type ConversationSnapshot } from "./conversationStor
 import { testModeTransport } from "./testModeTransport";
 import { ACR_BROWSER_TRANSPORT, type AskDevTransport } from "./transport";
 
+const noSubscription = () => () => undefined;
+const noSnapshot = () => null;
+const noServerStore = (): ConversationStore | null => null;
+
 /**
  * The conversation store of this tab, above the panel: closing or minimizing the panel keeps the
  * conversation and its run (plan §2.5; zero new POST). `null` when there is no transport (T14,
@@ -48,11 +52,14 @@ export function AskDevConversationProvider({
     /** For tests; the product uses the live transport, or the test-mode one in test mode. */
     transport?: AskDevTransport | null;
 }) {
-    const [store] = useState(() => {
+    const [clientStore] = useState(() => {
         const chosen =
             transport === undefined ? (ACR_BROWSER_TRANSPORT ?? testModeTransport()) : transport;
         return chosen === null ? null : new ConversationStore({ transport: chosen });
     });
+    // The server renders no store, and hydration renders exactly that; the store takes over right
+    // after, so no tree is regenerated (codex r1 on #1632). No run starts before it does.
+    const store = useSyncExternalStore(noSubscription, () => clientStore, noServerStore);
     const { data: session, status } = useSession();
     const partition = partitionKey(session, status);
 
@@ -69,9 +76,6 @@ export type AskDevConversation = {
     readonly store: ConversationStore;
     readonly snapshot: ConversationSnapshot;
 };
-
-const noSubscription = () => () => undefined;
-const noSnapshot = () => null;
 
 /** The store and its current snapshot, or `null` when there is no transport. */
 export function useAskDevConversation(): AskDevConversation | null {
