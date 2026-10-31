@@ -351,6 +351,31 @@ describe("the partition (ownership)", () => {
         expect(transport.feedbackReads).toEqual([R1, R1]);
     });
 
+    it("shows an entry only to the partition it is bound to (codex r1 on #1658)", async () => {
+        await ready({ correct: "yes", useful: "yes" });
+        expect(store.entryFor(R1, ORG_A)?.desired.correct).toBe("yes");
+        // The commit of a switch: the session is ORG_B while the store is still bound to ORG_A.
+        expect(store.entryFor(R1, ORG_B)).toBeUndefined();
+        expect(store.entryFor(R1, null)).toBeUndefined();
+        // A session that is loading (a refetch) is not a switch.
+        expect(store.entryFor(R1, undefined)?.desired.correct).toBe("yes");
+    });
+
+    it("is bound to the session partition only once it binds; the first bind tells its listeners", () => {
+        const fresh = new FeedbackStore({ transport });
+        const heard = vi.fn();
+        fresh.subscribe(heard);
+        expect(fresh.boundTo(undefined)).toBe(false);
+        expect(fresh.boundTo(ORG_A)).toBe(false);
+        fresh.setPartition(ORG_A);
+        expect(heard).toHaveBeenCalledTimes(1);
+        expect(fresh.boundTo(ORG_A)).toBe(true);
+        expect(fresh.boundTo(undefined)).toBe(true);
+        expect(fresh.boundTo(ORG_B)).toBe(false);
+        fresh.setPartition(ORG_A);
+        expect(heard).toHaveBeenCalledTimes(1);
+    });
+
     it("signing out drops everything", async () => {
         await ready({ correct: "yes", useful: "yes" });
         store.setPartition(null);

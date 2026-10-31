@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { useLayoutEffect } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -257,6 +258,46 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         await waitFor(() =>
             expect(choice(region(), "correct", "Yes")).toHaveAttribute("aria-pressed", "false"),
         );
+    });
+
+    // codex r1 on #1658: the provider binds the store to a new key in a passive effect, so the commit
+    // of the switch itself painted the old (org, principal)'s choice once.
+    it("never paints the old partition's choice in the commit of an org switch", async () => {
+        const transport = new FakeTransport();
+        transport.feedback.set(R1, { resultId: R1, correct: "yes", useful: "yes" });
+        const painted: string[] = [];
+        /** Reads the DOM after each commit, before any passive effect of that commit runs. */
+        function Paint() {
+            useLayoutEffect(() => {
+                const button = document.querySelector("[data-testid=ask-dev-feedback-correct-yes]");
+                painted.push(`${session.org}:${button?.getAttribute("aria-pressed") ?? "none"}`);
+            });
+            return null;
+        }
+        const tree = () => (
+            <AskDevConversationProvider transport={transport}>
+                <AskDevFeedback resultId={R1} />
+                <Paint />
+            </AskDevConversationProvider>
+        );
+        const view = render(tree());
+        await waitFor(() =>
+            expect(
+                screen.getByTestId("ask-dev-feedback-correct-yes").getAttribute("aria-pressed"),
+            ).toBe("true"),
+        );
+        transport.feedback.delete(R1);
+        session.org = "org-2";
+        view.rerender(tree());
+        // The commit of the switch: org-1's "yes" must not be in the DOM.
+        expect(painted.filter((entry) => entry.startsWith("org-2:"))).toEqual(["org-2:none"]);
+        await waitFor(() =>
+            expect(screen.getByTestId("ask-dev-feedback-correct-yes")).toHaveAttribute(
+                "aria-pressed",
+                "false",
+            ),
+        );
+        expect(transport.feedbackReads).toEqual([R1, R1]);
     });
 
     it("a failed write rolls the choice back and says it was not saved; the next choice clears that", async () => {

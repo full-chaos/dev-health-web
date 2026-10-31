@@ -113,12 +113,33 @@ export class FeedbackStore {
     readonly entry = (resultId: string): FeedbackEntry | undefined => this.entries.get(resultId);
 
     /**
+     * The entry of `resultId` as the session `partition` may see it: `undefined` while the store is
+     * still bound to another key. The provider rebinds in an effect, after the commit of a switch;
+     * without this, that commit would paint the old (org, principal)'s choice (codex r1 on #1658).
+     * An `undefined` partition (the session is loading; a refetch is not a switch) sees the entry.
+     */
+    readonly entryFor = (
+        resultId: string,
+        partition: string | null | undefined,
+    ): FeedbackEntry | undefined =>
+        partition === undefined || partition === this.partition
+            ? this.entries.get(resultId)
+            : undefined;
+
+    /** True when the store is bound to the session `partition` (or to some key while it loads). */
+    readonly boundTo = (partition: string | null | undefined): boolean =>
+        partition === undefined ? this.partition !== undefined : partition === this.partition;
+
+    /**
      * Binds the store to one (org, principal) key, or to none (`null`: signed out). Another key than
      * the bound one drops everything; the first bind drops nothing.
      */
     setPartition(key: string | null): void {
-        if (this.partition !== undefined && key !== this.partition) this.reset();
+        if (key === this.partition) return;
+        const rebind = this.partition !== undefined;
         this.partition = key;
+        if (rebind) this.reset();
+        else this.emit();
     }
 
     /** Drops every entry and aborts every read and write (a partition change, or the shell left). */

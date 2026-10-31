@@ -36,6 +36,12 @@ const ConversationContext = createContext<ConversationStore | null>(null);
 const FeedbackContext = createContext<FeedbackStore | null>(null);
 
 /**
+ * The session's (org, principal) key, as `partitionKey` reads it this render: the feedback controls
+ * show an entry only when the feedback store is bound to it (codex r1 on #1658).
+ */
+const SessionPartitionContext = createContext<string | null | undefined>(undefined);
+
+/**
  * CHAOS-11934 (plan §2.5): conversations live in this tab's memory until Phase 4 (E6) stores them,
  * so a reload loses one. This session-storage marker lets the reloaded tab say so: it holds a tag
  * of the (org, principal) whose conversation had a turn, never a question, an answer or an id.
@@ -176,7 +182,9 @@ export function AskDevConversationProvider({
     return (
         <ConversationContext.Provider value={store}>
             <FeedbackContext.Provider value={feedback}>
-                <NotSavedContext.Provider value={notSaved}>{children}</NotSavedContext.Provider>
+                <SessionPartitionContext.Provider value={partition}>
+                    <NotSavedContext.Provider value={notSaved}>{children}</NotSavedContext.Provider>
+                </SessionPartitionContext.Provider>
             </FeedbackContext.Provider>
         </ConversationContext.Provider>
     );
@@ -211,4 +219,9 @@ export function useAskDevConversation(): AskDevConversation | null {
 /** The feedback store of this tab, or `null` when there is no transport (CHAOS-11958). */
 export function useAskDevFeedbackStore(): FeedbackStore | null {
     return useContext(FeedbackContext);
+}
+
+/** The session's (org, principal) key this render; `undefined` while the session loads. */
+export function useAskDevSessionPartition(): string | null | undefined {
+    return useContext(SessionPartitionContext);
 }

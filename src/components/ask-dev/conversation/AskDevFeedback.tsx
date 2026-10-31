@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 
 import { CTA_LABELS } from "@/lib/design/cta";
 
-import { useAskDevFeedbackStore } from "./AskDevConversationContext";
+import { useAskDevFeedbackStore, useAskDevSessionPartition } from "./AskDevConversationContext";
 import {
     FEEDBACK_QUESTIONS,
     type FeedbackEntry,
@@ -49,15 +49,23 @@ export function AskDevFeedback({ resultId }: { resultId: string }) {
 }
 
 function FeedbackControls({ store, resultId }: { store: FeedbackStore; resultId: string }) {
+    // Only the session's own partition is shown: in the commit of an org switch the store still
+    // holds the old one until the provider rebinds it.
+    const partition = useAskDevSessionPartition();
     const entry = useSyncExternalStore(
         store.subscribe,
-        () => store.entry(resultId),
+        () => store.entryFor(resultId, partition),
         () => undefined,
     );
-    // Read once per partition: again after a partition change dropped the entry.
+    const bound = useSyncExternalStore(
+        store.subscribe,
+        () => store.boundTo(partition),
+        () => false,
+    );
+    // Read once per partition, once the store is bound to it: again after a switch dropped it.
     useEffect(() => {
-        if (entry === undefined) store.ensure(resultId);
-    }, [store, resultId, entry]);
+        if (bound && entry === undefined) store.ensure(resultId);
+    }, [store, resultId, bound, entry]);
     if (entry === undefined || entry.state === "unavailable") return null;
     const enabled = entry.state === "ready";
     return (
