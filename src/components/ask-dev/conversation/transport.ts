@@ -126,9 +126,10 @@ export class TransportRefusal extends Error {
  *   sent.
  * - `invalid_upstream`: the stream broke the event grammar or a cap before a valid terminal. The
  *   transport aborted it.
- * - `authorization_required`: the browser holds no ACR access token, or ACR answered 401. Nothing
- *   ran; the way on is to connect Ask Dev to ACR (CHAOS-12104, the lead's ruling: no retry, no
- *   refresh in the transport).
+ * - `authorization_required`: the browser holds no ACR access token, or ACR answered 401 and the
+ *   token store had no other token. Nothing ran; the way on is to connect Ask Dev to ACR. On a 401
+ *   the transport tells the store, reads the token once more, and sends the call once more only
+ *   with a different (refreshed) token: at most 2 requests (CHAOS-12305).
  *
  * The browser's abort is a disconnect, and a disconnect ends ACR's run (plan §2.7.4), so the store
  * ends the turn with the reason and does not poll the submission status.
