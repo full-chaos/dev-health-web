@@ -197,6 +197,20 @@ describe("a ranked cohort", () => {
         );
     });
 
+    // codex r1 on #1628: an unranked member's missing signals were dropped silently.
+    it("shows missing signals of an unranked member too, after the ranked ones", () => {
+        const unranked = copy(REPOS);
+        unranked.cohort.members.forEach((m: any) => delete m.missing_signals);
+        const member = unranked.cohort.members[3];
+        member.ranking_computed = false;
+        member.missing_signals = ["readiness.coverage_gap"];
+        render(<AskDevCohortRanking result={unranked} />);
+        expect(cellsOf("ask-dev-ranking-missing-signals").map((c) => c.textContent)).toEqual([
+            `${member.subject.label} — missing signals: readiness.coverage gap`,
+        ]);
+        expect(rows()).toHaveLength(3);
+    });
+
     it("reads Window not stated when the answer has no window", () => {
         const noWindow = copy(REPOS);
         delete noWindow.effective_evidence_window;

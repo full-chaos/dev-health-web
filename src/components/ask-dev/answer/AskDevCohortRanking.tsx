@@ -309,18 +309,25 @@ export function AskDevCohortRanking({ result }: { result: AnswerResult }) {
                     )}
                     <div data-testid="ask-dev-ranking-chart-slot" hidden />
                     <RankingTable cohort={cohort} rows={rows} />
-                    {rows.map((row) =>
-                        row.member.missing_signals === undefined ? null : (
-                            <p
-                                key={`${row.member.subject.canonical_id}-missing`}
-                                className="text-xs text-(--ink-muted)"
-                                data-testid="ask-dev-ranking-missing-signals"
-                            >
-                                {row.member.subject.label} — {RANKING_COPY.missingSignals}:{" "}
-                                {row.member.missing_signals.map(humanizeTerm).join(", ")}
-                            </p>
-                        ),
-                    )}
+                    {
+                        // Every member's missing signals: ranked members in rank order, then the
+                        // members ACR did not rank (they are often why), never dropped silently.
+                        [
+                            ...rows.map((row) => row.member),
+                            ...cohort.members.filter((member) => member.ranking_computed !== true),
+                        ].map((member) =>
+                            member.missing_signals === undefined ? null : (
+                                <p
+                                    key={`${member.subject.canonical_id}-missing`}
+                                    className="text-xs text-(--ink-muted)"
+                                    data-testid="ask-dev-ranking-missing-signals"
+                                >
+                                    {member.subject.label} — {RANKING_COPY.missingSignals}:{" "}
+                                    {member.missing_signals.map(humanizeTerm).join(", ")}
+                                </p>
+                            ),
+                        )
+                    }
                     {unranked.length === 0 ? null : (
                         <p
                             className="text-xs text-(--ink-muted)"
