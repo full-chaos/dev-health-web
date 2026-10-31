@@ -181,6 +181,8 @@ const TYPE_GENERATION_EXCLUDED = new Set([
     "mcp_read_facts_response.v1.schema.json",
     "mcp_read_relationships_request.v1.schema.json",
     "mcp_read_relationships_response.v1.schema.json",
+    "context_fabric_thread.v1.schema.json",
+    "context_fabric_thread_list.v1.schema.json",
 ]);
 
 async function dtoModule(schemaFiles, prettierOptions) {
