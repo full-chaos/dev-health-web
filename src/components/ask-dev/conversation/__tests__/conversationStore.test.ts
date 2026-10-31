@@ -346,6 +346,21 @@ describe("terminals", () => {
         expect(store.retry(last(store).id)).toBe(false);
     });
 
+    // codex r3 on #1639: every terminal error keeps its meaning; none falls to the generic failure.
+    it.each([
+        ["submission_unsaved", { kind: "unsaved" }],
+        ["rate_limited", { kind: "stopped", reason: "rate_limited" }],
+        ["interpretation_rejected", { kind: "stopped", reason: "interpretation_rejected" }],
+        ["synthesis_rejected", { kind: "stopped", reason: "synthesis_rejected" }],
+    ] as const)("ends an in-stream %s as %j, with no retry", async (code, outcome) => {
+        const store = makeStore();
+        transport.scripts.push([accepted(), errorEvent(code)]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual(outcome);
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
     it("keeps a budget refusal as a refusal turn with its reserved id", async () => {
         const store = makeStore();
         transport.scripts.push([accepted(), errorEvent("budget_refusal", "result_reserved_0007")]);

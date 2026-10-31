@@ -73,7 +73,23 @@ export type TurnOutcome =
      * scope, too little wait budget, or a shared limit. `retry` only where nothing was admitted and
      * sending the same request again can help.
      */
-    | { readonly kind: "not_run"; readonly reason: NotRunReason; readonly retry: boolean };
+    | { readonly kind: "not_run"; readonly reason: NotRunReason; readonly retry: boolean }
+    /**
+     * ACR stopped a run after it started, with a terminal error that has its own meaning (codex r3
+     * on #1639). The key is spent: the way on is a new question, never a same-key retry.
+     */
+    | { readonly kind: "stopped"; readonly reason: StoppedReason };
+
+/** Terminal errors after admission that are neither an outage nor a refusal turn. */
+export type StoppedReason = "rate_limited" | "interpretation_rejected" | "synthesis_rejected";
+
+const STOPPED_REASONS: ReadonlySet<string> = new Set<StoppedReason>([
+    "rate_limited",
+    "interpretation_rejected",
+    "synthesis_rejected",
+]);
+
+const isStoppedReason = (code: string): code is StoppedReason => STOPPED_REASONS.has(code);
 
 /** ACR's refusals before a run, each with its own guidance (error.v1). */
 export type NotRunReason =
@@ -523,6 +539,11 @@ export class ConversationStore {
                 } else if (code === "run_lost") {
                     // The run's service instance stopped: the run ended without an answer.
                     this.settle(run, { kind: "interrupted" });
+                } else if (code === "submission_unsaved") {
+                    // The answer was served but not stored (contract): the unsaved state.
+                    this.settle(run, { kind: "unsaved" });
+                } else if (isStoppedReason(code)) {
+                    this.settle(run, { kind: "stopped", reason: code });
                 } else {
                     // ACR closed the submission with this terminal: the same key cannot run again,
                     // so the way on is a new question.

@@ -306,6 +306,37 @@ test.describe("refusals before the run (desktop)", () => {
         });
     }
 
+    test("a rate limit after the run started says to wait, with no Retry", async ({
+        page,
+    }, testInfo) => {
+        await seed(page, {
+            stream: [
+                {
+                    events: [
+                        acceptedEvent,
+                        event(2, {
+                            type: "error",
+                            reserved_result_id: "result_reserved_e2e_0001",
+                            error: errorEnvelope("rate_limited", 429, true),
+                        }),
+                    ],
+                },
+            ],
+        });
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await panel
+            .getByRole("textbox", { name: "Ask a question" })
+            .fill("Which projects are at risk?");
+        await panel.getByRole("button", { name: "Send" }).click();
+        await expect(panel.getByTestId("ask-dev-turn-status")).toHaveText(
+            "This question was rate limited after it started. Wait a few minutes, then ask again.",
+        );
+        await expect(panel.getByRole("button", { name: "Retry" })).toHaveCount(0);
+        await panel.screenshot({ path: testInfo.outputPath("stopped-rate_limited-desktop.png") });
+    });
+
     test("the owner's cancel ends in the canceled state", async ({ page }, testInfo) => {
         await seed(page, {
             stream: [

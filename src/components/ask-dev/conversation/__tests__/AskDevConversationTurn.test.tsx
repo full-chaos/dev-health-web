@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { AskDevConversationTurn, NOT_RUN_COPY } from "../AskDevConversationTurn";
+import { AskDevConversationTurn, NOT_RUN_COPY, STOPPED_COPY } from "../AskDevConversationTurn";
 import type { StoreTurn, TurnOutcome } from "../conversationStore";
 
 const turn = (outcome: TurnOutcome): StoreTurn => ({
@@ -55,5 +55,30 @@ describe("AskDevConversationTurn: not-run refusals", () => {
     it("gives every reason different words", () => {
         const copy = Object.values(NOT_RUN_COPY);
         expect(new Set(copy).size).toBe(copy.length);
+    });
+});
+
+// codex r3 on #1639: a run ACR stopped after it started says why, and offers no retry.
+describe("AskDevConversationTurn: stopped runs", () => {
+    it.each(["rate_limited", "interpretation_rejected", "synthesis_rejected"] as const)(
+        "%s shows its own words and no Retry",
+        (reason) => {
+            render(
+                <AskDevConversationTurn
+                    turn={turn({ kind: "stopped", reason })}
+                    onRetry={vi.fn()}
+                />,
+            );
+            const status = screen.getByTestId("ask-dev-turn-status");
+            expect(status).toHaveTextContent(STOPPED_COPY[reason]);
+            expect(status.textContent).not.toMatch(
+                /did not finish|temporarily|Agent Context Runtime/u,
+            );
+            expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+        },
+    );
+
+    it("tells the user to wait after a rate limit", () => {
+        expect(STOPPED_COPY.rate_limited).toMatch(/Wait/u);
     });
 });

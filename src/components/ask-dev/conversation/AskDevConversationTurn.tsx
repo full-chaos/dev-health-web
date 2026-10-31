@@ -7,7 +7,16 @@ import type { ClarificationChoice } from "../answer/clarificationModel";
 import { CLARIFICATION_COPY } from "../answer/clarificationModel";
 import type { NarrowerReask } from "../answer/refusalModel";
 import { SafeAnswerText } from "../answer/SafeAnswerText";
-import type { NotRunReason, StoreTurn, TurnOutcome } from "./conversationStore";
+import type { NotRunReason, StoppedReason, StoreTurn, TurnOutcome } from "./conversationStore";
+
+/** Why ACR stopped a run after it started (codex r3 on #1639). No retry: the way on is a new question. */
+export const STOPPED_COPY: Readonly<Record<StoppedReason, string>> = {
+    rate_limited:
+        "This question was rate limited after it started. Wait a few minutes, then ask again.",
+    interpretation_rejected:
+        "Dev could not accept an interpretation of your question. Try rephrasing it.",
+    synthesis_rejected: "Dev could not accept a generated answer. Try rephrasing your question.",
+};
 
 /**
  * What to do after ACR refused a question before it ran (CHAOS-12201). The ACR client says the same
@@ -66,6 +75,8 @@ function statusLine(outcome: StatusOutcome): string {
             return TURN_STATUS_COPY.threadClosed;
         case "not_run":
             return NOT_RUN_COPY[outcome.reason];
+        case "stopped":
+            return STOPPED_COPY[outcome.reason];
     }
 }
 

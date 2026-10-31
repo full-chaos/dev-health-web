@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { AcrRuntimeClient } from "../client";
-import { NOT_RUN_COPY } from "@/components/ask-dev/conversation/AskDevConversationTurn";
+import {
+    NOT_RUN_COPY,
+    STOPPED_COPY,
+} from "@/components/ask-dev/conversation/AskDevConversationTurn";
 
 import type { NotRunReason } from "@/components/ask-dev/conversation/conversationStore";
 
@@ -114,5 +117,13 @@ describe("investigationFailure: the whole create-investigation vocabulary", () =
         const failure = client.investigationFailure(status, wire, undefined);
         expect(failure.code).toBe("upstream");
         expect(failure.retryable).toBe(true);
+    });
+
+    // codex r3 on #1639: a run stopped by a rejected step reads the same in the route and the panel.
+    it("says the same words as the panel for a rejected step", () => {
+        expect(safeAcrRuntimeMessage("interpretation_rejected")).toBe(
+            STOPPED_COPY.interpretation_rejected,
+        );
+        expect(safeAcrRuntimeMessage("synthesis_rejected")).toBe(STOPPED_COPY.synthesis_rejected);
     });
 });
