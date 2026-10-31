@@ -13,9 +13,23 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 ## Authentication Flow
 
 1. User submits credentials via `/auth/signin`.
-2. `CredentialsProvider` calls backend `/api/v1/auth/login`.
-3. Backend returns JWT and user metadata.
+2. `CredentialsProvider` calls backend `/api/v1/auth/login` through `src/lib/authServiceWire.ts`.
+3. Backend returns JWT and user metadata. The server reads `exp` and `sid` from the access token
+   by the class `AUTH_ACCESS_TOKEN_CLASS` names (below); an answer it refuses is a refused sign-in.
 4. NextAuth stores the backend token and user info in its own session/JWT.
+
+**Sign-in answers** (a status table, `src/lib/authServiceOutcome.ts`): 401 and every other
+request refusal is "Invalid email or password"; 429 with `retry_after_seconds` is an account lock;
+other 429 is a rate limit; the verification answer asks for the e-mail check; 408, 425, 5xx and a
+call that fails are `auth_unavailable` (a retry message, not a credential refusal).
+
+**Access-token class** (`AUTH_ACCESS_TOKEN_CLASS`, server only; closed set `eddsa`,
+`hs256_compat`; unset means `hs256_compat`; any other value refuses sign-in): the class comes from
+this setting, never from a token header. Under `hs256_compat` the server holds no HS256 secret: it
+decodes `exp` and `sid` (not verified), and refuses a token whose alg is not `HS256`. Under `eddsa`
+the token is verified against the key set published at `/.well-known/jwks.json` of the backend
+(cached 300 s; a key set with a repeated `kid` or an invalid key is refused whole) and
+`AUTH_TOKEN_ISSUER` must be set.
 
 **Session Data**:
 

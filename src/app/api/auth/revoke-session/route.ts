@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { readSessionCredentialsForSignOut } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { revokeSessionAtAuthService } from "@/lib/authServiceWire";
+import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
-import { deadlineFetch } from "@/lib/serverDeadline";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,31 +66,19 @@ export async function POST(request: Request): Promise<NextResponse> {
         );
         return failure(401, "no_session");
     }
-    let response: Response;
-    try {
-        response = await deadlineFetch("auth")(`${getBackendUrl()}/api/v1/auth/logout`, {
-            body: JSON.stringify({ refresh_token: session.refresh_token }),
-            headers: {
-                Authorization: `Bearer ${session.access_token}`,
-                "Content-Type": "application/json",
-            },
-            method: "POST",
-        });
-    } catch (error) {
+    const env = getServerEnv();
+    const revoked = await revokeSessionAtAuthService(
+        { access: session.access_token, refresh: session.refresh_token },
+        {
+            tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
+            issuer: env.AUTH_TOKEN_ISSUER,
+            backendUrl: getBackendUrl(),
+        },
+    );
+    if (revoked.kind !== "revoked") {
         routeLogger.error(
-            {
-                errorName: error instanceof Error ? error.name : typeof error,
-                outcome: "ops_unreachable",
-                userId: session.user_id,
-            },
-            "sign-out session revoke FAILED: Ops logout call failed",
-        );
-        return failure(502, "revoke_failed");
-    }
-    if (!response.ok) {
-        routeLogger.error(
-            { outcome: "ops_refused", status: response.status, userId: session.user_id },
-            "sign-out session revoke FAILED: Ops logout refused",
+            { outcome: "ops_refused", userId: session.user_id },
+            "sign-out session revoke FAILED: Ops logout did not answer 200",
         );
         return failure(502, "revoke_failed");
     }

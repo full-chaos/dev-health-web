@@ -353,3 +353,10 @@ re-profiled against the fixed code. `ci/gate_web_auth_profiles.ts` fails CI
 on this exact defect shape (a claimed-protected action whose validator
 anchor cannot be shown to reject, undisclosed in `gaps`) for any _new_ row
 that doesn't disclose it the way a held row would.
+
+## Sign-in and sign-out wire (CHAOS-10876)
+
+No row is added or removed. The `[...nextauth]` row's sign-in anchor and the `revoke-session` row
+now reach auth-service through `src/lib/authServiceWire.ts` (login, logout) and read the access
+token by the class `AUTH_ACCESS_TOKEN_CLASS` names; see `auth-system.md`. Their anchors were
+re-pinned in their own commit.

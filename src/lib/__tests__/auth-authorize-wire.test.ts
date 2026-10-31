@@ -178,8 +178,9 @@ describe("jwt callback on login", () => {
     });
 
     it("sets expires_at from the token exp and stores sid", async () => {
-        const out = await jwt()({ token: {}, user: loginUser() });
-        expect(out.expires_at).toBe(EXP * 1000);
+        const exp = Math.floor(Date.now() / 1000) + 1800;
+        const out = await jwt()({ token: {}, user: loginUser({ access_exp: exp }) });
+        expect(out.expires_at).toBe(exp * 1000);
         expect(out.sid).toBe(SID);
     });
 

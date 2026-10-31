@@ -50,6 +50,8 @@ export function LoginForm({ plan, trialIntent = false, callbackUrl }: LoginFormP
                     );
                 } else if (result.code === "rate_limited") {
                     toast.error("Too many login attempts. Please try again later.");
+                } else if (result.code === "auth_unavailable") {
+                    toast.error("Sign-in is temporarily unavailable. Please try again shortly.");
                 } else {
                     toast.error("Invalid email or password");
                 }
