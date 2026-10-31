@@ -14,6 +14,11 @@ const KEYS = {
 } as const;
 const QUESTION = "Which projects are at risk?";
 const NOT_SAVED = "This conversation was not saved yet.";
+/**
+ * CHAOS-11956 (E6 design v5 §4.1): bare `/dev` keeps the store's conversation and names it in the
+ * URL, so Expand ends on `/dev?thread=<id>`.
+ */
+const NAMED_FULL_PAGE = /\/dev\?thread=thread_[0-9a-f]{32}$/u;
 
 const PARTIAL = (
     JSON.parse(readFileSync(join(CAPTURES, "kiac_project_status_partial.event.json"), "utf8")) as {
@@ -47,6 +52,17 @@ const slowRun = (delayMs: number) => ({
     delayMs,
 });
 const quickRun = { events: [accepted, event(2, { type: "result", result: PARTIAL })] };
+/** ACR's rate limit before admission: nothing ran, and no thread exists. */
+const rateLimited = {
+    schema_version: "error.v1",
+    request_id: "request_e2e_refused",
+    error: {
+        code: "rate_limited",
+        message: "Too many requests.",
+        http_status: 429,
+        retryable: true,
+    },
+};
 
 type Call = { kind: string; submission_id?: string; thread_id?: string };
 
@@ -119,7 +135,7 @@ test.describe("desktop (1280px)", () => {
         await expect(panel.getByTestId("ask-dev-stages")).toBeVisible();
 
         await panel.getByRole("button", { name: "Open full page" }).click();
-        await expect(page).toHaveURL(/\/dev$/u);
+        await expect(page).toHaveURL(NAMED_FULL_PAGE);
         await expect(panel).toBeHidden();
         const conversation = page.getByTestId("ask-dev-page-conversation");
         await expect(conversation.getByText(QUESTION)).toBeVisible();
@@ -140,7 +156,7 @@ test.describe("desktop (1280px)", () => {
         await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
 
         await panel.getByRole("button", { name: "Open full page" }).click();
-        await expect(page).toHaveURL(/\/dev$/u);
+        await expect(page).toHaveURL(NAMED_FULL_PAGE);
         await expect(
             page.getByTestId("ask-dev-page-conversation").getByTestId("ask-dev-answer"),
         ).toBeVisible();
@@ -163,12 +179,15 @@ test.describe("desktop (1280px)", () => {
         expect(second!.submission_id).not.toBe(first!.submission_id);
     });
 
-    test("a reload says the conversation was not saved yet, and sends nothing", async ({
+    // CHAOS-11956: a reload now restores a conversation ACR admitted (tests/ask-dev-history.spec.ts).
+    // The notice stays for a first question ACR refused before admission: there is no thread to
+    // restore, so the reload started a new conversation.
+    test("a reload after a question ACR never admitted says it was not saved, and sends nothing", async ({
         page,
     }, testInfo) => {
-        await seed(page, [quickRun]);
+        await seed(page, [{ refuse: { status: 429, error: rateLimited } }]);
         const panel = await askInPanel(page);
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(panel.getByTestId("ask-dev-turn")).toHaveAttribute("data-status", "not_run");
         await panel.getByRole("button", { name: "Open full page" }).click();
         await expect(page).toHaveURL(/\/dev$/u);
 
@@ -208,7 +227,7 @@ test.describe("mobile (390px)", () => {
         await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
 
         await sheet.getByRole("button", { name: "Open full page" }).click();
-        await expect(page).toHaveURL(/\/dev$/u);
+        await expect(page).toHaveURL(NAMED_FULL_PAGE);
         const conversation = page.getByTestId("ask-dev-page-conversation");
         await expect(conversation.getByTestId("ask-dev-answer")).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath("full-page-mobile.png") });
