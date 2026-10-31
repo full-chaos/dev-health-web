@@ -317,11 +317,50 @@ const requireFromScripts = createRequire(import.meta.url);
  * from the vendored schemas, with the options of `contracts.ts`: no hand-written second
  * implementation, and `acr:contracts:check` fails on any drift.
  */
-const STANDALONE_VALIDATORS = Object.freeze({
-    validateThread: "context_fabric_thread.v1.schema.json",
-    validateThreadList: "context_fabric_thread_list.v1.schema.json",
-    // CHAOS-11958: the feedback body (GET and POST …/investigations/feedback/{result_id}).
-    validateResultFeedback: "context_fabric_result_feedback.v1.schema.json",
+/**
+ * The investigation event schema with its `result` payload checked only as an object (CHAOS-12104,
+ * option (c)): the envelope of every event, `error.v1` included, exactly as vendored. A `result`
+ * terminal is checked again against the full schema before it is used. Derived here from the
+ * vendored schema, never hand-written, so it moves with the pin.
+ */
+const ENVELOPE_SCHEMA = "context_fabric_investigation_event.v1.envelope.schema.json";
+const DERIVED_SCHEMAS = Object.freeze({
+    [ENVELOPE_SCHEMA]: {
+        from: "context_fabric_investigation_event.v1.schema.json",
+        derive(schema) {
+            const envelope = structuredClone(schema);
+            envelope.$id = schema.$id.replace(/\.schema\.json$/u, ".envelope.schema.json");
+            if (envelope.properties?.result === undefined) {
+                throw new Error("the investigation event schema has no result property");
+            }
+            envelope.properties.result = { type: "object" };
+            return envelope;
+        },
+    },
+});
+
+const STANDALONE_MODULES = Object.freeze({
+    threadValidators: Object.freeze({
+        validateThread: "context_fabric_thread.v1.schema.json",
+        validateThreadList: "context_fabric_thread_list.v1.schema.json",
+        // CHAOS-11958: the feedback body (GET and POST …/investigations/feedback/{result_id}).
+        validateResultFeedback: "context_fabric_result_feedback.v1.schema.json",
+    }),
+    // CHAOS-12104 (T14a), the lead's option (c): the browser transport's small checks, imported
+    // with the transport. Every progress event is checked here at once, never waiting on the full
+    // result schemas.
+    streamEnvelopeValidators: Object.freeze({
+        validateInvestigationEventEnvelope: ENVELOPE_SCHEMA,
+        validateSubmissionStatus: "context_fabric_submission_status.v1.schema.json",
+        validateErrorEnvelope: "error.v1.schema.json",
+    }),
+    // The full result schemas (~207 KB gzip once minified): loaded from the submit or the replay on,
+    // in parallel with the call, and awaited only by the `result` terminal and the replay.
+    streamValidators: Object.freeze({
+        validateInvestigationEvent: "context_fabric_investigation_event.v1.schema.json",
+        validateInvestigationResultV1: "context_fabric_investigation_result.v1.schema.json",
+        validateInvestigationResultV2: "context_fabric_investigation_result.v2.schema.json",
+    }),
 });
 
 // Standalone code reaches Ajv's runtime helpers with `require`; the browser module imports them.
@@ -336,7 +375,7 @@ const exportsOf = (namespace) =>
         : namespace;
 `;
 
-async function standaloneValidatorModule(schemaFiles, prettierOptions) {
+async function standaloneValidatorModule(moduleName, schemaFiles, prettierOptions) {
     const Ajv2020 = requireFromScripts("ajv/dist/2020").default;
     const addFormats = requireFromScripts("ajv-formats").default;
     const standaloneCode = requireFromScripts("ajv/dist/standalone").default;
@@ -349,9 +388,15 @@ async function standaloneValidatorModule(schemaFiles, prettierOptions) {
     });
     addFormats(ajv);
     ajv.addKeyword({ keyword: "x-documented-values", schemaType: "array" });
-    for (const file of schemaFiles)
-        ajv.addSchema(JSON.parse(file.contents), path.basename(file.path));
-    const code = standaloneCode(ajv, presentValidators(schemaFiles));
+    const schemas = new Map(
+        schemaFiles.map((file) => [path.basename(file.path), JSON.parse(file.contents)]),
+    );
+    for (const [name, schema] of schemas) ajv.addSchema(schema, name);
+    for (const [name, derived] of Object.entries(DERIVED_SCHEMAS)) {
+        if (schemas.has(derived.from))
+            ajv.addSchema(derived.derive(schemas.get(derived.from)), name);
+    }
+    const code = standaloneCode(ajv, presentValidators(moduleName, schemaFiles));
     const imports = [];
     const body = code.replace(
         /const (\w+) = require\("([^"]+)"\)((?:\.\w+|\["[^"]+"\])*);/gu,
@@ -372,19 +417,39 @@ async function standaloneValidatorModule(schemaFiles, prettierOptions) {
 
 // The validators whose schema is in this source set (a partial set, as in the generator's own
 // tests, gets only those; the pinned ACR set has them all, and `check` compares the whole file).
-function presentValidators(schemaFiles) {
+function presentValidators(moduleName, schemaFiles) {
     const present = new Set(schemaFiles.map((file) => path.basename(file.path)));
+    for (const [name, derived] of Object.entries(DERIVED_SCHEMAS)) {
+        if (present.has(derived.from)) present.add(name);
+    }
     return Object.fromEntries(
-        Object.entries(STANDALONE_VALIDATORS).filter(([, schema]) => present.has(schema)),
+        Object.entries(STANDALONE_MODULES[moduleName]).filter(([, schema]) => present.has(schema)),
     );
 }
 
-function standaloneDeclarations(schemaFiles) {
-    return `// Generated with threadValidators.js (scripts/acr-contract-artifacts.mjs). Do not edit.
-${Object.keys(presentValidators(schemaFiles))
+function standaloneDeclarations(moduleName, schemaFiles) {
+    return `// Generated with ${moduleName}.js (scripts/acr-contract-artifacts.mjs). Do not edit.
+${Object.keys(presentValidators(moduleName, schemaFiles))
     .map((name) => `export declare function ${name}(value: unknown): boolean;`)
     .join("\n")}
 `;
+}
+
+/** Each standalone module and its declarations, by artifact path. */
+async function standaloneArtifacts(schemaFiles, prettierOptions) {
+    const artifacts = {};
+    for (const moduleName of Object.keys(STANDALONE_MODULES)) {
+        artifacts[`../${moduleName}.js`] = await standaloneValidatorModule(
+            moduleName,
+            schemaFiles,
+            prettierOptions,
+        );
+        artifacts[`../${moduleName}.d.ts`] = await format(
+            standaloneDeclarations(moduleName, schemaFiles),
+            prettierOptions,
+        );
+    }
+    return artifacts;
 }
 
 export async function expectedArtifacts({ sourceCommit, sourceFiles, prettierOptions }) {
@@ -406,11 +471,7 @@ export async function expectedArtifacts({ sourceCommit, sourceFiles, prettierOpt
         ...rawArtifacts,
         "manifest.json": stableJson(manifest),
         "../contracts.ts": await validatorModule(schemaFiles, exampleFiles, prettierOptions),
-        "../threadValidators.js": await standaloneValidatorModule(schemaFiles, prettierOptions),
-        "../threadValidators.d.ts": await format(
-            standaloneDeclarations(schemaFiles),
-            prettierOptions,
-        ),
+        ...(await standaloneArtifacts(schemaFiles, prettierOptions)),
         "../generated.ts": await dtoModule(
             schemaFiles.filter((file) => !TYPE_GENERATION_EXCLUDED.has(path.basename(file.path))),
             prettierOptions,

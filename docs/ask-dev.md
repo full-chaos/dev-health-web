@@ -49,6 +49,14 @@ An answer has "Correct?" and "Useful?" controls (CHAOS-11958). A clarification o
 - A failed save is rolled back and says "Feedback was not saved."
 - No feedback goes to product telemetry. The logs carry the result id and a status, never a choice.
 
+## The browser's ACR transport
+
+The browser calls ACR directly; there is no web route (CHAOS-12104). The design, the stream grammar, the caps, the deadline rules and the token rules are in [`architecture/ask-dev-thread-seam.md`](architecture/ask-dev-thread-seam.md) ("Seam calls").
+
+- **Dark until the T13 roll.** With `ACR_OAUTH_ISSUER` unset, there is no transport: no composer, no request.
+- **Connect Ask Dev.** With no ACR access in this tab, or after ACR's 401, a turn says so and links to the ACR authorization. Nothing is retried; the user asks again after connecting.
+- **Nothing on panel open.** The token is read only when the user sends something.
+
 ## Answer completeness
 
 An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. Web never shows it (CHAOS-12245, chris 2026-10-31). `missingDataSentence` and `quickStatus` (`src/components/ask-dev/answer/`) apply these rules:

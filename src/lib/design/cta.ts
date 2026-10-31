@@ -25,6 +25,8 @@ export const CTA_LABELS = {
     askDevMinimize: "Minimize to panel",
     /** Ask Dev: read a restored answer again (a GET, never a new investigation; CHAOS-11956). */
     askDevLoadAgain: "Load again",
+    /** Ask Dev with no ACR access in this tab: open the ACR authorization (CHAOS-12104). */
+    askDevConnect: "Connect Ask Dev",
     /** Ask Dev: start a new, empty conversation; the old one stays in the history (CHAOS-11956). */
     askDevNewConversation: "New conversation",
     /** Ask Dev panel: show the list of past conversations (CHAOS-11956). */

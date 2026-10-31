@@ -12,11 +12,11 @@ import type { TranscriptResult } from "../answer/AskDevTurn";
  * credential"): there is no web or ask-dev proxy in front of it. The store decides WHEN to call and
  * what each answer means; a transport only carries the calls.
  *
- * The live transport is item T14 (CHAOS-12104, `feat(ask-dev): stream ACR investigation events in
- * the browser`), built on the ACR browser OAuth client T13 (CHAOS-12103). Until it lands,
- * `ACR_BROWSER_TRANSPORT` is `null`: the panel draws no composer and sends nothing. Test mode alone
- * supplies a transport (`testModeTransport.ts`). The proofs that need the live transport (the store
- * owns the LIVE stream; recovery through LIVE status polling) are CHAOS-12192, blocked by T14.
+ * The live transport is `src/lib/ask-dev/acr-transport/` (T14a, CHAOS-12104; T14b, CHAOS-12336),
+ * on the ACR browser OAuth client (T13, CHAOS-12103). `acrBrowserTransport()` returns it only while
+ * the browser ACR config is set (`ACR_OAUTH_ISSUER`); otherwise it is `null`, and the panel draws no
+ * composer and sends nothing (prod, until the T13 roll). Test mode supplies a transport of its own
+ * (`testModeTransport.ts`). The live proofs are CHAOS-12192, 12199 and the other tickets T14 blocks.
  *
  * Authorization is not part of this seam: the transport attaches the credential, and ACR decides
  * every call again (INV-1). The store never sees a token.
@@ -126,6 +126,9 @@ export class TransportRefusal extends Error {
  *   sent.
  * - `invalid_upstream`: the stream broke the event grammar or a cap before a valid terminal. The
  *   transport aborted it.
+ * - `authorization_required`: the browser holds no ACR access token, or ACR answered 401. Nothing
+ *   ran; the way on is to connect Ask Dev to ACR (CHAOS-12104, the lead's ruling: no retry, no
+ *   refresh in the transport).
  *
  * The browser's abort is a disconnect, and a disconnect ends ACR's run (plan §2.7.4), so the store
  * ends the turn with the reason and does not poll the submission status.
@@ -135,6 +138,7 @@ export const TRANSPORT_FAILURE_REASONS = [
     "admission_timeout",
     "budget_exhausted",
     "invalid_upstream",
+    "authorization_required",
 ] as const;
 
 export type TransportFailureReason = (typeof TRANSPORT_FAILURE_REASONS)[number];
@@ -333,9 +337,3 @@ export type AskDevTransport = {
         readonly signal: AbortSignal;
     }) => Promise<CancelAnswer>;
 };
-
-/**
- * The live browser transport. `null` until T14 (CHAOS-12104) fills it: no composer, no request.
- * T14 replaces this one line with its client; nothing else in the store changes.
- */
-export const ACR_BROWSER_TRANSPORT: AskDevTransport | null = null;

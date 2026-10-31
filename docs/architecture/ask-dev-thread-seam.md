@@ -22,19 +22,22 @@
 | `cancel`                                 | `POST …/submissions/{id}/cancel`                     | 202 running, 204 final, 409 `not_leased`                                                       |
 | `readFeedback` / `setFeedback` _(11958)_ | `GET`/`POST …/feedback/{result_id}`                  | `correct` and `useful`, each yes, no or unset                                                  |
 
-`ACR_BROWSER_TRANSPORT` is `null` until T14 (CHAOS-12104). Test mode supplies `testModeTransport.ts`. The live proofs are CHAOS-12232, 12233 and 12234.
+The live transport is `src/lib/ask-dev/acr-transport/` (`acrBrowserTransport()`). It is `null` while the browser ACR config is unset (`ACR_OAUTH_ISSUER`; prod until the T13 roll), so the panel draws no composer and sends nothing. T14a (CHAOS-12104) serves `investigate`, `submissionStatus` and `readResult`. The thread, attach, cancel and feedback calls are T14b (CHAOS-12336); until then they refuse locally and send nothing. Test mode supplies `testModeTransport.ts`. The live proofs are CHAOS-12192, 12199, 12232, 12233 and 12234, after CHAOS-12313.
+
+Every transport call is a `fetch` with `credentials: "omit"` and `redirect: "error"`. Its headers are `Authorization: Bearer` (the token store's in-memory access token, read right before the call, never the `sessionStorage` family), `X-ACR-Resource` (the issuer) and `X-ACR-Client-Version`. No token goes in a URL. No token, or ACR's 401, is `TransportFailure("authorization_required")`: the turn's "Connect Ask Dev" state, a link to `/ask-dev/oauth/start?return=<this page>`. The transport never retries and never refreshes (refresh is c4, CHAOS-12305).
 
 ## Contract checks in the browser: Ajv standalone
 
 Production CSP has no `unsafe-eval` (`src/proxy.ts`). The runtime Ajv of `src/lib/acr/contracts.ts` compiles with `new Function`, so it cannot run in the browser. Test mode allows eval, so runtime Ajv would pass every e2e and fail only live. Instead:
 
 - `scripts/acr-contract-artifacts.mjs` generates `src/lib/acr/threadValidators.js` (and its `.d.ts`). This is Ajv standalone code for the thread schemas and the feedback schema, built with the options of `contracts.ts`.
+- It also generates `src/lib/acr/streamValidators.js`, a module of its own: the full investigation event and result v1 and v2 (the replay) (CHAOS-12104). The full schemas make it about 157 KB gzip in the production build, so the browser checks every progress event with the small `streamEnvelopeValidators.js` (the event envelope, derived from the vendored schema with only `result` loosened; the status; `error.v1`). The full module starts loading at the submit or the replay, in parallel with the call, and only the `result` terminal and the replay wait for it (option (c)). No page loads it up front: `check:client-bundle` rule L1 fails when a page entry list names its chunk.
 - The code is generated, not hand-written, so it cannot drift: `pnpm acr:contracts:check` fails on any edit, and the vitest suite runs it.
 - `src/lib/acr/threadContract.ts` and `src/lib/acr/feedbackContract.ts` only map a body that passed.
 - A body that fails is `TransportFailure("invalid_upstream")`, and the conversation shows "could not be read".
 - `threadContract.differential.test.ts` holds the generated code equal to `validateAcrContract`, over cases built from the schema files. It also checks that the code answers with `eval` and `Function` disabled.
 
-Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never import `ajv` or `contracts.ts` into browser code.
+Add a browser-read schema to a module of `STANDALONE_MODULES` in the generator. Never import `ajv` or `contracts.ts` into browser code.
 
 ## Selection: URL, storage and store
 
