@@ -917,6 +917,19 @@ export type LLMPurpose = "investigate" | "explain" | "categorize";
 
 export const LLM_PURPOSES: LLMPurpose[] = ["investigate", "explain"];
 
+/**
+ * Every purpose id the API can name, categorize included (it is no form row of LLM_PURPOSES, but it
+ * has its own saved override). A purpose added to LLMPurpose and missing here fails the typecheck.
+ */
+export const ALL_LLM_PURPOSES = [
+    "investigate",
+    "explain",
+    "categorize",
+] as const satisfies readonly LLMPurpose[];
+type MissingPurpose = Exclude<LLMPurpose, (typeof ALL_LLM_PURPOSES)[number]>;
+const purposesComplete: [MissingPurpose] extends [never] ? true : never = true;
+void purposesComplete;
+
 export const LLM_PURPOSE_LABELS: Record<LLMPurpose, string> = {
     investigate: "Investigation",
     explain: "Explanations",
@@ -977,6 +990,20 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
     /** The served `detail.error` code of a 4xx answer, when the backend names one. */
     code?: string;
+    /** The purposes a served answer names (CHAOS-12173: overrides whose saved key cannot be read). */
+    purposes?: string[];
+}
+
+/** go-api's 409 code for saved BYO settings the configured encryption key cannot decrypt (CHAOS-12172). */
+export const LLM_SETTINGS_UNDECRYPTABLE = "llm_settings_undecryptable";
+
+/**
+ * True when a BYO read failed because the saved key cannot be decrypted (CHAOS-12173). The BYO LLM
+ * card owns that state (it says so and offers Replace and Remove); every other card that reads a
+ * BYO route stays quiet instead of offering a Retry that can never help.
+ */
+export function isUnreadableSettings(result: { status?: number; code?: string }): boolean {
+    return result.status === 409 && result.code === LLM_SETTINGS_UNDECRYPTABLE;
 }
 
 /** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */
