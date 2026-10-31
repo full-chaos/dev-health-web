@@ -45,6 +45,15 @@ function decodeSegment(segment: string | undefined): unknown {
 const isObject = (v: unknown): v is Record<string, unknown> =>
     typeof v === "object" && v !== null && !Array.isArray(v);
 
+// aud is a closed shape in a decoded token: absent, a string, or an array of strings. A service
+// token (aud auth-service, alone or in any array position) and any other shape are refused.
+function audRefused(aud: unknown): boolean {
+    if (aud === undefined) return false;
+    if (typeof aud === "string") return aud === "auth-service";
+    if (!Array.isArray(aud)) return true;
+    return aud.some((member) => typeof member !== "string" || member === "auth-service");
+}
+
 // NOT VERIFIED: a decode of the payload, no signature check. The header alg is read only to
 // refuse a token of the other class; aud is read only to refuse a service token.
 function decodeHs256(token: string): AccessTokenRead {
@@ -55,7 +64,7 @@ function decodeHs256(token: string): AccessTokenRead {
     if (!isObject(header) || header.alg !== "HS256" || !isObject(payload)) {
         return { ok: false, reason: "shape" };
     }
-    if (payload.aud === "auth-service") return { ok: false, reason: "shape" };
+    if (audRefused(payload.aud)) return { ok: false, reason: "shape" };
     const { exp, sid } = payload;
     return {
         ok: true,
