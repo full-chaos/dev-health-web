@@ -119,7 +119,56 @@ describe("trend placement (E8 §4.3)", () => {
     });
 });
 
+/** The attention capture with every cohort and member kind set to `kind` (G1 refuses "person"). */
+function attentionWithKind(kind: string): Result {
+    const result = structuredClone((attentionRanking as { result: unknown }).result) as Result;
+    const cohort = result.cohort as unknown as {
+        kind: string;
+        members: { subject: { kind: string } }[];
+    };
+    cohort.kind = kind;
+    for (const member of cohort.members) member.subject.kind = kind;
+    return result;
+}
+
 describe("cohort shapes until I-41 draws them", () => {
+    it("keeps the verifier's refusal ahead of the ranking gate, at answer level (codex r2b P2)", () => {
+        const result = attentionWithKind("person");
+        const shape = { ...result.render_shapes![0]!, kind: "quadrant" } as NonNullable<
+            Result["render_shapes"]
+        >[number];
+        const [entry] = planRenderShapes(withShapes(result, [shape]), {
+            groups: [],
+            paletteSize: 10,
+        });
+        expect(entry!.initial).toEqual({ kind: "WITHHELD", reason: "kind_not_drawable" });
+        expect(entry!.owner).toEqual({ kind: "answer" });
+    });
+
+    it("gives an unchecked cohort shape to the chart slot only when the slot is mounted", () => {
+        const ranked = (attentionRanking as { result: unknown }).result as Result;
+        const shape = structuredClone(ranked.render_shapes![0]!);
+        shape.series[0]!.points[0]!.value += 1;
+        const [inSlot] = planRenderShapes(withShapes(ranked, [shape]), {
+            groups: [],
+            paletteSize: 10,
+        });
+        expect(inSlot!.initial).toEqual({ kind: "WITHHELD", reason: "value_mismatch" });
+        expect(inSlot!.owner).toEqual({ kind: "cohort_panel" });
+        // No ranking computed: the panel shows "Not ranked by the service" and no chart slot.
+        const unranked = structuredClone(ranked);
+        for (const member of (
+            unranked.cohort as unknown as { members: { ranking_computed?: boolean }[] }
+        ).members)
+            member.ranking_computed = false;
+        const [noSlot] = planRenderShapes(withShapes(unranked, [shape]), {
+            groups: [],
+            paletteSize: 10,
+        });
+        expect(noSlot!.initial).toEqual({ kind: "WITHHELD", reason: "value_mismatch" });
+        expect(noSlot!.owner).toEqual({ kind: "answer" });
+    });
+
     it("keeps the verifier's reason when a cohort shape also has no panel to sit in (codex r1 opinion)", () => {
         const result = (attentionRanking as { result: unknown }).result as Result;
         const shape = {

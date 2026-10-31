@@ -97,36 +97,31 @@ export function planRenderShapes(result: PlanInput, options: PlanOptions): Plann
 
         if (placement === "cohort_panel") {
             const gate = cohortGate?.get(index);
-            if (gate === undefined || ("withheld" in gate && gate.withheld === "placement_missing"))
-                return {
-                    index,
-                    shape,
-                    placement,
-                    group: null,
-                    owner: ANSWER,
-                    // §4.1 order: a verifier or guard refusal comes before placement.
-                    initial: withheld(refused ?? "placement_missing"),
-                };
-            const owner: NoticeOwner = { kind: "cohort_panel" };
-            // The panel's gate (G1, intent, ranking computed) is stated by the panel itself.
-            if ("withheld" in gate)
-                return {
-                    index,
-                    shape,
-                    placement,
-                    group: null,
-                    owner,
-                    initial: withheld(gate.withheld),
-                };
-            // Bars and stacked bars are drawn by I-41 (CHAOS-11943); until then the slot says so.
-            return {
+            // The ranking panel renders for this cohort (any gate state but "no cohort").
+            const panel =
+                gate !== undefined &&
+                !("withheld" in gate && gate.withheld === "placement_missing");
+            // The chart slot is mounted only when the panel shows ranking rows.
+            const slot = gate !== undefined && "placement" in gate;
+            const at = (owned: boolean): NoticeOwner => (owned ? { kind: "cohort_panel" } : ANSWER);
+            const entry = (owner: NoticeOwner, reason: WithheldReason): PlannedShape => ({
                 index,
                 shape,
                 placement,
                 group: null,
                 owner,
-                initial: withheld(refused ?? "presentation_not_rendered"),
-            };
+                initial: withheld(reason),
+            });
+            // §4.1 order: a verifier or web-guard refusal comes before placement and the ranking
+            // gate (codex r2b on #1629). G1's own refusal is stated by the panel; any other one by
+            // the chart slot when it is mounted, else by the answer.
+            if (refused !== null)
+                return entry(at(RANKING_GATE_REASONS.includes(refused) ? panel : slot), refused);
+            if (!panel) return entry(ANSWER, "placement_missing");
+            // The panel's gate (intent, ranking computed) is stated by the panel itself.
+            if ("withheld" in gate!) return entry(at(true), gate.withheld);
+            // Bars and stacked bars are drawn by I-41 (CHAOS-11943); until then the slot says so.
+            return entry(at(true), "presentation_not_rendered");
         }
 
         if (placement === "fact_group" && options.groups !== null) {

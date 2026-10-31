@@ -32,10 +32,8 @@ type Props = {
  */
 export function AskDevEChart({ option, onReady, onError, className }: Props) {
     const ref = useRef<HTMLDivElement | null>(null);
-    // Ready for THIS option only: a redraw (theme or motion change) is a new attempt, not ready
-    // until its own `finished`.
-    const [readyFor, setReadyFor] = useState<EChartsOption | null>(null);
-    const ready = readyFor === option;
+    // Ready only after THIS attempt's `finished`: each attempt starts not ready (see the cleanup).
+    const [ready, setReady] = useState(false);
     const callbacks = useRef({ onReady, onError });
 
     useEffect(() => {
@@ -65,7 +63,7 @@ export function AskDevEChart({ option, onReady, onError, className }: Props) {
             clearTimeout(timer);
             chart.off("finished", onFinished);
             if (outcome === "ready") {
-                setReadyFor(option);
+                setReady(true);
                 callbacks.current.onReady();
             } else {
                 callbacks.current.onError(outcome, Date.now() - started);
@@ -84,6 +82,9 @@ export function AskDevEChart({ option, onReady, onError, className }: Props) {
         observer?.observe(element);
         return () => {
             settled = true;
+            // The next attempt (a new option, or a StrictMode replay of this one) is not ready
+            // until its own `finished` (codex r2b on #1629).
+            setReady(false);
             clearTimeout(timer);
             observer?.disconnect();
             chart.off("finished", onFinished);

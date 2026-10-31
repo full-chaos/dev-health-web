@@ -1,4 +1,5 @@
 import { act } from "react";
+import { render as rtlRender } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, userEvent, within } from "@/test/utils";
 
@@ -399,6 +400,50 @@ describe("a refreshed answer keeps its charts accounted for (codex r1c P2)", () 
         expect(figures()).toHaveLength(2);
         expect(errorEvents()).toEqual([]);
         expect(withheldLogs()).toEqual([]);
+    });
+});
+
+describe("StrictMode replays an attempt (codex r2b P2)", () => {
+    it("is not ready on a replayed attempt that never finishes, and withdraws it at the timeout", () => {
+        vi.useFakeTimers();
+        const result = k1();
+        stub.modes = ["sync", "never"];
+        rtlRender(
+            <AskDevAnswer
+                result={withShapes(result, [result.render_shapes![0]!]) as unknown as AnswerResult}
+            />,
+            { reactStrictMode: true },
+        );
+        expect(stub.inits).toBe(2);
+        const chart = within(slotOf(WORKLOAD)).getByTestId("ask-dev-echart");
+        expect(chart).toHaveAttribute("data-chart-ready", "false");
+        act(() => vi.advanceTimersByTime(CHART_READY_TIMEOUT_MS));
+        expect(within(slotOf(WORKLOAD)).queryByTestId("ask-dev-render-figure")).toBeNull();
+        expect(screen.getByTestId("ask-dev-answer-withheld")).toHaveTextContent(
+            "A chart was withheld: it could not be drawn.",
+        );
+    });
+});
+
+describe("a cohort shape the verifier refuses (codex r2b P2)", () => {
+    it("is stated at answer level with the verifier's reason, though the ranking is not shown", () => {
+        const result = structuredClone((attentionRanking as { result: unknown }).result) as Result;
+        const cohort = result.cohort as unknown as {
+            kind: string;
+            members: { subject: { kind: string } }[];
+        };
+        cohort.kind = "person";
+        for (const member of cohort.members) member.subject.kind = "person";
+        result.render_shapes![0] = { ...result.render_shapes![0]!, kind: "quadrant" };
+        answer(result);
+        expect(screen.getByTestId("ask-dev-ranking-not-shown")).toBeInTheDocument();
+        expect(screen.getByTestId("ask-dev-answer-withheld")).toHaveTextContent(
+            "A chart was withheld: it is a kind of chart this view does not draw.",
+        );
+        expect(withheldLogs().map(([fields]) => [fields.shape_index, fields.reason])).toEqual([
+            [0, "kind_not_drawable"],
+            [1, "cohort_kind_not_ranked"],
+        ]);
     });
 });
 
