@@ -12,6 +12,8 @@ import {
 } from "./conversation/AskDevConversationContext";
 import { AskDevConversationTurn } from "./conversation/AskDevConversationTurn";
 import { carryOfChoice } from "./conversation/conversationStore";
+import { AskDevContextChips } from "./pageContext/AskDevContextChips";
+import { pageHintsOf, useAskDevPageProposal } from "./pageContext/AskDevPageContext";
 
 /**
  * The conversation of this tab, as the panel and the full page `/dev` both draw it (CHAOS-11934):
@@ -61,6 +63,10 @@ function EmptyTranscript() {
 function ConversationTranscript({ live }: { live: AskDevConversation }) {
     const { store, snapshot } = live;
     const { turns } = snapshot;
+    // CHAOS-3584: every next question from the live turn carries the page context the chips show
+    // (codex r2 on #1645): a clarification choice and a narrower re-ask as well as the composer.
+    const { refs } = useAskDevPageProposal();
+    const pageHints = pageHintsOf(refs);
     return (
         <TranscriptLog>
             {turns.length === 0 ? (
@@ -74,10 +80,18 @@ function ConversationTranscript({ live }: { live: AskDevConversation }) {
                             turn={turn}
                             onConfirm={
                                 usable
-                                    ? (choice) => store.submit(turn.question, carryOfChoice(choice))
+                                    ? (choice) =>
+                                          store.submit(turn.question, {
+                                              ...carryOfChoice(choice),
+                                              pageHints,
+                                          })
                                     : undefined
                             }
-                            onReask={usable ? (reask) => store.submit(reask.question) : undefined}
+                            onReask={
+                                usable
+                                    ? (reask) => store.submit(reask.question, { pageHints })
+                                    : undefined
+                            }
                             onRetry={usable ? () => store.retry(turn.id) : undefined}
                         />
                     );
@@ -128,14 +142,21 @@ export function AskDevTranscript() {
 /** The composer of the store; nothing without a transport (T14, CHAOS-12104, not wired). */
 export function AskDevComposerSlot() {
     const live = useAskDevConversation();
+    // CHAOS-3584: the page context the user left in place goes with the next question as hints.
+    const { refs } = useAskDevPageProposal();
     if (!live) return null;
     return (
-        <AskDevComposer
-            inFlight={live.snapshot.inFlight}
-            ready={live.snapshot.ready}
-            onSubmit={(question) => live.store.submit(question)}
-            onCancel={() => live.store.cancel()}
-        />
+        <div className="space-y-2">
+            <AskDevContextChips />
+            <AskDevComposer
+                inFlight={live.snapshot.inFlight}
+                ready={live.snapshot.ready}
+                onSubmit={(question) =>
+                    live.store.submit(question, { pageHints: pageHintsOf(refs) })
+                }
+                onCancel={() => live.store.cancel()}
+            />
+        </div>
     );
 }
 

@@ -1,6 +1,7 @@
 import type {
     ACRErrorV1,
     ACRContextFabricInvestigationRequestV1 as InvestigationRequest,
+    SubjectHint,
 } from "@/lib/acr/generated";
 import {
     buildConversationTurns,
@@ -161,7 +162,30 @@ export type ConversationSnapshot = {
 export type TurnCarry = {
     readonly parentResultId?: string | undefined;
     readonly structureReceipts?: StructureReceipts | undefined;
+    /**
+     * CHAOS-3584: the page context the user left in place, as subject hints. They go first, before
+     * the subjects carried from the previous answer; a hint never binds a subject.
+     */
+    readonly pageHints?: readonly SubjectHint[] | undefined;
 };
+
+/** Page hints first, then the carried ones, each (kind, id) once. */
+function mergeSubjectHints(
+    first: readonly SubjectHint[],
+    then: readonly SubjectHint[],
+): SubjectHint[] {
+    const seen = new Set<string>();
+    return [...first, ...then].filter((hint) => {
+        const key = JSON.stringify([
+            hint.kind,
+            hint.id ?? null,
+            hint.id === undefined ? hint.label : null,
+        ]);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
 
 /**
  * A clarification choice as a follow-up's carry: its parent result and the receipts it picked, each
@@ -363,7 +387,7 @@ export class ConversationStore {
             requestId: newRequestId(this.uuid()),
             conversation: buildConversationTurns(prior),
             parentResultId: carry?.parentResultId ?? parent.parentResultId,
-            subjectHints: parent.subjectHints,
+            subjectHints: mergeSubjectHints(carry?.pageHints ?? [], parent.subjectHints),
             structureReceipts: carry?.structureReceipts,
         });
         const turn: StoreTurn = {
