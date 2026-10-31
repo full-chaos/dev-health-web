@@ -60,6 +60,20 @@ describe("inlineScripts", () => {
         expect(inlineScripts('<script data-src="/chunk.js">window.run()</script>')).toBe(1);
     });
 
+    it("reads attributes, not their text: src= or type= inside another value does not count (r2)", () => {
+        expect(
+            inlineScripts(
+                '<script data-note="metadata contains src=/chunk.js">window.run()</script>',
+            ),
+        ).toBe(1);
+        expect(inlineScripts("<script data-x='type=application/json'>window.run()</script>")).toBe(
+            1,
+        );
+        expect(inlineScripts('<script data-a="x" src="/a.js"></script>')).toBe(0);
+        expect(inlineScripts("<script type=application/json>{}</script>")).toBe(0);
+        expect(inlineScripts('<script SRC="/a.js" async></script>')).toBe(0);
+    });
+
     it("counts a nonced inline script too: a prerendered page cannot carry the per-request nonce (r1)", () => {
         expect(inlineScripts('<script nonce="build-time-value">window.run()</script>')).toBe(1);
         expect(inlineScripts(DYNAMIC_HTML)).toBe(1);

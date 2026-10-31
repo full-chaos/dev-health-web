@@ -49,16 +49,26 @@ export const KNOWN_PRERENDERED = new Map(
 );
 
 /**
- * Executable inline scripts: no `src` attribute (an attribute of its own, not `data-src`), and not a
- * JSON data type. A nonce attribute does not count (r1 on web #1670): HTML fixed at build time
+ * Executable inline scripts: no `src` attribute (a parsed attribute, not text inside another value,
+ * not `data-src`), and not a JSON data type. A nonce attribute does not count (r1 on web #1670): HTML fixed at build time
  * cannot carry the nonce the proxy draws per request, so every inline script in it is blocked.
  */
+/** The attributes of a tag's text, by lower-case name: quoted values are read whole (r2). */
+function attributesOf(text) {
+    const attributes = new Map();
+    const ATTRIBUTE = /([^\s"'=<>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/gu;
+    for (const match of text.matchAll(ATTRIBUTE)) {
+        attributes.set(match[1].toLowerCase(), match[2] ?? match[3] ?? match[4] ?? "");
+    }
+    return attributes;
+}
+
 export function inlineScripts(html) {
     let count = 0;
     for (const match of html.matchAll(SCRIPT_TAG)) {
-        const attributes = match[1] ?? "";
-        if (/(?:^|\s)src\s*=/iu.test(attributes)) continue;
-        if (/(?:^|\s)type\s*=\s*["']?application\/(?:ld\+)?json/iu.test(attributes)) continue;
+        const attributes = attributesOf(match[1] ?? "");
+        if (attributes.has("src")) continue;
+        if (/^application\/(?:ld\+)?json$/iu.test((attributes.get("type") ?? "").trim())) continue;
         count += 1;
     }
     return count;
