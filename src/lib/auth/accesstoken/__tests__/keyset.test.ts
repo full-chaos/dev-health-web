@@ -5,7 +5,7 @@ import { loadKeySet } from "../keyset";
 const keyA = generateKeyPairSync("ed25519").publicKey.export({ format: "jwk" });
 const keyB = generateKeyPairSync("ed25519").publicKey.export({ format: "jwk" });
 
-const jwk = (kid: string, key: Record<string, unknown> = keyA, extra = {}) => ({
+const jwk = (kid: string, key: { x?: string } = keyA, extra = {}) => ({
     kty: "OKP",
     crv: "Ed25519",
     alg: "EdDSA",

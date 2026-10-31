@@ -6,7 +6,7 @@ import {
     readAccessToken,
     readSessionAccessToken,
     resolveTokenClass,
-    type AccessTokenRead,
+    type AccessTokenOk,
 } from "@/lib/authServiceClient";
 import type { Jwk, VerifyContext } from "@/lib/auth/accesstoken/verify";
 
@@ -69,7 +69,7 @@ const hs256Token = (over: Record<string, unknown> = {}) =>
         JSON.stringify({ sub: "u1", sid: SID, exp: EXP, ...over }),
     );
 
-const verifiedAccess = (): AccessTokenRead => {
+const verifiedAccess = (): AccessTokenOk => {
     const got = readAccessToken(eddsaToken(), "eddsa", ctx);
     if (!got.ok) throw new Error("fixture access token must verify");
     return got;
