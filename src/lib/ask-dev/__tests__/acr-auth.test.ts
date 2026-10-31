@@ -299,6 +299,20 @@ describe("completeAcrAuthorization", () => {
         });
     });
 
+    it("while the client is off (prod until the T13 roll), sends no code and stores nothing", async () => {
+        const state = await started();
+        const before = JSON.stringify(storage.snapshot());
+        configure(storage, null);
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toEqual({ kind: "failed", reason: "off", returnTo: "/dev" });
+        expect(tokenCalls()).toEqual([]);
+        expect(JSON.stringify(storage.snapshot())).toBe(before);
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+        expect(shared.getItem("ask-dev:acr-spent")).toBeNull();
+        expect(getAcrAccessToken()).toEqual({ kind: "off" });
+    });
+
     it("refuses a state this tab did not start, and sends no code", async () => {
         await started();
         const outcome = await completeAcrAuthorization(
