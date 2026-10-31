@@ -23,8 +23,15 @@ import type { TranscriptResult } from "../answer/AskDevTurn";
  */
 
 /** ACR's closed stage vocabulary, in its one order (`context_fabric_investigation_event.v1`). */
-export type InvestigationStage =
-    "interpreting" | "resolving_subjects" | "reading_facts" | "synthesizing" | "validating";
+export const INVESTIGATION_STAGES = [
+    "interpreting",
+    "resolving_subjects",
+    "reading_facts",
+    "synthesizing",
+    "validating",
+] as const;
+
+export type InvestigationStage = (typeof INVESTIGATION_STAGES)[number];
 
 type EventBase = { readonly seq: number; readonly request_id: string };
 
@@ -75,24 +82,75 @@ export type InvestigateCall = {
 /**
  * ACR answered before the stream opened: an HTTP status and its `error.v1` body (for example
  * `409 submission_in_progress` on a retry while the first run is still live).
+ *
+ * `retryAfterSeconds` is ACR's `Retry-After` header in whole seconds, when the response had a
+ * valid one (the 429s `concurrency_limited` and `allowance_exhausted`, and
+ * `submission_in_progress`). The panel shows it (plan §2.7.8); the transport parses it.
  */
 export class TransportRefusal extends Error {
     readonly status: number;
     readonly error: ACRErrorV1;
+    readonly retryAfterSeconds: number | undefined;
 
-    constructor(status: number, error: ACRErrorV1) {
+    constructor(status: number, error: ACRErrorV1, retryAfterSeconds?: number) {
         super(`ACR refused the call: ${String(status)} ${error.error.code}`);
         this.name = "TransportRefusal";
         this.status = status;
         this.error = error;
+        this.retryAfterSeconds =
+            retryAfterSeconds !== undefined &&
+            Number.isSafeInteger(retryAfterSeconds) &&
+            retryAfterSeconds >= 0
+                ? retryAfterSeconds
+                : undefined;
+    }
+}
+
+/**
+ * Why the browser transport ended a run itself (plan §2.7.6 and §2.7.7, moved to the browser by
+ * the direct-to-ACR amendment §6 and §8; CHAOS-11929). Each one has its own panel state:
+ *
+ * - `stalled`: no bytes for 30 s after `accepted`. The transport aborted the stream.
+ * - `admission_timeout`: no response headers within min(15 s, D − now). The transport aborted the
+ *   call ("deadline: admission").
+ * - `budget_exhausted`: what was left of D could not cover ACR's minimum wait budget. Nothing was
+ *   sent.
+ * - `invalid_upstream`: the stream broke the event grammar or a cap before a valid terminal. The
+ *   transport aborted it.
+ *
+ * The browser's abort is a disconnect, and a disconnect ends ACR's run (plan §2.7.4), so the store
+ * ends the turn with the reason and does not poll the submission status.
+ */
+export const TRANSPORT_FAILURE_REASONS = [
+    "stalled",
+    "admission_timeout",
+    "budget_exhausted",
+    "invalid_upstream",
+] as const;
+
+export type TransportFailureReason = (typeof TRANSPORT_FAILURE_REASONS)[number];
+
+export function isTransportFailureReason(value: unknown): value is TransportFailureReason {
+    return (TRANSPORT_FAILURE_REASONS as readonly unknown[]).includes(value);
+}
+
+/** The browser transport ended the run itself, for `reason`. */
+export class TransportFailure extends Error {
+    readonly reason: TransportFailureReason;
+
+    constructor(reason: TransportFailureReason) {
+        super(`the Ask Dev transport ended the run: ${reason}`);
+        this.name = "TransportFailure";
+        this.reason = reason;
     }
 }
 
 export type AskDevTransport = {
     /**
      * Opens one investigation stream (`Accept: text/event-stream`). It yields the events in `seq`
-     * order and ends after the terminal. Ending without a terminal, or throwing anything but a
-     * `TransportRefusal` or an abort, is a dropped run: the store recovers it through the
+     * order and ends after the terminal. It throws a `TransportRefusal` when ACR answered before
+     * the stream, and a `TransportFailure` when it ended the run itself. Ending without a terminal,
+     * or throwing anything else but an abort, is a dropped run: the store recovers it through the
      * submission status.
      */
     readonly investigate: (call: InvestigateCall) => AsyncIterable<InvestigationEvent>;
