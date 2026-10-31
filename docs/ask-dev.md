@@ -2,6 +2,10 @@
 
 Ask Dev is the product surface over Context Fabric (ACR). web draws it: the panel, the `/dev` full page and the chips. ACR resolves, authorizes and answers.
 
+## Where Ask Dev is entered
+
+From the launcher in the top bar (and the ⌘J / Ctrl+J shortcut and the command palette), which opens the panel; or from the left-nav row "Ask Dev", right after AI, which opens the full page `/dev` (CHAOS-12210, chris 2026-10-31). Both are listed only when the organization has `ask_dev` and `agent_context_runtime` on.
+
 ## Page context
 
 A page can tell Ask Dev which entities it shows. The next question then sends them to ACR as hints. Sources: CHAOS-11936 (the registry), CHAOS-3584 (the chips and the hints), CHAOS-11938 (the pages).
@@ -29,3 +33,18 @@ A page can tell Ask Dev which entities it shows. The next question then sends th
 ## Conversations: history, reload, reattach, feedback
 
 A conversation is ACR's thread. The panel and `/dev` share one history; a reload or `/dev?thread=<id>` restores a conversation with no new investigation, and a delete works from either surface (CHAOS-11956). The seam calls, the selection rules, the restore barrier, the ownership tokens, the cancel state machine and the browser contract checks are in [`architecture/ask-dev-thread-seam.md`](architecture/ask-dev-thread-seam.md).
+
+## Answer completeness
+
+An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. Web never shows it (CHAOS-12245, chris 2026-10-31). `missingDataSentence` and `quickStatus` (`src/components/ask-dev/answer/`) apply these rules:
+
+| State                                           | The coverage block and the quick answer                                                                                                                                                      | The status pill, for a `complete` status            |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `complete`                                      | nothing extra                                                                                                                                                                                | "Full answer"                                       |
+| `not_derived`, or no completeness on the result | nothing about completeness                                                                                                                                                                   | "Answer": it claims neither a full answer nor a gap |
+| `partial`, `degraded`                           | at most one plain sentence that names what was missing, from the requirement rows: "Missing data: status read in part (2 of 5); ranking not available." No sentence when no row names a gap. | "Answer, not fully covered"                         |
+
+- The sentence is said once, in the coverage block ("How complete this answer is"), never also beside the pill. The state word never appears in it. A row with an empty obligation is named by its requirement; a row that names nothing is skipped. The coverage details keep their own block ("What limits this answer").
+- A served status correction names each status by the same function that labels the pill (`statusLabel`), never by the machine word: for example, "from Answer to Partial answer" when the completeness was not derived.
+- A cohort member's `data_completeness` is never shown either. The ranking column and the unranked summary show the member's served driver rows, "3 of 5 drivers" (`memberDriversText`), never a number mapped from the state. A member that serves no driver rows shows nothing.
+- The Ask Dev Workbench (an engineering inspector) is not in this rule.

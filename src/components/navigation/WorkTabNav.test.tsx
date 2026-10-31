@@ -16,9 +16,8 @@ describe("Work lens retirement", () => {
             "Complexity",
             "Cognitive Load",
             "Bottlenecks",
-            // CHAOS-3524 (chris's ruling): Ask Dev removed as a left-nav
-            // destination — one ingress only, the in-context
-            // trigger/window path.
+            // Ask Dev is not a Diagnose child: it is its own row after AI
+            // (CHAOS-12210, chris 2026-10-31; it replaces CHAOS-3524).
             "People",
             "Code",
         ]);

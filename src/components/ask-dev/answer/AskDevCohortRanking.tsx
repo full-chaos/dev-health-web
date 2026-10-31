@@ -3,8 +3,8 @@ import { useId, type ReactNode } from "react";
 import { formatCohortScore, type RankedCohortRow } from "@/lib/ask-dev/cohort/cohort-ranking";
 import {
     ABSENT,
-    DATA_COMPLETENESS_WORD,
     OUTCOME_WORD,
+    memberDriversText,
     webCohortRanking,
 } from "@/lib/ask-dev/cohort/web-cohort-ranking";
 import { humanizeTerm } from "@/lib/ask-dev/facts/fact-rows";
@@ -44,7 +44,6 @@ export const RANKING_COPY = {
     notComputed: "Not ranked by the service.",
     window: "Window",
     rowWindow: "window",
-    dataCompleteness: "Data completeness",
     topDrivers: "Top drivers",
     outcome: "outcome",
     driversEmpty: "No drivers reported.",
@@ -70,11 +69,6 @@ const OUTCOME_TONE: Record<string, string> = {
     provisional: "border-(--caution)/70",
     insufficient_evidence: "border-dashed border-(--ink-muted)",
     not_applicable: "border-(--card-stroke)",
-};
-const COMPLETENESS_TONE: Record<string, string> = {
-    complete: "border-(--positive)/60",
-    partial: "border-(--caution)/70",
-    degraded: "border-(--negative)/70",
 };
 
 function Group({
@@ -115,6 +109,25 @@ function Word({
         <span className={`${PILL} ${tones[value] ?? ""}`} data-testid={testId} data-value={value}>
             {words[value]}
         </span>
+    );
+}
+
+/**
+ * A row's detail line: its served driver rows (CHAOS-12245: never the completeness word; nothing
+ * when the member serves none) and its window.
+ */
+function RowDetailLine({ member, window }: { member: Cohort["members"][number]; window: string }) {
+    const drivers = memberDriversText(member);
+    return (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-(--ink-muted)">
+            {drivers === null ? null : (
+                <span data-testid="ask-dev-ranking-completeness">{drivers}</span>
+            )}
+            <span>
+                {drivers === null ? "" : "· "}
+                {RANKING_COPY.rowWindow} {humanizeTerm(window)}
+            </span>
+        </p>
     );
 }
 
@@ -238,20 +251,7 @@ function RankingTable({
                             data-testid="ask-dev-ranking-detail"
                         >
                             <span className="sr-only">{row.member.subject.label}: </span>
-                            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-(--ink-muted)">
-                                <span>
-                                    {RANKING_COPY.dataCompleteness}{" "}
-                                    <Word
-                                        words={DATA_COMPLETENESS_WORD}
-                                        tones={COMPLETENESS_TONE}
-                                        value={row.member.data_completeness}
-                                        testId="ask-dev-ranking-completeness"
-                                    />
-                                </span>
-                                <span>
-                                    · {RANKING_COPY.rowWindow} {humanizeTerm(row.window)}
-                                </span>
-                            </p>
+                            <RowDetailLine member={row.member} window={row.window} />
                             <RowRollup
                                 claims={claims}
                                 canonicalId={row.member.subject.canonical_id}
@@ -318,17 +318,16 @@ function IncompleteNotice({ cohort }: { cohort: Cohort }) {
 }
 
 /**
- * An unranked member by name, with the outcome and data completeness words ACR served for it (they
- * often say why it was not ranked). It never carries a score or rank: ACR ranked it not.
+ * An unranked member by name, with the outcome ACR served for it and its served driver rows (they
+ * often say why it was not ranked). It never carries a score or rank: ACR ranked it not. The same
+ * `memberDriversText` as the ranking column, so the two never disagree (CHAOS-12245).
  */
 function unrankedEntry(member: Cohort["members"][number]): string {
     const words = [
         member.outcome === undefined
             ? null
             : `${RANKING_COPY.outcome} ${OUTCOME_WORD[member.outcome]}`,
-        member.data_completeness === undefined
-            ? null
-            : `${RANKING_COPY.dataCompleteness.toLowerCase()} ${DATA_COMPLETENESS_WORD[member.data_completeness]}`,
+        memberDriversText(member),
     ].filter((word) => word !== null);
     return words.length === 0
         ? member.subject.label
