@@ -28,6 +28,8 @@ const STARTED = Date.parse("2026-10-30T12:00:00Z");
 function turn(outcome: TurnOutcome): StoreTurn {
     return {
         id: 0,
+        threadId: "thread_00000000000000000000000000000001",
+        origin: "submitted",
         question: "Which projects are at risk?",
         createdAt: "2026-10-30T12:00:00.000Z",
         submissionId: "sub_00000000000000000000000000000001",

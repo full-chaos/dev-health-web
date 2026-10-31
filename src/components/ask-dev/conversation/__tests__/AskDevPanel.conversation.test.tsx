@@ -60,6 +60,8 @@ const panel = () => screen.getByRole("complementary", { name: "Ask Dev" });
 const input = () => within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label });
 
 beforeEach(() => {
+    // CHAOS-11956: a run's `accepted` writes the restore hint; each test starts with none.
+    window.sessionStorage.clear();
     vi.stubGlobal(
         "matchMedia",
         vi.fn().mockImplementation((query: string) => ({

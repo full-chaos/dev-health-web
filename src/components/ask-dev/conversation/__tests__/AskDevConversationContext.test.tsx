@@ -47,6 +47,8 @@ function Probe() {
 }
 
 beforeEach(() => {
+    // CHAOS-11956: a run's `accepted` writes the restore hint; each test starts with none.
+    window.sessionStorage.clear();
     probe.current = null;
     sessionState.current = signedIn({});
 });

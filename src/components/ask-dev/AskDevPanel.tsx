@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Maximize2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -12,6 +12,8 @@ import { isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { AskDevComposerSlot, AskDevTranscript, useHasComposer } from "./AskDevConversationView";
 import { useAskDevShell } from "./AskDevShellContext";
+import { useAskDevConversation } from "./conversation/AskDevConversationContext";
+import { AskDevHistory } from "./conversation/AskDevHistory";
 
 /** The `md` breakpoint, as the shell uses it: from here up the panel is a right region. */
 const DESKTOP_QUERY = "(min-width: 768px)";
@@ -118,6 +120,47 @@ function DesktopPanel({
     );
 }
 
+const TOOLBAR_BUTTON =
+    "inline-flex items-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)";
+
+type PanelView = "conversation" | "history";
+
+/**
+ * The panel's body (CHAOS-11956): the conversation, or the history list of past ones. Opening a
+ * row selects it and returns to the conversation; only the store's own conversation is drawn.
+ */
+function PanelBody({ view, setView }: { view: PanelView; setView: (next: PanelView) => void }) {
+    const live = useAskDevConversation();
+    if (!live) return <AskDevTranscript />;
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-end">
+                <button
+                    type="button"
+                    data-testid="ask-dev-history-toggle"
+                    aria-pressed={view === "history"}
+                    onClick={() => setView(view === "history" ? "conversation" : "history")}
+                    className={TOOLBAR_BUTTON}
+                >
+                    {view === "history"
+                        ? CTA_LABELS.askDevBackToConversation
+                        : CTA_LABELS.askDevHistory}
+                </button>
+            </div>
+            {view === "history" ? (
+                <AskDevHistory
+                    onSelect={(threadId) => {
+                        live.store.selectThread(threadId, "local");
+                        setView("conversation");
+                    }}
+                />
+            ) : (
+                <AskDevTranscript />
+            )}
+        </div>
+    );
+}
+
 /**
  * The Ask Dev surface. From `md` up it is the right region (`DesktopPanel`); below `md` it is a
  * full-height modal sheet: the shared `Drawer` gives it the focus trap, Escape, the backdrop, the
@@ -130,14 +173,17 @@ export function AskDevPanel() {
     const pathname = usePathname() ?? "";
     const desktop = useSyncExternalStore(subscribeDesktop, readDesktop, () => true);
     const hasComposer = useHasComposer();
+    const [view, setView] = useState<PanelView>("conversation");
 
     if (!open || !isAskDevEnabled(features) || !isAskDevPanelPath(pathname)) return null;
-    // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent.
-    const composer = hasComposer ? <AskDevComposerSlot /> : null;
+    // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent. The history
+    // view has no composer: a question goes to the conversation it is asked in.
+    const composer = hasComposer && view === "conversation" ? <AskDevComposerSlot /> : null;
+    const body = <PanelBody view={view} setView={setView} />;
     if (desktop) {
         return (
             <DesktopPanel onClose={close} footer={composer}>
-                <AskDevTranscript />
+                {body}
             </DesktopPanel>
         );
     }
@@ -154,7 +200,7 @@ export function AskDevPanel() {
             footer={<ExpandButton withText />}
         >
             <div className="space-y-6">
-                <AskDevTranscript />
+                {body}
                 {composer}
             </div>
         </Drawer>

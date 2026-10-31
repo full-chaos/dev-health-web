@@ -128,6 +128,8 @@ const sentHints = (transport: FakeTransport, index = 0) =>
     transport.calls[index]?.request.requested_scope?.subject_hints;
 
 beforeEach(() => {
+    // CHAOS-11956: a run's `accepted` writes the restore hint; each test starts with none.
+    window.sessionStorage.clear();
     nav.pathname = "/investment";
     vi.clearAllMocks();
     vi.stubGlobal(

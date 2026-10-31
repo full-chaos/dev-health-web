@@ -20,13 +20,16 @@ import { logger } from "@/lib/logger";
 import type { TranscriptResult } from "../answer/AskDevTurn";
 import type { ClarificationChoice } from "../answer/clarificationModel";
 import type { RefusalEvent } from "../answer/refusalModel";
-import { newSubmissionId, newThreadId } from "./keys";
+import { isCorrelationId, newSubmissionId, newThreadId, partitionTag } from "./keys";
 import {
     TransportFailure,
     TransportRefusal,
     type AskDevTransport,
     type InvestigationEvent,
     type InvestigationStage,
+    type ThreadSummaryView,
+    type ThreadTurnView,
+    type ThreadView,
     type TransportFailureReason,
 } from "./transport";
 
@@ -43,6 +46,12 @@ import {
  *   while one runs (a double click) is refused and sends nothing.
  * - **Recovery (§2.7.5).** A run that ends without a terminal is read again through the submission
  *   status, every 3 s until the run's deadline: `done` replays the FINAL `result_id`.
+ * - **History (CHAOS-11956, E6 design v5 §3, §4).** A conversation is ACR's thread: `selectThread`
+ *   reads it again (zero investigation calls), each answer is replayed by its final `result_id`,
+ *   and a turn still running is observed through its status. Every async step checks an ownership
+ *   token before it commits: transcript work holds the selection, history work the history
+ *   revision, a delete only the partition (a delete that lands after a switch still hides its
+ *   row). The history list and its tombstones are per partition and survive a thread switch.
  *
  * It holds no token, org id or scope; ACR authorizes every call (INV-1). Logs carry ids only, never
  * the question or the answer.
@@ -50,6 +59,22 @@ import {
 
 /** §2.7.5: the status poll interval while recovering a dropped run. */
 export const STATUS_POLL_INTERVAL_MS = 3_000;
+
+/**
+ * E6 design v5 §5.3: how long a restored running turn is observed through its status when no run
+ * budget is known (no `accepted` was seen in this tab). ACR ends a run at its budget plus 30 s, so
+ * a run still `running` after this window has a state the browser cannot confirm.
+ */
+export const OBSERVATION_CAP_MS = 10 * 60_000;
+
+/** E6 design v5 §4.2: at most this many answers of a restored thread are read at a time. */
+export const REPLAY_CONCURRENCY = 4;
+
+/** E6 design v5 §4.3: one page of the history list. */
+export const HISTORY_PAGE_SIZE = 20;
+
+/** Session storage: the hint of this tab's current conversation (E6 design v5 §4.4). */
+export const THREAD_HINT_KEY = "ask-dev:thread";
 
 /** What the stream said about one stage: started, then (usually) completed. */
 export type StageState = "started" | "completed";
@@ -138,7 +163,26 @@ export type TurnOutcome =
      * ACR stopped a run after it started, with a terminal error that has its own meaning
      * (CHAOS-12201). The key is spent: the way on is a new question, never a same-key retry.
      */
-    | { readonly kind: "stopped"; readonly reason: StoppedReason };
+    | { readonly kind: "stopped"; readonly reason: StoppedReason }
+    /** A restored turn whose answer is being read again (CHAOS-11956). */
+    | { readonly kind: "restoring" }
+    /**
+     * A restored turn whose answer ACR does not serve to the reader now: `result_withheld`, or a
+     * 404 on the replay. Nothing to do.
+     */
+    | { readonly kind: "unavailable" }
+    /** A restored turn whose answer read failed. "Load again" reads it again (GET only). */
+    | { readonly kind: "restore_failed" }
+    /**
+     * A restored turn that was still running when the thread was read: the store reads its status
+     * every 3 s (E6 design v5 §5.3). `startedAt` is ACR's `admitted_at` (epoch ms).
+     */
+    | { readonly kind: "observing"; readonly startedAt: number }
+    /**
+     * The observation window ended without a final state: the browser cannot confirm the run's
+     * state (a failed read confirms nothing). The turn stays restorable from history.
+     */
+    | { readonly kind: "unconfirmed" };
 
 /** ACR's refusals before a run that have no state of their own above (error.v1). */
 export type NotRunReason =
@@ -199,27 +243,109 @@ const TERMINAL_OUTCOMES: Readonly<Record<string, TurnOutcome>> = {
 const terminalOutcomeOf = (code: string): TurnOutcome | undefined =>
     Object.hasOwn(TERMINAL_OUTCOMES, code) ? TERMINAL_OUTCOMES[code] : undefined;
 
-export type StoreTurn = {
+type TurnBase = {
     readonly id: number;
-    readonly question: string;
+    /** The conversation this turn belongs to (it replaces a numeric thread boundary). */
+    readonly threadId: string;
     readonly createdAt: string;
-    /** `X-ACR-Submission-ID` of this turn; a retry sends it again with `request`. */
+    /** `X-ACR-Submission-ID` of this turn: its stable key, across pages and reloads. */
     readonly submissionId: string;
-    /** The exact request this turn sent. */
-    readonly request: InvestigationRequest;
     /** The result id ACR reserved at admission (`accepted`), once seen. */
     readonly reservedResultId?: string | undefined;
     readonly outcome: TurnOutcome;
 };
 
+/** A turn this tab sent: a retry sends `request` again under the same `submission_id`. */
+export type SubmittedTurn = TurnBase & {
+    readonly origin: "submitted";
+    readonly question: string;
+    /** The exact request this turn sent. */
+    readonly request: InvestigationRequest;
+};
+
+/**
+ * A turn read back from ACR's thread (CHAOS-11956). It has no request, so it is never sent again:
+ * its only action is "Load again", a GET. `question` is `null` on a turn ACR admitted before it
+ * recorded questions: shown as "Question not recorded", never sent.
+ */
+export type RestoredTurn = TurnBase & {
+    readonly origin: "restored";
+    readonly question: string | null;
+    readonly request: null;
+};
+
+export type StoreTurn = SubmittedTurn | RestoredTurn;
+
+/**
+ * The conversation's thread, as the store holds it (E6 design v5 §4).
+ *
+ * - `new`: no thread on ACR yet (a fresh conversation); the first submit mints its id.
+ * - `restoring`: the thread is being read, or its answers replayed: submit waits.
+ * - `loaded`: the thread is the store's. `earlier` says whether earlier turns can be read.
+ * - `unavailable`: a malformed id, or ACR's 404 (the same for every cause): read-only.
+ * - `read_failed`: the read failed (a 5xx, the network, a body that broke the contract):
+ *   read-only, with "Try again" (a GET).
+ */
+export type ThreadAccess =
+    | { readonly kind: "new" }
+    | { readonly kind: "restoring" }
+    | {
+          readonly kind: "loaded";
+          readonly earlier: "none" | "available" | "loading" | "failed";
+      }
+    | { readonly kind: "unavailable" }
+    | { readonly kind: "read_failed" };
+
+/** Who selected the current conversation: only a `local` selection writes the `/dev` URL. */
+export type SelectionSource = "initial" | "incoming" | "local";
+
+/** The history list of the bound partition (E6 design v5 §4.3), shared by both surfaces. */
+export type HistorySnapshot = {
+    readonly status: "idle" | "loading" | "ready" | "read_failed";
+    readonly threads: readonly ThreadSummaryView[];
+    readonly nextCursor: string | null;
+    readonly loadingMore: boolean;
+    readonly moreFailed: boolean;
+    /** Threads whose delete is in flight. */
+    readonly deleting: readonly string[];
+    /** The thread whose last delete failed, if any. */
+    readonly deleteFailed: string | null;
+};
+
+const EMPTY_HISTORY: HistorySnapshot = {
+    status: "idle",
+    threads: [],
+    nextCursor: null,
+    loadingMore: false,
+    moreFailed: false,
+    deleting: [],
+    deleteFailed: null,
+};
+
 export type ConversationSnapshot = {
-    /** Bumped by every clear; a run of an older generation can change nothing. */
+    /** Bumped by every partition clear; a run of an older generation can change nothing. */
     readonly generation: number;
-    /** This conversation's `thread_id`; `null` until the first submit. */
+    /**
+     * Bumped by every selection change and every clear: transcript work of an older selection
+     * changes nothing (E6 design v5 §3.1).
+     */
+    readonly selection: number;
+    readonly selectionSource: SelectionSource;
+    /** This conversation's `thread_id`; `null` until the first submit, or when none is usable. */
     readonly threadId: string | null;
+    readonly thread: ThreadAccess;
     readonly turns: readonly StoreTurn[];
-    /** A run of this thread is running or recovering. */
+    /** A run of this thread is running, recovering or observed: a submit is refused. */
     readonly inFlight: boolean;
+    /** A submitted run is in flight that Stop can end (an observed run has no Stop yet). */
+    readonly stoppable: boolean;
+    /**
+     * An answer of this conversation is being read (a restore, "Load again", an earlier page or
+     * an observed run's final answer): a submit waits, so a follow-up never goes out without the
+     * answer it threads on (codex r3 on #1648).
+     */
+    readonly replaying: boolean;
+    readonly history: HistorySnapshot;
     /** False while signed out or before the session is known: a submit is refused. */
     readonly ready: boolean;
     /**
@@ -276,8 +402,41 @@ export function carryOfChoice(choice: ClarificationChoice): TurnCarry {
     };
 }
 
+/** Where the store keeps its restore hint (session storage in the product). */
+export type HintStorage = {
+    readonly read: () => string | null;
+    readonly write: (value: string) => void;
+    readonly clear: () => void;
+};
+
+const sessionHintStorage: HintStorage = {
+    read: () => {
+        try {
+            return window.sessionStorage.getItem(THREAD_HINT_KEY);
+        } catch {
+            return null;
+        }
+    },
+    write: (value) => {
+        try {
+            window.sessionStorage.setItem(THREAD_HINT_KEY, value);
+        } catch {
+            // No storage (a private window, blocked site data): a reload then restores nothing.
+        }
+    },
+    clear: () => {
+        try {
+            window.sessionStorage.removeItem(THREAD_HINT_KEY);
+        } catch {
+            // As above.
+        }
+    },
+};
+
 export type ConversationStoreOptions = {
     readonly transport: AskDevTransport;
+    /** The restore hint's storage; session storage by default. */
+    readonly hints?: HintStorage;
     /** `W` of the run's absolute deadline `D = submit + W` (plan §2.7.6). */
     readonly runTimeoutMs?: number;
     readonly now?: () => number;
@@ -304,7 +463,7 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
     });
 }
 
-const IN_FLIGHT = new Set<TurnOutcome["kind"]>(["running", "recovering"]);
+const IN_FLIGHT = new Set<TurnOutcome["kind"]>(["running", "recovering", "observing"]);
 
 /** A correlation code the panel may show: a plain id, never free text. */
 const REFERENCE_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
@@ -349,10 +508,19 @@ function advanceStage(
     };
 }
 
-/** The builders' timeline shape: a user turn, then its assistant turn (ids 2n and 2n + 1). */
+/**
+ * The builders' timeline shape: a user turn, then its assistant turn (ids 2n and 2n + 1). A turn
+ * whose question was not recorded stands as an empty question here: the parent reference reads
+ * only the immediate predecessor, whatever its question; `conversationOf` leaves it out.
+ */
 function toSourceTurns(turns: readonly StoreTurn[]): ConversationSourceTurn[] {
     return turns.flatMap((turn): ConversationSourceTurn[] => [
-        { role: "user", id: turn.id * 2, question: turn.question, createdAt: turn.createdAt },
+        {
+            role: "user",
+            id: turn.id * 2,
+            question: turn.question ?? "",
+            createdAt: turn.createdAt,
+        },
         {
             role: "assistant",
             id: turn.id * 2 + 1,
@@ -367,13 +535,101 @@ function toSourceTurns(turns: readonly StoreTurn[]): ConversationSourceTurn[] {
     ]);
 }
 
+/**
+ * The `conversation` a follow-up carries: the prior turns without those whose question was not
+ * recorded (both their user and their assistant entries), so no placeholder is ever sent.
+ */
+function conversationOf(turns: readonly StoreTurn[]) {
+    return buildConversationTurns(toSourceTurns(turns.filter((turn) => turn.question !== null)));
+}
+
+/** A restored running turn the store observes through its status (E6 design v5 §3.3). */
+type ObservedRun = {
+    readonly submissionId: string;
+    readonly controller: AbortController;
+};
+
+/** The hint's stored shape: a thread id, the partition's tag, and ACR's `expires_at`. */
+type ThreadHint = {
+    readonly thread_id: string;
+    readonly partition: string;
+    readonly expires_at: string | null;
+};
+
+function parseHint(raw: string | null): ThreadHint | null {
+    if (raw === null) return null;
+    try {
+        const value: unknown = JSON.parse(raw);
+        if (typeof value !== "object" || value === null) return null;
+        const hint = value as Record<string, unknown>;
+        if (typeof hint.thread_id !== "string" || typeof hint.partition !== "string") return null;
+        if (hint.expires_at !== null && typeof hint.expires_at !== "string") return null;
+        return {
+            thread_id: hint.thread_id,
+            partition: hint.partition,
+            expires_at: hint.expires_at,
+        };
+    } catch {
+        return null;
+    }
+}
+
+/** A content-free status for a log line: an HTTP status, a transport reason, or `network`. */
+function failureStatus(error: unknown): number | string {
+    if (error instanceof TransportRefusal) return error.status;
+    if (error instanceof TransportFailure) return error.reason;
+    return "network";
+}
+
+/** The page's turns in the served order, each `submission_id` once, none of `known`. */
+function uniqueTurns(
+    turns: readonly ThreadTurnView[],
+    known: ReadonlySet<string>,
+): ThreadTurnView[] {
+    const seen = new Set(known);
+    return turns.filter((turn) => {
+        if (seen.has(turn.submissionId)) return false;
+        seen.add(turn.submissionId);
+        return true;
+    });
+}
+
+/** The outcome a restored turn starts with, from the state ACR served. */
+function restoredOutcome(turn: ThreadTurnView): TurnOutcome {
+    switch (turn.state) {
+        case "running":
+            return { kind: "observing", startedAt: epochOf(turn.admittedAt) };
+        case "done":
+            return turn.resultId === null ? { kind: "unavailable" } : { kind: "restoring" };
+        case "done_unsaved":
+            return { kind: "unsaved" };
+        case "abandoned":
+            return { kind: "abandoned" };
+    }
+}
+
+const epochOf = (iso: string): number => {
+    const value = Date.parse(iso);
+    return Number.isNaN(value) ? Date.now() : value;
+};
+
 type ActiveRun = {
     readonly turnId: number;
     readonly controller: AbortController;
     /** When the run began (epoch ms): the panel's elapsed time counts from it. */
     readonly startedAt: number;
+    /** The run's absolute deadline D (epoch ms). */
+    deadline: number;
     /** Fires at the run's deadline D (plan §2.7.6 "abort at D"), whatever the run is waiting on. */
     timer: ReturnType<typeof setTimeout> | undefined;
+    /**
+     * The conversation it belongs to is no longer shown (another selection, a new conversation, a
+     * delete): the stream stays open to its terminal so ACR's run is not ended by a disconnect
+     * (a run without a lease ends on one), and nothing it delivers commits. `detachTimer` closes
+     * it at D.
+     */
+    detached: boolean;
+    detachTimer: ReturnType<typeof setTimeout> | undefined;
 };
 
 export class ConversationStore {
@@ -382,17 +638,51 @@ export class ConversationStore {
     private readonly now: () => number;
     private readonly sleep: (ms: number, signal: AbortSignal) => Promise<void>;
     private readonly uuid: () => string;
+    private readonly hints: HintStorage;
     private readonly listeners = new Set<() => void>();
     private partition: string | null | undefined = undefined;
     private active: ActiveRun | null = null;
     private nextTurnId = 0;
-    /** The first turn of the current thread; earlier turns stay on screen but are not threaded. */
-    private threadStart = 0;
+    /** Restored running turns the store observes, by `submission_id`. */
+    private readonly observed = new Map<string, ObservedRun>();
+    /** Aborts every transcript read of the current selection (thread, replays, earlier pages). */
+    private selectionAbort = new AbortController();
+    /** The `submission_id`s whose answer is queued or being read in this selection. */
+    private readonly replaying = new Set<string>();
+    /** Answer reads waiting for a slot (at most `REPLAY_CONCURRENCY` run at a time). */
+    private replayQueue: (() => Promise<void>)[] = [];
+    private replaysRunning = 0;
+    /** The current restore: when it began and what it found (for its Info event). */
+    private restore: {
+        readonly selection: number;
+        readonly startedAt: number;
+        pending: number;
+        replays: number;
+        unavailable: number;
+        failed: number;
+    } | null = null;
+    /** Bumped when the history list is read again from its first page. */
+    private historyRevision = 0;
+    private historyAbort = new AbortController();
+    /** Threads this partition deleted: a late list page cannot bring one back. */
+    private readonly deleted = new Set<string>();
+    /** Aborts deletes; only a partition clear does (a list read again must not abort a delete). */
+    private deleteAbort = new AbortController();
+    /** The current thread's `earlier_turns_cursor`, opaque. */
+    private earlierCursor: string | null = null;
+    /** The final `result_id` of each restored `done` turn, for "Load again". */
+    private readonly restoredResultIds = new Map<string, string>();
     private snapshot: ConversationSnapshot = {
         generation: 0,
+        selection: 0,
+        selectionSource: "initial",
         threadId: null,
+        thread: { kind: "new" },
         turns: [],
         inFlight: false,
+        stoppable: false,
+        replaying: false,
+        history: EMPTY_HISTORY,
         ready: false,
         partition: null,
     };
@@ -403,6 +693,7 @@ export class ConversationStore {
         this.now = options.now ?? Date.now;
         this.sleep = options.sleep ?? abortableSleep;
         this.uuid = options.uuid ?? (() => crypto.randomUUID());
+        this.hints = options.hints ?? sessionHintStorage;
     }
 
     readonly subscribe = (listener: () => void): (() => void) => {
@@ -414,55 +705,84 @@ export class ConversationStore {
 
     /**
      * Binds the store to one (org, principal) key, or to none (`null`: signed out). Another key
-     * than the bound one clears the conversation; the first bind clears nothing.
+     * than the bound one clears the conversation, the history and the restore hint; the first
+     * bind clears nothing.
      */
     setPartition(key: string | null): void {
-        if (this.partition !== undefined && key !== this.partition) this.clear("partition_changed");
+        if (this.partition !== undefined && key !== this.partition) {
+            this.clear("partition_changed");
+            this.hints.clear();
+        }
         this.partition = key;
         this.commit({ ...this.snapshot, ready: key !== null, partition: key });
     }
 
     /**
-     * Aborts the run, drops every turn and the thread, and bumps the generation. A late event of
-     * the run it aborted changes nothing.
+     * Aborts every run and read, drops every turn, the thread and the history, and bumps the
+     * generation. A late answer of anything it aborted changes nothing.
      */
     clear(reason: "partition_changed" | "unmounted"): void {
         const aborted = this.active;
-        if (aborted !== null) this.release(aborted);
-        aborted?.controller.abort();
+        const observed = this.observed.size;
+        this.dropSelectionWork("abort");
+        this.historyAbort.abort();
+        this.historyAbort = new AbortController();
+        this.deleteAbort.abort();
+        this.deleteAbort = new AbortController();
+        this.historyRevision += 1;
+        this.deleted.clear();
         const generation = this.snapshot.generation + 1;
         logger.info(
-            { generation, reason, run_aborted: aborted !== null },
+            { generation, reason, run_aborted: aborted !== null, observed_aborted: observed },
             "ask-dev conversation cleared",
         );
-        this.commit({ ...this.snapshot, generation, threadId: null, turns: [], inFlight: false });
+        this.commit({
+            ...this.snapshot,
+            generation,
+            selection: this.snapshot.selection + 1,
+            selectionSource: "initial",
+            threadId: null,
+            thread: { kind: "new" },
+            turns: [],
+            inFlight: false,
+            history: EMPTY_HISTORY,
+        });
     }
 
     /**
      * Sends a new question as a new turn with a new `submission_id`. Refused (`false`, nothing
-     * sent) when it is blank, while signed out, or while a run of this thread is in flight.
+     * sent) when it is blank, while signed out, while a run of this thread is in flight, or while
+     * the conversation is restoring or read-only.
      */
     submit(question: string, carry?: TurnCarry): boolean {
         const trimmed = question.trim();
-        if (nonBlank(trimmed) === undefined || !this.snapshot.ready || this.snapshot.inFlight) {
+        const { thread } = this.snapshot;
+        if (
+            nonBlank(trimmed) === undefined ||
+            !this.snapshot.ready ||
+            this.snapshot.inFlight ||
+            this.replaying.size > 0 ||
+            (thread.kind !== "new" && thread.kind !== "loaded")
+        ) {
             return false;
         }
+        const minted = this.snapshot.threadId === null;
         const threadId = this.snapshot.threadId ?? newThreadId(this.uuid());
-        // Only the current thread's turns: a closed conversation's turns carry nothing forward.
-        const prior = toSourceTurns(
-            this.snapshot.turns.filter((turn) => turn.id >= this.threadStart),
-        );
-        const parent = deriveParentReference(prior);
+        // Only this thread's turns: a closed conversation's turns carry nothing forward.
+        const prior = this.snapshot.turns.filter((turn) => turn.threadId === threadId);
+        const parent = deriveParentReference(toSourceTurns(prior));
         const request = buildInvestigationRequest({
             question: trimmed,
             requestId: newRequestId(this.uuid()),
-            conversation: buildConversationTurns(prior),
+            conversation: conversationOf(prior),
             parentResultId: carry?.parentResultId ?? parent.parentResultId,
             subjectHints: mergeSubjectHints(carry?.pageHints ?? [], parent.subjectHints),
             structureReceipts: carry?.structureReceipts,
         });
-        const turn: StoreTurn = {
+        const turn: SubmittedTurn = {
             id: this.nextTurnId++,
+            threadId,
+            origin: "submitted",
             question: trimmed,
             createdAt: new Date(this.now()).toISOString(),
             submissionId: newSubmissionId(this.uuid()),
@@ -472,6 +792,9 @@ export class ConversationStore {
         this.commit({
             ...this.snapshot,
             threadId,
+            thread: minted ? { kind: "loaded", earlier: "none" } : thread,
+            // The first submit of a new conversation is a local selection: `/dev` names it.
+            selectionSource: minted ? "local" : this.snapshot.selectionSource,
             turns: [...this.snapshot.turns, turn],
             inFlight: true,
         });
@@ -481,12 +804,14 @@ export class ConversationStore {
 
     /**
      * Sends the last turn's request again under its own `submission_id` (INV-2: the only reuse of a
-     * key). Only for a `failed` or `limited` turn that allows it (nothing was admitted, or the
-     * answer is stored), and only when no run is in flight.
+     * key). Only for a submitted `failed`, `limited` or `not_run` turn that allows it (nothing was
+     * admitted, or the answer is stored), and only when no run is in flight. A restored turn has no
+     * request: it is never sent again (`reloadTurn` reads it again instead).
      */
     retry(turnId: number): boolean {
         const last = this.snapshot.turns[this.snapshot.turns.length - 1];
         if (last?.id !== turnId || this.snapshot.inFlight || !this.snapshot.ready) return false;
+        if (last.origin !== "submitted" || last.threadId !== this.snapshot.threadId) return false;
         const { outcome } = last;
         if (
             (outcome.kind !== "failed" &&
@@ -510,7 +835,7 @@ export class ConversationStore {
         logger.info(
             {
                 submission_id: turn?.submissionId,
-                request_id: turn?.request.request_id,
+                request_id: turn?.request?.request_id,
                 t_req: new Date(this.now()).toISOString(),
             },
             "ask-dev run canceled",
@@ -519,14 +844,701 @@ export class ConversationStore {
         this.setOutcome(active.turnId, { kind: "canceled" }, false);
     }
 
+    /**
+     * Starts a new, empty conversation (a local selection): the old one stays on ACR and in the
+     * history. Its run, if any, is dropped from this tab; ACR keeps a leased run going.
+     */
+    newConversation(): void {
+        this.resetSelection("new_conversation");
+        this.hints.clear();
+        this.commit({ ...this.snapshot, selectionSource: "local" });
+    }
+
+    /**
+     * Selects a conversation by its `thread_id` and reads it back from ACR (E6 design v5 §4.1,
+     * §4.2): zero investigation calls. Selecting the thread already shown is a no-op. A malformed
+     * id, or ACR's 404, gives the neutral read-only `unavailable` state.
+     */
+    selectThread(threadId: string, source: "incoming" | "local"): boolean {
+        if (!this.snapshot.ready) return false;
+        const { thread } = this.snapshot;
+        if (
+            threadId === this.snapshot.threadId &&
+            (thread.kind === "loaded" || thread.kind === "restoring")
+        ) {
+            return false;
+        }
+        this.resetSelection("selection_changed");
+        if (!isCorrelationId(threadId)) {
+            this.hints.clear();
+            logger.info(
+                { stage: "read", status: "malformed", selection: this.snapshot.selection },
+                "ask-dev thread restore failed",
+            );
+            this.commit({
+                ...this.snapshot,
+                selectionSource: source,
+                thread: { kind: "unavailable" },
+            });
+            return true;
+        }
+        this.commit({
+            ...this.snapshot,
+            selectionSource: source,
+            threadId,
+            thread: { kind: "restoring" },
+        });
+        void this.readThread(threadId);
+        return true;
+    }
+
+    /** "Try again" on a conversation whose read failed: the same GET, under a new selection. */
+    retryThreadRead(): boolean {
+        const { thread, threadId } = this.snapshot;
+        if (thread.kind !== "read_failed" || threadId === null || !this.snapshot.ready) {
+            return false;
+        }
+        this.reread(threadId);
+        return true;
+    }
+
+    /**
+     * Restores this tab's last conversation from its hint (E6 design v5 §4.4), when the store has
+     * none: a reload, or the panel opened again. The hint is never authorization: ACR reads the
+     * thread again for the caller, and a 404 clears it.
+     */
+    restoreFromHint(): boolean {
+        if (!this.snapshot.ready || typeof this.partition !== "string") return false;
+        if (this.snapshot.threadId !== null || this.snapshot.turns.length > 0) return false;
+        if (this.snapshot.thread.kind !== "new") return false;
+        const hint = parseHint(this.hints.read());
+        if (hint === null) return false;
+        const expired = hint.expires_at !== null && !(Date.parse(hint.expires_at) > this.now());
+        if (hint.partition !== partitionTag(this.partition) || expired) {
+            this.hints.clear();
+            return false;
+        }
+        return this.selectThread(hint.thread_id, "incoming");
+    }
+
+    /** "Show earlier turns": the page before the oldest shown, prepended (E6 design v5 §4.2.6). */
+    loadEarlierTurns(): boolean {
+        const { thread, threadId } = this.snapshot;
+        if (thread.kind !== "loaded") return false;
+        if (thread.earlier !== "available" && thread.earlier !== "failed") return false;
+        if (this.earlierCursor === null || threadId === null) return false;
+        this.commit({ ...this.snapshot, thread: { kind: "loaded", earlier: "loading" } });
+        void this.readEarlier(threadId, this.earlierCursor);
+        return true;
+    }
+
+    /** "Load again" on a restored turn whose answer read failed: a GET, never an investigation. */
+    reloadTurn(turnId: number): boolean {
+        const turn = this.turn(turnId);
+        if (turn === undefined || turn.origin !== "restored") return false;
+        if (turn.outcome.kind !== "restore_failed") return false;
+        const resultId = this.restoredResultIds.get(turn.submissionId);
+        if (resultId === undefined) return false;
+        this.updateRestored(turn.submissionId, { kind: "restoring" });
+        this.queueReplay(turn.submissionId, resultId, this.snapshot.selection, false);
+        return true;
+    }
+
+    /** Reads the history list again from its first page (E6 design v5 §4.3). */
+    loadHistory(): boolean {
+        if (!this.snapshot.ready) return false;
+        this.historyAbort.abort();
+        this.historyAbort = new AbortController();
+        const revision = ++this.historyRevision;
+        const generation = this.snapshot.generation;
+        this.commitHistory({ status: "loading", loadingMore: false, moreFailed: false });
+        void this.readHistoryPage(undefined, revision, generation);
+        return true;
+    }
+
+    /** "Show more": the next page of the history list. */
+    loadMoreHistory(): boolean {
+        const { history } = this.snapshot;
+        if (!this.snapshot.ready || history.nextCursor === null || history.loadingMore) {
+            return false;
+        }
+        this.commitHistory({ loadingMore: true, moreFailed: false });
+        void this.readHistoryPage(
+            history.nextCursor,
+            this.historyRevision,
+            this.snapshot.generation,
+        );
+        return true;
+    }
+
+    /**
+     * Deletes a conversation on ACR (E6 design v5 §4.3). A delete closes the thread; it does not
+     * stop a running turn. ACR answers 204 for any well-formed id, so a success says nothing about
+     * whose thread it was. The tombstone is the partition's: it lands after a thread switch too.
+     */
+    deleteThread(threadId: string): boolean {
+        const { history } = this.snapshot;
+        if (!this.snapshot.ready || history.deleting.includes(threadId)) return false;
+        const generation = this.snapshot.generation;
+        this.commitHistory({
+            deleting: [...history.deleting, threadId],
+            deleteFailed: history.deleteFailed === threadId ? null : history.deleteFailed,
+        });
+        void this.removeThread(threadId, generation);
+        return true;
+    }
+
     /** A run that just began: no stage yet, and the elapsed time counts from now. */
     private running(): TurnOutcome {
         return { kind: "running", startedAt: this.now(), stages: {} };
     }
 
     private commit(next: ConversationSnapshot): void {
-        this.snapshot = next;
+        this.snapshot = {
+            ...next,
+            // An observed run blocks a submit as a submitted one does (E6 design v5 §3.3).
+            inFlight: next.inFlight || this.observed.size > 0,
+            replaying: this.replaying.size > 0,
+            stoppable: next.turns.some(
+                (turn) =>
+                    turn.origin === "submitted" &&
+                    (turn.outcome.kind === "running" || turn.outcome.kind === "recovering"),
+            ),
+        };
         for (const listener of this.listeners) listener();
+    }
+
+    private commitHistory(patch: Partial<HistorySnapshot>): void {
+        this.commit({ ...this.snapshot, history: { ...this.snapshot.history, ...patch } });
+    }
+
+    /**
+     * Ends every piece of work of the current selection: the submitted run, the observed runs,
+     * the thread and answer reads. A late answer of any of them fails its ownership check.
+     */
+    private dropSelectionWork(run: "abort" | "detach"): void {
+        const active = this.active;
+        if (active !== null) {
+            this.release(active);
+            if (run === "abort") active.controller.abort();
+            else this.detach(active);
+        }
+        for (const run of this.observed.values()) run.controller.abort();
+        this.observed.clear();
+        this.selectionAbort.abort();
+        this.selectionAbort = new AbortController();
+        this.replayQueue = [];
+        this.replaysRunning = 0;
+        this.replaying.clear();
+        this.restore = null;
+        this.earlierCursor = null;
+        this.restoredResultIds.clear();
+    }
+
+    /**
+     * Clears the conversation for another selection and keeps the partition's history and its
+     * tombstones (E6 design v5 §3.1).
+     */
+    private resetSelection(
+        reason: "selection_changed" | "new_conversation" | "thread_deleted",
+    ): void {
+        const detached = this.active;
+        const observed = this.observed.size;
+        // Delete is not Stop, and a switch does not stop the run either (E6 design v5 §4.2, Q2).
+        this.dropSelectionWork("detach");
+        const selection = this.snapshot.selection + 1;
+        logger.info(
+            { selection, reason, run_detached: detached !== null, observed_aborted: observed },
+            "ask-dev conversation cleared",
+        );
+        this.commit({
+            ...this.snapshot,
+            selection,
+            threadId: null,
+            thread: { kind: "new" },
+            turns: [],
+            inFlight: false,
+        });
+    }
+
+    /** The same thread read again from its latest page, under a new selection. */
+    private reread(threadId: string): void {
+        const source = this.snapshot.selectionSource;
+        this.resetSelection("selection_changed");
+        this.commit({
+            ...this.snapshot,
+            selectionSource: source,
+            threadId,
+            thread: { kind: "restoring" },
+        });
+        void this.readThread(threadId);
+    }
+
+    /** True when transcript work of `selection` may still commit; else logs the dropped answer. */
+    private ownsSelection(selection: number, operation: string): boolean {
+        if (selection === this.snapshot.selection) return true;
+        logger.info({ operation, scope: "transcript", selection }, "ask-dev stale answer dropped");
+        return false;
+    }
+
+    /** True when history work of `revision` may still commit; else logs the dropped answer. */
+    private ownsHistory(generation: number, revision: number, operation: string): boolean {
+        if (generation === this.snapshot.generation && revision === this.historyRevision) {
+            return true;
+        }
+        logger.info({ operation, scope: "history", revision }, "ask-dev stale answer dropped");
+        return false;
+    }
+
+    private writeHint(threadId: string, expiresAt: string | null): void {
+        if (typeof this.partition !== "string") return;
+        const hint: ThreadHint = {
+            thread_id: threadId,
+            partition: partitionTag(this.partition),
+            expires_at: expiresAt,
+        };
+        this.hints.write(JSON.stringify(hint));
+    }
+
+    private async readThread(threadId: string): Promise<void> {
+        const selection = this.snapshot.selection;
+        const signal = this.selectionAbort.signal;
+        const startedAt = this.now();
+        let view: ThreadView | null;
+        try {
+            view = await this.transport.readThread({ threadId, signal });
+        } catch (error) {
+            if (!this.ownsSelection(selection, "thread_read")) return;
+            logger.info(
+                { thread_id: threadId, stage: "read", status: failureStatus(error), selection },
+                "ask-dev thread restore failed",
+            );
+            this.commit({ ...this.snapshot, thread: { kind: "read_failed" } });
+            return;
+        }
+        if (!this.ownsSelection(selection, "thread_read")) return;
+        if (view === null || this.deleted.has(threadId)) {
+            // ACR's 404 is the same for every cause (INV-1): the neutral read-only state.
+            this.hints.clear();
+            logger.info(
+                { thread_id: threadId, stage: "read", status: 404, selection },
+                "ask-dev thread restore failed",
+            );
+            this.commit({ ...this.snapshot, threadId: null, thread: { kind: "unavailable" } });
+            return;
+        }
+        if (view.threadId !== threadId) {
+            logger.info(
+                { thread_id: threadId, stage: "read", status: "invalid_upstream", selection },
+                "ask-dev thread restore failed",
+            );
+            this.commit({ ...this.snapshot, thread: { kind: "read_failed" } });
+            return;
+        }
+        this.writeHint(threadId, view.expiresAt);
+        this.earlierCursor = view.earlierTurnsCursor;
+        this.restore = {
+            selection,
+            startedAt,
+            pending: 0,
+            replays: 0,
+            unavailable: 0,
+            failed: 0,
+        };
+        const fresh = uniqueTurns(view.turns, new Set());
+        this.commit({
+            ...this.snapshot,
+            turns: fresh.map((turn) => this.restoredTurn(threadId, turn)),
+            thread: { kind: "restoring" },
+        });
+        this.startRestoredWork(fresh, selection, true);
+        this.settleRestoreIfDone();
+    }
+
+    private async readEarlier(threadId: string, cursor: string): Promise<void> {
+        const selection = this.snapshot.selection;
+        const signal = this.selectionAbort.signal;
+        let view: ThreadView | null;
+        try {
+            view = await this.transport.readThread({ threadId, before: cursor, signal });
+        } catch (error) {
+            if (!this.ownsSelection(selection, "earlier_read")) return;
+            logger.info(
+                { thread_id: threadId, stage: "earlier", status: failureStatus(error), selection },
+                "ask-dev thread restore failed",
+            );
+            if (error instanceof TransportRefusal && error.status === 400) {
+                // A stale cursor: read the thread again from its latest page.
+                this.reread(threadId);
+                return;
+            }
+            this.commit({ ...this.snapshot, thread: { kind: "loaded", earlier: "failed" } });
+            return;
+        }
+        if (!this.ownsSelection(selection, "earlier_read")) return;
+        if (view === null) {
+            this.hints.clear();
+            logger.info(
+                { thread_id: threadId, stage: "earlier", status: 404, selection },
+                "ask-dev thread restore failed",
+            );
+            this.dropSelectionWork("detach");
+            this.commit({
+                ...this.snapshot,
+                threadId: null,
+                thread: { kind: "unavailable" },
+                turns: [],
+                inFlight: false,
+            });
+            return;
+        }
+        if (view.threadId !== threadId) {
+            // Another thread's page is never this conversation's (codex r1 on #1648).
+            logger.info(
+                { thread_id: threadId, stage: "earlier", status: "invalid_upstream", selection },
+                "ask-dev thread restore failed",
+            );
+            this.commit({ ...this.snapshot, thread: { kind: "loaded", earlier: "failed" } });
+            return;
+        }
+        const known = new Set(this.snapshot.turns.map((turn) => turn.submissionId));
+        const fresh = uniqueTurns(view.turns, known);
+        this.earlierCursor = view.earlierTurnsCursor;
+        this.commit({
+            ...this.snapshot,
+            turns: [
+                ...fresh.map((turn) => this.restoredTurn(threadId, turn)),
+                ...this.snapshot.turns,
+            ],
+            thread: {
+                kind: "loaded",
+                earlier: view.earlierTurnsCursor === null ? "none" : "available",
+            },
+        });
+        this.startRestoredWork(fresh, selection, false);
+    }
+
+    /** A turn read from ACR's thread, with the state its submission was in. */
+    private restoredTurn(threadId: string, turn: ThreadTurnView): RestoredTurn {
+        return {
+            id: this.nextTurnId++,
+            threadId,
+            origin: "restored",
+            question: turn.question,
+            createdAt: turn.admittedAt,
+            submissionId: turn.submissionId,
+            request: null,
+            outcome: restoredOutcome(turn),
+        };
+    }
+
+    /** Replays each restored answer and observes each running turn. */
+    private startRestoredWork(
+        turns: readonly ThreadTurnView[],
+        selection: number,
+        counted: boolean,
+    ): void {
+        for (const turn of turns) {
+            if (turn.state === "running") {
+                void this.observe(turn.submissionId, selection);
+            } else if (turn.state === "done" && turn.resultId !== null) {
+                this.restoredResultIds.set(turn.submissionId, turn.resultId);
+                if (counted && this.restore !== null) {
+                    this.restore.pending += 1;
+                    this.restore.replays += 1;
+                }
+                this.queueReplay(turn.submissionId, turn.resultId, selection, counted);
+            } else if (turn.state === "done" && counted && this.restore !== null) {
+                this.restore.unavailable += 1;
+            }
+        }
+    }
+
+    private queueReplay(
+        submissionId: string,
+        resultId: string,
+        selection: number,
+        counted: boolean,
+        onSettled?: () => void,
+    ): void {
+        const signal = this.selectionAbort.signal;
+        this.replaying.add(submissionId);
+        // The snapshot says so at once: the composer locks before the read starts.
+        this.commit({ ...this.snapshot });
+        this.replayQueue.push(() =>
+            this.replayRestored(submissionId, resultId, selection, signal, counted, onSettled),
+        );
+        this.pumpReplays();
+    }
+
+    private pumpReplays(): void {
+        while (this.replaysRunning < REPLAY_CONCURRENCY && this.replayQueue.length > 0) {
+            const task = this.replayQueue.shift();
+            if (task === undefined) return;
+            const selection = this.snapshot.selection;
+            this.replaysRunning += 1;
+            void task().finally(() => {
+                // A replay of an older selection frees no slot of this one.
+                if (selection !== this.snapshot.selection) return;
+                this.replaysRunning -= 1;
+                this.pumpReplays();
+            });
+        }
+    }
+
+    /** Reads one restored answer again by its final `result_id`: a GET, never an investigation. */
+    private async replayRestored(
+        submissionId: string,
+        resultId: string,
+        selection: number,
+        signal: AbortSignal,
+        counted: boolean,
+        onSettled?: () => void,
+    ): Promise<void> {
+        let result: TranscriptResult;
+        try {
+            result = await this.transport.readResult(resultId, signal);
+        } catch (error) {
+            if (!this.ownsSelection(selection, "replay")) return;
+            this.replaying.delete(submissionId);
+            onSettled?.();
+            const unavailable = error instanceof TransportRefusal && error.status === 404;
+            logger.warn(
+                {
+                    submission_id: submissionId,
+                    result_id: resultId,
+                    status: failureStatus(error),
+                },
+                "ask-dev result replay failed",
+            );
+            this.updateRestored(
+                submissionId,
+                unavailable ? { kind: "unavailable" } : { kind: "restore_failed" },
+            );
+            if (counted) this.restoreCounted(selection, unavailable ? "unavailable" : "failed");
+            return;
+        }
+        if (!this.ownsSelection(selection, "replay")) return;
+        this.replaying.delete(submissionId);
+        onSettled?.();
+        this.updateRestored(submissionId, { kind: "answered", result });
+        if (counted) this.restoreCounted(selection, "answered");
+    }
+
+    private restoreCounted(selection: number, how: "answered" | "unavailable" | "failed"): void {
+        const restore = this.restore;
+        if (restore === null || restore.selection !== selection) return;
+        restore.pending -= 1;
+        if (how === "unavailable") restore.unavailable += 1;
+        if (how === "failed") restore.failed += 1;
+        this.settleRestoreIfDone();
+    }
+
+    /** Every restored answer settled: the conversation is the store's, and a submit may follow. */
+    private settleRestoreIfDone(): void {
+        const restore = this.restore;
+        if (restore === null || restore.pending > 0) return;
+        if (this.snapshot.thread.kind !== "restoring") return;
+        this.restore = null;
+        logger.info(
+            {
+                thread_id: this.snapshot.threadId,
+                turns: this.snapshot.turns.length,
+                replays: restore.replays,
+                unavailable: restore.unavailable,
+                failed: restore.failed,
+                duration_ms: this.now() - restore.startedAt,
+                selection: restore.selection,
+            },
+            "ask-dev thread restored",
+        );
+        this.commit({
+            ...this.snapshot,
+            thread: {
+                kind: "loaded",
+                earlier: this.earlierCursor === null ? "none" : "available",
+            },
+        });
+    }
+
+    /** Sets a restored turn's outcome, found by its `submission_id`. */
+    private updateRestored(submissionId: string, outcome: TurnOutcome): void {
+        this.commit({
+            ...this.snapshot,
+            turns: this.snapshot.turns.map((turn) =>
+                turn.submissionId === submissionId && turn.origin === "restored"
+                    ? { ...turn, outcome }
+                    : turn,
+            ),
+            inFlight: this.active !== null,
+        });
+    }
+
+    /**
+     * A restored turn that was still running: its status is read every 3 s until a final state,
+     * for at most `OBSERVATION_CAP_MS` (no run budget is known here; E6 design v5 §5.3). A failed
+     * read confirms nothing: at the cap the turn says its state could not be confirmed.
+     */
+    private async observe(submissionId: string, selection: number): Promise<void> {
+        const handle: ObservedRun = { submissionId, controller: new AbortController() };
+        this.observed.set(submissionId, handle);
+        const signal = handle.controller.signal;
+        const capAt = this.now() + OBSERVATION_CAP_MS;
+        const owns = (operation: string) =>
+            this.observed.get(submissionId) === handle && this.ownsSelection(selection, operation);
+        const finish = (outcome: TurnOutcome) => {
+            this.observed.delete(submissionId);
+            this.updateRestored(submissionId, outcome);
+        };
+        for (;;) {
+            let status;
+            try {
+                status = await this.transport.submissionStatus(submissionId, signal);
+            } catch (error) {
+                if (!owns("observed_status")) return;
+                logger.warn(
+                    { err: error, submission_id: submissionId },
+                    "ask-dev submission status read failed",
+                );
+                status = undefined;
+            }
+            if (!owns("observed_status")) return;
+            if (status === null) {
+                finish({ kind: "unavailable" });
+                return;
+            }
+            if (status?.state === "done") {
+                if (status.result_id === undefined) {
+                    finish({ kind: "unavailable" });
+                    return;
+                }
+                this.restoredResultIds.set(submissionId, status.result_id);
+                // The run stays observed until its answer is read: a follow-up must carry it
+                // (codex r1 on #1648).
+                this.updateRestored(submissionId, { kind: "restoring" });
+                this.queueReplay(submissionId, status.result_id, selection, false, () => {
+                    if (this.observed.get(submissionId) === handle) {
+                        this.observed.delete(submissionId);
+                    }
+                });
+                return;
+            }
+            if (status?.state === "done_unsaved") {
+                finish({ kind: "unsaved" });
+                return;
+            }
+            if (status?.state === "abandoned") {
+                finish({ kind: "interrupted" });
+                return;
+            }
+            const left = capAt - this.now();
+            if (left <= 0) {
+                logger.info(
+                    { submission_id: submissionId, deadline_source: "observation_cap" },
+                    "ask-dev observed run expired",
+                );
+                finish({ kind: "unconfirmed" });
+                return;
+            }
+            try {
+                await this.sleep(Math.min(STATUS_POLL_INTERVAL_MS, left), signal);
+            } catch {
+                return;
+            }
+            if (!owns("observed_status")) return;
+        }
+    }
+
+    private async readHistoryPage(
+        cursor: string | undefined,
+        revision: number,
+        generation: number,
+    ): Promise<void> {
+        let page;
+        try {
+            page = await this.transport.listThreads({
+                cursor,
+                limit: HISTORY_PAGE_SIZE,
+                signal: this.historyAbort.signal,
+            });
+        } catch (error) {
+            if (!this.ownsHistory(generation, revision, "history_read")) return;
+            logger.info(
+                { stage: "list", status: failureStatus(error), revision },
+                "ask-dev thread restore failed",
+            );
+            if (cursor !== undefined && error instanceof TransportRefusal && error.status === 400) {
+                // A stale cursor: read the list again from its first page.
+                this.loadHistory();
+                return;
+            }
+            this.commitHistory(
+                cursor === undefined
+                    ? { status: "read_failed", loadingMore: false }
+                    : { loadingMore: false, moreFailed: true },
+            );
+            return;
+        }
+        if (!this.ownsHistory(generation, revision, "history_read")) return;
+        const seen = new Set<string>();
+        const rows =
+            cursor === undefined
+                ? page.threads
+                : [...this.snapshot.history.threads, ...page.threads];
+        // A deleted thread stays out, whichever page (or late answer) still lists it.
+        const threads = rows
+            .filter((row) => !this.deleted.has(row.threadId))
+            .filter((row) => {
+                if (seen.has(row.threadId)) return false;
+                seen.add(row.threadId);
+                return true;
+            });
+        this.commitHistory({
+            status: "ready",
+            threads,
+            nextCursor: page.nextCursor,
+            loadingMore: false,
+        });
+    }
+
+    private async removeThread(threadId: string, generation: number): Promise<void> {
+        try {
+            await this.transport.deleteThread({ threadId, signal: this.deleteAbort.signal });
+        } catch (error) {
+            if (generation !== this.snapshot.generation) return;
+            logger.warn(
+                { thread_id: threadId, status: failureStatus(error) },
+                "ask-dev thread not deleted",
+            );
+            this.commitHistory({
+                deleting: this.snapshot.history.deleting.filter((id) => id !== threadId),
+                deleteFailed: threadId,
+            });
+            return;
+        }
+        // The partition's tombstone: it lands after a thread switch too (E6 design v5 N1).
+        if (generation !== this.snapshot.generation) {
+            logger.info(
+                { operation: "delete", scope: "history", revision: this.historyRevision },
+                "ask-dev stale answer dropped",
+            );
+            return;
+        }
+        this.deleted.add(threadId);
+        const current = threadId === this.snapshot.threadId;
+        logger.info({ thread_id: threadId, current }, "ask-dev thread deleted");
+        const { history } = this.snapshot;
+        this.commitHistory({
+            deleting: history.deleting.filter((id) => id !== threadId),
+            threads: history.threads.filter((row) => row.threadId !== threadId),
+            deleteFailed: history.deleteFailed === threadId ? null : history.deleteFailed,
+        });
+        if (parseHint(this.hints.read())?.thread_id === threadId) this.hints.clear();
+        if (current) {
+            // Delete is not Stop: ACR keeps a leased run going; this tab drops the conversation.
+            this.resetSelection("thread_deleted");
+            this.commit({ ...this.snapshot, selectionSource: "local" });
+        }
     }
 
     private turn(turnId: number): StoreTurn | undefined {
@@ -553,6 +1565,18 @@ export class ConversationStore {
         return this.active === run;
     }
 
+    /**
+     * Keeps a released run's stream open to its terminal (a disconnect would end a run that has no
+     * lease), and closes it at its deadline D whatever it is waiting on.
+     */
+    private detach(run: ActiveRun): void {
+        run.detached = true;
+        run.detachTimer = setTimeout(
+            () => run.controller.abort(),
+            Math.max(0, run.deadline - this.now()),
+        );
+    }
+
     /** Lets the run go: nothing it still delivers changes the store after this. */
     private release(run: ActiveRun): void {
         if (this.active === run) this.active = null;
@@ -569,7 +1593,7 @@ export class ConversationStore {
         logger.warn(
             {
                 submission_id: turn?.submissionId,
-                request_id: turn?.request.request_id,
+                request_id: turn?.request?.request_id,
                 outcome: turn?.outcome.kind,
             },
             "ask-dev run reached its deadline",
@@ -583,9 +1607,16 @@ export class ConversationStore {
      * as `thread_closed`, the thread is dropped, and the next question carries nothing from it.
      */
     private closeThread(run: ActiveRun): void {
-        this.threadStart = this.nextTurnId;
         this.settle(run, { kind: "thread_closed" });
-        this.commit({ ...this.snapshot, threadId: null });
+        if (parseHint(this.hints.read())?.thread_id === this.snapshot.threadId) this.hints.clear();
+        // The closed thread's turns stay on screen under their own `threadId`; the next submit
+        // mints a new one and carries nothing from them.
+        this.commit({
+            ...this.snapshot,
+            threadId: null,
+            thread: { kind: "new" },
+            selectionSource: "local",
+        });
     }
 
     private settle(run: ActiveRun, outcome: TurnOutcome): void {
@@ -596,16 +1627,20 @@ export class ConversationStore {
     private async run(turnId: number): Promise<void> {
         const turn = this.turn(turnId);
         const threadId = this.snapshot.threadId;
-        if (turn === undefined || threadId === null) return;
+        // A restored turn has no request: it is never sent (E6 design v5 §3.2).
+        if (turn?.origin !== "submitted" || threadId === null) return;
         const startedAt = turn.outcome.kind === "running" ? turn.outcome.startedAt : this.now();
+        const deadline = this.now() + this.runTimeoutMs;
         const run: ActiveRun = {
             turnId,
             controller: new AbortController(),
             startedAt,
+            deadline,
             timer: undefined,
+            detached: false,
+            detachTimer: undefined,
         };
         this.active = run;
-        const deadline = this.now() + this.runTimeoutMs;
         run.timer = setTimeout(() => this.expire(run), Math.max(0, deadline - this.now()));
         const submissionId = turn.submissionId;
         const requestId = turn.request.request_id;
@@ -619,12 +1654,15 @@ export class ConversationStore {
                 signal: run.controller.signal,
             });
             for await (const event of events) {
+                // A detached run is read to its end, and nothing it delivers commits.
+                if (run.detached) continue;
                 // A late event of a run the store gave up (cleared, canceled) is dropped.
                 if (!this.owns(run)) return;
                 if (event.type === "accepted") accepted = true;
                 if (this.apply(run, event)) return;
             }
         } catch (error) {
+            if (run.detached) clearTimeout(run.detachTimer);
             if (!this.owns(run)) return;
             if (error instanceof TransportRefusal) {
                 await this.refused(run, deadline, error);
@@ -639,6 +1677,7 @@ export class ConversationStore {
                 "ask-dev stream dropped",
             );
         }
+        if (run.detached) clearTimeout(run.detachTimer);
         if (!this.owns(run)) return;
         logger.warn(
             { submission_id: submissionId, request_id: requestId, accepted },
@@ -650,13 +1689,20 @@ export class ConversationStore {
     /** Applies one event; `true` when it was the terminal. */
     private apply(run: ActiveRun, event: InvestigationEvent): boolean {
         switch (event.type) {
-            case "accepted":
+            case "accepted": {
                 this.update(
                     run.turnId,
                     (turn) => ({ ...turn, reservedResultId: event.reserved_result_id }),
                     true,
                 );
+                // ACR admitted a turn of this thread: a reload can now restore it. Its expiry is
+                // unknown here (the next thread read gives it).
+                const threadId = this.turn(run.turnId)?.threadId;
+                if (threadId !== undefined && threadId === this.snapshot.threadId) {
+                    this.writeHint(threadId, null);
+                }
                 return false;
+            }
             case "stage":
                 this.update(run.turnId, (turn) => advanceStage(turn, event), true);
                 return false;
@@ -671,7 +1717,7 @@ export class ConversationStore {
                 logger.warn(
                     {
                         submission_id: turn?.submissionId,
-                        request_id: turn?.request.request_id,
+                        request_id: turn?.request?.request_id,
                         code,
                     },
                     "ask-dev investigation ended with an error",
@@ -828,7 +1874,7 @@ export class ConversationStore {
     private transportFailed(run: ActiveRun, reason: TransportFailureReason): void {
         const turn = this.turn(run.turnId);
         logger.warn(
-            { submission_id: turn?.submissionId, request_id: turn?.request.request_id, reason },
+            { submission_id: turn?.submissionId, request_id: turn?.request?.request_id, reason },
             "ask-dev transport ended the run",
         );
         switch (reason) {
@@ -854,7 +1900,7 @@ export class ConversationStore {
     private reference(run: ActiveRun, error?: ACRErrorV1): string | undefined {
         if (error !== undefined && REFERENCE_PATTERN.test(error.request_id))
             return error.request_id;
-        const own = this.turn(run.turnId)?.request.request_id;
+        const own = this.turn(run.turnId)?.request?.request_id;
         return own !== undefined && REFERENCE_PATTERN.test(own) ? own : undefined;
     }
 
@@ -867,7 +1913,7 @@ export class ConversationStore {
         const turn = this.turn(run.turnId);
         if (turn === undefined) return;
         const submissionId = turn.submissionId;
-        const requestId = turn.request.request_id;
+        const requestId = turn.request?.request_id;
         const signal = run.controller.signal;
         this.setOutcome(run.turnId, { kind: "recovering", startedAt: run.startedAt }, true);
         for (;;) {
