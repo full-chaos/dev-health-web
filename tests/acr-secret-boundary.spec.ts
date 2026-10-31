@@ -8,7 +8,8 @@ import {
     type Response,
 } from "@playwright/test";
 
-import { ACR_E2E_ISSUER, installCrossOriginAcr } from "./mocks/acr-browser-client";
+import { ACR_CORS, ACR_E2E_ISSUER, installCrossOriginAcr } from "./mocks/acr-browser-client";
+import { INVESTIGATIONS_PATH, investigationStreamFor } from "./mocks/acr-investigation-stream";
 import { accessTokensIn, type Observed, tokenBoundaryViolations } from "./mocks/acr-token-boundary";
 
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
@@ -1351,6 +1352,56 @@ test.describe("ACR browser tokens on the c2 flow (CHAOS-12304)", () => {
             ),
             "the family holds the refresh token in sessionStorage",
         ).toBe(true);
+    });
+
+    // CHAOS-12104 (T14a): the stream channel. A question asked in the panel goes to ACR's
+    // investigation stream from the browser's own transport, with the token store's access token.
+    test("the stream channel: a question carries the access token only as Bearer to ACR (CHAOS-12104)", async ({
+        baseURL,
+        page,
+    }) => {
+        const web = new URL(baseURL ?? "http://127.0.0.1:3001").origin;
+        const streamed: { headers: Record<string, string>; url: string }[] = [];
+        // After the cross-origin ACR's routes, so this one answers the stream (the last route wins).
+        const askInPanel: Plant = async () => {
+            // By origin and path, so a query (a planted token in the URL) still reaches it.
+            const isStream = (url: URL) =>
+                url.origin === ACR_E2E_ISSUER && url.pathname === INVESTIGATIONS_PATH;
+            await page.context().route(isStream, async (route) => {
+                const request = route.request();
+                if (request.method() !== "POST") return route.fallback();
+                const headers = await request.allHeaders();
+                streamed.push({ headers, url: request.url() });
+                await route.fulfill({
+                    status: 200,
+                    headers: {
+                        "Content-Type": "text/event-stream",
+                        "Cache-Control": "no-store",
+                        "Access-Control-Allow-Origin": web,
+                        "Access-Control-Expose-Headers": ACR_CORS.exposeHeaders,
+                        Vary: "Origin",
+                    },
+                    body: investigationStreamFor(
+                        headers["x-acr-thread-id"] ?? "",
+                        headers["x-acr-submission-id"] ?? "",
+                    ),
+                });
+            });
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const panel = page.getByTestId("ask-dev-panel");
+            const input = panel.getByRole("textbox", { name: "Ask a question" });
+            await expect(input).toBeEnabled();
+            await input.fill("Which projects are at risk this quarter?");
+            await input.press("Enter");
+            await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+        };
+        const run = await browserTokenScenario(page, baseURL, askInPanel);
+        expect(run.violations).toEqual([]);
+        // The stream call was made, from the transport, with the token in Authorization only.
+        expect(streamed).toHaveLength(1);
+        expect(streamed[0]!.url).toBe(`${ACR_E2E_ISSUER}${INVESTIGATIONS_PATH}`);
+        expect(streamed[0]!.headers.authorization).toBe(`Bearer ${run.access}`);
+        expect(streamed[0]!.headers.cookie).toBeUndefined();
     });
 
     // Each planted leak is red by its own name, and by nothing else.

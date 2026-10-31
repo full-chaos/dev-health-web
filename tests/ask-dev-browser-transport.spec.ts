@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import {
     expect,
     test,
@@ -10,6 +7,7 @@ import {
 } from "@playwright/test";
 
 import { AcrOAuthMock } from "./mocks/acr-oauth";
+import { investigationStreamFor } from "./mocks/acr-investigation-stream";
 
 /**
  * CHAOS-12104 (T14a): the browser's ACR transport, offline, through the real panel.
@@ -24,13 +22,6 @@ import { AcrOAuthMock } from "./mocks/acr-oauth";
  */
 
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURE = readFileSync(
-    join(
-        process.cwd(),
-        "src/lib/ask-dev/acr-transport/__tests__/captures/context_fabric_investigation_event_stream.v1.sse",
-    ),
-    "utf8",
-);
 const QUESTION = "Which projects are at risk this quarter?";
 
 type AcrCall = {
@@ -54,17 +45,6 @@ test.describe.configure({ mode: "serial" });
 async function setScenario(request: APIRequestContext, scenario: string): Promise<void> {
     const response = await request.post(`${MOCK}/__test/entitlements`, { data: { scenario } });
     expect(response.ok()).toBe(true);
-}
-
-/** The capture, with `accepted` naming this request's thread and submission (ACR since T9). */
-function streamFor(threadId: string, submissionId: string): string {
-    const [first, ...rest] = CAPTURE.split("\n\n");
-    const lines = first!.split("\n");
-    const at = lines.findIndex((line) => line.startsWith("data: "));
-    const accepted = JSON.parse(lines[at]!.slice("data: ".length)) as Record<string, unknown>;
-    lines[at] =
-        `data: ${JSON.stringify({ ...accepted, thread_id: threadId, submission_id: submissionId })}`;
-    return [lines.join("\n"), ...rest].join("\n\n");
 }
 
 /** Turns the browser client on for this context, as runtime config does in production. */
@@ -126,7 +106,7 @@ async function acrOn(context: BrowserContext, harness: Harness) {
                 await route.fulfill({
                     status: 200,
                     headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-store" },
-                    body: streamFor(
+                    body: investigationStreamFor(
                         headers["x-acr-thread-id"] ?? "",
                         headers["x-acr-submission-id"] ?? "",
                     ),
