@@ -310,6 +310,23 @@ describe("a member's data completeness, as its served driver rows (CHAOS-12245)"
         expect(cellFor(d.subject.label)).toBe("1 of 5 drivers");
     });
 
+    // codex r3 on #1650: an empty driver list serves no rows, so it says nothing either.
+    it("shows no completeness text for a member whose driver list is empty", () => {
+        const empty = copy(REPOS);
+        empty.cohort.members[0].drivers = [];
+        empty.cohort.members[3].drivers = [];
+        empty.cohort.members[3].ranking_computed = false;
+        render(<AskDevCohortRanking result={empty} />);
+        const first = empty.cohort.members[0].subject.label;
+        const row = rows().find(
+            (r) => within(r).getByTestId("ask-dev-ranking-name").textContent === first,
+        )!;
+        expect(within(row).queryByTestId("ask-dev-ranking-completeness")).toBeNull();
+        expect(within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent).toBe(
+            `Not ranked by the service: ${empty.cohort.members[3].subject.label} (outcome Provisional).`,
+        );
+    });
+
     it("shows no completeness text for a member that serves no driver rows, ranked or not", () => {
         const noDrivers = copy(REPOS);
         delete noDrivers.cohort.members[0].drivers;

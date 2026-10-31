@@ -58,9 +58,12 @@ function obligationOf(row: OutcomeRow, requirement: string): string {
     return row.obligation?.trim() || requirement.split("/")[0]?.trim() || "";
 }
 
+/** The completeness state words: never said, even as an obligation's name (codex r3 on #1650). */
+const STATE_WORDS = new Set(["complete", "partial", "degraded", "not_derived"]);
+
 function gapOf(row: OutcomeRow, requirement: string): string | null {
     const obligation = obligationOf(row, requirement);
-    if (obligation === "") return null;
+    if (obligation === "" || STATE_WORDS.has(obligation.toLowerCase())) return null;
     const what = labelFor(OBLIGATION_LABEL, obligation).toLowerCase();
     switch (row.outcome) {
         case "narrowed":

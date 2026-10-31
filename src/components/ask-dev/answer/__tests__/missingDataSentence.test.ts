@@ -52,6 +52,25 @@ describe("missingDataSentence", () => {
         ).toBe("Status");
     });
 
+    // codex r3 on #1650: an obligation named like a completeness state never puts that word in.
+    it("skips a row whose obligation is a completeness state word", () => {
+        const stateNamed = (word: string) => ({
+            ...row(`${word}/member/team`, "unavailable"),
+            obligation: word,
+        });
+        for (const word of ["complete", "partial", "degraded", "not_derived", "Partial"]) {
+            expect(missingDataSentence(withRows("partial", [stateNamed(word)])), word).toBeNull();
+        }
+        expect(
+            missingDataSentence(
+                withRows("partial", [
+                    stateNamed("partial"),
+                    row("state/subject/project", "unavailable"),
+                ]),
+            ),
+        ).toBe("Missing data: status not available.");
+    });
+
     it("takes each requirement's last row: a later stage supersedes an earlier one", () => {
         expect(
             missingDataSentence(

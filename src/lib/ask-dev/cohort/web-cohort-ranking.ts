@@ -115,13 +115,14 @@ export const MEMBER_DRIVER_MAX = 5;
  * A member's data completeness in plain words, from its SERVED driver rows only: "3 of 5 drivers"
  * (CHAOS-12245: web never shows a raw completeness word, so `data_completeness` is never shown).
  * The enum is never mapped back to a number: partial is 3 or 4 drivers, so that would invent one.
- * `null` when the member serves no driver rows: then nothing is said.
+ * `null` when the member serves no driver rows, an empty list included (codex r3 on #1650): then
+ * nothing is said.
  */
 export function memberDriversText(member: {
     readonly drivers?: readonly unknown[];
 }): string | null {
     const drivers = member.drivers;
-    if (!Array.isArray(drivers)) return null;
+    if (!Array.isArray(drivers) || drivers.length === 0) return null;
     return `${String(drivers.length)} of ${String(MEMBER_DRIVER_MAX)} drivers`;
 }
 
