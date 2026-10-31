@@ -1,6 +1,8 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import config from "../../playwright.config.ts";
+import config, { findScenarioSetterSpecs } from "../../playwright.config.ts";
 import customerPushConfig from "../../playwright.customer-push.config.ts";
 import navigationConfig from "../../playwright.navigation.config.ts";
 
@@ -182,5 +184,40 @@ describe("entitlement-scenario specs run one at a time", () => {
     it("is selected by the default CI e2e script, so the specs still run in CI", () => {
         expect(packageJson.scripts["test:e2e"]).toContain("--project=entitlement-scenario");
         expect(packageJson.scripts["test:e2e"]).toContain("--project=authenticated");
+    });
+});
+
+// CHAOS-12170 (codex r2 opinion on #1634): a setter helper in a subfolder, or one reached through
+// another helper, sets the scenario too.
+describe("the scenario-setter scan follows helper imports", () => {
+    it("finds specs that set it directly, through a nested helper, and through two hops", () => {
+        const root = mkdtempSync(join(tmpdir(), "chaos-12170-"));
+        try {
+            const write = (file, text) => {
+                mkdirSync(join(root, file, ".."), { recursive: true });
+                writeFileSync(join(root, file), text);
+            };
+            const post =
+                "await request.post(`${MOCK}/__test/entitlements`, { data: { scenario } });";
+            write("direct.spec.ts", post);
+            write("helpers/entitlement.ts", `export async function set() { ${post} }`);
+            write("helpers/indirect.ts", 'export { set } from "./entitlement";');
+            write("nested.spec.ts", 'import { set } from "./helpers/entitlement";');
+            write("two-hops.spec.ts", 'import { set } from "./helpers/indirect";');
+            write("sub/deep.spec.ts", 'import { set } from "../helpers/entitlement";');
+            write("unrelated.spec.ts", 'import { other } from "./helpers/other";');
+            write("helpers/other.ts", "export const other = 1;");
+            write("mocks/http-server.ts", 'app.post("/__test/entitlements", () => {});');
+            write("live/x.spec.ts", post);
+            write("y.production.spec.ts", post);
+            expect(findScenarioSetterSpecs(root)).toEqual([
+                "direct.spec.ts",
+                "nested.spec.ts",
+                "sub/deep.spec.ts",
+                "two-hops.spec.ts",
+            ]);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
     });
 });
