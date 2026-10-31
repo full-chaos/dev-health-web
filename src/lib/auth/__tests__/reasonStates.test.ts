@@ -171,9 +171,9 @@ describe("reasonStates CHAOS-10875 codes", () => {
         ["membership_required", "denied"],
         ["provisioning_disabled", "denied"],
         ["domain_not_allowed", "denied"],
-        ["provider_already_linked", "denied"],
-        ["identity_conflict", "denied"],
-        ["email_collision", "denied"],
+        ["provider_already_linked", "signin"],
+        ["identity_conflict", "signin"],
+        ["email_collision", "signin"],
         ["store_unavailable", "unavailable"],
         ["dependency_unavailable", "unavailable"],
         ["signup_unavailable", "unavailable"],
@@ -192,6 +192,9 @@ describe("reasonStates CHAOS-10875 codes", () => {
             "account_locked",
             "email_unverified",
             "principal_deactivated",
+            "email_collision",
+            "identity_conflict",
+            "provider_already_linked",
         ];
         const first = reasonToState(codes[0]);
         expect(first.state).toBe("signin");
