@@ -40,23 +40,57 @@ export type CoverageDetail = NonNullable<
  */
 export type Reading = "full" | "sparse" | "stale" | "unknown" | "zero" | "not_applicable";
 
-/** What the answer's own completeness says, in this view's words. */
-export const COMPLETENESS_TEXT: Record<Completeness["state"] | "absent", string> = {
-    complete: "Everything this answer needed was read.",
-    partial: "Only part of what this answer needed was read.",
-    degraded: "Some of what this answer needed could not be read.",
-    // not_derived is a real state: no requirement was worked out, so completeness is not known.
-    not_derived: "Completeness is not known: the service did not work it out for this answer.",
-    absent: "Completeness is not known: the service did not report it.",
-};
+/**
+ * CHAOS-12245, chris's ruling (2026-10-31): "web never shows the raw completeness state". The
+ * answer's `completeness.state` is a machine field for programs, never display text: `complete`
+ * adds nothing, `not_derived` (and a result with no completeness) renders nothing, and `partial`
+ * or `degraded` add at most one plain sentence that names the data that was missing, from the
+ * requirement rows. The coverage details keep their own block ("What limits this answer").
+ */
+export const MISSING_DATA_COPY = { lead: "Missing data" } as const;
 
-export const COMPLETENESS_READING: Record<Completeness["state"] | "absent", Reading> = {
-    complete: "full",
-    partial: "sparse",
-    degraded: "unknown",
-    not_derived: "unknown",
-    absent: "unknown",
-};
+/** The missing data of one requirement row, or `null` when it was read in full or does not apply. */
+/**
+ * What a requirement row needed: its obligation, else the requirement's first segment. An empty
+ * obligation never reads as a blank (codex r1 on #1650); `""` when the row names nothing.
+ */
+function obligationOf(row: OutcomeRow, requirement: string): string {
+    return row.obligation?.trim() || requirement.split("/")[0]?.trim() || "";
+}
+
+/** The completeness state words: never said, even as an obligation's name (codex r3 on #1650). */
+const STATE_WORDS = new Set(["complete", "partial", "degraded", "not_derived"]);
+
+function gapOf(row: OutcomeRow, requirement: string): string | null {
+    const obligation = obligationOf(row, requirement);
+    if (obligation === "" || STATE_WORDS.has(obligation.toLowerCase())) return null;
+    const what = labelFor(OBLIGATION_LABEL, obligation).toLowerCase();
+    switch (row.outcome) {
+        case "narrowed":
+            return row.declared > 0
+                ? `${what} read in part (${row.served} of ${row.declared})`
+                : `${what} read in part`;
+        case "unavailable":
+            return `${what} not available`;
+        case "not_attempted":
+            return `${what} not read`;
+        default:
+            return null;
+    }
+}
+
+/**
+ * The one sentence a `partial` or `degraded` answer adds: what was missing, by requirement, in the
+ * order the rows name them. `null` for every other state, and when no row names a gap.
+ */
+export function missingDataSentence(completeness: Completeness | null): string | null {
+    if (completeness === null) return null;
+    if (completeness.state !== "partial" && completeness.state !== "degraded") return null;
+    const gaps = [...lastOutcomeRows(completeness)]
+        .map(([requirement, row]) => gapOf(row, requirement))
+        .filter((gap): gap is string => gap !== null);
+    return gaps.length === 0 ? null : `${MISSING_DATA_COPY.lead}: ${gaps.join("; ")}.`;
+}
 
 /** The answer's completeness, or `null` when the result carries none (an older stored result). */
 export function completenessOf(result: CoverageResult): Completeness | null {
@@ -99,14 +133,19 @@ export type RequirementLine = {
  * earlier ones). Rows with no requirement identity are not listed; they leave the state
  * `not_derived`, which the completeness line already says.
  */
-export function requirementLines(completeness: Completeness): RequirementLine[] {
+/** Each requirement's last row: a later stage supersedes an earlier one. */
+function lastOutcomeRows(completeness: Completeness): Map<string, OutcomeRow> {
     const last = new Map<string, OutcomeRow>();
     for (const row of completeness.outcomes ?? []) {
         if (row.requirement === undefined || row.requirement === "") continue;
         last.set(row.requirement, row);
     }
-    return [...last.entries()].map(([requirement, row]) => {
-        const label = labelFor(OBLIGATION_LABEL, row.obligation ?? requirement);
+    return last;
+}
+
+export function requirementLines(completeness: Completeness): RequirementLine[] {
+    return [...lastOutcomeRows(completeness).entries()].map(([requirement, row]) => {
+        const label = labelFor(OBLIGATION_LABEL, obligationOf(row, requirement) || requirement);
         switch (row.outcome) {
             case "satisfied":
                 return { key: requirement, label, text: "read in full", reading: "full" };

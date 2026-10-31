@@ -1,14 +1,13 @@
 import { useId, type ReactNode } from "react";
 
 import {
-    COMPLETENESS_READING,
-    COMPLETENESS_TEXT,
     COVERAGE_COPY,
     completenessOf,
     evidenceClosure,
     evidenceGroups,
     factCountText,
     limitingDetails,
+    missingDataSentence,
     requirementLines,
     sourceLines,
     type CoverageResult,
@@ -91,7 +90,8 @@ function EvidenceList({ groups, testId }: { groups: readonly EvidenceGroup[]; te
 export function AskDevCoverage({ result }: { result: CoverageResult }) {
     const titleId = useId();
     const completeness = completenessOf(result);
-    const state = completeness?.state ?? "absent";
+    // CHAOS-12245: never the raw completeness state; at most one sentence of missing data.
+    const missing = missingDataSentence(completeness);
     const requirements = completeness === null ? [] : requirementLines(completeness);
     const sources = sourceLines(result);
     const details = limitingDetails(result);
@@ -113,17 +113,14 @@ export function AskDevCoverage({ result }: { result: CoverageResult }) {
             </h3>
 
             <div className="space-y-1" data-testid="ask-dev-coverage-completeness">
-                <p
-                    className="flex gap-1.5 text-sm text-foreground"
-                    data-reading={COMPLETENESS_READING[state]}
-                    data-testid="ask-dev-coverage-state"
-                >
-                    <Mark reading={COMPLETENESS_READING[state]} />
-                    <span>{COMPLETENESS_TEXT[state]}</span>
-                </p>
+                {missing === null ? null : (
+                    <p className="text-sm text-foreground" data-testid="ask-dev-coverage-state">
+                        {missing}
+                    </p>
+                )}
                 {completeness === null ? null : (
                     <p
-                        className="pl-5.5 text-xs text-(--ink-muted)"
+                        className="text-xs text-(--ink-muted)"
                         data-testid="ask-dev-coverage-counts"
                         data-reading={completeness.claimed_facts_count === 0 ? "zero" : undefined}
                     >

@@ -69,8 +69,9 @@ test.describe("desktop (1280px)", () => {
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         const coverage = panel.getByTestId("ask-dev-coverage");
+        // CHAOS-12245: one plain sentence of missing data, never the completeness state.
         await expect(coverage.getByTestId("ask-dev-coverage-state")).toHaveText(
-            /Some of what this answer needed could not be read\./u,
+            "Missing data: health read in part (1 of 1); ranking not available; status read in part (2 of 5).",
         );
         await expect(coverage.getByTestId("ask-dev-coverage-details").locator("li")).toHaveCount(6);
         const evidence = coverage.getByTestId("ask-dev-coverage-evidence");
@@ -86,20 +87,19 @@ test.describe("desktop (1280px)", () => {
         expect(requests).toEqual([]);
     });
 
-    test("a 'complete' status whose completeness was not derived says it is not known", async ({
+    test("a 'complete' status whose completeness was not derived says nothing about it", async ({
         page,
     }) => {
         await seedAnswer(page, CI_COMPLETE);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        // CHAOS-12157: the pill does not say "Full answer" either.
-        await expect(panel.getByTestId("ask-dev-answer-status")).toHaveText(
-            "Answer, not fully covered",
-        );
-        const state = panel.getByTestId("ask-dev-coverage-state");
-        await expect(state).toHaveAttribute("data-reading", "unknown");
-        await expect(state).toContainText("Completeness is not known");
+        // CHAOS-12157: the pill never says "Full answer" here. CHAOS-12245: a plain "Answer",
+        // and nothing about completeness.
+        await expect(panel.getByTestId("ask-dev-answer-status")).toHaveText("Answer");
+        await expect(panel.getByTestId("ask-dev-coverage")).toBeVisible();
+        await expect(panel.getByTestId("ask-dev-coverage-state")).toHaveCount(0);
+        await expect(panel.getByTestId("ask-dev-answer-completeness")).toHaveCount(0);
     });
 });
 
