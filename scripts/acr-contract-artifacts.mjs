@@ -184,6 +184,9 @@ const TYPE_GENERATION_EXCLUDED = new Set([
     "mcp_read_relationships_response.v1.schema.json",
     "context_fabric_thread.v1.schema.json",
     "context_fabric_thread_list.v1.schema.json",
+    // CHAOS-12280: its $defs Vector is referenced but not declared by the flat generator; web reads
+    // the vectors in a test only, through a narrow type of its own.
+    "context_fabric_canonical_id_vectors.v1.schema.json",
 ]);
 
 async function dtoModule(schemaFiles, prettierOptions) {
