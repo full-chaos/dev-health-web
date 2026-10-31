@@ -87,11 +87,13 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     ],
     [/\bbearer\s+[\w.~+/=-]{8,}/gi, `Bearer ${FILTERED}`],
     [/\beyJ[\w-]{4,}\.[\w-]{4,}\.[\w-]*/g, FILTERED],
-    // CHAOS-12304: ACR's browser access (`fcacr_`) and refresh (`acrrt_`) tokens, wherever they appear.
     [
-        /\b(?:gh[pousr]_|github_pat_|sk-|rk_live_|sk_live_|xox[abprs]-|svc_worker_|fcacr_|acrrt_)[\w-]{8,}/g,
+        /\b(?:gh[pousr]_|github_pat_|sk-|rk_live_|sk_live_|xox[abprs]-|svc_worker_)[\w-]{8,}/g,
         FILTERED,
     ],
+    // CHAOS-12304: ACR's browser access (`fcacr_`) and refresh (`acrrt_`) tokens, wherever they appear:
+    // no word boundary, so `prefix_fcacr_…` or `abcacrrt_…` is filtered too (r2 on web #1665).
+    [/(?:fcacr|acrrt)_[\w-]{8,}/g, FILTERED],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b[a-z][a-z\d+.-]{0,31}:\/\/\S+/gi, filterSlashedUserinfo],
     // A password that holds a space. Prose such as `host:8080 word me@x` is removed too: fail safe.
@@ -342,7 +344,8 @@ function scrubRecord(
         const oauthContext = inheritedOAuthContext || isOAuthContextRecord(value);
         // A property name is a channel too (r1 on web #1665): a credential shape in it is filtered,
         // and names that collapse to the same marker stay distinct.
-        const names = new Set<string>();
+        // Every name the record already has is taken, so a renamed key never overwrites one (r2).
+        const names = new Set<string>(entries.map(([key]) => key));
         const safeName = (key: string): string => {
             const scrubbed = scrubCredentialShapes(key);
             if (scrubbed === key) return key;

@@ -46,6 +46,26 @@ describe("Sentry scrubbing of ACR browser tokens", () => {
         expect(JSON.stringify(event)).not.toMatch(/acrrt_[A-Za-z0-9]/u);
     });
 
+    it.each([
+        ["after an underscore", `prefix_${ACCESS}`],
+        ["after a word character", `x${REFRESH}`],
+        ["inside a word", `key=abc${ACCESS}def`],
+    ])("filters a token %s (r2)", (_, text) => {
+        expect(scrubTelemetryText(text)).not.toMatch(/fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]/u);
+        const event = scrubEvent({ type: undefined, message: text } as ErrorEvent);
+        expect(JSON.stringify(event)).not.toMatch(/fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]/u);
+    });
+
+    it("never lets a renamed key overwrite a field already named [Filtered] (r2)", () => {
+        const payload = scrubTelemetryPayload({
+            "[Filtered]": "legitimate diagnostic",
+            [ACCESS]: "secret value",
+        }) as Record<string, unknown>;
+        expect(payload["[Filtered]"]).toBe("legitimate diagnostic");
+        expect(JSON.stringify(payload)).not.toMatch(/fcacr_[A-Za-z0-9]/u);
+        expect(Object.keys(payload)).toHaveLength(2);
+    });
+
     it("does not take a token shape in code for a token", () => {
         const scrubbed = scrubTelemetryText(
             "pattern fcacr_[A-Za-z0-9_-]{43} and acrrt_[A-Za-z0-9_-]{43}",
