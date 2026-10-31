@@ -9,8 +9,10 @@
  */
 import { expect, test } from "@playwright/test";
 import {
+    clickHydratedOnboardingControl,
     envFault,
     getSuperuserToken,
+    isServerActionTo,
     liveBackendUrl,
     testEmail,
     userIdByEmail,
@@ -176,7 +178,13 @@ test("full signup then explicit workspace creation reaches dashboard @guided", a
     // (skippable) and the completion page before the dashboard (CHAOS-12138: this spec
     // asserted the old direct redirect and had never run flag-on).
     await expect(page).toHaveURL(/\/auth\/onboard\/integration/, { timeout: 30_000 });
-    await page.getByRole("button", { name: "Skip for now" }).click();
+    // CHAOS-12176: click Skip only once the step has hydrated, and fail loudly if the click is dropped.
+    await clickHydratedOnboardingControl(
+        page,
+        page.getByRole("button", { name: "Skip for now" }),
+        "Skip for now",
+        isServerActionTo("/auth/onboard/integration"),
+    );
     await expect(page).toHaveURL(/\/auth\/onboard\/complete/, { timeout: 30_000 });
     await page.getByRole("link", { name: "Go to dashboard" }).click();
 
