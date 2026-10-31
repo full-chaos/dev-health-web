@@ -8,6 +8,18 @@ vi.mock(
     async () => (await import("../render/__tests__/echartsStub")).echartsStubModule,
 );
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+/** Every product telemetry event enters by `trackTelemetryEvent`: recorded, then passed on. */
+const telemetry = vi.hoisted(() => ({ track: vi.fn() }));
+vi.mock("@/lib/telemetry", async (importActual) => {
+    const actual = await importActual<typeof import("@/lib/telemetry")>();
+    return {
+        ...actual,
+        trackTelemetryEvent: (...args: Parameters<typeof actual.trackTelemetryEvent>) => {
+            telemetry.track(...args);
+            return actual.trackTelemetryEvent(...args);
+        },
+    };
+});
 
 /**
  * A router that changes the route the way Next does, and records every write: `push` and
@@ -494,15 +506,21 @@ describe("the first question as the row title (CHAOS-12238)", () => {
     });
 
     it("shows the question as inert text, and logs or reports none of it", async () => {
-        // The logger is the file's mock: every level's calls are recorded.
+        // The logger is the file's mock: every level's calls are recorded. Every telemetry event
+        // enters by trackTelemetryEvent, recorded above (codex r1 on #1656: logs alone did not cover
+        // telemetry). Opening and hovering the row are the interactions it has.
         const { logger } = await import("@/lib/logger");
+        telemetry.track.mockClear();
         const hostile = '<img src=x onerror="alert(1)"> see https://evil.example/x';
         const [a] = await historyOf(hostile);
+        await userEvent.click(a!);
+        await userEvent.hover(a!);
         expect(within(a!).getByTestId("ask-dev-history-question").textContent).toBe(hostile);
         expect(a!.querySelector("img, a")).toBeNull();
         const calls = Object.values(logger).map(
             (fn) => (fn as ReturnType<typeof vi.fn>).mock.calls,
         );
         expect(JSON.stringify(calls)).not.toContain("evil.example");
+        expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain("evil.example");
     });
 });
