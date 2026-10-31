@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
+import { rawWordsInNode } from "../src/test/rawWords";
+
 // CHAOS-12245, chris's ruling (2026-10-31): "web never shows the raw completeness state". Each state
 // in the real Ask Dev panel, from real ACR answers captured on the kiac stack: `complete` adds
 // nothing, `not_derived` renders nothing about completeness, `partial` and `degraded` add one plain
@@ -48,6 +50,14 @@ const COMPLETE: Result = {
 /** Words that name a completeness state, or only restate one. */
 const STATE_WORDS =
     /\b(complete|completeness|partial|degraded|not[ _]derived|not known|unknown)\b|needed was read|could not be read/iu;
+
+/**
+ * The words of `pattern` a reader can meet in `target`, text node by text node and in labels
+ * (CHAOS-12312): `textContent()` glues children ("partial4 of 5 drivers"), and a word boundary
+ * never matches inside the glue. The same function as the unit tests' check, run in the page.
+ */
+const rawWordsIn = (target: Locator, pattern: RegExp) =>
+    target.evaluate(rawWordsInNode, [pattern.source, pattern.flags] as const);
 
 test.describe.configure({ mode: "serial" });
 
@@ -127,7 +137,7 @@ test.describe("desktop (1280px)", () => {
                 await expect(coverageLine).toHaveText(sentence);
             }
             const completenessBlock = panel.getByTestId("ask-dev-coverage-completeness");
-            expect(await completenessBlock.textContent()).not.toMatch(STATE_WORDS);
+            expect(await rawWordsIn(completenessBlock, STATE_WORDS)).toEqual([]);
             await panel.getByTestId("ask-dev-coverage").scrollIntoViewIfNeeded();
             await page.screenshot({
                 path: testInfo.outputPath(`completeness-${state}-desktop.png`),
@@ -148,7 +158,7 @@ test.describe("cohort members (desktop)", () => {
         const cells = panel.getByTestId("ask-dev-ranking-completeness");
         await expect(cells.first()).toHaveText(/^\d of 5 drivers$/u);
         for (const detail of await panel.getByTestId("ask-dev-ranking-detail").all()) {
-            expect(await detail.textContent()).not.toMatch(/\b(complete|partial|degraded)\b/iu);
+            expect(await rawWordsIn(detail, /\b(complete|partial|degraded)\b/iu)).toEqual([]);
         }
         await panel.getByTestId("ask-dev-ranking-detail").last().scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("completeness-cohort-desktop.png") });

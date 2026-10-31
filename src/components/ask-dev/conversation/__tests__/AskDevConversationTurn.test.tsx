@@ -9,6 +9,7 @@ vi.mock(
 );
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
+import { rawWordsIn } from "@/test/rawWords";
 import { buildInvestigationRequest } from "@/lib/ask-dev/request-builder";
 
 import {
@@ -63,7 +64,8 @@ function expectNoAnswerContent(container: HTMLElement) {
         expect(container.querySelector(`[data-testid="${marker}"]`), marker).toBeNull();
     }
     expect(container.querySelector('[data-testid*="score"]')).toBeNull();
-    expect(container.textContent).not.toMatch(/no issues|coverage|complete(?:ness)?\b/iu);
+    // CHAOS-12312: node by node; `textContent` glues "complete" to the next text, past `\b`.
+    expect(rawWordsIn(container, /no issues|coverage|complete(?:ness)?\b/iu)).toEqual([]);
 }
 
 afterEach(() => {
