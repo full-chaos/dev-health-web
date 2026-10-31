@@ -234,7 +234,7 @@ const NOT_RUN = [
     [
         "access_denied",
         403,
-        "Ask Dev is not available in this session. Sign in again with your own account in this organization.",
+        "Ask Dev is not available in this session. Sign in again with your own account, or ask an admin to add you to this organization.",
         false,
     ],
     [
@@ -259,6 +259,20 @@ const NOT_RUN = [
         "allowance_exhausted",
         429,
         "Your organization has used this month's Ask Dev allowance.",
+        false,
+    ],
+    ["stream_unavailable", 406, "Ask Dev answers are turned off here right now.", false],
+    ["feature_not_enabled", 403, "Ask Dev is not available for this organization.", false],
+    [
+        "repo_forbidden",
+        403,
+        "A repository this question needs is not available to you. If it was connected just now, wait for its first sync.",
+        false,
+    ],
+    [
+        "budget_refusal",
+        413,
+        "This question needs more than one answer can hold. Ask a narrower question.",
         false,
     ],
 ] as const;

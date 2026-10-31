@@ -81,7 +81,11 @@ export type NotRunReason =
     | "no_repository"
     | "budget_exhausted"
     | "concurrency_limited"
-    | "allowance_exhausted";
+    | "allowance_exhausted"
+    | "stream_unavailable"
+    | "not_entitled"
+    | "repo_forbidden"
+    | "budget_refusal";
 
 /** Whether a same-key retry is offered, decided from the closed code, never from the wire's flag. */
 const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
@@ -90,9 +94,29 @@ const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
     budget_exhausted: true,
     concurrency_limited: true,
     allowance_exhausted: false,
+    stream_unavailable: false,
+    not_entitled: false,
+    repo_forbidden: false,
+    // Before the stream there is no reserved result to show as a refusal turn; ask narrower.
+    budget_refusal: false,
 };
 
-const isNotRunReason = (code: string): code is NotRunReason => Object.hasOwn(NOT_RUN_RETRY, code);
+/** ACR's codes before a run → the reason shown (two codes share "not entitled"). */
+const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
+    access_denied: "access_denied",
+    no_repository: "no_repository",
+    budget_exhausted: "budget_exhausted",
+    concurrency_limited: "concurrency_limited",
+    allowance_exhausted: "allowance_exhausted",
+    stream_unavailable: "stream_unavailable",
+    feature_not_enabled: "not_entitled",
+    insufficient_scope: "not_entitled",
+    repo_forbidden: "repo_forbidden",
+    budget_refusal: "budget_refusal",
+};
+
+const notRunReasonOf = (code: string): NotRunReason | undefined =>
+    Object.hasOwn(NOT_RUN_REASON_OF, code) ? NOT_RUN_REASON_OF[code] : undefined;
 
 export type StoreTurn = {
     readonly id: number;
@@ -544,15 +568,21 @@ export class ConversationStore {
                 logger.error(fields, "ask-dev create sent without a submission id");
                 this.settle(run, { kind: "failed", retry: false });
                 return;
+            case "invalid_request":
+                // The store builds every request from the contract: a defect, never a user error.
+                logger.error(fields, "ask-dev investigation request refused as invalid");
+                this.settle(run, { kind: "failed", retry: false });
+                return;
             case "submission_mismatch":
                 // The store reused a key for another request: a defect, never a user error.
                 logger.error(fields, "ask-dev submission id reused for a different request");
                 this.settle(run, { kind: "failed", retry: false });
                 return;
             default:
-                if (isNotRunReason(code)) {
+                const reason = notRunReasonOf(code);
+                if (reason !== undefined) {
                     logger.info(fields, "ask-dev investigation not run");
-                    this.settle(run, { kind: "not_run", reason: code, retry: NOT_RUN_RETRY[code] });
+                    this.settle(run, { kind: "not_run", reason, retry: NOT_RUN_RETRY[reason] });
                     return;
                 }
                 logger.warn(fields, "ask-dev investigation refused before the stream");

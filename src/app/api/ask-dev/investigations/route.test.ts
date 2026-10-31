@@ -474,7 +474,25 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
 
         expect(text).toContain('"code":"stream_unavailable"');
         expect(text).not.toContain("event: result");
+        // codex r1 on #1639: the words match the code, never "temporarily unavailable".
+        expect(text).toContain("Ask Dev answers are turned off here right now.");
+        expect(text).not.toContain("temporarily");
     });
+
+    it.each(["stream_unavailable", "internal_error"])(
+        "says the stream is off for a 406 with %s, whatever the body's code",
+        async (wireCode) => {
+            installOps(ENTITLED);
+            server.use(
+                http.post(`${ACR}/api/v1/context-fabric/investigations`, () =>
+                    HttpResponse.json(errorV1(wireCode, 406), { status: 406 }),
+                ),
+            );
+            const text = await readAll(await post());
+            expect(text).toContain('"code":"stream_unavailable"');
+            expect(text).toContain("Ask Dev answers are turned off here right now.");
+        },
+    );
 
     it("treats a 200 JSON answer as an invalid upstream, never as a result", async () => {
         installOps(ENTITLED);

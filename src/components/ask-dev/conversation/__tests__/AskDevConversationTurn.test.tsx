@@ -22,6 +22,10 @@ describe("AskDevConversationTurn: not-run refusals", () => {
         ["budget_exhausted", true],
         ["concurrency_limited", true],
         ["allowance_exhausted", false],
+        ["stream_unavailable", false],
+        ["not_entitled", false],
+        ["repo_forbidden", false],
+        ["budget_refusal", false],
     ] as const)("%s shows its own guidance (retry %s)", async (reason, retry) => {
         const onRetry = vi.fn();
         render(
@@ -39,6 +43,12 @@ describe("AskDevConversationTurn: not-run refusals", () => {
         } else {
             expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
         }
+    });
+
+    // codex r1 P3 on #1639: access_denied also covers a user who is not a member.
+    it("access_denied names both ways back: sign in again, or ask an admin", () => {
+        expect(NOT_RUN_COPY.access_denied).toMatch(/Sign in again/u);
+        expect(NOT_RUN_COPY.access_denied).toMatch(/admin/u);
     });
 
     it("gives every reason different words", () => {

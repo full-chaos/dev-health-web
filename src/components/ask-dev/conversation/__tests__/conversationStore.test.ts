@@ -592,6 +592,39 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
         }
     });
 
+    // codex r1 on #1639: the rest of the create vocabulary before a run.
+    it.each([
+        ["stream_unavailable", 406, "stream_unavailable"],
+        ["feature_not_enabled", 403, "not_entitled"],
+        ["feature_not_enabled", 501, "not_entitled"],
+        ["insufficient_scope", 403, "not_entitled"],
+        ["repo_forbidden", 403, "repo_forbidden"],
+        ["budget_refusal", 413, "budget_refusal"],
+    ] as const)("ends %s (%i) as not run: %s, no retry", async (code, status, reason) => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(status, acrError(code, status, true)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "not_run", reason, retry: false });
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
+    it("logs an invalid request as a defect", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(400, acrError("invalid_request", 400, false)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "failed", retry: false });
+        expect(log.error).toHaveBeenCalledWith(
+            expect.objectContaining({ code: "invalid_request" }),
+            "ask-dev investigation request refused as invalid",
+        );
+    });
+
     it.each([
         ["canceled", 409, { kind: "canceled" }],
         ["run_lost", 503, { kind: "interrupted" }],

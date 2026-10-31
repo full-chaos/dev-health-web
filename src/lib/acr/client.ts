@@ -7,7 +7,7 @@ import { signWebAssertion } from "./assertion";
 import type { AcrRuntimeConfig } from "./config";
 import capabilitiesContract from "./contracts/schemas/capabilities.v1.schema.json";
 import { validateAcrContract } from "./contracts";
-import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
+import { AcrRuntimeError, acrRuntimeErrorCodes, type AcrRuntimeErrorCode } from "./errors";
 import { fetchBoundedJson } from "./http";
 import type { OpsAuthorization } from "./ops";
 
@@ -165,11 +165,112 @@ function clientUrl(config: AcrRuntimeConfig, path: string): URL {
 // existing "without exposing the upstream body" boundary in upstreamFailure.
 const upstreamErrorCodeSchema = z.object({ error: z.object({ code: z.string() }).loose() }).loose();
 
+type KnownWireCode = {
+    /** The statuses ACR sends the code with; any other status is not trusted. */
+    readonly statuses: readonly number[];
+    readonly code: AcrRuntimeErrorCode;
+    /** Decided from the closed code, never from the wire's `retryable`. */
+    readonly retryable: boolean;
+};
+
+/**
+ * error.v1 codes that name their own state (CHAOS-12201): the create-investigation vocabulary and
+ * the per-call access read, at the statuses ACR sends them with (acr `internal/api`). A real outage
+ * (`internal_error`, `upstream_*`, `store_unavailable`) is not here and stays `upstream`.
+ */
+const KNOWN_WIRE_CODES: Readonly<Record<string, KnownWireCode>> = {
+    invalid_request: {
+        statuses: [400, 409, 413],
+        code: acrRuntimeErrorCodes.invalidRequest,
+        retryable: false,
+    },
+    submission_required: {
+        statuses: [400],
+        code: acrRuntimeErrorCodes.invalidRequest,
+        retryable: false,
+    },
+    insufficient_scope: {
+        statuses: [403],
+        code: acrRuntimeErrorCodes.notEntitled,
+        retryable: false,
+    },
+    feature_not_enabled: {
+        statuses: [403, 501],
+        code: acrRuntimeErrorCodes.notEntitled,
+        retryable: false,
+    },
+    repo_forbidden: {
+        statuses: [403],
+        code: acrRuntimeErrorCodes.repositoryNotAvailable,
+        retryable: false,
+    },
+    access_denied: { statuses: [403], code: acrRuntimeErrorCodes.accessDenied, retryable: false },
+    stream_unavailable: {
+        statuses: [406],
+        code: acrRuntimeErrorCodes.streamUnavailable,
+        retryable: false,
+    },
+    no_repository: { statuses: [409], code: acrRuntimeErrorCodes.noRepository, retryable: false },
+    submission_mismatch: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.invalidRequest,
+        retryable: false,
+    },
+    // The first run under the key is still live: asking again later reads its answer.
+    submission_in_progress: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.submissionInProgress,
+        retryable: true,
+    },
+    submission_unsaved: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.submissionUnsaved,
+        retryable: false,
+    },
+    submission_abandoned: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.interrupted,
+        retryable: false,
+    },
+    thread_closed: { statuses: [409], code: acrRuntimeErrorCodes.threadClosed, retryable: false },
+    canceled: { statuses: [409], code: acrRuntimeErrorCodes.canceled, retryable: false },
+    budget_refusal: { statuses: [413], code: acrRuntimeErrorCodes.budgetRefusal, retryable: false },
+    concurrency_limited: {
+        statuses: [429],
+        code: acrRuntimeErrorCodes.concurrencyLimited,
+        retryable: true,
+    },
+    allowance_exhausted: {
+        statuses: [429],
+        code: acrRuntimeErrorCodes.allowanceExhausted,
+        retryable: false,
+    },
+    // Refused before admission: nothing ran, so the same request may be sent again.
+    budget_exhausted: {
+        statuses: [503],
+        code: acrRuntimeErrorCodes.budgetExhausted,
+        retryable: true,
+    },
+    // The run's service instance stopped; the key cannot run again.
+    run_lost: { statuses: [503], code: acrRuntimeErrorCodes.interrupted, retryable: false },
+};
+
 function upstreamFailure(
     status: number,
     wireErrorCode?: string,
     retryAfterSeconds?: number,
 ): AcrRuntimeError {
+    const known =
+        wireErrorCode !== undefined && Object.hasOwn(KNOWN_WIRE_CODES, wireErrorCode)
+            ? KNOWN_WIRE_CODES[wireErrorCode]
+            : undefined;
+    if (known !== undefined && known.statuses.includes(status)) {
+        return new AcrRuntimeError(known.code, `ACR answered ${String(status)} ${wireErrorCode}.`, {
+            retryable: known.retryable,
+            retryAfterSeconds,
+            status,
+        });
+    }
     if (status === 401) {
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.unauthenticated,
@@ -189,44 +290,6 @@ function upstreamFailure(
             acrRuntimeErrorCodes.incompatible,
             "Agent Context Runtime needs a compatible service version.",
             { status },
-        );
-    }
-    // CHAOS-12201: ACR's per-call access read and the shared Ask Dev limits (error.v1). Decided by
-    // status AND code, and web decides retry from the closed code, never from the wire's flag.
-    if (status === 403 && wireErrorCode === "access_denied") {
-        return new AcrRuntimeError(
-            acrRuntimeErrorCodes.accessDenied,
-            "The user's access was refused for this call.",
-            { status },
-        );
-    }
-    if (status === 409 && wireErrorCode === "no_repository") {
-        return new AcrRuntimeError(
-            acrRuntimeErrorCodes.noRepository,
-            "The user has no repository in scope for this call.",
-            { status },
-        );
-    }
-    if (status === 503 && wireErrorCode === "budget_exhausted") {
-        // Refused before admission: nothing ran, so the same request may be sent again.
-        return new AcrRuntimeError(
-            acrRuntimeErrorCodes.budgetExhausted,
-            "Too little wait budget was left to start the question.",
-            { retryable: true, retryAfterSeconds, status },
-        );
-    }
-    if (status === 429 && wireErrorCode === "concurrency_limited") {
-        return new AcrRuntimeError(
-            acrRuntimeErrorCodes.concurrencyLimited,
-            "Too many questions are running.",
-            { retryable: true, retryAfterSeconds, status },
-        );
-    }
-    if (status === 429 && wireErrorCode === "allowance_exhausted") {
-        return new AcrRuntimeError(
-            acrRuntimeErrorCodes.allowanceExhausted,
-            "The organization's monthly allowance is used.",
-            { retryAfterSeconds, status },
         );
     }
     if (status === 429) {

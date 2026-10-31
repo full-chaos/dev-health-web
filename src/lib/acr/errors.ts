@@ -40,6 +40,13 @@ export const acrRuntimeErrorCodes = {
     accessDenied: "access_denied",
     concurrencyLimited: "concurrency_limited",
     allowanceExhausted: "allowance_exhausted",
+    // CHAOS-12201: the rest of the create-investigation vocabulary that is not an outage.
+    streamUnavailable: "stream_unavailable",
+    submissionInProgress: "submission_in_progress",
+    submissionUnsaved: "submission_unsaved",
+    threadClosed: "thread_closed",
+    canceled: "canceled",
+    budgetRefusal: "budget_refusal",
     interpretationRejected: "interpretation_rejected",
     synthesisRejected: "synthesis_rejected",
 } as const;
@@ -82,11 +89,23 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "This request was already completed.";
         // CHAOS-12201: the conversation store says the same words (`NOT_RUN_COPY`); a test holds them equal.
         case acrRuntimeErrorCodes.accessDenied:
-            return "Ask Dev is not available in this session. Sign in again with your own account in this organization.";
+            return "Ask Dev is not available in this session. Sign in again with your own account, or ask an admin to add you to this organization.";
         case acrRuntimeErrorCodes.concurrencyLimited:
             return "Too many questions are running. Wait for one to finish, then ask again.";
         case acrRuntimeErrorCodes.allowanceExhausted:
             return "Your organization has used this month's Ask Dev allowance.";
+        case acrRuntimeErrorCodes.streamUnavailable:
+            return "Ask Dev answers are turned off here right now.";
+        case acrRuntimeErrorCodes.budgetRefusal:
+            return "This question needs more than one answer can hold. Ask a narrower question.";
+        case acrRuntimeErrorCodes.submissionInProgress:
+            return "This question is still running. Wait a moment, then try again.";
+        case acrRuntimeErrorCodes.submissionUnsaved:
+            return "The answer was shown but not saved — ask again";
+        case acrRuntimeErrorCodes.threadClosed:
+            return "This conversation has ended (deleted, expired or full). Ask again to start a new one.";
+        case acrRuntimeErrorCodes.canceled:
+            return "Canceled. If the answer had already finished, it is kept.";
         case acrRuntimeErrorCodes.budgetExhausted:
             return "Dev ran out of time before the question could start. Ask again.";
         case acrRuntimeErrorCodes.stalled:

@@ -15,12 +15,17 @@ import type { NotRunReason, StoreTurn, TurnOutcome } from "./conversationStore";
  */
 export const NOT_RUN_COPY: Readonly<Record<NotRunReason, string>> = {
     access_denied:
-        "Ask Dev is not available in this session. Sign in again with your own account in this organization.",
+        "Ask Dev is not available in this session. Sign in again with your own account, or ask an admin to add you to this organization.",
     no_repository:
         "No repository is available to you here. Connect a repository, or ask an admin for access to one.",
     budget_exhausted: "Dev ran out of time before the question could start. Ask again.",
     concurrency_limited: "Too many questions are running. Wait for one to finish, then ask again.",
     allowance_exhausted: "Your organization has used this month's Ask Dev allowance.",
+    stream_unavailable: "Ask Dev answers are turned off here right now.",
+    not_entitled: "Ask Dev is not available for this organization.",
+    repo_forbidden:
+        "A repository this question needs is not available to you. If it was connected just now, wait for its first sync.",
+    budget_refusal: "This question needs more than one answer can hold. Ask a narrower question.",
 };
 
 /**
