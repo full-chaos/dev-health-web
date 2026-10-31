@@ -55,6 +55,7 @@ vi.mock("next-auth/react", () => ({
 import { useSyncExternalStore } from "react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { resetRightDrawerForTest, rightDrawerOwnerForTest } from "@/lib/shell/rightDrawer";
 
 import { AskDevFullPage, FULL_PAGE_COPY } from "../AskDevFullPage";
 import { AskDevPanel } from "../AskDevPanel";
@@ -196,6 +197,16 @@ describe("Minimize: back to the page it came from, with the panel open on the sa
         );
         await waitFor(() => expect(transport.calls).toHaveLength(2));
         expect(transport.calls[1]!.threadId).toBe(transport.calls[0]!.threadId);
+    });
+
+    it("the panel it opens holds the right edge (CHAOS-12207)", async () => {
+        resetRightDrawerForTest();
+        nav.go("/dev");
+        renderShell(new FakeTransport());
+        expect(rightDrawerOwnerForTest()).toBeNull();
+        await userEvent.click(within(page()).getByRole("button", { name: "Minimize to panel" }));
+        expect(await screen.findByRole("complementary", { name: "Ask Dev" })).toBeInTheDocument();
+        expect(rightDrawerOwnerForTest()).toBe("ask-dev");
     });
 
     it("goes to the dashboard when the page was not opened from the panel", async () => {

@@ -12,7 +12,11 @@ import {
 import { AskDevShellProvider, useAskDevShell } from "./AskDevShellContext";
 
 const nav = vi.hoisted(() => ({ pathname: "/dashboard" }));
-vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
+vi.mock("next/navigation", () => ({
+    usePathname: () => nav.pathname,
+    // CHAOS-11934: the shell provider holds Expand and Minimize, which move between routes.
+    useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
 
 const ON = { ask_dev: true, agent_context_runtime: true };
 
