@@ -1,5 +1,5 @@
 {
-  "source_commit": "1b9313540242fc1da3a322e74ff742d5443ccfae",
+  "source_commit": "bd92be5ab81b34ec732eda44ca6ae93309c8f264",
   "files": [
     {
       "path": "openapi/acr-v1.json",
@@ -103,7 +103,7 @@
     },
     {
       "path": "schemas/context_fabric_thread_list.v1.schema.json",
-      "sha256": "081fc55ecec9a94676211a97e31a34cf231769af2f0c5d87c666160e8dbc67c4"
+      "sha256": "86969c21a2a53332a40008ad0fe354a641487790be3962881807584cba446765"
     },
     {
       "path": "schemas/credential_ack_request.v1.schema.json",
