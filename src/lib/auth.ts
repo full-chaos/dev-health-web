@@ -86,7 +86,7 @@ const nextAuth = NextAuth({
                     },
                     {
                         tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
-                        issuer: env.AUTH_TOKEN_ISSUER,
+                        issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
                         backendUrl: getBackendUrl(),
                     },
                 );

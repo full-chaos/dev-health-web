@@ -27,6 +27,9 @@ const log = logger.child({ module: "auth-session" });
  *                           login is refused before any call.
  * - `key_set_unusable`      class `eddsa`: the published key set could not be fetched or is
  *                           refused as a whole (a repeated kid, an invalid key).
+ * - `token_shape_refused`  the login answered 2xx with an access token of the wrong shape for the
+ *                           token class (under hs256_compat: not a decodable HS256 token): no
+ *                           session starts. A fixed message; the token text is never logged.
  * - `logout_failed`         the auth-service logout call did not answer 200.
  */
 export type SessionBranch =
@@ -41,6 +44,7 @@ export type SessionBranch =
     | "login_invalid_response"
     | "auth_config_invalid"
     | "key_set_unusable"
+    | "token_shape_refused"
     | "logout_failed";
 
 export interface SessionBranchFields {
@@ -68,6 +72,7 @@ const MESSAGES: Record<SessionBranch, string> = {
     login_invalid_response: "login refused: the backend answer or its access token was refused",
     auth_config_invalid: "login refused: the access token class setting is unusable",
     key_set_unusable: "login refused: the published key set is unusable",
+    token_shape_refused: "login refused: the access token has the wrong shape for the token class",
     logout_failed: "sign-out: the backend logout did not answer 200",
 };
 

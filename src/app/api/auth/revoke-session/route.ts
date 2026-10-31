@@ -71,7 +71,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         { access: session.access_token, refresh: session.refresh_token },
         {
             tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
-            issuer: env.AUTH_TOKEN_ISSUER,
+            issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
             backendUrl: getBackendUrl(),
         },
     );

@@ -1,6 +1,7 @@
 import "server-only";
-import { loadKeySet } from "@/lib/auth/accesstoken/keyset";
-import type { Jwk, VerifyContext } from "@/lib/auth/accesstoken/verify";
+import { parseStrictJson } from "@/lib/auth/accesstoken/strictjson";
+import type { VerifyContext } from "@/lib/auth/accesstoken/verify";
+import { publishedKeysFor } from "@/lib/authKeySource";
 import { readAccessToken, resolveTokenClass, type TokenClass } from "@/lib/authServiceClient";
 import {
     classifyLogin,
@@ -20,7 +21,7 @@ import { deadlineFetch } from "@/lib/serverDeadline";
 export interface WireConfig {
     /** AUTH_ACCESS_TOKEN_CLASS as set; unset = hs256_compat. */
     readonly tokenClassRaw: string | undefined;
-    /** AUTH_TOKEN_ISSUER; needed under class eddsa. */
+    /** AUTH_ACCESS_TOKEN_ISSUER, the pinned issuer; needed under class eddsa. */
     readonly issuer: string | undefined;
     readonly backendUrl: string;
     readonly nowSeconds?: () => number;
@@ -56,42 +57,20 @@ export async function callAuthService(url: string, init: RequestInit): Promise<C
 const statusOf = (result: CallResult): { status?: number } =>
     "status" in result ? { status: result.status } : {};
 
-let keySet: { keys: Jwk[]; at: number } | null = null;
+export { resetKeySourceForTests as resetKeySetCacheForTests } from "@/lib/authKeySource";
 
-export function resetKeySetCacheForTests(): void {
-    keySet = null;
-}
-
-type KeysResult = { ok: true; keys: Jwk[] } | { ok: false };
-
-async function loadKeys(cfg: WireConfig): Promise<KeysResult> {
-    const now = nowOf(cfg);
-    if (keySet !== null && now - keySet.at <= KEY_SET_TTL_SECONDS) {
-        return { ok: true, keys: keySet.keys };
-    }
-    const url = `${cfg.backendUrl}/.well-known/jwks.json`;
-    let status: number | undefined;
-    let errorName: string | undefined;
+function tokenKid(token: string): string | undefined {
+    const header = token.split(".")[0];
+    if (!header || !/^[A-Za-z0-9_-]+$/.test(header)) return undefined;
     try {
-        const res = await deadlineFetch("auth")(url, { method: "GET" });
-        status = res.status;
-        if (res.status === 200) {
-            const loaded = loadKeySet(await res.text());
-            if (loaded.ok) {
-                keySet = { keys: loaded.keys, at: now };
-                return { ok: true, keys: loaded.keys };
-            }
-        }
-    } catch (error) {
-        errorName = thrownErrorName(error);
+        const parsed: unknown = parseStrictJson(
+            new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(header, "base64url")),
+        );
+        const kid = (parsed as { kid?: unknown } | null)?.kid;
+        return typeof kid === "string" ? kid : undefined;
+    } catch {
+        return undefined;
     }
-    logSessionBranch({
-        operation: "login",
-        branch: "key_set_unusable",
-        ...(status !== undefined && status !== 200 ? { status } : {}),
-        ...(errorName === undefined ? {} : { errorName }),
-    });
-    return { ok: false };
 }
 
 type Config = { ok: true; tokenClass: TokenClass } | { ok: false };
@@ -107,7 +86,8 @@ function checkConfig(cfg: WireConfig): Config {
 
 type Issued =
     | { ok: true; exp?: number; sid?: string; sub?: string }
-    | { ok: false; reason: "refused" | "unavailable" };
+    | { ok: false; reason: "refused"; cause: "shape" | "verify" }
+    | { ok: false; reason: "unavailable" };
 
 async function readIssuedAccessToken(
     token: string,
@@ -122,12 +102,16 @@ async function readIssuedAccessToken(
         removedKids: [],
     };
     if (tokenClass === "eddsa") {
-        const keys = await loadKeys(cfg);
-        if (!keys.ok) return { ok: false, reason: "unavailable" };
-        ctx = { ...ctx, publishedKeys: keys.keys };
+        const answer = await publishedKeysFor(ctx.issuer, tokenKid(token), () => nowOf(cfg));
+        if (!answer.ok) {
+            return answer.reason === "unavailable"
+                ? { ok: false, reason: "unavailable" }
+                : { ok: false, reason: "refused", cause: "verify" };
+        }
+        ctx = { ...ctx, publishedKeys: answer.keys };
     }
     const read = readAccessToken(token, tokenClass, ctx);
-    if (!read.ok) return { ok: false, reason: "refused" };
+    if (!read.ok) return { ok: false, reason: "refused", cause: read.reason };
     return {
         ok: true,
         ...(read.exp === undefined ? {} : { exp: read.exp }),
@@ -160,8 +144,10 @@ export type PasswordLoginResult =
     | { kind: "invalid_credentials" }
     | { kind: "unavailable" };
 
-const invalidResponse = (): PasswordLoginResult => {
-    logSessionBranch({ operation: "login", branch: "login_invalid_response" });
+const refusedLogin = (
+    branch: "login_invalid_response" | "token_shape_refused",
+): PasswordLoginResult => {
+    logSessionBranch({ operation: "login", branch });
     return { kind: "invalid_credentials" };
 };
 
@@ -191,7 +177,7 @@ export async function passwordLogin(
             });
             return outcome;
         case "invalid_response":
-            return invalidResponse();
+            return refusedLogin("login_invalid_response");
         case "ok": {
             const issued = await readIssuedAccessToken(
                 outcome.accessToken,
@@ -199,9 +185,10 @@ export async function passwordLogin(
                 cfg,
             );
             if (!issued.ok) {
-                return issued.reason === "unavailable"
-                    ? { kind: "unavailable" }
-                    : invalidResponse();
+                if (issued.reason === "unavailable") return { kind: "unavailable" };
+                return refusedLogin(
+                    issued.cause === "shape" ? "token_shape_refused" : "login_invalid_response",
+                );
             }
             return {
                 kind: "ok",

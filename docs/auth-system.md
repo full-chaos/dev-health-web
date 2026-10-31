@@ -27,9 +27,14 @@ call that fails are `auth_unavailable` (a retry message, not a credential refusa
 `hs256_compat`; unset means `hs256_compat`; any other value refuses sign-in): the class comes from
 this setting, never from a token header. Under `hs256_compat` the server holds no HS256 secret: it
 decodes `exp` and `sid` (not verified), and refuses a token whose alg is not `HS256`. Under `eddsa`
-the token is verified against the key set published at `/.well-known/jwks.json` of the backend
-(cached 300 s; a key set with a repeated `kid` or an invalid key is refused whole) and
-`AUTH_TOKEN_ISSUER` must be set.
+the token is verified against the key set the pinned issuer publishes: the server reads
+`{issuer}/.well-known/openid-configuration`, requires its `issuer` to be the pinned one and its
+`jwks_uri` to be exactly `{issuer}/.well-known/jwks.json`, then reads that key set; a redirect at
+either step is a failure. `AUTH_ACCESS_TOKEN_ISSUER` (the pinned issuer, an https origin with an
+optional path prefix) must be set. The keys are fresh for 300 s; a refresh is tried at most once
+per 30 s; when a refresh fails the last good keys are used until 10 minutes past the 300 s, and
+then sign-in is `auth_unavailable`; a key id that is not in the keys gets one refresh, and a key id
+still unknown is refused. A key set with a repeated `kid` or an invalid key is refused whole.
 
 **Session Data**:
 
