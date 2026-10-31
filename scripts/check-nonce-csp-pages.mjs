@@ -9,7 +9,7 @@
  *
  * The check reads `<dist>/prerender-manifest.json` and the HTML of every prerendered route
  * (`<dist>/server/app/<route>.html`). A route with an inline `<script>` that has no `nonce`
- * attribute fails, by name. A route with no HTML (an image, robots.txt) is not a page.
+ * (nonce or not, see `inlineScripts`) fails, by name. A route with no HTML (an image, robots.txt) is not a page.
  *
  * It fails closed: no manifest is a failure ("run next build first"), never a pass.
  *
@@ -55,14 +55,17 @@ export const KNOWN_PRERENDERED = new Map(
     ].map((route) => [route, "CHAOS-12344"]),
 );
 
-/** Inline scripts (no `src`) with no `nonce` attribute. Data scripts (`type="application/…"`) do not run. */
-export function inlineScriptsWithoutNonce(html) {
+/**
+ * Executable inline scripts: no `src` attribute (an attribute of its own, not `data-src`), and not a
+ * JSON data type. A nonce attribute does not count (r1 on web #1670): HTML fixed at build time
+ * cannot carry the nonce the proxy draws per request, so every inline script in it is blocked.
+ */
+export function inlineScripts(html) {
     let count = 0;
     for (const match of html.matchAll(SCRIPT_TAG)) {
         const attributes = match[1] ?? "";
-        if (/\bsrc\s*=/iu.test(attributes)) continue;
-        if (/\btype\s*=\s*["']?application\/(?:ld\+)?json/iu.test(attributes)) continue;
-        if (/\bnonce\s*=/iu.test(attributes)) continue;
+        if (/(?:^|\s)src\s*=/iu.test(attributes)) continue;
+        if (/(?:^|\s)type\s*=\s*["']?application\/(?:ld\+)?json/iu.test(attributes)) continue;
         count += 1;
     }
     return count;
@@ -89,12 +92,12 @@ export function checkNonceCspPages({ dist, known = KNOWN_PRERENDERED }) {
         const file = htmlFileFor(dist, route);
         if (!fs.existsSync(file)) continue;
         checked.push(route);
-        const blocked = inlineScriptsWithoutNonce(fs.readFileSync(file, "utf8"));
+        const blocked = inlineScripts(fs.readFileSync(file, "utf8"));
         if (blocked > 0 && known.has(route)) {
             stillBlocked.add(route);
         } else if (blocked > 0) {
             failures.push(
-                `${route}: prerendered with ${blocked} inline script${blocked === 1 ? "" : "s"} and no nonce`,
+                `${route}: prerendered with ${blocked} inline script${blocked === 1 ? "" : "s"}, which cannot carry the per-request nonce`,
             );
         }
     }

@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { checkNonceCspPages, inlineScriptsWithoutNonce } from "../check-nonce-csp-pages.mjs";
+import { checkNonceCspPages, inlineScripts } from "../check-nonce-csp-pages.mjs";
 
 /**
  * CHAOS-12337: every page is served under the per-request nonce CSP (`src/proxy.ts`
@@ -46,12 +46,23 @@ afterEach(() => {
     for (const dir of DIRS.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe("inlineScriptsWithoutNonce", () => {
-    it("counts inline scripts with no nonce, and never a script with src", () => {
-        expect(inlineScriptsWithoutNonce(STATIC_HTML)).toBe(2);
-        expect(inlineScriptsWithoutNonce(DYNAMIC_HTML)).toBe(0);
-        expect(inlineScriptsWithoutNonce('<script type="application/ld+json">{}</script>')).toBe(0);
-        expect(inlineScriptsWithoutNonce("<SCRIPT>x</SCRIPT>")).toBe(1);
+describe("inlineScripts", () => {
+    it("counts every executable inline script, and never a script with a src attribute", () => {
+        expect(inlineScripts(STATIC_HTML)).toBe(2);
+        expect(inlineScripts('<script type="application/ld+json">{}</script>')).toBe(0);
+        expect(inlineScripts("<SCRIPT>x</SCRIPT>")).toBe(1);
+        expect(inlineScripts('<script src="/a.js"></script><script\nsrc="/b.js"></script>')).toBe(
+            0,
+        );
+    });
+
+    it("counts a script whose only src-like attribute is data-src (r1 on #1670)", () => {
+        expect(inlineScripts('<script data-src="/chunk.js">window.run()</script>')).toBe(1);
+    });
+
+    it("counts a nonced inline script too: a prerendered page cannot carry the per-request nonce (r1)", () => {
+        expect(inlineScripts('<script nonce="build-time-value">window.run()</script>')).toBe(1);
+        expect(inlineScripts(DYNAMIC_HTML)).toBe(1);
     });
 });
 
@@ -62,13 +73,14 @@ describe("checkNonceCspPages with the known list (CHAOS-12344)", () => {
             known: new Map([["/marketing/about", "CHAOS-12344"]]),
         });
         expect(result.failures).toEqual([
-            "/ask-dev/oauth/start: prerendered with 2 inline scripts and no nonce",
+            "/ask-dev/oauth/start: prerendered with 2 inline scripts, which cannot carry the per-request nonce",
         ]);
     });
 
     it("fails a listed page that is fixed, so the list cannot go stale", () => {
         const result = checkNonceCspPages({
-            dist: build({ "/marketing/about": DYNAMIC_HTML, "/robots.txt": null }),
+            // Fixed = no longer prerendered: neither listed page is in the manifest as HTML.
+            dist: build({ "/robots.txt": null }),
             known: new Map([
                 ["/marketing/about", "CHAOS-12344"],
                 ["/auth/forgot-password", "CHAOS-12344"],
@@ -110,7 +122,7 @@ describe("checkNonceCspPages", () => {
             known: new Map(),
         });
         expect(result.failures).toEqual([
-            "/ask-dev/oauth/start: prerendered with 2 inline scripts and no nonce",
+            "/ask-dev/oauth/start: prerendered with 2 inline scripts, which cannot carry the per-request nonce",
         ]);
     });
 
@@ -139,7 +151,9 @@ describe("checkNonceCspPages", () => {
             },
         );
         expect(red.status).toBe(1);
-        expect(red.stderr).toContain("/x: prerendered with 2 inline scripts and no nonce");
+        expect(red.stderr).toContain(
+            "/x: prerendered with 2 inline scripts, which cannot carry the per-request nonce",
+        );
         // The checked-in list: every listed page still prerendered (CHAOS-12344), nothing else.
         const { KNOWN_PRERENDERED } = await import("../check-nonce-csp-pages.mjs");
         const listed = Object.fromEntries(
