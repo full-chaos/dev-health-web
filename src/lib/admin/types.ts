@@ -917,6 +917,19 @@ export type LLMPurpose = "investigate" | "explain" | "categorize";
 
 export const LLM_PURPOSES: LLMPurpose[] = ["investigate", "explain"];
 
+/**
+ * Every purpose id the API can name, categorize included (it is no form row of LLM_PURPOSES, but it
+ * has its own saved override). A purpose added to LLMPurpose and missing here fails the typecheck.
+ */
+export const ALL_LLM_PURPOSES = [
+    "investigate",
+    "explain",
+    "categorize",
+] as const satisfies readonly LLMPurpose[];
+type MissingPurpose = Exclude<LLMPurpose, (typeof ALL_LLM_PURPOSES)[number]>;
+const purposesComplete: [MissingPurpose] extends [never] ? true : never = true;
+void purposesComplete;
+
 export const LLM_PURPOSE_LABELS: Record<LLMPurpose, string> = {
     investigate: "Investigation",
     explain: "Explanations",

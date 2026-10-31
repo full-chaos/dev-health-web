@@ -105,7 +105,9 @@ describe("ByoLlmSettings with saved settings that cannot be read", () => {
 
     it("Remove asks once, then removes the default settings and each named override, then reads again", async () => {
         mockLoad
-            .mockResolvedValueOnce(UNREADABLE(["investigate", "explain", "categorize"]))
+            .mockResolvedValueOnce(
+                UNREADABLE(["investigate", "explain", "categorize", "planted_purpose"]),
+            )
             .mockResolvedValue({ data: {} });
         const changed = vi.fn();
         window.addEventListener(BYO_LLM_CONFIG_CHANGED, changed);
@@ -116,15 +118,42 @@ describe("ByoLlmSettings with saved settings that cannot be read", () => {
         await user.click(screen.getByRole("button", { name: COPY.confirmRemove }));
         await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
         expect(mockRemove).toHaveBeenCalledTimes(1);
-        // Only the purposes this app knows: an unknown id is never sent.
+        // Every purpose the 409 names, categorize included (codex r2 on #1630); an unknown id is never sent.
         expect(mockRemovePurpose.mock.calls.map(([purpose]) => purpose)).toEqual([
             "investigate",
             "explain",
+            "categorize",
         ]);
         expect(changed).toHaveBeenCalledTimes(1);
         expect(screen.queryByTestId("byo-llm-unreadable")).not.toBeInTheDocument();
         expect(await screen.findByText(COPY.removed)).toBeInTheDocument();
         window.removeEventListener(BYO_LLM_CONFIG_CHANGED, changed);
+    });
+
+    it("names a categorize override in the scope sentence", async () => {
+        mockLoad.mockResolvedValue(UNREADABLE(["categorize"]));
+        renderCard();
+        expect(await screen.findByTestId("byo-llm-unreadable-scope")).toHaveTextContent(
+            "The default configuration or the Categorization model override cannot be read.",
+        );
+    });
+
+    // codex r2 on #1630: a served 4xx text must not reach the card.
+    it("a failed remove shows the card's own words, never the served text", async () => {
+        mockLoad.mockResolvedValue(UNREADABLE(["explain"]));
+        mockRemove.mockResolvedValue({
+            error: "served: purpose_not_configurable categorize",
+            status: 409,
+            code: "x",
+        });
+        renderCard();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: COPY.remove }));
+        await user.click(screen.getByRole("button", { name: COPY.confirmRemove }));
+        const notice = await screen.findByTestId("byo-llm-unreadable");
+        const alert = await within(notice).findByRole("alert");
+        expect(alert).toHaveTextContent("Could not remove BYO-LLM settings.");
+        expect(notice.textContent).not.toContain("served:");
     });
 
     it("a failed remove says so and keeps the notice", async () => {
@@ -139,7 +168,7 @@ describe("ByoLlmSettings with saved settings that cannot be read", () => {
         await user.click(screen.getByRole("button", { name: COPY.confirmRemove }));
         const notice = await screen.findByTestId("byo-llm-unreadable");
         expect(await within(notice).findByRole("alert")).toHaveTextContent(
-            "The change was not saved. Try again.",
+            "Could not remove BYO-LLM settings.",
         );
         expect(mockLoad).toHaveBeenCalledTimes(1);
         expect(mockRemovePurpose).not.toHaveBeenCalled();

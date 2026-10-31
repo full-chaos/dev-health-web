@@ -15,7 +15,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
-    LLM_PURPOSES,
+    ALL_LLM_PURPOSES,
     LLM_PURPOSE_LABELS,
     isUnreadableSettings,
     type LLMBudgetResponse,
@@ -290,9 +290,9 @@ function unreadableScope(purposes: readonly LLMPurpose[]): string {
     return `${UNREADABLE_COPY.defaultScope} or ${UNREADABLE_COPY.purposeScope(purposes)} cannot be read.`;
 }
 
-/** Only the purposes this app knows; any other id is dropped, never sent. */
+/** Every purpose id the API can name, categorize included (codex r2); any other id is dropped, never sent. */
 function knownPurposes(purposes: readonly string[] | undefined): LLMPurpose[] {
-    return LLM_PURPOSES.filter((purpose) => purposes?.includes(purpose));
+    return ALL_LLM_PURPOSES.filter((purpose) => purposes?.includes(purpose));
 }
 
 export function ByoLlmSettings({
@@ -648,7 +648,8 @@ export function ByoLlmSettings({
         setConfirmingDelete(false);
         const failed = results.find((result) => result.error && result.status !== 404);
         if (failed) {
-            setFormError(failed.error ?? UNREADABLE_COPY.removeFailed);
+            // The card's own words: a served 4xx text never reaches it (codex r2); the action logged it.
+            setFormError(UNREADABLE_COPY.removeFailed);
             toast.error(UNREADABLE_COPY.removeFailed);
             return;
         }
