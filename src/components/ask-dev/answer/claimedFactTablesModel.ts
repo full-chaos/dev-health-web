@@ -74,8 +74,8 @@ function uniqueInOrder(names: readonly string[]): string[] {
 }
 
 /**
- * Puts each `X_name` column in the place of its `X_id` column, when both are served: the name is the
- * same entity's resolved label. The column keeps the id key for the rows that have no name.
+ * Puts each `X_name` column in the place of its `X_id` column, when the rows carry both: the name is
+ * the same entity's resolved label. The column keeps the id key for the rows that have no name.
  */
 function namesForIds(
     order: readonly string[],
@@ -83,16 +83,26 @@ function namesForIds(
 ): { readonly key: string; readonly idKey?: string }[] {
     const named = order.map((key) => {
         const prefix = /^(.+)_id$/u.exec(key)?.[1];
-        return prefix !== undefined && present.has(`${prefix}_name`)
+        // Only when the rows carry BOTH: a declared id or name that no row has keeps its own
+        // column of dashes (a declared column is never dropped).
+        return prefix !== undefined && present.has(key) && present.has(`${prefix}_name`)
             ? { idKey: key, key: `${prefix}_name` }
             : { key };
     });
-    const seen = new Set<string>();
-    return named.filter((column) => {
-        if (seen.has(column.key)) return false;
-        seen.add(column.key);
-        return true;
-    });
+    // One column per name, at its first place; when the name came before its id, the kept column
+    // still takes the id's fallback, so a row with no name keeps its served id whatever the order.
+    const merged: { key: string; idKey?: string }[] = [];
+    const at = new Map<string, number>();
+    for (const column of named) {
+        const index = at.get(column.key);
+        if (index === undefined) {
+            at.set(column.key, merged.length);
+            merged.push({ ...column });
+        } else if (column.idKey !== undefined && merged[index]!.idKey === undefined) {
+            merged[index] = { ...merged[index]!, idKey: column.idKey };
+        }
+    }
+    return merged;
 }
 
 /** The columns of one fact's rows, in declared order when the declaration fits them. */

@@ -234,6 +234,69 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
         );
     });
 
+    it.each([
+        ["the id no row has (the name is served and is the key)", "id"],
+        ["the name no row has (the id is served)", "name"],
+    ] as const)(
+        "keeps a declared column of dashes for %s: the name swap never drops a declared column",
+        (_case, missing) => {
+            const merged = copyOf(mergedPrsDegraded);
+            const fact = merged.claimed_facts!.find((candidate) => candidate.rows?.length)!;
+            // Changed for the test: one of the pair is declared but served on no row.
+            if (missing === "id") {
+                for (const row of fact.rows!) delete row.fields.scope_id;
+                fact.table!.key = ["scope_name"];
+                fact.table!.observations = ["scope", "link_tier", "scope_id"];
+            } else {
+                for (const row of fact.rows!) delete row.fields.scope_name;
+            }
+            render(<AskDevAnswer result={merged} />);
+
+            const table = tableFor(fact.claim_id);
+            const keys = headerKeys(table);
+            const absentKey = missing === "id" ? "scope_id" : "scope_name";
+            const servedKey = missing === "id" ? "scope_name" : "scope_id";
+            expect(keys).toContain(absentKey);
+            expect(keys).toContain(servedKey);
+            const column = keys.indexOf(absentKey);
+            for (const row of within(table).getAllByRole("row").slice(1)) {
+                const cell = within(row).getAllByRole("cell")[column]!;
+                expect(cell).toHaveTextContent("—");
+                expect(cell).toHaveAttribute("aria-label", "not in this row");
+            }
+            expect(warn).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each([
+        ["the id comes first", ["scope_id"], ["scope", "scope_name", "link_tier"]],
+        ["the name comes first", ["scope_name"], ["scope", "link_tier", "scope_id"]],
+    ] as const)(
+        "shows the served id of a row with no name, whatever the column order (%s)",
+        (_case, key, observations) => {
+            const merged = copyOf(mergedPrsDegraded);
+            const fact = merged.claimed_facts!.find((candidate) => candidate.rows?.length)!;
+            // Changed for the test: the declared order, and a second row with no name.
+            fact.table!.key = [...key];
+            fact.table!.observations = [...observations];
+            fact.rows!.push({ fields: { scope_id: { string: "project.v2:linear:unnamed" } } });
+            render(<AskDevAnswer result={merged} />);
+
+            const table = tableFor(fact.claim_id);
+            const keys = headerKeys(table);
+            expect(keys.filter((name) => name === "scope_name")).toHaveLength(1);
+            expect(keys).not.toContain("scope_id");
+            const column = keys.indexOf("scope_name");
+            const rows = within(table).getAllByRole("row").slice(1);
+            expect(within(rows[0]!).getAllByRole("cell")[column]).not.toHaveTextContent(
+                /^project\.v2:/u,
+            );
+            expect(within(rows[1]!).getAllByRole("cell")[column]).toHaveTextContent(
+                "project.v2:linear:unnamed",
+            );
+        },
+    );
+
     it("renders no table part when no claimed fact has rows", () => {
         render(<AskDevAnswer result={copyOf(ciRateComplete)} />);
 
