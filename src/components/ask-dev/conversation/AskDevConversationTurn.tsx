@@ -84,6 +84,15 @@ export const TURN_STATUS_COPY = {
         "This question was still running when the conversation was loaded. Checking for its answer…",
     /** E6 design v5 N4: a failed read confirms nothing, so no liveness is claimed. */
     unconfirmed: "The current state could not be confirmed. Check back later.",
+    /** Only from a status read that succeeded (N4); followed by the local time. */
+    lastSeenRunning: "Last seen running at",
+    /** CHAOS-11957: Stop reached ACR; the run ends on its own terminal. */
+    canceling: "Canceling…",
+    /** After a Stop, the status cannot tell a cancel from a lost run (E6 design v5 §5.4). */
+    halted: "Stopped or interrupted. Ask again.",
+    stopRequested: "Stopping…",
+    /** ACR cannot stop a run that has no lease, and this tab does not hold its connection. */
+    stopNotLeased: "This run cannot be stopped. It ends on its own.",
     /** A turn ACR admitted before it recorded questions. Display only: it is never sent. */
     questionNotRecorded: "Question not recorded",
 } as const satisfies {
@@ -156,6 +165,10 @@ function statusLine(outcome: StatusOutcome): string {
             return TURN_STATUS_COPY.observing;
         case "unconfirmed":
             return TURN_STATUS_COPY.unconfirmed;
+        case "canceling":
+            return TURN_STATUS_COPY.canceling;
+        case "halted":
+            return TURN_STATUS_COPY.halted;
     }
 }
 
@@ -235,8 +248,26 @@ export function AskDevConversationTurn({
                 ) : null}
                 {outcome.kind === "running" ||
                 outcome.kind === "recovering" ||
-                outcome.kind === "observing" ? (
+                outcome.kind === "observing" ||
+                outcome.kind === "canceling" ? (
                     <AskDevElapsed startedAt={outcome.startedAt} />
+                ) : null}
+                {outcome.kind === "unconfirmed" && outcome.lastSeenRunningAt !== undefined ? (
+                    <p data-testid="ask-dev-turn-last-seen" className="text-xs text-(--ink-muted)">
+                        {TURN_STATUS_COPY.lastSeenRunning}{" "}
+                        {new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(
+                            new Date(outcome.lastSeenRunningAt),
+                        )}
+                    </p>
+                ) : null}
+                {turn.stop === "requested" ? (
+                    <p data-testid="ask-dev-turn-stop" className="text-sm text-(--ink-muted)">
+                        {TURN_STATUS_COPY.stopRequested}
+                    </p>
+                ) : turn.stop === "not_leased" ? (
+                    <p data-testid="ask-dev-turn-stop" className="text-sm text-(--ink-muted)">
+                        {TURN_STATUS_COPY.stopNotLeased}
+                    </p>
                 ) : null}
                 {outcome.kind === "limited" && outcome.retryAfterSeconds !== undefined ? (
                     <p

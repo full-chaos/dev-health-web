@@ -451,3 +451,32 @@ describe("the composer draft belongs to one conversation (codex r2 on #1648)", (
         expect(transport.calls).toHaveLength(0);
     });
 });
+
+describe("Stop on a conversation restored while it runs (CHAOS-11957)", () => {
+    it("offers Stop for the restored run; without a lease it says the run cannot be stopped", async () => {
+        const transport = new FakeTransport();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB_A, "running")]));
+        transport.attachScripts.push([
+            {
+                seq: 1,
+                request_id: "request_run",
+                type: "accepted",
+                reserved_result_id: "result_reserved_0001",
+                // The page runs on the real clock: a run that started now, so D is ahead.
+                started_at: new Date().toISOString(),
+                budget_seconds: 110,
+            },
+            { wait: new Promise(() => undefined) },
+        ]);
+        nav.go(`/dev?thread=${THREAD_A}`);
+        renderShell(transport);
+        const stop = await within(page()).findByTestId("ask-dev-composer-stop");
+        await userEvent.click(stop);
+        expect(await within(page()).findByTestId("ask-dev-turn-stop")).toHaveTextContent(
+            TURN_STATUS_COPY.stopNotLeased,
+        );
+        expect(within(page()).queryByTestId("ask-dev-composer-stop")).toBeNull();
+        expect(transport.cancelCalls).toEqual([SUB_A]);
+        expect(transport.calls).toHaveLength(0);
+    });
+});
