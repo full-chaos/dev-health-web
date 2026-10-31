@@ -8,12 +8,16 @@ import {
     WAIT_BUDGET_HEADROOM_MS,
 } from "@/lib/ask-dev/deadline";
 import { logger } from "@/lib/logger";
+import { parseResultFeedback } from "@/lib/acr/feedbackContract";
+import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
 import { asTranscriptResult } from "@/components/ask-dev/answer/testModeAnswer";
 import type { TranscriptResult } from "@/components/ask-dev/answer/AskDevTurn";
 import {
     TransportFailure,
     TransportRefusal,
     type AskDevTransport,
+    type CancelAnswer,
+    type FeedbackView,
     type InvestigateCall,
     type InvestigationEvent,
 } from "@/components/ask-dev/conversation/transport";
@@ -85,6 +89,20 @@ function notServedYet(member: string): never {
     throw new Error(`ask-dev browser transport: ${member} is served by CHAOS-12336 (T14b)`);
 }
 
+/** A query value as ACR reads it: `encodeURIComponent` (a space is `%20`, never `+`). */
+const query = (pairs: Record<string, string | undefined>): string => {
+    const parts = Object.entries(pairs)
+        .filter((pair): pair is [string, string] => pair[1] !== undefined)
+        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`);
+    return parts.length === 0 ? "" : `?${parts.join("&")}`;
+};
+
+/** ACR's 409 `submission_in_progress` with `details.reason: not_leased` (the cancel route). */
+function isNotLeased(body: ACRErrorV1): boolean {
+    const details = (body.error as { details?: { reason?: unknown } }).details;
+    return body.error.code === "submission_in_progress" && details?.reason === "not_leased";
+}
+
 /** ACR's `Retry-After` in whole seconds, when it is one. */
 function retryAfterOf(response: Response): number | undefined {
     const raw = response.headers.get("Retry-After");
@@ -153,6 +171,13 @@ function syntheticError(status: number, code: string): ACRErrorV1 {
     } as ACRErrorV1;
 }
 
+/** A `context_fabric_result_feedback.v1` body as the store reads it; a broken one is invalid. */
+function feedbackOf(body: unknown): FeedbackView {
+    const view = parseResultFeedback(body);
+    if (view === null) throw new TransportFailure("invalid_upstream");
+    return view;
+}
+
 export function createAcrBrowserTransport(
     config: AcrBrowserClientConfig,
     dependencies: BrowserTransportDependencies,
@@ -184,31 +209,46 @@ export function createAcrBrowserTransport(
     });
 
     /**
-     * Throws what a non-2xx answer means: 401 is "authorization required"; an `error.v1` body is
-     * a `TransportRefusal`; anything else is a dropped call (the store recovers it).
+     * What a non-2xx answer means, its body already read: 401 is "authorization required"; an
+     * `error.v1` body is a `TransportRefusal`; anything else is a dropped call (the store recovers
+     * it).
      */
+    function refusal(response: Response, body: unknown, operation: string): Error {
+        logger.info({ operation, status: response.status }, "ask-dev acr call refused");
+        if (response.status === 401) return new TransportFailure("authorization_required");
+        if (body !== undefined && dependencies.envelope.validateErrorEnvelope(body)) {
+            return new TransportRefusal(
+                response.status,
+                body as ACRErrorV1,
+                retryAfterOf(response),
+            );
+        }
+        if (response.status === 404) {
+            return new TransportRefusal(404, syntheticError(404, "not_found"));
+        }
+        return new Error(`ask-dev acr ${operation}: ${String(response.status)} with no error body`);
+    }
+
+    /** Throws what a non-2xx answer means (`refusal`), reading its body first. */
     async function refuse(
         response: Response,
         operation: string,
         signal: AbortSignal,
     ): Promise<never> {
-        logger.info({ operation, status: response.status }, "ask-dev acr call refused");
-        if (response.status === 401) throw new TransportFailure("authorization_required");
-        const body = await boundedJson(response, signal);
-        if (body !== undefined && dependencies.envelope.validateErrorEnvelope(body)) {
-            throw new TransportRefusal(response.status, body as ACRErrorV1, retryAfterOf(response));
-        }
-        if (response.status === 404) {
-            throw new TransportRefusal(404, syntheticError(404, "not_found"));
-        }
-        throw new Error(`ask-dev acr ${operation}: ${String(response.status)} with no error body`);
+        const body = response.status === 401 ? undefined : await boundedJson(response, signal);
+        throw refusal(response, body, operation);
     }
 
-    /** One JSON GET with the 15 s header bound. */
-    async function getJson(
+    /**
+     * One JSON call with the 15 s header bound: a GET by default, or `method` with an optional JSON
+     * `body`. The answer's body is read only when it is 2xx; a non-2xx answer is for `refuse`.
+     */
+    async function callJson(
         path: string,
         operation: string,
         signal: AbortSignal,
+        method: "GET" | "POST" | "DELETE" = "GET",
+        json?: unknown,
     ): Promise<{ readonly response: Response; readonly body: unknown }> {
         if (signal.aborted) throw signal.reason;
         const token = await bearer();
@@ -224,8 +264,14 @@ export function createAcrBrowserTransport(
         }, HEADER_WAIT_MAX_MS);
         try {
             const response = await dependencies.fetch(`${base}${path}`, {
-                method: "GET",
-                headers: headers(token, { Accept: "application/json" }),
+                method,
+                headers: headers(
+                    token,
+                    json === undefined
+                        ? { Accept: "application/json" }
+                        : { Accept: "application/json", "Content-Type": "application/json" },
+                ),
+                ...(json === undefined ? {} : { body: JSON.stringify(json) }),
                 credentials: "omit",
                 redirect: "error",
                 cache: "no-store",
@@ -427,7 +473,7 @@ export function createAcrBrowserTransport(
         investigate,
         async submissionStatus(submissionId, signal) {
             const path = `/investigations/submissions/${encodeURIComponent(submissionId)}`;
-            const { response, body } = await getJson(path, "status", signal);
+            const { response, body } = await callJson(path, "status", signal);
             if (response.status === 404) return null;
             if (!response.ok) return refuse(response, "status", signal);
             if (body === undefined || !dependencies.envelope.validateSubmissionStatus(body)) {
@@ -439,7 +485,7 @@ export function createAcrBrowserTransport(
             const path = `/investigations/${encodeURIComponent(resultId)}`;
             // The full checks load in parallel with the replay.
             const full = startFullChecks();
-            const { response, body } = await getJson(path, "replay", signal);
+            const { response, body } = await callJson(path, "replay", signal);
             if (!response.ok) return refuse(response, "replay", signal);
             const validators = await full;
             const valid =
@@ -450,12 +496,76 @@ export function createAcrBrowserTransport(
             if (result === null) throw new TransportFailure("invalid_upstream");
             return result as TranscriptResult;
         },
-        listThreads: () => notServedYet("listThreads"),
-        readThread: () => notServedYet("readThread"),
-        deleteThread: () => notServedYet("deleteThread"),
+        async listThreads({ cursor, limit, signal }) {
+            const path = `/threads${query({ limit: String(limit), cursor })}`;
+            const { response, body } = await callJson(path, "threads_list", signal);
+            if (!response.ok) return refuse(response, "threads_list", signal);
+            const view = parseThreadList(body);
+            if (view === null) throw new TransportFailure("invalid_upstream");
+            return view;
+        },
+        async readThread({ threadId, before, signal }) {
+            const path = `/threads/${encodeURIComponent(threadId)}${query({ before })}`;
+            const { response, body } = await callJson(path, "thread_read", signal);
+            // ACR's 404 is one answer for every cause (another principal's, unknown, deleted,
+            // expired or malformed).
+            if (response.status === 404) return null;
+            if (!response.ok) return refuse(response, "thread_read", signal);
+            const view = parseThread(body);
+            if (view === null) throw new TransportFailure("invalid_upstream");
+            return view;
+        },
+        async deleteThread({ threadId, signal }) {
+            const path = `/threads/${encodeURIComponent(threadId)}`;
+            const { response } = await callJson(path, "thread_delete", signal, "DELETE");
+            if (response.status === 204) return;
+            if (!response.ok) return refuse(response, "thread_delete", signal);
+            throw new TransportFailure("invalid_upstream");
+        },
         attach: () => notServedYet("attach"),
-        cancel: () => notServedYet("cancel"),
-        readFeedback: () => notServedYet("readFeedback"),
-        setFeedback: () => notServedYet("setFeedback"),
+        async cancel({ submissionId, signal }): Promise<CancelAnswer> {
+            const path = `/investigations/submissions/${encodeURIComponent(submissionId)}/cancel`;
+            const { response } = await callJson(path, "cancel", signal, "POST");
+            if (response.status === 202) return { kind: "running" };
+            if (response.status === 204) return { kind: "final" };
+            if (response.status === 409) {
+                const body = await boundedJson(response, signal);
+                if (
+                    body !== undefined &&
+                    dependencies.envelope.validateErrorEnvelope(body) &&
+                    isNotLeased(body as ACRErrorV1)
+                ) {
+                    return { kind: "not_leased", retryAfterSeconds: retryAfterOf(response) };
+                }
+                throw refusal(response, body, "cancel");
+            }
+            if (!response.ok) return refuse(response, "cancel", signal);
+            throw new TransportFailure("invalid_upstream");
+        },
+        async readFeedback({ resultId, signal }) {
+            const path = `/investigations/feedback/${encodeURIComponent(resultId)}`;
+            const { response, body } = await callJson(path, "feedback_read", signal);
+            // Not the caller's Ask Dev result, or one ACR would not serve now: the same answer.
+            if (response.status === 404) return null;
+            if (!response.ok) return refuse(response, "feedback_read", signal);
+            return feedbackOf(body);
+        },
+        async setFeedback({ resultId, correct, useful, signal }) {
+            const path = `/investigations/feedback/${encodeURIComponent(resultId)}`;
+            const request = {
+                schema_version: "context_fabric_result_feedback_request.v1",
+                correct,
+                useful,
+            };
+            const { response, body } = await callJson(
+                path,
+                "feedback_set",
+                signal,
+                "POST",
+                request,
+            );
+            if (!response.ok) return refuse(response, "feedback_set", signal);
+            return feedbackOf(body);
+        },
     };
 }
