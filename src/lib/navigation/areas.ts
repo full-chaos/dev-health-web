@@ -26,7 +26,7 @@ import type { Crumb } from "@/components/Breadcrumbs";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export type NavAreaId =
-    "cockpit" | "diagnose" | "plan" | "improve" | "govern" | "ai" | "reports" | "admin";
+    "cockpit" | "diagnose" | "plan" | "improve" | "govern" | "ai" | "ask-dev" | "reports" | "admin";
 
 export type NavAreaHubItem = {
     id: string;
@@ -131,6 +131,13 @@ export type NavArea = {
      * route (e.g. Cockpit).
      */
     children: NavChildRoute[];
+    /**
+     * Features the organization must ALL have for the row to be listed (sidebar and command
+     * palette). The route stays; only the row is absent. Absent: always listed.
+     */
+    requiredFeatures?: readonly string[];
+    /** The command palette's label for the area's page, when it must differ from `label`. */
+    paletteLabel?: string;
 };
 
 export const navAreas: readonly NavArea[] = [
@@ -668,6 +675,22 @@ export const navAreas: readonly NavArea[] = [
     },
     // ── Utility tray ────────────────────────────────────────────────────────────
     {
+        // CHAOS-12210, chris's ruling (2026-10-31): "For now put Ask Dev after AI". It replaces the
+        // CHAOS-3524 ruling that removed Ask Dev as a left-nav destination. The row opens the full
+        // page; the panel launcher stays. Listed only where the launcher is (`isAskDevEnabled`).
+        id: "ask-dev",
+        label: "Ask Dev",
+        href: "/dev",
+        placement: "main",
+        ownedPathPrefixes: ["/dev"],
+        legacyActiveIds: ["ask-dev"],
+        hubItems: [],
+        children: [],
+        requiredFeatures: ["ask_dev", "agent_context_runtime"],
+        // The palette also offers the panel action "Ask Dev"; this is its page.
+        paletteLabel: "Ask Dev full page",
+    },
+    {
         id: "reports",
         label: "Reports",
         href: "/reports",
@@ -816,6 +839,11 @@ export function selectedAreaIdForPathname(
     }
 
     return undefined;
+}
+
+/** True when an area row is listed: the organization has every feature it requires. */
+export function isNavAreaVisible(area: NavArea, features: Record<string, boolean>): boolean {
+    return (area.requiredFeatures ?? []).every((feature) => features[feature] === true);
 }
 
 /** Who looks at the navigation, as far as it decides which rows are listed. */

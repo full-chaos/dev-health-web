@@ -63,6 +63,44 @@ beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 });
 
+// CHAOS-12210, chris's ruling (2026-10-31): "For now put Ask Dev after AI".
+describe("ShellSidebar — the Ask Dev row", () => {
+    const ON = { ask_dev: true, agent_context_runtime: true };
+    const rows = () =>
+        within(screen.getByRole("navigation", { name: "Primary areas" }))
+            .getAllByRole("link")
+            .map((link) => link.textContent?.trim());
+
+    it("lists Ask Dev right after AI, opening /dev, when Ask Dev is on", () => {
+        renderSidebar(ON);
+        const labels = rows();
+        expect(labels[labels.indexOf("AI") + 1]).toBe("Ask Dev");
+        const link = screen.getByRole("link", { name: "Ask Dev" });
+        expect(new URL(link.getAttribute("href") ?? "", "https://app.example").pathname).toBe(
+            "/dev",
+        );
+    });
+
+    it("lists no Ask Dev row when either feature is off", () => {
+        const offs: Record<string, boolean>[] = [
+            {},
+            { ask_dev: true },
+            { agent_context_runtime: true },
+        ];
+        for (const features of offs) {
+            const { unmount } = renderSidebar(features);
+            expect(screen.queryByRole("link", { name: "Ask Dev" })).toBeNull();
+            unmount();
+        }
+    });
+
+    it("marks Ask Dev as the current page on /dev", () => {
+        navigationMock.pathname = "/dev";
+        renderSidebar(ON);
+        expect(currentPageLinks().map((link) => link.textContent?.trim())).toEqual(["Ask Dev"]);
+    });
+});
+
 describe("ShellSidebar — landmarks and structure", () => {
     it("holds Reports and Admin at the bottom: outside the scroll region of the main navigation, before the account block", () => {
         renderSidebar();

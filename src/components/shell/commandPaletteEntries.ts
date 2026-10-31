@@ -1,4 +1,9 @@
-import { isNavChildVisible, type NavArea, type NavViewer } from "@/lib/navigation/areas";
+import {
+    isNavAreaVisible,
+    isNavChildVisible,
+    type NavArea,
+    type NavViewer,
+} from "@/lib/navigation/areas";
 import { TAB_SETS, isTabVisible, tabHref, type TabSet } from "@/lib/navigation/tabs";
 
 export type PaletteEntry = {
@@ -36,7 +41,9 @@ export function paletteEntries(
         entries.push({ id, label, areaLabel, path });
     };
     for (const area of areas) {
-        add(`area-${area.id}`, area.label, area.label, area.href);
+        // An area the sidebar does not list is not offered (CHAOS-12210: Ask Dev).
+        if (!isNavAreaVisible(area, features)) continue;
+        add(`area-${area.id}`, area.paletteLabel ?? area.label, area.label, area.href);
         for (const child of area.children) {
             if (!isNavChildVisible(child, features, viewer)) continue;
             add(`${area.id}-${child.id}`, child.label, area.label, child.path);
