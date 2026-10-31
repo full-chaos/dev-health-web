@@ -611,6 +611,25 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
         expect(store.retry(last(store).id)).toBe(false);
     });
 
+    // codex r2 on #1639: ACR's rate limit before a run; nothing ran, so the same key may be retried.
+    it("ends rate_limited (429) as not run, with a retry under the same key", async () => {
+        const store = makeStore();
+        transport.scripts.push(
+            [{ fail: new TransportRefusal(429, acrError("rate_limited", 429, true)) }],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "not_run",
+            reason: "rate_limited",
+            retry: true,
+        });
+        expect(store.retry(last(store).id)).toBe(true);
+        await settled(store);
+        expect(transport.calls[1]!.submissionId).toBe(transport.calls[0]!.submissionId);
+    });
+
     it("logs an invalid request as a defect", async () => {
         const store = makeStore();
         transport.scripts.push([

@@ -85,7 +85,8 @@ export type NotRunReason =
     | "stream_unavailable"
     | "not_entitled"
     | "repo_forbidden"
-    | "budget_refusal";
+    | "budget_refusal"
+    | "rate_limited";
 
 /** Whether a same-key retry is offered, decided from the closed code, never from the wire's flag. */
 const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
@@ -99,6 +100,7 @@ const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
     repo_forbidden: false,
     // Before the stream there is no reserved result to show as a refusal turn; ask narrower.
     budget_refusal: false,
+    rate_limited: true,
 };
 
 /** ACR's codes before a run → the reason shown (two codes share "not entitled"). */
@@ -113,6 +115,7 @@ const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
     insufficient_scope: "not_entitled",
     repo_forbidden: "repo_forbidden",
     budget_refusal: "budget_refusal",
+    rate_limited: "rate_limited",
 };
 
 const notRunReasonOf = (code: string): NotRunReason | undefined =>

@@ -26,6 +26,7 @@ export const NOT_RUN_COPY: Readonly<Record<NotRunReason, string>> = {
     repo_forbidden:
         "A repository this question needs is not available to you. If it was connected just now, wait for its first sync.",
     budget_refusal: "This question needs more than one answer can hold. Ask a narrower question.",
+    rate_limited: "Too many questions in a short time. Wait a moment, then ask again.",
 };
 
 /**

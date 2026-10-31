@@ -26,6 +26,7 @@ describe("AskDevConversationTurn: not-run refusals", () => {
         ["not_entitled", false],
         ["repo_forbidden", false],
         ["budget_refusal", false],
+        ["rate_limited", true],
     ] as const)("%s shows its own guidance (retry %s)", async (reason, retry) => {
         const onRetry = vi.fn();
         render(

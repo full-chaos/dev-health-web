@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { AcrRuntimeClient } from "../client";
 import { NOT_RUN_COPY } from "@/components/ask-dev/conversation/AskDevConversationTurn";
 
-import { safeAcrRuntimeMessage } from "../errors";
+import type { NotRunReason } from "@/components/ask-dev/conversation/conversationStore";
+
+import { safeAcrRuntimeMessage, type AcrRuntimeErrorCode } from "../errors";
 
 // CHAOS-12201: ACR's per-call access refusals and the Ask Dev limits each keep their own code and
 // guidance; none of them reads as an outage, and no copy names an internal service.
@@ -35,7 +37,9 @@ describe("investigationFailure: refusals keep their own code", () => {
 
     it("decides by status and code together: the code at another status is not trusted", () => {
         expect(client.investigationFailure(500, "access_denied", undefined).code).toBe("upstream");
-        expect(client.investigationFailure(429, "rate_limited", undefined).code).toBe("upstream");
+        expect(client.investigationFailure(429, "some_future_code", undefined).code).toBe(
+            "upstream",
+        );
     });
 
     it("gives each refusal different guidance", () => {
@@ -49,23 +53,23 @@ describe("investigationFailure: refusals keep their own code", () => {
         expect(new Set(messages).size).toBe(messages.length);
     });
 
-    // The Ask-Dev-only codes say the same words in the client and the panel. `not_entitled` and
-    // `repo_forbidden` map to the client's shared codes, which other products' routes also show,
-    // so the panel keeps its own Ask Dev words for them.
-    it("says the same words as the conversation store", () => {
-        const shared = new Set(["not_entitled", "repo_forbidden"]);
-        const askDevOnly = Object.entries(NOT_RUN_COPY).filter(([reason]) => !shared.has(reason));
-        expect(askDevOnly.map(([reason]) => reason).sort()).toEqual([
-            "access_denied",
-            "allowance_exhausted",
-            "budget_exhausted",
-            "budget_refusal",
-            "concurrency_limited",
-            "no_repository",
-            "stream_unavailable",
-        ]);
-        for (const [code, copy] of askDevOnly) {
-            expect(safeAcrRuntimeMessage(code as never)).toBe(copy);
+    // codex r2 on #1639: every reason the panel shows has an Ask Dev code in the client with the
+    // same words; none is excluded. A new reason without one is a compile error here.
+    it("says the same words as the conversation store, for every reason", () => {
+        const webCodeOf: Record<NotRunReason, AcrRuntimeErrorCode> = {
+            access_denied: "access_denied",
+            no_repository: "no_repository",
+            budget_exhausted: "budget_exhausted",
+            concurrency_limited: "concurrency_limited",
+            allowance_exhausted: "allowance_exhausted",
+            stream_unavailable: "stream_unavailable",
+            not_entitled: "ask_dev_not_entitled",
+            repo_forbidden: "ask_dev_repo_forbidden",
+            budget_refusal: "budget_refusal",
+            rate_limited: "ask_dev_rate_limited",
+        };
+        for (const [reason, copy] of Object.entries(NOT_RUN_COPY) as [NotRunReason, string][]) {
+            expect(safeAcrRuntimeMessage(webCodeOf[reason])).toBe(copy);
         }
     });
 });
@@ -78,10 +82,12 @@ describe("investigationFailure: the whole create-investigation vocabulary", () =
         [409, "invalid_request", "invalid_request", false],
         [413, "invalid_request", "invalid_request", false],
         [400, "submission_required", "invalid_request", false],
-        [403, "insufficient_scope", "not_entitled", false],
-        [403, "feature_not_enabled", "not_entitled", false],
-        [501, "feature_not_enabled", "not_entitled", false],
-        [403, "repo_forbidden", "repository_not_available", false],
+        [403, "insufficient_scope", "ask_dev_not_entitled", false],
+        [403, "feature_not_enabled", "ask_dev_not_entitled", false],
+        [501, "feature_not_enabled", "ask_dev_not_entitled", false],
+        [403, "repo_forbidden", "ask_dev_repo_forbidden", false],
+        // codex r2 on #1639: ACR's per-principal rate limit is not an outage.
+        [429, "rate_limited", "ask_dev_rate_limited", true],
         [406, "stream_unavailable", "stream_unavailable", false],
         [409, "submission_mismatch", "invalid_request", false],
         [409, "submission_in_progress", "submission_in_progress", true],

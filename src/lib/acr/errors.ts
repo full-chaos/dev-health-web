@@ -47,6 +47,10 @@ export const acrRuntimeErrorCodes = {
     threadClosed: "thread_closed",
     canceled: "canceled",
     budgetRefusal: "budget_refusal",
+    // Ask Dev's own words for codes other products' routes show generically (codex r2 on #1639).
+    askDevNotEntitled: "ask_dev_not_entitled",
+    askDevRepoForbidden: "ask_dev_repo_forbidden",
+    askDevRateLimited: "ask_dev_rate_limited",
     interpretationRejected: "interpretation_rejected",
     synthesisRejected: "synthesis_rejected",
 } as const;
@@ -106,6 +110,12 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "This conversation has ended (deleted, expired or full). Ask again to start a new one.";
         case acrRuntimeErrorCodes.canceled:
             return "Canceled. If the answer had already finished, it is kept.";
+        case acrRuntimeErrorCodes.askDevNotEntitled:
+            return "Ask Dev is not available for this organization.";
+        case acrRuntimeErrorCodes.askDevRepoForbidden:
+            return "A repository this question needs is not available to you. If it was connected just now, wait for its first sync.";
+        case acrRuntimeErrorCodes.askDevRateLimited:
+            return "Too many questions in a short time. Wait a moment, then ask again.";
         case acrRuntimeErrorCodes.budgetExhausted:
             return "Dev ran out of time before the question could start. Ask again.";
         case acrRuntimeErrorCodes.stalled:

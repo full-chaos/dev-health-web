@@ -410,8 +410,10 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
         expect(response.status).toBe(200);
         const frame = /event: error\ndata: (.+)\n\n/u.exec(text);
         expect(frame, text).not.toBeNull();
+        // codex r2 on #1639: ACR's rate limit has its own code and words, never an outage.
         expect(JSON.parse(frame![1]!)).toMatchObject({
-            code: "upstream",
+            code: "ask_dev_rate_limited",
+            message: "Too many questions in a short time. Wait a moment, then ask again.",
             request_id: response.headers.get("x-request-id"),
             retry_after_seconds: 7,
             retryable: true,
