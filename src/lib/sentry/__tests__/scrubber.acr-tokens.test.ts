@@ -62,7 +62,7 @@ describe("Sentry scrubbing of ACR browser tokens", () => {
             [...REFRESH].map((c) => `%${c.charCodeAt(0).toString(16)}`).join(""),
         ],
         ["with an encoded underscore", `fcacr%5F${"A1b2".repeat(10)}`],
-        ["upper-case hex", `ACRRT%5f${"R".repeat(43)}`.replace("ACRRT", "%61%63%72%72%74")],
+        ["lower-case hex escapes", `%61%63%72%72%74%5f${"R".repeat(43)}`],
     ])("filters a percent-encoded token in free text, %s (r3)", (_, encoded) => {
         const scrubbed = scrubTelemetryText(`t=${encoded} done`);
         expect(decodeURIComponent(scrubbed)).not.toMatch(

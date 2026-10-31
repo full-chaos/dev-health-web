@@ -220,7 +220,7 @@ describe("tokenBoundaryViolations", () => {
         [
             "a twice-encoded refresh token in a URL",
             request(
-                `${WEB}/x?t=${encodeURIComponent(encodeURIComponent(REFRESH).replace("_", "%5F"))}`,
+                `${WEB}/x?t=${encodeURIComponent(encodeURIComponent(REFRESH).replaceAll("_", "%5F"))}`,
             ),
             "refresh token in a URL",
         ],
