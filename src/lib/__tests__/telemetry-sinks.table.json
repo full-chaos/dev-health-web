@@ -330,5 +330,13 @@
     "src/components/ask-dev/conversation/feedbackStore.ts": {
         "log": 4,
         "sentry": 0
+    },
+    "src/components/ask-dev/oauth/AcrOAuthCallback.tsx": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/components/ask-dev/oauth/AcrOAuthStart.tsx": {
+        "log": 2,
+        "sentry": 0
     }
 }

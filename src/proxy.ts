@@ -274,7 +274,8 @@ export async function proxy(request: NextRequest) {
     // The OAuth consent handle lives in this URL — never let it leak via a
     // Referer header on an outbound navigation (belt-and-suspenders with the
     // page's own `no-referrer` metadata).
-    if (pathname.startsWith("/acr/authorize")) {
+    // CHAOS-12303: the ACR browser client's callback URL carries the authorization code and state.
+    if (pathname.startsWith("/acr/authorize") || pathname === "/ask-dev/oauth/callback") {
         response.headers.set("Referrer-Policy", "no-referrer");
     }
 

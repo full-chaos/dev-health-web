@@ -37,6 +37,8 @@ export const APP_ROUTES: readonly string[] = [
     "/api/auth/revoke-session",
     "/api/auth/switch-org",
     "/api/feedback",
+    "/ask-dev/oauth/callback",
+    "/ask-dev/oauth/start",
     "/auth/error",
     "/auth/forgot-password",
     "/auth/onboard",
