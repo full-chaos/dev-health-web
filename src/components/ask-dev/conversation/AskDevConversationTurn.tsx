@@ -8,7 +8,38 @@ import { CLARIFICATION_COPY } from "../answer/clarificationModel";
 import type { NarrowerReask } from "../answer/refusalModel";
 import { SafeAnswerText } from "../answer/SafeAnswerText";
 import { AskDevElapsed, AskDevStageChecklist } from "./AskDevProgress";
-import type { DeadlineKind, LimitKind, StoreTurn, TurnOutcome } from "./conversationStore";
+import type {
+    DeadlineKind,
+    LimitKind,
+    NotRunReason,
+    StoppedReason,
+    StoreTurn,
+    TurnOutcome,
+} from "./conversationStore";
+
+/**
+ * What to do after ACR refused a question before it ran (CHAOS-12201). The ACR client says the same
+ * words (`safeAcrRuntimeMessage`); a test holds them equal. No internal service is named.
+ */
+export const NOT_RUN_COPY: Readonly<Record<NotRunReason, string>> = {
+    access_denied:
+        "Ask Dev is not available in this session. Sign in again with your own account, or ask an admin to add you to this organization.",
+    no_repository:
+        "No repository is available to you here. Connect a repository, or ask an admin for access to one.",
+    not_entitled: "Ask Dev is not available for this organization.",
+    repo_forbidden:
+        "A repository this question needs is not available to you. If it was connected just now, wait for its first sync.",
+    budget_refusal: "This question needs more than one answer can hold. Ask a narrower question.",
+    rate_limited: "Too many questions in a short time. Wait a moment, then ask again.",
+};
+
+/** Why ACR stopped a run after it started (CHAOS-12201). No retry: the way on is a new question. */
+export const STOPPED_COPY: Readonly<Record<StoppedReason, string>> = {
+    rate_limited: "This question was rate limited after it started. Wait a moment, then ask again.",
+    interpretation_rejected:
+        "Dev could not accept an interpretation of your question. Try rephrasing it.",
+    synthesis_rejected: "Dev could not accept a generated answer. Try rephrasing your question.",
+};
 
 /**
  * The line a turn shows while it has no answer view: one per state of plan §2.7.8 (CHAOS-11929).
@@ -101,12 +132,19 @@ function statusLine(outcome: StatusOutcome): string {
             return TURN_STATUS_COPY.canceled;
         case "thread_closed":
             return TURN_STATUS_COPY.threadClosed;
+        case "not_run":
+            return NOT_RUN_COPY[outcome.reason];
+        case "stopped":
+            return STOPPED_COPY[outcome.reason];
     }
 }
 
 /** A failed turn may be sent again under its key only when the store said so. */
 function retryable(outcome: StatusOutcome): boolean {
-    return (outcome.kind === "failed" || outcome.kind === "limited") && outcome.retry;
+    return (
+        (outcome.kind === "failed" || outcome.kind === "limited" || outcome.kind === "not_run") &&
+        outcome.retry
+    );
 }
 
 /** One turn of the store: the answer views once ACR answered, else the question and its status. */

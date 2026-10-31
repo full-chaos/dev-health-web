@@ -12,9 +12,11 @@ vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: 
 import { buildInvestigationRequest } from "@/lib/ask-dev/request-builder";
 
 import {
-    TURN_STATUS_COPY,
     AskDevConversationTurn,
+    NOT_RUN_COPY,
     retryAfterText,
+    STOPPED_COPY,
+    TURN_STATUS_COPY,
 } from "../AskDevConversationTurn";
 import { formatElapsed, PROGRESS_COPY, STAGE_COPY, stageRows } from "../AskDevProgress";
 import type { StoreTurn, TurnOutcome } from "../conversationStore";
@@ -295,5 +297,66 @@ describe("Retry-After, references and retry", () => {
             rerender(<AskDevConversationTurn turn={turn(outcome)} onRetry={onRetry} />);
             expect(screen.queryByTestId("ask-dev-turn-retry"), outcome.kind).toBeNull();
         }
+    });
+});
+
+// CHAOS-12201: each refusal before a run says what to do; none reads as an outage or names a service.
+describe("AskDevConversationTurn: not-run refusals", () => {
+    it.each([
+        ["access_denied", false],
+        ["no_repository", false],
+        ["not_entitled", false],
+        ["repo_forbidden", false],
+        ["budget_refusal", false],
+        ["rate_limited", true],
+    ] as const)("%s shows its own guidance (retry %s)", async (reason, retry) => {
+        const onRetry = vi.fn();
+        render(
+            <AskDevConversationTurn
+                turn={turn({ kind: "not_run", reason, retry })}
+                onRetry={onRetry}
+            />,
+        );
+        const status = screen.getByTestId("ask-dev-turn-status");
+        expect(status).toHaveTextContent(NOT_RUN_COPY[reason]);
+        expect(status.textContent).not.toMatch(/temporarily|Agent Context Runtime|ACR/u);
+        if (retry) {
+            await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+            expect(onRetry).toHaveBeenCalledOnce();
+        } else {
+            expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+        }
+    });
+
+    it("gives every reason different words, and access_denied names both ways back", () => {
+        const copy = Object.values(NOT_RUN_COPY);
+        expect(new Set(copy).size).toBe(copy.length);
+        expect(NOT_RUN_COPY.access_denied).toMatch(/Sign in again/u);
+        expect(NOT_RUN_COPY.access_denied).toMatch(/admin/u);
+    });
+});
+
+// codex r3 on #1639: a run ACR stopped after it started says why, and offers no retry.
+describe("AskDevConversationTurn: stopped runs", () => {
+    it.each(["rate_limited", "interpretation_rejected", "synthesis_rejected"] as const)(
+        "%s shows its own words and no Retry",
+        (reason) => {
+            render(
+                <AskDevConversationTurn
+                    turn={turn({ kind: "stopped", reason })}
+                    onRetry={vi.fn()}
+                />,
+            );
+            const status = screen.getByTestId("ask-dev-turn-status");
+            expect(status).toHaveTextContent(STOPPED_COPY[reason]);
+            expect(status.textContent).not.toMatch(
+                /did not finish|temporarily|Agent Context Runtime/u,
+            );
+            expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+        },
+    );
+
+    it("tells the user to wait a moment after a rate limit", () => {
+        expect(STOPPED_COPY.rate_limited).toMatch(/Wait a moment/u);
     });
 });

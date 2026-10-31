@@ -349,6 +349,34 @@ describe("terminals", () => {
         expect(fresh.request).not.toHaveProperty("conversation");
     });
 
+    // CHAOS-12201: the owner's cancel (ACR run lease) is the canceled state; a lost run is interrupted.
+    it.each([
+        ["canceled", { kind: "canceled" }],
+        ["run_lost", { kind: "interrupted" }],
+    ] as const)("ends an in-stream %s as %j", async (code, outcome) => {
+        const store = makeStore();
+        transport.scripts.push([accepted(), errorEvent(code)]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual(outcome);
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
+    // codex r3 on #1639: every terminal error keeps its meaning; none falls to the generic failure.
+    it.each([
+        ["submission_unsaved", { kind: "unsaved" }],
+        ["rate_limited", { kind: "stopped", reason: "rate_limited" }],
+        ["interpretation_rejected", { kind: "stopped", reason: "interpretation_rejected" }],
+        ["synthesis_rejected", { kind: "stopped", reason: "synthesis_rejected" }],
+    ] as const)("ends an in-stream %s as %j, with no retry", async (code, outcome) => {
+        const store = makeStore();
+        transport.scripts.push([accepted(), errorEvent(code)]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual(outcome);
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
     it("keeps a budget refusal as a refusal turn with its reserved id", async () => {
         const store = makeStore();
         transport.scripts.push([accepted(), errorEvent("budget_refusal", "result_reserved_0007")]);
@@ -576,6 +604,105 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
             expect.objectContaining({ code: "submission_required" }),
             "ask-dev create sent without a submission id",
         );
+    });
+
+    // CHAOS-12201: ACR refused before anything ran. Each refusal keeps its own reason; a retry under
+    // the same key is offered only where nothing was admitted and waiting can help.
+    it.each([
+        ["access_denied", 403, false],
+        ["no_repository", 409, false],
+    ] as const)("ends a %s refusal (%i) as not run, retry %s", async (code, status, retry) => {
+        const store = makeStore();
+        transport.scripts.push(
+            [{ fail: new TransportRefusal(status, acrError(code, status, retry)) }],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "not_run", reason: code, retry });
+        expect(transport.statusCalls).toEqual([]);
+        expect(store.retry(last(store).id)).toBe(retry);
+        if (retry) {
+            await settled(store);
+            expect(transport.calls[1]!.submissionId).toBe(transport.calls[0]!.submissionId);
+            expect(last(store).outcome).toEqual({ kind: "answered", result: PARTIAL });
+        }
+    });
+
+    // codex r1 on #1639: the rest of the create vocabulary before a run.
+    it.each([
+        ["feature_not_enabled", 403, "not_entitled"],
+        ["feature_not_enabled", 501, "not_entitled"],
+        ["insufficient_scope", 403, "not_entitled"],
+        ["repo_forbidden", 403, "repo_forbidden"],
+        ["budget_refusal", 413, "budget_refusal"],
+    ] as const)("ends %s (%i) as not run: %s, no retry", async (code, status, reason) => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(status, acrError(code, status, true)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "not_run", reason, retry: false });
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
+    // codex r2 on #1639: ACR's rate limit before a run; nothing ran, so the same key may be retried.
+    it("ends rate_limited (429) as not run, with a retry under the same key", async () => {
+        const store = makeStore();
+        transport.scripts.push(
+            [{ fail: new TransportRefusal(429, acrError("rate_limited", 429, true)) }],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "not_run",
+            reason: "rate_limited",
+            retry: true,
+        });
+        expect(store.retry(last(store).id)).toBe(true);
+        await settled(store);
+        expect(transport.calls[1]!.submissionId).toBe(transport.calls[0]!.submissionId);
+    });
+
+    // ACR's per-call access read left too little budget before admission: main's deadline state.
+    it("ends ACR's budget_exhausted (503) as the budget deadline, with no retry", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(503, acrError("budget_exhausted", 503, true)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "deadline", deadline: "budget_exhausted" });
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
+    it("logs an invalid request as a defect", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(400, acrError("invalid_request", 400, false)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toMatchObject({ kind: "failed", retry: false });
+        expect(log.error).toHaveBeenCalledWith(
+            expect.objectContaining({ code: "invalid_request" }),
+            "ask-dev investigation request refused as invalid",
+        );
+    });
+
+    it.each([
+        ["canceled", 409, { kind: "canceled" }],
+        ["run_lost", 503, { kind: "interrupted" }],
+    ] as const)("ends a %s answer before the stream (%i) as %j", async (code, status, outcome) => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(status, acrError(code, status, false)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual(outcome);
     });
 
     it("logs a reused key for another request as a defect", async () => {

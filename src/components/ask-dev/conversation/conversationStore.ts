@@ -126,7 +126,78 @@ export type TurnOutcome =
      * `409 thread_closed`: ACR closed this conversation (deleted, expired or full). Nothing ran; the
      * next question starts a new conversation with a new `thread_id`.
      */
-    | { readonly kind: "thread_closed" };
+    | { readonly kind: "thread_closed" }
+    /**
+     * ACR refused the call before anything ran, for a reason with its own guidance (CHAOS-12201):
+     * the user's access, no repository in scope, Ask Dev not entitled, a repository not available, a
+     * question too large, or ACR's rate limit. `retry` only where nothing was admitted and sending
+     * the same request again can help.
+     */
+    | { readonly kind: "not_run"; readonly reason: NotRunReason; readonly retry: boolean }
+    /**
+     * ACR stopped a run after it started, with a terminal error that has its own meaning
+     * (CHAOS-12201). The key is spent: the way on is a new question, never a same-key retry.
+     */
+    | { readonly kind: "stopped"; readonly reason: StoppedReason };
+
+/** ACR's refusals before a run that have no state of their own above (error.v1). */
+export type NotRunReason =
+    | "access_denied"
+    | "no_repository"
+    | "not_entitled"
+    | "repo_forbidden"
+    | "budget_refusal"
+    | "rate_limited";
+
+/** Terminal errors after admission that are neither an outage nor a refusal turn. */
+export type StoppedReason = "rate_limited" | "interpretation_rejected" | "synthesis_rejected";
+
+/** Whether a same-key retry is offered, decided from the closed code, never from the wire's flag. */
+const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
+    access_denied: false,
+    no_repository: false,
+    not_entitled: false,
+    repo_forbidden: false,
+    // Before the stream there is no reserved result to show as a refusal turn; ask narrower.
+    budget_refusal: false,
+    // ACR's rate limit before admission: nothing ran, so the same key may be sent again.
+    rate_limited: true,
+};
+
+/** ACR's codes before a run → the reason shown (two codes share "not entitled"). */
+const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
+    access_denied: "access_denied",
+    no_repository: "no_repository",
+    feature_not_enabled: "not_entitled",
+    insufficient_scope: "not_entitled",
+    repo_forbidden: "repo_forbidden",
+    budget_refusal: "budget_refusal",
+    rate_limited: "rate_limited",
+};
+
+const notRunReasonOf = (code: string): NotRunReason | undefined =>
+    Object.hasOwn(NOT_RUN_REASON_OF, code) ? NOT_RUN_REASON_OF[code] : undefined;
+
+/**
+ * The one map of terminal error codes in the stream that keep their own meaning (CHAOS-12201).
+ * `budget_refusal` (a refusal turn), `thread_closed` (a new conversation) and a 504 deadline need
+ * the event or the thread and are decided apart; any other code is the generic failure.
+ */
+const TERMINAL_OUTCOMES: Readonly<Record<string, TurnOutcome>> = {
+    // The owner canceled the run (ACR run lease): the canceled state, not a failure.
+    canceled: { kind: "canceled" },
+    // The run's service instance stopped: the run ended without an answer.
+    run_lost: { kind: "interrupted" },
+    // The answer was served but not stored: the unsaved state.
+    submission_unsaved: { kind: "unsaved" },
+    // A model or graph limit after admission: wait, then ask again (no same-key retry).
+    rate_limited: { kind: "stopped", reason: "rate_limited" },
+    interpretation_rejected: { kind: "stopped", reason: "interpretation_rejected" },
+    synthesis_rejected: { kind: "stopped", reason: "synthesis_rejected" },
+};
+
+const terminalOutcomeOf = (code: string): TurnOutcome | undefined =>
+    Object.hasOwn(TERMINAL_OUTCOMES, code) ? TERMINAL_OUTCOMES[code] : undefined;
 
 export type StoreTurn = {
     readonly id: number;
@@ -417,7 +488,12 @@ export class ConversationStore {
         const last = this.snapshot.turns[this.snapshot.turns.length - 1];
         if (last?.id !== turnId || this.snapshot.inFlight || !this.snapshot.ready) return false;
         const { outcome } = last;
-        if ((outcome.kind !== "failed" && outcome.kind !== "limited") || !outcome.retry) {
+        if (
+            (outcome.kind !== "failed" &&
+                outcome.kind !== "limited" &&
+                outcome.kind !== "not_run") ||
+            !outcome.retry
+        ) {
             return false;
         }
         this.setOutcome(turnId, this.running(), true);
@@ -618,13 +694,14 @@ export class ConversationStore {
                     const deadline = deadlineOf(event.error);
                     this.settle(
                         run,
-                        deadline === undefined
-                            ? {
-                                  kind: "failed",
-                                  retry: false,
-                                  reference: this.reference(run, event.error),
-                              }
-                            : { kind: "deadline", deadline },
+                        terminalOutcomeOf(code) ??
+                            (deadline === undefined
+                                ? {
+                                      kind: "failed",
+                                      retry: false,
+                                      reference: this.reference(run, event.error),
+                                  }
+                                : { kind: "deadline", deadline }),
                     );
                 }
                 return true;
@@ -652,6 +729,25 @@ export class ConversationStore {
                 return;
             case "submission_abandoned":
                 this.settle(run, { kind: "abandoned" });
+                return;
+            case "canceled":
+                this.settle(run, { kind: "canceled" });
+                return;
+            case "run_lost":
+                this.settle(run, { kind: "interrupted" });
+                return;
+            case "budget_exhausted":
+                // ACR's per-call access read left too little wait budget; nothing ran (CHAOS-12201).
+                this.settle(run, { kind: "deadline", deadline: "budget_exhausted" });
+                return;
+            case "invalid_request":
+                // The store builds every request from the contract: a defect, never a user error.
+                logger.error(fields, "ask-dev investigation request refused as invalid");
+                this.settle(run, {
+                    kind: "failed",
+                    retry: false,
+                    reference: this.reference(run, refusal.error),
+                });
                 return;
             case "thread_closed":
                 // The contract: nothing ran, not retryable under these ids; start a new
@@ -702,6 +798,12 @@ export class ConversationStore {
                 this.settle(run, { kind: "stream_unavailable" });
                 return;
             default: {
+                const reason = notRunReasonOf(code);
+                if (reason !== undefined) {
+                    logger.info(fields, "ask-dev investigation not run");
+                    this.settle(run, { kind: "not_run", reason, retry: NOT_RUN_RETRY[reason] });
+                    return;
+                }
                 logger.warn(fields, "ask-dev investigation refused before the stream");
                 const deadlineKind = deadlineOf(refusal.error);
                 this.settle(
