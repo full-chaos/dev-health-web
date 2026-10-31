@@ -282,6 +282,18 @@ run_auth_profiles_gate() {
   pnpm auth-profiles:gate "${args[@]}"
 }
 
+# CHAOS-10461: the TS access-token verifier decides the ops-owned golden corpus
+# from the pinned sparse checkout. WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 makes a
+# missing checkout a failure instead of a skip.
+run_access_token_corpus() {
+  if [[ -z "${WEB_OPS_CONTRACT_ROOT:-}" ]]; then
+    echo "WEB_OPS_CONTRACT_ROOT must name the pinned ops contract checkout." >&2
+    return 1
+  fi
+  echo "==> vitest access-token corpus (${WEB_OPS_CONTRACT_ROOT})"
+  WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 pnpm exec vitest run --project unit src/lib/auth/accesstoken
+}
+
 run_e2e() {
   run_timed "e2e artifact preparation" prepare_playwright_artifacts
   run_timed "e2e browser installation" install_playwright_browser
@@ -441,6 +453,9 @@ case "${tier}" in
     ;;
   auth-profiles-gate)
     run_auth_profiles_gate
+    ;;
+  access-token-corpus)
+    run_access_token_corpus
     ;;
   e2e)
     run_e2e
