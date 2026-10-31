@@ -159,8 +159,11 @@ export type PageContextProposal = {
 const isKnownKind = (kind: string): kind is SubjectHintKind =>
     Object.hasOwn(SUBJECT_KIND_ROLE, kind);
 
+/** Characters as ACR's JSON Schema counts them (`maxLength`): code points, not UTF-16 units. */
+const characterCount = (value: string) => [...value].length;
+
 const validText = (value: string, max: number) =>
-    nonBlank(value) !== undefined && value.length <= max && !CONTROL_CHARACTER.test(value);
+    nonBlank(value) !== undefined && characterCount(value) <= max && !CONTROL_CHARACTER.test(value);
 
 /**
  * The page's proposal, checked against the registry: `null` off an approved surface, else the

@@ -107,6 +107,42 @@ describe("page-context registry: enumerated (plan §2.4, CHAOS-11936)", () => {
         },
     );
 
+    // The approved table, stated here apart from the module (codex r1 on #1636): a change of a
+    // route's pages or kinds must change both, on purpose.
+    it("is exactly the approved route table", () => {
+        expect(
+            Object.fromEntries(
+                APPROVED_ROUTE_IDS.map((id) => [
+                    id,
+                    {
+                        paths: [...PAGE_CONTEXT_ROUTES[id].paths],
+                        kinds: [...PAGE_CONTEXT_ROUTES[id].kinds].sort(),
+                    },
+                ]),
+            ),
+        ).toEqual({
+            diagnose_overview: { paths: ["/diagnose"], kinds: ["organization", "repository"] },
+            flow_metrics: { paths: ["/metrics"], kinds: ["organization", "repository", "team"] },
+            investment: { paths: ["/investment"], kinds: ["organization", "repository", "team"] },
+            work_graph: {
+                paths: ["/diagnose/work-graph"],
+                kinds: ["project", "pull_request", "repository", "work_item"],
+            },
+            complexity: { paths: ["/complexity"], kinds: ["repository"] },
+            cognitive_load: {
+                paths: ["/cognitive-load"],
+                kinds: ["organization", "repository", "team"],
+            },
+            bottlenecks: {
+                paths: ["/bottleneck"],
+                kinds: ["organization", "project", "repository", "team"],
+            },
+            work_item_detail: { paths: ["/issues/[issue_id]"], kinds: ["work_item"] },
+            pull_request_detail: { paths: ["/prs/[pr_id]"], kinds: ["pull_request"] },
+            data_health: { paths: ["/data-health"], kinds: ["organization", "repository"] },
+        });
+    });
+
     it("keeps supporting-evidence pages out (CHAOS-3216): deployment and person detail", () => {
         expect(routeIdForPath("/deployments/dep-1")).toBeNull();
         expect(routeIdForPath("/people/person-1")).toBeNull();
@@ -196,6 +232,23 @@ describe("proposePageContext", () => {
         expect(
             proposePageContext({ pathname: "/diagnose", entityRefs: [ref] })?.entityRefs,
         ).toEqual([ref]);
+    });
+
+    // codex r1 on #1636: ACR's maxLength counts characters (code points), not UTF-16 units.
+    it("counts characters the way ACR's schema does: an astral character is one", () => {
+        const astral = "\u{1F680}"; // two UTF-16 units, one character
+        const keptRef = { kind: "repository", id: astral.repeat(256), label: astral.repeat(512) };
+        expect(
+            proposePageContext({ pathname: "/diagnose", entityRefs: [keptRef] })?.entityRefs,
+        ).toEqual([keptRef]);
+        for (const ref of [
+            { kind: "repository", id: astral.repeat(257), label: "web" },
+            { kind: "repository", id: "repository:1", label: astral.repeat(513) },
+        ]) {
+            expect(
+                proposePageContext({ pathname: "/diagnose", entityRefs: [ref] })?.dropped,
+            ).toEqual([{ kind: "repository", reason: "invalid_ref" }]);
+        }
     });
 
     it("collapses duplicates and keeps at most MAX_PAGE_CONTEXT_REFS", () => {
