@@ -27,7 +27,6 @@ export interface WireConfig {
     readonly nowSeconds?: () => number;
 }
 
-const KEY_SET_TTL_SECONDS = 300;
 const nowOf = (cfg: WireConfig): number => cfg.nowSeconds?.() ?? Math.floor(Date.now() / 1000);
 
 interface Sent {
