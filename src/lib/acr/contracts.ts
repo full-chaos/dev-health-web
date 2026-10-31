@@ -12,6 +12,8 @@ import contextFabricInvestigationResponseSchema from "./contracts/schemas/contex
 import contextFabricInvestigationResponseV2Schema from "./contracts/schemas/context_fabric_investigation_response.v2.schema.json";
 import contextFabricInvestigationResultSchema from "./contracts/schemas/context_fabric_investigation_result.v1.schema.json";
 import contextFabricInvestigationResultV2Schema from "./contracts/schemas/context_fabric_investigation_result.v2.schema.json";
+import contextFabricResultFeedbackRequestSchema from "./contracts/schemas/context_fabric_result_feedback_request.v1.schema.json";
+import contextFabricResultFeedbackSchema from "./contracts/schemas/context_fabric_result_feedback.v1.schema.json";
 import contextFabricSubmissionStatusSchema from "./contracts/schemas/context_fabric_submission_status.v1.schema.json";
 import contextFabricThreadListSchema from "./contracts/schemas/context_fabric_thread_list.v1.schema.json";
 import contextFabricThreadSchema from "./contracts/schemas/context_fabric_thread.v1.schema.json";
@@ -58,6 +60,8 @@ export const acrSchemas = {
     contextFabricInvestigationResponseV2: contextFabricInvestigationResponseV2Schema,
     contextFabricInvestigationResult: contextFabricInvestigationResultSchema,
     contextFabricInvestigationResultV2: contextFabricInvestigationResultV2Schema,
+    contextFabricResultFeedbackRequest: contextFabricResultFeedbackRequestSchema,
+    contextFabricResultFeedback: contextFabricResultFeedbackSchema,
     contextFabricSubmissionStatus: contextFabricSubmissionStatusSchema,
     contextFabricThreadList: contextFabricThreadListSchema,
     contextFabricThread: contextFabricThreadSchema,
@@ -105,6 +109,9 @@ const acrSchemaFiles = {
         contextFabricInvestigationResponseV2Schema,
     "context_fabric_investigation_result.v1.schema.json": contextFabricInvestigationResultSchema,
     "context_fabric_investigation_result.v2.schema.json": contextFabricInvestigationResultV2Schema,
+    "context_fabric_result_feedback_request.v1.schema.json":
+        contextFabricResultFeedbackRequestSchema,
+    "context_fabric_result_feedback.v1.schema.json": contextFabricResultFeedbackSchema,
     "context_fabric_submission_status.v1.schema.json": contextFabricSubmissionStatusSchema,
     "context_fabric_thread_list.v1.schema.json": contextFabricThreadListSchema,
     "context_fabric_thread.v1.schema.json": contextFabricThreadSchema,
