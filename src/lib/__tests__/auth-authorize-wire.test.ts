@@ -154,9 +154,9 @@ describe("credentials authorize", () => {
         await expect(authorize()(creds)).rejects.toMatchObject({ code: "auth_unavailable" });
     });
 
-    it("reads AUTH_ACCESS_TOKEN_CLASS and AUTH_TOKEN_ISSUER from the server environment", async () => {
+    it("reads AUTH_ACCESS_TOKEN_CLASS and AUTH_ACCESS_TOKEN_ISSUER from the server environment", async () => {
         vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
-        vi.stubEnv("AUTH_TOKEN_ISSUER", "");
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", "");
         await expect(authorize()(creds)).rejects.toMatchObject({ code: "auth_unavailable" });
         expect(fetchMock).not.toHaveBeenCalled();
     });

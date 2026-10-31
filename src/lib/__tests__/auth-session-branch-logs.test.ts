@@ -411,6 +411,7 @@ describe("login and logout branches name themselves in the log", () => {
         logSessionBranch({ operation: "login", branch: "login_invalid_response" });
         logSessionBranch({ operation: "login", branch: "auth_config_invalid" });
         logSessionBranch({ operation: "login", branch: "key_set_unusable", status: 503 });
+        logSessionBranch({ operation: "login", branch: "token_shape_refused" });
         logSessionBranch({ operation: "logout", branch: "logout_failed", status: 503 });
 
         expect(warn.mock.calls.map(([fields]) => fields)).toStrictEqual([
@@ -418,6 +419,7 @@ describe("login and logout branches name themselves in the log", () => {
             { operation: "login", branch: "login_invalid_response" },
             { operation: "login", branch: "auth_config_invalid" },
             { operation: "login", branch: "key_set_unusable", status: 503 },
+            { operation: "login", branch: "token_shape_refused" },
             { operation: "logout", branch: "logout_failed", status: 503 },
         ]);
     });

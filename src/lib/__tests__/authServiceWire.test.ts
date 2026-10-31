@@ -15,12 +15,13 @@ vi.mock("@/lib/authSessionLog", () => ({
 }));
 
 const BACKEND = "http://auth.test";
-const JWKS_URL = `${BACKEND}/.well-known/jwks.json`;
 const SUB = "prn_AAAAAAAAAAAAAAAAAAAAAA";
 const SID = "ses_AAAAAAAAAAAAAAAAAAAAAQ";
 const EXP = 1760000600;
 const NOW = 1760000300;
 const ISSUER = "https://auth.example.test";
+const DISCOVERY_URL = `${ISSUER}/.well-known/openid-configuration`;
+const JWKS_URL = `${ISSUER}/.well-known/jwks.json`;
 
 const enc = new TextEncoder();
 const b64u = (b: Uint8Array | string) =>
@@ -38,7 +39,7 @@ const jwk = (kid: string, key = publicKey) => ({
 });
 const jwksDoc = (...keys: unknown[]) => JSON.stringify({ keys });
 
-function eddsaToken(signer = privateKey, kid = "kid-1"): string {
+function eddsaToken(signer = privateKey, kid = "kid-1", exp = EXP): string {
     const h = JSON.stringify({ alg: "EdDSA", typ: "at+jwt", kid });
     const p = JSON.stringify({
         iss: ISSUER,
@@ -49,7 +50,7 @@ function eddsaToken(signer = privateKey, kid = "kid-1"): string {
         jti: "000000000000000000000001",
         iat: 1760000000,
         nbf: 1760000000,
-        exp: EXP,
+        exp,
         scope: "api:access",
     });
     const input = `${b64u(h)}.${b64u(p)}`;
@@ -96,13 +97,27 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-function route(routes: Record<string, () => Response | Promise<Response>>) {
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+function route(routes: Record<string, (init?: RequestInit) => Response | Promise<Response>>) {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         const handler = routes[url];
         if (!handler) throw new Error(`unexpected fetch ${url}`);
-        return handler();
+        return handler(init);
     });
+}
+const discoveryDoc = (over: Record<string, unknown> = {}) =>
+    JSON.stringify({
+        issuer: ISSUER,
+        jwks_uri: JWKS_URL,
+        id_token_signing_alg_values_supported: ["EdDSA"],
+        ...over,
+    });
+// The two reads of one key refresh: discovery at the pinned issuer, then the key set it names.
+function keyRoutes(
+    jwks: () => Response,
+    discovery: () => Response = () => new Response(discoveryDoc()),
+) {
+    return { [DISCOVERY_URL]: discovery, [JWKS_URL]: jwks };
 }
 const calls = (url: string) => fetchMock.mock.calls.filter(([u]) => String(u) === url);
 
@@ -146,7 +161,7 @@ describe("passwordLogin", () => {
     it("class eddsa: login verifies the token against the published key set and keeps sid and exp", async () => {
         route({
             [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(eddsaToken())),
-            [JWKS_URL]: () => new Response(jwksDoc(jwk("kid-1"))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
         });
         expect(await passwordLogin(creds, eddsaCfg())).toMatchObject({
             kind: "ok",
@@ -160,7 +175,7 @@ describe("passwordLogin", () => {
         route({
             [`${BACKEND}/api/v1/auth/login`]: () =>
                 json(200, loginBody(eddsaToken(other.privateKey))),
-            [JWKS_URL]: () => new Response(jwksDoc(jwk("kid-1"))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
         });
         expect(await passwordLogin(creds, eddsaCfg())).toEqual({ kind: "invalid_credentials" });
     });
@@ -168,7 +183,7 @@ describe("passwordLogin", () => {
     it("class eddsa: an HS256 token is refused at login", async () => {
         route({
             [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(hs256Token())),
-            [JWKS_URL]: () => new Response(jwksDoc(jwk("kid-1"))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
         });
         expect(await passwordLogin(creds, eddsaCfg())).toEqual({ kind: "invalid_credentials" });
     });
@@ -176,7 +191,7 @@ describe("passwordLogin", () => {
     it("class eddsa: an unreachable key set makes login unavailable, not a credential refusal", async () => {
         route({
             [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(eddsaToken())),
-            [JWKS_URL]: () => new Response("down", { status: 503 }),
+            ...keyRoutes(() => new Response("down", { status: 503 })),
         });
         expect(await passwordLogin(creds, eddsaCfg())).toEqual({ kind: "unavailable" });
     });
@@ -184,7 +199,7 @@ describe("passwordLogin", () => {
     it("class eddsa: a key set with a repeated kid makes login unavailable", async () => {
         route({
             [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(eddsaToken())),
-            [JWKS_URL]: () => new Response(jwksDoc(jwk("kid-1"), jwk("kid-1", other.publicKey))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1"), jwk("kid-1", other.publicKey)))),
         });
         expect(await passwordLogin(creds, eddsaCfg())).toEqual({ kind: "unavailable" });
     });
@@ -199,7 +214,7 @@ describe("passwordLogin", () => {
         let now = NOW;
         route({
             [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(eddsaToken())),
-            [JWKS_URL]: () => new Response(jwksDoc(jwk("kid-1"))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
         });
         const c = { ...eddsaCfg(), nowSeconds: () => now };
         await passwordLogin(creds, c);
@@ -317,9 +332,25 @@ describe("login branches name themselves in the log", () => {
         ]);
     });
 
-    it("a refused access token logs login_invalid_response", async () => {
+    it("an access token of the wrong shape logs token_shape_refused, a fixed branch with no token text", async () => {
         route({ [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody("not-a-token")) });
         await passwordLogin(creds, cfg());
+        expect(lines()).toEqual([{ operation: "login", branch: "token_shape_refused" }]);
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(eddsaToken())),
+        });
+        vi.mocked(logSessionBranch).mockClear();
+        await passwordLogin(creds, cfg());
+        expect(lines()).toEqual([{ operation: "login", branch: "token_shape_refused" }]);
+    });
+
+    it("a token that fails verification under eddsa logs login_invalid_response", async () => {
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () =>
+                json(200, loginBody(eddsaToken(other.privateKey))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
+        });
+        await passwordLogin(creds, eddsaCfg());
         expect(lines()).toEqual([{ operation: "login", branch: "login_invalid_response" }]);
     });
 
@@ -341,7 +372,7 @@ describe("login branches name themselves in the log", () => {
     it("an unreachable or invalid key set logs key_set_unusable", async () => {
         route({
             [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(eddsaToken())),
-            [JWKS_URL]: () => new Response("down", { status: 503 }),
+            ...keyRoutes(() => new Response("down", { status: 503 })),
         });
         await passwordLogin(creds, eddsaCfg());
         expect(lines()).toEqual([{ operation: "login", branch: "key_set_unusable", status: 503 }]);
@@ -360,5 +391,182 @@ describe("login branches name themselves in the log", () => {
         for (const secret of ["tok-secret-value", "pw-secret-value", "a@example.test", "ref-1"]) {
             expect(text).not.toContain(secret);
         }
+    });
+});
+
+describe("the published key source (eddsa)", () => {
+    const LONG_EXP = 1760003600;
+    let now = NOW;
+    const c = () => ({ ...eddsaCfg(), nowSeconds: () => now });
+    const loginWith = (token: string) =>
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(token)),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
+        });
+    const tok = (kid = "kid-1", signer = privateKey) => eddsaToken(signer, kid, LONG_EXP);
+    const fetchesOf = (url: string) => calls(url).length;
+
+    beforeEach(() => {
+        now = NOW;
+    });
+
+    it("reads discovery at the pinned issuer, then the key set it names, and follows no redirect", async () => {
+        loginWith(tok());
+        expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+        expect(fetchesOf(DISCOVERY_URL)).toBe(1);
+        expect(fetchesOf(JWKS_URL)).toBe(1);
+        for (const url of [DISCOVERY_URL, JWKS_URL]) {
+            const [, init] = calls(url)[0] as [string, RequestInit];
+            expect(init.redirect).toBe("manual");
+            expect(init.method).toBe("GET");
+        }
+    });
+
+    it("refuses a discovery document of another issuer: no usable keys, so login is unavailable", async () => {
+        const other = "https://other.example.test";
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(tok())),
+            ...keyRoutes(
+                () => new Response(jwksDoc(jwk("kid-1"))),
+                () =>
+                    new Response(
+                        discoveryDoc({ issuer: other, jwks_uri: `${other}/.well-known/jwks.json` }),
+                    ),
+            ),
+        });
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
+        expect(fetchesOf(JWKS_URL)).toBe(0);
+    });
+
+    it("refuses a discovery document whose jwks_uri is not the issuer plus the fixed path", async () => {
+        const elsewhere = "https://other.example.test/.well-known/jwks.json";
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(tok())),
+            ...keyRoutes(
+                () => new Response(jwksDoc(jwk("kid-1"))),
+                () => new Response(discoveryDoc({ jwks_uri: elsewhere })),
+            ),
+            [elsewhere]: () => new Response(jwksDoc(jwk("kid-1"))),
+        });
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
+        expect(fetchesOf(elsewhere)).toBe(0);
+        expect(fetchesOf(JWKS_URL)).toBe(0);
+    });
+
+    it("treats a redirect from discovery as a failure and never fetches the Location", async () => {
+        const target = "https://elsewhere.example.test/x";
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(tok())),
+            ...keyRoutes(
+                () => new Response(jwksDoc(jwk("kid-1"))),
+                () => new Response(null, { status: 302, headers: { location: target } }),
+            ),
+            [target]: () => new Response(discoveryDoc()),
+        });
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
+        expect(fetchesOf(target)).toBe(0);
+        expect(fetchesOf(JWKS_URL)).toBe(0);
+    });
+
+    it("treats a redirect from the key set as a failure", async () => {
+        const target = "https://elsewhere.example.test/jwks";
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(tok())),
+            ...keyRoutes(() => new Response(null, { status: 301, headers: { location: target } })),
+            [target]: () => new Response(jwksDoc(jwk("kid-1"))),
+        });
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
+        expect(fetchesOf(target)).toBe(0);
+    });
+
+    it("reads the keys once within the 300 s ttl and again after it", async () => {
+        loginWith(tok());
+        await passwordLogin(creds, c());
+        now = NOW + 299;
+        await passwordLogin(creds, c());
+        expect(fetchesOf(JWKS_URL)).toBe(1);
+        now = NOW + 301;
+        await passwordLogin(creds, c());
+        expect(fetchesOf(JWKS_URL)).toBe(2);
+    });
+
+    it("makes no fetch for an unknown kid within 30 s of the last attempt, and refuses the token", async () => {
+        loginWith(tok("kid-2", other.privateKey));
+        await passwordLogin(creds, c()); // the first read of the keys: an attempt at NOW
+        now = NOW + 29;
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "invalid_credentials" });
+        expect(fetchesOf(JWKS_URL)).toBe(1);
+    });
+
+    it("makes exactly one refresh for an unknown kid after the floor, and accepts a kid that refresh publishes", async () => {
+        let published = jwksDoc(jwk("kid-1"));
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () =>
+                json(200, loginBody(tok("kid-2", other.privateKey))),
+            ...keyRoutes(() => new Response(published)),
+        });
+        await passwordLogin(creds, c()); // keys: kid-1 only; kid-2 unknown, floor holds the refresh
+        published = jwksDoc(jwk("kid-1"), jwk("kid-2", other.publicKey));
+        now = NOW + 31;
+        expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+        expect(fetchesOf(JWKS_URL)).toBe(2);
+    });
+
+    it("refuses a kid that is still unknown after the one refresh, as a terminal answer, and does not retry it", async () => {
+        loginWith(tok("kid-2", other.privateKey));
+        await passwordLogin(creds, c());
+        now = NOW + 31;
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "invalid_credentials" });
+        expect(fetchesOf(JWKS_URL)).toBe(2);
+        now = NOW + 40;
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "invalid_credentials" });
+        expect(fetchesOf(JWKS_URL)).toBe(2);
+    });
+
+    it("keeps the last good keys for 10 minutes past the ttl when the fetch fails, then login is unavailable", async () => {
+        let up = true;
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(tok())),
+            ...keyRoutes(() =>
+                up ? new Response(jwksDoc(jwk("kid-1"))) : new Response("x", { status: 503 }),
+            ),
+        });
+        await passwordLogin(creds, c());
+        up = false;
+        now = NOW + 301;
+        expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+        now = NOW + 300 + 599;
+        expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+        now = NOW + 300 + 601;
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
+    });
+
+    it("makes at most one key fetch per 30 s while the keys are past the ttl and the fetch keeps failing", async () => {
+        let up = true;
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(tok())),
+            ...keyRoutes(() =>
+                up ? new Response(jwksDoc(jwk("kid-1"))) : new Response("x", { status: 503 }),
+            ),
+        });
+        await passwordLogin(creds, c());
+        up = false;
+        now = NOW + 301;
+        await passwordLogin(creds, c());
+        expect(fetchesOf(JWKS_URL)).toBe(2);
+        now = NOW + 320;
+        await passwordLogin(creds, c());
+        expect(fetchesOf(JWKS_URL)).toBe(2);
+        now = NOW + 332;
+        await passwordLogin(creds, c());
+        expect(fetchesOf(JWKS_URL)).toBe(3);
+    });
+
+    it("with no usable keys and a failed fetch, login is unavailable", async () => {
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(tok())),
+            ...keyRoutes(() => new Response("x", { status: 503 })),
+        });
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
     });
 });
