@@ -140,8 +140,18 @@ test.describe("each approved page states its context", () => {
         );
     });
 
-    test("complexity: the page's one repository, by its id", async ({ page }) => {
-        await expectChips(page, `/complexity?f=${ONE_REPO}`, ["Repository:dev-health-web"]);
+    test("complexity: the page's one repository only; the route takes no team", async ({
+        page,
+    }) => {
+        // Lead ruling on #1647: only the kinds the route allows (complexity: repositories).
+        await expectChips(
+            page,
+            `/complexity?f=${filter({
+                scope: { level: "team", ids: ["core"] },
+                what: { repos: ["dev-health-web"] },
+            })}`,
+            ["Repository:dev-health-web"],
+        );
     });
 
     test("cognitive load: the organization, the team and the repository filter", async ({

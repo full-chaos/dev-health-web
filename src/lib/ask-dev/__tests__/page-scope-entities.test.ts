@@ -100,6 +100,32 @@ describe("scopePageEntities", () => {
         ]);
     });
 
+    // Lead ruling on #1647 (codex r1 P2): a page proposes each entity it shows when there is exactly
+    // one, and ONLY the kinds its route allows (CHAOS-11936 route map). The table is written out, not
+    // read from the route map, so a route map change fails here until it is decided.
+    it.each([
+        ["flow_metrics", ["team", "repository"]],
+        ["investment", ["team", "repository"]],
+        ["complexity", ["repository"]],
+        ["cognitive_load", ["team", "repository"]],
+        ["bottlenecks", ["team", "repository"]],
+        ["data_health", ["repository"]],
+        ["pull_request_detail", []],
+        ["work_item_detail", []],
+    ] as const)(
+        "%s proposes exactly the kinds %j for one team and one repository",
+        (routeId, kinds) => {
+            const proposed = entities(
+                {
+                    scope: { level: "team", ids: ["linear:TEAMA"] },
+                    what: { repos: ["dev-health-web"] },
+                },
+                routeId,
+            );
+            expect(proposed.map((entity) => entity.kind)).toEqual(kinds);
+        },
+    );
+
     it("carries kind, id and label only: no window, role or other filter", () => {
         const [team] = entities({
             scope: { level: "team", ids: ["linear:TEAMA"] },

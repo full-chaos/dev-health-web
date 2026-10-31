@@ -60,6 +60,26 @@ describe("loadScopePageEntities", () => {
         expect(fetchFilterNames).toHaveBeenCalledTimes(1);
     });
 
+    it("reads no names for a kind the route does not take (codex r1 on #1647)", async () => {
+        // Complexity takes repositories only: one team there can propose nothing.
+        await expect(
+            loadScopePageEntities({
+                routeId: "complexity",
+                view: "complexity",
+                filters: filter({ scope: { level: "team", ids: ["core"] } }),
+            }),
+        ).resolves.toEqual([]);
+        // Pull request detail takes neither teams nor repositories.
+        await expect(
+            loadScopePageEntities({
+                routeId: "pull_request_detail",
+                view: "metrics",
+                filters: filter({ what: { repos: ["dev-health-web"] } }),
+            }),
+        ).resolves.toEqual([]);
+        expect(fetchFilterNames).not.toHaveBeenCalled();
+    });
+
     it("proposes the scope the page settles on: a team-locked view drops a repository scope", async () => {
         // The scope bar rewrites `f` to the view's lock after mount (level moved, ids dropped), so
         // a repository scope there was the page's scope for one render only.
