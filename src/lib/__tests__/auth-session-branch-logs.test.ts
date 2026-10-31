@@ -404,3 +404,21 @@ describe("a logger that throws never changes what happens to the session", () =>
         expect(held(loud)).toEqual(held(quiet));
     });
 });
+
+describe("login and logout branches name themselves in the log", () => {
+    it("writes the operation, the branch and the status only", () => {
+        logSessionBranch({ operation: "login", branch: "login_unavailable", status: 503 });
+        logSessionBranch({ operation: "login", branch: "login_invalid_response" });
+        logSessionBranch({ operation: "login", branch: "auth_config_invalid" });
+        logSessionBranch({ operation: "login", branch: "key_set_unusable", status: 503 });
+        logSessionBranch({ operation: "logout", branch: "logout_failed", status: 503 });
+
+        expect(warn.mock.calls.map(([fields]) => fields)).toStrictEqual([
+            { operation: "login", branch: "login_unavailable", status: 503 },
+            { operation: "login", branch: "login_invalid_response" },
+            { operation: "login", branch: "auth_config_invalid" },
+            { operation: "login", branch: "key_set_unusable", status: 503 },
+            { operation: "logout", branch: "logout_failed", status: 503 },
+        ]);
+    });
+});

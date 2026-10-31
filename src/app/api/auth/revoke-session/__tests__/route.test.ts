@@ -112,6 +112,14 @@ describe("POST /api/auth/revoke-session", () => {
         },
     );
 
+    it("Given Ops answers 2xx other than 200, then it answers 502: only a 200 is a revoke", async () => {
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+        const response = await POST(revokeRequest({ cookie: await sessionCookie() }));
+
+        expect(response.status).toBe(502);
+    });
+
     it("Given another origin, then it refuses with 403 and calls nothing", async () => {
         const response = await POST(
             revokeRequest({ cookie: await sessionCookie(), origin: "https://evil.example.test" }),
