@@ -100,13 +100,6 @@ export function webCohortRanking(
     };
 }
 
-/** The labels of members the cohort carries but ACR did not rank (named, never dropped silently). */
-export function unrankedLabels(cohort: Cohort): readonly string[] {
-    return cohort.members
-        .filter((member) => member.ranking_computed !== true)
-        .map((member) => member.subject.label);
-}
-
 /** AC-11: each outcome its own word; absent is "—". The word carries the meaning, never colour alone. */
 export const OUTCOME_WORD = {
     qualified: "Qualified",

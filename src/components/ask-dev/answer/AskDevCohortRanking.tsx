@@ -5,7 +5,6 @@ import {
     ABSENT,
     DATA_COMPLETENESS_WORD,
     OUTCOME_WORD,
-    unrankedLabels,
     webCohortRanking,
 } from "@/lib/ask-dev/cohort/web-cohort-ranking";
 import { humanizeTerm } from "@/lib/ask-dev/facts/fact-rows";
@@ -42,6 +41,7 @@ export const RANKING_COPY = {
     rowWindow: "window",
     dataCompleteness: "Data completeness",
     topDrivers: "Top drivers",
+    outcome: "outcome",
     driversEmpty: "No drivers reported.",
     driversWithheld: "No drivers reported — score withheld.",
     scoreWithheld: "withheld",
@@ -262,12 +262,87 @@ function RankingTable({ cohort, rows }: { cohort: Cohort; rows: readonly RankedC
     );
 }
 
+function WindowLine({ result }: { result: AnswerResult }) {
+    return (
+        <p className="text-xs text-(--ink-muted)" data-testid="ask-dev-ranking-window">
+            {RANKING_COPY.window}: {windowText(result)}
+        </p>
+    );
+}
+
+function IncompleteNotice({ cohort }: { cohort: Cohort }) {
+    if (cohort.complete && !cohort.truncated) return null;
+    const kind = kindWords(cohort.kind);
+    return (
+        <p className="text-xs text-foreground" data-testid="ask-dev-ranking-incomplete">
+            {cohort.truncated
+                ? `This ranking covers only the ${kind.many} the service returned — the cohort was truncated, so it is not every ${kind.one.toLowerCase()}.`
+                : `The service did not report this cohort as complete, so this ranking may not cover every ${kind.one.toLowerCase()}.`}
+        </p>
+    );
+}
+
+/**
+ * An unranked member by name, with the outcome and data completeness words ACR served for it (they
+ * often say why it was not ranked). It never carries a score or rank: ACR ranked it not.
+ */
+function unrankedEntry(member: Cohort["members"][number]): string {
+    const words = [
+        member.outcome === undefined
+            ? null
+            : `${RANKING_COPY.outcome} ${OUTCOME_WORD[member.outcome]}`,
+        member.data_completeness === undefined
+            ? null
+            : `${RANKING_COPY.dataCompleteness.toLowerCase()} ${DATA_COMPLETENESS_WORD[member.data_completeness]}`,
+    ].filter((word) => word !== null);
+    return words.length === 0
+        ? member.subject.label
+        : `${member.subject.label} (${words.join(", ")})`;
+}
+
+/**
+ * What the ranking does not cover, the same whether ACR ranked some members or none (codex r1, r2
+ * on #1628): every member's missing signals (ranked members in rank order, then the members ACR did
+ * not rank, which they often explain), and the unranked members by name. Never dropped silently.
+ */
+function CoverageNotes({ cohort, ranked }: { cohort: Cohort; ranked: readonly RankedCohortRow[] }) {
+    const unranked = cohort.members
+        .filter((member) => member.ranking_computed !== true)
+        .map(unrankedEntry);
+    const members = [
+        ...ranked.map((row) => row.member),
+        ...cohort.members.filter((member) => member.ranking_computed !== true),
+    ];
+    return (
+        <>
+            {members.map((member) =>
+                member.missing_signals === undefined ? null : (
+                    <p
+                        key={`${member.subject.canonical_id}-missing`}
+                        className="text-xs text-(--ink-muted)"
+                        data-testid="ask-dev-ranking-missing-signals"
+                    >
+                        {member.subject.label} — {RANKING_COPY.missingSignals}:{" "}
+                        {member.missing_signals.map(humanizeTerm).join(", ")}
+                    </p>
+                ),
+            )}
+            {unranked.length === 0 ? null : (
+                <p className="text-xs text-(--ink-muted)" data-testid="ask-dev-ranking-unranked">
+                    {RANKING_COPY.unranked}: {unranked.join("; ")}.
+                </p>
+            )}
+        </>
+    );
+}
+
 export function AskDevCohortRanking({ result }: { result: AnswerResult }) {
     const ranking = webCohortRanking(result);
     switch (ranking.state) {
         case "none":
             return null;
         case "kind_not_ranked":
+            // G1: nothing of the cohort, not even its window or member names.
             return (
                 <Group title={RANKING_COPY.notShownTitle} testId="ask-dev-ranking-not-shown">
                     <p className="text-sm text-(--ink-muted)">{RANKING_COPY.notShown}</p>
@@ -286,56 +361,20 @@ export function AskDevCohortRanking({ result }: { result: AnswerResult }) {
             return (
                 <Group title={RANKING_COPY.notComputedTitle} testId="ask-dev-ranking-not-computed">
                     <p className="text-sm text-(--ink-muted)">{RANKING_COPY.notComputed}</p>
+                    <WindowLine result={result} />
+                    <IncompleteNotice cohort={ranking.cohort} />
+                    <CoverageNotes cohort={ranking.cohort} ranked={[]} />
                 </Group>
             );
         case "rows": {
             const { cohort, rows } = ranking;
-            const kind = kindWords(cohort.kind);
-            const unranked = unrankedLabels(cohort);
             return (
-                <Group title={`Ranked ${kind.many}`} testId="ask-dev-ranking">
-                    <p className="text-xs text-(--ink-muted)" data-testid="ask-dev-ranking-window">
-                        {RANKING_COPY.window}: {windowText(result)}
-                    </p>
-                    {cohort.complete && !cohort.truncated ? null : (
-                        <p
-                            className="text-xs text-foreground"
-                            data-testid="ask-dev-ranking-incomplete"
-                        >
-                            {cohort.truncated
-                                ? `This ranking covers only the ${kind.many} the service returned — the cohort was truncated, so it is not every ${kind.one.toLowerCase()}.`
-                                : `The service did not report this cohort as complete, so this ranking may not cover every ${kind.one.toLowerCase()}.`}
-                        </p>
-                    )}
+                <Group title={`Ranked ${kindWords(cohort.kind).many}`} testId="ask-dev-ranking">
+                    <WindowLine result={result} />
+                    <IncompleteNotice cohort={cohort} />
                     <div data-testid="ask-dev-ranking-chart-slot" hidden />
                     <RankingTable cohort={cohort} rows={rows} />
-                    {
-                        // Every member's missing signals: ranked members in rank order, then the
-                        // members ACR did not rank (they are often why), never dropped silently.
-                        [
-                            ...rows.map((row) => row.member),
-                            ...cohort.members.filter((member) => member.ranking_computed !== true),
-                        ].map((member) =>
-                            member.missing_signals === undefined ? null : (
-                                <p
-                                    key={`${member.subject.canonical_id}-missing`}
-                                    className="text-xs text-(--ink-muted)"
-                                    data-testid="ask-dev-ranking-missing-signals"
-                                >
-                                    {member.subject.label} — {RANKING_COPY.missingSignals}:{" "}
-                                    {member.missing_signals.map(humanizeTerm).join(", ")}
-                                </p>
-                            ),
-                        )
-                    }
-                    {unranked.length === 0 ? null : (
-                        <p
-                            className="text-xs text-(--ink-muted)"
-                            data-testid="ask-dev-ranking-unranked"
-                        >
-                            {RANKING_COPY.unranked}: {unranked.join(", ")}.
-                        </p>
-                    )}
+                    <CoverageNotes cohort={cohort} ranked={rows} />
                 </Group>
             );
         }

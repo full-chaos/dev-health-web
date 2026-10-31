@@ -172,7 +172,7 @@ describe("a ranked cohort", () => {
             /truncated/u,
         );
         expect(within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent).toBe(
-            `Not ranked by the service: ${truncated.cohort.members[3].subject.label}.`,
+            `Not ranked by the service: ${truncated.cohort.members[3].subject.label} (outcome Provisional, data completeness Degraded).`,
         );
         expect(rows()).toHaveLength(3);
         unmount();
@@ -198,6 +198,24 @@ describe("a ranked cohort", () => {
     });
 
     // codex r1 on #1628: an unranked member's missing signals were dropped silently.
+    it("names an unranked member with only the words ACR served for it, never a score or rank", () => {
+        const unranked = copy(REPOS);
+        const [a, b] = [unranked.cohort.members[2], unranked.cohort.members[3]];
+        a.ranking_computed = false;
+        a.outcome = "insufficient_evidence";
+        delete a.data_completeness;
+        b.ranking_computed = false;
+        delete b.outcome;
+        delete b.data_completeness;
+        render(<AskDevCohortRanking result={unranked} />);
+        const line = within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent ?? "";
+        expect(line).toBe(
+            `Not ranked by the service: ${a.subject.label} (outcome Insufficient evidence); ${b.subject.label}.`,
+        );
+        expect(line).not.toContain(String(a.score));
+        expect(rows()).toHaveLength(2);
+    });
+
     it("shows missing signals of an unranked member too, after the ranked ones", () => {
         const unranked = copy(REPOS);
         unranked.cohort.members.forEach((m: any) => delete m.missing_signals);
@@ -289,14 +307,34 @@ describe("Ranking not shown (G1) and Not ranked by the service", () => {
         expectNothingOfTheCohort(PRS);
     });
 
-    it("ACR ranked no member: Not ranked by the service, no rows", () => {
-        const unranked = copy(SEED);
+    // codex r2 on #1628: with no member ranked, the window, the incomplete notice, the missing
+    // signals and the unranked names were dropped.
+    it("ACR ranked no member: Not ranked by the service, with what it does not cover, and no rows", () => {
+        const unranked = copy(REPOS);
         unranked.cohort.members.forEach((m: any) => (m.ranking_computed = false));
+        unranked.cohort.truncated = true;
         render(<AskDevCohortRanking result={unranked} />);
-        expect(screen.getByTestId("ask-dev-ranking-not-computed").textContent).toContain(
-            RANKING_COPY.notComputed,
+        const notice = screen.getByTestId("ask-dev-ranking-not-computed");
+        expect(notice.textContent).toContain(RANKING_COPY.notComputed);
+        expect(within(notice).getByTestId("ask-dev-ranking-window").textContent).toBe(
+            "Window: Last 30 days",
         );
-        expectNothingOfTheCohort(unranked);
+        expect(within(notice).getByTestId("ask-dev-ranking-incomplete").textContent).toMatch(
+            /truncated/u,
+        );
+        const entries = unranked.cohort.members.map(
+            (m: any) => `${m.subject.label} (outcome Provisional, data completeness Degraded)`,
+        );
+        expect(within(notice).getByTestId("ask-dev-ranking-unranked").textContent).toBe(
+            `Not ranked by the service: ${entries.join("; ")}.`,
+        );
+        expect(within(notice).getAllByTestId("ask-dev-ranking-missing-signals")).toHaveLength(
+            unranked.cohort.members.filter((m: any) => m.missing_signals !== undefined).length,
+        );
+        expect(screen.queryAllByTestId("ask-dev-ranking-row")).toHaveLength(0);
+        expect(screen.queryAllByTestId("ask-dev-ranking-score")).toHaveLength(0);
+        expect(screen.queryAllByTestId("ask-dev-ranking-rank")).toHaveLength(0);
+        expect(screen.queryByTestId("ask-dev-ranking-chart-slot")).toBeNull();
     });
 
     it("no cohort: nothing at all", () => {
