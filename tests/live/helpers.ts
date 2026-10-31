@@ -11,7 +11,14 @@
  *     platform admin used only to verify those new users. It is never conflated
  *     with the orgless test users.
  */
-import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import {
+    expect,
+    test,
+    type APIRequestContext,
+    type Locator,
+    type Page,
+    type Request,
+} from "@playwright/test";
 
 // Backend URL resolution — mirrors impersonation.spec.ts convention
 export const liveBackendUrl =
@@ -201,38 +208,43 @@ export const ONBOARDING_HYDRATED = '[data-onboarding-interactive="true"]';
 /** How long a hydrated control may take to show its handler ran, before the click counts as dropped. */
 export const CLICK_REACTION_MS = 5_000;
 
+/** A Next server action call: a POST to the page carrying the `next-action` header. */
+export const isServerActionTo =
+    (pathname: string) =>
+    (request: Request): boolean =>
+        request.method() === "POST" &&
+        request.headers()["next-action"] !== undefined &&
+        new URL(request.url()).pathname === pathname;
+
 /**
- * Clicks an onboarding control only after its step has hydrated, then proves the click reached the
- * handler (CHAOS-12176).
+ * Clicks an onboarding control only after its step has hydrated, then proves its handler ran
+ * (CHAOS-12176).
  *
  * The live suite runs `next dev`, which compiles a route on its first request: the server-rendered
  * button is visible, but its handler is attached only when the client JS has loaded. A click in that
  * window is discarded, and the journey then sat on a 30 s URL wait that ended at the test timeout,
  * with the button still unpressed (a fallback path, three CI occurrences). So: wait for the step's
- * hydration marker, click, and fail within {@link CLICK_REACTION_MS}, by name, if the control shows
- * no reaction (the page left the URL, or the control's label changed).
+ * hydration marker, click, and require the handler's own first effect, `handlerRequest` (armed before
+ * the click), within {@link CLICK_REACTION_MS}. An unrelated navigation is not proof (codex r1 on
+ * #1633); a handler that runs and then fails still sends its request, so it is not called dropped.
  */
 export async function clickHydratedOnboardingControl(
     page: Page,
     control: Locator,
     label: string,
+    handlerRequest: (request: Request) => boolean,
 ): Promise<void> {
     await expect(
         page.locator(ONBOARDING_HYDRATED),
         `onboarding step hydrated before clicking "${label}" (CHAOS-12176)`,
     ).toBeVisible({ timeout: 30_000 });
-    const before = page.url();
+    const handlerRan = page.waitForRequest(handlerRequest, { timeout: CLICK_REACTION_MS }).then(
+        () => true,
+        () => false,
+    );
     await control.click();
-    // A reaction: the page left the URL, the control is gone (the page moved on), or its label changed.
-    const reacted = async (): Promise<boolean> => {
-        if (page.url() !== before) return true;
-        if ((await control.count()) === 0) return true;
-        return (await control.first().innerText()) !== label;
-    };
-    await expect
-        .poll(reacted, {
-            message: `"${label}" was clicked but no handler ran: the click was dropped (CHAOS-12176)`,
-            timeout: CLICK_REACTION_MS,
-        })
-        .toBe(true);
+    expect(
+        await handlerRan,
+        `"${label}" was clicked but its handler sent no request: the click was dropped (CHAOS-12176)`,
+    ).toBe(true);
 }

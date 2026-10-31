@@ -12,6 +12,7 @@ import {
     clickHydratedOnboardingControl,
     envFault,
     getSuperuserToken,
+    isServerActionTo,
     liveBackendUrl,
     testEmail,
     userIdByEmail,
@@ -182,6 +183,7 @@ test("full signup then explicit workspace creation reaches dashboard @guided", a
         page,
         page.getByRole("button", { name: "Skip for now" }),
         "Skip for now",
+        isServerActionTo("/auth/onboard/integration"),
     );
     await expect(page).toHaveURL(/\/auth\/onboard\/complete/, { timeout: 30_000 });
     await page.getByRole("link", { name: "Go to dashboard" }).click();
