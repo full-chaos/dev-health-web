@@ -11,8 +11,10 @@ import type { ThreadSummaryView } from "./transport";
 /**
  * The history of the signed-in (org, principal)'s conversations (CHAOS-11956, E6 design v5 §4.3).
  * The panel and the full page draw this one list from the one store, so a delete in one is gone in
- * the other. A row is named by its date and turn count only: ACR's list item has no title yet (the
- * first question arrives with CHAOS-12238, after the pins).
+ * the other. A row is titled by its first question when ACR serves one (CHAOS-12238): inert text,
+ * one line, the full text on hover or focus, then the date and the question count. With none (a
+ * legacy turn, or ACR's switch off) or only blanks, the row keeps its date-and-count name: a row is
+ * never blank. The question is never logged and never reported.
  */
 export const HISTORY_COPY = {
     title: "Conversations",
@@ -36,8 +38,8 @@ const ICON_BUTTON =
 const LINK_BUTTON =
     "min-w-0 flex-1 rounded-(--radius-sm) px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)";
 
-/** "Conversation of <date> · <n> questions": the row's name (no question text is listed). */
-export function historyRowLabel(row: ThreadSummaryView): string {
+/** "<date> · <n> questions": when the conversation last moved, and how many questions it holds. */
+export function historyRowMeta(row: ThreadSummaryView): string {
     const when = new Date(row.lastTurnAt);
     const date = Number.isNaN(when.getTime())
         ? row.lastTurnAt
@@ -45,7 +47,17 @@ export function historyRowLabel(row: ThreadSummaryView): string {
               when,
           );
     const count = `${String(row.turnCount)} ${row.turnCount === 1 ? "question" : "questions"}`;
-    return `Conversation of ${date} · ${count}`;
+    return `${date} · ${count}`;
+}
+
+/** "Conversation of <date> · <n> questions": the name of a row with no first question. */
+export function historyRowLabel(row: ThreadSummaryView): string {
+    return `Conversation of ${historyRowMeta(row)}`;
+}
+
+/** The row's title: its first question, or `null` when ACR served none or only blanks. */
+export function historyRowTitle(row: ThreadSummaryView): string | null {
+    return row.firstQuestion !== null && row.firstQuestion.trim() !== "" ? row.firstQuestion : null;
 }
 
 function HistoryRow({
@@ -62,6 +74,12 @@ function HistoryRow({
     const current = row.threadId === snapshot.threadId;
     const deleting = snapshot.history.deleting.includes(row.threadId);
     const failed = snapshot.history.deleteFailed === row.threadId;
+    const title = historyRowTitle(row);
+    const currentMark = current ? (
+        <span className="ml-2 text-xs font-semibold text-(--ink-muted)">
+            {HISTORY_COPY.current}
+        </span>
+    ) : null;
     return (
         <li
             className="space-y-2 rounded-(--radius-sm) border border-(--card-stroke) p-2"
@@ -72,17 +90,35 @@ function HistoryRow({
             <div className="flex items-start gap-2">
                 <button
                     type="button"
-                    className={LINK_BUTTON}
+                    className={`group ${LINK_BUTTON}`}
                     data-testid="ask-dev-history-open"
                     aria-current={current ? "true" : undefined}
                     onClick={() => onSelect(row.threadId)}
                 >
-                    {historyRowLabel(row)}
-                    {current ? (
-                        <span className="ml-2 text-xs font-semibold text-(--ink-muted)">
-                            {HISTORY_COPY.current}
-                        </span>
-                    ) : null}
+                    {title === null ? (
+                        <>
+                            {historyRowLabel(row)}
+                            {currentMark}
+                        </>
+                    ) : (
+                        <>
+                            {/* Inert text, one line; the full question on hover or focus. */}
+                            <span
+                                className="block truncate group-hover:whitespace-normal group-hover:break-words group-focus-visible:whitespace-normal group-focus-visible:break-words"
+                                data-testid="ask-dev-history-question"
+                                title={title}
+                            >
+                                {title}
+                            </span>
+                            <span
+                                className="block text-xs text-(--ink-muted)"
+                                data-testid="ask-dev-history-meta"
+                            >
+                                {historyRowMeta(row)}
+                                {currentMark}
+                            </span>
+                        </>
+                    )}
                 </button>
                 {confirming ? null : (
                     <button

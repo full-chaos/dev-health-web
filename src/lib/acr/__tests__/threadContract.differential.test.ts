@@ -463,6 +463,8 @@ function expectedList(body: Record<string, unknown>): unknown {
             createdAt: t.created_at,
             lastTurnAt: t.last_turn_at,
             expiresAt: t.expires_at,
+            // CHAOS-12238: the optional first question, verbatim; absent is null.
+            firstQuestion: str(t.first_question),
         })),
     };
 }

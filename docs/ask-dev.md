@@ -34,6 +34,12 @@ A page can tell Ask Dev which entities it shows. The next question then sends th
 
 A conversation is ACR's thread. The panel and `/dev` share one history; a reload or `/dev?thread=<id>` restores a conversation with no new investigation, and a delete works from either surface (CHAOS-11956). The seam calls, the selection rules, the restore barrier, the ownership tokens, the cancel state machine and the browser contract checks are in [`architecture/ask-dev-thread-seam.md`](architecture/ask-dev-thread-seam.md).
 
+A history row is titled by its thread's first question when ACR serves `first_question` (CHAOS-12238). ACR serves it only while `ACR_THREAD_LIST_FIRST_QUESTION_ENABLED` is on, which is off by default.
+
+- The question is inert text on one line, with the full text on hover or focus. The date and the question count are below it.
+- With no first question (a legacy turn, or the switch off), or only blanks, the row keeps its name "Conversation of <date> · <n> questions". A row is never blank.
+- The question is never logged and never reported.
+
 ## Answer completeness
 
 An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. Web never shows it (CHAOS-12245, chris 2026-10-31). `missingDataSentence` and `quickStatus` (`src/components/ask-dev/answer/`) apply these rules:
