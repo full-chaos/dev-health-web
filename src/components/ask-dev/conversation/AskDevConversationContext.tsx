@@ -17,7 +17,6 @@ import { ACR_BROWSER_TRANSPORT, type AskDevTransport } from "./transport";
 
 const noSubscription = () => () => undefined;
 const noSnapshot = () => null;
-const noServerStore = (): ConversationStore | null => null;
 
 /**
  * The conversation store of this tab, above the panel: closing or minimizing the panel keeps the
@@ -52,14 +51,15 @@ export function AskDevConversationProvider({
     /** For tests; the product uses the live transport, or the test-mode one in test mode. */
     transport?: AskDevTransport | null;
 }) {
-    const [clientStore] = useState(() => {
+    // The context value is fixed from the first render on. A value that changed right after
+    // hydration would reach every Suspense boundary still hydrating under the shell, switch it to
+    // client rendering and drop a click made in that window (the launcher, CI on #1632). Only the
+    // consuming hook below differs between server and client.
+    const [store] = useState(() => {
         const chosen =
             transport === undefined ? (ACR_BROWSER_TRANSPORT ?? testModeTransport()) : transport;
         return chosen === null ? null : new ConversationStore({ transport: chosen });
     });
-    // The server renders no store, and hydration renders exactly that; the store takes over right
-    // after, so no tree is regenerated (codex r1 on #1632). No run starts before it does.
-    const store = useSyncExternalStore(noSubscription, () => clientStore, noServerStore);
     const { data: session, status } = useSession();
     const partition = partitionKey(session, status);
 
@@ -83,7 +83,9 @@ export function useAskDevConversation(): AskDevConversation | null {
     const snapshot = useSyncExternalStore(
         store?.subscribe ?? noSubscription,
         store?.getSnapshot ?? noSnapshot,
-        store?.getSnapshot ?? noSnapshot,
+        // The server renders no conversation, and hydration renders exactly that; the consumer
+        // takes the store right after, so no tree is regenerated (codex r1 on #1632).
+        noSnapshot,
     );
     return store === null || snapshot === null ? null : { store, snapshot };
 }

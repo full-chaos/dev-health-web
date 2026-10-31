@@ -224,6 +224,25 @@ test.describe("desktop (1280px)", () => {
     });
 });
 
+test.describe("hydration (slow CPU)", () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    // CI on #1632: the provider's context changed right after hydration, which switched the shell's
+    // still-hydrating parts to client rendering and dropped a launcher click made in that window.
+    // On an 8x slower CPU that click failed 8 of 8 times; the context is now fixed from the start.
+    test("a launcher click right after load opens the panel", async ({ page }) => {
+        await seed(page, { stream: [{ hold: true }] });
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 8 });
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        await expect(page.getByRole("complementary", { name: "Ask Dev" })).toBeVisible({
+            timeout: 5_000,
+        });
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    });
+});
+
 test.describe("mobile (390px)", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
