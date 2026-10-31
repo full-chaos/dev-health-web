@@ -243,7 +243,10 @@ describe("CommandPalette", () => {
             const user = userEvent.setup();
             withAskDev({ ask_dev: true, agent_context_runtime: true });
             press({ key: "k", metaKey: true });
-            await user.click(within(palette()).getByRole("option", { name: /^Ask Dev/ }));
+            // CHAOS-12210: the panel action, not the "Ask Dev full page" entry of the nav row.
+            await user.click(
+                within(palette()).getByRole("option", { name: /Open the Ask Dev panel/ }),
+            );
             await act(async () => {});
             expect(screen.getByTestId("ask-dev-state").textContent).toBe("open");
             expect(nav.push).not.toHaveBeenCalled();
@@ -253,13 +256,17 @@ describe("CommandPalette", () => {
         it("omits the entry without the entitlements and on an excluded route", () => {
             const { unmount } = withAskDev({ ask_dev: true });
             press({ key: "k", metaKey: true });
-            expect(within(palette()).queryByRole("option", { name: /^Ask Dev/ })).toBeNull();
+            expect(
+                within(palette()).queryByRole("option", { name: /Open the Ask Dev panel/ }),
+            ).toBeNull();
             unmount();
 
             nav.pathname = "/agent-context";
             withAskDev({ ask_dev: true, agent_context_runtime: true });
             press({ key: "k", metaKey: true });
-            expect(within(palette()).queryByRole("option", { name: /^Ask Dev/ })).toBeNull();
+            expect(
+                within(palette()).queryByRole("option", { name: /Open the Ask Dev panel/ }),
+            ).toBeNull();
         });
     });
 });

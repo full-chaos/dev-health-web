@@ -2,6 +2,10 @@
 
 Ask Dev is the product surface over Context Fabric (ACR). web draws it: the panel, the `/dev` full page and the chips. ACR resolves, authorizes and answers.
 
+## Where Ask Dev is entered
+
+From the launcher in the top bar (and the ⌘J / Ctrl+J shortcut and the command palette), which opens the panel; or from the left-nav row "Ask Dev", right after AI, which opens the full page `/dev` (CHAOS-12210, chris 2026-10-31). Both are listed only when the organization has `ask_dev` and `agent_context_runtime` on.
+
 ## Page context
 
 A page can tell Ask Dev which entities it shows. The next question then sends them to ACR as hints. Sources: CHAOS-11936 (the registry), CHAOS-3584 (the chips and the hints), CHAOS-11938 (the pages).

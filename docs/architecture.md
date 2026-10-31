@@ -72,7 +72,7 @@ All routes below require an active session. The `(app)` layout wraps them in `Se
 
 #### Areas and destinations
 
-The sidebar shows eight areas. The active area expands to its destinations. The tree is `src/lib/navigation/areas.ts`.
+The sidebar shows nine areas; Ask Dev is listed only when the organization has Ask Dev on. The active area expands to its destinations. The tree is `src/lib/navigation/areas.ts`.
 
 | Area     | Route                       | Destination                                                                        |
 | :------- | :-------------------------- | :--------------------------------------------------------------------------------- |
@@ -105,6 +105,7 @@ The sidebar shows eight areas. The active area expands to its destinations. The 
 |          | `/ai/review-load`           | Review Load                                                                        |
 |          | `/ai/risk`                  | Governance Risk                                                                    |
 |          | `/ai/automations`           | Automations                                                                        |
+| Ask Dev  | `/dev`                      | The Ask Dev full page (CHAOS-12210)                                                |
 | Reports  | `/reports`                  | Report Center (`/reports/new` and `/reports/[id]` are the create and detail pages) |
 | Admin    | `/org/admin`                | Organization                                                                       |
 |          | `/org/admin/sync`           | Connections                                                                        |

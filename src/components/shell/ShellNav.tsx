@@ -8,6 +8,7 @@ import {
     FileText,
     House,
     type LucideIcon,
+    MessageSquareText,
     Settings,
     ShieldCheck,
     Sparkles,
@@ -19,6 +20,7 @@ import { usePathname } from "next/navigation";
 import { useAdminNav } from "@/components/admin/AdminTabs";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import {
+    isNavAreaVisible,
     isNavChildVisible,
     navAreas,
     selectedAreaIdForPathname,
@@ -50,6 +52,7 @@ export const AREA_ICONS: Record<NavArea["id"], LucideIcon> = {
     improve: TrendingUp,
     govern: ShieldCheck,
     ai: Sparkles,
+    "ask-dev": MessageSquareText,
     reports: FileText,
     admin: Settings,
 };
@@ -79,8 +82,10 @@ export function ShellNav({ areas = navAreas, part = "all" }: ShellNavProps) {
     const { isPlatformAdmin } = useAdminNav();
     const selectedAreaId = selectedAreaIdForPathname(areas, pathname);
 
-    const mainAreas = areas.filter((area) => area.placement === "main");
-    const utilityAreas = areas.filter((area) => area.placement === "utility");
+    // A row whose features the organization lacks is not listed (CHAOS-12210: Ask Dev).
+    const listed = areas.filter((area) => isNavAreaVisible(area, features));
+    const mainAreas = listed.filter((area) => area.placement === "main");
+    const utilityAreas = listed.filter((area) => area.placement === "utility");
 
     const renderChild = (child: NavChildRoute, activeChildId: string | undefined) => {
         const isActive = child.id === activeChildId;

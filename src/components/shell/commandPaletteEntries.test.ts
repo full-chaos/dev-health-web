@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { navAreas, isNavChildVisible, type NavArea } from "@/lib/navigation/areas";
+import {
+    navAreas,
+    isNavAreaVisible,
+    isNavChildVisible,
+    type NavArea,
+} from "@/lib/navigation/areas";
 
 import { TAB_SETS, getTabSet, tabHref, type TabSet } from "@/lib/navigation/tabs";
 
@@ -71,7 +76,9 @@ describe("paletteEntries", () => {
         const entries = paletteEntries(navAreas, features);
         const labels = new Set(entries.map((e) => `${e.path}|${e.label}`));
         for (const a of navAreas) {
-            expect(labels.has(`${a.href}|${a.label}`)).toBe(true);
+            expect(labels.has(`${a.href}|${a.paletteLabel ?? a.label}`)).toBe(
+                isNavAreaVisible(a, features),
+            );
             for (const child of a.children) {
                 expect(labels.has(`${child.path}|${child.label}`)).toBe(
                     isNavChildVisible(child, features),
@@ -81,7 +88,7 @@ describe("paletteEntries", () => {
         // Every entry comes from the registry: nothing invented.
         const known = new Set<string>();
         for (const a of navAreas) {
-            known.add(`${a.href}|${a.label}`);
+            known.add(`${a.href}|${a.paletteLabel ?? a.label}`);
             for (const c of a.children) known.add(`${c.path}|${c.label}`);
         }
         // ...and the tab registry's tabs (their links come from `tabHref`).
@@ -90,6 +97,16 @@ describe("paletteEntries", () => {
             for (const tab of set.tabs) known.add(`${tabHref(set, tab.id)}|${tab.label}`);
         }
         for (const e of entries) expect(known.has(`${e.path}|${e.label}`)).toBe(true);
+    });
+
+    // CHAOS-12210: the Ask Dev row's page is named apart from the panel action ("Ask Dev").
+    it("offers the Ask Dev full page only when Ask Dev is on, named apart from the panel action", () => {
+        const off = paletteEntries(navAreas, {});
+        expect(off.some((e) => e.path === "/dev")).toBe(false);
+        const on = paletteEntries(navAreas, { ask_dev: true, agent_context_runtime: true });
+        expect(on.filter((e) => e.path === "/dev")).toEqual([
+            { id: "area-ask-dev", label: "Ask Dev full page", areaLabel: "Ask Dev", path: "/dev" },
+        ]);
     });
 
     it("lists a destination's tabs after it: the non-default tabs, with the destination and area as the second line", () => {
