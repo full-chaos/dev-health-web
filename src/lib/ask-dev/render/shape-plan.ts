@@ -104,7 +104,8 @@ export function planRenderShapes(result: PlanInput, options: PlanOptions): Plann
                     placement,
                     group: null,
                     owner: ANSWER,
-                    initial: withheld("placement_missing"),
+                    // §4.1 order: a verifier or guard refusal comes before placement.
+                    initial: withheld(refused ?? "placement_missing"),
                 };
             const owner: NoticeOwner = { kind: "cohort_panel" };
             // The panel's gate (G1, intent, ranking computed) is stated by the panel itself.

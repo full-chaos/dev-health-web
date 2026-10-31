@@ -24,7 +24,11 @@ import {
     type PlannedShape,
 } from "@/lib/ask-dev/render/shape-plan";
 import { windowText } from "@/lib/ask-dev/render/window-text";
-import { logWithheld, type WithheldReason } from "@/lib/ask-dev/render/withheld-log";
+import {
+    loggableResultId,
+    logWithheld,
+    type WithheldReason,
+} from "@/lib/ask-dev/render/withheld-log";
 
 import { CHART_READY_TIMEOUT_MS } from "./AskDevEChart";
 import { RenderShapeFigure, type FigureSettle } from "./RenderShapeFigure";
@@ -117,7 +121,7 @@ export function RenderShapesProvider({
                     logger.error(
                         {
                             event: "ask_dev_chart_ready_timeout",
-                            result_id: ids.resultId,
+                            result_id: loggableResultId(ids.resultId),
                             shape_index: index,
                             elapsed_ms: elapsedMs ?? null,
                         },
@@ -142,7 +146,7 @@ export function RenderShapesProvider({
         logger.error(
             {
                 event: "ask_dev_render_accounting_violated",
-                result_id: ids.resultId,
+                result_id: loggableResultId(ids.resultId),
                 shapes: ledger.size,
                 missing_outcome: count("missing_outcome"),
                 duplicate_outcome: count("duplicate_outcome"),

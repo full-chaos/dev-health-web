@@ -192,7 +192,8 @@ describe("hostile served strings (E8 §8)", () => {
     it("renders them as escaped text: no element, no rich-text markup is made from them", async () => {
         const shape = hostileLine(k1());
         const svg = svgOf(shape);
-        expect(svg).not.toMatch(/<img|<script|<\/div>/u);
+        // Any case: an element made from served text would be a tag, whatever its case.
+        expect(svg).not.toMatch(/<\s*(?:img|script|\/div)\b/iu);
         // The axis name is the served `axis_label`, escaped.
         expect(svg).toContain("&lt;/div&gt;&lt;script&gt;alert(1)&lt;/script&gt;");
         // `{a|x}{b}` is drawn as those characters, not parsed as rich text.

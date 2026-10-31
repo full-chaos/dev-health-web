@@ -120,6 +120,20 @@ describe("trend placement (E8 §4.3)", () => {
 });
 
 describe("cohort shapes until I-41 draws them", () => {
+    it("keeps the verifier's reason when a cohort shape also has no panel to sit in (codex r1 opinion)", () => {
+        const result = (attentionRanking as { result: unknown }).result as Result;
+        const shape = {
+            ...structuredClone(result.render_shapes![0]!),
+            kind: "quadrant",
+        } as typeof result.render_shapes extends (infer S)[] | undefined ? S : never;
+        const planned = planRenderShapes(withShapes(result, [shape]), {
+            groups: null,
+            paletteSize: 10,
+        });
+        expect(planned[0]!.initial).toEqual({ kind: "WITHHELD", reason: "kind_not_drawable" });
+        expect(planned[0]!.owner).toEqual({ kind: "answer" });
+    });
+
     it("holds the verified cohort shapes in the ranking panel slot, withheld as not drawn yet", () => {
         const result = (attentionRanking as { result: unknown }).result as Result;
         const planned = plan(result);

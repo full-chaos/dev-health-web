@@ -32,7 +32,10 @@ type Props = {
  */
 export function AskDevEChart({ option, onReady, onError, className }: Props) {
     const ref = useRef<HTMLDivElement | null>(null);
-    const [ready, setReady] = useState(false);
+    // Ready for THIS option only: a redraw (theme or motion change) is a new attempt, not ready
+    // until its own `finished`.
+    const [readyFor, setReadyFor] = useState<EChartsOption | null>(null);
+    const ready = readyFor === option;
     const callbacks = useRef({ onReady, onError });
 
     useEffect(() => {
@@ -62,7 +65,7 @@ export function AskDevEChart({ option, onReady, onError, className }: Props) {
             clearTimeout(timer);
             chart.off("finished", onFinished);
             if (outcome === "ready") {
-                setReady(true);
+                setReadyFor(option);
                 callbacks.current.onReady();
             } else {
                 callbacks.current.onError(outcome, Date.now() - started);

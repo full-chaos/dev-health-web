@@ -173,6 +173,8 @@ describe("a chart that cannot be drawn is WITHHELD once, with one notice (E8 §4
     it("settles once: after DRAWN the timer is gone and nothing later changes the outcome", () => {
         vi.useFakeTimers();
         answer(k1());
+        // Only the answer's own bound timer is left: each chart cleared its 5 s timer on finished.
+        expect(vi.getTimerCount()).toBe(1);
         act(() => vi.advanceTimersByTime(CHART_READY_TIMEOUT_MS * 3));
         expect(figures().map((figure) => figure.getAttribute("data-state"))).toEqual([
             "drawn",
@@ -346,6 +348,39 @@ describe("the value table (E8 §9)", () => {
         expect(figure).toHaveAccessibleDescription(
             "Line chart of Backlog size over day: 8 positions, 1 series. Window: Last 30 days.",
         );
+    });
+});
+
+describe("a redraw is a new attempt (codex r1 opinions)", () => {
+    it("is not ready again until its own finished, and withdraws the figure if that never comes", () => {
+        vi.useFakeTimers();
+        answer(k1());
+        const chart = () =>
+            within(within(slotOf(WORKLOAD)).getByTestId("ask-dev-render-figure")).getByTestId(
+                "ask-dev-echart",
+            );
+        expect(chart()).toHaveAttribute("data-chart-ready", "true");
+        stub.mode = "never";
+        act(() => media.setReducedMotion(true));
+        expect(chart()).toHaveAttribute("data-chart-ready", "false");
+        act(() => vi.advanceTimersByTime(CHART_READY_TIMEOUT_MS));
+        expect(within(slotOf(WORKLOAD)).queryByTestId("ask-dev-render-figure")).toBeNull();
+        expect(screen.getByTestId("ask-dev-answer-withheld")).toHaveTextContent(
+            "2 charts were withheld: they could not be drawn.",
+        );
+    });
+
+    it("logs the timeout with a result id in ACR's id form only", () => {
+        vi.useFakeTimers();
+        stub.modes = ["never"];
+        const result = { ...k1(), result_id: "<img src=x onerror=alert(1)>" } as Result;
+        answer(result);
+        act(() => vi.advanceTimersByTime(CHART_READY_TIMEOUT_MS));
+        const timeout = log.error.mock.calls.find(
+            ([fields]) => (fields as { event?: string }).event === "ask_dev_chart_ready_timeout",
+        );
+        expect(timeout?.[0]).toMatchObject({ result_id: "unlisted", shape_index: 0 });
+        expect(JSON.stringify(log.error.mock.calls)).not.toContain("<img");
     });
 });
 
