@@ -112,9 +112,16 @@ export function AskDevPageContextProvider({ children }: { children: ReactNode })
 
     useEffect(() => {
         if (proposal === null || proposal.dropped.length === 0) return;
-        // Kinds and reasons only: never an id, a label or the route's entities.
+        // Kinds and reasons only: never an id, a label or the route's entities. An unknown kind is
+        // the page's free text, so it is logged as "unknown" (codex r2 on #1645).
         logger.warn(
-            { route_id: proposal.routeId, dropped: proposal.dropped },
+            {
+                route_id: proposal.routeId,
+                dropped: proposal.dropped.map(({ kind, reason }) => ({
+                    kind: reason === "unknown_kind" ? "unknown" : kind,
+                    reason,
+                })),
+            },
             "Ask Dev page context entities dropped",
         );
     }, [proposal]);

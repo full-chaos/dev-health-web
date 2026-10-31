@@ -54,6 +54,7 @@ import {
     FakeTransport,
     resultEvent,
 } from "../../conversation/__tests__/fakeTransport";
+import refusalScopeAnchor from "../../answer/__tests__/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
 import { CONTEXT_CHIPS_COPY } from "../AskDevContextChips";
 import { AskDevPageContextProvider, useAskDevPageContext } from "../AskDevPageContext";
 
@@ -167,7 +168,8 @@ describe("the proposal: chips before submit, and nothing sent by opening", () =>
                 ORG,
                 { kind: "pull_request", id: "pr:1", label: "Fix the build" },
                 { kind: "deployment", id: "dep:1", label: "Deploy 1" },
-                { kind: "spaceship", id: "x", label: "y" },
+                // codex r2 opinion on #1645: an unknown kind is free text, so it is never logged.
+                { kind: "spaceship named Ada", id: "x", label: "y" },
             ],
         });
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
@@ -178,12 +180,14 @@ describe("the proposal: chips before submit, and nothing sent by opening", () =>
                 dropped: [
                     { kind: "pull_request", reason: "not_for_route" },
                     { kind: "deployment", reason: "evidence_only" },
-                    { kind: "spaceship", reason: "unknown_kind" },
+                    { kind: "unknown", reason: "unknown_kind" },
                 ],
             },
             "Ask Dev page context entities dropped",
         );
-        expect(JSON.stringify(log.warn.mock.calls)).not.toMatch(/Fix the build|pr:1|dep:1/u);
+        expect(JSON.stringify(log.warn.mock.calls)).not.toMatch(
+            /Fix the build|pr:1|dep:1|spaceship/u,
+        );
     });
 
     it("draws a hostile label as inert text", async () => {
@@ -299,6 +303,41 @@ describe("sending: the chips left in place go as subject hints", () => {
             ["organization", "org-1"],
             [committed.kind, committed.canonical_id],
         ]);
+    });
+});
+
+// codex r2 on #1645: the chips say they go with the next question, so every next question from the
+// live turn carries them: a clarification choice and a narrower re-ask too, not only the composer.
+describe("every next question carries the page context", () => {
+    const pageHint = {
+        kind: "organization",
+        id: "org-1",
+        label: "E2E Organization",
+        source: "ask_dev_page_context",
+    };
+
+    it("a clarification choice asked again carries the page hints", async () => {
+        const transport = new FakeTransport();
+        transport.scripts.push([accepted(), resultEvent(CLARIFICATION)], [resultEvent(PARTIAL)]);
+        renderShell(transport, { "/investment": [ORG] });
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await ask("What is the status of the project?");
+        await within(panel()).findByTestId("ask-dev-clarification");
+        await userEvent.click(within(panel()).getAllByTestId("ask-dev-clarification-chip")[0]!);
+        await userEvent.click(within(panel()).getByTestId("ask-dev-clarification-ask-again"));
+        await waitFor(() => expect(transport.calls).toHaveLength(2));
+        expect(sentHints(transport, 1)?.[0]).toEqual(pageHint);
+    });
+
+    it("a narrower re-ask carries the page hints", async () => {
+        const transport = new FakeTransport();
+        transport.scripts.push([accepted(), refusalScopeAnchor as never], [resultEvent(PARTIAL)]);
+        renderShell(transport, { "/investment": [ORG] });
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await ask("Compare every team's flow over the year");
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-refusal-reask"));
+        await waitFor(() => expect(transport.calls).toHaveLength(2));
+        expect(sentHints(transport, 1)?.[0]).toEqual(pageHint);
     });
 });
 

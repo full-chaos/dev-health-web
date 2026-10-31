@@ -63,6 +63,10 @@ function EmptyTranscript() {
 function ConversationTranscript({ live }: { live: AskDevConversation }) {
     const { store, snapshot } = live;
     const { turns } = snapshot;
+    // CHAOS-3584: every next question from the live turn carries the page context the chips show
+    // (codex r2 on #1645): a clarification choice and a narrower re-ask as well as the composer.
+    const { refs } = useAskDevPageProposal();
+    const pageHints = pageHintsOf(refs);
     return (
         <TranscriptLog>
             {turns.length === 0 ? (
@@ -76,10 +80,18 @@ function ConversationTranscript({ live }: { live: AskDevConversation }) {
                             turn={turn}
                             onConfirm={
                                 usable
-                                    ? (choice) => store.submit(turn.question, carryOfChoice(choice))
+                                    ? (choice) =>
+                                          store.submit(turn.question, {
+                                              ...carryOfChoice(choice),
+                                              pageHints,
+                                          })
                                     : undefined
                             }
-                            onReask={usable ? (reask) => store.submit(reask.question) : undefined}
+                            onReask={
+                                usable
+                                    ? (reask) => store.submit(reask.question, { pageHints })
+                                    : undefined
+                            }
                             onRetry={usable ? () => store.retry(turn.id) : undefined}
                         />
                     );
