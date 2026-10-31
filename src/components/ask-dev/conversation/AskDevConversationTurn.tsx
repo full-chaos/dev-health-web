@@ -4,9 +4,10 @@ import { CTA_LABELS } from "@/lib/design/cta";
 
 import { AskDevTurn } from "../answer/AskDevTurn";
 import type { ClarificationChoice } from "../answer/clarificationModel";
-import { CLARIFICATION_COPY } from "../answer/clarificationModel";
+import { CLARIFICATION_COPY, isNonAnswer } from "../answer/clarificationModel";
 import type { NarrowerReask } from "../answer/refusalModel";
 import { SafeAnswerText } from "../answer/SafeAnswerText";
+import { AskDevFeedback } from "./AskDevFeedback";
 import { AskDevElapsed, AskDevStageChecklist } from "./AskDevProgress";
 import type {
     DeadlineKind,
@@ -218,7 +219,15 @@ export function AskDevConversationTurn({
 }) {
     const { outcome } = turn;
     if (outcome.kind === "answered") {
-        return <AskDevTurn turn={outcome.result} onConfirm={onConfirm} onReask={onReask} />;
+        const answer = <AskDevTurn turn={outcome.result} onConfirm={onConfirm} onReask={onReask} />;
+        // CHAOS-11958: feedback on an answer; a clarification or a no-match asks nothing to judge.
+        if (isNonAnswer(outcome.result.status)) return answer;
+        return (
+            <div className="space-y-3">
+                {answer}
+                <AskDevFeedback resultId={outcome.result.result_id} />
+            </div>
+        );
     }
     if (outcome.kind === "refused") {
         return (

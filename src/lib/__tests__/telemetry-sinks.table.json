@@ -320,11 +320,15 @@
         "sentry": 0
     },
     "src/components/ask-dev/conversation/testModeTransport.ts": {
-        "log": 3,
+        "log": 4,
         "sentry": 0
     },
     "src/components/ask-dev/pageContext/AskDevPageContext.tsx": {
         "log": 1,
+        "sentry": 0
+    },
+    "src/components/ask-dev/conversation/feedbackStore.ts": {
+        "log": 4,
         "sentry": 0
     }
 }
