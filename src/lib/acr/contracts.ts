@@ -5,6 +5,7 @@ import agentEpisodeCreateSchema from "./contracts/schemas/agent_episode_create.v
 import agentEpisodeSchema from "./contracts/schemas/agent_episode.v1.schema.json";
 import capabilitiesSchema from "./contracts/schemas/capabilities.v1.schema.json";
 import contextFabricAnswerProjectionSchema from "./contracts/schemas/context_fabric_answer_projection.v1.schema.json";
+import contextFabricCanonicalIdVectorsSchema from "./contracts/schemas/context_fabric_canonical_id_vectors.v1.schema.json";
 import contextFabricCommonSchema from "./contracts/schemas/context_fabric_common.v1.schema.json";
 import contextFabricInvestigationEventSchema from "./contracts/schemas/context_fabric_investigation_event.v1.schema.json";
 import contextFabricInvestigationRequestSchema from "./contracts/schemas/context_fabric_investigation_request.v1.schema.json";
@@ -46,6 +47,7 @@ import oauthTokenExchangeErrorSchema from "./contracts/schemas/oauth_token_excha
 import tokenExchangeResponseSchema from "./contracts/schemas/token_exchange_response.v1.schema.json";
 import contextPacketExample from "./contracts/examples/context_packet.v1.json";
 import expandedEvidenceExample from "./contracts/examples/expanded_evidence.v1.json";
+import contextFabricCanonicalIdVectorsExample from "./contracts/examples/context_fabric_canonical_id_vectors.v1.json";
 
 export const acrSchemas = {
     acrClientCredential: acrClientCredentialSchema,
@@ -53,6 +55,7 @@ export const acrSchemas = {
     agentEpisode: agentEpisodeSchema,
     capabilities: capabilitiesSchema,
     contextFabricAnswerProjection: contextFabricAnswerProjectionSchema,
+    contextFabricCanonicalIdVectors: contextFabricCanonicalIdVectorsSchema,
     contextFabricCommon: contextFabricCommonSchema,
     contextFabricInvestigationEvent: contextFabricInvestigationEventSchema,
     contextFabricInvestigationRequest: contextFabricInvestigationRequestSchema,
@@ -100,6 +103,7 @@ const acrSchemaFiles = {
     "agent_episode.v1.schema.json": agentEpisodeSchema,
     "capabilities.v1.schema.json": capabilitiesSchema,
     "context_fabric_answer_projection.v1.schema.json": contextFabricAnswerProjectionSchema,
+    "context_fabric_canonical_id_vectors.v1.schema.json": contextFabricCanonicalIdVectorsSchema,
     "context_fabric_common.v1.schema.json": contextFabricCommonSchema,
     "context_fabric_investigation_event.v1.schema.json": contextFabricInvestigationEventSchema,
     "context_fabric_investigation_request.v1.schema.json": contextFabricInvestigationRequestSchema,
@@ -147,6 +151,10 @@ const acrSchemaFiles = {
 export const acrExamples = [
     { schema: "context_packet.v1.schema.json", value: contextPacketExample },
     { schema: "expanded_evidence.v1.schema.json", value: expandedEvidenceExample },
+    {
+        schema: "context_fabric_canonical_id_vectors.v1.schema.json",
+        value: contextFabricCanonicalIdVectorsExample,
+    },
 ] as const;
 
 const ajv = new Ajv2020({

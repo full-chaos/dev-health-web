@@ -1,73 +1,76 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+
+import vectorsFile from "@/lib/acr/contracts/examples/context_fabric_canonical_id_vectors.v1.json";
+import { validateAcrContract } from "@/lib/acr/contracts";
 
 import { SUBJECT_ID } from "../page-context-ids";
 
-// CHAOS-11938: the ACR id grammar a page states its entities in. A fixture oracle from real producer
-// output: every id of these kinds that ACR wrote in the scrubbed kiac/encoder captures is parsed by
-// ACR's grammar into its natural key and built again here, byte for byte. It pins the grammar (the
-// prefixes and separators), not that ops serves ACR's natural keys; CHAOS-12230 replaces it with
-// vectors ACR generates by executing its own builders. No capture holds an organization subject,
-// so `organization:<org id>` is NOT pinned here: it is argued from ACR's two producers
-// (`directread/subject_lookup.go` ownOrganizationResponse, `devhealthsource/clickhouse.go`) only.
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+// CHAOS-12280: the ACR id grammar a page states its entities in, pinned to the canonical-id vectors
+// ACR generates by executing its own builders (acr #1827, CHAOS-12230), vendored at the web pin. A
+// stale vector file fails acr's CI, and a web builder that drifts from ACR's fails here. It replaces
+// the earlier oracle of ids parsed back out of scrubbed captures (CHAOS-11938). It pins the grammar
+// (prefixes, separators, escapes), not that ops serves ACR's natural keys.
+type Vector = {
+    readonly kind: string;
+    readonly natural_key: Readonly<Record<string, unknown>>;
+    readonly canonical_id?: string;
+    readonly omitted?: true;
+};
+const VECTORS = (vectorsFile as { vectors: readonly Vector[] }).vectors;
+const text = (value: unknown): string => {
+    if (typeof value !== "string")
+        throw new Error(`a natural key field is not a string: ${String(value)}`);
+    return value;
+};
 
-function captureIds(): Map<string, Set<string>> {
-    const byKind = new Map<string, Set<string>>();
-    const walk = (node: unknown): void => {
-        if (Array.isArray(node)) return node.forEach(walk);
-        if (node === null || typeof node !== "object") return;
-        const record = node as Record<string, unknown>;
-        if (typeof record.kind === "string" && typeof record.canonical_id === "string") {
-            const ids = byKind.get(record.kind) ?? new Set<string>();
-            ids.add(record.canonical_id);
-            byKind.set(record.kind, ids);
-        }
-        Object.values(record).forEach(walk);
-    };
-    for (const file of readdirSync(CAPTURES).filter((name) => name.endsWith(".json"))) {
-        walk(JSON.parse(readFileSync(join(CAPTURES, file), "utf8")));
-    }
-    return byKind;
-}
+/** How web builds each kind it states, from a natural key named after ACR's source columns. */
+const BUILT: Readonly<Record<string, (key: Vector["natural_key"]) => string | null>> = {
+    organization: (key) => SUBJECT_ID.organization(text(key.org_id)),
+    repository: (key) => SUBJECT_ID.repository(text(key.repo_id)),
+    team: (key) => SUBJECT_ID.team(text(key.team_id)),
+    pull_request: (key) => SUBJECT_ID.pullRequest(text(key.repo_id), key.number as number),
+};
+/** The kinds ACR mints that no web page states today (no `SUBJECT_ID` builder). */
+const NOT_BUILT = ["work_item", "project"];
 
-describe("the ACR id grammar, against every id ACR wrote in the captures", () => {
-    const ids = captureIds();
-    const of = (kind: string) => [...(ids.get(kind) ?? [])];
-
-    it("finds ids of each kind to compare (a comparison that did not happen fails)", () => {
-        expect(of("repository").length).toBeGreaterThan(3);
-        expect(of("team").length).toBeGreaterThan(0);
-        expect(of("pull_request").length).toBeGreaterThan(3);
+describe("the page-context id builder, against ACR's canonical-id vectors", () => {
+    it("reads the vendored vectors, which are valid against their vendored schema", () => {
+        const verdict = validateAcrContract(
+            "context_fabric_canonical_id_vectors.v1.schema.json",
+            vectorsFile,
+        );
+        expect(verdict.errors).toEqual([]);
+        expect(verdict.valid).toBe(true);
     });
 
-    it("repository: `repository:` + the repository uuid", () => {
-        for (const id of of("repository")) {
-            const repoId = id.slice("repository:".length);
-            expect(repoId, id).toMatch(UUID);
-            expect(SUBJECT_ID.repository(repoId)).toBe(id);
+    it("builds every kind it states, and states no kind it has no vector for", () => {
+        // A new SUBJECT_ID builder must join BUILT, and so be checked against ACR's vectors.
+        expect(Object.keys(SUBJECT_ID).sort()).toEqual([
+            "organization",
+            "pullRequest",
+            "repository",
+            "team",
+        ]);
+        const kinds = new Set(VECTORS.map((vector) => vector.kind));
+        expect([...kinds].sort()).toEqual([...Object.keys(BUILT), ...NOT_BUILT].sort());
+        // A comparison that did not happen fails: each kind web builds has a vector.
+        for (const kind of Object.keys(BUILT)) {
+            expect(VECTORS.filter((vector) => vector.kind === kind).length, kind).toBeGreaterThan(
+                0,
+            );
         }
     });
 
-    it("pull request: `pull_request:` + the repository uuid + `:` + the number", () => {
-        for (const id of of("pull_request")) {
-            const match = /^pull_request:([^:]+):(\d+)$/u.exec(id);
-            expect(match, id).not.toBeNull();
-            const [, repoId = "", number = ""] = match ?? [];
-            expect(repoId, id).toMatch(UUID);
-            expect(SUBJECT_ID.pullRequest(repoId, Number(number))).toBe(id);
+    it("builds, byte for byte, the canonical id of every vector of a kind it states", () => {
+        const checked = VECTORS.filter((vector) => vector.kind in BUILT);
+        expect(checked.length).toBeGreaterThanOrEqual(7);
+        for (const vector of checked) {
+            // ACR omits only an over-long work_item or project id; none of these kinds is omitted.
+            expect(vector.omitted, JSON.stringify(vector)).toBeUndefined();
+            expect(BUILT[vector.kind]!(vector.natural_key), JSON.stringify(vector)).toBe(
+                vector.canonical_id,
+            );
         }
-    });
-
-    it("team: `team:` + the team id, which keeps its own colons (`linear:TEAMA`)", () => {
-        for (const id of of("team")) {
-            const teamId = id.slice("team:".length);
-            expect(teamId, id).not.toBe("");
-            expect(SUBJECT_ID.team(teamId)).toBe(id);
-        }
-        expect(of("team")).toContain("team:linear:TEAMA");
     });
 });
 
