@@ -6,7 +6,12 @@ import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { usePrefersReducedMotion } from "@/lib/a11y/usePrefersReducedMotion";
 import type { Cohort, RenderShape } from "@/lib/ask-dev/render/contracts";
 import type { Outcome } from "@/lib/ask-dev/render/placement";
-import { lineOption, shapePositions, type ShapePosition } from "@/lib/ask-dev/render/series-option";
+import {
+    chartHeight,
+    seriesOption,
+    shapePositions,
+    type ShapePosition,
+} from "@/lib/ask-dev/render/series-option";
 
 import { AskDevEChart, type ChartFailure } from "./AskDevEChart";
 import { ShapeValueTable } from "./ShapeValueTable";
@@ -14,7 +19,11 @@ import { ShapeValueTable } from "./ShapeValueTable";
 export const FIGURE_COPY = {
     drawing: "Drawing chart…",
     line: "Line chart",
+    bars: "Bar chart",
+    stackedBars: "Stacked bar chart",
     over: "over",
+    by: "by",
+    noTotal: "No total is shown.",
     position: "position",
     positions: "positions",
     series: "series",
@@ -35,6 +44,8 @@ type FigureProps = {
     readonly windowText: string;
     readonly drawn: boolean;
     readonly onSettle: FigureSettle;
+    /** E8 §7.4: the coverage caption of a cohort chart (counts of members, never chart numbers). */
+    readonly caption?: readonly string[];
 };
 
 /** §9 summary: presentation, axis, counts and the window. Counts only: no value, minimum or trend. */
@@ -42,16 +53,24 @@ export function figureSummary(
     shape: RenderShape,
     positions: readonly ShapePosition[],
     windowText: string,
+    caption: readonly string[] = [],
 ): string {
     const count = positions.length;
-    return (
-        `${FIGURE_COPY.line} of ${shape.value_label} ${FIGURE_COPY.over} ${shape.axis_label}: ` +
-        `${count} ${count === 1 ? FIGURE_COPY.position : FIGURE_COPY.positions}, ` +
-        `${shape.series.length} ${FIGURE_COPY.series}. ${FIGURE_COPY.window}: ${windowText}.`
-    );
+    const line = shape.presentation === "line";
+    const stacked = shape.presentation === "stacked_bars";
+    const word = line ? FIGURE_COPY.line : stacked ? FIGURE_COPY.stackedBars : FIGURE_COPY.bars;
+    return [
+        `${word} of ${shape.value_label} ${line ? FIGURE_COPY.over : FIGURE_COPY.by} ` +
+            `${shape.axis_label}: ${count} ` +
+            `${count === 1 ? FIGURE_COPY.position : FIGURE_COPY.positions}, ` +
+            `${shape.series.length} ${FIGURE_COPY.series}. ${FIGURE_COPY.window}: ${windowText}.`,
+        ...caption,
+        // G3: the stack's height is a sum the view would compute; it is never stated.
+        ...(stacked ? [FIGURE_COPY.noTotal] : []),
+    ].join(" ");
 }
 
-function Figure({ index, shape, cohort, windowText, drawn, onSettle }: FigureProps) {
+function Figure({ index, shape, cohort, windowText, drawn, onSettle, caption }: FigureProps) {
     const captionId = useId();
     const describedId = useId();
     const themeColors = useChartColors();
@@ -64,7 +83,8 @@ function Figure({ index, shape, cohort, windowText, drawn, onSettle }: FigurePro
     const { text, muted, grid } = themeTokens;
     const positions = useMemo(() => shapePositions(shape, cohort), [shape, cohort]);
     const option = useMemo(
-        () => lineOption(shape, positions, { colors, theme: { text, muted, grid }, reducedMotion }),
+        () =>
+            seriesOption(shape, positions, { colors, theme: { text, muted, grid }, reducedMotion }),
         [shape, positions, colors, text, muted, grid, reducedMotion],
     );
     const onReady = useCallback(() => onSettle(index, { kind: "DRAWN" }), [index, onSettle]);
@@ -88,14 +108,15 @@ function Figure({ index, shape, cohort, windowText, drawn, onSettle }: FigurePro
                 {shape.title}
             </figcaption>
             <p id={describedId} className="text-xs text-(--ink-muted)">
-                {drawn ? figureSummary(shape, positions, windowText) : FIGURE_COPY.drawing}
+                {drawn ? figureSummary(shape, positions, windowText, caption) : FIGURE_COPY.drawing}
             </p>
             <div aria-hidden="true">
                 <AskDevEChart
                     option={option}
                     onReady={onReady}
                     onError={onError}
-                    className="h-56 w-full"
+                    className="w-full"
+                    height={chartHeight(shape)}
                 />
             </div>
             {drawn ? <ShapeValueTable shape={shape} positions={positions} /> : null}

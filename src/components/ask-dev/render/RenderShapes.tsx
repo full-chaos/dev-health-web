@@ -109,6 +109,22 @@ export function RenderShapesProvider({
         for (const entry of planned) {
             if (entry.initial.kind === "WITHHELD")
                 logWithheld(ids, entry.index, entry.shape, entry.initial.reason);
+            const mismatch = entry.caption?.mismatch;
+            if (mismatch) {
+                // E8 §7.4: the shape cites other members than ACR's selection expects. Counts only.
+                logger.warn(
+                    {
+                        event: "ask_dev_cohort_coverage_mismatch",
+                        result_id: loggableResultId(ids.resultId),
+                        shape_index: entry.index,
+                        ranked: mismatch.ranked,
+                        scored: mismatch.scored,
+                        expected: mismatch.expected,
+                        cited: mismatch.cited,
+                    },
+                    "ask dev cohort chart coverage does not match the ranking",
+                );
+            }
         }
     }, [planned, ledger, ids]);
 
@@ -203,6 +219,38 @@ function ownedReasons(context: Context, owner: NoticeOwner): WithheldReason[] {
     return reasons;
 }
 
+/** The figures of the occurrences `belongs` selects that are PENDING or DRAWN, in served order. */
+function PlacedFigures({
+    context,
+    belongs,
+}: {
+    readonly context: Context;
+    readonly belongs: (entry: PlannedShape) => boolean;
+}) {
+    if (context.violated) return null;
+    return (
+        <>
+            {context.planned.filter(belongs).map((entry) => {
+                const outcome = context.ledger.outcome(entry.index);
+                if (outcome?.kind !== "PENDING" && outcome?.kind !== "DRAWN") return null;
+                return (
+                    <RenderShapeFigure
+                        // A new ledger remounts its figures: each ledger gets its own chart attempt.
+                        key={`${context.ledger.id}:${entry.index}`}
+                        index={entry.index}
+                        shape={entry.shape}
+                        cohort={context.result.cohort}
+                        windowText={windowText(context.result)}
+                        drawn={outcome.kind === "DRAWN"}
+                        onSettle={context.settle}
+                        caption={entry.caption?.sentences}
+                    />
+                );
+            })}
+        </>
+    );
+}
+
 /**
  * The trends of one fact-table group, in served order, and the notice for its own withheld trends
  * (CHAOS-11942, E8 design §4.3). `claimIds` are all the claims folded into the group; the plan
@@ -211,7 +259,7 @@ function ownedReasons(context: Context, owner: NoticeOwner): WithheldReason[] {
 export function FactTrendSlot({ claimIds }: { readonly claimIds: readonly string[] }) {
     const context = useContext(RenderShapesContext);
     const key = claimIds[0];
-    const slot = (
+    return (
         <div
             data-testid="ask-dev-fact-trend-slot"
             data-claim-ids={claimIds.join(" ")}
@@ -219,27 +267,7 @@ export function FactTrendSlot({ claimIds }: { readonly claimIds: readonly string
         >
             {context === null || key === undefined ? null : (
                 <>
-                    {context.violated
-                        ? null
-                        : context.planned
-                              .filter((entry) => entry.group === key)
-                              .map((entry) => {
-                                  const outcome = context.ledger.outcome(entry.index);
-                                  if (outcome?.kind !== "PENDING" && outcome?.kind !== "DRAWN")
-                                      return null;
-                                  return (
-                                      <RenderShapeFigure
-                                          // A new ledger remounts its figures: each ledger gets its own chart attempt.
-                                          key={`${context.ledger.id}:${entry.index}`}
-                                          index={entry.index}
-                                          shape={entry.shape}
-                                          cohort={context.result.cohort}
-                                          windowText={windowText(context.result)}
-                                          drawn={outcome.kind === "DRAWN"}
-                                          onSettle={context.settle}
-                                      />
-                                  );
-                              })}
+                    <PlacedFigures context={context} belongs={(entry) => entry.group === key} />
                     <WithheldNotice
                         reasons={ownedReasons(context, { kind: "group", key })}
                         testId="ask-dev-fact-trend-withheld"
@@ -248,7 +276,6 @@ export function FactTrendSlot({ claimIds }: { readonly claimIds: readonly string
             )}
         </div>
     );
-    return slot;
 }
 
 /** The answer-level notice: every occurrence whose owner is the answer, counted once. */
@@ -264,19 +291,30 @@ export function AnswerWithheldNotice() {
 }
 
 /**
- * The ranking panel's chart slot (CHAOS-11944 placed it; I-41, CHAOS-11943, draws the bars). Until
- * then it states the cohort shapes the panel's own gate notices do not already state.
+ * The ranking panel's chart slot (CHAOS-11944 placed it): the verified cohort shapes, drawn
+ * (CHAOS-11943), and a notice for the ones it withholds that the panel's own gate notices do not
+ * already state.
  */
 export function CohortChartSlot() {
     const context = useContext(RenderShapesContext);
-    const reasons =
-        context === null
-            ? []
-            : ownedReasons(context, { kind: "cohort_panel" }).filter(
-                  (reason) => !RANKING_GATE_REASONS.includes(reason),
-              );
+    if (context === null) return <div data-testid="ask-dev-ranking-chart-slot" hidden />;
+    const reasons = ownedReasons(context, { kind: "cohort_panel" }).filter(
+        (reason) => !RANKING_GATE_REASONS.includes(reason),
+    );
+    const drawing = context.planned.some((entry) => {
+        const kind = context.ledger.outcome(entry.index)?.kind;
+        return entry.placement === "cohort_panel" && (kind === "PENDING" || kind === "DRAWN");
+    });
     return (
-        <div data-testid="ask-dev-ranking-chart-slot" hidden={reasons.length === 0}>
+        <div
+            data-testid="ask-dev-ranking-chart-slot"
+            className="space-y-3"
+            hidden={reasons.length === 0 && (!drawing || context.violated)}
+        >
+            <PlacedFigures
+                context={context}
+                belongs={(entry) => entry.placement === "cohort_panel"}
+            />
             <WithheldNotice reasons={reasons} testId="ask-dev-ranking-chart-withheld" />
         </div>
     );

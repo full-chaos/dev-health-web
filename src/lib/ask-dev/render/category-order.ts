@@ -7,7 +7,15 @@ import { utcInstant } from "@/lib/ask-dev/render/guards";
  * canonical id, ACR's own order); other category shapes use the first-seen union of point labels;
  * time shapes use the UTC instant (G5's parse). Displayed labels stay the served strings.
  */
-export function cohortCategoryOrder(shape: RenderShape, cohort: Cohort | undefined): string[] {
+/**
+ * The members a cohort-rule shape cites, in `cohortCategoryOrder`'s order, each with the served label
+ * it was cited under first (CHAOS-11943). A position is a member, not a label: two members may share
+ * a label, and each keeps its own points.
+ */
+export function cohortCategoryMembers(
+    shape: RenderShape,
+    cohort: Cohort | undefined,
+): { readonly id: string; readonly label: string }[] {
     const rankOf = new Map<string, { rank: number; id: string }>();
     for (const member of cohort?.members ?? []) {
         rankOf.set(member.subject.canonical_id, {
@@ -31,7 +39,11 @@ export function cohortCategoryOrder(shape: RenderShape, cohort: Cohort | undefin
             const rb = rankOf.get(b) ?? { rank: Number.POSITIVE_INFINITY, id: b };
             return ra.rank - rb.rank || (ra.id < rb.id ? -1 : ra.id > rb.id ? 1 : 0);
         })
-        .map((id) => labelOf.get(id)!);
+        .map((id) => ({ id, label: labelOf.get(id)! }));
+}
+
+export function cohortCategoryOrder(shape: RenderShape, cohort: Cohort | undefined): string[] {
+    return cohortCategoryMembers(shape, cohort).map((member) => member.label);
 }
 
 /** First-seen union of point labels across series. */

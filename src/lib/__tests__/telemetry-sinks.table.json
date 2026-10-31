@@ -312,7 +312,7 @@
         "sentry": 0
     },
     "src/components/ask-dev/render/RenderShapes.tsx": {
-        "log": 2,
+        "log": 3,
         "sentry": 0
     }
 }
