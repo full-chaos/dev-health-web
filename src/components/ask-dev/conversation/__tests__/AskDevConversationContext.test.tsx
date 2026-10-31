@@ -18,7 +18,10 @@ vi.mock("next-auth/react", () => ({ useSession: () => sessionState.current }));
 import {
     AskDevConversationProvider,
     partitionKey,
+    partitionTag,
+    UNSAVED_CONVERSATION_KEY,
     useAskDevConversation,
+    useAskDevNotSaved,
 } from "../AskDevConversationContext";
 import { deferred, FakeTransport, resultEvent, captureResult, accepted } from "./fakeTransport";
 
@@ -156,5 +159,51 @@ describe("AskDevConversationProvider", () => {
         });
         view.unmount();
         expect(transport.calls[0]!.signal.aborted).toBe(true);
+    });
+});
+
+// CHAOS-11934, codex r1 on #1642: the reload marker names the (org, principal) whose conversation it
+// was. On an org switch the render already has the new partition while the store still holds the
+// old one's turns; the marker must stay org A's, so org B is never told it lost a conversation.
+describe("the reload marker follows the conversation's own (org, principal)", () => {
+    function NotSaved() {
+        return <output data-testid="not-saved">{String(useAskDevNotSaved())}</output>;
+    }
+
+    beforeEach(() => window.sessionStorage.clear());
+
+    it("keeps org A's tag across a switch to org B", async () => {
+        const transport = new FakeTransport();
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        const view = render(
+            <AskDevConversationProvider transport={transport}>
+                <Probe />
+            </AskDevConversationProvider>,
+        );
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        act(() => {
+            probe.current!.store.submit("Which projects are at risk?");
+        });
+        await waitFor(() => expect(screen.getByTestId("turns")).toHaveTextContent("1"));
+        const tagA = partitionTag("org-a\u0000user-1\u0000");
+        expect(window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY)).toBe(tagA);
+
+        sessionState.current = signedIn({ org_id: "org-b" });
+        view.rerender(
+            <AskDevConversationProvider transport={transport}>
+                <Probe />
+            </AskDevConversationProvider>,
+        );
+        await waitFor(() => expect(screen.getByTestId("turns")).toHaveTextContent("0"));
+        expect(window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY)).toBe(tagA);
+        view.unmount();
+
+        // A reload as org B: no conversation of org B was lost.
+        render(
+            <AskDevConversationProvider transport={new FakeTransport()}>
+                <NotSaved />
+            </AskDevConversationProvider>,
+        );
+        expect(screen.getByTestId("not-saved")).toHaveTextContent("false");
     });
 });

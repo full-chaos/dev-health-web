@@ -150,6 +150,11 @@ export type ConversationSnapshot = {
     readonly inFlight: boolean;
     /** False while signed out or before the session is known: a submit is refused. */
     readonly ready: boolean;
+    /**
+     * The (org, principal) key these turns belong to; `null` before the first bind or while signed
+     * out (CHAOS-11934: the reload marker names the conversation's own partition, not the session's).
+     */
+    readonly partition: string | null;
 };
 
 /** What a follow-up carries beyond the question (a clarification choice, CHAOS-3440). */
@@ -294,6 +299,7 @@ export class ConversationStore {
         turns: [],
         inFlight: false,
         ready: false,
+        partition: null,
     };
 
     constructor(options: ConversationStoreOptions) {
@@ -318,7 +324,7 @@ export class ConversationStore {
     setPartition(key: string | null): void {
         if (this.partition !== undefined && key !== this.partition) this.clear("partition_changed");
         this.partition = key;
-        this.commit({ ...this.snapshot, ready: key !== null });
+        this.commit({ ...this.snapshot, ready: key !== null, partition: key });
     }
 
     /**
