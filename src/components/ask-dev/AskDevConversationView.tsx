@@ -7,6 +7,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { AskDevTurn, turnKey } from "./answer/AskDevTurn";
 import { useTestModeTurns, type TestModeTurns } from "./answer/testModeAnswer";
 import { AskDevComposer } from "./conversation/AskDevComposer";
+import { ConnectAskDev } from "./conversation/AskDevConnect";
 import {
     useAskDevConversation,
     useAskDevNotSaved,
@@ -33,6 +34,8 @@ export const TRANSCRIPT_COPY = {
     unavailable: "This conversation is not available.",
     unavailableHint: "Start a new conversation, or open another one from the history.",
     readFailed: "This conversation could not be read.",
+    /** CHAOS-12336: no ACR access token, or ACR's 401, on the read. */
+    connect: "Ask Dev needs your permission to show this conversation. Connect Ask Dev to see it.",
     earlierFailed: "Earlier turns could not be loaded.",
     /** The composer while the conversation cannot take a question. */
     lockedRestoring: "Loading the conversation…",
@@ -70,9 +73,30 @@ function EmptyTranscript() {
     );
 }
 
-/** The neutral read-only state of a conversation ACR does not serve, or that could not be read. */
+/**
+ * The read-only state of a conversation that cannot be shown: one ACR does not serve, one that could
+ * not be read, or one the tab has no ACR access for (CHAOS-12336: Connect Ask Dev, no Try again).
+ */
 function ConversationNotShown({ live }: { live: AskDevConversation }) {
     const { store, snapshot } = live;
+    if (snapshot.thread.kind === "connect") {
+        return (
+            <div className="space-y-3" data-testid="ask-dev-conversation-connect">
+                <p className="font-medium text-foreground">{TRANSCRIPT_COPY.connect}</p>
+                <div className="flex flex-wrap gap-2">
+                    <ConnectAskDev testId="ask-dev-conversation-connect-link" />
+                    <button
+                        type="button"
+                        data-testid="ask-dev-conversation-new"
+                        onClick={() => store.newConversation()}
+                        className={SECONDARY_BUTTON}
+                    >
+                        {CTA_LABELS.askDevNewConversation}
+                    </button>
+                </div>
+            </div>
+        );
+    }
     const failed = snapshot.thread.kind === "read_failed";
     return (
         <div
@@ -143,7 +167,11 @@ function ConversationTranscript({ live }: { live: AskDevConversation }) {
     // (codex r2 on #1645): a clarification choice and a narrower re-ask as well as the composer.
     const { refs } = useAskDevPageProposal();
     const pageHints = pageHintsOf(refs);
-    if (thread.kind === "unavailable" || thread.kind === "read_failed") {
+    if (
+        thread.kind === "unavailable" ||
+        thread.kind === "read_failed" ||
+        thread.kind === "connect"
+    ) {
         return (
             <TranscriptLog>
                 <ConversationNotShown live={live} />
@@ -249,6 +277,7 @@ function lockedReason({ snapshot }: AskDevConversation): string | undefined {
             return TRANSCRIPT_COPY.lockedRestoring;
         case "unavailable":
         case "read_failed":
+        case "connect":
             return TRANSCRIPT_COPY.lockedReadOnly;
         default:
             return undefined;
