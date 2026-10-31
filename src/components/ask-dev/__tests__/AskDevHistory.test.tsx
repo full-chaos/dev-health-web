@@ -8,6 +8,18 @@ vi.mock(
     async () => (await import("../render/__tests__/echartsStub")).echartsStubModule,
 );
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+/** Every product telemetry event enters by `trackTelemetryEvent`: recorded, then passed on. */
+const telemetry = vi.hoisted(() => ({ track: vi.fn() }));
+vi.mock("@/lib/telemetry", async (importActual) => {
+    const actual = await importActual<typeof import("@/lib/telemetry")>();
+    return {
+        ...actual,
+        trackTelemetryEvent: (...args: Parameters<typeof actual.trackTelemetryEvent>) => {
+            telemetry.track(...args);
+            return actual.trackTelemetryEvent(...args);
+        },
+    };
+});
 
 /**
  * A router that changes the route the way Next does, and records every write: `push` and
@@ -73,7 +85,7 @@ import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
 import { AskDevConversationProvider } from "../conversation/AskDevConversationContext";
 import { TURN_STATUS_COPY } from "../conversation/AskDevConversationTurn";
 import { COMPOSER_COPY } from "../conversation/AskDevComposer";
-import { HISTORY_COPY, historyRowLabel } from "../conversation/AskDevHistory";
+import { HISTORY_COPY, historyRowLabel, historyRowMeta } from "../conversation/AskDevHistory";
 import { THREAD_HINT_KEY } from "../conversation/conversationStore";
 import { partitionTag } from "../conversation/keys";
 import type { AskDevTransport } from "../conversation/transport";
@@ -523,5 +535,66 @@ describe("dev StrictMode remount (CHAOS-11957)", () => {
         expect(transport.attachCalls[0]!.signal.aborted).toBe(false);
         expect(transport.threadCalls).toHaveLength(2);
         expect(transport.calls).toHaveLength(0);
+    });
+});
+
+describe("the first question as the row title (CHAOS-12238)", () => {
+    const QUESTION =
+        "Which teams are overloaded this quarter, and what is driving it across the platform org?";
+
+    async function historyOf(firstQuestionA: string | null) {
+        const transport = seeded();
+        transport.listPages.length = 0;
+        transport.listPages.push({
+            threads: [{ ...summary(THREAD_A), firstQuestion: firstQuestionA }, summary(THREAD_B)],
+            nextCursor: null,
+        });
+        renderShell(transport);
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        const list = await within(panel()).findByTestId("ask-dev-history-list");
+        return within(list).getAllByTestId("ask-dev-history-open");
+    }
+
+    it("titles a row by its first question on one line, with the full text on hover and focus, then the date and count", async () => {
+        const [a, b] = await historyOf(QUESTION);
+        const title = within(a!).getByTestId("ask-dev-history-question");
+        expect(title.textContent).toBe(QUESTION);
+        expect(title).toHaveAttribute("title", QUESTION);
+        expect(title).toHaveClass("truncate");
+        expect(title.className).toMatch(/group-hover:whitespace-normal/u);
+        expect(title.className).toMatch(/group-focus-visible:whitespace-normal/u);
+        expect(within(a!).getByTestId("ask-dev-history-meta").textContent).toBe(
+            historyRowMeta(summary(THREAD_A)),
+        );
+        expect(a).toHaveAccessibleName(expect.stringContaining(QUESTION));
+        // A row with no first question keeps the date-and-count label of CHAOS-11956.
+        expect(b).toHaveTextContent(historyRowLabel(summary(THREAD_B)));
+        expect(within(b!).queryByTestId("ask-dev-history-question")).toBeNull();
+    });
+
+    it("never shows a blank title: a blank first question keeps the date-and-count label", async () => {
+        const [a] = await historyOf("   \n\t ");
+        expect(within(a!).queryByTestId("ask-dev-history-question")).toBeNull();
+        expect(a).toHaveTextContent(historyRowLabel(summary(THREAD_A)));
+    });
+
+    it("shows the question as inert text, and logs or reports none of it", async () => {
+        // The logger is the file's mock: every level's calls are recorded. Every telemetry event
+        // enters by trackTelemetryEvent, recorded above (codex r1 on #1656: logs alone did not cover
+        // telemetry). Opening and hovering the row are the interactions it has.
+        const { logger } = await import("@/lib/logger");
+        telemetry.track.mockClear();
+        const hostile = '<img src=x onerror="alert(1)"> see https://evil.example/x';
+        const [a] = await historyOf(hostile);
+        await userEvent.click(a!);
+        await userEvent.hover(a!);
+        expect(within(a!).getByTestId("ask-dev-history-question").textContent).toBe(hostile);
+        expect(a!.querySelector("img, a")).toBeNull();
+        const calls = Object.values(logger).map(
+            (fn) => (fn as ReturnType<typeof vi.fn>).mock.calls,
+        );
+        expect(JSON.stringify(calls)).not.toContain("evil.example");
+        expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain("evil.example");
     });
 });
