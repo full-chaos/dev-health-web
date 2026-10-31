@@ -366,6 +366,92 @@ export function checkClientBundle({
     };
 }
 
+/**
+ * Modules that must reach the browser only as an async chunk, loaded when code imports them
+ * (CHAOS-12104, T14a, the lead's option (c)): never a chunk a page loads up front. Each is found in
+ * the client output by marker text the compiler keeps. No page entry list may name a chunk that
+ * holds it: not a client-reference manifest, not a build manifest, not a prerendered page.
+ *
+ * It cannot pass by default: the module and its marker must exist, a client chunk must hold the
+ * marker, and there must be entry lists to read.
+ */
+export const LAZY_CHUNKS = [
+    {
+        id: "L1",
+        what: "the Ask Dev full result validators",
+        file: "src/lib/acr/streamValidators.js",
+        // An Ajv error path of the result schema. The minifier keeps it; the schema's `$id` and the
+        // `schema_version` value are not usable: the first is dropped, and the second is also in
+        // the code that reads results.
+        marker: "#/$defs/ClaimedFactTable/required",
+    },
+];
+
+/** Where a page names the chunks it loads up front. */
+function entryListFiles(dist) {
+    const server = join(dist, "server");
+    return [
+        ...filesWithExtension(server, ["_client-reference-manifest.js"]),
+        ...filesWithExtension(server, PRERENDERED_EXTENSIONS),
+        ...filesWithExtension(join(dist, "static"), ["_buildManifest.js", "_ssgManifest.js"]),
+        ...["build-manifest.json", "app-build-manifest.json", "fallback-build-manifest.json"]
+            .map((name) => join(dist, name))
+            .filter((path) => existsSync(path)),
+    ];
+}
+
+/**
+ * @returns {{ ok: boolean, failures: string[], summary: Record<string, number> }}
+ */
+export function checkLazyChunks({ root, dist, chunks = LAZY_CHUNKS }) {
+    const failures = [];
+    const clientScripts = javascriptFiles(join(dist, "static"));
+    const lists = entryListFiles(dist);
+    if (lists.length === 0) {
+        failures.push(`${dist}: no page entry list to check (did the build run?)`);
+    }
+    let lazyFiles = 0;
+    let entryHits = 0;
+    for (const chunk of chunks) {
+        const sourcePath = join(root, chunk.file);
+        if (!existsSync(sourcePath)) {
+            failures.push(`rule ${chunk.id}: ${chunk.file} does not exist`);
+            continue;
+        }
+        if (!readFileSync(sourcePath, "utf8").includes(chunk.marker)) {
+            failures.push(`rule ${chunk.id}: marker "${chunk.marker}" is not in ${chunk.file}`);
+            continue;
+        }
+        const holders = clientScripts
+            .filter((path) => readFileSync(path, "utf8").includes(chunk.marker))
+            // The path under `static` (`chunks/…`, nested folders kept), as entry lists name it: a
+            // bare file name would miss a nested chunk and match another chunk of the same name.
+            .map((path) => relative(join(dist, "static"), path).replaceAll("\\", "/"));
+        if (holders.length === 0) {
+            failures.push(
+                `rule ${chunk.id}: no client chunk holds "${chunk.marker}" (did the build run?)`,
+            );
+            continue;
+        }
+        lazyFiles += holders.length;
+        for (const list of lists) {
+            const text = readFileSync(list, "utf8");
+            for (const holder of holders) {
+                if (!text.includes(`static/${holder}`)) continue;
+                entryHits += 1;
+                failures.push(
+                    `${relative(dist, list)}: names ${holder} up front, which holds ${chunk.what} (rule ${chunk.id}: load it only on demand)`,
+                );
+            }
+        }
+    }
+    return {
+        ok: failures.length === 0,
+        failures,
+        summary: { lazyChunks: chunks.length, lazyFiles, entryLists: lists.length, entryHits },
+    };
+}
+
 export function main(argv = process.argv.slice(2), env = process.env, log = console) {
     const repositoryRoot = resolve(fileURLToPath(import.meta.url), "..", "..");
     let root = repositoryRoot;
@@ -383,14 +469,18 @@ export function main(argv = process.argv.slice(2), env = process.env, log = cons
     root = resolve(root);
     dist = resolve(dist ?? join(root, ".next"));
 
-    const result = checkClientBundle({ root, dist, env, requireSecrets });
-    const s = result.summary;
+    const bundle = checkClientBundle({ root, dist, env, requireSecrets });
+    const lazy = checkLazyChunks({ root, dist });
+    const result = { ok: bundle.ok && lazy.ok, failures: [...bundle.failures, ...lazy.failures] };
+    const s = bundle.summary;
+    const l = lazy.summary;
     log.log(
         `client bundle check: ${s.clientFiles} client files, ${s.serverFiles} server files, ` +
             `${s.markers} markers (${s.markerHits} client hits), ` +
             `${s.envNames} server variable names (${s.envNameHits} client hits), ` +
             `${s.secretsChecked} of ${s.secretNames} secret values looked for (${s.secretHits} client hits), ` +
-            `${s.rules} pattern rules (${s.ruleHits} hits), ${s.prerenderedFiles} prerendered files (${s.prerenderedHits} hits)`,
+            `${s.rules} pattern rules (${s.ruleHits} hits), ${s.prerenderedFiles} prerendered files (${s.prerenderedHits} hits), ` +
+            `${l.lazyChunks} lazy chunk rules (${l.lazyFiles} chunks, ${l.entryLists} entry lists, ${l.entryHits} hits)`,
     );
     if (!result.ok) {
         for (const failure of result.failures) log.error(`FAIL ${failure}`);

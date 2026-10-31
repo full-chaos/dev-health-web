@@ -177,6 +177,11 @@ export type TurnOutcome =
      * (CHAOS-12201). The key is spent: the way on is a new question, never a same-key retry.
      */
     | { readonly kind: "stopped"; readonly reason: StoppedReason }
+    /**
+     * The browser holds no ACR access token, or ACR answered 401 (CHAOS-12104). Nothing ran: the way
+     * on is "Connect Ask Dev", then the question again. Never retried here (connecting leaves the page).
+     */
+    | { readonly kind: "connect" }
     /** A restored turn whose answer is being read again (CHAOS-11956). */
     | { readonly kind: "restoring" }
     /**
@@ -248,6 +253,12 @@ const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
     budget_refusal: "budget_refusal",
     rate_limited: "rate_limited",
 };
+
+/** The browser holds no ACR access token, or ACR answered 401 (CHAOS-12104). */
+const needsConnect = (error: unknown): boolean =>
+    error instanceof TransportFailure && error.reason === "authorization_required";
+
+const connectOutcome: TurnOutcome = { kind: "connect" };
 
 const notRunReasonOf = (code: string): NotRunReason | undefined =>
     Object.hasOwn(NOT_RUN_REASON_OF, code) ? NOT_RUN_REASON_OF[code] : undefined;
@@ -2355,6 +2366,9 @@ export class ConversationStore {
             case "invalid_upstream":
                 this.settle(run, { kind: "failed", retry: false, reference: this.reference(run) });
                 return;
+            case "authorization_required":
+                this.settle(run, connectOutcome);
+                return;
         }
     }
 
@@ -2399,6 +2413,11 @@ export class ConversationStore {
                 status = await this.transport.submissionStatus(submissionId, signal);
             } catch (error) {
                 if (!this.owns(run)) return;
+                // No token, or ACR's 401: polling again cannot help (CHAOS-12104).
+                if (needsConnect(error)) {
+                    this.settle(run, connectOutcome);
+                    return;
+                }
                 // A failed poll is not an answer: poll again until the deadline.
                 logger.warn(
                     { err: error, submission_id: submissionId, request_id: requestId },
@@ -2458,6 +2477,10 @@ export class ConversationStore {
             result = await this.transport.readResult(resultId, run.controller.signal);
         } catch (error) {
             if (!this.owns(run)) return;
+            if (needsConnect(error)) {
+                this.settle(run, connectOutcome);
+                return;
+            }
             logger.warn(
                 { err: error, submission_id: submissionId, result_id: resultId },
                 "ask-dev result replay failed",

@@ -65,9 +65,11 @@ export const ACR_BROWSER_SCOPE = "context:read evidence:read";
 export const ACR_AUTHORIZATION_TTL_MS = 10 * 60 * 1000;
 /**
  * How long one ACR request may take, its body included (r3 on web #1663). Design §5's status reads
- * are bounded at 15 s too. A request that hits it counts as "ACR unavailable".
+ * are bounded at 15 s too. A request that hits it counts as "ACR unavailable". Not named
+ * `ACR_REQUEST_TIMEOUT_MS`: that is a server environment variable, and the secret boundary spec
+ * fails a client chunk that holds its name (CHAOS-12104, where this module joined every page).
  */
-export const ACR_REQUEST_TIMEOUT_MS = 15_000;
+export const ACR_OAUTH_REQUEST_TIMEOUT_MS = 15_000;
 /** An access token this close to its expiry counts as expired. */
 export const ACR_ACCESS_TOKEN_SKEW_MS = 30 * 1000;
 /** The held access token is refreshed once this share of its life is gone (CHAOS-12305). */
@@ -308,7 +310,7 @@ export function setAcrAuthDependenciesForTest(next?: Partial<Dependencies>): voi
     }
 }
 
-/** A signal that aborts at ACR_REQUEST_TIMEOUT_MS, or when `outer` aborts; `clear` ends it. */
+/** A signal that aborts at ACR_OAUTH_REQUEST_TIMEOUT_MS, or when `outer` aborts; `clear` ends it. */
 function deadline(outer?: AbortSignal): {
     readonly signal: AbortSignal;
     readonly clear: () => void;
@@ -316,7 +318,7 @@ function deadline(outer?: AbortSignal): {
     const controller = new AbortController();
     const timer = setTimeout(
         () => controller.abort(new DOMException("ACR did not answer in time", "TimeoutError")),
-        ACR_REQUEST_TIMEOUT_MS,
+        ACR_OAUTH_REQUEST_TIMEOUT_MS,
     );
     const follow = () => controller.abort(outer?.reason);
     if (outer?.aborted) follow();

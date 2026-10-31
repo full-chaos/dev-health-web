@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -145,6 +145,8 @@ describe("each panel state has its own copy and no answer content (plan §2.7.8)
         // CHAOS-11957: Stop through the cancel endpoint.
         ["canceling (202)", { kind: "canceling", startedAt: STARTED }, TURN_STATUS_COPY.canceling],
         ["stopped or interrupted", { kind: "halted" }, TURN_STATUS_COPY.halted],
+        // CHAOS-12104: no ACR access in this tab, or ACR's 401.
+        ["connect", { kind: "connect" }, TURN_STATUS_COPY.connect],
     ];
 
     it.each(cases)("%s", (_name, outcome, copy) => {
@@ -155,6 +157,20 @@ describe("each panel state has its own copy and no answer content (plan §2.7.8)
         // The question the user asked stays on screen.
         expect(view.textContent).toContain("Which projects are at risk?");
         expectNoAnswerContent(container);
+    });
+
+    it("connect: links to the ACR authorization with this page as the way back, and offers no retry", async () => {
+        window.history.pushState(null, "", "/dev?thread=thread_00000000000000000000000000000001");
+        const onRetry = vi.fn();
+        render(<AskDevConversationTurn turn={turn({ kind: "connect" })} onRetry={onRetry} />);
+        const link = await screen.findByRole("link", { name: "Connect Ask Dev" });
+        await waitFor(() =>
+            expect(link.getAttribute("href")).toBe(
+                "/ask-dev/oauth/start?return=%2Fdev%3Fthread%3Dthread_00000000000000000000000000000001",
+            ),
+        );
+        expect(screen.queryByTestId("ask-dev-turn-retry")).toBeNull();
+        window.history.pushState(null, "", "/");
     });
 
     it("gives every state distinct copy", () => {

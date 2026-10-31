@@ -1022,6 +1022,45 @@ describe("panel states (plan §2.7.8)", () => {
         },
     );
 
+    // CHAOS-12104: no ACR access in this tab, or ACR's 401: "Connect Ask Dev", never retried.
+    it("ends a call that needs authorization as the connect state, without polling or retrying", async () => {
+        const store = makeStore();
+        transport.scripts.push([{ fail: new TransportFailure("authorization_required") }]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "connect" });
+        expect(transport.calls).toHaveLength(1);
+        expect(transport.statusCalls).toEqual([]);
+        expect(transport.readCalls).toEqual([]);
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
+    it("stops recovery at the connect state when the status read needs authorization", async () => {
+        const store = makeStore();
+        // The stream dropped after `accepted`: the store reads the status.
+        transport.scripts.push([accepted()]);
+        transport.statuses.push(new TransportFailure("authorization_required"));
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "connect" });
+        // One read, not a poll until the deadline.
+        expect(transport.statusCalls).toHaveLength(1);
+    });
+
+    it("ends at the connect state when the final replay needs authorization", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted()]);
+        transport.statuses.push(status("done", "result_final_00000001"));
+        transport.readErrors.set(
+            "result_final_00000001",
+            new TransportFailure("authorization_required"),
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "connect" });
+        expect(transport.readCalls).toEqual(["result_final_00000001"]);
+    });
+
     it("ends an invalid upstream stream as another error with this turn's reference", async () => {
         const store = makeStore();
         transport.scripts.push([accepted(), { fail: new TransportFailure("invalid_upstream") }]);

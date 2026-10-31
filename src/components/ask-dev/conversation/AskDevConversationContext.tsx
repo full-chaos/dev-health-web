@@ -17,7 +17,9 @@ import { ConversationStore, THREAD_HINT_KEY, type ConversationSnapshot } from ".
 import { FeedbackStore } from "./feedbackStore";
 import { partitionTag } from "./keys";
 import { testModeTransport } from "./testModeTransport";
-import { ACR_BROWSER_TRANSPORT, type AskDevTransport } from "./transport";
+import { acrBrowserTransport } from "@/lib/ask-dev/acr-transport";
+
+import type { AskDevTransport } from "./transport";
 
 const noSubscription = () => () => undefined;
 const noSnapshot = () => null;
@@ -120,7 +122,7 @@ export function AskDevConversationProvider({
     // consuming hook below differs between server and client.
     const [{ store, feedback }] = useState(() => {
         const chosen =
-            transport === undefined ? (ACR_BROWSER_TRANSPORT ?? testModeTransport()) : transport;
+            transport === undefined ? (acrBrowserTransport() ?? testModeTransport()) : transport;
         return chosen === null
             ? { store: null, feedback: null }
             : {

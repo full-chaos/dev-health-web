@@ -12,6 +12,11 @@ const ARTIFACT_SIBLINGS = new Set([
     // CHAOS-11956: the eval-free browser validators (Ajv standalone) and their declarations.
     "../threadValidators.js",
     "../threadValidators.d.ts",
+    // CHAOS-12104 (T14a): the browser transport's validators, a module of their own (lazy).
+    "../streamEnvelopeValidators.js",
+    "../streamEnvelopeValidators.d.ts",
+    "../streamValidators.js",
+    "../streamValidators.d.ts",
 ]);
 const LOCK_WAIT_MILLIS = 10;
 const LOCK_TIMEOUT_MILLIS = 30_000;
