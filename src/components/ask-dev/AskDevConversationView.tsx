@@ -12,6 +12,8 @@ import {
 } from "./conversation/AskDevConversationContext";
 import { AskDevConversationTurn } from "./conversation/AskDevConversationTurn";
 import { carryOfChoice } from "./conversation/conversationStore";
+import { AskDevContextChips } from "./pageContext/AskDevContextChips";
+import { pageHintsOf, useAskDevPageProposal } from "./pageContext/AskDevPageContext";
 
 /**
  * The conversation of this tab, as the panel and the full page `/dev` both draw it (CHAOS-11934):
@@ -128,14 +130,21 @@ export function AskDevTranscript() {
 /** The composer of the store; nothing without a transport (T14, CHAOS-12104, not wired). */
 export function AskDevComposerSlot() {
     const live = useAskDevConversation();
+    // CHAOS-3584: the page context the user left in place goes with the next question as hints.
+    const { refs } = useAskDevPageProposal();
     if (!live) return null;
     return (
-        <AskDevComposer
-            inFlight={live.snapshot.inFlight}
-            ready={live.snapshot.ready}
-            onSubmit={(question) => live.store.submit(question)}
-            onCancel={() => live.store.cancel()}
-        />
+        <div className="space-y-2">
+            <AskDevContextChips />
+            <AskDevComposer
+                inFlight={live.snapshot.inFlight}
+                ready={live.snapshot.ready}
+                onSubmit={(question) =>
+                    live.store.submit(question, { pageHints: pageHintsOf(refs) })
+                }
+                onCancel={() => live.store.cancel()}
+            />
+        </div>
     );
 }
 
