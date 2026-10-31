@@ -40,17 +40,25 @@ const ciMaxFailures = 6;
 // CHAOS-12170. The mock's entitlement scenario (`POST /__test/entitlements`) is process-global: a
 // spec that sets it and a spec in another worker that sets it too read each other's scenario (the
 // Ask Dev launcher vanished mid-test in local multi-worker runs). Every spec of this suite that sets
-// it is found by its content, so a new one cannot be forgotten, and runs in the serial
+// it, directly or through a test helper module, is found by its content, so a new one cannot be forgotten, and runs in the serial
 // `entitlement-scenario` project instead of the parallel `authenticated` one. Specs ignored by this
 // config (live, production harnesses) are not picked up.
 const ENTITLEMENT_ENDPOINT = "/__test/entitlements";
 const IGNORED_ELSEWHERE = /\.production\.spec\.ts$|^pagerduty-final-qa-p[0-3]\.spec\.ts$/u;
-export const entitlementScenarioSpecs: readonly string[] = readdirSync(
-    path.resolve(__dirname, "tests"),
-)
+const testsDirectory = path.resolve(__dirname, "tests");
+const testSource = (file: string) => readFileSync(path.resolve(testsDirectory, file), "utf8");
+// Test helper modules that set it (e.g. pagerduty-final-qa.helpers.ts): a spec importing one sets it
+// too (codex r1 on #1634: admin-integrations.spec.ts was missed).
+const scenarioSetterHelpers = readdirSync(testsDirectory)
+    .filter((file) => file.endsWith(".ts") && !file.endsWith(".spec.ts"))
+    .filter((file) => testSource(file).includes(ENTITLEMENT_ENDPOINT))
+    .map((file) => file.replace(/\.ts$/u, ""));
+export const entitlementScenarioSpecs: readonly string[] = readdirSync(testsDirectory)
     .filter((file) => file.endsWith(".spec.ts") && !IGNORED_ELSEWHERE.test(file))
-    .filter((file) =>
-        readFileSync(path.resolve(__dirname, "tests", file), "utf8").includes(ENTITLEMENT_ENDPOINT),
+    .filter(
+        (file) =>
+            testSource(file).includes(ENTITLEMENT_ENDPOINT) ||
+            scenarioSetterHelpers.some((helper) => testSource(file).includes(`"./${helper}"`)),
     )
     .sort();
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");

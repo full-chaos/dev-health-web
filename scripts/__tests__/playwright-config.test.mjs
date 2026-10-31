@@ -131,14 +131,22 @@ describe("default Playwright web servers", () => {
 // suite that sets it runs in one serial project, never in the parallel `authenticated` one.
 describe("entitlement-scenario specs run one at a time", () => {
     const testsDir = new URL("../../tests/", import.meta.url);
-    // An independent scan (not the config's own list): every default-suite spec that sets it.
+    // An independent scan (not the config's own list): every default-suite spec that sets it,
+    // directly or through a test helper module that does.
+    const source = (file) => readFileSync(new URL(file, testsDir), "utf8");
+    const setterHelpers = readdirSync(testsDir)
+        .filter((file) => file.endsWith(".ts") && !file.endsWith(".spec.ts"))
+        .filter((file) => source(file).includes("/__test/entitlements"))
+        .map((file) => file.replace(/\.ts$/u, ""));
     const flipping = readdirSync(testsDir)
         .filter((file) => file.endsWith(".spec.ts"))
         .filter(
             (file) => !/\.production\.spec\.ts$|^pagerduty-final-qa-p[0-3]\.spec\.ts$/u.test(file),
         )
-        .filter((file) =>
-            readFileSync(new URL(file, testsDir), "utf8").includes("/__test/entitlements"),
+        .filter(
+            (file) =>
+                source(file).includes("/__test/entitlements") ||
+                setterHelpers.some((helper) => source(file).includes(`"./${helper}"`)),
         )
         .sort();
     const project = (name) => config.projects?.find((candidate) => candidate.name === name);
@@ -149,6 +157,8 @@ describe("entitlement-scenario specs run one at a time", () => {
 
     it("finds the specs that set it, including the race canaries", () => {
         expect(flipping).toContain("ask-dev-launcher.spec.ts");
+        // Sets it through a helper module (codex r1 on #1634), not by the endpoint text itself.
+        expect(flipping).toContain("admin-integrations.spec.ts");
         expect(flipping).toContain("entitlement-scenario-race-a.spec.ts");
         expect(flipping).toContain("entitlement-scenario-race-b.spec.ts");
         expect(flipping.length).toBeGreaterThanOrEqual(15);
