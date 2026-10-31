@@ -116,7 +116,7 @@
         "sentry": 0
     },
     "src/app/api/auth/revoke-session/route.ts": {
-        "log": 5,
+        "log": 4,
         "sentry": 0
     },
     "src/app/api/auth/switch-org/route.ts": {
@@ -208,7 +208,7 @@
         "sentry": 0
     },
     "src/lib/auth.ts": {
-        "log": 9,
+        "log": 8,
         "sentry": 0
     },
     "src/lib/authBrowserSession.ts": {
