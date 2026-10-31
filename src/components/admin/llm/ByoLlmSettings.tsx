@@ -272,7 +272,7 @@ const BYO_DESCRIPTION = "Bring your own model provider for AI explanations and r
  * replaces the key or removes the settings. The words are the card's own; no key text is shown.
  */
 export const UNREADABLE_COPY = {
-    message: "The saved key can no longer be read. Replace or remove it.",
+    notice: "The saved key can no longer be read. Replace or remove it.",
     defaultScope: "The default configuration",
     purposeScope: (purposes: readonly LLMPurpose[]) =>
         `the ${purposes.map((purpose) => LLM_PURPOSE_LABELS[purpose]).join(" and ")} model ${purposes.length === 1 ? "override" : "overrides"}`,
@@ -399,6 +399,8 @@ export function ByoLlmSettings({
             });
         } else if (isUnreadableSettings(result)) {
             setUnreadable({ purposes: knownPurposes(result.purposes) });
+            // The budget does not read the key: load it, so Replace opens with it editable (codex r1).
+            void fetchBudget();
         } else if (result.error) {
             setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
@@ -725,7 +727,7 @@ export function ByoLlmSettings({
                     className="rounded-2xl border border-(--caution)/40 bg-(--caution)/10 p-6 text-sm"
                     data-testid="byo-llm-unreadable"
                 >
-                    <p className="font-semibold text-foreground">{UNREADABLE_COPY.message}</p>
+                    <p className="font-semibold text-foreground">{UNREADABLE_COPY.notice}</p>
                     <p className="mt-1 text-(--ink-muted)" data-testid="byo-llm-unreadable-scope">
                         {unreadableScope(unreadable.purposes)}
                     </p>

@@ -156,6 +156,25 @@ describe("ByoLlmSettings with saved settings that cannot be read", () => {
         expect(screen.queryByTestId("byo-llm-unreadable")).not.toBeInTheDocument();
     });
 
+    // codex r1 on #1630: the unreadable branch left the budget loading, so Replace showed it disabled.
+    it("Replace leaves the monthly budget editable", async () => {
+        mockLoad.mockResolvedValue(UNREADABLE([]));
+        mockLoadBudget.mockResolvedValue({
+            data: {
+                used_micro_usd: 0,
+                limit_micro_usd: null,
+                remaining_micro_usd: null,
+                window: "calendar_month_utc",
+                reset_at: "2026-08-01T00:00:00Z",
+                enforcement_available: false,
+            } as never,
+        });
+        renderCard();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: COPY.replace }));
+        await waitFor(() => expect(document.getElementById("byo-budget-usd")).toBeEnabled());
+    });
+
     it("Replace opens the empty setup form, which takes a new key", async () => {
         mockLoad.mockResolvedValue(UNREADABLE([]));
         renderCard();
