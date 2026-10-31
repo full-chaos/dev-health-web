@@ -35,6 +35,11 @@ export const acrRuntimeErrorCodes = {
     budgetExhausted: "budget_exhausted",
     stalled: "stalled",
     interrupted: "interrupted",
+    // CHAOS-12201: ACR's per-call access read refused the user (error.v1 `access_denied`, 403), and
+    // the shared Ask Dev limits (429): running questions, and the monthly allowance.
+    accessDenied: "access_denied",
+    concurrencyLimited: "concurrency_limited",
+    allowanceExhausted: "allowance_exhausted",
     interpretationRejected: "interpretation_rejected",
     synthesisRejected: "synthesis_rejected",
 } as const;
@@ -75,6 +80,13 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
     switch (code) {
         case acrRuntimeErrorCodes.alreadyCompleted:
             return "This request was already completed.";
+        // CHAOS-12201: the conversation store says the same words (`NOT_RUN_COPY`); a test holds them equal.
+        case acrRuntimeErrorCodes.accessDenied:
+            return "Ask Dev is not available in this session. Sign in again with your own account in this organization.";
+        case acrRuntimeErrorCodes.concurrencyLimited:
+            return "Too many questions are running. Wait for one to finish, then ask again.";
+        case acrRuntimeErrorCodes.allowanceExhausted:
+            return "Your organization has used this month's Ask Dev allowance.";
         case acrRuntimeErrorCodes.budgetExhausted:
             return "Dev ran out of time before the question could start. Ask again.";
         case acrRuntimeErrorCodes.stalled:
@@ -96,7 +108,7 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
         case acrRuntimeErrorCodes.malformedResponse:
             return "Agent Context Runtime returned an invalid response.";
         case acrRuntimeErrorCodes.noRepository:
-            return "Connect a repository to ask Dev a question.";
+            return "No repository is available to you here. Connect a repository, or ask an admin for access to one.";
         case acrRuntimeErrorCodes.originRefused:
             return "The request was rejected.";
         case acrRuntimeErrorCodes.notEntitled:

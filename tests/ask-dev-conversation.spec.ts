@@ -224,6 +224,118 @@ test.describe("desktop (1280px)", () => {
     });
 });
 
+// CHAOS-12201: ACR's refusals before a run, and the owner's cancel, each with their own words.
+const errorEnvelope = (code: string, status: number, retryable: boolean) => ({
+    schema_version: "error.v1",
+    request_id: "req_e2e",
+    error: { code, message: "e2e", http_status: status, retryable },
+});
+const NOT_RUN = [
+    [
+        "access_denied",
+        403,
+        "Ask Dev is not available in this session. Sign in again with your own account in this organization.",
+        false,
+    ],
+    [
+        "no_repository",
+        409,
+        "No repository is available to you here. Connect a repository, or ask an admin for access to one.",
+        false,
+    ],
+    [
+        "budget_exhausted",
+        503,
+        "Dev ran out of time before the question could start. Ask again.",
+        true,
+    ],
+    [
+        "concurrency_limited",
+        429,
+        "Too many questions are running. Wait for one to finish, then ask again.",
+        true,
+    ],
+    [
+        "allowance_exhausted",
+        429,
+        "Your organization has used this month's Ask Dev allowance.",
+        false,
+    ],
+] as const;
+
+test.describe("refusals before the run (desktop)", () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    for (const [code, status, copy, retry] of NOT_RUN) {
+        test(`${code} shows its own guidance`, async ({ page }, testInfo) => {
+            await seed(page, {
+                stream: [{ refuse: { status, error: errorEnvelope(code, status, retry) } }],
+            });
+            await page.goto("/dashboard");
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const panel = page.getByRole("complementary", { name: "Ask Dev" });
+            await panel
+                .getByRole("textbox", { name: "Ask a question" })
+                .fill("Which projects are at risk?");
+            await panel.getByRole("button", { name: "Send" }).click();
+            await expect(panel.getByTestId("ask-dev-turn-status")).toHaveText(copy);
+            await expect(panel.getByRole("button", { name: "Retry" })).toHaveCount(retry ? 1 : 0);
+            await expect(panel).not.toContainText(/temporarily|Agent Context Runtime/u);
+            await panel.screenshot({ path: testInfo.outputPath(`not-run-${code}-desktop.png`) });
+            expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
+        });
+    }
+
+    test("the owner's cancel ends in the canceled state", async ({ page }, testInfo) => {
+        await seed(page, {
+            stream: [
+                {
+                    events: [
+                        acceptedEvent,
+                        event(2, {
+                            type: "error",
+                            reserved_result_id: "result_reserved_e2e_0001",
+                            error: errorEnvelope("canceled", 409, false),
+                        }),
+                    ],
+                },
+            ],
+        });
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await panel
+            .getByRole("textbox", { name: "Ask a question" })
+            .fill("Which projects are at risk?");
+        await panel.getByRole("button", { name: "Send" }).click();
+        await expect(panel.getByTestId("ask-dev-turn-status")).toHaveText(
+            "Canceled. If the answer had already finished, it is kept.",
+        );
+        await panel.screenshot({ path: testInfo.outputPath("canceled-terminal-desktop.png") });
+    });
+});
+
+test.describe("refusals before the run (mobile)", () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test("access_denied in the sheet", async ({ page }, testInfo) => {
+        await seed(page, {
+            stream: [
+                { refuse: { status: 403, error: errorEnvelope("access_denied", 403, false) } },
+            ],
+        });
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const sheet = page.getByTestId("ask-dev-sheet");
+        const input = sheet.getByRole("textbox", { name: "Ask a question" });
+        await input.fill("Which projects are at risk?");
+        await input.press("Enter");
+        await expect(sheet.getByTestId("ask-dev-turn-status")).toHaveText(NOT_RUN[0][2]);
+        await page.screenshot({ path: testInfo.outputPath("not-run-access_denied-mobile.png") });
+        expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    });
+});
+
 test.describe("hydration (slow CPU)", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 

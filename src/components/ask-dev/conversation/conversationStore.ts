@@ -67,7 +67,32 @@ export type TurnOutcome =
      * `409 thread_closed`: ACR closed this conversation (deleted, expired or full). Nothing ran; the
      * next question starts a new conversation with a new `thread_id`.
      */
-    | { readonly kind: "thread_closed" };
+    | { readonly kind: "thread_closed" }
+    /**
+     * ACR refused the call before anything ran (CHAOS-12201): the user's access, no repository in
+     * scope, too little wait budget, or a shared limit. `retry` only where nothing was admitted and
+     * sending the same request again can help.
+     */
+    | { readonly kind: "not_run"; readonly reason: NotRunReason; readonly retry: boolean };
+
+/** ACR's refusals before a run, each with its own guidance (error.v1). */
+export type NotRunReason =
+    | "access_denied"
+    | "no_repository"
+    | "budget_exhausted"
+    | "concurrency_limited"
+    | "allowance_exhausted";
+
+/** Whether a same-key retry is offered, decided from the closed code, never from the wire's flag. */
+const NOT_RUN_RETRY: Readonly<Record<NotRunReason, boolean>> = {
+    access_denied: false,
+    no_repository: false,
+    budget_exhausted: true,
+    concurrency_limited: true,
+    allowance_exhausted: false,
+};
+
+const isNotRunReason = (code: string): code is NotRunReason => Object.hasOwn(NOT_RUN_RETRY, code);
 
 export type StoreTurn = {
     readonly id: number;
@@ -282,7 +307,10 @@ export class ConversationStore {
     retry(turnId: number): boolean {
         const last = this.snapshot.turns[this.snapshot.turns.length - 1];
         if (last?.id !== turnId || this.snapshot.inFlight || !this.snapshot.ready) return false;
-        if (last.outcome.kind !== "failed" || !last.outcome.retry) return false;
+        const retryable =
+            (last.outcome.kind === "failed" || last.outcome.kind === "not_run") &&
+            last.outcome.retry;
+        if (!retryable) return false;
         this.setOutcome(turnId, { kind: "running" }, true);
         void this.run(turnId);
         return true;
@@ -462,6 +490,12 @@ export class ConversationStore {
                 } else if (code === "thread_closed") {
                     // The contract sends it as a 409 before the stream; the store does not rely on that.
                     this.closeThread(run);
+                } else if (code === "canceled") {
+                    // The owner canceled the run (ACR run lease): the canceled state, not a failure.
+                    this.settle(run, { kind: "canceled" });
+                } else if (code === "run_lost") {
+                    // The run's service instance stopped: the run ended without an answer.
+                    this.settle(run, { kind: "interrupted" });
                 } else {
                     // ACR closed the submission with this terminal: the same key cannot run again,
                     // so the way on is a new question.
@@ -493,6 +527,12 @@ export class ConversationStore {
             case "submission_abandoned":
                 this.settle(run, { kind: "interrupted" });
                 return;
+            case "canceled":
+                this.settle(run, { kind: "canceled" });
+                return;
+            case "run_lost":
+                this.settle(run, { kind: "interrupted" });
+                return;
             case "thread_closed":
                 // The contract: nothing ran, not retryable under these ids; start a new
                 // conversation. The next submit mints a new thread and carries nothing from this one.
@@ -510,6 +550,11 @@ export class ConversationStore {
                 this.settle(run, { kind: "failed", retry: false });
                 return;
             default:
+                if (isNotRunReason(code)) {
+                    logger.info(fields, "ask-dev investigation not run");
+                    this.settle(run, { kind: "not_run", reason: code, retry: NOT_RUN_RETRY[code] });
+                    return;
+                }
                 logger.warn(fields, "ask-dev investigation refused before the stream");
                 this.settle(run, { kind: "failed", retry: refusal.error.error.retryable });
         }

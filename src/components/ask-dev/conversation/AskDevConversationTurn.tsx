@@ -7,7 +7,21 @@ import type { ClarificationChoice } from "../answer/clarificationModel";
 import { CLARIFICATION_COPY } from "../answer/clarificationModel";
 import type { NarrowerReask } from "../answer/refusalModel";
 import { SafeAnswerText } from "../answer/SafeAnswerText";
-import type { StoreTurn, TurnOutcome } from "./conversationStore";
+import type { NotRunReason, StoreTurn, TurnOutcome } from "./conversationStore";
+
+/**
+ * What to do after ACR refused a question before it ran (CHAOS-12201). The ACR client says the same
+ * words (`safeAcrRuntimeMessage`); a test holds them equal. No internal service is named.
+ */
+export const NOT_RUN_COPY: Readonly<Record<NotRunReason, string>> = {
+    access_denied:
+        "Ask Dev is not available in this session. Sign in again with your own account in this organization.",
+    no_repository:
+        "No repository is available to you here. Connect a repository, or ask an admin for access to one.",
+    budget_exhausted: "Dev ran out of time before the question could start. Ask again.",
+    concurrency_limited: "Too many questions are running. Wait for one to finish, then ask again.",
+    allowance_exhausted: "Your organization has used this month's Ask Dev allowance.",
+};
 
 /**
  * The line a turn shows while it has no answer view. Plan §2.7.4 and §2.7.5 fix the canceled,
@@ -44,6 +58,8 @@ function statusLine(outcome: StatusOutcome): string {
             return TURN_STATUS_COPY.canceled;
         case "thread_closed":
             return TURN_STATUS_COPY.threadClosed;
+        case "not_run":
+            return NOT_RUN_COPY[outcome.reason];
     }
 }
 
@@ -81,7 +97,9 @@ export function AskDevConversationTurn({
             <p data-testid="ask-dev-turn-status" className="text-sm text-(--ink-muted)">
                 {statusLine(outcome)}
             </p>
-            {outcome.kind === "failed" && outcome.retry && onRetry ? (
+            {(outcome.kind === "failed" || outcome.kind === "not_run") &&
+            outcome.retry &&
+            onRetry ? (
                 <button
                     type="button"
                     data-testid="ask-dev-turn-retry"

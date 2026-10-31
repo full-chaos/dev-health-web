@@ -191,6 +191,44 @@ function upstreamFailure(
             { status },
         );
     }
+    // CHAOS-12201: ACR's per-call access read and the shared Ask Dev limits (error.v1). Decided by
+    // status AND code, and web decides retry from the closed code, never from the wire's flag.
+    if (status === 403 && wireErrorCode === "access_denied") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.accessDenied,
+            "The user's access was refused for this call.",
+            { status },
+        );
+    }
+    if (status === 409 && wireErrorCode === "no_repository") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.noRepository,
+            "The user has no repository in scope for this call.",
+            { status },
+        );
+    }
+    if (status === 503 && wireErrorCode === "budget_exhausted") {
+        // Refused before admission: nothing ran, so the same request may be sent again.
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.budgetExhausted,
+            "Too little wait budget was left to start the question.",
+            { retryable: true, retryAfterSeconds, status },
+        );
+    }
+    if (status === 429 && wireErrorCode === "concurrency_limited") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.concurrencyLimited,
+            "Too many questions are running.",
+            { retryable: true, retryAfterSeconds, status },
+        );
+    }
+    if (status === 429 && wireErrorCode === "allowance_exhausted") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.allowanceExhausted,
+            "The organization's monthly allowance is used.",
+            { retryAfterSeconds, status },
+        );
+    }
     if (status === 429) {
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.upstream,

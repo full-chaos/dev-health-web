@@ -84,7 +84,7 @@ export async function prepareInvestigation(input: {
     if (authorization.repositoryScopes.length === 0) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.noRepository,
-            "Connect a repository to ask Dev a question.",
+            "No repository is available to you here. Connect a repository, or ask an admin for access to one.",
             { status: 409 },
         );
     }
