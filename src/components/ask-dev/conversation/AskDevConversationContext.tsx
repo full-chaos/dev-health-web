@@ -25,6 +25,42 @@ const noSnapshot = () => null;
  */
 const ConversationContext = createContext<ConversationStore | null>(null);
 
+/**
+ * CHAOS-11934 (plan §2.5): conversations live in this tab's memory until Phase 4 (E6) stores them,
+ * so a reload loses one. This session-storage marker lets the reloaded tab say so: it holds a tag
+ * of the (org, principal) whose conversation had a turn, never a question, an answer or an id.
+ */
+export const UNSAVED_CONVERSATION_KEY = "ask-dev:unsaved-conversation";
+
+/** True when this tab lost a conversation of this (org, principal) to a reload. */
+const NotSavedContext = createContext(false);
+
+/** A short, stable tag of a partition key (FNV-1a, 32 bits): it names no org or user. */
+export function partitionTag(key: string): string {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < key.length; index++) {
+        hash ^= key.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+}
+
+function readMarker(): string | null {
+    try {
+        return window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function writeMarker(tag: string): void {
+    try {
+        window.sessionStorage.setItem(UNSAVED_CONVERSATION_KEY, tag);
+    } catch {
+        // No storage (a private window, blocked site data): a reload then shows no notice.
+    }
+}
+
 type SessionStatus = ReturnType<typeof useSession>["status"];
 
 /**
@@ -69,7 +105,38 @@ export function AskDevConversationProvider({
     // Leaving the shell (sign-out, another route group) ends the run with it.
     useEffect(() => () => store?.clear("unmounted"), [store]);
 
-    return <ConversationContext.Provider value={store}>{children}</ConversationContext.Provider>;
+    // The marker as this page load found it (the server and hydration render none). Read once: a
+    // marker this tab writes later is for the next reload, not this one.
+    const [markerAtLoad] = useState(() => (typeof window === "undefined" ? null : readMarker()));
+    const loadedMarker = useSyncExternalStore(
+        noSubscription,
+        () => markerAtLoad,
+        () => null,
+    );
+    const turns = useSyncExternalStore(
+        store?.subscribe ?? noSubscription,
+        () => store?.getSnapshot().turns.length ?? 0,
+        () => 0,
+    );
+    const tag = typeof partition === "string" ? partitionTag(partition) : null;
+    useEffect(() => {
+        if (tag !== null && turns > 0) writeMarker(tag);
+    }, [tag, turns]);
+    const notSaved = store !== null && tag !== null && turns === 0 && loadedMarker === tag;
+
+    return (
+        <ConversationContext.Provider value={store}>
+            <NotSavedContext.Provider value={notSaved}>{children}</NotSavedContext.Provider>
+        </ConversationContext.Provider>
+    );
+}
+
+/**
+ * True when this tab had a conversation of the signed-in (org, principal) before a reload, and has
+ * none now: the conversation was not saved (Phase 4 adds history).
+ */
+export function useAskDevNotSaved(): boolean {
+    return useContext(NotSavedContext);
 }
 
 export type AskDevConversation = {
