@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { AskDevTurn } from "../answer/AskDevTurn";
@@ -75,6 +77,9 @@ export const TURN_STATUS_COPY = {
     interrupted: "Interrupted — ask again",
     stalled: "The answer stopped arriving. Ask again.",
     canceled: "Canceled. If the answer had already finished, it is kept.",
+    /** CHAOS-12104: no ACR access in this tab, or ACR's 401; the Connect link follows. */
+    connect:
+        "Ask Dev needs your permission to answer from your data. Connect Ask Dev, then ask again.",
     threadClosed:
         "This conversation has ended (deleted, expired or full). Ask again to start a new one.",
     /** CHAOS-11956: a restored turn whose answer is being read again. */
@@ -154,6 +159,8 @@ function statusLine(outcome: StatusOutcome): string {
             return TURN_STATUS_COPY.threadClosed;
         case "not_run":
             return NOT_RUN_COPY[outcome.reason];
+        case "connect":
+            return TURN_STATUS_COPY.connect;
         case "stopped":
             return STOPPED_COPY[outcome.reason];
         case "restoring":
@@ -194,6 +201,33 @@ function TurnQuestion({ question }: { question: string | null }) {
 }
 
 /** A failed turn may be sent again under its key only when the store said so. */
+/** Where the ACR authorization starts (c2, CHAOS-12303); `return` brings the tab back here. */
+export const ACR_OAUTH_START_PATH = "/ask-dev/oauth/start";
+
+/**
+ * "Connect Ask Dev" (CHAOS-12104): the tab holds no ACR access, or ACR answered 401. A link to the
+ * start page, which owns the flow and its own failures; the panel never starts it by itself.
+ */
+function ConnectAskDev() {
+    // A turn exists only in the browser (the store is client state), so the page is known here.
+    const [href] = useState(() =>
+        typeof window === "undefined"
+            ? ACR_OAUTH_START_PATH
+            : `${ACR_OAUTH_START_PATH}?return=${encodeURIComponent(
+                  `${window.location.pathname}${window.location.search}`,
+              )}`,
+    );
+    return (
+        <a
+            href={href}
+            data-testid="ask-dev-turn-connect"
+            className="inline-flex items-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+        >
+            {CTA_LABELS.askDevConnect}
+        </a>
+    );
+}
+
 function retryable(outcome: StatusOutcome): boolean {
     return (
         (outcome.kind === "failed" || outcome.kind === "limited" || outcome.kind === "not_run") &&
@@ -294,6 +328,7 @@ export function AskDevConversationTurn({
                     </p>
                 ) : null}
             </div>
+            {outcome.kind === "connect" ? <ConnectAskDev /> : null}
             {retryable(outcome) && onRetry ? (
                 <button
                     type="button"

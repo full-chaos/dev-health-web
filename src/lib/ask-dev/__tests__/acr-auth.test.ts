@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     ACR_AUTHORIZATION_TTL_MS,
-    ACR_REQUEST_TIMEOUT_MS,
+    ACR_OAUTH_REQUEST_TIMEOUT_MS,
     ACR_BROWSER_SCOPE,
     ACR_PENDING_AUTHORIZATION_KEY,
     ACR_TAB_KEY,
@@ -623,7 +623,7 @@ describe("deadlines (r3 on #1663)", () => {
         };
     }
 
-    it("gives up on metadata ACR never answers, after ACR_REQUEST_TIMEOUT_MS", async () => {
+    it("gives up on metadata ACR never answers, after ACR_OAUTH_REQUEST_TIMEOUT_MS", async () => {
         vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
         setAcrAuthDependenciesForTest({
             now: () => now,
@@ -635,7 +635,7 @@ describe("deadlines (r3 on #1663)", () => {
             fetch: stalled(`${ISSUER}/.well-known/oauth-authorization-server`),
         });
         const outcome = beginAcrAuthorization("/dev");
-        await vi.advanceTimersByTimeAsync(ACR_REQUEST_TIMEOUT_MS - 1);
+        await vi.advanceTimersByTimeAsync(ACR_OAUTH_REQUEST_TIMEOUT_MS - 1);
         let settled = false;
         void outcome.then(() => (settled = true));
         await vi.advanceTimersByTimeAsync(0);
@@ -659,7 +659,7 @@ describe("deadlines (r3 on #1663)", () => {
         const outcome = completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
         await untilExchangeInFlight();
         expect(tokenCalls()).toHaveLength(1);
-        await vi.advanceTimersByTimeAsync(ACR_REQUEST_TIMEOUT_MS - 1);
+        await vi.advanceTimersByTimeAsync(ACR_OAUTH_REQUEST_TIMEOUT_MS - 1);
         let settled = false;
         void outcome.then(() => (settled = true));
         await vi.advanceTimersByTimeAsync(0);
@@ -691,7 +691,7 @@ describe("deadlines (r3 on #1663)", () => {
         const outcome = completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
         await untilExchangeInFlight();
         expect(tokenCalls()).toHaveLength(1);
-        await vi.advanceTimersByTimeAsync(ACR_REQUEST_TIMEOUT_MS - 1);
+        await vi.advanceTimersByTimeAsync(ACR_OAUTH_REQUEST_TIMEOUT_MS - 1);
         let settled = false;
         void outcome.then(() => (settled = true));
         await vi.advanceTimersByTimeAsync(0);

@@ -8,7 +8,9 @@ import {
     PATTERN_RULES,
     SECRET_ENV_NAMES,
     SERVER_ONLY_MODULES,
+    LAZY_CHUNKS,
     checkClientBundle,
+    checkLazyChunks,
     main,
 } from "../check-client-bundle.mjs";
 
@@ -583,3 +585,119 @@ function readdirSyncSorted(directory) {
         .filter((entry) => entry.name !== "__tests__" && entry.name !== "node_modules")
         .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+function filesUnder(directory) {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const path = join(directory, entry.name);
+        return entry.isDirectory() ? filesUnder(path) : [path];
+    });
+}
+
+// CHAOS-12104 (T14a, the lead's option (c)): the full result validators load only on demand.
+describe("the lazy chunk rule", () => {
+    const CHUNKS = [
+        {
+            id: "L1",
+            what: "the full checks",
+            file: "src/lib/full.js",
+            marker: "full-checks-marker",
+        },
+    ];
+
+    /** A build output where `full.js` (the marker's chunk) is loaded by a loader chunk only. */
+    function lazyTree({
+        manifest = '{"chunks":["/_next/static/chunks/entry.js"]}',
+        extra = {},
+    } = {}) {
+        const root = mkdtempSync(join(tmpdir(), "client-bundle-lazy-"));
+        write(join(root, "src/lib/full.js"), 'export const id = "full-checks-marker";');
+        write(join(root, ".next/static/chunks/full.js"), 'x("full-checks-marker")');
+        write(join(root, ".next/static/chunks/entry.js"), 'load("static/chunks/full.js")');
+        write(join(root, ".next/server/app/page_client-reference-manifest.js"), manifest);
+        for (const [name, text] of Object.entries(extra)) write(join(root, ".next", name), text);
+        return { root, dist: join(root, ".next") };
+    }
+
+    it("passes when only a loader names the chunk", () => {
+        const result = checkLazyChunks({ ...lazyTree(), chunks: CHUNKS });
+        expect(result.failures).toEqual([]);
+        expect(result.summary).toMatchObject({ lazyFiles: 1, entryHits: 0 });
+    });
+
+    it("fails when a page's client-reference manifest names the chunk", () => {
+        const result = checkLazyChunks({
+            ...lazyTree({ manifest: '{"chunks":["/_next/static/chunks/full.js"]}' }),
+            chunks: CHUNKS,
+        });
+        expect(result.ok).toBe(false);
+        expect(result.failures.join("\n")).toMatch(/names chunks\/full\.js up front.*rule L1/u);
+    });
+
+    it("fails when a page names a chunk in a nested folder (codex r1)", () => {
+        const paths = lazyTree({ manifest: '{"chunks":["static/chunks/app/page/full.js"]}' });
+        write(join(paths.dist, "static/chunks/full.js"), "x()");
+        write(join(paths.dist, "static/chunks/app/page/full.js"), 'x("full-checks-marker")');
+        const result = checkLazyChunks({ ...paths, chunks: CHUNKS });
+        expect(result.ok).toBe(false);
+        expect(result.failures.join("\n")).toMatch(/names chunks\/app\/page\/full\.js up front/u);
+    });
+
+    it("does not flag a page that names another chunk of the same file name", () => {
+        const paths = lazyTree({ manifest: '{"chunks":["static/chunks/app/page/full.js"]}' });
+        write(join(paths.dist, "static/chunks/app/page/full.js"), "x()");
+        const result = checkLazyChunks({ ...paths, chunks: CHUNKS });
+        expect(result.failures).toEqual([]);
+    });
+
+    it("fails when a prerendered page or a build manifest names the chunk", () => {
+        for (const [name, text] of [
+            ["server/app/dashboard.html", '<script src="/_next/static/chunks/full.js"></script>'],
+            ["build-manifest.json", '{"rootMainFiles":["static/chunks/full.js"]}'],
+        ]) {
+            const result = checkLazyChunks({
+                ...lazyTree({ extra: { [name]: text } }),
+                chunks: CHUNKS,
+            });
+            expect(result.ok, name).toBe(false);
+        }
+    });
+
+    it("cannot pass by default: no holder, no marker in the source, no module, no entry list", () => {
+        const noHolder = lazyTree();
+        write(join(noHolder.dist, "static/chunks/full.js"), "x()");
+        expect(checkLazyChunks({ ...noHolder, chunks: CHUNKS }).failures.join("\n")).toMatch(
+            /no client chunk holds/u,
+        );
+        const noMarker = lazyTree();
+        write(join(noMarker.root, "src/lib/full.js"), "export const id = 1;");
+        expect(checkLazyChunks({ ...noMarker, chunks: CHUNKS }).failures.join("\n")).toMatch(
+            /is not in src\/lib\/full\.js/u,
+        );
+        const missing = lazyTree();
+        expect(
+            checkLazyChunks({ ...missing, chunks: [{ ...CHUNKS[0], file: "src/lib/gone.js" }] })
+                .failures,
+        ).toEqual(["rule L1: src/lib/gone.js does not exist"]);
+        const root = mkdtempSync(join(tmpdir(), "client-bundle-lazy-"));
+        write(join(root, "src/lib/full.js"), 'export const id = "full-checks-marker";');
+        write(join(root, ".next/static/chunks/full.js"), 'x("full-checks-marker")');
+        expect(
+            checkLazyChunks({ root, dist: join(root, ".next"), chunks: CHUNKS }).failures.join(
+                "\n",
+            ),
+        ).toMatch(/no page entry list to check/u);
+    });
+
+    it("guards the Ask Dev full result validators, by a marker their source holds", () => {
+        expect(LAZY_CHUNKS.map((chunk) => chunk.id)).toEqual(["L1"]);
+        const [l1] = LAZY_CHUNKS;
+        expect(l1.file).toBe("src/lib/acr/streamValidators.js");
+        expect(readFileSync(join(repositoryRoot, l1.file), "utf8")).toContain(l1.marker);
+        // The marker is only in the full checks: if any other source file held it, a chunk every
+        // page loads could hold it too.
+        const holders = filesUnder(join(repositoryRoot, "src"))
+            .filter((path) => readFileSync(path, "utf8").includes(l1.marker))
+            .map((path) => path.slice(repositoryRoot.length + 1));
+        expect(holders).toEqual([l1.file]);
+    });
+});
