@@ -96,6 +96,12 @@ const query = (pairs: Record<string, string | undefined>): string => {
     return parts.length === 0 ? "" : `?${parts.join("&")}`;
 };
 
+/**
+ * The operations whose route has no 404 in ACR's OpenAPI (CHAOS-12336, codex r2 on #1677): a 404
+ * with no `error.v1` body there is not ACR's not-found answer but a dropped call.
+ */
+const NO_404_OPERATIONS: ReadonlySet<string> = new Set(["threads_list"]);
+
 /** ACR's 409 `submission_in_progress` with `details.reason: not_leased` (the cancel route). */
 function isNotLeased(body: ACRErrorV1): boolean {
     const details = (body.error as { details?: { reason?: unknown } }).details;
@@ -222,7 +228,8 @@ export function createAcrBrowserTransport(
                 retryAfterOf(response),
             );
         }
-        if (response.status === 404) {
+        // A body-less 404 is ACR's "not found" only on a route whose contract has one.
+        if (response.status === 404 && !NO_404_OPERATIONS.has(operation)) {
             return new TransportRefusal(404, syntheticError(404, "not_found"));
         }
         return new Error(`ask-dev acr ${operation}: ${String(response.status)} with no error body`);

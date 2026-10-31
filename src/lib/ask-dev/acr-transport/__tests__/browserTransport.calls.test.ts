@@ -208,6 +208,31 @@ describe("listThreads", () => {
     });
 });
 
+describe("listThreads: no 404 in its contract (codex r2)", () => {
+    it("a 404 with no error.v1 body is a dropped call, not a not_found refusal", async () => {
+        fetchMock.mockResolvedValueOnce(
+            new Response("gateway page", { status: 404, headers: { "Content-Type": "text/html" } }),
+        );
+        const error = await transport()
+            .listThreads({ limit: 20, signal })
+            .then(
+                () => undefined,
+                (thrown: unknown) => thrown,
+            );
+        expect((error as Error).name).toBe("Error");
+        expect((error as Error).message).toMatch(/404 with no error body/u);
+    });
+
+    it("the routes whose contract has a 404 keep the not_found refusal for a body-less 404", async () => {
+        fetchMock.mockResolvedValueOnce(empty(404));
+        await expect(transport().deleteThread({ threadId: THREAD, signal })).rejects.toMatchObject({
+            name: "TransportRefusal",
+            status: 404,
+            error: { error: { code: "not_found" } },
+        });
+    });
+});
+
 describe("readThread", () => {
     it("GET /threads/{id} and ?before, checked and mapped", async () => {
         fetchMock.mockImplementation(async () => jsonResponse(threadBody, 200));
