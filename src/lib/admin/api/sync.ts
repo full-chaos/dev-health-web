@@ -13,6 +13,7 @@ import type {
     SyncConfigRepositorySelectionUpdate,
     SyncTriggerResult,
     SyncRun,
+    SyncRunUnitQuery,
     SyncRunUnitSummary,
     SyncCoverageSummary,
     BackfillRequest,
@@ -85,8 +86,24 @@ export const syncConfigsApi = {
     getSyncRun: (runId: string, token?: string, orgId?: string) =>
         request<SyncRun>(`/sync-runs/${runId}`, { method: "GET" }, token, orgId),
 
-    getSyncRunUnits: (runId: string, token?: string, orgId?: string) =>
-        request<SyncRunUnitSummary>(`/sync-runs/${runId}/units`, { method: "GET" }, token, orgId),
+    getSyncRunUnits: (
+        runId: string,
+        token?: string,
+        orgId?: string,
+        query: SyncRunUnitQuery = {},
+    ) => {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(query)) {
+            if (value !== undefined && value !== "") params.set(key, String(value));
+        }
+        const suffix = params.size > 0 ? `?${params.toString()}` : "";
+        return request<SyncRunUnitSummary>(
+            `/sync-runs/${runId}/units${suffix}`,
+            { method: "GET" },
+            token,
+            orgId,
+        );
+    },
 
     getSyncCoverage: (id: string, token?: string, orgId?: string) =>
         request<SyncCoverageSummary>(
@@ -96,10 +113,20 @@ export const syncConfigsApi = {
             orgId,
         ),
 
-    backfill: (id: string, data: BackfillRequest, token?: string, orgId?: string) =>
+    backfill: (
+        id: string,
+        data: BackfillRequest,
+        token?: string,
+        orgId?: string,
+        idempotencyKey?: string,
+    ) =>
         request<BackfillResponse>(
             `/sync-configs/${id}/backfill`,
-            { method: "POST", body: JSON.stringify(data) },
+            {
+                method: "POST",
+                body: JSON.stringify(data),
+                ...(idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : {}),
+            },
             token,
             orgId,
         ),

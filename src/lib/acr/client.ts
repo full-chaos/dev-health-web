@@ -7,7 +7,7 @@ import { signWebAssertion } from "./assertion";
 import type { AcrRuntimeConfig } from "./config";
 import capabilitiesContract from "./contracts/schemas/capabilities.v1.schema.json";
 import { validateAcrContract } from "./contracts";
-import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
+import { AcrRuntimeError, acrRuntimeErrorCodes, type AcrRuntimeErrorCode } from "./errors";
 import { fetchBoundedJson } from "./http";
 import type { OpsAuthorization } from "./ops";
 
@@ -60,6 +60,22 @@ type AcrRequest = {
     readonly path: string;
     readonly permissions: readonly ("context:read" | "credential:issue" | "evidence:read")[];
     readonly signal: AbortSignal;
+};
+
+export const INVESTIGATIONS_PATH = "/api/v1/context-fabric/investigations";
+
+export type InvestigationStreamRequest = {
+    readonly authorization: OpsAuthorization;
+    /** The exact bytes sent; the assertion binds their sha256. */
+    readonly body: string;
+    readonly requestId: string;
+    readonly signal: AbortSignal;
+    readonly submissionId?: string;
+    readonly threadId?: string;
+    /** Longest wait for the response headers (admission), in milliseconds. */
+    readonly headerWaitMs: number;
+    /** `X-ACR-Wait-Budget-Seconds`: the longest the caller will wait, in whole seconds. */
+    readonly waitBudgetSeconds: number;
 };
 
 type ContextPacketRequest = {
@@ -148,6 +164,103 @@ function clientUrl(config: AcrRuntimeConfig, path: string): URL {
 // already schema-validated body, never `message`/`details` — matches the
 // existing "without exposing the upstream body" boundary in upstreamFailure.
 const upstreamErrorCodeSchema = z.object({ error: z.object({ code: z.string() }).loose() }).loose();
+
+type KnownWireCode = {
+    /** The statuses ACR sends the code with; any other status is not trusted. */
+    readonly statuses: readonly number[];
+    readonly code: AcrRuntimeErrorCode;
+    /** Decided from the closed code, never from the wire's `retryable`. */
+    readonly retryable: boolean;
+};
+
+/**
+ * The Ask Dev create-investigation vocabulary (CHAOS-12201): each error.v1 code with its own state,
+ * at the statuses ACR sends it with (acr `internal/api`). Used by `investigationFailure` only: its
+ * words are Ask Dev's, so no other product's route reads them. A real outage (`internal_error`,
+ * `upstream_*`, `store_unavailable`) is not here and stays `upstream`.
+ */
+const ASK_DEV_WIRE_CODES: Readonly<Record<string, KnownWireCode>> = {
+    invalid_request: {
+        statuses: [400, 409, 413],
+        code: acrRuntimeErrorCodes.invalidRequest,
+        retryable: false,
+    },
+    submission_required: {
+        statuses: [400],
+        code: acrRuntimeErrorCodes.invalidRequest,
+        retryable: false,
+    },
+    insufficient_scope: {
+        statuses: [403],
+        code: acrRuntimeErrorCodes.askDevNotEntitled,
+        retryable: false,
+    },
+    feature_not_enabled: {
+        statuses: [403, 501],
+        code: acrRuntimeErrorCodes.askDevNotEntitled,
+        retryable: false,
+    },
+    repo_forbidden: {
+        statuses: [403],
+        code: acrRuntimeErrorCodes.askDevRepoForbidden,
+        retryable: false,
+    },
+    access_denied: { statuses: [403], code: acrRuntimeErrorCodes.accessDenied, retryable: false },
+    stream_unavailable: {
+        statuses: [406],
+        code: acrRuntimeErrorCodes.streamUnavailable,
+        retryable: false,
+    },
+    no_repository: { statuses: [409], code: acrRuntimeErrorCodes.noRepository, retryable: false },
+    submission_mismatch: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.invalidRequest,
+        retryable: false,
+    },
+    // The first run under the key is still live: asking again later reads its answer.
+    submission_in_progress: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.submissionInProgress,
+        retryable: true,
+    },
+    submission_unsaved: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.submissionUnsaved,
+        retryable: false,
+    },
+    submission_abandoned: {
+        statuses: [409],
+        code: acrRuntimeErrorCodes.interrupted,
+        retryable: false,
+    },
+    thread_closed: { statuses: [409], code: acrRuntimeErrorCodes.threadClosed, retryable: false },
+    canceled: { statuses: [409], code: acrRuntimeErrorCodes.canceled, retryable: false },
+    budget_refusal: { statuses: [413], code: acrRuntimeErrorCodes.budgetRefusal, retryable: false },
+    // ACR's per-principal rate limit: wait, then the same request may be sent again.
+    rate_limited: {
+        statuses: [429],
+        code: acrRuntimeErrorCodes.askDevRateLimited,
+        retryable: true,
+    },
+    concurrency_limited: {
+        statuses: [429],
+        code: acrRuntimeErrorCodes.concurrencyLimited,
+        retryable: true,
+    },
+    allowance_exhausted: {
+        statuses: [429],
+        code: acrRuntimeErrorCodes.allowanceExhausted,
+        retryable: false,
+    },
+    // Refused before admission: nothing ran, so the same request may be sent again.
+    budget_exhausted: {
+        statuses: [503],
+        code: acrRuntimeErrorCodes.budgetExhausted,
+        retryable: true,
+    },
+    // The run's service instance stopped; the key cannot run again.
+    run_lost: { statuses: [503], code: acrRuntimeErrorCodes.interrupted, retryable: false },
+};
 
 function upstreamFailure(
     status: number,
@@ -329,6 +442,111 @@ export class AcrRuntimeClient {
         return value;
     }
 
+    /**
+     * Opens the Ask Dev investigation as an SSE stream (`Accept: text/event-stream`, no JSON
+     * fallback). Returns the raw upstream response: status, headers and an unread body. The
+     * caller owns reading it and aborting `signal`. A fresh single-use assertion is signed for
+     * this call. Wire failures before headers throw an {@link AcrRuntimeError}.
+     */
+    async openInvestigationStream(input: InvestigationStreamRequest): Promise<Response> {
+        input.signal.throwIfAborted();
+        // A plain timer (not `AbortSignal.timeout`) so the wait is visible to fake timers, and so
+        // it is cleared the moment headers arrive.
+        const headerTimeout = new AbortController();
+        const headerTimer = setTimeout(() => headerTimeout.abort(), input.headerWaitMs);
+        const headers: Record<string, string> = {
+            Accept: "text/event-stream",
+            "Cache-Control": "no-store",
+            "Content-Type": "application/json",
+            "X-ACR-Client-Version": "0.1.0",
+            "X-ACR-Web-Assertion": signWebAssertion({
+                body: input.body,
+                config: this.config,
+                method: "POST",
+                orgId: input.authorization.orgId,
+                path: INVESTIGATIONS_PATH,
+                permissions: ["context:read"],
+                privateKey: this.config.privateKey,
+                repositoryScopes: input.authorization.repositoryScopes,
+                subject: input.authorization.subject,
+            }),
+            "X-ACR-Wait-Budget-Seconds": String(input.waitBudgetSeconds),
+            "X-Request-ID": input.requestId,
+        };
+        if (input.submissionId !== undefined) headers["X-ACR-Submission-ID"] = input.submissionId;
+        if (input.threadId !== undefined) headers["X-ACR-Thread-ID"] = input.threadId;
+        // The header-wait timer must stop once headers arrive, so it is a separate controller.
+        const upstream = new AbortController();
+        const abortUpstream = (): void => upstream.abort();
+        input.signal.addEventListener("abort", abortUpstream, { once: true });
+        headerTimeout.signal.addEventListener("abort", abortUpstream, { once: true });
+        try {
+            const response = await fetch(clientUrl(this.config, INVESTIGATIONS_PATH), {
+                body: input.body,
+                cache: "no-store",
+                headers,
+                method: "POST",
+                redirect: "error",
+                signal: upstream.signal,
+            });
+            return response;
+        } catch (error) {
+            if (input.signal.aborted) throw error;
+            if (headerTimeout.signal.aborted) {
+                throw new AcrRuntimeError(
+                    acrRuntimeErrorCodes.timeout,
+                    "Agent Context Runtime did not respond in time.",
+                    { cause: error, retryable: true, status: 504 },
+                );
+            }
+            if (error instanceof AcrRuntimeError) throw error;
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.unavailable,
+                "Agent Context Runtime is temporarily unavailable.",
+                { cause: error, retryable: true },
+            );
+        } finally {
+            clearTimeout(headerTimer);
+            // Headers (or a failure) ended the header wait. `input.signal` keeps governing the
+            // body: the caller aborts it to stop the stream.
+            headerTimeout.signal.removeEventListener("abort", abortUpstream);
+        }
+    }
+
+    /** Maps a non-2xx investigation response (status, error.v1 body) to a runtime error. */
+    investigationFailure(
+        status: number,
+        wireErrorCode: string | undefined,
+        retryAfterSeconds: number | undefined,
+    ): AcrRuntimeError {
+        const known =
+            wireErrorCode !== undefined && Object.hasOwn(ASK_DEV_WIRE_CODES, wireErrorCode)
+                ? ASK_DEV_WIRE_CODES[wireErrorCode]
+                : undefined;
+        if (known !== undefined && known.statuses.includes(status)) {
+            return new AcrRuntimeError(
+                known.code,
+                `ACR answered ${String(status)} ${wireErrorCode}.`,
+                {
+                    retryable: known.retryable,
+                    retryAfterSeconds,
+                    status,
+                },
+            );
+        }
+        const failure = upstreamFailure(status, wireErrorCode, retryAfterSeconds);
+        // `upstreamFailure` keeps the hint for 429 only; an Ask Dev client also needs it on a 503.
+        if (retryAfterSeconds === undefined || failure.retryAfterSeconds !== undefined) {
+            return failure;
+        }
+        return new AcrRuntimeError(failure.code, failure.message, {
+            cause: failure.cause,
+            retryable: failure.retryable,
+            retryAfterSeconds,
+            status: failure.status,
+        });
+    }
+
     async deviceApproval(input: DeviceApprovalRequest): Promise<{ readonly status: "approved" }> {
         const value = await this.request({
             ...input,
@@ -438,6 +656,10 @@ export class AcrRuntimeClient {
                     path: input.path,
                     permissions: input.permissions,
                     privateKey: this.config.privateKey,
+                    ...(input.permissions.includes("credential:issue") &&
+                    input.authorization.provenance !== undefined
+                        ? { provenance: input.authorization.provenance }
+                        : {}),
                     repositoryScopes: input.authorization.repositoryScopes,
                     subject: input.authorization.subject,
                 }),

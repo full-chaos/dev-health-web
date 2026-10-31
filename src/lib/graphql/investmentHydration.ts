@@ -21,6 +21,7 @@ import type {
     ScopeLevelInput,
 } from "./types";
 import { buildDateRange } from "./investmentFetchers";
+import { adaptEvidenceQualityStats } from "./evidenceQualityStats";
 
 function translateFilters(filters: MetricFilter): FilterInput {
     return {
@@ -97,18 +98,7 @@ function adaptBreakdown(response: AnalyticsQueryResponse): InvestmentResponse {
         evidence_quality_distribution:
             (response.analytics.evidenceQualityDistribution as
                 Record<string, number> | undefined) ?? undefined,
-        evidence_quality_stats: response.analytics.evidenceQualityStats
-            ? {
-                  mean: response.analytics.evidenceQualityStats.mean ?? null,
-                  stddev: response.analytics.evidenceQualityStats.stddev ?? null,
-                  band_counts:
-                      (response.analytics.evidenceQualityStats.bandCounts as Record<
-                          string,
-                          number
-                      >) ?? {},
-                  quality_drivers: [],
-              }
-            : undefined,
+        evidence_quality_stats: adaptEvidenceQualityStats(response.analytics.evidenceQualityStats),
     };
 }
 

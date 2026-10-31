@@ -41,6 +41,7 @@ export function EvidenceDrawerShell({
             eyebrow={EVIDENCE_DRAWER_EYEBROW}
             footer={footer}
             returnFocusRef={returnFocusRef}
+            claimsRightEdge={false}
         >
             <div className="space-y-4">
                 {/* The subject. The drawer title is the same for all. */}

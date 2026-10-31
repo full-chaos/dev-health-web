@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminApiError } from "../_request";
 import { syncConfigsApi } from "../sync";
+import type { BackfillResponse } from "../../types";
 import { COVERAGE_SUMMARIES, SYNC_JOB_WITH_RUN } from "../../__tests__/syncCoverageFixtures";
 
 function mockJsonResponse(body: unknown, init: ResponseInit = { status: 200 }) {
@@ -81,6 +82,31 @@ describe("sync coverage admin API", () => {
         expect(url).toBe(
             "http://test-ops:8000/api/v1/admin/sync-configs/cfg-coverage/jobs?limit=50&offset=0",
         );
+    });
+
+    it("sends the Idempotency-Key header on a keyed backfill and none on an unkeyed one", async () => {
+        const accepted: BackfillResponse = {
+            status: "accepted",
+            backfill_job_id: "job-1",
+            occurrence_id: "occ-1",
+            task_id: "occurrence:occ-1",
+        };
+        const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(
+            async () =>
+                new Response(JSON.stringify(accepted), {
+                    status: 202,
+                    headers: { "Content-Type": "application/json" },
+                }),
+        );
+        const selector = { since: "2026-06-01T00:00:00Z", before: "2026-06-02T00:00:00Z" };
+
+        await syncConfigsApi.backfill("cfg-1", { selector }, "token-1", "org-1", "key-1");
+        await syncConfigsApi.backfill("cfg-1", { selector }, "token-1", "org-1");
+
+        const keyed = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined;
+        const unkeyed = fetchSpy.mock.calls[1]?.[1] as RequestInit | undefined;
+        expect(keyed?.headers).toMatchObject({ "Idempotency-Key": "key-1" });
+        expect(unkeyed?.headers).not.toHaveProperty("Idempotency-Key");
     });
 
     it("requests paginated backfill jobs with current-compatible defaults", async () => {

@@ -1,11 +1,19 @@
 import "server-only";
 
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+import type { IssuanceProvenance } from "./assertion";
 import { AcrRuntimeClient, type OAuthConsentPreview } from "./client";
-import { loadAcrRuntimeConfig } from "./config";
+import {
+    issuanceProvenanceClaimsEnabled,
+    loadAcrRuntimeConfig,
+    loadFirstPartyBrowserClient,
+} from "./config";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import {
     compareScopeBytes,
+    type OpsAuthorization,
+    resolveIssuanceProvenance,
     resolveOpsAuthorization,
     resolveOpsCredentialIssuanceAuthorization,
 } from "./ops";
@@ -16,14 +24,14 @@ const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
 // characters (the un-padded encoding of a 256-bit value).
 const oauthHandlePattern = /^[A-Za-z0-9_-]{43}$/u;
 
-type WebSession = {
+export type WebSession = {
     readonly accessToken: string;
     readonly orgId: string;
     readonly subject: string;
     readonly isPlatformAdmin: boolean;
 };
 
-function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
+export function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
     const accessToken = session?.access_token;
     const orgId = session?.user?.org_id;
     const subject = session?.user?.id;
@@ -155,15 +163,34 @@ function canonicalHandle(handle: string): string {
     return handle;
 }
 
-/** Same impersonation refusal as {@link approveDeviceAuthorization}. */
-function refuseIfImpersonating(
-    rawSession: Awaited<ReturnType<typeof auth>>,
-    session: WebSession,
-): void {
-    if (
-        rawSession?.user.real_org_id !== undefined &&
-        session.orgId !== rawSession.user.real_org_id
-    ) {
+type IssuanceContext = {
+    readonly provenance: IssuanceProvenance;
+    readonly session: WebSession;
+};
+
+/**
+ * Every `credential:issue` call starts here (CHAOS-12095, design T4c). The web server derives the
+ * provenance it signs from its own session and a fresh Ops status read, and refuses while the
+ * session impersonates, by the impersonation state: a same-org impersonation is refused too
+ * (chris decision 6). Nothing here reads the request the browser sent.
+ */
+async function issuanceContext(signal: AbortSignal): Promise<IssuanceContext> {
+    const rawSession = await auth();
+    const session = sessionOrError(rawSession);
+    const realOrgId = rawSession?.user.real_org_id;
+    const provenance = await resolveIssuanceProvenance({
+        accessToken: session.accessToken,
+        sessionImpersonating:
+            rawSession?.user.is_impersonating === true ||
+            (realOrgId !== undefined && realOrgId !== session.orgId),
+        signal,
+        subject: session.subject,
+    });
+    if (provenance.impersonating) {
+        logger.warn(
+            { module: "acr-consent", orgId: session.orgId, userId: session.subject },
+            "acr credential issue refused: the session is impersonating",
+        );
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.notEntitled,
             "Approval is unavailable while impersonating.",
@@ -172,6 +199,35 @@ function refuseIfImpersonating(
             },
         );
     }
+    return { provenance, session };
+}
+
+type IssuanceCall = {
+    readonly authorization: OpsAuthorization;
+    readonly context: IssuanceContext;
+};
+
+/**
+ * The authorization of ONE `credential:issue` call. Each call reads the session and the Ops
+ * impersonation status again, so a context is never reused for a later call: an impersonation
+ * that starts between a preview and its approval refuses the approval.
+ */
+async function freshIssuance(
+    repositoryScopes: readonly string[],
+    signal: AbortSignal,
+): Promise<IssuanceCall> {
+    const context = await issuanceContext(signal);
+    const authorization = await resolveOpsCredentialIssuanceAuthorization({
+        accessToken: context.session.accessToken,
+        orgId: context.session.orgId,
+        // The claims follow ACR_OAUTH_ISSUER (an ACR without their parser refuses them); the
+        // impersonation refusal in issuanceContext does not.
+        provenance: issuanceProvenanceClaimsEnabled() ? context.provenance : undefined,
+        repositoryScopes,
+        signal,
+        subject: context.session.subject,
+    });
+    return { authorization, context };
 }
 
 function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
@@ -195,27 +251,7 @@ export async function approveDeviceAuthorization(input: {
     readonly userCode: string;
 }): Promise<{ readonly status: "approved" }> {
     const requestedScopes = canonicalApprovalScopes(input.repositoryScopes);
-    const rawSession = await auth();
-    const session = sessionOrError(rawSession);
-    if (
-        rawSession?.user.real_org_id !== undefined &&
-        session.orgId !== rawSession.user.real_org_id
-    ) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.notEntitled,
-            "Approval is unavailable while impersonating.",
-            {
-                status: 403,
-            },
-        );
-    }
-    const authorization = await resolveOpsCredentialIssuanceAuthorization({
-        accessToken: session.accessToken,
-        orgId: session.orgId,
-        repositoryScopes: requestedScopes,
-        signal: input.signal,
-        subject: session.subject,
-    });
+    const { authorization } = await freshIssuance(requestedScopes, input.signal);
     const body = JSON.stringify({
         repository_scopes: requestedScopes,
         schema_version: "device_approval_request.v1",
@@ -235,27 +271,7 @@ export async function previewDeviceAuthorization(input: {
     readonly organizationIdHint?: string;
     readonly repositoryHints: readonly string[];
 }> {
-    const rawSession = await auth();
-    const session = sessionOrError(rawSession);
-    if (
-        rawSession?.user.real_org_id !== undefined &&
-        session.orgId !== rawSession.user.real_org_id
-    ) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.notEntitled,
-            "Approval is unavailable while impersonating.",
-            {
-                status: 403,
-            },
-        );
-    }
-    const authorization = await resolveOpsCredentialIssuanceAuthorization({
-        accessToken: session.accessToken,
-        orgId: session.orgId,
-        repositoryScopes: ["*"],
-        signal: input.signal,
-        subject: session.subject,
-    });
+    const { authorization } = await freshIssuance(["*"], input.signal);
     const body = JSON.stringify({
         schema_version: "device_approval_preview_request.v1",
         user_code: input.userCode,
@@ -267,29 +283,82 @@ export async function previewDeviceAuthorization(input: {
     });
 }
 
+async function previewConsent(handle: string, signal: AbortSignal): Promise<OAuthConsentPreview> {
+    const { authorization } = await freshIssuance(["*"], signal);
+    return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentPreview({
+        authorization,
+        body: JSON.stringify({ action: "preview", handle }),
+        signal,
+    });
+}
+
+/**
+ * The first-party browser client (CHAOS-12095): ACR bound the request to its own issuer, which it
+ * binds for that client only (CHAOS-12123), the code comes back to this web origin, and the client
+ * is not self-asserted. Every value compared comes from ACR's preview and this server's config.
+ */
+function isFirstPartyBrowserClient(preview: OAuthConsentPreview): boolean {
+    const client = loadFirstPartyBrowserClient();
+    return (
+        client !== undefined &&
+        !preview.clientSelfAsserted &&
+        preview.resource === client.resource &&
+        preview.redirectOrigin === client.webOrigin
+    );
+}
+
 export async function previewOAuthConsent(input: {
     readonly handle: string;
     readonly signal: AbortSignal;
 }): Promise<OAuthConsentPreview> {
-    const handle = canonicalHandle(input.handle);
-    const rawSession = await auth();
-    const session = sessionOrError(rawSession);
-    refuseIfImpersonating(rawSession, session);
-    const authorization = await resolveOpsCredentialIssuanceAuthorization({
-        accessToken: session.accessToken,
-        orgId: session.orgId,
-        repositoryScopes: ["*"],
-        signal: input.signal,
-        subject: session.subject,
-    });
-    const body = JSON.stringify({ action: "preview", handle });
-    return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentPreview({
-        authorization,
-        body,
-        signal: input.signal,
-    });
+    return previewConsent(canonicalHandle(input.handle), input.signal);
 }
 
+export type OAuthConsentOpening =
+    | { readonly kind: "approved"; readonly redirectUrl: string }
+    | { readonly kind: "review"; readonly preview: OAuthConsentPreview };
+
+/**
+ * The consent page's server step. A third-party (MCP) client gets the preview to review and choose
+ * repositories. The first-party browser client gets no click (chris decision 2): a valid web
+ * session approves it here, server to server through ACR's consent route, with the live org scope
+ * grant (`["*"]`; ACR re-checks the scope on each call). That approval needs the session's `sid`.
+ */
+export async function openOAuthConsent(input: {
+    readonly handle: string;
+    readonly signal: AbortSignal;
+}): Promise<OAuthConsentOpening> {
+    const handle = canonicalHandle(input.handle);
+    const preview = await previewConsent(handle, input.signal);
+    if (!isFirstPartyBrowserClient(preview)) return { kind: "review", preview };
+    const { authorization, context } = await freshIssuance(["*"], input.signal);
+    if (context.provenance.sessionId === undefined) {
+        logger.warn(
+            {
+                module: "acr-consent",
+                orgId: context.session.orgId,
+                userId: context.session.subject,
+            },
+            "acr browser consent refused: the session has no sid; sign in again",
+        );
+        throw invalidOAuthConsentRequest();
+    }
+    const decision = await new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
+        authorization,
+        body: JSON.stringify({ action: "approve", handle, repository_scopes: ["*"] }),
+        signal: input.signal,
+    });
+    logger.info(
+        { module: "acr-consent", orgId: context.session.orgId, userId: context.session.subject },
+        "acr browser consent approved with no click",
+    );
+    return { kind: "approved", redirectUrl: decision.redirectUrl };
+}
+
+/**
+ * The consent page's buttons. Approve is for third-party clients only: the first-party browser
+ * client's grant is never chosen by the browser, so an approve for it is refused here.
+ */
 export async function decideOAuthConsent(input: {
     readonly action: "approve" | "deny";
     readonly handle: string;
@@ -297,30 +366,33 @@ export async function decideOAuthConsent(input: {
     readonly signal: AbortSignal;
 }): Promise<{ readonly redirectUrl: string }> {
     const handle = canonicalHandle(input.handle);
-    const rawSession = await auth();
-    const session = sessionOrError(rawSession);
-    refuseIfImpersonating(rawSession, session);
-    // Denial carries no repository grant — the assertion still needs a
-    // repository_scopes claim, so it is bound org-wide like preview.
-    const requestedScopes =
-        input.action === "approve"
-            ? canonicalApprovalScopes(input.repositoryScopes ?? ["*"])
-            : (["*"] as const);
-    const authorization = await resolveOpsCredentialIssuanceAuthorization({
-        accessToken: session.accessToken,
-        orgId: session.orgId,
-        repositoryScopes: requestedScopes,
-        signal: input.signal,
-        subject: session.subject,
-    });
-    const body = JSON.stringify(
-        input.action === "approve"
-            ? { action: "approve", handle, repository_scopes: requestedScopes }
-            : { action: "deny", handle },
-    );
+    if (input.action === "deny") {
+        // Denial carries no repository grant — the assertion still needs a
+        // repository_scopes claim, so it is bound org-wide like preview.
+        const { authorization } = await freshIssuance(["*"], input.signal);
+        return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
+            authorization,
+            body: JSON.stringify({ action: "deny", handle }),
+            signal: input.signal,
+        });
+    }
+    const requestedScopes = canonicalApprovalScopes(input.repositoryScopes ?? ["*"]);
+    const preview = await previewConsent(handle, input.signal);
+    const { authorization, context } = await freshIssuance(requestedScopes, input.signal);
+    if (isFirstPartyBrowserClient(preview)) {
+        logger.warn(
+            {
+                module: "acr-consent",
+                orgId: context.session.orgId,
+                userId: context.session.subject,
+            },
+            "acr consent approve refused: the first-party browser client is approved by the server only",
+        );
+        throw invalidOAuthConsentRequest();
+    }
     return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
         authorization,
-        body,
+        body: JSON.stringify({ action: "approve", handle, repository_scopes: requestedScopes }),
         signal: input.signal,
     });
 }

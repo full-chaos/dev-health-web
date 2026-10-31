@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 
 import {
     GitHubAppConnect,
     type GitHubAppConnectResult,
 } from "@/components/admin/integrations/GitHubAppConnect";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { resolveOrigin } from "@/lib/origin";
+import { skipIntegrationStep } from "@/lib/onboarding/actions";
 import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 
 type OnboardIntegrationStepProps = {
@@ -55,7 +54,6 @@ export function OnboardIntegrationStep({
     trialIntent = false,
     orgId = null,
 }: OnboardIntegrationStepProps) {
-    const { data: session } = useSession();
     const [skipping, setSkipping] = useState(false);
     const [skipError, setSkipError] = useState<string | null>(null);
     const stepRef = useRef<HTMLDivElement>(null);
@@ -81,14 +79,9 @@ export function OnboardIntegrationStep({
         setSkipError(null);
         setSkipping(true);
         try {
-            const res = await fetch(`${resolveOrigin()}/api/v1/auth/onboarding/skip-integration`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token}`,
-                },
-            });
-            if (!res.ok) {
+            // CHAOS-12088: the server action calls the backend with the session's token.
+            const result = await skipIntegrationStep();
+            if (!result.ok) {
                 setSkipError("We couldn't skip this step. Please try again.");
                 setSkipping(false);
                 return;

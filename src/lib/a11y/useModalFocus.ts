@@ -56,6 +56,8 @@ export function useModalFocus({
             // Read at close on purpose: the caller may point the ref at a node that mounted later.
             // eslint-disable-next-line react-hooks/exhaustive-deps
             const target = returnFocusRef?.current ?? opener;
+            // Another modal took over (a drawer opened from this one): focus belongs to it.
+            if (document.querySelector('[aria-modal="true"]')) return;
             if (target && document.contains(target)) target.focus();
         };
         // The refs are stable objects; only `open` should restart this.

@@ -13,6 +13,7 @@ import {
     type ChartValueFormat,
 } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
+import { escapeHtml } from "./escapeHtml";
 import { buildLegend, buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 
@@ -101,7 +102,7 @@ export function VerticalBarChart({
                             .map((entry) => {
                                 const item = entry as NumericChartParam;
                                 const label = item.seriesName ?? item.name ?? "Value";
-                                return `${item.marker ?? ""}${label}: ${formatValue(item.value)}`;
+                                return `${item.marker ?? ""}${escapeHtml(label)}: ${escapeHtml(formatValue(item.value))}`;
                             })
                             .join("<br/>");
                     },

@@ -1,0 +1,583 @@
+import axe from "axe-core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
+import userEvent from "@testing-library/user-event";
+
+import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import {
+    EvidenceDrawerProvider,
+    useEvidenceDrawer,
+} from "@/components/evidence/EvidenceDrawerProvider";
+import { AppShell } from "@/components/shell/AppShell";
+import { EVIDENCE_DRAWER_TITLE } from "@/components/evidence/EvidenceDrawerShell";
+import { Drawer } from "@/components/ui/Drawer";
+import {
+    claimRightDrawer,
+    resetRightDrawerForTest,
+    rightDrawerOwnerForTest,
+} from "@/lib/shell/rightDrawer";
+
+import type { TestModeTurns } from "./answer/testModeAnswer";
+import kindCandidate from "./answer/__tests__/captures/kiac_kind_and_candidate_clarification.event.json";
+import budgetRefusal from "./answer/__tests__/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
+
+const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
+
+// The panel's turn source (CHAOS-3440). No turns unless a test sets some.
+const turnsMock = vi.hoisted(() => ({
+    value: { turns: [], onConfirm: undefined, onReask: undefined } as unknown,
+}));
+vi.mock("./answer/testModeAnswer", () => ({ useTestModeTurns: () => turnsMock.value }));
+
+vi.mock("next/navigation", () => ({
+    usePathname: () => navigationMock.pathname,
+    useSearchParams: () => new URLSearchParams(navigationMock.search),
+    useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
+}));
+
+vi.mock("next-auth/react", () => ({
+    useSession: () => ({
+        data: { user: { org_id: "org-1", email: "admin@devhealth.example" } },
+        status: "authenticated",
+        update: vi.fn(),
+    }),
+    signOut: vi.fn(),
+}));
+
+const ON = { ask_dev: true, agent_context_runtime: true };
+
+/** `matches` answers the `(min-width: 768px)` query: true is a desktop viewport. */
+function setViewport(desktop: boolean): void {
+    vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockImplementation((query: string) => ({
+            matches: desktop,
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+            onchange: null,
+        })),
+    );
+    // jsdom lays nothing out. The bar of the breakpoint is the one that has a box.
+    vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (
+        this: HTMLElement,
+    ) {
+        const visibleBar = desktop ? "top-bar" : "mobile-bar";
+        const own = this.getAttribute("data-testid") ?? "";
+        return (own === `ask-dev-launcher-${visibleBar}` || !own.startsWith("ask-dev-launcher-")
+            ? [{}]
+            : []) as unknown as DOMRectList;
+    });
+}
+
+function EvidenceOpener() {
+    const evidence = useEvidenceDrawer();
+    return (
+        <button
+            type="button"
+            onClick={() => evidence.open({ title: "Evidence", content: <p>Evidence body</p> })}
+        >
+            Open evidence
+        </button>
+    );
+}
+
+function shellTree(features: Record<string, boolean> = ON) {
+    return (
+        <AdminTierProvider tier="team" features={features}>
+            <EvidenceDrawerProvider>
+                <AppShell>
+                    <h1>Page</h1>
+                    <EvidenceOpener />
+                </AppShell>
+            </EvidenceDrawerProvider>
+        </AdminTierProvider>
+    );
+}
+
+function renderShell() {
+    return render(shellTree());
+}
+
+const visibleLauncherName = { name: "Open Ask Dev" } as const;
+const launcher = () => screen.getByTestId("ask-dev-launcher-top-bar");
+const mobileLauncher = () => screen.getByTestId("ask-dev-launcher-mobile-bar");
+
+async function axeViolations(node: Element): Promise<string[]> {
+    const result = await axe.run(node, {
+        // jsdom has no layout or paint: contrast and region checks cannot be measured.
+        rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
+    });
+    return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.html).join(" | ")}`);
+}
+
+beforeEach(() => {
+    navigationMock.pathname = "/dashboard";
+    turnsMock.value = { turns: [], onConfirm: undefined, onReask: undefined };
+    resetRightDrawerForTest();
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+});
+
+describe("Ask Dev panel — desktop (non-modal right region)", () => {
+    beforeEach(() => setViewport(true));
+
+    it("is closed until the launcher opens it, and opening sends no request", async () => {
+        const fetchSpy = vi.fn();
+        vi.stubGlobal("fetch", fetchSpy);
+        renderShell();
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+
+        await userEvent.click(launcher());
+
+        const panel = screen.getByRole("complementary", { name: "Ask Dev" });
+        expect(panel).toBe(screen.getByTestId("ask-dev-panel"));
+        // The shell makes its own reads (the organization card). Ask Dev must make none.
+        const urls = fetchSpy.mock.calls.map(([input]) => String(input));
+        expect(urls.filter((url) => /ask-dev|context-fabric|\/api\/v1\/dev/u.test(url))).toEqual(
+            [],
+        );
+    });
+
+    it("is not modal: no aria-modal, no backdrop, no scroll lock", async () => {
+        renderShell();
+
+        await userEvent.click(launcher());
+
+        const panel = screen.getByTestId("ask-dev-panel");
+        expect(panel).not.toHaveAttribute("aria-modal");
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.queryByTestId("drawer-backdrop")).toBeNull();
+        expect(document.body.style.overflow).not.toBe("hidden");
+    });
+
+    it("moves focus into the panel on open, and the launcher points at it", async () => {
+        renderShell();
+
+        await userEvent.click(launcher());
+
+        const panel = screen.getByTestId("ask-dev-panel");
+        expect(panel).toHaveFocus();
+        expect(launcher()).toHaveAttribute("aria-expanded", "true");
+        expect(launcher()).toHaveAttribute("aria-controls", panel.id);
+    });
+
+    it("closes with Escape and returns focus to the visible launcher", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        await waitFor(() => expect(launcher()).toHaveFocus());
+        expect(mobileLauncher()).not.toHaveFocus();
+        expect(launcher()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("closes with the Close button and returns focus to the launcher", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+
+        await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        await waitFor(() => expect(launcher()).toHaveFocus());
+    });
+
+    it("leaves Escape to a modal drawer that is on top", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+        const dialog = document.createElement("div");
+        dialog.setAttribute("aria-modal", "true");
+        document.body.appendChild(dialog);
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+        dialog.remove();
+    });
+
+    it("announces the transcript as a polite log", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+
+        const log = within(screen.getByTestId("ask-dev-panel")).getByRole("log", {
+            name: "Conversation",
+        });
+        expect(log).toHaveAttribute("aria-live", "polite");
+    });
+
+    it("has no axe violations", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+
+        expect(await axeViolations(screen.getByTestId("ask-dev-panel"))).toEqual([]);
+    });
+
+    it("gives the sinks to the last turn only: every earlier turn is read-only (CHAOS-3440)", async () => {
+        const onConfirm = vi.fn();
+        const onReask = vi.fn();
+        const refusal = {
+            question: "What is the status of every project the Web team owns?",
+            refusal: budgetRefusal,
+        };
+        turnsMock.value = {
+            turns: [kindCandidate.result, refusal],
+            onConfirm,
+            onReask,
+        } as unknown as TestModeTurns;
+        renderShell();
+        await userEvent.click(launcher());
+
+        const turns = within(screen.getByTestId("ask-dev-panel")).getAllByTestId("ask-dev-turn");
+        expect(turns).toHaveLength(2);
+        expect(within(turns[0] as HTMLElement).queryAllByRole("button")).toEqual([]);
+        await userEvent.click(within(turns[1] as HTMLElement).getByTestId("ask-dev-refusal-reask"));
+        expect(onReask).toHaveBeenCalledWith({ question: refusal.question, axis: "scope_anchor" });
+        expect(onConfirm).not.toHaveBeenCalled();
+    });
+});
+
+describe("Ask Dev panel — mobile (modal sheet)", () => {
+    beforeEach(() => setViewport(false));
+
+    it("opens a modal dialog and focuses inside it", async () => {
+        renderShell();
+
+        await userEvent.click(mobileLauncher());
+
+        const sheet = screen.getByRole("dialog", { name: "Ask Dev" });
+        expect(sheet).toHaveAttribute("aria-modal", "true");
+        expect(sheet).toContainElement(document.activeElement as HTMLElement);
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
+
+    it("Ctrl+J closes the sheet and suppresses the browser default (CHAOS-11935)", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+        expect(screen.getByRole("dialog", { name: "Ask Dev" })).toBeInTheDocument();
+
+        const event = new KeyboardEvent("keydown", {
+            key: "j",
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true,
+        });
+        act(() => {
+            document.body.dispatchEvent(event);
+        });
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(screen.queryByRole("dialog", { name: "Ask Dev" })).toBeNull();
+    });
+
+    it("Ctrl+J does nothing while another modal sits over the sheet", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+        const other = document.createElement("div");
+        other.setAttribute("role", "dialog");
+        other.setAttribute("aria-modal", "true");
+        document.body.append(other);
+
+        const event = new KeyboardEvent("keydown", {
+            key: "j",
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true,
+        });
+        act(() => {
+            document.body.dispatchEvent(event);
+        });
+        other.remove();
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(screen.getByRole("dialog", { name: "Ask Dev" })).toBeInTheDocument();
+    });
+
+    it("points the launcher at the sheet it opened", async () => {
+        renderShell();
+
+        await userEvent.click(mobileLauncher());
+
+        const sheet = screen.getByRole("dialog", { name: "Ask Dev" });
+        expect(sheet.id).not.toBe("");
+        expect(mobileLauncher()).toHaveAttribute("aria-controls", sheet.id);
+    });
+
+    it("keeps Tab inside the sheet", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+        const sheet = screen.getByRole("dialog", { name: "Ask Dev" });
+
+        await userEvent.tab();
+        await userEvent.tab();
+        await userEvent.tab();
+
+        expect(sheet).toContainElement(document.activeElement as HTMLElement);
+    });
+
+    it("closes with Escape and returns focus to the mobile launcher", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog", { name: "Ask Dev" })).toBeNull();
+        await waitFor(() => expect(mobileLauncher()).toHaveFocus());
+        expect(launcher()).not.toHaveFocus();
+    });
+
+    it("closes with the backdrop", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+
+        await userEvent.click(screen.getByTestId("drawer-backdrop"));
+
+        expect(screen.queryByRole("dialog", { name: "Ask Dev" })).toBeNull();
+    });
+
+    it("has no axe violations", async () => {
+        renderShell();
+        await userEvent.click(mobileLauncher());
+
+        expect(await axeViolations(screen.getByRole("dialog", { name: "Ask Dev" }))).toEqual([]);
+    });
+});
+
+describe("one right drawer at a time", () => {
+    beforeEach(() => setViewport(true));
+
+    it("opening the evidence drawer closes Ask Dev", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        expect(screen.getByRole("dialog", { name: EVIDENCE_DRAWER_TITLE })).toBeInTheDocument();
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        expect(launcher()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("opening Ask Dev closes the evidence drawer", async () => {
+        renderShell();
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+        expect(screen.getByRole("dialog", { name: EVIDENCE_DRAWER_TITLE })).toBeInTheDocument();
+        // The modal drawer hides the page from the accessibility tree; reach the launcher directly.
+        await act(async () => launcher().click());
+
+        expect(screen.queryByRole("dialog", { name: EVIDENCE_DRAWER_TITLE })).toBeNull();
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+    });
+
+    it("closes Ask Dev when the filter drawer claims the edge", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+
+        act(() => claimRightDrawer("filters", vi.fn()));
+
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
+});
+
+describe("the surface is off", () => {
+    beforeEach(() => setViewport(true));
+
+    it("draws no panel with an entitlement off, even if the flag were set", () => {
+        render(
+            <AdminTierProvider
+                tier="team"
+                features={{ ask_dev: true, agent_context_runtime: false }}
+            >
+                <EvidenceDrawerProvider>
+                    <AppShell>
+                        <h1>Page</h1>
+                    </AppShell>
+                </EvidenceDrawerProvider>
+            </AdminTierProvider>,
+        );
+
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        expect(screen.queryByRole("button", visibleLauncherName)).toBeNull();
+    });
+});
+
+function DrawerOpener() {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <button type="button" onClick={() => setOpen(true)}>
+                Open shared drawer
+            </button>
+            <Drawer open={open} onCloseAction={() => setOpen(false)} title="Shared drawer">
+                <p>Body</p>
+            </Drawer>
+        </>
+    );
+}
+
+describe("every shared right drawer takes the edge", () => {
+    beforeEach(() => setViewport(true));
+
+    it("opening a `Drawer` (for example the AI evidence drawer) closes Ask Dev", async () => {
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <EvidenceDrawerProvider>
+                    <AppShell>
+                        <DrawerOpener />
+                    </AppShell>
+                </EvidenceDrawerProvider>
+            </AdminTierProvider>,
+        );
+        await userEvent.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole("button", { name: "Open shared drawer" }));
+
+        expect(screen.getByRole("dialog", { name: "Shared drawer" })).toBeInTheDocument();
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
+
+    it("a closed `Drawer` gives the edge back", async () => {
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <EvidenceDrawerProvider>
+                    <AppShell>
+                        <DrawerOpener />
+                    </AppShell>
+                </EvidenceDrawerProvider>
+            </AdminTierProvider>,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Open shared drawer" }));
+        expect(rightDrawerOwnerForTest()).toMatch(/^drawer:/u);
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(rightDrawerOwnerForTest()).toBeNull();
+    });
+});
+
+function TwoDrawers() {
+    const [first, setFirst] = useState(false);
+    const [second, setSecond] = useState(false);
+    return (
+        <>
+            <button type="button" onClick={() => setFirst(true)}>
+                Open first
+            </button>
+            <button type="button" onClick={() => setSecond(true)}>
+                Open second
+            </button>
+            <Drawer open={first} onCloseAction={() => setFirst(false)} title="First drawer">
+                <p>First</p>
+            </Drawer>
+            <Drawer open={second} onCloseAction={() => setSecond(false)} title="Second drawer">
+                <p>Second</p>
+            </Drawer>
+        </>
+    );
+}
+
+describe("two shared drawers are two owners", () => {
+    beforeEach(() => setViewport(true));
+
+    it("opening the second closes the first", async () => {
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <TwoDrawers />
+            </AdminTierProvider>,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Open first" }));
+        expect(screen.getByRole("dialog", { name: "First drawer" })).toBeInTheDocument();
+
+        // The first drawer is modal and hides the page: click the second opener directly.
+        await act(async () =>
+            screen.getByRole("button", { name: "Open second", hidden: true }).click(),
+        );
+
+        expect(screen.getByRole("dialog", { name: "Second drawer" })).toBeInTheDocument();
+        expect(screen.queryByRole("dialog", { name: "First drawer" })).toBeNull();
+    });
+
+    it("hands the page lock and the focus over to the second drawer, and unlocks when it closes", async () => {
+        document.body.style.overflow = "";
+        render(
+            <AdminTierProvider tier="team" features={ON}>
+                <TwoDrawers />
+            </AdminTierProvider>,
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Open first" }));
+        await act(async () =>
+            screen.getByRole("button", { name: "Open second", hidden: true }).click(),
+        );
+
+        const second = screen.getByRole("dialog", { name: "Second drawer" });
+        expect(document.body.style.overflow).toBe("hidden");
+        expect(second).toContainElement(document.activeElement as HTMLElement);
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(document.body.style.overflow).toBe("");
+    });
+});
+
+describe("Ask Dev state follows where it is allowed", () => {
+    beforeEach(() => setViewport(true));
+
+    it("stays closed after a visit to an excluded route", async () => {
+        const { rerender } = renderShell();
+        await userEvent.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+
+        navigationMock.pathname = "/superadmin/context-fabric/validation";
+        rerender(shellTree());
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+
+        navigationMock.pathname = "/dashboard";
+        rerender(shellTree());
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        expect(launcher()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("closes for good when an entitlement turns off, and does not reopen when it returns", async () => {
+        const { rerender } = renderShell();
+        await userEvent.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+
+        rerender(shellTree({ ask_dev: false, agent_context_runtime: true }));
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+
+        rerender(shellTree(ON));
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        expect(launcher()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("gives the right edge back when it is no longer allowed", async () => {
+        const { rerender } = renderShell();
+        await userEvent.click(launcher());
+        expect(rightDrawerOwnerForTest()).toBe("ask-dev");
+
+        navigationMock.pathname = "/superadmin/context-fabric/validation";
+        rerender(shellTree());
+
+        await waitFor(() => expect(rightDrawerOwnerForTest()).toBeNull());
+    });
+
+    it("drops its claim when the shell unmounts", async () => {
+        const { unmount } = renderShell();
+        await userEvent.click(launcher());
+        expect(rightDrawerOwnerForTest()).toBe("ask-dev");
+
+        unmount();
+
+        expect(rightDrawerOwnerForTest()).toBeNull();
+    });
+});

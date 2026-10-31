@@ -13,6 +13,30 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
+    /** The Ask Dev launcher in the app shell (CHAOS-3247: the accessible name). */
+    openAskDev: "Open Ask Dev",
+    /** The Ask Dev composer: send the question (CHAOS-11928). */
+    askDevSend: "Send",
+    /** The Ask Dev composer: stop the run in flight (a disconnect, plan §2.7.4). */
+    askDevStop: "Stop",
+    /** The Ask Dev panel: open the same conversation on the full page `/dev` (CHAOS-11934). */
+    askDevExpand: "Open full page",
+    /** The Ask Dev full page: go back and show the same conversation in the panel (CHAOS-11934). */
+    askDevMinimize: "Minimize to panel",
+    /** Ask Dev: read a restored answer again (a GET, never a new investigation; CHAOS-11956). */
+    askDevLoadAgain: "Load again",
+    /** Ask Dev: start a new, empty conversation; the old one stays in the history (CHAOS-11956). */
+    askDevNewConversation: "New conversation",
+    /** Ask Dev panel: show the list of past conversations (CHAOS-11956). */
+    askDevHistory: "History",
+    /** Ask Dev panel: leave the history list for the current conversation (CHAOS-11956). */
+    askDevBackToConversation: "Back to conversation",
+    /** Ask Dev: read the turns before the oldest one shown (CHAOS-11956). */
+    askDevShowEarlierTurns: "Show earlier turns",
+    /** Ask Dev history: read the next page of past conversations (CHAOS-11956). */
+    askDevShowMoreConversations: "Show more",
+    /** Ask Dev history: delete one past conversation, after a confirm (CHAOS-11956). */
+    askDevDeleteConversation: "Delete conversation",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */
@@ -163,7 +187,7 @@ export const CTA_LABELS = {
     /** Investment Allocation, selected-path aside: the Evidence tab (approved copy, app.js line 71). */
     inspectAllocationEvidence: "Inspect allocation evidence",
     /** Investment "Read this with context": open the AI explanation in the evidence drawer. */
-    showAiExplanation: "Show AI explanation",
+    showAiExplanation: "Show explanation",
     /** Investment AI explanation: ask for a new explanation of the same window. */
     regenerate: "Regenerate",
     /** Investment AI explanation: shown on the Regenerate button while the request runs. */
@@ -245,6 +269,8 @@ export const CTA_LABELS = {
     /** Reset the run-detail unit table status filter (CHAOS-2794). */
     allStatuses: "All statuses",
     viewRun: "View run",
+    /** Open the config page where an accepted backfill job reports its progress. */
+    viewBackfillProgress: "View backfill progress",
     /** Advance the backfill wizard to the previous step (CHAOS-2796). */
     backButton: "Back",
     /** Submit the backfill wizard's final step (CHAOS-2796). */

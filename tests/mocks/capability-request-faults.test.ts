@@ -1,4 +1,4 @@
-import type { Page, Request } from "@playwright/test";
+import type { Page, Request, Response } from "@playwright/test";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -30,25 +30,45 @@ function deferred<T>() {
 
 function request({
     url = CAPABILITIES_URL,
+    method = "GET",
+    headers = {},
     errorText = "net::ERR_ABORTED",
     response = Promise.resolve(null),
 }: {
     url?: string;
+    method?: string;
+    headers?: Record<string, string>;
     errorText?: string;
     response?: Promise<{ status: () => number } | null>;
 } = {}): Request {
     return {
         url: () => url,
-        method: () => "GET",
+        method: () => method,
+        headers: () => headers,
         failure: () => ({ errorText }),
         response: () => response,
     } as unknown as Request;
 }
 
+function responseOf(
+    forRequest: Request,
+    {
+        status = 200,
+        contentType = "text/x-component",
+    }: { status?: number; contentType?: string } = {},
+): Response {
+    return {
+        request: () => forRequest,
+        url: () => forRequest.url(),
+        status: () => status,
+        headers: () => ({ "content-type": contentType }),
+    } as unknown as Response;
+}
+
 function requestEventPage() {
-    const listeners = new Map<RequestEvent, Array<(request: Request) => void>>();
+    const listeners = new Map<RequestEvent | "response", Array<(payload: never) => void>>();
     const page = {
-        on: (event: RequestEvent, listener: (request: Request) => void) => {
+        on: (event: RequestEvent | "response", listener: (payload: never) => void) => {
             listeners.set(event, [...(listeners.get(event) ?? []), listener]);
             return page;
         },
@@ -57,7 +77,10 @@ function requestEventPage() {
     return {
         page,
         emit(event: RequestEvent, requestEvent: Request): void {
-            for (const listener of listeners.get(event) ?? []) listener(requestEvent);
+            for (const listener of listeners.get(event) ?? []) listener(requestEvent as never);
+        },
+        respond(response: Response): void {
+            for (const listener of listeners.get("response") ?? []) listener(response as never);
         },
     };
 }
@@ -236,5 +259,153 @@ describe("capability request fault reconciliation", () => {
         );
 
         expect(result).toEqual([mutationFailure]);
+    });
+});
+
+describe("an aborted server action after its response", () => {
+    const PAGE = `${ORIGIN}/superadmin/context-fabric/validation`;
+    const responded = (
+        overrides: Partial<Extract<BrowserRequestEvent, { kind: "responded" }>> = {},
+    ) =>
+        ({
+            kind: "responded",
+            sequence: 1,
+            url: PAGE,
+            status: 200,
+            contentType: "text/x-component",
+            ...overrides,
+        }) as const satisfies BrowserRequestEvent;
+    const aborted = (overrides: Partial<Extract<BrowserRequestEvent, { kind: "failed" }>> = {}) =>
+        ({
+            kind: "failed",
+            sequence: 1,
+            url: PAGE,
+            method: "POST",
+            errorText: "net::ERR_ABORTED",
+            serverAction: true,
+            ...overrides,
+        }) as const satisfies BrowserRequestEvent;
+
+    it("is not a fault when the 200 text/x-component response came first", () => {
+        expect(unrecoveredBrowserRequestFailures([responded(), aborted()], PAGE)).toEqual([]);
+    });
+
+    it("accepts a content type with parameters, in any case", () => {
+        const events = [responded({ contentType: "Text/X-Component; charset=utf-8" }), aborted()];
+        expect(unrecoveredBrowserRequestFailures(events, PAGE)).toEqual([]);
+    });
+
+    it.each([
+        ["no response was seen first", [aborted()]],
+        ["the response came after the failure", [aborted(), responded()]],
+        ["the response belongs to another request", [responded({ sequence: 2 }), aborted()]],
+        ["the response was not 200", [responded({ status: 500 }), aborted()]],
+        ["the response was 204", [responded({ status: 204 }), aborted()]],
+        [
+            "the content type is not text/x-component",
+            [responded({ contentType: "text/html" }), aborted()],
+        ],
+        ["the content type is empty", [responded({ contentType: "" }), aborted()]],
+        ["the request is a GET", [responded(), aborted({ method: "GET" })]],
+        ["the request has no next-action header", [responded(), aborted({ serverAction: false })]],
+        ["the serverAction flag is missing", [responded(), aborted({ serverAction: undefined })]],
+        [
+            "the failure is not an abort",
+            [responded(), aborted({ errorText: "net::ERR_CONNECTION_RESET" })],
+        ],
+        [
+            "the request went to another origin",
+            [
+                responded({ url: "http://127.0.0.1:3002/x" }),
+                aborted({ url: "http://127.0.0.1:3002/x" }),
+            ],
+        ],
+    ] as const)("stays a fault when %s", (_label, events) => {
+        const failures = unrecoveredBrowserRequestFailures(events, PAGE);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]?.kind).toBe("failed");
+    });
+
+    it("records a server action from the page events: response then abort is not a fault", () => {
+        const adapter = requestEventPage();
+        const faults = recordCapabilityRequestFaults(adapter.page);
+        const action = request({ url: PAGE, method: "POST", headers: { "next-action": "40abc" } });
+
+        adapter.emit("request", action);
+        adapter.respond(responseOf(action));
+        adapter.emit("requestfailed", action);
+
+        expect(faults.failedRequests()).toEqual([]);
+    });
+
+    it("records a server action from the page events: abort before any response is a fault", () => {
+        const adapter = requestEventPage();
+        const faults = recordCapabilityRequestFaults(adapter.page);
+        const action = request({ url: PAGE, method: "POST", headers: { "next-action": "40abc" } });
+
+        adapter.emit("request", action);
+        adapter.emit("requestfailed", action);
+        adapter.respond(responseOf(action));
+
+        expect(faults.failedRequests()).toEqual([
+            expect.objectContaining({ method: "POST", url: PAGE, serverAction: true }),
+        ]);
+    });
+});
+
+describe("an aborted RSC refresh GET after its response", () => {
+    const PAGE = `${ORIGIN}/org/admin/integrations/pagerduty`;
+    const RSC_URL = `${PAGE}?_rsc=abc12`;
+    const responded = (
+        overrides: Partial<Extract<BrowserRequestEvent, { kind: "responded" }>> = {},
+    ) =>
+        ({
+            kind: "responded",
+            sequence: 1,
+            url: RSC_URL,
+            status: 200,
+            contentType: "text/x-component",
+            ...overrides,
+        }) as const satisfies BrowserRequestEvent;
+    const aborted = (overrides: Partial<Extract<BrowserRequestEvent, { kind: "failed" }>> = {}) =>
+        ({
+            kind: "failed",
+            sequence: 1,
+            url: RSC_URL,
+            method: "GET",
+            errorText: "net::ERR_ABORTED",
+            ...overrides,
+        }) as const satisfies BrowserRequestEvent;
+
+    it("is not a fault when the 200 text/x-component response came first", () => {
+        expect(unrecoveredBrowserRequestFailures([responded(), aborted()], PAGE)).toEqual([]);
+    });
+
+    it.each([
+        ["no response was seen first", [aborted()]],
+        ["the response came after the failure", [aborted(), responded()]],
+        ["the response belongs to another request", [responded({ sequence: 2 }), aborted()]],
+        ["the response was not 200", [responded({ status: 500 }), aborted()]],
+        [
+            "the content type is not text/x-component",
+            [responded({ contentType: "text/html" }), aborted()],
+        ],
+        ["the request is a POST", [responded(), aborted({ method: "POST" })]],
+        [
+            "the failure is not an abort",
+            [responded(), aborted({ errorText: "net::ERR_CONNECTION_RESET" })],
+        ],
+        [
+            "the request went to another origin",
+            [
+                responded({ url: "http://127.0.0.1:3002/x?_rsc=abc12" }),
+                aborted({ url: "http://127.0.0.1:3002/x?_rsc=abc12" }),
+            ],
+        ],
+        ["the url has no _rsc query key", [responded({ url: PAGE }), aborted({ url: PAGE })]],
+    ] as const)("stays a fault when %s", (_label, events) => {
+        const failures = unrecoveredBrowserRequestFailures(events, PAGE);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]?.kind).toBe("failed");
     });
 });

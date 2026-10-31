@@ -1,0 +1,1802 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_fa94eababe200aebd7486a9ed51896bf",
+    "seq": 17,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_ddea615c7e0f2033d2abbffa98c79ca3",
+        "request_id": "req_fa94eababe200aebd7486a9ed51896bf",
+        "generated_at": "2026-10-30T18:30:41.795037135Z",
+        "status": "degraded",
+        "question": "Which of the projects the Teamalpha team owns carry the most open work right now?",
+        "interpretation": {
+            "shape": "explicit_cohort",
+            "requested_judgment": "Which Teamalpha-owned projects have the most open work right now?",
+            "subject_terms": ["Teamalpha"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "status"
+                },
+                {
+                    "kind": "work"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000009c",
+                    "subject": {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    },
+                    "state": "committed",
+                    "matched_terms": ["Teamalpha"],
+                    "match_reasons": ["Exact canonical subject label match."],
+                    "confidence": 1,
+                    "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
+                    "provider": "linear",
+                    "match_mechanisms": ["exact", "lexical"]
+                }
+            ],
+            "committed": [
+                {
+                    "kind": "team",
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
+                }
+            ],
+            "commit_decision_digests": [
+                {
+                    "subject": {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    },
+                    "commit_gate": "exact_index",
+                    "search_truncated": true,
+                    "alias_lookup_complete": true,
+                    "identity_lookup": "complete"
+                }
+            ]
+        },
+        "answer_plan": {
+            "family": "scoped_cohort_status",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table"],
+            "fact_kinds": [
+                "status",
+                "work",
+                "health",
+                "workload",
+                "readiness",
+                "operational_deficiencies",
+                "investment"
+            ],
+            "axes": ["subject_anchor", "expected_kind", "window"],
+            "budget": {
+                "max_items": 66,
+                "max_serialized_bytes": 262144,
+                "max_members": 50,
+                "synthesis_headroom": 16,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "requirements": [
+                {
+                    "requirement": "health/member/project",
+                    "obligation": "health",
+                    "role": "member",
+                    "subject": "project",
+                    "kind": "read",
+                    "fact_kinds": ["health"],
+                    "scope": "each_member",
+                    "quantifier": "at_least_one"
+                },
+                {
+                    "requirement": "ranking/member/project",
+                    "obligation": "ranking",
+                    "role": "member",
+                    "subject": "project",
+                    "kind": "computed",
+                    "step": "rank_cohort",
+                    "step_execution": "server_executed",
+                    "input_class": "fact_kinds",
+                    "input_fact_kinds": [
+                        "health",
+                        "workload",
+                        "investment",
+                        "readiness",
+                        "operational_deficiencies"
+                    ],
+                    "scope": "each_member",
+                    "quantifier": "all"
+                },
+                {
+                    "requirement": "state/member/project",
+                    "obligation": "state",
+                    "role": "member",
+                    "subject": "project",
+                    "kind": "read",
+                    "fact_kinds": [
+                        "flow",
+                        "health",
+                        "investment",
+                        "landscape",
+                        "readiness",
+                        "workload"
+                    ],
+                    "scope": "each_member",
+                    "quantifier": "corroborated"
+                }
+            ]
+        },
+        "direct_judgment": "This investigation is degraded: coverage was limited. Principal driver: Teamalpha has a team-wide open-work count, not a project ranking.",
+        "current_state": "Current observed values: basis: capacity forecast (Teamalpha); aggregate scope: all_owned_repositories (Teamalpha); backlog size: 114 (Teamalpha); computed at: 2026-10-26 04:00:19.540 (Teamalpha).",
+        "strongest_pressures": [],
+        "drivers": [
+            {
+                "driver_id": "driver_teamalpha_team_backlog",
+                "standing": "principal",
+                "category": "workload",
+                "title": "Teamalpha has a team-wide open-work count, not a project ranking",
+                "summary": "The available workload measure reports a backlog size of 114 for Teamalpha across all owned repositories. It does not identify how that open work is distributed among projects, so it cannot establish which projects carry the most open work.",
+                "affected_subjects": [
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
+                "claimed_fact_ids": [
+                    "claim_teamalpha_backlog_size",
+                    "claim_teamalpha_backlog_scope",
+                    "claim_teamalpha_backlog_time"
+                ],
+                "derivation": "canonical_structured",
+                "epistemic_status": "observed",
+                "confidence": 0.98,
+                "current": false
+            }
+        ],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [
+            {
+                "path_id": "00000000-0000-4000-8000-00000000009d",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745",
+                        "label": "Synthetic work item title 002"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745",
+                            "label": "Synthetic work item title 002"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ATEAMA:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#3745 owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ATEAMA:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000009e",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                        "label": "Synthetic work item title 003"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                            "label": "Synthetic work item title 003"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ATEAMA:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#1923 owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ATEAMA:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000009f",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548",
+                        "label": "Synthetic work item title 004"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548",
+                            "label": "Synthetic work item title 004"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ATEAMA:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#1548 owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ATEAMA:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a0",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272",
+                        "label": "Synthetic work item title 005"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272",
+                            "label": "Synthetic work item title 005"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ATEAMA:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-web#1272 owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ATEAMA:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a1",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128",
+                        "label": "Synthetic work item title 006"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128",
+                            "label": "Synthetic work item title 006"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ATEAMA:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#3128 owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ATEAMA:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a2",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903",
+                        "label": "Synthetic work item title 007"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903",
+                            "label": "Synthetic work item title 007"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ATEAMA:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-web#903 owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ATEAMA:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a3",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                        "label": "Synthetic work item title 008"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                            "label": "Synthetic work item title 008"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T02:30:11.742Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ATEAMA:repo_ownership"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-acr#411 owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ATEAMA:repo_ownership"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a4",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:1548",
+                        "label": "Synthetic work item title 004"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:1548",
+                            "label": "Synthetic work item title 004"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T00:47:25.353Z",
+                        "valid_from": "2026-08-07T00:40:21Z",
+                        "valid_to": "2026-08-07T03:50:15Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1548"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic work item title 004 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1548"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a5",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                        "label": "Synthetic work item title 008"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411",
+                            "label": "Synthetic work item title 008"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-09-03T23:18:23Z",
+                        "valid_from": "2026-09-03T20:45:04Z",
+                        "valid_to": "2026-09-03T23:18:21Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item:00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic work item title 008 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item:00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a6",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                        "label": "Synthetic work item title 003"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923",
+                            "label": "Synthetic work item title 003"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-08-26T18:04:44Z",
+                        "valid_from": "2026-08-26T15:18:11Z",
+                        "valid_to": "2026-08-26T18:04:42Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item:00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic work item title 003 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item:00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a7",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:794",
+                        "label": "Synthetic pull request title 059"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:794",
+                            "label": "Synthetic pull request title 059"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T02:12:54.234Z",
+                        "valid_from": "2026-10-02T17:21:01Z",
+                        "valid_to": "2026-10-02T18:20:17Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:794"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 059 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:794"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a8",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-00000000002c:1272",
+                        "label": "Synthetic work item title 005"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-00000000002c:1272",
+                            "label": "Synthetic work item title 005"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T01:57:23.191Z",
+                        "valid_from": "2026-10-03T19:40:36Z",
+                        "valid_to": "2026-10-03T21:10:41Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-00000000002c:1272"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic work item title 005 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-00000000002c:1272"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000a9",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38377930897",
+                        "label": "Synthetic CI run title 095"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38377930897",
+                            "label": "Synthetic CI run title 095"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-13T09:53:36Z",
+                        "valid_from": "2026-10-13T09:39:53Z",
+                        "valid_to": "2026-10-13T09:53:36Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38377930897"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 095 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000001:38377930897"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000aa",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38380376061",
+                        "label": "Synthetic CI run title 096"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38380376061",
+                            "label": "Synthetic CI run title 096"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-13T10:14:53Z",
+                        "valid_from": "2026-10-13T10:00:30Z",
+                        "valid_to": "2026-10-13T10:14:53Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38380376061"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 096 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000001:38380376061"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000ab",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38407303245",
+                        "label": "Synthetic CI run title 097"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-000000000001:38407303245",
+                            "label": "Synthetic CI run title 097"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-13T13:58:04Z",
+                        "valid_from": "2026-10-13T13:43:31Z",
+                        "valid_to": "2026-10-13T13:58:04Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38407303245"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 097 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-000000000001:38407303245"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000ac",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1219",
+                        "label": "Synthetic pull request title 060"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1219",
+                            "label": "Synthetic pull request title 060"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T01:45:53.175Z",
+                        "valid_from": "2026-10-13T09:39:49Z",
+                        "valid_to": "2026-10-13T14:20:34Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1219"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 060 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1219"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000ad",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3745",
+                        "label": "Synthetic work item title 002"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3745",
+                            "label": "Synthetic work item title 002"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T00:51:30.354Z",
+                        "valid_from": "2026-10-03T19:09:51Z",
+                        "valid_to": "2026-10-03T19:36:31Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3745"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic work item title 002 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3745"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000ae",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3921",
+                        "label": "Synthetic pull request title 061"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3921",
+                            "label": "Synthetic pull request title 061"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T01:29:53.174Z",
+                        "valid_from": "2026-10-09T09:26:07Z",
+                        "valid_to": "2026-10-09T12:01:24Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3921"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 061 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3921"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000af",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3128",
+                        "label": "Synthetic work item title 006"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3128",
+                            "label": "Synthetic work item title 006"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T01:54:08.178Z",
+                        "valid_from": "2026-09-25T11:26:21Z",
+                        "valid_to": "2026-09-25T12:56:44Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3128"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic work item title 006 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3128"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000b0",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:5242",
+                        "label": "Synthetic pull request title 062"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:5242",
+                            "label": "Synthetic pull request title 062"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-29T20:06:44.948Z",
+                        "valid_from": "2026-10-29T17:31:56Z",
+                        "valid_to": "2026-10-29T19:32:29Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:5242"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 062 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:5242"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000b1",
+                "nodes": [
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#5242",
+                        "label": "Synthetic pull request title 062"
+                    },
+                    {
+                        "kind": "work_item",
+                        "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ATEAMA-134",
+                        "label": "Synthetic work item title 009"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "RELATES_TO",
+                        "from": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#5242",
+                            "label": "Synthetic pull request title 062"
+                        },
+                        "to": {
+                            "kind": "work_item",
+                            "canonical_id": "work_item.v2:00000000-0000-4000-8000-0000000000b2:extkey%3ATEAMA-134",
+                            "label": "Synthetic work item title 009"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-29T20:07:31.724Z",
+                        "valid_from": "2026-10-29T17:31:56Z",
+                        "valid_to": "2026-10-29T19:32:29Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ATEAMA-134:relates_to%3Afwd"
+                        ]
+                    }
+                ],
+                "why_relevant": "ghpr:full-chaos/dev-health-ops#5242 relates to Synthetic work item title 009",
+                "evidence_ref_ids": [
+                    "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ATEAMA-134:relates_to%3Afwd"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000b3",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3280",
+                        "label": "Synthetic pull request title 063"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                        "label": "full-chaos/dev-health-ops"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3280",
+                            "label": "Synthetic pull request title 063"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                            "label": "full-chaos/dev-health-ops"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T01:54:08.178Z",
+                        "valid_from": "2026-09-26T11:24:41Z",
+                        "valid_to": "2026-09-26T15:51:25Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3280"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 063 belongs to repository full-chaos/dev-health-ops",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3280"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000b4",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1009",
+                        "label": "Synthetic pull request title 064"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1009",
+                            "label": "Synthetic pull request title 064"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T01:45:53.175Z",
+                        "valid_from": "2026-10-09T13:16:20Z",
+                        "valid_to": "2026-10-09T14:00:29Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1009"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 064 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1009"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000b5",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1678",
+                        "label": "Synthetic pull request title 065"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:1678",
+                            "label": "Synthetic pull request title 065"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-24T12:07:15.453Z",
+                        "valid_from": "2026-10-24T06:45:09Z",
+                        "valid_to": "2026-10-24T11:58:36Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1678"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 065 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1678"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-0000000000b6",
+                "nodes": [
+                    {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:494",
+                        "label": "Synthetic pull request title 066"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                        "label": "full-chaos/dev-health-acr"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "pull_request",
+                            "canonical_id": "pull_request:00000000-0000-4000-8000-000000000001:494",
+                            "label": "Synthetic pull request title 066"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                            "label": "full-chaos/dev-health-acr"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-10-17T01:51:08.178Z",
+                        "valid_from": "2026-09-10T15:04:49Z",
+                        "valid_to": "2026-09-10T19:50:50Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:494"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic pull request title 066 belongs to repository full-chaos/dev-health-acr",
+                "evidence_ref_ids": [
+                    "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:494"
+                ],
+                "truncated": false
+            }
+        ],
+        "conflicts": [],
+        "limitations": [
+            "Project-level open-work counts and project labels were not supplied, so the requested project ranking cannot be determined.",
+            "The available backlog measure is team-wide across all owned repositories and was computed on October 26 rather than the question's current date of October 30.",
+            "Work facts were only partially expanded from the requested team subject, and the supplied coverage says some reachable work facts were not added.",
+            "No canonical status fact was supplied for the owned projects, so project-level open-status filtering cannot be verified.",
+            "Some requested evidence could not be reached from the subject of this question, so this answer's silence on it is a limit of what was retrievable rather than a finding that none exists."
+        ],
+        "evidence_ref_ids": ["acr:v1:team:linear:TEAMA"],
+        "claimed_facts": [
+            {
+                "claim_id": "claim_teamalpha_backlog_size",
+                "kind": "workload",
+                "subject": {
+                    "kind": "team",
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
+                },
+                "field": "backlog_size",
+                "value": {
+                    "integer": 114
+                },
+                "fact_id": "fact_88a496b00424dfd0a5a601b5",
+                "rows": [
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 223
+                            },
+                            "day": {
+                                "string": "2026-10-26"
+                            },
+                            "throughput_mean": {
+                                "number": 142.95783146329612
+                            },
+                            "throughput_stddev": {
+                                "number": 69.64684179289218
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 231
+                            },
+                            "day": {
+                                "string": "2026-10-19"
+                            },
+                            "throughput_mean": {
+                                "number": 142.82092938015504
+                            },
+                            "throughput_stddev": {
+                                "number": 73.28318890641842
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 208
+                            },
+                            "day": {
+                                "string": "2026-10-12"
+                            },
+                            "throughput_mean": {
+                                "number": 84.12539528243059
+                            },
+                            "throughput_stddev": {
+                                "number": 52.12427822300371
+                            }
+                        }
+                    }
+                ],
+                "table": {
+                    "field": "daily_workload",
+                    "shape": "time_series",
+                    "key": ["day"],
+                    "measures": ["backlog_size", "throughput_mean", "throughput_stddev"]
+                }
+            },
+            {
+                "claim_id": "claim_teamalpha_backlog_scope",
+                "kind": "workload",
+                "subject": {
+                    "kind": "team",
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
+                },
+                "field": "aggregate_scope",
+                "value": {
+                    "string": "all_owned_repositories"
+                },
+                "fact_id": "fact_88a496b00424dfd0a5a601b5",
+                "rows": [
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 223
+                            },
+                            "day": {
+                                "string": "2026-10-26"
+                            },
+                            "throughput_mean": {
+                                "number": 142.95783146329612
+                            },
+                            "throughput_stddev": {
+                                "number": 69.64684179289218
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 231
+                            },
+                            "day": {
+                                "string": "2026-10-19"
+                            },
+                            "throughput_mean": {
+                                "number": 142.82092938015504
+                            },
+                            "throughput_stddev": {
+                                "number": 73.28318890641842
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 208
+                            },
+                            "day": {
+                                "string": "2026-10-12"
+                            },
+                            "throughput_mean": {
+                                "number": 84.12539528243059
+                            },
+                            "throughput_stddev": {
+                                "number": 52.12427822300371
+                            }
+                        }
+                    }
+                ],
+                "table": {
+                    "field": "daily_workload",
+                    "shape": "time_series",
+                    "key": ["day"],
+                    "measures": ["backlog_size", "throughput_mean", "throughput_stddev"]
+                }
+            },
+            {
+                "claim_id": "claim_teamalpha_backlog_time",
+                "kind": "workload",
+                "subject": {
+                    "kind": "team",
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
+                },
+                "field": "computed_at",
+                "value": {
+                    "string": "2026-10-26 04:00:19.540"
+                },
+                "fact_id": "fact_88a496b00424dfd0a5a601b5",
+                "rows": [
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 223
+                            },
+                            "day": {
+                                "string": "2026-10-26"
+                            },
+                            "throughput_mean": {
+                                "number": 142.95783146329612
+                            },
+                            "throughput_stddev": {
+                                "number": 69.64684179289218
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 231
+                            },
+                            "day": {
+                                "string": "2026-10-19"
+                            },
+                            "throughput_mean": {
+                                "number": 142.82092938015504
+                            },
+                            "throughput_stddev": {
+                                "number": 73.28318890641842
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 208
+                            },
+                            "day": {
+                                "string": "2026-10-12"
+                            },
+                            "throughput_mean": {
+                                "number": 84.12539528243059
+                            },
+                            "throughput_stddev": {
+                                "number": 52.12427822300371
+                            }
+                        }
+                    }
+                ],
+                "table": {
+                    "field": "daily_workload",
+                    "shape": "time_series",
+                    "key": ["day"],
+                    "measures": ["backlog_size", "throughput_mean", "throughput_stddev"]
+                }
+            },
+            {
+                "claim_id": "claim_teamalpha_backlog_basis",
+                "kind": "workload",
+                "subject": {
+                    "kind": "team",
+                    "canonical_id": "team:linear:TEAMA",
+                    "label": "Teamalpha"
+                },
+                "field": "basis",
+                "value": {
+                    "string": "capacity_forecast"
+                },
+                "fact_id": "fact_88a496b00424dfd0a5a601b5",
+                "rows": [
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 223
+                            },
+                            "day": {
+                                "string": "2026-10-26"
+                            },
+                            "throughput_mean": {
+                                "number": 142.95783146329612
+                            },
+                            "throughput_stddev": {
+                                "number": 69.64684179289218
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 231
+                            },
+                            "day": {
+                                "string": "2026-10-19"
+                            },
+                            "throughput_mean": {
+                                "number": 142.82092938015504
+                            },
+                            "throughput_stddev": {
+                                "number": 73.28318890641842
+                            }
+                        }
+                    },
+                    {
+                        "fields": {
+                            "backlog_size": {
+                                "integer": 208
+                            },
+                            "day": {
+                                "string": "2026-10-12"
+                            },
+                            "throughput_mean": {
+                                "number": 84.12539528243059
+                            },
+                            "throughput_stddev": {
+                                "number": 52.12427822300371
+                            }
+                        }
+                    }
+                ],
+                "table": {
+                    "field": "daily_workload",
+                    "shape": "time_series",
+                    "key": ["day"],
+                    "measures": ["backlog_size", "throughput_mean", "throughput_stddev"]
+                }
+            }
+        ],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "canonical_fact:flow",
+                    "state": "truncated",
+                    "reason": "canonical fact rows were omitted (omitted 136)",
+                    "label": "Canonical facts — flow",
+                    "state_label": "partially included"
+                },
+                {
+                    "source": "canonical_fact:health",
+                    "state": "truncated",
+                    "reason": "canonical fact result was truncated",
+                    "label": "Canonical facts — health",
+                    "state_label": "partially included"
+                },
+                {
+                    "source": "canonical_fact:investment",
+                    "state": "available",
+                    "reason": "investment_units_uncategorized: 4009 of 12529 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count",
+                    "label": "Canonical facts — investment",
+                    "state_label": "available"
+                },
+                {
+                    "source": "canonical_fact:landscape",
+                    "state": "available",
+                    "label": "Canonical facts — landscape",
+                    "state_label": "available"
+                },
+                {
+                    "source": "canonical_fact:readiness",
+                    "state": "truncated",
+                    "reason": "canonical fact result was truncated",
+                    "label": "Canonical facts — readiness",
+                    "state_label": "partially included"
+                },
+                {
+                    "source": "canonical_fact:work",
+                    "state": "truncated",
+                    "reason": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: teams; supported kinds: work items) the requested subjects that hold this capability's facts directly were read; facts reachable only through scope expansion were not added because scope expansion reached only some of them (it covers work items; the request named a team)",
+                    "label": "Canonical facts — work",
+                    "state_label": "partially included"
+                },
+                {
+                    "source": "canonical_fact:workload",
+                    "state": "available",
+                    "label": "Canonical facts — workload",
+                    "state_label": "available"
+                },
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T18:29:42.665283387Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": true,
+            "degraded_reasons": [
+                "cohort_denied_by_authorization:19",
+                "Flow: canonical fact rows were omitted (omitted 136)",
+                "Health: canonical fact result was truncated",
+                "Readiness: canonical fact result was truncated",
+                "Work: 1 subject(s) were not queried because this capability does not support their kind (skipped kinds: teams; supported kinds: work items) the requested subjects that hold this capability's facts directly were read; facts reachable only through scope expansion were not added because scope expansion reached only some of them (it covers work items; the request named a team)"
+            ],
+            "details": [
+                {
+                    "detail_id": "cov-01",
+                    "source": "context-fabric:graph",
+                    "code": "graph_cohort_denied_by_authorization",
+                    "degrading": true,
+                    "count": 19,
+                    "label": "19 group members excluded by authorization",
+                    "raw": "cohort_denied_by_authorization:19"
+                },
+                {
+                    "detail_id": "cov-02",
+                    "source": "canonical_fact:flow",
+                    "code": "fact_provider_reported",
+                    "degrading": true,
+                    "fact_kind": "flow",
+                    "source_state": "truncated",
+                    "supported_kinds": ["team", "project", "repository"],
+                    "label": "Only part of the flow facts could be included",
+                    "raw": "Flow: canonical fact rows were omitted (omitted 136)"
+                },
+                {
+                    "detail_id": "cov-03",
+                    "source": "canonical_fact:health",
+                    "code": "fact_provider_reported",
+                    "degrading": true,
+                    "fact_kind": "health",
+                    "source_state": "truncated",
+                    "supported_kinds": ["repository", "team", "project"],
+                    "label": "Only part of the health facts could be included",
+                    "raw": "Health: canonical fact result was truncated"
+                },
+                {
+                    "detail_id": "cov-04",
+                    "source": "canonical_fact:readiness",
+                    "code": "fact_provider_reported",
+                    "degrading": true,
+                    "fact_kind": "readiness",
+                    "source_state": "truncated",
+                    "supported_kinds": ["team", "project"],
+                    "label": "Only part of the readiness facts could be included",
+                    "raw": "Readiness: canonical fact result was truncated"
+                },
+                {
+                    "detail_id": "cov-05",
+                    "source": "canonical_fact:work",
+                    "code": "fact_scope_unexpanded",
+                    "degrading": true,
+                    "fact_kind": "work",
+                    "source_state": "truncated",
+                    "scope_outcome": "expanded_partial",
+                    "origin_kind": "team",
+                    "supported_kinds": ["work_item"],
+                    "skipped_kinds": ["team"],
+                    "policy": "team_primary_attribution_work_item_work_v1",
+                    "basis": "direct",
+                    "narrowed": true,
+                    "label": "Work facts reachable only through scope expansion were not reached; some subjects were skipped",
+                    "raw": "Work: 1 subject(s) were not queried because this capability does not support their kind (skipped kinds: teams; supported kinds: work items) the requested subjects that hold this capability's facts directly were read; facts reachable only through scope expansion were not added because scope expansion reached only some of them (it covers work items; the request named a team)"
+                },
+                {
+                    "detail_id": "cov-06",
+                    "source": "canonical_fact:investment",
+                    "code": "fact_provider_reported",
+                    "degrading": false,
+                    "fact_kind": "investment",
+                    "source_state": "available",
+                    "supported_kinds": ["team", "project", "repository", "organization"],
+                    "label": "Investment facts were limited",
+                    "raw": "investment_units_uncategorized: 4009 of 12529 work units in the window had too little text to categorize (insufficient_evidence or no_text_sources) and are left out of the theme mix and of work_unit_count"
+                }
+            ]
+        },
+        "fact_scope_census": [
+            {
+                "requirement_kind": "work",
+                "origin_kind": "team",
+                "policy": "team_primary_attribution_work_item_work_v1",
+                "basis": "direct",
+                "axis": "current",
+                "outcome": "expanded_partial",
+                "target_limit": 200,
+                "population_measured": true,
+                "authorized_population_count": 17928,
+                "admitted_count": 200,
+                "truncated": true
+            }
+        ],
+        "evidence_ref_labels": {
+            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38377930897": "CI run: 00000000-0000-4000-8000-000000000001:38377930897",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38380376061": "CI run: 00000000-0000-4000-8000-000000000001:38380376061",
+            "acr:v1:ci:00000000-0000-4000-8000-000000000001:38407303245": "CI run: 00000000-0000-4000-8000-000000000001:38407303245",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1009": "Pull request: 00000000-0000-4000-8000-000000000001:1009",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1219": "Pull request: 00000000-0000-4000-8000-000000000001:1219",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:1678": "Pull request: 00000000-0000-4000-8000-000000000001:1678",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:494": "Pull request: 00000000-0000-4000-8000-000000000001:494",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000001:794": "Pull request: 00000000-0000-4000-8000-000000000001:794",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1548": "Pull request: 00000000-0000-4000-8000-000000000002:1548",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3128": "Pull request: 00000000-0000-4000-8000-000000000002:3128",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3280": "Pull request: 00000000-0000-4000-8000-000000000002:3280",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3745": "Pull request: 00000000-0000-4000-8000-000000000002:3745",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3921": "Pull request: 00000000-0000-4000-8000-000000000002:3921",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:5242": "Pull request: 00000000-0000-4000-8000-000000000002:5242",
+            "acr:v1:pull-request:00000000-0000-4000-8000-00000000002c:1272": "Pull request: 00000000-0000-4000-8000-00000000002c:1272",
+            "acr:v1:team:linear:TEAMA": "Team: linear:TEAMA",
+            "acr:v1:work-item-dependency.v2:ghpr%3Afull-chaos/dev-health-ops#5242:extkey%3ATEAMA-134:relates_to%3Afwd": "Work item dependency: ghpr:full-chaos/dev-health-ops#5242:Synthetic work item title 009:relates_to:fwd",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000001:ghpr%3Afull-chaos/dev-health-acr#411:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1548:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1548:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#1923:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3128:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3128:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-000000000002:ghpr%3Afull-chaos/dev-health-ops#3745:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#3745:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#1272:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#1272:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item-team.v2:00000000-0000-4000-8000-00000000002c:ghpr%3Afull-chaos/dev-health-web#903:linear%3ATEAMA:repo_ownership": "Work item/team link: 00000000-0000-4000-8000-00000000002c:ghpr:full-chaos/dev-health-web#903:linear:TEAMA:repo_ownership",
+            "acr:v1:work-item:00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411": "Work item: 00000000-0000-4000-8000-000000000001:ghpr:full-chaos/dev-health-acr#411",
+            "acr:v1:work-item:00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923": "Work item: 00000000-0000-4000-8000-000000000002:ghpr:full-chaos/dev-health-ops#1923"
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "context-fabric-synthesis.v27+gpt-5.6-luna",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna",
+            "synthesis_source": "server"
+        },
+        "deterministic_answer": "This investigation is degraded: coverage was limited. Principal driver(s): Teamalpha has a team-wide open-work count, not a project ranking.",
+        "warnings": [
+            "The answer is limited to a team-wide backlog measure and should not be treated as a project ranking."
+        ],
+        "reused": false,
+        "completeness": {
+            "terminal_status": "degraded",
+            "terminal_reason": "degraded_reason_disclosed",
+            "claimed_facts_count": 4,
+            "rows_count": 12,
+            "state": "degraded",
+            "outcomes": [
+                {
+                    "stage": "planning",
+                    "requirement": "health/member/project",
+                    "obligation": "health",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "ranking/member/project",
+                    "obligation": "ranking",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "state/member/project",
+                    "obligation": "state",
+                    "outcome": "satisfied",
+                    "impact": "none",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "assembled_result",
+                    "requirement": "ranking/member/project",
+                    "obligation": "ranking",
+                    "outcome": "unavailable",
+                    "impact": "dimension",
+                    "cause_coverage": "computed_population_absent",
+                    "cause_observed": true,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "assembled_result",
+                    "requirement": "health/member/project",
+                    "obligation": "health",
+                    "outcome": "narrowed",
+                    "impact": "depth",
+                    "cause_coverage": "fact_provider_reported",
+                    "cause_observed": true,
+                    "served": 1,
+                    "declared": 1
+                },
+                {
+                    "stage": "assembled_result",
+                    "requirement": "state/member/project",
+                    "obligation": "state",
+                    "outcome": "narrowed",
+                    "impact": "depth",
+                    "cause_coverage": "fact_provider_reported",
+                    "cause_observed": true,
+                    "served": 2,
+                    "declared": 5,
+                    "refinements": [
+                        {
+                            "stage": "assembled_result",
+                            "coverage": "fact_provider_reported",
+                            "before": 5,
+                            "after": 2
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

@@ -244,8 +244,8 @@ describe("client bundle check", () => {
 describe("the pattern rules", () => {
     const byId = Object.fromEntries(PATTERN_RULES.map((rule) => [rule.id, rule]));
 
-    it("are these five, and a rule is never added or dropped without this test", () => {
-        expect(PATTERN_RULES.map((rule) => rule.id)).toEqual(["K1", "K2", "K3", "K4", "K5"]);
+    it("are these six, and a rule is never added or dropped without this test", () => {
+        expect(PATTERN_RULES.map((rule) => rule.id)).toEqual(["K1", "K2", "K3", "K4", "K5", "K6"]);
         expect(PATTERN_RULES.filter((rule) => rule.value).map((rule) => rule.id)).toEqual([
             "K1",
             "K4",
@@ -483,6 +483,7 @@ describe("the registry of server-only modules", () => {
         expect(SERVER_ONLY_MODULES.map((entry) => entry.file)).toEqual([
             "src/lib/auth.ts",
             "src/lib/authValidationMemo.ts",
+            "src/lib/authBrowserSession.ts",
             "src/lib/impersonationStatusMemo.ts",
             "src/lib/serverEnv.server.ts",
             "src/lib/acr/assertion.ts",
@@ -490,6 +491,7 @@ describe("the registry of server-only modules", () => {
             "src/lib/acr/client.ts",
             "src/lib/acr/ops.ts",
             "src/lib/acr/service.ts",
+            "src/lib/ask-dev/investigation.server.ts",
         ]);
     });
 

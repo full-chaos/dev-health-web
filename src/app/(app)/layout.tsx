@@ -8,6 +8,7 @@ import { TrialBanner } from "@/components/billing/TrialBanner";
 import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppShell } from "@/components/shell/AppShell";
+import { SignupCompletedEmitter } from "@/components/telemetry/SignupCompletedEmitter";
 import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
 import { requireSession } from "@/lib/auth";
@@ -79,6 +80,10 @@ export default async function AppLayout({
                 <AdminNavProvider isPlatformAdmin={session.user.is_superuser === true}>
                     <GraphQLProvider orgId={session.user.org_id}>
                         <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
+                            <SignupCompletedEmitter
+                                isNewUser={session.user.is_new_user === true}
+                                userId={session.user.id}
+                            />
                             {authenticatedShell}
                         </TelemetryProvider>
                     </GraphQLProvider>

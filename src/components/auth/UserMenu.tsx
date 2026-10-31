@@ -1,11 +1,12 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { Building2, LogOut, Settings2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { signOutEverywhere } from "@/lib/signOutEverywhere";
 
 type UserMenuProps = {
     /**
@@ -207,7 +208,7 @@ export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
                         <BugReportButton />
                         <button
                             type="button"
-                            onClick={() => signOut()}
+                            onClick={() => void signOutEverywhere()}
                             className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         >
                             <LogOut

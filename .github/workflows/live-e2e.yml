@@ -1,7 +1,11 @@
 name: Live Backend E2E
 
+# CHAOS-12155: pull_request only. This job checks out dev-health-ops at a ref taken from the PR
+# branch name and runs it; a pull_request run can write only its PR's cache scope. A
+# workflow_dispatch run (removed) could run that checkout on the default branch, where the caches it
+# writes are restored by every branch (CodeQL actions/cache-poisoning/poisonable-step). Run a manual
+# proof from a draft PR instead.
 on:
-    workflow_dispatch:
     pull_request:
 
 permissions:
@@ -21,8 +25,6 @@ jobs:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
             - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
               id: filter
-              # Always run on workflow_dispatch
-              if: github.event_name == 'pull_request'
               with:
                   filters: |
                       code:
@@ -48,9 +50,7 @@ jobs:
 
     live-e2e:
         needs: [changes]
-        if: >-
-            github.event_name == 'workflow_dispatch' ||
-            needs.changes.outputs.code == 'true'
+        if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 15
         # Service images and the traefik image come from the ghcr.io mirror.
@@ -279,7 +279,9 @@ jobs:
                   x="$(openssl pkey -in "${dir}/envelope.pem" -pubout -outform DER | tail -c 32 | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
                   rm -f "${dir}/envelope.pem"
                   printf '{"keys":[{"kty":"OKP","crv":"Ed25519","kid":"live-e2e","use":"sig","alg":"EdDSA","x":"%s"}]}\n' "${x}" > "${dir}/jwks.json"
-                  test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')==" | wc -c)" -ge 32
+                  # Pad by length: a 43-char key needs one '='. OpenSSL 4 (ubuntu-26.04) rejects surplus padding (CHAOS-11976).
+                  pad="$(printf '%*s' $(( (4 - ${#x} % 4) % 4 )) '' | tr ' ' '=')"
+                  test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')${pad}" | wc -c)" -ge 32
                   echo "LIVE_E2E_JWKS_PATH=${dir}/jwks.json" >> "${GITHUB_ENV}"
 
             - name: Start dev-health-ops go-api and query-api
@@ -351,6 +353,9 @@ jobs:
                   nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
                     >/tmp/dev-health-go-api.log 2>&1 &
                   echo $! >/tmp/dev-health-go-api.pid
+                  # CHAOS-12138: keep the exact environment so the guided-onboarding pass can restart go-api
+                  # with one flag changed (see "Restart go-api for the guided-onboarding pass").
+                  cp /proc/$(cat /tmp/dev-health-go-api.pid)/environ /tmp/dev-health-go-api.environ
                   nohup /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
                     >/tmp/dev-health-query-api.log 2>&1 &
                   echo $! >/tmp/dev-health-query-api.pid
@@ -450,7 +455,7 @@ jobs:
                   echo "register status=${status}"
                   cat /tmp/reg.json || true
                   case "${status}" in
-                    201|400|409) ;;
+                    201|202|400|409) ;;
                     *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
                   esac
 
@@ -546,9 +551,11 @@ jobs:
                   PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
                   TEST_SUPERUSER_EMAIL: admin@devhealth.example
                   TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
-                  TEST_TARGET_USER_ID: ${{ secrets.TEST_TARGET_USER_ID }}
-                  TEST_SUPERUSER_TARGET_USER_ID: ${{ secrets.TEST_SUPERUSER_TARGET_USER_ID }}
-              run: bash ci/run_tests.sh live-e2e
+                  # Impersonation targets are provisioned by the specs through the API
+                  # (tests/live/helpers.ts provisionUser); no secret is involved.
+              # CHAOS-12138: two passes in one tier -- the default backend, then go-api restarted with
+              # AUTH_AUTO_CREATE_ORG_ON_REGISTER=false for the @guided specs. Any skip fails either pass.
+              run: bash ci/run_tests.sh live-e2e-two-pass
 
             - name: Upload Playwright report
               if: always()

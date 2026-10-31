@@ -67,6 +67,26 @@ describe("SignInPage", () => {
         vi.clearAllMocks();
     });
 
+    // CHAOS-12096: a sign-out whose Ops session revoke failed twice lands here with this notice.
+    it("shows the partial sign-out notice when the Ops session revoke failed", async () => {
+        const ui = await renderPage({ signedOut: "partial" });
+        render(ui as React.ReactElement);
+
+        expect(
+            screen.getByText("Signed out on this device; other sessions may stay active."),
+        ).toBeVisible();
+    });
+
+    it.each([{}, { signedOut: "yes" }] as Record<string, string>[])(
+        "shows no partial sign-out notice for %o",
+        async (params) => {
+            const ui = await renderPage(params);
+            render(ui as React.ReactElement);
+
+            expect(screen.queryByText(/other sessions may stay active/u)).toBeNull();
+        },
+    );
+
     it("passes the callbackUrl to the login form and auth card", async () => {
         const ui = await renderPage({ callbackUrl: "/acr/device" });
         render(ui as React.ReactElement);

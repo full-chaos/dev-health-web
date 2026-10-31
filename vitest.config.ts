@@ -21,6 +21,10 @@ export default defineConfig({
                 test: {
                     name: "unit",
                     environment: "node",
+                    // next-auth imports `next/server` without an extension, which Node's ESM
+                    // resolver refuses for an external dependency. Inlined, Vite resolves it, so
+                    // a test can run the real handlers (CHAOS-12088 session endpoint test).
+                    server: { deps: { inline: ["next-auth"] } },
                     include: [
                         "src/lib/**/__tests__/**/*.test.ts",
                         "src/utils/**/__tests__/**/*.test.ts",
@@ -46,6 +50,13 @@ export default defineConfig({
                 test: {
                     name: "components",
                     environment: "jsdom",
+                    // Node 26 defines a global `localStorage` accessor that yields `undefined`
+                    // without `--localstorage-file`; vitest's jsdom environment will not
+                    // overwrite an existing global, so `window.localStorage.clear` threw
+                    // (CHAOS-12144). Turning the Node feature off lets jsdom's own Storage
+                    // (same realm as the test's `Storage.prototype`) become the global.
+                    // Accepted by Node 22 and 26.
+                    execArgv: ["--no-experimental-webstorage"],
                     globals: true,
                     setupFiles: ["src/test/setup.ts"],
                     include: [

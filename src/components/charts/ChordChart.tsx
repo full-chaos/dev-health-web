@@ -9,6 +9,7 @@ import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import type { ChordDataset } from "@/lib/types";
 import { formatNumber, formatPercent } from "@/lib/formatters";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([EChartsChordChart]);
 
@@ -160,7 +161,7 @@ export function ChordChart({
 
                 return `
           <div style="font-weight: 600; margin-bottom: 4px;">Flow</div>
-          <div style="font-size: 11px; color: ${chartTheme.muted}">${sourceLabel} &rarr; ${targetLabel}</div>
+          <div style="font-size: 11px; color: ${chartTheme.muted}">${escapeHtml(sourceLabel)} &rarr; ${escapeHtml(targetLabel)}</div>
           <div style="margin-top: 4px;">
             <span style="color: ${chartTheme.muted}">${unitLabel}:</span> 
             <span style="font-weight: 600; font-family: monospace;">${formatValue(data.value, unit)}</span>
@@ -178,7 +179,7 @@ export function ChordChart({
                     : "";
 
             return `
-        <div style="font-weight: 600; margin-bottom: 4px;">${nodeName}</div>
+        <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(nodeName)}</div>
         <div>
           <span style="color: ${chartTheme.muted}">${unitLabel}:</span> 
           <span style="font-weight: 600; font-family: monospace;">${formatValue(nodeValue, unit)}</span>

@@ -20,15 +20,13 @@ type OrganizationsResponse = {
     organizations: OrganizationOption[];
 };
 
+/**
+ * The switch route answers the active org and a sealed handoff of the new token pair, which the
+ * page passes to update() and cannot read (CHAOS-12088).
+ */
 type SwitchOrgResponse = {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-    user: {
-        org_id?: string | null;
-        role?: string;
-        is_superuser?: boolean;
-    };
+    org_id?: string | null;
+    sessionHandoff?: string;
 };
 
 /**
@@ -50,6 +48,11 @@ export function describeOrganizationData(
 
 /** Data state of the active organization, as the switcher shows it. */
 export type ActiveOrganizationData = {
+    /**
+     * The organization this card shows. Ask Dev page context (CHAOS-11938) proposes the organization
+     * only when this equals the session's: during a switch the card moves first. Absent: not known.
+     */
+    id?: string;
     name: string;
     hasData: boolean;
     lastMetricsAt: string | null;
@@ -136,6 +139,7 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
         onActiveOrganizationChange(
             activeOrg
                 ? {
+                      id: activeOrg.id,
                       name: activeOrg.name,
                       hasData: activeOrg.has_data,
                       lastMetricsAt: activeOrg.last_metrics_at ?? null,
@@ -164,9 +168,9 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
                 return;
             }
             const data = (await response.json()) as SwitchOrgResponse;
-            await update({ activeOrg: data });
+            await update({ sessionHandoff: data.sessionHandoff });
             setState((current) =>
-                current ? { ...current, active_org_id: data.user.org_id ?? orgId } : current,
+                current ? { ...current, active_org_id: data.org_id ?? orgId } : current,
             );
             router.refresh();
         });

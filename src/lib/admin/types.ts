@@ -433,6 +433,41 @@ export interface SyncRunUnitSummary {
      */
     catching_up_dataset_count?: number;
     units: SyncRunUnit[];
+    /**
+     * Units that match the request's filters. Present only when the request
+     * was paged (offset or any filter); `units` is then one page of them.
+     */
+    filtered_unit_count?: number;
+    /**
+     * Paged reads only: the label of every source of the run, full name else
+     * name, so a page of units never leaves a source unnamed.
+     */
+    source_names?: Record<string, string>;
+    /** Paged reads only: earliest since_at and latest before_at over all units. */
+    requested_window?: SyncRunUnitWindow;
+    /** Paged reads only: the same extent over the successful units. */
+    covered_window?: SyncRunUnitWindow;
+}
+
+export interface SyncRunUnitWindow {
+    since_at: string | null;
+    before_at: string | null;
+}
+
+/** Paging and filters of the sync run units read; every field is optional. */
+export interface SyncRunUnitQuery {
+    limit?: number;
+    offset?: number;
+    /** Comma-separated unit statuses (for example "failed,retrying"). */
+    status?: string;
+    dataset_key?: string;
+    source_id?: string;
+    /** Only "provider_budget_contention": units waiting for provider capacity. */
+    error_category?: string;
+    /** Keep units that do not end before this instant (RFC 3339 or YYYY-MM-DD). */
+    since?: string;
+    /** Keep units that do not start after this instant (RFC 3339 or YYYY-MM-DD). */
+    before?: string;
 }
 
 export interface SyncConfigCreate {
@@ -462,6 +497,8 @@ export interface BackfillResponse {
     status: string;
     task_id?: string;
     backfill_job_id?: string;
+    /** The occurrence the scheduler plans; a submit answers before the plan, so no run id yet. */
+    occurrence_id?: string;
     sync_run_id?: string;
     total_units?: number;
 }
@@ -871,17 +908,39 @@ export interface LLMSettingsResponse {
     concurrency?: number | null;
     /** Per-purpose overrides, present only when at least one is stored. */
     purposes?: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
+    /** The org's opt-in to categorize on its own model; absent until first saved. */
+    categorize_byo?: boolean;
 }
 
 /** Purposes a BYO override can be set for; the default row serves the rest. */
-export type LLMPurpose = "investigate" | "explain";
+export type LLMPurpose = "investigate" | "explain" | "categorize";
 
 export const LLM_PURPOSES: LLMPurpose[] = ["investigate", "explain"];
+
+/**
+ * Every purpose id the API can name, categorize included (it is no form row of LLM_PURPOSES, but it
+ * has its own saved override). A purpose added to LLMPurpose and missing here fails the typecheck.
+ */
+export const ALL_LLM_PURPOSES = [
+    "investigate",
+    "explain",
+    "categorize",
+] as const satisfies readonly LLMPurpose[];
+type MissingPurpose = Exclude<LLMPurpose, (typeof ALL_LLM_PURPOSES)[number]>;
+const purposesComplete: [MissingPurpose] extends [never] ? true : never = true;
+void purposesComplete;
 
 export const LLM_PURPOSE_LABELS: Record<LLMPurpose, string> = {
     investigate: "Investigation",
     explain: "Explanations",
+    categorize: "Categorization",
 };
+
+/** The only provider the categorize override takes, and the only one it takes. Never in LLM_PROVIDERS. */
+export const CATEGORIZE_PROVIDER = "clef";
+export const CATEGORIZE_PROVIDER_LABEL = "Cloudflare Workers AI";
+/** The models the categorize override accepts; the backend refuses any other. */
+export const CATEGORIZE_MODELS = ["clef", "clef-flash"] as const;
 
 /** One stored override; the api_key is masked. */
 export interface LLMPurposeSettings {
@@ -908,6 +967,8 @@ export interface LLMPurposeUpsert {
 export interface LLMSettingsUpsert {
     provider: string;
     model: string;
+    /** Opt in or out of categorize on the org's own model. Omit to leave it unchanged. */
+    categorize_byo?: boolean;
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;
@@ -929,6 +990,20 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
     /** The served `detail.error` code of a 4xx answer, when the backend names one. */
     code?: string;
+    /** The purposes a served answer names (CHAOS-12173: overrides whose saved key cannot be read). */
+    purposes?: string[];
+}
+
+/** go-api's 409 code for saved BYO settings the configured encryption key cannot decrypt (CHAOS-12172). */
+export const LLM_SETTINGS_UNDECRYPTABLE = "llm_settings_undecryptable";
+
+/**
+ * True when a BYO read failed because the saved key cannot be decrypted (CHAOS-12173). The BYO LLM
+ * card owns that state (it says so and offers Replace and Remove); every other card that reads a
+ * BYO route stays quiet instead of offering a Retry that can never help.
+ */
+export function isUnreadableSettings(result: { status?: number; code?: string }): boolean {
+    return result.status === 409 && result.code === LLM_SETTINGS_UNDECRYPTABLE;
 }
 
 /** GET /admin/llm-settings/models: the model ids the saved provider offers, read with the saved key. */

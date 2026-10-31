@@ -50,17 +50,29 @@ describe("OrgSwitcher", () => {
                         ],
                     });
                 }
-                return Response.json({
-                    access_token: "new-access",
-                    refresh_token: "new-refresh",
-                    expires_in: 3600,
-                    user: {
-                        org_id: "org-data",
-                        role: "admin",
-                        is_superuser: false,
-                    },
-                });
+                // The switch route answers the active org and a sealed handoff (CHAOS-12088).
+                return Response.json({ org_id: "org-data", sessionHandoff: "sealed-handoff" });
             }),
+        );
+    });
+
+    it("reports which organization it shows, by id, before and after a switch (CHAOS-11938)", async () => {
+        // Ask Dev page context pairs the session's organization id with this name only when this
+        // id is the same organization.
+        const onChange = vi.fn();
+        render(<OrgSwitcher onActiveOrganizationChange={onChange} />);
+        await waitFor(() =>
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ id: "org-empty", name: "Empty Org" }),
+            ),
+        );
+        fireEvent.change(await screen.findByLabelText(/organization/i), {
+            target: { value: "org-data" },
+        });
+        await waitFor(() =>
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({ id: "org-data", name: "Data Org" }),
+            ),
         );
     });
 
@@ -79,12 +91,12 @@ describe("OrgSwitcher", () => {
 
         fireEvent.change(select, { target: { value: "org-data" } });
 
+        // The page passes the sealed handoff on, unread; it sends no token (CHAOS-12088).
         await waitFor(() =>
-            expect(mockUpdate).toHaveBeenCalledWith(
-                expect.objectContaining({ activeOrg: expect.any(Object) }),
-            ),
+            expect(mockUpdate).toHaveBeenCalledWith({ sessionHandoff: "sealed-handoff" }),
         );
         expect(mockRefresh).toHaveBeenCalled();
+        expect(screen.getByLabelText(/organization/i)).toHaveValue("org-data");
     });
 
     it("shows the current organization even when there is nothing to switch", async () => {

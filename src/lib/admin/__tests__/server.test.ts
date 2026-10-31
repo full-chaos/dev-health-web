@@ -339,6 +339,33 @@ describe("admin/server sync config actions", () => {
         });
     });
 
+    describe("triggerBackfill idempotency key", () => {
+        it("sends the caller's key as the Idempotency-Key header", async () => {
+            mockSession();
+            const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        status: "accepted",
+                        backfill_job_id: "job-1",
+                        occurrence_id: "occ-1",
+                    }),
+                    { status: 202 },
+                ),
+            );
+
+            const result = await triggerBackfill(
+                "cfg-coverage",
+                { since: "2026-06-01T00:00:00.000Z", before: "2026-06-05T00:00:00.000Z" },
+                "action-1-0",
+            );
+
+            expect(result.data?.occurrence_id).toBe("occ-1");
+            const [, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+            expect(options?.headers).toMatchObject({ "Idempotency-Key": "action-1-0" });
+            fetchSpy.mockRestore();
+        });
+    });
+
     describe("getActiveBackfillJob", () => {
         it("returns the config's non-terminal job, filtered client-side from the org-wide list", async () => {
             mockSession();

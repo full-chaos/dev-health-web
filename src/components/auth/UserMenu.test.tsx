@@ -69,8 +69,13 @@ describe("UserMenu", () => {
         await user.keyboard("{Escape}");
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         expect(reportIssue).toHaveFocus();
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(null, { status: 204 })),
+        );
         await user.click(signOut);
-        expect(signOutMock).toHaveBeenCalledOnce();
+        await waitFor(() => expect(signOutMock).toHaveBeenCalledOnce());
+        vi.unstubAllGlobals();
     });
 
     it("uses decorative icons for every account menu destination and action", async () => {
@@ -92,6 +97,58 @@ describe("UserMenu", () => {
         ]) {
             expect(item.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
         }
+    });
+
+    // CHAOS-12096: sign-out revokes the Ops session (through this web server) before NextAuth's
+    // own signOut(); a failed revoke is retried once and still signs out, with the partial notice.
+    describe("sign out", () => {
+        const fetchMock = vi.fn();
+
+        beforeEach(() => {
+            fetchMock.mockReset();
+            vi.stubGlobal("fetch", fetchMock);
+        });
+
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        async function clickSignOut(): Promise<void> {
+            const user = userEvent.setup();
+            render(<UserMenu />);
+            await user.click(screen.getByRole("button", { name: CTA_LABELS.accountOptions }));
+            await user.click(screen.getByRole("button", { name: CTA_LABELS.signOut }));
+        }
+
+        it("revokes the Ops session first, then signs out of NextAuth", async () => {
+            fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+            await clickSignOut();
+
+            await waitFor(() => expect(signOutMock).toHaveBeenCalledOnce());
+            expect(fetchMock).toHaveBeenCalledOnce();
+            const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+            expect(url).toBe("/api/auth/revoke-session");
+            expect(init.method).toBe("POST");
+            expect(init.credentials).toBe("same-origin");
+            expect(fetchMock.mock.invocationCallOrder[0]).toBeLessThan(
+                signOutMock.mock.invocationCallOrder[0] ?? 0,
+            );
+            // Success keeps NextAuth's own destination, as before this change.
+            expect(signOutMock).toHaveBeenCalledWith();
+        });
+
+        it("retries a failed Ops revoke once, still signs out, and lands on the partial notice", async () => {
+            fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
+
+            await clickSignOut();
+
+            await waitFor(() => expect(signOutMock).toHaveBeenCalledOnce());
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(signOutMock).toHaveBeenCalledWith({
+                redirectTo: "/auth/signin?signedOut=partial",
+            });
+        });
     });
 
     describe("no session from useSession", () => {

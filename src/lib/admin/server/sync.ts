@@ -17,6 +17,7 @@ import type {
     SyncConfigRepositorySelectionUpdate,
     SyncTriggerResult,
     SyncRun,
+    SyncRunUnitQuery,
     SyncRunUnitSummary,
     SyncCoverageSummary,
     BackfillSelector,
@@ -118,10 +119,17 @@ export async function updateSyncConfigRepositories(
 export async function triggerBackfill(
     configId: string,
     selector: BackfillSelector,
+    idempotencyKey?: string,
 ): Promise<ActionResult<BackfillResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        const res = await adminApi.syncConfigs.backfill(configId, { selector }, token, orgId);
+        const res = await adminApi.syncConfigs.backfill(
+            configId,
+            { selector },
+            token,
+            orgId,
+            idempotencyKey,
+        );
         revalidatePath("/org/admin/sync");
         revalidatePath(`/org/admin/sync/${configId}`);
         return res;
@@ -228,10 +236,13 @@ export async function getSyncRunStatus(runId: string): Promise<ActionResult<Sync
     });
 }
 
-export async function getSyncRunUnits(runId: string): Promise<ActionResult<SyncRunUnitSummary>> {
+export async function getSyncRunUnits(
+    runId: string,
+    query: SyncRunUnitQuery = {},
+): Promise<ActionResult<SyncRunUnitSummary>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.syncConfigs.getSyncRunUnits(runId, token, orgId);
+        return adminApi.syncConfigs.getSyncRunUnits(runId, token, orgId, query);
     });
 }
 

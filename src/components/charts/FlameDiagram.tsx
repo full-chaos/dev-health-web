@@ -16,6 +16,7 @@ import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { tileLabelStyle } from "@/lib/chartLabelColor";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
+import { escapeHtml } from "./escapeHtml";
 
 echarts.use([CustomChart]);
 
@@ -124,10 +125,10 @@ export function FlameDiagram({
         const category = values[5];
         const duration = formatDuration(textValue(values[0]), textValue(values[1]));
         return [
-            `<strong>${label}</strong>`,
-            `State: ${state}`,
-            `Category: ${category}`,
-            `Duration: ${duration}`,
+            `<strong>${escapeHtml(label)}</strong>`,
+            `State: ${escapeHtml(state)}`,
+            `Category: ${escapeHtml(category)}`,
+            `Duration: ${escapeHtml(duration)}`,
         ].join("<br/>");
     };
 

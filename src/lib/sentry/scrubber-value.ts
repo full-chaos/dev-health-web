@@ -42,6 +42,42 @@ function filterSlashedUserinfo(token: string): string {
     if (!/^[^\s/@:]+:/.test(userinfo) || /^[^\s/@:]+:\d*\//.test(userinfo)) return token;
     return `${token.slice(0, schemeEnd)}${FILTERED}${token.slice(at)}`;
 }
+// One address shape for every sink. The local part is anchored by a lookbehind and bounded, labels end in a
+// literal dot, and the host ends in letters (or a punycode label, or an IP literal), so the rule stays
+// linear on a 16 KB scalar. Letters and digits of any script count, and the compatibility forms of the at
+// sign and the full stop (full width, small, one dot leader) and HTML character references for both are read
+// as the ASCII ones. Invisible format characters (joiners, marks, soft hyphen) are allowed in every part, so
+// they cannot split a host. Every at sign followed by a host is filtered, whatever follows the host (a file
+// suffix, a number). Three readable exemptions apply only when the text after the at sign matches from its
+// FIRST character: exact version text, a retina image name, and a colon plus a path character after the host
+// (an scp style remote).
+const WORD = "\\p{L}\\p{M}\\p{N}_";
+const FORMAT = "\\p{Cf}";
+const LOCAL_CLASS = `[${WORD}${FORMAT}.%+-]`;
+const AT_SIGN = "(?:[@\\uFF20\\uFE6B]|%40|&#0*64(?!\\d);?|&#x0*40(?![\\da-f]);?|&commat;)";
+const DOT =
+    "(?:[.\\uFF0E\\u3002\\uFF61\\uFE52\\u2024]|&#0*46(?!\\d);?|&#x0*2e(?![\\da-f]);?|&period;)";
+const VERSION_IDENTIFIERS = "[a-z\\d-]{1,62}(?:\\.[a-z\\d-]{1,62}){0,12}";
+const VERSION_TEXT = `v?\\d+\\.\\d+\\.\\d+(?:-${VERSION_IDENTIFIERS})?(?:\\+${VERSION_IDENTIFIERS})?`;
+const VERSION_FILE_SUFFIX =
+    "(?:\\.min)?(?:\\.(?:m?js|cjs|css|(?:js|css)\\.map|map|d\\.ts|tgz|gz))?";
+const RETINA_IMAGE = "\\d{1,2}x\\.(?:png|jpe?g|gif|webp|avif|svg)";
+const HOST_END = `(?![\\p{L}\\p{N}${FORMAT}_-]|${DOT}[\\p{L}\\p{N}])`;
+const OCTET = "(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)";
+const LABEL_CHAR = "\\p{L}\\p{M}\\p{N}";
+const LABEL = `${FORMAT}*[${LABEL_CHAR}]${FORMAT}*(?:[${LABEL_CHAR}-]${FORMAT}*){0,62}`;
+const HOST_NAME =
+    `(?:${LABEL}${DOT}){1,12}` +
+    `${FORMAT}*(?:xn--[a-z\\d-]{2,59}${FORMAT}*|(?:[\\p{L}\\p{M}]${FORMAT}*){2,24})`;
+const HOST_IPV4 = `(?:${OCTET}${DOT}){3}${OCTET}`;
+const HOST_IP_LITERAL = "\\[(?:IPv6:)?(?=[\\da-f]*[:.])[\\da-f:.]{2,45}(?:%[\\w.-]{1,16})?\\]";
+const EMAIL_SHAPE = new RegExp(
+    `(?<!${LOCAL_CLASS})${LOCAL_CLASS}{1,128}${AT_SIGN}` +
+        `(?!(?:${VERSION_TEXT}${VERSION_FILE_SUFFIX}|${RETINA_IMAGE})${HOST_END})` +
+        `(?:${HOST_NAME}|${FORMAT}*(?:${HOST_IPV4}|${HOST_IP_LITERAL}))` +
+        `(?![\\p{L}\\p{N}_-])(?!:[\\w~./-])`,
+    "giu",
+);
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
 // linear on a 16 KB scalar.
 const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: string) => string)]> = [
@@ -65,7 +101,17 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
         (match) => (/^mailto:/i.test(match) ? match : FILTERED),
     ],
     [/\b((?:__Secure-|__Host-)?(?:authjs|next-auth)\.[\w.-]{0,64}=)[^;\s]+/gi, `$1${FILTERED}`],
+    // Last, so the userinfo rules above keep their own shapes.
+    [EMAIL_SHAPE, FILTERED],
 ];
+// A token that holds a percent escape is decoded before the address rule runs on it, so an address that
+// is written with %40 and %2E (or twice encoded) does not slip past. A token that cannot be decoded
+// is dropped whole.
+const TOKEN_CLASS = `[${WORD}.%+@\\uFF20-]`;
+const ENCODED_TOKEN = new RegExp(
+    `(?<!${TOKEN_CLASS})${TOKEN_CLASS}{0,1536}%[\\da-f]{2}${TOKEN_CLASS}{0,1536}`,
+    "giu",
+);
 const MAX_DEPTH = 32;
 const MAX_NODES = 4_096;
 const MAX_CONTAINER_ITEMS = 1_000;
@@ -135,6 +181,41 @@ function decodePercent(value: string): string {
     return /%[\da-f]{2}/iu.test(decoded) ? FILTERED : decoded;
 }
 
+// Decodes round by round. A malformed escape in the token does not stop it: the valid ASCII escapes are
+// still decoded. A token that still changes after the last round is hostile nesting: null.
+const MAX_ESCAPE_ROUNDS = 8;
+const ESCAPE_RUN = /(?:%[\da-f]{2}){1,512}/gi;
+// Every run of valid escapes is decoded on its own, multi-byte text included. A run that is not valid
+// UTF-8 keeps its ASCII escapes decoded and the rest literal; a stray percent sign stays as it is.
+function decodeEscapeRun(run: string): string {
+    try {
+        return decodeURIComponent(run);
+    } catch {
+        return run.replace(/%([0-7][\da-f])/gi, (_match, hex: string) =>
+            String.fromCharCode(Number.parseInt(hex, 16)),
+        );
+    }
+}
+
+function decodeEscapes(token: string): string | null {
+    let decoded = token;
+    for (let round = 0; round < MAX_ESCAPE_ROUNDS; round += 1) {
+        const next = decoded.replace(ESCAPE_RUN, decodeEscapeRun);
+        if (next === decoded) return decoded;
+        decoded = next;
+    }
+    return null;
+}
+
+function scrubEncodedAddresses(value: string): string {
+    return value.replace(ENCODED_TOKEN, (token) => {
+        const decoded = decodeEscapes(token);
+        return decoded === null || decoded.replace(EMAIL_SHAPE, FILTERED) !== decoded
+            ? FILTERED
+            : token;
+    });
+}
+
 function scrubCredentialShapes(value: string): string {
     let shaped = value;
     for (const [pattern, replacement] of CREDENTIAL_SHAPES) {
@@ -143,11 +224,13 @@ function scrubCredentialShapes(value: string): string {
                 ? shaped.replace(pattern, replacement)
                 : shaped.replace(pattern, replacement);
     }
-    return shaped;
+    return scrubEncodedAddresses(shaped);
 }
 
-export function scrubTelemetryUrl(value: string, nesting = 0): string {
-    if (nesting >= MAX_URL_NESTING || value.length > MAX_SCALAR_LENGTH) return FILTERED;
+export function scrubTelemetryUrl(input: string, nesting = 0): string {
+    if (nesting >= MAX_URL_NESTING || input.length > MAX_SCALAR_LENGTH) return FILTERED;
+    // A character reference holds a number sign, so the URL parser would cut the address into path and hash.
+    const value = scrubCredentialShapes(input);
     try {
         const url = new URL(value, "https://sentry.invalid");
         if (CALLBACK_PATH_PATTERN.test(url.pathname)) {
@@ -168,7 +251,8 @@ export function scrubTelemetryUrl(value: string, nesting = 0): string {
         url.username = "";
         url.password = "";
         url.hash = "";
-        return isAbsoluteUrl(value) ? url.toString() : `${url.pathname}${url.search}`;
+        const scrubbed = isAbsoluteUrl(value) ? url.toString() : `${url.pathname}${url.search}`;
+        return scrubEncodedAddresses(scrubbed.replace(EMAIL_SHAPE, FILTERED));
     } catch {
         return scrubCredentialShapes(value).replace(
             SENSITIVE_QUERY_VALUE_PATTERN,

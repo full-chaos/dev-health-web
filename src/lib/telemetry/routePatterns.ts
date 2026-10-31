@@ -3,7 +3,7 @@ const NUMERIC_OR_HEX_ID_RE = /^(?:\d{4,}|[0-9a-f]{16,})$/i;
 
 // Most specific first. A route matches when the path starts with every segment of its template;
 // `[x]` matches any one segment. A static sibling of a dynamic route is listed before it.
-const ROUTE_TEMPLATES: readonly string[] = [
+export const ROUTE_TEMPLATES: readonly string[] = [
     "/people/[person_id]/metrics/[metric]",
     "/people/[person_id]",
     "/reports/new",
@@ -51,8 +51,10 @@ export function routePatternForPathname(input: string): string {
         if (matches(parts, segments)) return template;
     }
 
-    const normalized = parts.map((part) =>
-        UUID_RE.test(part) || NUMERIC_OR_HEX_ID_RE.test(part) ? "[id]" : part,
-    );
+    const normalized = parts.map((part) => {
+        if (UUID_RE.test(part) || NUMERIC_OR_HEX_ID_RE.test(part)) return "[id]";
+        // A colon marks URL-shaped text, never a route name.
+        return part.includes(":") ? "[segment]" : part;
+    });
     return `/${normalized.join("/")}`;
 }
