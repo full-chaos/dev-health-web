@@ -11,8 +11,7 @@ import type { NotRunReason, StoppedReason, StoreTurn, TurnOutcome } from "./conv
 
 /** Why ACR stopped a run after it started (codex r3 on #1639). No retry: the way on is a new question. */
 export const STOPPED_COPY: Readonly<Record<StoppedReason, string>> = {
-    rate_limited:
-        "This question was rate limited after it started. Wait a few minutes, then ask again.",
+    rate_limited: "This question was rate limited after it started. Wait a moment, then ask again.",
     interpretation_rejected:
         "Dev could not accept an interpretation of your question. Try rephrasing it.",
     synthesis_rejected: "Dev could not accept a generated answer. Try rephrasing your question.",

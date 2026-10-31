@@ -83,13 +83,26 @@ export type TurnOutcome =
 /** Terminal errors after admission that are neither an outage nor a refusal turn. */
 export type StoppedReason = "rate_limited" | "interpretation_rejected" | "synthesis_rejected";
 
-const STOPPED_REASONS: ReadonlySet<string> = new Set<StoppedReason>([
-    "rate_limited",
-    "interpretation_rejected",
-    "synthesis_rejected",
-]);
+/**
+ * The one map of terminal error codes in the stream that keep their own meaning (CHAOS-12201).
+ * `budget_refusal` (a refusal turn) and `thread_closed` (a new conversation) need the event or the
+ * thread and are decided apart; any other code is the generic failure: the key is spent.
+ */
+const TERMINAL_OUTCOMES: Readonly<Record<string, TurnOutcome>> = {
+    // The owner canceled the run (ACR run lease): the canceled state, not a failure.
+    canceled: { kind: "canceled" },
+    // The run's service instance stopped: the run ended without an answer.
+    run_lost: { kind: "interrupted" },
+    // The answer was served but not stored: the unsaved state.
+    submission_unsaved: { kind: "unsaved" },
+    // A model or graph limit after admission: wait, then ask again (no same-key retry).
+    rate_limited: { kind: "stopped", reason: "rate_limited" },
+    interpretation_rejected: { kind: "stopped", reason: "interpretation_rejected" },
+    synthesis_rejected: { kind: "stopped", reason: "synthesis_rejected" },
+};
 
-const isStoppedReason = (code: string): code is StoppedReason => STOPPED_REASONS.has(code);
+const terminalOutcomeOf = (code: string): TurnOutcome | undefined =>
+    Object.hasOwn(TERMINAL_OUTCOMES, code) ? TERMINAL_OUTCOMES[code] : undefined;
 
 /** ACR's refusals before a run, each with its own guidance (error.v1). */
 export type NotRunReason =
@@ -533,21 +546,10 @@ export class ConversationStore {
                 } else if (code === "thread_closed") {
                     // The contract sends it as a 409 before the stream; the store does not rely on that.
                     this.closeThread(run);
-                } else if (code === "canceled") {
-                    // The owner canceled the run (ACR run lease): the canceled state, not a failure.
-                    this.settle(run, { kind: "canceled" });
-                } else if (code === "run_lost") {
-                    // The run's service instance stopped: the run ended without an answer.
-                    this.settle(run, { kind: "interrupted" });
-                } else if (code === "submission_unsaved") {
-                    // The answer was served but not stored (contract): the unsaved state.
-                    this.settle(run, { kind: "unsaved" });
-                } else if (isStoppedReason(code)) {
-                    this.settle(run, { kind: "stopped", reason: code });
                 } else {
                     // ACR closed the submission with this terminal: the same key cannot run again,
                     // so the way on is a new question.
-                    this.settle(run, { kind: "failed", retry: false });
+                    this.settle(run, terminalOutcomeOf(code) ?? { kind: "failed", retry: false });
                 }
                 return true;
             }

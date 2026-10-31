@@ -331,7 +331,7 @@ test.describe("refusals before the run (desktop)", () => {
             .fill("Which projects are at risk?");
         await panel.getByRole("button", { name: "Send" }).click();
         await expect(panel.getByTestId("ask-dev-turn-status")).toHaveText(
-            "This question was rate limited after it started. Wait a few minutes, then ask again.",
+            "This question was rate limited after it started. Wait a moment, then ask again.",
         );
         await expect(panel.getByRole("button", { name: "Retry" })).toHaveCount(0);
         await panel.screenshot({ path: testInfo.outputPath("stopped-rate_limited-desktop.png") });
