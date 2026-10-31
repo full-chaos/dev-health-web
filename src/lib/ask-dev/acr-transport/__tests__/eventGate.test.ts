@@ -384,6 +384,23 @@ describe("an attach after a cursor", () => {
         ).toEqual(["event", "invalid:heartbeat_stage"]);
     });
 
+    it("with no cursor, an accepted with no submission_id passes: the route is keyed by it (codex r1)", () => {
+        // ACR's events route selects the log by the submission id in its URL (and the caller), and
+        // the pinned schema makes the echo optional on accepted; another id is still refused below.
+        const withoutSubmission: EventObject = { ...accepted() };
+        delete withoutSubmission.submission_id;
+        expect(
+            kinds(
+                feed(
+                    [withoutSubmission],
+                    new InvestigationEventGate(validateInvestigationEventEnvelope, {
+                        submissionId: SUBMISSION,
+                    }),
+                ),
+            ),
+        ).toEqual(["event"]);
+    });
+
     it("with no cursor, the whole grammar holds from accepted, and no thread is asked for", () => {
         const fromStart = new InvestigationEventGate(validateInvestigationEventEnvelope, {
             submissionId: SUBMISSION,

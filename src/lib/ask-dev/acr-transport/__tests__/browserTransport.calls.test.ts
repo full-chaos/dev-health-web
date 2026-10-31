@@ -503,6 +503,23 @@ describe("every T14b call", () => {
         expect(fetchMock).toHaveBeenCalledTimes(calls.length);
     });
 
+    it("a non-2xx answer with no valid error.v1 body is a dropped call, as in T14a (codex r1)", async () => {
+        // Not ACR's refusal (a gateway's page, a broken envelope): neither a TransportRefusal nor
+        // invalid_upstream. The store reads it as a dropped call; for these calls that is the same
+        // state as any failed read.
+        const broken = { schema_version: "error.v1", request_id: "req_bad", error: { code: "x" } };
+        for (const [name, run] of calls) {
+            fetchMock.mockResolvedValueOnce(jsonResponse(broken, 400));
+            const error = await run(transport(), signal).then(
+                () => undefined,
+                (thrown: unknown) => thrown,
+            );
+            expect(error, name).toBeInstanceOf(Error);
+            expect((error as Error).name, name).toBe("Error");
+            expect((error as Error).message, name).toMatch(/400 with no error body/u);
+        }
+    });
+
     it("an error.v1 answer ACR may give on any route (503) is a refusal, with Retry-After", async () => {
         for (const [name, run] of calls) {
             fetchMock.mockResolvedValueOnce(
