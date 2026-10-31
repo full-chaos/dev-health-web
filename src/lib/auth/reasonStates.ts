@@ -15,7 +15,7 @@ export const DECISION_REASON_CODES = [
     "platform_role_absent",
 ] as const;
 
-const CODE_STATES: Readonly<Record<string, AuthUiState>> = Object.freeze({
+export const CODE_STATES: Readonly<Record<string, AuthUiState>> = Object.freeze({
     allowed_by_repository_grant: "allowed",
     grant_absent: "denied",
     repository_not_granted: "denied",
@@ -32,6 +32,37 @@ const CODE_STATES: Readonly<Record<string, AuthUiState>> = Object.freeze({
     authority_unavailable: "unavailable",
     upstream_unavailable: "unavailable",
     internal_error: "unavailable",
+    // Sign in again. Pre-auth account-existence codes share ONE state and message (design ruling).
+    session_expired: "signin",
+    session_revoked: "signin",
+    refresh_expired: "signin",
+    refresh_unknown: "signin",
+    refresh_reused: "signin",
+    invalid_credentials: "signin",
+    principal_not_found: "signin",
+    account_locked: "signin",
+    email_unverified: "signin",
+    malformed: "signin",
+    bad_signature: "signin",
+    audience: "signin",
+    issuer: "signin",
+    not_yet_valid: "signin",
+    missing_sub: "signin",
+    missing_type: "signin",
+    type_mismatch: "signin",
+    revision_stale: "signin",
+    replayed: "signin",
+    nonce_mismatch: "signin",
+    not_entitled: "entitlement",
+    membership_required: "denied",
+    provisioning_disabled: "denied",
+    domain_not_allowed: "denied",
+    provider_already_linked: "denied",
+    identity_conflict: "denied",
+    email_collision: "denied",
+    store_unavailable: "unavailable",
+    dependency_unavailable: "unavailable",
+    signup_unavailable: "unavailable",
 });
 
 const MESSAGES: Readonly<Record<AuthUiState, string>> = Object.freeze({
