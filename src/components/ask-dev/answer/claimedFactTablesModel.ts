@@ -145,10 +145,16 @@ function readCell(value: ClaimedFactRow["fields"][string]): FactTableCell {
     return { kind: "value", text: cellText(value) };
 }
 
+/** A name that reads as one: a string with something other than spaces in it. */
+function isReadableName(value: ClaimedFactRow["fields"][string]): boolean {
+    return typeof value?.string === "string" && value.string.trim() !== "";
+}
+
 function cellOf(row: ClaimedFactRow, column: FactTableColumn): FactTableCell {
     const own = readCell(row.fields[column.key]);
-    if (column.idKey === undefined || own.kind === "value") return own;
-    // This row has no name: its served id stands in, when it has one.
+    if (column.idKey === undefined || isReadableName(row.fields[column.key])) return own;
+    // This row has no readable name (absent, null, empty, blank or not text): its served id stands
+    // in, when it has one.
     const id = readCell(row.fields[column.idKey]);
     return id.kind === "absent" ? own : id;
 }

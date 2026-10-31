@@ -297,6 +297,30 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
         },
     );
 
+    it.each([
+        ["an empty string", { string: "" }],
+        ["blank text", { string: "   " }],
+        ["a number", { integer: 7 }],
+    ] as const)("shows a row's served id where its name is %s", (_case, name) => {
+        const merged = copyOf(mergedPrsDegraded);
+        const fact = merged.claimed_facts!.find((candidate) => candidate.rows?.length)!;
+        // Changed for the test: a second row whose name is not a readable name.
+        fact.rows!.push({
+            fields: {
+                scope_id: { string: "project.v2:linear:blank-name" },
+                scope_name: { ...name },
+            },
+        });
+        render(<AskDevAnswer result={merged} />);
+
+        const table = tableFor(fact.claim_id);
+        const column = headerKeys(table).indexOf("scope_name");
+        const rows = within(table).getAllByRole("row").slice(1);
+        expect(within(rows[1]!).getAllByRole("cell")[column]).toHaveTextContent(
+            "project.v2:linear:blank-name",
+        );
+    });
+
     it("renders no table part when no claimed fact has rows", () => {
         render(<AskDevAnswer result={copyOf(ciRateComplete)} />);
 
