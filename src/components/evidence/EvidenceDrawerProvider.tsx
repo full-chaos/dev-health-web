@@ -15,7 +15,7 @@ import {
 import { usePathname } from "next/navigation";
 
 import type { MetricFilter } from "@/lib/filters/types";
-import { claimRightDrawer, releaseRightDrawer } from "@/lib/shell/rightDrawer";
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
 import { EvidencePanel } from "./EvidencePanel";
@@ -125,15 +125,7 @@ const hasContent = (subject: EvidenceSubject): subject is EvidenceContentSubject
 export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const [state, setState] = useState<OpenState | null>(null);
-    // Unmounting drops the right-edge claim and its stale callback.
-    useEffect(() => () => releaseRightDrawer("evidence"), []);
-    // A navigation drops the subject without `close`: the claim goes with it.
     const hasSubject = state !== null;
-    useEffect(() => {
-        // The dropped subject's `onClose` belongs to a page that is gone: with the claim released,
-        // a peer drawer opening can no longer call it.
-        if (!hasSubject) releaseRightDrawer("evidence");
-    }, [hasSubject]);
     // The open subject and a counter, for the event handlers only (never read during render).
     const current = useRef<{
         subject: EvidenceSubject | null;
@@ -164,6 +156,12 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
         previous?.onClose?.();
         setState(null);
     }, []);
+    // The drawer holds the right edge exactly while it has a subject (CHAOS-12211), as the shared
+    // `Drawer` does. An imperative claim in `open` was released by this provider's own first
+    // passive effects when the open landed before them (a click while the page hydrates), and
+    // again by StrictMode's re-run under `next dev`. Closing, a navigation that drops the subject
+    // (whose `onClose` belongs to a page that is gone) and unmounting release it.
+    useRightDrawerClaim("evidence", hasSubject, closeFromPeer);
 
     const open = useCallback(
         (subject: EvidenceSubject) => {
@@ -174,12 +172,10 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
             if (previous !== null && previous !== subject && !dropped) previous.onClose?.();
             const id = current.current.id + 1;
             current.current = { subject, id, path: pathname };
+            // One right drawer at a time: holding a subject takes the edge from the filters or Ask
+            // Dev (`useRightDrawerClaim` above).
             setState({ subject, path: pathname, id });
-            // One right drawer at a time: this one takes the edge from the filters or Ask Dev.
-            claimRightDrawer("evidence", closeFromPeer);
         },
-        // `closeFromPeer` is stable (it reads refs and a stable setter only).
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [pathname],
     );
     const close = useCallback(() => {
@@ -187,7 +183,6 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
         current.current = { subject: null, id: current.current.id, path: null };
         previous?.onClose?.();
         setState(null);
-        releaseRightDrawer("evidence");
     }, []);
     const api = useMemo(() => ({ open, close }), [open, close]);
     const [pageStore] = useState(createPageEvidenceStore);
