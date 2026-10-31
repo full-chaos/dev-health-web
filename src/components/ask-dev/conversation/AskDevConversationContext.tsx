@@ -113,15 +113,21 @@ export function AskDevConversationProvider({
         () => markerAtLoad,
         () => null,
     );
-    const turns = useSyncExternalStore(
+    const snapshot = useSyncExternalStore(
         store?.subscribe ?? noSubscription,
-        () => store?.getSnapshot().turns.length ?? 0,
-        () => 0,
+        store?.getSnapshot ?? noSnapshot,
+        noSnapshot,
     );
-    const tag = typeof partition === "string" ? partitionTag(partition) : null;
+    const turns = snapshot?.turns.length ?? 0;
+    // The partition these turns belong to, from the same snapshot: on an org switch the session is
+    // already the new one while the store still holds the old one's turns (codex r1 on #1642).
+    const owner = snapshot?.partition ?? null;
+    const ownerTag = owner === null ? null : partitionTag(owner);
     useEffect(() => {
-        if (tag !== null && turns > 0) writeMarker(tag);
-    }, [tag, turns]);
+        if (ownerTag !== null && turns > 0) writeMarker(ownerTag);
+    }, [ownerTag, turns]);
+    // The notice is for the signed-in (org, principal): its marker, and no conversation now.
+    const tag = typeof partition === "string" ? partitionTag(partition) : null;
     const notSaved = store !== null && tag !== null && turns === 0 && loadedMarker === tag;
 
     return (

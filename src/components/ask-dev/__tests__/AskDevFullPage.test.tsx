@@ -325,8 +325,11 @@ describe("the full page without Ask Dev", () => {
     });
 
     it("draws no composer without a transport (T14 not wired), and sends nothing", () => {
+        const fetchSpy = vi.fn();
+        vi.stubGlobal("fetch", fetchSpy);
         nav.go("/dev");
         renderShell(null);
+        expect(fetchSpy).not.toHaveBeenCalled();
         expect(within(page()).getByTestId("ask-dev-transcript")).toBeInTheDocument();
         expect(screen.queryByTestId("ask-dev-composer")).toBeNull();
     });
