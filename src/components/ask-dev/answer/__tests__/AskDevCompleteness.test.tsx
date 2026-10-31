@@ -78,20 +78,20 @@ describe("web never shows the raw completeness state (CHAOS-12245)", () => {
         expect(note()).toBeNull();
     });
 
-    it("partial: one plain sentence that names what was read only in part", () => {
+    it("partial: exactly one plain sentence, in the coverage block, that names what was read only in part", () => {
         render(<AskDevAnswer result={partial} />);
-        const lines = [stateLine(), note()].filter((line) => line !== null);
-        for (const line of lines) {
-            expect(line.textContent).toBe(
-                "Missing data: health read in part (1 of 1); status read in part (1 of 4).",
-            );
-            expect(line.textContent).not.toMatch(STATE_WORDS);
-        }
-        expect(lines.length).toBeGreaterThan(0);
+        // codex r1 on #1650: at most one sentence, so it is said once, where completeness lives.
+        expect(note()).toBeNull();
+        expect(stateLine()).toHaveTextContent(
+            /^Missing data: health read in part \(1 of 1\); status read in part \(1 of 4\)\.$/u,
+        );
+        expect(answer().textContent?.split("Missing data:")).toHaveLength(2);
+        expect(stateLine()?.textContent).not.toMatch(STATE_WORDS);
     });
 
-    it("degraded: one plain sentence that names what was not available", () => {
+    it("degraded: exactly one plain sentence that names what was not available", () => {
         render(<AskDevAnswer result={degraded} />);
+        expect(answer().textContent?.split("Missing data:")).toHaveLength(2);
         const lines = [stateLine(), note()].filter((line) => line !== null);
         for (const line of lines) {
             expect(line.textContent).toBe(

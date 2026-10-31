@@ -1,10 +1,5 @@
 import { ANSWER_STATUS_LABEL, labelFor, type AnswerResult } from "./answerModel";
-import {
-    OBLIGATION_LABEL,
-    completenessOf,
-    missingDataSentence,
-    type CoverageResult,
-} from "./coverageModel";
+import { OBLIGATION_LABEL, completenessOf, type CoverageResult } from "./coverageModel";
 
 type Completeness = NonNullable<CoverageResult["completeness"]>;
 
@@ -12,7 +7,7 @@ type Completeness = NonNullable<CoverageResult["completeness"]>;
  * The quick answer's status line (CHAOS-12157). North Star checks 11 and 12 rank the answer's own
  * completeness above its status: "Full answer" is said only when the status AND the completeness
  * are complete. A `complete` status beside partial or degraded completeness reads as not fully
- * covered, with the one missing-data sentence beside it. A status ACR corrected is shown as served,
+ * covered; the one missing-data sentence is in the coverage block below, said once. A status ACR corrected is shown as served,
  * with the correction in words; this view never re-derives or upgrades a status.
  *
  * CHAOS-12245, chris's ruling (2026-10-31): web never shows the raw completeness state. Not derived
@@ -23,7 +18,6 @@ export type QuickStatus = {
     readonly label: string;
     /** The completeness state behind a `complete` status that is not fully covered, else null. */
     readonly coverage: string | null;
-    readonly completenessNote: string | null;
     readonly correctionNote: string | null;
 };
 
@@ -91,8 +85,7 @@ export function quickStatus(result: AnswerResult): QuickStatus {
     return {
         label: statusLabel(result.status, completeness),
         coverage: covered ? null : state,
-        // One sentence of missing data beside a complete status, only for partial or degraded.
-        completenessNote: covered ? null : missingDataSentence(completeness),
+        // The one sentence of missing data is said once, in the coverage block (codex r1 on #1650).
         correctionNote: correctionNote(result),
     };
 }

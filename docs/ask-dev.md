@@ -44,6 +44,6 @@ An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_de
 | `not_derived`, or no completeness on the result | nothing about completeness                                                                                                                                                                   | "Answer": it claims neither a full answer nor a gap |
 | `partial`, `degraded`                           | at most one plain sentence that names what was missing, from the requirement rows: "Missing data: status read in part (2 of 5); ranking not available." No sentence when no row names a gap. | "Answer, not fully covered"                         |
 
-- The state word never appears in the sentence. The coverage details keep their own block ("What limits this answer").
+- The sentence is said once, in the coverage block ("How complete this answer is"), never also beside the pill. The state word never appears in it. A row with an empty obligation is named by its requirement; a row that names nothing is skipped. The coverage details keep their own block ("What limits this answer").
 - A served status correction names each status by the same function that labels the pill (`statusLabel`), never by the machine word: for example, "from Answer to Partial answer" when the completeness was not derived.
 - The Ask Dev Workbench (an engineering inspector) is not in this rule.

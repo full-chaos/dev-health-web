@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { missingDataSentence, type CoverageResult } from "../coverageModel";
+import { missingDataSentence, requirementLines, type CoverageResult } from "../coverageModel";
 import projectStatusPartial from "./captures/kiac_project_status_partial.event.json";
 
 // CHAOS-12245: the one sentence of missing data, from the requirement rows; never a state word.
@@ -34,6 +34,22 @@ describe("missingDataSentence", () => {
         ).toBe(
             "Missing data: status read in part (2 of 5); ranking not available; workload not read; investment read in part.",
         );
+    });
+
+    // codex r1 on #1650: an empty obligation never leaves a gap unnamed.
+    it("names a row with an empty obligation by its requirement, and skips one it cannot name", () => {
+        const blank = (requirement: string) => ({
+            ...row(requirement, "narrowed", 1, 4),
+            obligation: "",
+        });
+        expect(missingDataSentence(withRows("partial", [blank("state/subject/project")]))).toBe(
+            "Missing data: status read in part (1 of 4).",
+        );
+        expect(missingDataSentence(withRows("partial", [blank("/subject/project")]))).toBeNull();
+        // The requirement list labels the same row the same way.
+        expect(
+            requirementLines(withRows("partial", [blank("state/subject/project")]))[0]?.label,
+        ).toBe("Status");
     });
 
     it("takes each requirement's last row: a later stage supersedes an earlier one", () => {

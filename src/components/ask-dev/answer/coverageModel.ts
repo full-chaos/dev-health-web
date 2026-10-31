@@ -50,8 +50,18 @@ export type Reading = "full" | "sparse" | "stale" | "unknown" | "zero" | "not_ap
 export const MISSING_DATA_COPY = { lead: "Missing data" } as const;
 
 /** The missing data of one requirement row, or `null` when it was read in full or does not apply. */
+/**
+ * What a requirement row needed: its obligation, else the requirement's first segment. An empty
+ * obligation never reads as a blank (codex r1 on #1650); `""` when the row names nothing.
+ */
+function obligationOf(row: OutcomeRow, requirement: string): string {
+    return row.obligation?.trim() || requirement.split("/")[0]?.trim() || "";
+}
+
 function gapOf(row: OutcomeRow, requirement: string): string | null {
-    const what = labelFor(OBLIGATION_LABEL, row.obligation ?? requirement).toLowerCase();
+    const obligation = obligationOf(row, requirement);
+    if (obligation === "") return null;
+    const what = labelFor(OBLIGATION_LABEL, obligation).toLowerCase();
     switch (row.outcome) {
         case "narrowed":
             return row.declared > 0
@@ -132,7 +142,7 @@ function lastOutcomeRows(completeness: Completeness): Map<string, OutcomeRow> {
 
 export function requirementLines(completeness: Completeness): RequirementLine[] {
     return [...lastOutcomeRows(completeness).entries()].map(([requirement, row]) => {
-        const label = labelFor(OBLIGATION_LABEL, row.obligation ?? requirement);
+        const label = labelFor(OBLIGATION_LABEL, obligationOf(row, requirement) || requirement);
         switch (row.outcome) {
             case "satisfied":
                 return { key: requirement, label, text: "read in full", reading: "full" };

@@ -251,14 +251,6 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
                             <SafeAnswerText text={lead} />
                         )}
                     </p>
-                    {status.completenessNote === null ? null : (
-                        <p
-                            className="text-sm text-foreground"
-                            data-testid="ask-dev-answer-completeness"
-                        >
-                            {status.completenessNote}
-                        </p>
-                    )}
                     {status.correctionNote === null ? null : (
                         <p
                             className="text-xs text-(--ink-muted)"

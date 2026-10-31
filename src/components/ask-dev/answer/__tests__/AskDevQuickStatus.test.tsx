@@ -48,8 +48,10 @@ describe("the quick answer never says 'Full answer' unless completeness is compl
         render(<AskDevAnswer result={knobOff} />);
         expect(pill()).not.toHaveTextContent(ANSWER_STATUS_LABEL.complete);
         expect(pill()).toHaveAttribute("data-coverage", "partial");
-        // CHAOS-12245: one plain sentence of missing data, never the state word.
-        expect(within(quick()).getByTestId("ask-dev-answer-completeness")).toHaveTextContent(
+        // CHAOS-12245: the pill says "not fully covered"; the one sentence of missing data is in
+        // the coverage block, said once (codex r1 on #1650).
+        expect(within(quick()).queryByTestId("ask-dev-answer-completeness")).toBeNull();
+        expect(screen.getByTestId("ask-dev-coverage-state")).toHaveTextContent(
             "Missing data: health read in part (1 of 1); status read in part (1 of 4).",
         );
     });
