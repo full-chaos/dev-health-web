@@ -574,6 +574,14 @@ export function ByoLlmSettings({
             toast.error("Could not save BYO-LLM settings.");
             return;
         }
+        if (isUnreadableSettings(result)) {
+            // Replace while a named override is still unreadable: go-api answers the 409. The card goes
+            // back to its own notice (Replace or Remove), never the served text (codex r3 on #1630).
+            setUnreadable({ purposes: knownPurposes(result.purposes) });
+            setFormError(null);
+            toast.error("Could not save BYO-LLM settings.");
+            return;
+        }
         if (result.error) {
             setFormError(result.error);
             toast.error("Could not save BYO-LLM settings.");

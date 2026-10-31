@@ -204,6 +204,54 @@ describe("ByoLlmSettings with saved settings that cannot be read", () => {
         await waitFor(() => expect(document.getElementById("byo-budget-usd")).toBeEnabled());
     });
 
+    // codex r3 on #1630: Replace while an override is still unreadable makes the save answer the 409;
+    // its served text must not render. The card goes back to its own notice instead.
+    it("a Replace save that answers the 409 returns to the notice, never the served text", async () => {
+        mockLoad.mockResolvedValue(UNREADABLE(["explain"]));
+        mockSave.mockResolvedValue({
+            error: "BACKEND-DETAIL-MUST-NOT-RENDER",
+            status: 409,
+            code: LLM_SETTINGS_UNDECRYPTABLE,
+            purposes: ["explain"],
+        });
+        renderCard();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: COPY.replace }));
+        await user.type(screen.getByLabelText<HTMLInputElement>("Model"), "gpt-4o-mini");
+        await user.type(
+            screen.getByLabelText<HTMLInputElement>("API Key"),
+            "placeholder-new-value",
+        );
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(1));
+        const notice = await screen.findByTestId("byo-llm-unreadable");
+        expect(within(notice).getByTestId("byo-llm-unreadable-scope")).toHaveTextContent(
+            "The default configuration or the Explanations model override cannot be read.",
+        );
+        expect(document.body.textContent).not.toContain("BACKEND-DETAIL-MUST-NOT-RENDER");
+    });
+
+    it("any other save failure keeps its existing message (CHAOS-8434)", async () => {
+        mockLoad.mockResolvedValue(UNREADABLE([]));
+        mockSave.mockResolvedValue({
+            error: "Budget limit is above the operator maximum",
+            status: 422,
+        });
+        renderCard();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: COPY.replace }));
+        await user.type(screen.getByLabelText<HTMLInputElement>("Model"), "gpt-4o-mini");
+        await user.type(
+            screen.getByLabelText<HTMLInputElement>("API Key"),
+            "placeholder-new-value",
+        );
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        expect(
+            await screen.findByText("Budget limit is above the operator maximum"),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("byo-llm-unreadable")).not.toBeInTheDocument();
+    });
+
     it("Replace opens the empty setup form, which takes a new key", async () => {
         mockLoad.mockResolvedValue(UNREADABLE([]));
         renderCard();
