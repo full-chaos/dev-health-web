@@ -122,6 +122,7 @@ export function summary(threadId: string, lastTurnAt = "2026-10-30T00:00:00Z"): 
         createdAt: "2026-10-29T00:00:00Z",
         lastTurnAt,
         expiresAt: "2026-11-29T00:00:00Z",
+        firstQuestion: null,
     };
 }
 
