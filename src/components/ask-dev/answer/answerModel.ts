@@ -28,7 +28,13 @@ type AnswerFields =
     | "evidence_ref_ids"
     | "evidence_ref_labels"
     // CHAOS-12157: the status ACR replaced, when its completeness authority corrected it.
-    | "status_correction";
+    | "status_correction"
+    // CHAOS-11944: the cohort ranking (cohort, the question's shape, ACR's cohort-rule render shapes)
+    // and the answer window in its header.
+    | "cohort"
+    | "interpretation"
+    | "render_shapes"
+    | "effective_evidence_window";
 
 export type AnswerResult =
     | Pick<ACRContextFabricInvestigationResultV1, AnswerFields>

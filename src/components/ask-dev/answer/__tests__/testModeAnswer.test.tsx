@@ -97,6 +97,9 @@ describe("asTranscriptResult, asRefusalTurn, asTranscriptTurns", () => {
         ["no result id", () => ({ ...answer, result_id: undefined })],
         ["no subject resolution", () => ({ ...clarification, subject_resolution: undefined })],
         ["no versions", () => ({ ...answer, versions: undefined })],
+        // CHAOS-11944: the cohort ranking reads `interpretation.shape`.
+        ["no interpretation", () => ({ ...answer, interpretation: undefined })],
+        ["an interpretation without a shape", () => ({ ...answer, interpretation: {} })],
     ])("refuses %s", async (_label, make) => {
         const { asTranscriptResult } = await load("true");
         expect(asTranscriptResult(make())).toBeNull();
