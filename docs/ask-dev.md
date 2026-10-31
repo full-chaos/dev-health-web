@@ -46,4 +46,5 @@ An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_de
 
 - The sentence is said once, in the coverage block ("How complete this answer is"), never also beside the pill. The state word never appears in it. A row with an empty obligation is named by its requirement; a row that names nothing is skipped. The coverage details keep their own block ("What limits this answer").
 - A served status correction names each status by the same function that labels the pill (`statusLabel`), never by the machine word: for example, "from Answer to Partial answer" when the completeness was not derived.
+- A cohort member's `data_completeness` is never shown either. The ranking column and the unranked summary show the member's served driver rows, "3 of 5 drivers" (`memberDriversText`), never a number mapped from the state. A member that serves no driver rows shows nothing.
 - The Ask Dev Workbench (an engineering inspector) is not in this rule.

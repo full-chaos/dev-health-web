@@ -18,6 +18,18 @@ const capture = (file: string) =>
     (JSON.parse(readFileSync(join(CAPTURES, file), "utf8")) as { result: Result }).result;
 
 const PARTIAL = capture("kiac_repo_owner_complete.event.json");
+/** A real ranking answer (oracle captures): its members serve their driver rows. */
+const RANKING = (
+    JSON.parse(
+        readFileSync(
+            join(
+                process.cwd(),
+                "src/lib/ask-dev/render/__oracle__/captures/kiac_repo_attention_ranking.event.json",
+            ),
+            "utf8",
+        ),
+    ) as { result: Result }
+).result;
 const DEGRADED = capture("kiac_team_open_work_degraded.event.json");
 const NOT_DERIVED = capture("kiac_repo_ci_rate_complete.event.json");
 /** The same real answer, with its completeness set to complete: kiac served none. */
@@ -122,6 +134,25 @@ test.describe("desktop (1280px)", () => {
             });
         });
     }
+});
+
+test.describe("cohort members (desktop)", () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    test("each member shows its served driver rows, never a completeness word", async ({
+        page,
+    }, testInfo) => {
+        const panel = await openAnswer(page, RANKING, (p) =>
+            p.getByRole("complementary", { name: "Ask Dev" }),
+        );
+        const cells = panel.getByTestId("ask-dev-ranking-completeness");
+        await expect(cells.first()).toHaveText(/^\d of 5 drivers$/u);
+        for (const detail of await panel.getByTestId("ask-dev-ranking-detail").all()) {
+            expect(await detail.textContent()).not.toMatch(/\b(complete|partial|degraded)\b/iu);
+        }
+        await panel.getByTestId("ask-dev-ranking-detail").last().scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath("completeness-cohort-desktop.png") });
+    });
 });
 
 test.describe("mobile (390px)", () => {

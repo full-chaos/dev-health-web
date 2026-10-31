@@ -24,6 +24,11 @@ const REPOS = (repoRanking as { result: unknown }).result as AnswerResult;
 const PRS = (mergedPrsDegraded as { result: unknown }).result as AnswerResult;
 const copy = (result: AnswerResult): any => structuredClone(result);
 
+/** A completeness word ACR serves (CHAOS-12245): never display text, in any case. */
+const RAW_COMPLETENESS = /\b(complete|partial|degraded|not_derived)\b/iu;
+/** A member's served driver rows, as the view counts them (never mapped back from the enum). */
+const driversOf = (member: any) => `${member.drivers.length} of 5 drivers`;
+
 const ranking = () => screen.getByTestId("ask-dev-ranking");
 const rows = () => within(ranking()).getAllByTestId("ask-dev-ranking-row");
 const cellsOf = (testId: string) => within(ranking()).getAllByTestId(testId);
@@ -176,9 +181,11 @@ describe("a ranked cohort", () => {
         expect(within(ranking()).getByTestId("ask-dev-ranking-incomplete").textContent).toMatch(
             /truncated/u,
         );
-        expect(within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent).toBe(
-            `Not ranked by the service: ${truncated.cohort.members[3].subject.label} (outcome Provisional, data completeness Degraded).`,
+        const unrankedText = within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent;
+        expect(unrankedText).toBe(
+            `Not ranked by the service: ${truncated.cohort.members[3].subject.label} (outcome Provisional, ${driversOf(truncated.cohort.members[3])}).`,
         );
+        expect(unrankedText).not.toMatch(RAW_COMPLETENESS);
         expect(rows()).toHaveLength(3);
         unmount();
         const incomplete = copy(REPOS);
@@ -214,8 +221,9 @@ describe("a ranked cohort", () => {
         delete b.data_completeness;
         render(<AskDevCohortRanking result={unranked} />);
         const line = within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent ?? "";
+        // CHAOS-12245: the served driver rows stay, even with no data_completeness word served.
         expect(line).toBe(
-            `Not ranked by the service: ${a.subject.label} (outcome Insufficient evidence); ${b.subject.label}.`,
+            `Not ranked by the service: ${a.subject.label} (outcome Insufficient evidence, ${driversOf(a)}); ${b.subject.label} (${driversOf(b)}).`,
         );
         expect(line).not.toContain(String(a.score));
         expect(rows()).toHaveLength(2);
@@ -263,9 +271,11 @@ describe("a ranked cohort", () => {
             expect(detail.getAttribute("colspan")).toBe("4");
             const name = within(row).getByTestId("ask-dev-ranking-name").textContent ?? "";
             expect(detail.textContent).toContain(`${name}: `);
-            expect(within(detail).getByTestId("ask-dev-ranking-completeness").textContent).toBe(
-                "Degraded",
-            );
+            // CHAOS-12245: the member's served driver rows, never its data_completeness word.
+            const cell = within(detail).getByTestId("ask-dev-ranking-completeness");
+            const member = REPOS.cohort!.members.find((m) => m.subject.label === name);
+            expect(cell.textContent).toBe(driversOf(member));
+            expect(detail.textContent).not.toMatch(RAW_COMPLETENESS);
         }
         expect(document.querySelectorAll("section, [role=region], [tabindex]")).toHaveLength(0);
     });
@@ -277,6 +287,44 @@ describe("a ranked cohort", () => {
         expect(ranking().querySelector("img")).toBeNull();
         expect(cellsOf("ask-dev-ranking-name").map((c) => c.textContent)).toContain(
             '<img src=x onerror="alert(1)">Repo',
+        );
+    });
+});
+
+describe("a member's data completeness, as its served driver rows (CHAOS-12245)", () => {
+    it("counts the served rows, never a number mapped from the enum (partial is 3 or 4)", () => {
+        const counted = copy(REPOS);
+        const [p, d] = [counted.cohort.members[0], counted.cohort.members[1]];
+        p.data_completeness = "partial";
+        p.drivers = [...p.drivers, ...p.drivers].slice(0, 4);
+        d.data_completeness = "degraded";
+        d.drivers = d.drivers.slice(0, 1);
+        render(<AskDevCohortRanking result={counted} />);
+        const cellFor = (label: string) =>
+            within(
+                rows().find(
+                    (r) => within(r).getByTestId("ask-dev-ranking-name").textContent === label,
+                )!,
+            ).getByTestId("ask-dev-ranking-completeness").textContent;
+        expect(cellFor(p.subject.label)).toBe("4 of 5 drivers");
+        expect(cellFor(d.subject.label)).toBe("1 of 5 drivers");
+    });
+
+    it("shows no completeness text for a member that serves no driver rows, ranked or not", () => {
+        const noDrivers = copy(REPOS);
+        delete noDrivers.cohort.members[0].drivers;
+        delete noDrivers.cohort.members[3].drivers;
+        noDrivers.cohort.members[3].ranking_computed = false;
+        render(<AskDevCohortRanking result={noDrivers} />);
+        const first = noDrivers.cohort.members[0].subject.label;
+        const row = rows().find(
+            (r) => within(r).getByTestId("ask-dev-ranking-name").textContent === first,
+        )!;
+        expect(within(row).queryByTestId("ask-dev-ranking-completeness")).toBeNull();
+        expect(row.textContent).not.toMatch(RAW_COMPLETENESS);
+        const unranked = within(ranking()).getByTestId("ask-dev-ranking-unranked").textContent;
+        expect(unranked).toBe(
+            `Not ranked by the service: ${noDrivers.cohort.members[3].subject.label} (outcome Provisional).`,
         );
     });
 });
@@ -328,7 +376,7 @@ describe("Ranking not shown (G1) and Not ranked by the service", () => {
             /truncated/u,
         );
         const entries = unranked.cohort.members.map(
-            (m: any) => `${m.subject.label} (outcome Provisional, data completeness Degraded)`,
+            (m: any) => `${m.subject.label} (outcome Provisional, ${driversOf(m)})`,
         );
         expect(within(notice).getByTestId("ask-dev-ranking-unranked").textContent).toBe(
             `Not ranked by the service: ${entries.join("; ")}.`,
