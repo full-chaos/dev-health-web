@@ -303,6 +303,36 @@ describe("terminals", () => {
         expect(last(store).outcome).toEqual({ kind: "answered", result: PARTIAL });
     });
 
+    // codex r3 on #1632: the event path closes the thread the same way as the 409, and says why.
+    it("starts a new conversation after an in-stream thread_closed, and logs the code", async () => {
+        const store = makeStore();
+        transport.scripts.push(
+            [resultEvent(PARTIAL)],
+            [accepted(), errorEvent("thread_closed")],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        store.submit("Why?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "thread_closed" });
+        expect(store.getSnapshot().threadId).toBeNull();
+        expect(log.warn).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: "thread_closed",
+                submission_id: transport.calls[1]!.submissionId,
+            }),
+            "ask-dev investigation ended with an error",
+        );
+
+        store.submit("Which teams are overloaded?");
+        await settled(store);
+        const fresh = transport.calls[2]!;
+        expect(fresh.threadId).not.toBe(transport.calls[0]!.threadId);
+        expect(fresh.request).not.toHaveProperty("parent_result_id");
+        expect(fresh.request).not.toHaveProperty("conversation");
+    });
+
     it("keeps a budget refusal as a refusal turn with its reserved id", async () => {
         const store = makeStore();
         transport.scripts.push([accepted(), errorEvent("budget_refusal", "result_reserved_0007")]);

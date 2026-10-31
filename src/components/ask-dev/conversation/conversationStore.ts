@@ -360,6 +360,16 @@ export class ConversationStore {
         run.controller.abort();
     }
 
+    /**
+     * `thread_closed` (contract: deleted, expired or full; start a new conversation): the turn ends
+     * as `thread_closed`, the thread is dropped, and the next question carries nothing from it.
+     */
+    private closeThread(run: ActiveRun): void {
+        this.threadStart = this.nextTurnId;
+        this.settle(run, { kind: "thread_closed" });
+        this.commit({ ...this.snapshot, threadId: null });
+    }
+
     private settle(run: ActiveRun, outcome: TurnOutcome): void {
         this.release(run);
         this.setOutcome(run.turnId, outcome, false);
@@ -429,23 +439,36 @@ export class ConversationStore {
             case "result":
                 this.settle(run, { kind: "answered", result: event.result });
                 return true;
-            case "error":
-                this.settle(
-                    run,
-                    event.error.error.code === "budget_refusal"
-                        ? {
-                              kind: "refused",
-                              refusal: {
-                                  type: "error",
-                                  reserved_result_id: event.reserved_result_id,
-                                  error: event.error,
-                              },
-                          }
-                        : // ACR closed the submission with this terminal: the same key cannot
-                          // run again, so the way on is a new question.
-                          { kind: "failed", retry: false },
+            case "error": {
+                const code = event.error.error.code;
+                const turn = this.turn(run.turnId);
+                logger.warn(
+                    {
+                        submission_id: turn?.submissionId,
+                        request_id: turn?.request.request_id,
+                        code,
+                    },
+                    "ask-dev investigation ended with an error",
                 );
+                if (code === "budget_refusal") {
+                    this.settle(run, {
+                        kind: "refused",
+                        refusal: {
+                            type: "error",
+                            reserved_result_id: event.reserved_result_id,
+                            error: event.error,
+                        },
+                    });
+                } else if (code === "thread_closed") {
+                    // The contract sends it as a 409 before the stream; the store does not rely on that.
+                    this.closeThread(run);
+                } else {
+                    // ACR closed the submission with this terminal: the same key cannot run again,
+                    // so the way on is a new question.
+                    this.settle(run, { kind: "failed", retry: false });
+                }
                 return true;
+            }
         }
     }
 
@@ -474,9 +497,7 @@ export class ConversationStore {
                 // The contract: nothing ran, not retryable under these ids; start a new
                 // conversation. The next submit mints a new thread and carries nothing from this one.
                 logger.warn(fields, "ask-dev thread closed; the next question starts a new one");
-                this.threadStart = this.nextTurnId;
-                this.settle(run, { kind: "thread_closed" });
-                this.commit({ ...this.snapshot, threadId: null });
+                this.closeThread(run);
                 return;
             case "submission_required":
                 // The store sends a submission id on every create: a defect, never a user error.
