@@ -123,7 +123,7 @@ describe("thread and submission keys (plan §2.5, INV-2)", () => {
         expect(last(store).outcome).toEqual({
             kind: "failed",
             retry: true,
-            reference: last(store).request.request_id,
+            reference: last(store).request?.request_id,
         });
 
         expect(store.retry(last(store).id)).toBe(true);
@@ -470,7 +470,7 @@ describe("recovery by submission status (plan §2.7.5)", () => {
         expect(last(store).outcome).toEqual({
             kind: "failed",
             retry: true,
-            reference: last(store).request.request_id,
+            reference: last(store).request?.request_id,
         });
     });
 });
@@ -1014,7 +1014,7 @@ describe("panel states (plan §2.7.8)", () => {
         expect(last(store).outcome).toEqual({
             kind: "failed",
             retry: false,
-            reference: last(store).request.request_id,
+            reference: last(store).request?.request_id,
         });
         expect(transport.statusCalls).toEqual([]);
     });
@@ -1032,7 +1032,7 @@ describe("panel states (plan §2.7.8)", () => {
         expect(last(store).outcome).toEqual({
             kind: "failed",
             retry: false,
-            reference: last(store).request.request_id,
+            reference: last(store).request?.request_id,
         });
     });
 

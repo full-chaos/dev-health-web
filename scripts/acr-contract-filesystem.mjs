@@ -6,7 +6,13 @@ import path from "node:path";
 
 // allow: SIZE_OK — atomic artifact transactions and their owner-verified lease protocol share one filesystem boundary.
 const ARTIFACT_DIRECTORIES = new Set(["examples", "openapi", "schemas"]);
-const ARTIFACT_SIBLINGS = new Set(["../contracts.ts", "../generated.ts"]);
+const ARTIFACT_SIBLINGS = new Set([
+    "../contracts.ts",
+    "../generated.ts",
+    // CHAOS-11956: the eval-free browser validators (Ajv standalone) and their declarations.
+    "../threadValidators.js",
+    "../threadValidators.d.ts",
+]);
 const LOCK_WAIT_MILLIS = 10;
 const LOCK_TIMEOUT_MILLIS = 30_000;
 const LOCK_WAIT_STATE = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));

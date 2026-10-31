@@ -11,7 +11,10 @@ import {
 import type { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 
-import { ConversationStore, type ConversationSnapshot } from "./conversationStore";
+import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
+
+import { ConversationStore, THREAD_HINT_KEY, type ConversationSnapshot } from "./conversationStore";
+import { partitionTag } from "./keys";
 import { testModeTransport } from "./testModeTransport";
 import { ACR_BROWSER_TRANSPORT, type AskDevTransport } from "./transport";
 
@@ -35,15 +38,7 @@ export const UNSAVED_CONVERSATION_KEY = "ask-dev:unsaved-conversation";
 /** True when this tab lost a conversation of this (org, principal) to a reload. */
 const NotSavedContext = createContext(false);
 
-/** A short, stable tag of a partition key (FNV-1a, 32 bits): it names no org or user. */
-export function partitionTag(key: string): string {
-    let hash = 0x811c9dc5;
-    for (let index = 0; index < key.length; index++) {
-        hash ^= key.charCodeAt(index);
-        hash = Math.imul(hash, 0x01000193) >>> 0;
-    }
-    return hash.toString(16).padStart(8, "0");
-}
+export { partitionTag };
 
 function readMarker(): string | null {
     try {
@@ -51,6 +46,25 @@ function readMarker(): string | null {
     } catch {
         return null;
     }
+}
+
+function readHintPresent(): boolean {
+    try {
+        return window.sessionStorage.getItem(THREAD_HINT_KEY) !== null;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * The full page names a conversation in its URL (`/dev?thread=`): the URL wins over the restore
+ * hint there (E6 design v5 §4.1), so the provider leaves the selection to the page.
+ */
+function urlNamesThread(): boolean {
+    return (
+        window.location.pathname === ASK_DEV_FULL_PAGE_PATH &&
+        new URLSearchParams(window.location.search).get("thread") !== null
+    );
 }
 
 function writeMarker(tag: string): void {
@@ -100,7 +114,11 @@ export function AskDevConversationProvider({
     const partition = partitionKey(session, status);
 
     useEffect(() => {
-        if (store !== null && partition !== undefined) store.setPartition(partition);
+        if (store === null || partition === undefined) return;
+        store.setPartition(partition);
+        // CHAOS-11956: with the partition known, a reload restores this tab's conversation from
+        // its hint (never before: the hint names its partition, and ACR authorizes the read).
+        if (!urlNamesThread()) store.restoreFromHint();
     }, [store, partition]);
     // Leaving the shell (sign-out, another route group) ends the run with it.
     useEffect(() => () => store?.clear("unmounted"), [store]);
@@ -108,6 +126,10 @@ export function AskDevConversationProvider({
     // The marker as this page load found it (the server and hydration render none). Read once: a
     // marker this tab writes later is for the next reload, not this one.
     const [markerAtLoad] = useState(() => (typeof window === "undefined" ? null : readMarker()));
+    // A restore hint at load means the conversation was saved: no "not saved" notice then.
+    const [hintAtLoad] = useState(() =>
+        typeof window === "undefined" ? false : readHintPresent(),
+    );
     const loadedMarker = useSyncExternalStore(
         noSubscription,
         () => markerAtLoad,
@@ -128,7 +150,13 @@ export function AskDevConversationProvider({
     }, [ownerTag, turns]);
     // The notice is for the signed-in (org, principal): its marker, and no conversation now.
     const tag = typeof partition === "string" ? partitionTag(partition) : null;
-    const notSaved = store !== null && tag !== null && turns === 0 && loadedMarker === tag;
+    const notSaved =
+        store !== null &&
+        tag !== null &&
+        turns === 0 &&
+        loadedMarker === tag &&
+        !hintAtLoad &&
+        snapshot?.thread.kind === "new";
 
     return (
         <ConversationContext.Provider value={store}>

@@ -25,3 +25,16 @@ export function newSubmissionId(uuid: string = crypto.randomUUID()): string {
 export function newThreadId(uuid: string = crypto.randomUUID()): string {
     return `thread_${hex(uuid)}`;
 }
+
+/**
+ * A short, stable tag of a partition key (FNV-1a, 32 bits): it names no org or user. Session
+ * storage keeps only this tag next to a conversation (CHAOS-11934, CHAOS-11956).
+ */
+export function partitionTag(key: string): string {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < key.length; index++) {
+        hash ^= key.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+}

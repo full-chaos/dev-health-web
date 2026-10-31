@@ -76,6 +76,16 @@ export const TURN_STATUS_COPY = {
     canceled: "Canceled. If the answer had already finished, it is kept.",
     threadClosed:
         "This conversation has ended (deleted, expired or full). Ask again to start a new one.",
+    /** CHAOS-11956: a restored turn whose answer is being read again. */
+    restoring: "Loading this answer…",
+    unavailable: "This answer is not available to you now.",
+    restoreFailed: "This answer could not be loaded.",
+    observing:
+        "This question was still running when the conversation was loaded. Checking for its answer…",
+    /** E6 design v5 N4: a failed read confirms nothing, so no liveness is claimed. */
+    unconfirmed: "The current state could not be confirmed. Check back later.",
+    /** A turn ACR admitted before it recorded questions. Display only: it is never sent. */
+    questionNotRecorded: "Question not recorded",
 } as const satisfies {
     deadline: Record<DeadlineKind, string>;
     limited: Record<LimitKind, string>;
@@ -136,7 +146,37 @@ function statusLine(outcome: StatusOutcome): string {
             return NOT_RUN_COPY[outcome.reason];
         case "stopped":
             return STOPPED_COPY[outcome.reason];
+        case "restoring":
+            return TURN_STATUS_COPY.restoring;
+        case "unavailable":
+            return TURN_STATUS_COPY.unavailable;
+        case "restore_failed":
+            return TURN_STATUS_COPY.restoreFailed;
+        case "observing":
+            return TURN_STATUS_COPY.observing;
+        case "unconfirmed":
+            return TURN_STATUS_COPY.unconfirmed;
     }
+}
+
+/** The question as the user asked it, or the plain note that ACR did not record it. */
+function TurnQuestion({ question }: { question: string | null }) {
+    if (question === null) {
+        return (
+            <p
+                data-testid="ask-dev-turn-question-not-recorded"
+                className="rounded-(--radius-sm) bg-(--surface-raised) px-3 py-2 text-sm italic text-(--ink-muted)"
+            >
+                {TURN_STATUS_COPY.questionNotRecorded}
+            </p>
+        );
+    }
+    return (
+        <p className="rounded-(--radius-sm) bg-(--surface-raised) px-3 py-2 text-sm text-foreground">
+            <span className="sr-only">{CLARIFICATION_COPY.youAsked}: </span>
+            <SafeAnswerText text={question} />
+        </p>
+    );
 }
 
 /** A failed turn may be sent again under its key only when the store said so. */
@@ -153,12 +193,15 @@ export function AskDevConversationTurn({
     onConfirm,
     onReask,
     onRetry,
+    onReload,
 }: {
     turn: StoreTurn;
     /** The three actions are given on the live (last) turn only; a prior turn is read-only. */
     onConfirm?: ((choice: ClarificationChoice) => void) | undefined;
     onReask?: ((reask: NarrowerReask) => void) | undefined;
     onRetry?: (() => void) | undefined;
+    /** "Load again" on a restored turn whose answer read failed: a GET (CHAOS-11956). */
+    onReload?: (() => void) | undefined;
 }) {
     const { outcome } = turn;
     if (outcome.kind === "answered") {
@@ -167,17 +210,22 @@ export function AskDevConversationTurn({
     if (outcome.kind === "refused") {
         return (
             <AskDevTurn
-                turn={{ question: turn.question, refusal: outcome.refusal }}
-                onReask={onReask}
+                turn={{
+                    question: turn.question ?? TURN_STATUS_COPY.questionNotRecorded,
+                    refusal: outcome.refusal,
+                }}
+                onReask={turn.question === null ? undefined : onReask}
             />
         );
     }
     return (
-        <div className="space-y-3" data-testid="ask-dev-turn" data-status={outcome.kind}>
-            <p className="rounded-(--radius-sm) bg-(--surface-raised) px-3 py-2 text-sm text-foreground">
-                <span className="sr-only">{CLARIFICATION_COPY.youAsked}: </span>
-                <SafeAnswerText text={turn.question} />
-            </p>
+        <div
+            className="space-y-3"
+            data-testid="ask-dev-turn"
+            data-status={outcome.kind}
+            data-origin={turn.origin}
+        >
+            <TurnQuestion question={turn.question} />
             <div className="space-y-2" data-testid="ask-dev-turn-state">
                 <p data-testid="ask-dev-turn-status" className="text-sm text-(--ink-muted)">
                     {statusLine(outcome)}
@@ -185,7 +233,9 @@ export function AskDevConversationTurn({
                 {outcome.kind === "running" ? (
                     <AskDevStageChecklist stages={outcome.stages} />
                 ) : null}
-                {outcome.kind === "running" || outcome.kind === "recovering" ? (
+                {outcome.kind === "running" ||
+                outcome.kind === "recovering" ||
+                outcome.kind === "observing" ? (
                     <AskDevElapsed startedAt={outcome.startedAt} />
                 ) : null}
                 {outcome.kind === "limited" && outcome.retryAfterSeconds !== undefined ? (
@@ -212,6 +262,16 @@ export function AskDevConversationTurn({
                     className="inline-flex items-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
                 >
                     {CTA_LABELS.retry}
+                </button>
+            ) : null}
+            {outcome.kind === "restore_failed" && onReload ? (
+                <button
+                    type="button"
+                    data-testid="ask-dev-turn-reload"
+                    onClick={onReload}
+                    className="inline-flex items-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                >
+                    {CTA_LABELS.askDevLoadAgain}
                 </button>
             ) : null}
         </div>
