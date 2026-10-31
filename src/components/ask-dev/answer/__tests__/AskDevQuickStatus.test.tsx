@@ -3,6 +3,7 @@ import { render, screen, within } from "@/test/utils";
 
 import { AskDevAnswer } from "../AskDevAnswer";
 import { ANSWER_STATUS_LABEL, type AnswerResult } from "../answerModel";
+import { statusLabel } from "../quickStatus";
 import ownerComplete from "./captures/kiac_repo_owner_complete.event.json";
 import ownerCorrected from "./captures/kiac_repo_owner_status_corrected.event.json";
 import ciRateComplete from "./captures/kiac_repo_ci_rate_complete.event.json";
@@ -20,6 +21,9 @@ const copyOf = (event: { result: unknown }) => structuredClone(resultOf(event));
 const knobOff = resultOf(ownerComplete);
 const corrected = resultOf(ownerCorrected);
 const notDerived = resultOf(ciRateComplete);
+
+/** A raw status word, as ACR serves it: never display text (CHAOS-12245, lead ruling Q2). */
+const RAW_STATUS = /\b(complete|partial|degraded|clarification_required|no_match|not_derived)\b/u;
 
 const quick = () => screen.getByTestId("ask-dev-answer-quick");
 const pill = () => within(quick()).getByTestId("ask-dev-answer-status");
@@ -76,17 +80,37 @@ describe("the quick answer never says 'Full answer' unless completeness is compl
     });
 });
 
+describe("statusLabel: the one labelling function of the pill and the note (CHAOS-12245)", () => {
+    it("never returns a raw status word, even for a status it has no label for", () => {
+        expect(statusLabel("degraded", null)).toBe("Degraded answer");
+        expect(statusLabel("complete", null)).toBe("Answer");
+        // An open-vocabulary status a newer ACR might serve: humanized, never the raw token.
+        expect(statusLabel("needs_review", null)).not.toBe("needs_review");
+        expect(statusLabel("needs_review", null)).not.toMatch(/_/u);
+    });
+});
+
 describe("a served status correction is shown as served, never re-derived", () => {
     it("authority on: shows the served status and says ACR lowered it, and why", () => {
         render(<AskDevAnswer result={corrected} />);
         expect(pill()).toHaveTextContent(ANSWER_STATUS_LABEL.partial);
         const note = within(quick()).getByTestId("ask-dev-answer-correction");
-        // CHAOS-12245: the statuses by their labels, never the raw machine words.
+        // CHAOS-12245 (lead ruling Q2): each status by the pill's own label function.
         expect(note).toHaveTextContent(
-            "The service lowered this answer from full answer to partial answer",
+            `The service lowered this answer from ${statusLabel("complete", corrected.completeness)} to ${statusLabel("partial", corrected.completeness)}: health was read only in part.`,
         );
-        expect(note).toHaveTextContent("health was read only in part");
-        expect(note.textContent).not.toContain("from complete to partial");
+        expect(note.textContent).not.toMatch(RAW_STATUS);
+    });
+
+    it("names a 'complete' status whose completeness was not derived as the pill does: Answer", () => {
+        const copy = copyOf(ownerCorrected);
+        copy.completeness.state = "not_derived";
+        render(<AskDevAnswer result={copy} />);
+        const note = within(quick()).getByTestId("ask-dev-answer-correction");
+        expect(note).toHaveTextContent(
+            "The service lowered this answer from Answer to Partial answer: health was read only in part.",
+        );
+        expect(note.textContent).not.toMatch(RAW_STATUS);
     });
 
     it("says 'raised' for a degraded_to_partial correction, never 'lowered'", () => {
@@ -102,9 +126,10 @@ describe("a served status correction is shown as served, never re-derived", () =
         render(<AskDevAnswer result={copy} />);
         const note = within(quick()).getByTestId("ask-dev-answer-correction");
         expect(note).toHaveTextContent(
-            "The service raised this answer from degraded answer to partial answer: health was read in full.",
+            "The service raised this answer from Degraded answer to Partial answer: health was read in full.",
         );
         expect(note).not.toHaveTextContent("lowered");
+        expect(note.textContent).not.toMatch(RAW_STATUS);
     });
 
     it("does not upgrade a corrected status, whatever the completeness says", () => {

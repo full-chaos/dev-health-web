@@ -1,5 +1,12 @@
 import { ANSWER_STATUS_LABEL, labelFor, type AnswerResult } from "./answerModel";
-import { OBLIGATION_LABEL, completenessOf, missingDataSentence } from "./coverageModel";
+import {
+    OBLIGATION_LABEL,
+    completenessOf,
+    missingDataSentence,
+    type CoverageResult,
+} from "./coverageModel";
+
+type Completeness = NonNullable<CoverageResult["completeness"]>;
 
 /**
  * The quick answer's status line (CHAOS-12157). North Star checks 11 and 12 rank the answer's own
@@ -41,6 +48,22 @@ const DIRECTION_VERB: Record<string, string> = {
     degraded_to_partial: "raised",
 };
 
+/**
+ * The pill's label for a status, given the answer's completeness: the ONE labelling function. The
+ * pill and the correction note both use it, so they can never disagree (CHAOS-12245, lead ruling
+ * Q2). "Full answer" only for a complete status with complete completeness; a complete status is
+ * "Answer, not fully covered" beside partial or degraded completeness, and a plain "Answer" when
+ * completeness was not derived or is missing. Any other status reads by its label, never raw.
+ */
+export function statusLabel(status: string, completeness: Completeness | null): string {
+    const served = labelFor(ANSWER_STATUS_LABEL, status);
+    if (status !== "complete") return served;
+    const state = completeness?.state ?? "absent";
+    if (state === "complete") return served;
+    if (state === "partial" || state === "degraded") return QUICK_STATUS_COPY.notFullyCovered;
+    return QUICK_STATUS_COPY.answer;
+}
+
 function correctionNote(result: AnswerResult): string | null {
     const correction = result.status_correction;
     if (!correction) return null;
@@ -55,44 +78,21 @@ function correctionNote(result: AnswerResult): string | null {
     // The served pair names the direction: only degraded_to_partial raises a status (codex r1 P2).
     const [from, to] = correction.direction.split("_to_");
     const verb = DIRECTION_VERB[correction.direction] ?? "changed";
-    // CHAOS-12245: each status by its label, never the raw machine word.
-    const named = (status: string) => labelFor(ANSWER_STATUS_LABEL, status).toLowerCase();
+    // CHAOS-12245: each status by the pill's own label, never the raw machine word.
+    const completeness = completenessOf(result);
+    const named = (status: string) => statusLabel(status, completeness);
     return `The service ${verb} this answer from ${named(from ?? correction.replaced_status)} to ${named(to ?? result.status)}${why}.`;
 }
 
 export function quickStatus(result: AnswerResult): QuickStatus {
-    const correction = correctionNote(result);
-    const served = ANSWER_STATUS_LABEL[result.status] ?? result.status;
-    if (result.status !== "complete") {
-        return {
-            label: served,
-            coverage: null,
-            completenessNote: null,
-            correctionNote: correction,
-        };
-    }
     const completeness = completenessOf(result);
     const state = completeness?.state ?? "absent";
-    if (state === "complete") {
-        return {
-            label: served,
-            coverage: null,
-            completenessNote: null,
-            correctionNote: correction,
-        };
-    }
-    if (state !== "partial" && state !== "degraded") {
-        return {
-            label: QUICK_STATUS_COPY.answer,
-            coverage: state,
-            completenessNote: null,
-            correctionNote: correction,
-        };
-    }
+    const covered = result.status !== "complete" || state === "complete";
     return {
-        label: QUICK_STATUS_COPY.notFullyCovered,
-        coverage: state,
-        completenessNote: missingDataSentence(completeness),
-        correctionNote: correction,
+        label: statusLabel(result.status, completeness),
+        coverage: covered ? null : state,
+        // One sentence of missing data beside a complete status, only for partial or degraded.
+        completenessNote: covered ? null : missingDataSentence(completeness),
+        correctionNote: correctionNote(result),
     };
 }
