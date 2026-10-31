@@ -16,7 +16,8 @@ import type { VerifyReason } from "@/lib/ask-dev/render/verify-reasons";
  */
 const ACR_SHAPE_ID = /^rs_[0-9]{1,3}$/u;
 const RESULT_ID = /^result_[0-9a-f]{8,64}$/u;
-const REQUEST_ID = /^request_[0-9a-f]{8,64}$/u;
+// ACR's API mints `req_<hex>` (acr `observability`); `request_<hex>` is the panel harness form.
+const REQUEST_ID = /^(?:req|request)_[0-9a-f]{8,64}$/u;
 export const UNLISTED = "unlisted";
 
 const VERIFY_REASONS = [
@@ -53,6 +54,8 @@ const RENDER_REASONS = [
     "placement_missing",
     "ranking_not_computed",
     "ranking_not_requested",
+    // CHAOS-11942: a verified cohort bar or stacked-bar shape until I-41 (CHAOS-11943) draws it.
+    "presentation_not_rendered",
 ] as const;
 
 export const WITHHELD_REASONS = [...VERIFY_REASONS, ...GUARD_REASONS, ...RENDER_REASONS] as const;
@@ -93,6 +96,9 @@ const listed = (list: readonly string[], value: unknown): string =>
 const idForm = (form: RegExp, value: unknown): string =>
     typeof value === "string" && form.test(value) ? value : UNLISTED;
 
+/** A result id in ACR's own form, else `"unlisted"`: for every Ask Dev render log line. */
+export const loggableResultId = (value: unknown): string => idForm(RESULT_ID, value);
+
 export type WithheldLogFields = {
     readonly event: "ask_dev_render_withheld";
     readonly result_id: string;
@@ -115,7 +121,7 @@ export function withheldLogFields(
     const idOk = typeof shape.shape_id === "string" && ACR_SHAPE_ID.test(shape.shape_id);
     return {
         event: "ask_dev_render_withheld",
-        result_id: idForm(RESULT_ID, ids.resultId),
+        result_id: loggableResultId(ids.resultId),
         request_id: idForm(REQUEST_ID, ids.requestId),
         shape_index: Number.isInteger(shapeIndex) && shapeIndex >= 0 ? shapeIndex : -1,
         shape_id_ok: idOk,

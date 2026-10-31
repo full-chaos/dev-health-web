@@ -1,4 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+// No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order (CHAOS-11942).
+vi.mock(
+    "@/lib/echartsInit",
+    async () => (await import("../../render/__tests__/echartsStub")).echartsStubModule,
+);
 import { cleanup, render, screen, within } from "@/test/utils";
 
 const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));
@@ -29,8 +34,13 @@ const copyOf = (event: { result: unknown }) => structuredClone(event.result) as 
 
 const tablesPart = () => screen.getByTestId("ask-dev-answer-fact-tables");
 const tables = () => within(tablesPart()).getAllByTestId("ask-dev-fact-table");
+// The rows box of a table group; the group also holds its trend charts and their value tables.
+const grid = (element: HTMLElement) =>
+    element.getAttribute("data-testid") === "ask-dev-fact-table"
+        ? within(element).getByTestId("ask-dev-fact-table-scroll")
+        : element;
 const headerKeys = (table: HTMLElement) =>
-    within(table)
+    within(grid(table))
         .getAllByRole("columnheader")
         .map((th) => th.getAttribute("title"));
 const factOf = (result: FactResult, claimId: string) => {
@@ -119,7 +129,7 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
         expect(keys).toContain("wip_age_p50_hours");
         expect(keys).toContain("bug_completed_ratio_unavailable_reason");
         const column = keys.indexOf("wip_age_p50_hours");
-        for (const row of within(flow).getAllByRole("row").slice(1)) {
+        for (const row of within(grid(flow)).getAllByRole("row").slice(1)) {
             const cell = within(row).getAllByRole("cell")[column]!;
             expect(cell).toHaveTextContent("—");
             expect(cell).toHaveAttribute("aria-label", "not in this row");
@@ -132,7 +142,9 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
         render(<AskDevAnswer result={status} />);
 
         const fact = factOf(status, "claim-flow-completed");
-        const body = within(tableFor("claim-flow-completed")).getAllByRole("row").slice(1);
+        const body = within(grid(tableFor("claim-flow-completed")))
+            .getAllByRole("row")
+            .slice(1);
         expect(body).toHaveLength(fact.rows?.length ?? -1);
     });
 
@@ -160,7 +172,9 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
         render(<AskDevAnswer result={status} />);
 
         for (const group of groupFactsByTable(factsWithRows(status.claimed_facts ?? []))) {
-            const body = within(tableFor(group.primary.claim_id)).getAllByRole("row").slice(1);
+            const body = within(grid(tableFor(group.primary.claim_id)))
+                .getAllByRole("row")
+                .slice(1);
             expect(body).toHaveLength(group.primary.rows?.length ?? -1);
         }
     });
@@ -224,7 +238,7 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
         render(<AskDevAnswer result={merged} />);
 
         const table = tableFor(fact.claim_id);
-        const body = within(table).getAllByRole("row").slice(1);
+        const body = within(grid(table)).getAllByRole("row").slice(1);
         expect(within(body[0]!).getAllByRole("cell")[0]).not.toHaveTextContent(/^project\.v2:/u);
         expect(within(body[1]!).getAllByRole("cell")[0]).toHaveTextContent(
             "project.v2:linear:unresolved",
@@ -259,7 +273,7 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
             expect(keys).toContain(absentKey);
             expect(keys).toContain(servedKey);
             const column = keys.indexOf(absentKey);
-            for (const row of within(table).getAllByRole("row").slice(1)) {
+            for (const row of within(grid(table)).getAllByRole("row").slice(1)) {
                 const cell = within(row).getAllByRole("cell")[column]!;
                 expect(cell).toHaveTextContent("—");
                 expect(cell).toHaveAttribute("aria-label", "not in this row");
@@ -287,7 +301,7 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
             expect(keys.filter((name) => name === "scope_name")).toHaveLength(1);
             expect(keys).not.toContain("scope_id");
             const column = keys.indexOf("scope_name");
-            const rows = within(table).getAllByRole("row").slice(1);
+            const rows = within(grid(table)).getAllByRole("row").slice(1);
             expect(within(rows[0]!).getAllByRole("cell")[column]).not.toHaveTextContent(
                 /^project\.v2:/u,
             );
@@ -315,7 +329,7 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
 
         const table = tableFor(fact.claim_id);
         const column = headerKeys(table).indexOf("scope_name");
-        const rows = within(table).getAllByRole("row").slice(1);
+        const rows = within(grid(table)).getAllByRole("row").slice(1);
         expect(within(rows[1]!).getAllByRole("cell")[column]).toHaveTextContent(
             "project.v2:linear:blank-name",
         );

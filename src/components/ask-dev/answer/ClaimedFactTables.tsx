@@ -4,6 +4,8 @@ import { humanizeTerm } from "@/lib/ask-dev/facts/fact-rows";
 import { windowText } from "@/lib/ask-dev/render/window-text";
 import { logger } from "@/lib/logger";
 
+import { FactTrendSlot } from "../render/RenderShapes";
+
 import { ANSWER_COPY, FACT_KIND_LABEL, labelFor, type AnswerResult } from "./answerModel";
 import {
     claimedFactTables,
@@ -96,7 +98,7 @@ function FactTable({ model }: { model: FactTableModel }) {
                     </tbody>
                 </table>
             </div>
-            <div data-testid="ask-dev-fact-trend-slot" data-claim-ids={claimIds} />
+            <FactTrendSlot claimIds={model.claimIds} />
         </div>
     );
 }

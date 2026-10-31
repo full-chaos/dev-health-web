@@ -6,6 +6,8 @@ import type {
     ACRContextFabricInvestigationResultV1,
 } from "@/lib/acr/generated";
 
+import { AnswerWithheldNotice, RenderShapesProvider } from "../render/RenderShapes";
+
 import { AskDevAnswer } from "./AskDevAnswer";
 import { AskDevClarification } from "./AskDevClarification";
 import { AskDevRefusal } from "./AskDevRefusal";
@@ -41,7 +43,9 @@ type TranscriptFields =
     | "render_shapes"
     | "effective_evidence_window"
     // CHAOS-11945: the claimed-fact tables (their window is effective_evidence_window above).
-    | "claimed_facts";
+    | "claimed_facts"
+    // CHAOS-11942: the request id a withheld chart is logged with.
+    | "request_id";
 
 /** One turn's result: what both the answer view and the clarification view read. */
 export type TranscriptResult =
@@ -91,7 +95,12 @@ export function AskDevTurn({
             {refused ? (
                 <AskDevRefusal turn={turn} onReask={onReask} />
             ) : isNonAnswer(turn.status) ? (
-                <AskDevClarification result={turn} onConfirm={onConfirm} />
+                // A non-answer renders no table group or ranking panel, so every shape it carries
+                // is withheld at answer level, once (G4; codex r3 on #1629).
+                <RenderShapesProvider result={turn} groups={null}>
+                    <AskDevClarification result={turn} onConfirm={onConfirm} />
+                    <AnswerWithheldNotice />
+                </RenderShapesProvider>
             ) : (
                 <AskDevAnswer result={turn} />
             )}
