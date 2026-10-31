@@ -68,7 +68,7 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
 
 - **Detach.** A client route change keeps the store and the run. A reload or a tab close drops the connection: a leased run goes on on ACR, and one without a lease ends. Leaving the shell aborts (the store goes away with it). A switch, a new conversation or a delete detaches (see Store rules).
 - **Which runs attach.**
-    - The store's own stream drops after `accepted`: attach from the last `seq` seen. Before `accepted` the call may never have been admitted, so only the status can say.
+    - The store's own stream drops, or stalls, after `accepted`: attach from the last `seq` seen. A stalled run ACR then reports ended without an answer keeps the stalled state. Before `accepted` the call may never have been admitted, so only the status can say (and a stall ends the turn at once).
     - A restored turn still `running`: attach with no cursor, which replays from `accepted` (`seq` 1). Its progress shows, and it ends on its terminal (`run_lost` is the interrupted state).
 - **Each attached event is checked in a fixed order** (`admit`):
     1. ownership: the run is still followed and the attachment is the current one (`attachmentGeneration`);
@@ -91,7 +91,7 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
     - 202 → "Canceling…" until the terminal: `canceled` → canceled; a result that finished first is kept. A drop attaches again.
     - 204, or a 404 on the cancel → the status: `done` → the answer, `done_unsaved` → unsaved, `abandoned` → "Stopped or interrupted. Ask again." The status cannot tell a cancel from a lost run.
     - 409 `not_leased`:
-        - when this tab holds the run's connection (its own stream), the disconnect is the cancel, as before the lease;
+        - when this tab's own stream for the run is still open, the disconnect is the cancel, as before the lease;
         - otherwise "This run cannot be stopped. It ends on its own.", and Stop goes away. No second cancel is sent.
     - Before `accepted` nothing is admitted to cancel: Stop disconnects.
     - A cancel that does not reach ACR leaves the run running and Stop available.

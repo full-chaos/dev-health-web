@@ -695,6 +695,11 @@ type ActiveRun = {
     stop: "idle" | "requested" | "canceling" | "not_leased" | "final";
     /** When a status read last confirmed the run `running` (epoch ms). */
     lastSeenRunningAt: number | undefined;
+    /**
+     * This tab's own investigate stream is still open: only then can a disconnect stop a run that
+     * has no lease (codex r3 on #1657). An attach never owns a run.
+     */
+    streaming: boolean;
 };
 
 export class ConversationStore {
@@ -1176,7 +1181,12 @@ export class ConversationStore {
                 return;
             }
             case "not_leased":
-                if (run.origin === "submitted" && this.active === run && !run.detached) {
+                if (
+                    run.origin === "submitted" &&
+                    this.active === run &&
+                    !run.detached &&
+                    run.streaming
+                ) {
                     this.disconnect(run, "not_leased");
                     return;
                 }
@@ -1610,6 +1620,7 @@ export class ConversationStore {
             attachmentGeneration: 0,
             stop: "idle",
             lastSeenRunningAt: undefined,
+            streaming: false,
         };
         this.observed.set(submissionId, run);
         run.timer = setTimeout(() => this.expire(run), Math.max(0, run.deadline - this.now()));
@@ -1909,6 +1920,7 @@ export class ConversationStore {
             attachmentGeneration: 0,
             stop: "idle",
             lastSeenRunningAt: undefined,
+            streaming: true,
         };
         this.active = run;
         run.timer = setTimeout(() => this.expire(run), Math.max(0, deadline - this.now()));
@@ -1938,6 +1950,7 @@ export class ConversationStore {
                 if (this.apply(run, event)) return;
             }
         } catch (error) {
+            run.streaming = false;
             if (run.detached) clearTimeout(run.detachTimer);
             if (!this.owns(run)) return;
             if (error instanceof TransportRefusal) {
@@ -1945,6 +1958,19 @@ export class ConversationStore {
                 return;
             }
             if (error instanceof TransportFailure) {
+                if (error.reason === "stalled" && accepted) {
+                    // The browser closed a silent stream; a leased run goes on on ACR, so its
+                    // events are read again (codex r3 on #1657). A run ACR then reports ended
+                    // without an answer keeps the stalled state.
+                    logger.warn(
+                        { submission_id: submissionId, request_id: requestId },
+                        "ask-dev stream stalled after accepted; attaching",
+                    );
+                    if ((await this.reattach(run)) === "done") return;
+                    if (!this.owns(run)) return;
+                    await this.recover(run, deadline, true, { kind: "stalled" });
+                    return;
+                }
                 this.transportFailed(run, error.reason);
                 return;
             }
@@ -1953,6 +1979,7 @@ export class ConversationStore {
                 "ask-dev stream dropped",
             );
         }
+        run.streaming = false;
         if (run.detached) clearTimeout(run.detachTimer);
         if (!this.owns(run)) return;
         logger.warn(
@@ -2347,7 +2374,16 @@ export class ConversationStore {
      * fresh call that ACR authorizes again. `done` replays the FINAL `result_id` (a reused answer
      * keeps its own id, which is not the reserved one).
      */
-    private async recover(run: ActiveRun, deadline: number, accepted: boolean): Promise<void> {
+    /**
+     * `lost` is what a run that ended without an answer shows (abandoned, or no record after
+     * `accepted`): interrupted, or stalled after a stall (codex r3 on #1657).
+     */
+    private async recover(
+        run: ActiveRun,
+        deadline: number,
+        accepted: boolean,
+        lost: TurnOutcome = { kind: "interrupted" },
+    ): Promise<void> {
         const turn = this.turn(run.turnId);
         if (turn === undefined) return;
         const submissionId = turn.submissionId;
@@ -2381,7 +2417,7 @@ export class ConversationStore {
                 this.settle(
                     run,
                     accepted
-                        ? { kind: "interrupted" }
+                        ? lost
                         : { kind: "failed", retry: true, reference: this.reference(run) },
                 );
                 return;
@@ -2396,10 +2432,7 @@ export class ConversationStore {
             }
             if (status?.state === "abandoned") {
                 // After a Stop the status cannot tell a cancel from a lost run (§5.4).
-                this.settle(
-                    run,
-                    run.stop === "idle" ? { kind: "interrupted" } : { kind: "halted" },
-                );
+                this.settle(run, run.stop === "idle" ? lost : { kind: "halted" });
                 return;
             }
             if (this.now() + STATUS_POLL_INTERVAL_MS > deadline) {

@@ -988,8 +988,21 @@ describe("panel states (plan §2.7.8)", () => {
         expect(store.retry(last(store).id)).toBe(false);
     });
 
+    // CHAOS-11957 (codex r3 on #1657): a stall after `accepted` now attaches to the run's events
+    // and reads its status before it says so (`conversationStore.reattach.test.ts`); the other
+    // reasons still end the turn at once.
+    it("ends a stall after accepted as stalled once the run is gone: one attach, then the status", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted(), { fail: new TransportFailure("stalled") }]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "stalled" });
+        expect(transport.attachCalls).toHaveLength(1);
+        expect(transport.statusCalls.length).toBeGreaterThan(0);
+        expect(store.retry(last(store).id)).toBe(false);
+    });
+
     it.each([
-        ["stalled", true, { kind: "stalled" }],
         ["admission_timeout", false, { kind: "deadline", deadline: "admission" }],
         ["budget_exhausted", false, { kind: "deadline", deadline: "budget_exhausted" }],
     ] as const)(

@@ -602,3 +602,48 @@ describe("codex r2 on #1657", () => {
         expect(snap(store).turns).toEqual([]);
     });
 });
+
+describe("codex r3 on #1657", () => {
+    it("a stall after accepted attaches to the run's events instead of giving up (P2-1)", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted0(), { fail: new TransportFailure("stalled") }]);
+        transport.attachScripts.push([resultAt(2)]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(kind(store)).toBe("answered"));
+        expect(transport.attachCalls.map((call) => call.lastEventId)).toEqual([1]);
+    });
+
+    it("a stall before accepted attaches nothing: nothing was admitted to follow", async () => {
+        const store = makeStore();
+        transport.scripts.push([{ fail: new TransportFailure("stalled") }]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(kind(store)).toBe("stalled"));
+        expect(transport.attachCalls).toEqual([]);
+        expect(transport.statusCalls).toEqual([]);
+    });
+
+    it("a stall whose run ACR then reports ended keeps the stalled state", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted0(), { fail: new TransportFailure("stalled") }]);
+        transport.statuses.push(status("abandoned"));
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(kind(store)).toBe("stalled"));
+        expect(transport.attachCalls).toHaveLength(1);
+    });
+
+    it("409 not_leased when this tab's stream already ended: it cannot be stopped, never 'canceled' (P2-2)", async () => {
+        // The status poll waits (it never ends here), so the run stays in recovery.
+        const store = makeStore({ sleep: () => new Promise(() => undefined) });
+        transport.scripts.push([accepted0()]);
+        transport.statuses.push(status("running"));
+        transport.cancelAnswers.push({ kind: "not_leased" });
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(kind(store)).toBe("recovering"));
+        const { signal } = transport.calls[0]!;
+        store.cancel();
+        await vi.waitFor(() => expect(lastTurn(store).stop).toBe("not_leased"));
+        expect(kind(store)).toBe("recovering");
+        expect(signal.aborted).toBe(false);
+        expect(infoEvents("ask-dev run canceled")).toEqual([]);
+    });
+});
