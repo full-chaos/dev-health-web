@@ -1,9 +1,9 @@
 # Architecture: Ask Dev thread seam (history, reattach, feedback)
 
-**Status:** Authoritative. History and reload recovery (CHAOS-11956) and reattach and cancel (CHAOS-11957) are built. Answer feedback (CHAOS-11958) follows this design.
+**Status:** Authoritative. History and reload recovery (CHAOS-11956), reattach and cancel (CHAOS-11957) and answer feedback (CHAOS-11958) are built.
 **Scope:** dev-health-web: how the browser reads, restores, deletes and observes Ask Dev conversations held by ACR.
 **Design of record:** E6 web design v5. It went through three astra review rounds, with the triage on Linear CHAOS-11956. This page is its repo summary.
-**Code:** `src/components/ask-dev/conversation/` (the seam is `transport.ts`; the store is `conversationStore.ts`).
+**Code:** `src/components/ask-dev/conversation/` (the seam is `transport.ts`; the store is `conversationStore.ts`; feedback is `feedbackStore.ts`).
 
 ## The one rule
 
@@ -28,9 +28,9 @@
 
 Production CSP has no `unsafe-eval` (`src/proxy.ts`). The runtime Ajv of `src/lib/acr/contracts.ts` compiles with `new Function`, so it cannot run in the browser. Test mode allows eval, so runtime Ajv would pass every e2e and fail only live. Instead:
 
-- `scripts/acr-contract-artifacts.mjs` generates `src/lib/acr/threadValidators.js` (and its `.d.ts`). This is Ajv standalone code for the thread schemas, built with the options of `contracts.ts`.
+- `scripts/acr-contract-artifacts.mjs` generates `src/lib/acr/threadValidators.js` (and its `.d.ts`). This is Ajv standalone code for the thread schemas and the feedback schema, built with the options of `contracts.ts`.
 - The code is generated, not hand-written, so it cannot drift: `pnpm acr:contracts:check` fails on any edit, and the vitest suite runs it.
-- `src/lib/acr/threadContract.ts` only maps a body that passed.
+- `src/lib/acr/threadContract.ts` and `src/lib/acr/feedbackContract.ts` only map a body that passed.
 - A body that fails is `TransportFailure("invalid_upstream")`, and the conversation shows "could not be read".
 - `threadContract.differential.test.ts` holds the generated code equal to `validateAcrContract`, over cases built from the schema files. It also checks that the code answers with `eval` and `Function` disabled.
 
@@ -58,7 +58,7 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
     | Transcript (thread read, replays, earlier pages, observed runs, URL) | partition + selection                                                           | no                                                           |
     | History pages                                                        | partition + history revision                                                    | yes                                                          |
     | Delete tombstones                                                    | partition                                                                       | yes (a delete that lands after a switch still hides its row) |
-    | Feedback _(11958)_                                                   | partition + `result_id` + write revision                                        | yes                                                          |
+    | Feedback                                                             | partition (one write at a time per `result_id`)                                 | yes                                                          |
     | Attach (a followed run's events)                                     | the run is still followed (a selection change drops it) + attachment generation | no                                                           |
 
 - **Leaving a conversation does not stop its run.** A switch, a new conversation or a delete _detaches_ the submitted run: the store keeps reading its stream to the terminal and commits nothing from it. ACR's run lease is behind a flag, and without a lease a disconnect ends the run. The store closes a detached stream at the run's deadline D. Only a partition change (org switch, impersonation, sign-out) or leaving the shell aborts it. A restored running turn stays observed until its final answer is read, so a follow-up always carries it.
@@ -98,12 +98,15 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
     - `t_req` is ACR's time; the browser logs only `browser_requested_at`.
 - **Keepalive (INV-3)** belongs to the transport (T14): the 15 s pre-header wait and the 30 s stall rule (a `: keepalive` comment counts) end an attach with a `TransportFailure`, which attaches again. The live proof is CHAOS-12233.
 
-## Feedback (CHAOS-11958, planned)
+## Feedback (CHAOS-11958)
 
-- **One slice per `result_id`**, shared by every turn that shows the same answer.
-- **Writes** are serialized and coalesced, each with a local revision. A failure rolls back only its own revision, and later choices are kept.
-- **Not rated or not shown:** a never-rated answer reads `unset/unset`. A 404 hides the controls.
-- **Telemetry:** none.
+"Correct?" and "Useful?" (yes or no; pressing the chosen value again clears it) under each answer. A clarification or a no-match asks nothing to judge, so it gets no controls.
+
+- **A store of its own,** `feedbackStore.ts`, beside the conversation store in the provider and bound to the same (org, principal) key in the same step. A partition change drops every entry and aborts every read and write. A thread switch changes nothing. The provider rebinds in an effect, after the commit of a switch, so a control shows an entry only when the store is bound to the session's own key (`entryFor`): the commit of an org or impersonation switch never paints the old key's choice.
+- **One entry per `result_id`,** shared by every turn and both surfaces that show the same answer (a reused answer names another turn's result). It is read once per partition.
+- **Reads:** a never-rated answer reads `unset/unset`. ACR's 404 hides the controls. A failed read keeps them disabled, with "Try again" (a GET). An answer for another `result_id` is a failed read.
+- **Writes:** one POST at a time per result, with the whole latest choice. Choices made while one is out go together in the next POST, so answers cannot arrive out of order. A failed write rolls back each flag the user has not changed since it was sent and, when it rolled one back, says "Feedback was not saved." until the next choice. A later choice is kept and sent next; when the user changed every flag again, nothing is lost and nothing is said. ACR's 404 on a write hides the controls. When ACR's answer differs from what was sent, a flag the user has not changed since shows what ACR stored.
+- **No free text and no telemetry.** The feedback modules import no telemetry (a test reads their source), and a test drives every path with `trackTelemetryEvent` recorded and finds no call.
 
 ## Logs
 
@@ -111,12 +114,12 @@ There is no product telemetry. Info events are content-free: operation, outcome,
 
 - Built:
     - `ask-dev thread restored`, `ask-dev thread restore failed`, `ask-dev stale answer dropped`, `ask-dev observed run expired` (11956);
-    - `ask-dev attach selected`, `ask-dev attach fell back`, `ask-dev cancel requested`, `ask-dev cancel answered`, `ask-dev cancel not sent` and `ask-dev run canceled` (the disconnect cancel) (11957).
-- Planned: `feedback saved` / `feedback not saved` (11958).
+    - `ask-dev attach selected`, `ask-dev attach fell back`, `ask-dev cancel requested`, `ask-dev cancel answered`, `ask-dev cancel not sent` and `ask-dev run canceled` (the disconnect cancel) (11957);
+    - `ask-dev feedback saved` / `ask-dev feedback not saved` (`result_id`, a local `revision`, `status`) and the Warn `ask-dev feedback not read` (`result_id`, `status`), never a flag value (11958).
 
 ## Tests
 
-- **Store:** `conversationStore.history.test.ts`, `conversationStore.reattach.test.ts`.
-- **Views:** `src/components/ask-dev/__tests__/AskDevHistory.test.tsx`.
-- **Contract oracle:** `src/lib/acr/__tests__/threadContract.differential.test.ts`.
-- **E2E:** `tests/ask-dev-history.spec.ts`, `tests/ask-dev-reattach-cancel.spec.ts`.
+- **Store:** `conversationStore.history.test.ts`, `conversationStore.reattach.test.ts`, `feedbackStore.test.ts`.
+- **Views:** `src/components/ask-dev/__tests__/AskDevHistory.test.tsx`, `conversation/__tests__/AskDevFeedback.test.tsx`.
+- **Contract oracle:** `src/lib/acr/__tests__/threadContract.differential.test.ts` (thread, thread list and result feedback).
+- **E2E:** `tests/ask-dev-history.spec.ts`, `tests/ask-dev-reattach-cancel.spec.ts`, `tests/ask-dev-feedback.spec.ts`.

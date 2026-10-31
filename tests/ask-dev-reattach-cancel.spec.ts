@@ -243,8 +243,16 @@ test.describe("desktop (1280px)", () => {
         const [sent] = await investigations(page);
         const threadId = String(sent!.thread_id);
         const submission = String(sent!.submission_id);
-        const hint = await page.evaluate(() => window.sessionStorage.getItem("ask-dev:thread"));
-        expect(JSON.parse(hint ?? "{}")).toMatchObject({ thread_id: threadId });
+        // The store keeps its thread hint once it has processed ACR's `accepted`, which can land
+        // after the investigate call is recorded (CHAOS-12311): wait for it, never read it once.
+        await expect
+            .poll(async () =>
+                JSON.parse(
+                    (await page.evaluate(() => window.sessionStorage.getItem("ask-dev:thread"))) ??
+                        "{}",
+                ),
+            )
+            .toMatchObject({ thread_id: threadId });
 
         await rescript(page, "threads", {
             [threadId]: thread(threadId, [turn(submission, "running", { question: QUESTION })]),
