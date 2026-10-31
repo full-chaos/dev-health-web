@@ -15,8 +15,6 @@ describe("touchesPin", () => {
         "src/lib/acr/threadValidators.d.ts",
         "scripts/sync-acr-contracts.mjs",
         "scripts/acr-contract-artifacts.mjs",
-        "scripts/check-acr-pin-drift.mjs",
-        ".github/workflows/acr-pin-drift.yml",
     ])("enforces for %s", (file) => {
         expect(touchesPin(["README.md", file])).toBe(true);
     });
@@ -27,6 +25,8 @@ describe("touchesPin", () => {
         "src/app/page.tsx",
         ".github/workflows/tests.yml",
         "scripts/other.mjs",
+        "scripts/check-acr-pin-drift.mjs",
+        ".github/workflows/acr-pin-drift.yml",
     ])("is advisory for %s", (file) => {
         expect(touchesPin([file])).toBe(false);
     });

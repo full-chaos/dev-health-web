@@ -3,9 +3,9 @@
 # Main, schedule and manual runs are strict: drift turns the run red and keeps it red until the pin
 # is bumped. They also open (or update) one "ACR pin drift: <acr sha>" issue, and close it when the
 # drift clears.
-# A PR run is strict only when the PR changes the vendored contracts or the pin machinery
-# (scripts/acr-pin-scope.mjs). For any other PR, drift is a warning, so an acr main move never turns
-# unrelated PRs red. Exit 1 = drift, exit 2 = the check could not fetch (also red where strict).
+# A PR run is strict only when the PR changes the vendored contracts or the generator that writes
+# them (scripts/acr-pin-scope.mjs lists the paths). For any other PR, drift is a warning, so an acr
+# main move never turns unrelated PRs red. Exit 1 = drift, exit 2 = the check could not fetch (also red where strict).
 name: ACR pin drift
 
 on:

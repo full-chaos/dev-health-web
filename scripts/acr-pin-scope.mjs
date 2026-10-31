@@ -9,8 +9,7 @@ import path from "node:path";
 const PIN_PATHS = [
     /^src\/lib\/acr\/contracts\//,
     /^src\/lib\/acr\/threadValidators\.(js|d\.ts)$/,
-    /^scripts\/(sync-acr-contracts|acr-contract-[a-z-]+|check-acr-pin-drift|acr-pin-scope)\.mjs$/,
-    /^\.github\/workflows\/acr-pin-drift\.yml$/,
+    /^scripts\/(sync-acr-contracts|acr-contract-[a-z-]+)\.mjs$/,
 ];
 
 export function touchesPin(files) {
