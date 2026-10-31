@@ -56,6 +56,21 @@ describe("Sentry scrubbing of ACR browser tokens", () => {
         expect(JSON.stringify(event)).not.toMatch(/fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]/u);
     });
 
+    it.each([
+        [
+            "fully percent-encoded",
+            [...REFRESH].map((c) => `%${c.charCodeAt(0).toString(16)}`).join(""),
+        ],
+        ["with an encoded underscore", `fcacr%5F${"A1b2".repeat(10)}`],
+        ["upper-case hex", `ACRRT%5f${"R".repeat(43)}`.replace("ACRRT", "%61%63%72%72%74")],
+    ])("filters a percent-encoded token in free text, %s (r3)", (_, encoded) => {
+        const scrubbed = scrubTelemetryText(`t=${encoded} done`);
+        expect(decodeURIComponent(scrubbed)).not.toMatch(
+            /fcacr_[A-Za-z0-9_-]|acrrt_[A-Za-z0-9_-]/u,
+        );
+        expect(scrubbed).toContain("done");
+    });
+
     it("never lets a renamed key overwrite a field already named [Filtered] (r2)", () => {
         const payload = scrubTelemetryPayload({
             "[Filtered]": "legitimate diagnostic",

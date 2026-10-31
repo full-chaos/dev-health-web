@@ -80,6 +80,17 @@ const EMAIL_SHAPE = new RegExp(
 );
 // Credential shapes that carry no field name. Bounded quantifiers and a start anchor keep each rule
 // linear on a 16 KB scalar.
+/** `text` with each character either as is or as its `%XX` escape. */
+function escapedOrPlain(text: string): string {
+    return [...text]
+        .map((character) => `(?:${character}|%${character.charCodeAt(0).toString(16)})`)
+        .join("");
+}
+const ENCODED_ACR_TOKEN = new RegExp(
+    `(?:${escapedOrPlain("fcacr_")}|${escapedOrPlain("acrrt_")})(?:[\\w-]|%[0-9a-f]{2}){8,}`,
+    "gi",
+);
+
 const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: string) => string)]> = [
     [
         /-----BEGIN [A-Z ]{0,24}PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]{0,24}PRIVATE KEY-----|$)/g,
@@ -94,6 +105,8 @@ const CREDENTIAL_SHAPES: ReadonlyArray<readonly [RegExp, string | ((match: strin
     // CHAOS-12304: ACR's browser access (`fcacr_`) and refresh (`acrrt_`) tokens, wherever they appear:
     // no word boundary, so `prefix_fcacr_…` or `abcacrrt_…` is filtered too (r2 on web #1665).
     [/(?:fcacr|acrrt)_[\w-]{8,}/g, FILTERED],
+    // The same tokens percent-encoded in free text, any character escaped or not (r3 on web #1665).
+    [ENCODED_ACR_TOKEN, FILTERED],
     [/\b([a-z][a-z\d+.-]{0,31}:\/\/)[^\s/@]+@/gi, `$1${FILTERED}@`],
     [/\b[a-z][a-z\d+.-]{0,31}:\/\/\S+/gi, filterSlashedUserinfo],
     // A password that holds a space. Prose such as `host:8080 word me@x` is removed too: fail safe.

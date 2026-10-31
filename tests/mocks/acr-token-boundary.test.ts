@@ -209,6 +209,30 @@ describe("tokenBoundaryViolations", () => {
         expect(tokenBoundaryViolations([...ALLOWED, observed], ACR)).toEqual([name]);
     });
 
+    it.each<[string, Observed, string]>([
+        [
+            "a percent-encoded access token in a URL",
+            request(
+                `${WEB}/x?t=${[...ACCESS].map((c) => `%${c.charCodeAt(0).toString(16)}`).join("")}`,
+            ),
+            "access token in a URL",
+        ],
+        [
+            "a twice-encoded refresh token in a URL",
+            request(
+                `${WEB}/x?t=${encodeURIComponent(encodeURIComponent(REFRESH).replace("_", "%5F"))}`,
+            ),
+            "refresh token in a URL",
+        ],
+        [
+            "an encoded refresh token in a body to web",
+            request(`${WEB}/api/x`, { method: "POST", body: `t=acrrt%5F${"R".repeat(43)}` }),
+            "refresh token in a non-ACR request",
+        ],
+    ])("names %s (r3)", (_, observed, name) => {
+        expect(tokenBoundaryViolations([...ALLOWED, observed], ACR)).toEqual([name]);
+    });
+
     it("catches a short planted token, not only the 43-character shape", () => {
         expect(tokenBoundaryViolations([request(`${WEB}/x?t=fcacr_PLANTED0123`)], ACR)).toEqual([
             "access token in a URL",

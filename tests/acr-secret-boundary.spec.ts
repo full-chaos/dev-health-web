@@ -94,9 +94,9 @@ function parseSetCookie(header: string, url: URL): JarCookie | null {
 
 // CHAOS-12304: the refresh token `acrrt_` is a secret too; `fcacr_` matching does not cover it.
 const secretPattern =
-    /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
+    /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9_-]|acrrt_[A-Za-z0-9_-]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 const clientChunkForbiddenPattern =
-    /ACR_API_ORIGIN|ACR_REQUEST_TIMEOUT_MS|ACR_WEB_ASSERTION_(?:KEY_FILE|KID|ISSUER|AUDIENCE)|BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|acrrt_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
+    /ACR_API_ORIGIN|ACR_REQUEST_TIMEOUT_MS|ACR_WEB_ASSERTION_(?:KEY_FILE|KID|ISSUER|AUDIENCE)|BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9_-]|acrrt_[A-Za-z0-9_-]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 
 test.beforeEach(async ({ request }) => {
     const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
@@ -527,7 +527,10 @@ test("scans a server action response for a refresh token too (CHAOS-12304)", asy
     const { networkRecords, stop } = await watchNetwork(
         page,
         new URL(baseURL ?? "http://127.0.0.1:3001").origin,
-        { mutateActionBody: (body) => `${body}\nacrrt_PLANTED0123456789` },
+        {
+            // Starts with `-`: base64url allows it, and the guard pattern must too (r3).
+            mutateActionBody: (body) => `${body}\nacrrt_-PLANTED0123456789`,
+        },
     );
 
     await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
@@ -1308,8 +1311,17 @@ test.describe("ACR browser tokens on the c2 flow (CHAOS-12304)", () => {
     }) => {
         const run = await browserTokenScenario(page, baseURL);
         expect(run.violations).toEqual([]);
-        // Every unreadable body is web's own; ACR's bodies come from the route that answered them.
-        expect(run.unreadable.filter((url) => !url.startsWith(run.endpoints.issuer))).toEqual([]);
+        // ACR's bodies come from the route that answered them, so none is lost. A web body that could
+        // not be read fails closed, except build-time static assets (chunks, fonts): a runtime token
+        // cannot be in them, and the client-chunk scan above reads the chunks.
+        const STATIC_ASSET = /\/(?:_next\/static|__nextjs_font|_next\/image)\//u;
+        expect(
+            run.unreadable.filter(
+                (url) =>
+                    !url.startsWith(run.endpoints.issuer) &&
+                    !STATIC_ASSET.test(new URL(url).pathname + "/"),
+            ),
+        ).toEqual([]);
 
         // The scenario saw each allowed placement, so an empty list is not an observer that saw nothing.
         const requests = run.observed.filter((item) => item.kind === "request");
