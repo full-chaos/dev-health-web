@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 import {
+    isNavAreaVisible,
     isNavChildVisible,
     navAreas,
     getAreaById,
@@ -29,8 +30,11 @@ const routePageExists = (routePath: string) => {
     ].some((candidate) => existsSync(candidate));
 };
 
-describe("navAreas — locked 8-area decision surface", () => {
-    it("declares exactly eight areas in canonical order", () => {
+// CHAOS-12210, chris's ruling (2026-10-31): "For now put Ask Dev after AI". It replaces the
+// CHAOS-3524 ruling that removed Ask Dev as a left-nav destination: Ask Dev is a main row right
+// after AI, opening the full page /dev.
+describe("navAreas — locked 9-area decision surface", () => {
+    it("declares exactly nine areas in canonical order", () => {
         expect(navAreas.map((a) => a.id)).toEqual([
             "cockpit",
             "diagnose",
@@ -38,12 +42,13 @@ describe("navAreas — locked 8-area decision surface", () => {
             "improve",
             "govern",
             "ai",
+            "ask-dev",
             "reports",
             "admin",
         ]);
     });
 
-    it("keeps the main spine to six areas and the utility tray to two", () => {
+    it("keeps the main spine to seven areas and the utility tray to two", () => {
         expect(navAreas.filter((a) => a.placement === "main").map((a) => a.id)).toEqual([
             "cockpit",
             "diagnose",
@@ -51,6 +56,7 @@ describe("navAreas — locked 8-area decision surface", () => {
             "improve",
             "govern",
             "ai",
+            "ask-dev",
         ]);
         expect(navAreas.filter((a) => a.placement === "utility").map((a) => a.id)).toEqual([
             "reports",
@@ -76,9 +82,8 @@ describe("navArea.children — locked child navigation", () => {
                 "Complexity",
                 "Cognitive Load",
                 "Bottlenecks",
-                // CHAOS-3524 (chris's ruling): Ask Dev removed as a
-                // left-nav destination — one ingress only, the in-context
-                // trigger/window path.
+                // Ask Dev is not a Diagnose child: it is its own row after AI
+                // (CHAOS-12210, chris 2026-10-31; it replaces CHAOS-3524).
                 "People",
                 "Code",
             ],
@@ -104,6 +109,8 @@ describe("navArea.children — locked child navigation", () => {
                 "Governance Risk",
                 "Automations",
             ],
+            // CHAOS-12210 (chris 2026-10-31): Ask Dev is its own row, with no children.
+            "Ask Dev": [],
             Reports: ["Report Center", "Weekly Review", "Executive Summary", "Export History"],
             // CHAOS-7967: "Platform" and "Platform billing" are listed only for platform admins.
             Admin: [
@@ -266,11 +273,8 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         { areaId: "diagnose", pathname: "/metrics", childId: "flow" },
         { areaId: "diagnose", pathname: "/investment", childId: "investment" },
         { areaId: "diagnose", pathname: "/landscape", childId: "landscape" },
-        // CHAOS-3524 (chris's ruling): Ask Dev is no longer a left-nav
-        // destination — /dev resolves to Diagnose (see the
-        // selectedAreaIdForPathname case above) but selects no CHILD row
-        // anymore, covered by its own dedicated test below rather than a
-        // case in this table.
+        // /dev is the Ask Dev row's own area (CHAOS-12210), with no child row:
+        // covered by the "Ask Dev row" tests below rather than a case here.
         {
             areaId: "plan",
             pathname: "/plan",
@@ -536,5 +540,38 @@ describe("Every area hub item has its hero action text (ruling 93)", () => {
             navAreas.flatMap((area) => area.hubItems.map((item) => [item.id, item.heroCta])),
         );
         expect(actual).toEqual(expected);
+    });
+});
+
+describe("Ask Dev row (CHAOS-12210, chris 2026-10-31: after AI)", () => {
+    it("is a main row with no children that opens the full page /dev", () => {
+        const askDev = areaById("ask-dev");
+        expect(askDev).toMatchObject({
+            label: "Ask Dev",
+            href: "/dev",
+            placement: "main",
+            ownedPathPrefixes: ["/dev"],
+            children: [],
+            hubItems: [],
+        });
+    });
+
+    it("is the area of /dev, with one crumb and its label as the title", () => {
+        expect(selectedAreaIdForPathname(navAreas, "/dev")).toBe("ask-dev");
+        expect(navTrailForPathname("/dev")).toEqual([{ label: "Ask Dev" }]);
+        expect(navTitleForPathname("/dev")).toBe("Ask Dev");
+        expect(selectedAreaIdForPathname(navAreas, "/developer")).not.toBe("ask-dev");
+    });
+
+    it("is listed only when Ask Dev is on: both ask_dev and agent_context_runtime", () => {
+        const askDev = areaById("ask-dev");
+        expect(isNavAreaVisible(askDev, {})).toBe(false);
+        expect(isNavAreaVisible(askDev, { ask_dev: true })).toBe(false);
+        expect(isNavAreaVisible(askDev, { agent_context_runtime: true })).toBe(false);
+        expect(isNavAreaVisible(askDev, { ask_dev: true, agent_context_runtime: true })).toBe(true);
+        // Every other area is listed whatever the features.
+        for (const area of navAreas.filter((a) => a.id !== "ask-dev")) {
+            expect(isNavAreaVisible(area, {}), area.id).toBe(true);
+        }
     });
 });
