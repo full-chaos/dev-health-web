@@ -25,12 +25,20 @@ const clientModules = sourceFiles(SRC)
  * Any mention of a token key in a client module: a property read (`session.access_token`), a
  * bracket read, a destructure (`const { access_token } = session`), a type field or a string.
  * Broad on purpose: a client module has no reason to name the key. A later module that must (an
- * OAuth client parsing its own token answer) is listed in ALLOWED with the reason.
+ * OAuth client parsing its own token answer) is listed in ALLOWED with the reason and the exact
+ * lines that name a key (codex r1 on #1676): a new mention there still fails.
  */
 const READS_TOKEN = /\b(?:access_token|refresh_token)\b/u;
-const ALLOWED: Record<string, string> = {
-    "lib/ask-dev/acr-auth.ts":
-        "ACR's browser OAuth client: it parses ACR's own token answer (fcacr_/acrrt_), never an Ops token. It imports next-auth/react only to read the web principal (CHAOS-12305).",
+const ALLOWED: Record<string, { readonly reason: string; readonly lines: readonly string[] }> = {
+    "lib/ask-dev/acr-auth.ts": {
+        reason: "ACR's browser OAuth client: it parses ACR's own token answer (fcacr_/acrrt_), never an Ops token. It imports next-auth/react only to read the web principal (CHAOS-12305).",
+        lines: [
+            'grant_type: "refresh_token",',
+            "refresh_token: family.refreshToken,",
+            "access_token: access,",
+            "refresh_token: refresh,",
+        ],
+    },
 };
 /** A browser `update()` that carries a token pair: only server code writes tokens into the session. */
 const WRITES_TOKEN_PAIR = /\bupdate\(\s*\{\s*(?:activeOrg|onboardComplete)\b/u;
@@ -61,6 +69,18 @@ describe("no Ops token in client code (CHAOS-12088)", () => {
             .filter(({ file, text }) => !(file in ALLOWED) && READS_TOKEN.test(text))
             .map((m) => m.file);
         expect(hits).toEqual([]);
+    });
+
+    it("an allowed module names a token key only on its pinned lines", () => {
+        for (const [file, { lines }] of Object.entries(ALLOWED)) {
+            const scanned = clientModules.find((m) => m.file === file);
+            expect(scanned, `${file} is a client module`).toBeDefined();
+            const named = scanned!.text
+                .split("\n")
+                .filter((line) => READS_TOKEN.test(line))
+                .map((line) => line.trim());
+            expect(named).toEqual(lines);
+        }
     });
 
     it("no client module writes a token pair into the session", () => {

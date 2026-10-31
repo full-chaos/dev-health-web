@@ -1470,6 +1470,95 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(refreshLog()).toEqual([]);
         });
     });
+
+    describe("codex r1 on #1676", () => {
+        const EVIL = "https://evil.example";
+
+        it("without Web Locks, one tab's concurrent calls still make one refresh", async () => {
+            await signIn();
+            now += REFRESH_AT_MS;
+            vi.stubGlobal("navigator", {});
+            const { lock: _serial, ...browserLock } = depsFor(storage);
+            setAcrAuthDependenciesForTest(browserLock);
+            const [first, second] = await Promise.all([getAcrAccessToken(), getAcrAccessToken()]);
+            expect(refreshLog()).toHaveLength(1);
+            expect(maxInFlight).toBe(1);
+            expect(first).toMatchObject({ kind: "token" });
+            expect(second).toEqual(first);
+        });
+
+        it.each([
+            ["another user and org", { userId: "user-2", orgId: "org-2" }],
+            ["no session (signed out)", null],
+        ])(
+            "re-checks the principal after the refresh: %s meanwhile gets no token",
+            async (_, next) => {
+                await signIn();
+                now += REFRESH_AT_MS;
+                fates.push({
+                    during: async () => {
+                        principal = next;
+                    },
+                });
+                expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+                expect(refreshLog()).toHaveLength(1);
+                expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+                // The refreshed token is not held for later either.
+                principal = USER;
+                expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+                expect(refreshLog()).toHaveLength(1);
+            },
+        );
+
+        it.each([
+            ["a token endpoint on another origin", { tokenEndpoint: `${EVIL}/collect` }],
+            ["a revocation endpoint on another origin", { revocationEndpoint: `${EVIL}/collect` }],
+            ["another issuer", { issuer: EVIL }],
+            [
+                "another issuer with its own endpoints",
+                {
+                    issuer: EVIL,
+                    tokenEndpoint: `${EVIL}/token`,
+                    revocationEndpoint: `${EVIL}/revoke`,
+                },
+            ],
+            ["another client", { clientId: `${WEB}/other-client.json` }],
+        ])("never uses, refreshes or revokes a stored family with %s", async (_, change) => {
+            storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify({ ...STORED_FAMILY, ...change }));
+            expect(readAcrHeldFamily()).toBeNull();
+            expect(acrBrowserSignOut.heldFamily()).toBeNull();
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(calls.filter((call) => !call.url.startsWith(`${ISSUER}/`))).toEqual([]);
+            expect(refreshLog()).toEqual([]);
+        });
+
+        it("holds no family while the client is off: sign-out then revokes nothing", () => {
+            storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
+            setAcrAuthDependenciesForTest({ ...depsFor(storage), config: () => undefined });
+            expect(readAcrHeldFamily()).toBeNull();
+            expect(acrBrowserSignOut.heldFamily()).toBeNull();
+        });
+
+        it("without BroadcastChannel, another tab's family is unusable after sign-out: the web session is gone", async () => {
+            const here = await openTab(storage, null);
+            await signIn(here.auth);
+            const elsewhere = new MemoryStorage();
+            const there = await openTab(elsewhere, null);
+            await signIn(there.auth);
+            expect(await there.auth.getAcrAccessToken()).toMatchObject({ kind: "token" });
+
+            await here.signOut.acrBrowserSignOut.clearAllTabs();
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            // No channel: the other tab was not told. signOutEverywhere then ends the web session.
+            expect(elsewhere.getItem(ACR_TOKEN_FAMILY_KEY)).not.toBeNull();
+            principal = null;
+            expect(await there.auth.getAcrAccessToken()).toEqual({
+                kind: "authorization_required",
+            });
+            expect(elsewhere.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            expect(refreshLog()).toEqual([]);
+        });
+    });
 });
 
 describe("module load (P1-6, CHAOS-12305)", () => {

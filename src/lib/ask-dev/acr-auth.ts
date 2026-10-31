@@ -275,7 +275,7 @@ const browserDependencies: Dependencies = {
     lock: (name, task) =>
         typeof navigator !== "undefined" && navigator.locks !== undefined
             ? navigator.locks.request(name, task)
-            : task(),
+            : inTabLock(name, task),
     // Replace, not assign: Back from where the flow returns must not start it again.
     navigate: (url) => window.location.replace(url),
     config: browserAcrClientConfig,
@@ -295,6 +295,27 @@ const browserDependencies: Dependencies = {
 };
 
 let dependencies: Dependencies = browserDependencies;
+
+/** The lock chains of this document, for a browser with no Web Locks. */
+const inTabLocks = new Map<string, Promise<void>>();
+
+/**
+ * With no Web Locks, the lock still serializes this document's tasks of one name (codex r1 on
+ * #1676: two calls in one tab must not present one refresh token twice). Across tabs there is then
+ * no lock: a family shared that way meets ACR's reuse rule and fails closed.
+ */
+function inTabLock<T>(name: string, task: () => Promise<T>): Promise<T> {
+    const run = (inTabLocks.get(name) ?? Promise.resolve()).then(task);
+    const tail = run.then(
+        () => undefined,
+        () => undefined,
+    );
+    inTabLocks.set(name, tail);
+    void tail.then(() => {
+        if (inTabLocks.get(name) === tail) inTabLocks.delete(name);
+    });
+    return run;
+}
 
 /**
  * Tests only: replace the browser seams, and start a new page load's clone check. With no
@@ -895,7 +916,16 @@ export async function getAcrAccessToken(): Promise<AcrAccessToken> {
     if (storage === null || family === null || !forClient(family, config)) {
         return AUTHORIZATION_REQUIRED;
     }
-    return refresh(storage, family.familyId, config, principal);
+    const answer = await refresh(storage, family.familyId, config, principal);
+    if (answer.kind !== "token") return answer;
+    // The web session may have changed while the refresh ran (an org switch, a sign-out): the token
+    // goes only to the principal it was refreshed for (codex r1 on #1676).
+    const after = await dependencies.principal();
+    if (after === null || !samePrincipal(after, principal)) {
+        dropTokens(storage);
+        return AUTHORIZATION_REQUIRED;
+    }
+    return answer;
 }
 
 /**
@@ -930,10 +960,19 @@ export function readAcrHeldFamily(): AcrHeldFamily | null {
     if (typeof value.refreshToken !== "string" || !REFRESH_TOKEN.test(value.refreshToken))
         return null;
     if (typeof value.familyId !== "string" || !FAMILY_ID.test(value.familyId)) return null;
-    const strings = ["issuer", "clientId", "tokenEndpoint"];
-    if (strings.some((key) => typeof value[key] !== "string")) return null;
-    if (value.revocationEndpoint !== null && typeof value.revocationEndpoint !== "string")
+    // Only the configured client's family, with its endpoints on that issuer's origin, as discovery
+    // checked them: a family edited in storage never sends a refresh token elsewhere (codex r1 on
+    // #1676). With no configured client there is no family to use or revoke.
+    const config = dependencies.config();
+    if (config === undefined) return null;
+    if (value.issuer !== config.issuer || value.clientId !== config.clientId) return null;
+    if (endpointOn(config.issuer, value.tokenEndpoint) !== value.tokenEndpoint) return null;
+    if (
+        value.revocationEndpoint !== null &&
+        endpointOn(config.issuer, value.revocationEndpoint) !== value.revocationEndpoint
+    ) {
         return null;
+    }
     if (typeof value.userId !== "string" || value.userId === "") return null;
     if (value.orgId !== null && typeof value.orgId !== "string") return null;
     return value as unknown as AcrHeldFamily;
