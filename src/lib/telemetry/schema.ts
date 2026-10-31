@@ -91,6 +91,7 @@ export const APP_ROUTES: readonly string[] = [
     "/marketing/terms",
     "/marketing/vp-engineering",
     "/metrics",
+    "/oauth/acr-client.json",
     "/operating-review",
     "/opportunities",
     "/org/admin",
