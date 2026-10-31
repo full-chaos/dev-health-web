@@ -31,25 +31,34 @@ jobs:
             head: ${{ steps.check.outputs.head }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
             - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
               with:
                   node-version: 22
+            - name: List the files this PR changes
+              id: files
+              if: github.event_name == 'pull_request'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REPO: ${{ github.repository }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+              run: |
+                  set -euo pipefail
+                  gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
+                      --jq '.[] | .filename, (.previous_filename // empty)' > "$RUNNER_TEMP/pr-files.txt"
+            # The token is not set on this step: it runs a script from the PR checkout.
             - name: Decide whether drift is enforced
               id: scope
               env:
-                  GH_TOKEN: ${{ github.token }}
                   EVENT: ${{ github.event_name }}
-                  REPO: ${{ github.repository }}
-                  PR_NUMBER: ${{ github.event.pull_request.number }}
               run: |
                   set -euo pipefail
                   if [ "$EVENT" != "pull_request" ]; then
                       echo "enforce=true" >> "$GITHUB_OUTPUT"
                       exit 0
                   fi
-                  gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
-                      --jq '.[] | .filename, (.previous_filename // empty)' \
-                      | node scripts/acr-pin-scope.mjs >> "$GITHUB_OUTPUT"
+                  node scripts/acr-pin-scope.mjs < "$RUNNER_TEMP/pr-files.txt" >> "$GITHUB_OUTPUT"
             - name: Compare the vendored pin with acr main
               id: check
               continue-on-error: true
