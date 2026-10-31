@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useId, useMemo, type ReactNode } from "react";
 
 import { formatPercent } from "@/lib/formatters";
 
@@ -21,6 +21,8 @@ import {
 import { AskDevCohortRanking } from "./AskDevCohortRanking";
 import { AskDevCoverage } from "./AskDevCoverage";
 import { ClaimedFactTables } from "./ClaimedFactTables";
+import { claimedFactTables } from "./claimedFactTablesModel";
+import { AnswerWithheldNotice, RenderShapesProvider } from "../render/RenderShapes";
 import { quickStatus } from "./quickStatus";
 import { SafeAnswerText } from "./SafeAnswerText";
 import { nonBlank } from "@/lib/ask-dev/conversation";
@@ -185,148 +187,167 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
         result.conflicts.length > 0 ||
         currentState !== undefined;
     const answered = result.status !== "clarification_required" && result.status !== "no_match";
+    const rendersParts = answered || hasAnalysis;
+    const facts = result.claimed_facts;
+    // The fact-table groups the trends mount in: the same grouping `ClaimedFactTables` renders.
+    const groups = useMemo(
+        () => (rendersParts ? claimedFactTables(facts ?? []).map((model) => model.claimIds) : null),
+        [rendersParts, facts],
+    );
 
     return (
-        <article className="space-y-5" data-testid="ask-dev-answer" data-status={result.status}>
-            <div className="space-y-2" data-testid="ask-dev-answer-quick">
-                <div className="flex flex-wrap items-center gap-2">
-                    <span
-                        className={`${PILL} text-foreground`}
-                        data-testid="ask-dev-answer-status"
-                        data-coverage={status.coverage ?? undefined}
-                    >
-                        {status.label}
-                    </span>
-                    {modelWritten ? (
+        <RenderShapesProvider result={result} groups={groups}>
+            <article className="space-y-5" data-testid="ask-dev-answer" data-status={result.status}>
+                <div className="space-y-2" data-testid="ask-dev-answer-quick">
+                    <div className="flex flex-wrap items-center gap-2">
                         <span
-                            className={`${PILL} border-(--accent-2)/40 text-(--accent-2)`}
-                            data-testid="ask-dev-answer-ai-label"
+                            className={`${PILL} text-foreground`}
+                            data-testid="ask-dev-answer-status"
+                            data-coverage={status.coverage ?? undefined}
                         >
-                            {ANSWER_COPY.aiLabel}
+                            {status.label}
                         </span>
+                        {modelWritten ? (
+                            <span
+                                className={`${PILL} border-(--accent-2)/40 text-(--accent-2)`}
+                                data-testid="ask-dev-answer-ai-label"
+                            >
+                                {ANSWER_COPY.aiLabel}
+                            </span>
+                        ) : null}
+                    </div>
+                    <p
+                        className="text-base font-semibold text-foreground"
+                        data-testid="ask-dev-answer-lead"
+                    >
+                        {lead === null ? (
+                            <span className="text-(--ink-muted)">{ANSWER_COPY.noLead}</span>
+                        ) : (
+                            <SafeAnswerText text={lead} />
+                        )}
+                    </p>
+                    {status.completenessNote === null ? null : (
+                        <p
+                            className="text-sm text-foreground"
+                            data-testid="ask-dev-answer-completeness"
+                        >
+                            {status.completenessNote}
+                        </p>
+                    )}
+                    {status.correctionNote === null ? null : (
+                        <p
+                            className="text-xs text-(--ink-muted)"
+                            data-testid="ask-dev-answer-correction"
+                        >
+                            {status.correctionNote}
+                        </p>
+                    )}
+                    {modelWritten ? (
+                        <p
+                            className="text-xs text-(--ink-muted)"
+                            data-testid="ask-dev-answer-ai-note"
+                        >
+                            {ANSWER_COPY.aiNote}
+                        </p>
                     ) : null}
                 </div>
-                <p
-                    className="text-base font-semibold text-foreground"
-                    data-testid="ask-dev-answer-lead"
-                >
-                    {lead === null ? (
-                        <span className="text-(--ink-muted)">{ANSWER_COPY.noLead}</span>
-                    ) : (
-                        <SafeAnswerText text={lead} />
-                    )}
-                </p>
-                {status.completenessNote === null ? null : (
-                    <p
-                        className="text-sm text-foreground"
-                        data-testid="ask-dev-answer-completeness"
-                    >
-                        {status.completenessNote}
-                    </p>
-                )}
-                {status.correctionNote === null ? null : (
-                    <p
-                        className="text-xs text-(--ink-muted)"
-                        data-testid="ask-dev-answer-correction"
-                    >
-                        {status.correctionNote}
-                    </p>
-                )}
-                {modelWritten ? (
-                    <p className="text-xs text-(--ink-muted)" data-testid="ask-dev-answer-ai-note">
-                        {ANSWER_COPY.aiNote}
-                    </p>
-                ) : null}
-            </div>
 
-            {answered || hasAnalysis ? (
-                <>
-                    <AskDevCohortRanking result={result} />
+                {rendersParts ? (
+                    <>
+                        <AskDevCohortRanking result={result} />
 
-                    <Part title={ANSWER_COPY.driversTitle} testId="ask-dev-answer-drivers">
-                        {result.drivers.length === 0 ? (
-                            <p className="text-sm text-(--ink-muted)">{ANSWER_COPY.driversEmpty}</p>
-                        ) : (
-                            <>
-                                <p className="text-xs text-(--ink-muted)">
-                                    {ANSWER_COPY.driversIntro}
+                        <Part title={ANSWER_COPY.driversTitle} testId="ask-dev-answer-drivers">
+                            {result.drivers.length === 0 ? (
+                                <p className="text-sm text-(--ink-muted)">
+                                    {ANSWER_COPY.driversEmpty}
                                 </p>
-                                <ul className="space-y-2">
-                                    {result.drivers.map((driver) => (
-                                        <DriverItem key={driver.driver_id} driver={driver} />
+                            ) : (
+                                <>
+                                    <p className="text-xs text-(--ink-muted)">
+                                        {ANSWER_COPY.driversIntro}
+                                    </p>
+                                    <ul className="space-y-2">
+                                        {result.drivers.map((driver) => (
+                                            <DriverItem key={driver.driver_id} driver={driver} />
+                                        ))}
+                                    </ul>
+                                </>
+                            )}
+                        </Part>
+
+                        {result.strongest_pressures.length === 0 ? null : (
+                            <Part
+                                title={ANSWER_COPY.pressuresTitle}
+                                testId="ask-dev-answer-pressures"
+                            >
+                                <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
+                                    {result.strongest_pressures.map((pressure, index) => (
+                                        <li key={index}>
+                                            <SafeAnswerText text={pressure} />
+                                        </li>
                                     ))}
                                 </ul>
-                            </>
+                            </Part>
                         )}
-                    </Part>
 
-                    {result.strongest_pressures.length === 0 ? null : (
-                        <Part title={ANSWER_COPY.pressuresTitle} testId="ask-dev-answer-pressures">
-                            <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
-                                {result.strongest_pressures.map((pressure, index) => (
-                                    <li key={index}>
-                                        <SafeAnswerText text={pressure} />
-                                    </li>
-                                ))}
-                            </ul>
-                        </Part>
-                    )}
+                        <FindingsPart
+                            title={ANSWER_COPY.remainingWorkTitle}
+                            empty={ANSWER_COPY.remainingWorkEmpty}
+                            findings={result.remaining_work}
+                            testId="ask-dev-answer-remaining-work"
+                        />
+                        <FindingsPart
+                            title={ANSWER_COPY.readinessGapsTitle}
+                            empty={ANSWER_COPY.readinessGapsEmpty}
+                            findings={result.readiness_gaps}
+                            testId="ask-dev-answer-readiness-gaps"
+                        />
+                        <FindingsPart
+                            title={ANSWER_COPY.conflictsTitle}
+                            empty={ANSWER_COPY.conflictsEmpty}
+                            findings={result.conflicts}
+                            testId="ask-dev-answer-conflicts"
+                        />
 
-                    <FindingsPart
-                        title={ANSWER_COPY.remainingWorkTitle}
-                        empty={ANSWER_COPY.remainingWorkEmpty}
-                        findings={result.remaining_work}
-                        testId="ask-dev-answer-remaining-work"
-                    />
-                    <FindingsPart
-                        title={ANSWER_COPY.readinessGapsTitle}
-                        empty={ANSWER_COPY.readinessGapsEmpty}
-                        findings={result.readiness_gaps}
-                        testId="ask-dev-answer-readiness-gaps"
-                    />
-                    <FindingsPart
-                        title={ANSWER_COPY.conflictsTitle}
-                        empty={ANSWER_COPY.conflictsEmpty}
-                        findings={result.conflicts}
-                        testId="ask-dev-answer-conflicts"
-                    />
+                        <ClaimedFactTables result={result} />
 
-                    <ClaimedFactTables result={result} />
+                        <AskDevCoverage result={result} />
+                    </>
+                ) : null}
 
-                    <AskDevCoverage result={result} />
-                </>
-            ) : null}
+                <AnswerWithheldNotice />
 
-            {currentState === undefined && summary === null ? null : (
-                <details
-                    className="rounded-(--radius-sm) border border-(--card-stroke) p-3"
-                    data-testid="ask-dev-answer-more"
-                >
-                    <summary className="cursor-pointer text-sm font-semibold text-foreground">
-                        {ANSWER_COPY.moreDetail}
-                    </summary>
-                    {currentState === undefined ? null : (
-                        <div className="mt-2 space-y-1">
-                            <h4 className="text-xs font-semibold text-(--ink-muted)">
-                                {ANSWER_COPY.currentStateTitle}
-                            </h4>
-                            <p className="text-sm text-foreground">
-                                <SafeAnswerText text={currentState} />
-                            </p>
-                        </div>
-                    )}
-                    {summary === null ? null : (
-                        <div className="mt-2 space-y-1">
-                            <h4 className="text-xs font-semibold text-(--ink-muted)">
-                                {ANSWER_COPY.serviceSummaryTitle}
-                            </h4>
-                            <p className="text-sm text-foreground">
-                                <SafeAnswerText text={summary} />
-                            </p>
-                        </div>
-                    )}
-                </details>
-            )}
-        </article>
+                {currentState === undefined && summary === null ? null : (
+                    <details
+                        className="rounded-(--radius-sm) border border-(--card-stroke) p-3"
+                        data-testid="ask-dev-answer-more"
+                    >
+                        <summary className="cursor-pointer text-sm font-semibold text-foreground">
+                            {ANSWER_COPY.moreDetail}
+                        </summary>
+                        {currentState === undefined ? null : (
+                            <div className="mt-2 space-y-1">
+                                <h4 className="text-xs font-semibold text-(--ink-muted)">
+                                    {ANSWER_COPY.currentStateTitle}
+                                </h4>
+                                <p className="text-sm text-foreground">
+                                    <SafeAnswerText text={currentState} />
+                                </p>
+                            </div>
+                        )}
+                        {summary === null ? null : (
+                            <div className="mt-2 space-y-1">
+                                <h4 className="text-xs font-semibold text-(--ink-muted)">
+                                    {ANSWER_COPY.serviceSummaryTitle}
+                                </h4>
+                                <p className="text-sm text-foreground">
+                                    <SafeAnswerText text={summary} />
+                                </p>
+                            </div>
+                        )}
+                    </details>
+                )}
+            </article>
+        </RenderShapesProvider>
     );
 }

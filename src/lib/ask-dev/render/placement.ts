@@ -36,6 +36,9 @@ export type LedgerViolation =
  * index is a violation, not an overwrite), so the check can see a duplicate that balances a drop.
  */
 export class OccurrenceLedger {
+    private static made = 0;
+    /** Distinct per ledger: a view keys its figures by it so each ledger gets its own attempt. */
+    readonly id = ++OccurrenceLedger.made;
     private readonly entries = new Map<number, Outcome[]>();
     private readonly strays: number[] = [];
 
@@ -56,6 +59,17 @@ export class OccurrenceLedger {
         const list = this.entries.get(index);
         const last = list?.[list.length - 1];
         if (list === undefined || last?.kind !== "PENDING" || list.length !== 1) return false;
+        list[0] = outcome;
+        return true;
+    }
+
+    /**
+     * A DRAWN occurrence whose figure fails afterwards (a React error after the chart drew) ends
+     * WITHHELD, once (CHAOS-11942): the figure is gone, so DRAWN would no longer be true.
+     */
+    withdraw(index: number, outcome: Extract<Outcome, { kind: "WITHHELD" }>): boolean {
+        const list = this.entries.get(index);
+        if (list === undefined || list.length !== 1 || list[0]!.kind !== "DRAWN") return false;
         list[0] = outcome;
         return true;
     }

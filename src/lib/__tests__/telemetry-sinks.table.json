@@ -310,5 +310,9 @@
     "src/proxy.ts": {
         "log": 1,
         "sentry": 0
+    },
+    "src/components/ask-dev/render/RenderShapes.tsx": {
+        "log": 2,
+        "sentry": 0
     }
 }

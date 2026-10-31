@@ -12,6 +12,8 @@ import { formatDisplay, formatExact } from "@/lib/ask-dev/render/format";
 import type { Cohort, CohortMemberDriver } from "@/lib/ask-dev/render/contracts";
 import { windowText } from "@/lib/ask-dev/render/window-text";
 
+import { CohortChartSlot } from "../render/RenderShapes";
+
 import type { AnswerResult } from "./answerModel";
 
 /**
@@ -27,7 +29,8 @@ import type { AnswerResult } from "./answerModel";
  *   not rank are named; an incomplete or truncated cohort says so; the answer window is in the
  *   header ("Window not stated" when absent). Served text is React text only, never HTML.
  *
- * The cohort charts are not drawn here: the chart slot is for I-41 (CHAOS-11943).
+ * The cohort charts are not drawn here: the chart slot is for I-41 (CHAOS-11943). Until then the
+ * slot states the verified cohort shapes it holds as withheld (CHAOS-11942).
  */
 export const RANKING_COPY = {
     notShownTitle: "Ranking not shown",
@@ -372,7 +375,7 @@ export function AskDevCohortRanking({ result }: { result: AnswerResult }) {
                 <Group title={`Ranked ${kindWords(cohort.kind).many}`} testId="ask-dev-ranking">
                     <WindowLine result={result} />
                     <IncompleteNotice cohort={cohort} />
-                    <div data-testid="ask-dev-ranking-chart-slot" hidden />
+                    <CohortChartSlot />
                     <RankingTable cohort={cohort} rows={rows} />
                     <CoverageNotes cohort={cohort} ranked={rows} />
                 </Group>

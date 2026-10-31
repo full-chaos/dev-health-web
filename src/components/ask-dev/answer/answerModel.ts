@@ -36,7 +36,10 @@ type AnswerFields =
     | "render_shapes"
     | "effective_evidence_window"
     // CHAOS-11945: the claimed-fact tables (their window is effective_evidence_window above).
-    | "claimed_facts";
+    | "claimed_facts"
+    // CHAOS-11942: the ids a withheld chart is logged with.
+    | "result_id"
+    | "request_id";
 
 export type AnswerResult =
     | Pick<ACRContextFabricInvestigationResultV1, AnswerFields>
