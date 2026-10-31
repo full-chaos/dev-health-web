@@ -6,10 +6,13 @@ import { logger } from "@/lib/logger";
 import type { TranscriptResult } from "../answer/AskDevTurn";
 import { asTranscriptResult } from "../answer/testModeAnswer";
 import {
+    isTransportFailureReason,
+    TransportFailure,
     TransportRefusal,
     type AskDevTransport,
     type InvestigateCall,
     type InvestigationEvent,
+    type TransportFailureReason,
 } from "./transport";
 
 /**
@@ -18,9 +21,11 @@ import {
  * before the page loads; nothing is fetched.
  *
  * - `TEST_MODE_STREAM_KEY`: an array of plays, one per investigation call, in order (the last one
- *   repeats). A play is `{ events, delayMs? }` (the events, then the end; no terminal is a dropped
- *   stream), `{ refuse: { status, error } }` (a refusal before the stream) or `{ hold: true }` (a
- *   stream that stays open until it is aborted).
+ *   repeats). A play is `{ events, delayMs?, then? }`, `{ refuse: { status, error,
+ *   retryAfterSeconds? } }` (a refusal before the stream) or `{ hold: true }` (a stream that stays
+ *   open until it is aborted). After the events, `then` is `"hold"` (stay open until aborted) or a
+ *   `TransportFailureReason` (the transport ends the run itself, CHAOS-11929); without it the
+ *   stream ends (no terminal is a dropped stream).
  * - `TEST_MODE_STATUS_KEY`: the submission status answers in order (`null` is ACR's 404).
  * - `TEST_MODE_RESULTS_KEY`: the results a replay reads, by `result_id`.
  * - `TEST_MODE_CALLS_KEY`: written here, one entry per call, for the suite to read.
@@ -38,8 +43,18 @@ const TEST_MODE =
     process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
 type Play =
-    | { readonly events: readonly InvestigationEvent[]; readonly delayMs?: number }
-    | { readonly refuse: { readonly status: number; readonly error: TransportRefusal["error"] } }
+    | {
+          readonly events: readonly InvestigationEvent[];
+          readonly delayMs?: number;
+          readonly then?: "hold" | TransportFailureReason;
+      }
+    | {
+          readonly refuse: {
+              readonly status: number;
+              readonly error: TransportRefusal["error"];
+              readonly retryAfterSeconds?: number;
+          };
+      }
     | { readonly hold: true };
 
 type Call =
@@ -98,6 +113,12 @@ function checkedEvent(event: InvestigationEvent): InvestigationEvent {
     return event;
 }
 
+function held(signal: AbortSignal): Promise<never> {
+    return new Promise<never>((_, reject) =>
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true }),
+    );
+}
+
 function scriptedTransport(plays: readonly Play[]): AskDevTransport {
     let investigations = 0;
     let statuses = 0;
@@ -111,17 +132,23 @@ function scriptedTransport(plays: readonly Play[]): AskDevTransport {
             });
             const play = at(plays, investigations++);
             if (play === undefined || "hold" in play) {
-                await new Promise<never>((_, reject) =>
-                    call.signal.addEventListener("abort", () => reject(call.signal.reason), {
-                        once: true,
-                    }),
-                );
+                await held(call.signal);
                 return;
             }
-            if ("refuse" in play) throw new TransportRefusal(play.refuse.status, play.refuse.error);
+            if ("refuse" in play) {
+                const { status, error, retryAfterSeconds } = play.refuse;
+                throw new TransportRefusal(status, error, retryAfterSeconds);
+            }
             for (const event of play.events) {
                 await wait(play.delayMs ?? 0, call.signal);
                 yield checkedEvent(event);
+            }
+            if (play.then === "hold") await held(call.signal);
+            else if (play.then !== undefined) {
+                if (!isTransportFailureReason(play.then)) {
+                    throw new Error("test-mode play ends with an unknown transport failure");
+                }
+                throw new TransportFailure(play.then);
             }
         },
         async submissionStatus(submissionId: string) {

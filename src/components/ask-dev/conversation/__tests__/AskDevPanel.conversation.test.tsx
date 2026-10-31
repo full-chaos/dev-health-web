@@ -135,6 +135,43 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         expect(within(panel()).queryByRole("button", { name: "Stop" })).toBeNull();
     });
 
+    // CHAOS-11929 (plan §2.7.8 "Streaming"): the stage checklist, the elapsed time and the run's
+    // Cancel (the composer's Stop), with no answer content until the terminal.
+    it("shows the streaming state with the stage checklist, then the answer", async () => {
+        const transport = new FakeTransport();
+        const gate = deferred();
+        transport.scripts.push([
+            accepted(),
+            {
+                seq: 2,
+                request_id: "request_test",
+                type: "stage",
+                stage: "interpreting",
+                state: "started",
+                elapsed_ms: 5,
+            },
+            { wait: gate.promise },
+            resultEvent(PARTIAL),
+        ]);
+        renderPanel(transport);
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await userEvent.type(input(), "Which projects are at risk?{Enter}");
+
+        const steps = await within(panel()).findByRole("list", { name: "Investigation steps" });
+        await waitFor(() =>
+            expect(within(steps).getAllByRole("listitem")[0]!.dataset.state).toBe("active"),
+        );
+        expect(within(panel()).getByTestId("ask-dev-elapsed")).toBeInTheDocument();
+        expect(within(panel()).getByRole("button", { name: "Stop" })).toBeInTheDocument();
+        expect(within(panel()).queryByTestId("ask-dev-answer")).toBeNull();
+        expect(within(panel()).queryByTestId("ask-dev-coverage")).toBeNull();
+
+        gate.resolve();
+        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(within(panel()).queryByTestId("ask-dev-stages")).toBeNull();
+        expect(within(panel()).queryByRole("button", { name: "Stop" })).toBeNull();
+    });
+
     it("retries a call ACR never admitted under the same submission id", async () => {
         const transport = new FakeTransport();
         transport.scripts.push([{ fail: new TypeError("network") }], [resultEvent(PARTIAL)]);
