@@ -16,7 +16,8 @@ import type { VerifyReason } from "@/lib/ask-dev/render/verify-reasons";
  */
 const ACR_SHAPE_ID = /^rs_[0-9]{1,3}$/u;
 const RESULT_ID = /^result_[0-9a-f]{8,64}$/u;
-const REQUEST_ID = /^request_[0-9a-f]{8,64}$/u;
+// ACR's API mints `req_<hex>` (acr `observability`); `request_<hex>` is the panel harness form.
+const REQUEST_ID = /^(?:req|request)_[0-9a-f]{8,64}$/u;
 export const UNLISTED = "unlisted";
 
 const VERIFY_REASONS = [
@@ -53,6 +54,8 @@ const RENDER_REASONS = [
     "placement_missing",
     "ranking_not_computed",
     "ranking_not_requested",
+    // CHAOS-11942: a verified cohort bar or stacked-bar shape until I-41 (CHAOS-11943) draws it.
+    "presentation_not_rendered",
 ] as const;
 
 export const WITHHELD_REASONS = [...VERIFY_REASONS, ...GUARD_REASONS, ...RENDER_REASONS] as const;

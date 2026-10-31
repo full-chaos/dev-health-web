@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+// No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order (CHAOS-11942).
+vi.mock(
+    "@/lib/echartsInit",
+    async () => (await import("../../render/__tests__/echartsStub")).echartsStubModule,
+);
 import { render, screen, userEvent, within } from "@/test/utils";
 
 import { AskDevClarification } from "../AskDevClarification";

@@ -264,6 +264,16 @@ describe("the withheld log line (§5.4)", () => {
         requestId: "request_0123456789abcdef01234567",
     };
 
+    it("logs a real ACR result and request id as served (CHAOS-11942: ACR request ids are req_<hex>)", () => {
+        const captured = { resultId: trendBase.result_id, requestId: trendBase.request_id };
+        expect(captured.requestId).toMatch(/^req_[0-9a-f]{32}$/u);
+        const fields = withheldLogFields(captured, 0, trendBase.render_shapes[0], "render_timeout");
+        expect(fields).toMatchObject({
+            result_id: captured.resultId,
+            request_id: captured.requestId,
+        });
+    });
+
     it("logs ids and closed vocabularies only, and an ACR-form shape_id only", () => {
         const shape = cohortBase.render_shapes[0];
         const fields = withheldLogFields(ids, 0, shape, "chart_score_without_drivers");

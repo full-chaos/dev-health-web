@@ -60,6 +60,17 @@ export class OccurrenceLedger {
         return true;
     }
 
+    /**
+     * A DRAWN occurrence whose figure fails afterwards (a React error after the chart drew) ends
+     * WITHHELD, once (CHAOS-11942): the figure is gone, so DRAWN would no longer be true.
+     */
+    withdraw(index: number, outcome: Extract<Outcome, { kind: "WITHHELD" }>): boolean {
+        const list = this.entries.get(index);
+        if (list === undefined || list.length !== 1 || list[0]!.kind !== "DRAWN") return false;
+        list[0] = outcome;
+        return true;
+    }
+
     /** G4. `final`: the bound has passed, so a PENDING occurrence is a violation too. */
     violations(final: boolean): LedgerViolation[] {
         const out: LedgerViolation[] = this.strays.map(
