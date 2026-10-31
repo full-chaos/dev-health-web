@@ -14,7 +14,8 @@ export function rawWordsInNode(node: Node, [source, flags]: readonly [string, st
     const found: string[] = [];
     const check = (text: string | null | undefined) => {
         if (text === null || text === undefined) return;
-        const match = new RegExp(source, flags.replace("g", "")).exec(text);
+        // A fresh, non-global, non-sticky copy: no lastIndex state, and a match anywhere counts.
+        const match = new RegExp(source, flags.replace(/[gy]/gu, "")).exec(text);
         if (match !== null) found.push(match[0]);
     };
     check(node.textContent);

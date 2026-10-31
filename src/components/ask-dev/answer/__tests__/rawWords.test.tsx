@@ -32,6 +32,16 @@ describe("rawWordsIn (CHAOS-12312)", () => {
         ]);
     });
 
+    // codex r1 on #1662: a sticky pattern matches only at its lastIndex.
+    it("finds a word anywhere, even with a sticky pattern", () => {
+        const sticky = /\bpartial\b/uy;
+        sticky.lastIndex = 3;
+        expect(rawWordsIn(node("<span>prefix partial</span>"), sticky)).toEqual([
+            "partial",
+            "partial",
+        ]);
+    });
+
     it("finds nothing in clean text, and is not fooled by a global flag", () => {
         expect(rawWordsIn(node("<p>Missing data: health read in part.</p>"), RAW)).toEqual([]);
         const global = /\bpartial\b/gu;
