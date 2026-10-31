@@ -1461,7 +1461,7 @@ export class ConversationStore {
         resultId: string,
         selection: number,
         counted: boolean,
-        onSettled?: () => void,
+        onSettled?: () => boolean,
     ): void {
         const signal = this.selectionAbort.signal;
         this.replaying.add(submissionId);
@@ -1495,7 +1495,7 @@ export class ConversationStore {
         selection: number,
         signal: AbortSignal,
         counted: boolean,
-        onSettled?: () => void,
+        onSettled?: () => boolean,
     ): Promise<void> {
         let result: TranscriptResult;
         try {
@@ -1503,7 +1503,8 @@ export class ConversationStore {
         } catch (error) {
             if (!this.ownsSelection(selection, "replay")) return;
             this.replaying.delete(submissionId);
-            onSettled?.();
+            // The run it belongs to already ended (its deadline): this answer changes nothing.
+            if (onSettled !== undefined && !onSettled()) return;
             const unavailable = error instanceof TransportRefusal && error.status === 404;
             logger.warn(
                 {
@@ -1522,7 +1523,7 @@ export class ConversationStore {
         }
         if (!this.ownsSelection(selection, "replay")) return;
         this.replaying.delete(submissionId);
-        onSettled?.();
+        if (onSettled !== undefined && !onSettled()) return;
         this.updateRestored(submissionId, { kind: "answered", result });
         if (counted) this.restoreCounted(selection, "answered");
     }
@@ -1653,12 +1654,14 @@ export class ConversationStore {
                 }
                 this.restoredResultIds.set(submissionId, status.result_id);
                 // The run stays followed until its answer is read: a follow-up must carry it
-                // (codex r1 on #1648).
-                clearTimeout(run.timer);
+                // (codex r1 on #1648). Its timer stays too: a read that never answers ends at D
+                // (codex r1 on #1657), and an answer after that is dropped.
                 this.updateRestored(submissionId, { kind: "restoring" });
-                this.queueReplay(submissionId, status.result_id, selection, false, () =>
-                    this.release(run),
-                );
+                this.queueReplay(submissionId, status.result_id, selection, false, () => {
+                    if (!this.owns(run)) return false;
+                    this.release(run);
+                    return true;
+                });
                 return;
             }
             if (status?.state === "done_unsaved") {
@@ -1829,6 +1832,8 @@ export class ConversationStore {
     private expire(run: ActiveRun): void {
         if (!this.owns(run)) return;
         if (run.origin === "restored") {
+            // An answer read still pending for this run no longer holds the composer.
+            this.replaying.delete(run.submissionId);
             // E6 design v5 §5.3: a known D ends as interrupted; the observation cap confirms
             // nothing, so it says so.
             logger.info(
@@ -2091,7 +2096,10 @@ export class ConversationStore {
         run.deadlineSource = "accepted";
         clearTimeout(run.timer);
         run.timer = setTimeout(() => this.expire(run), Math.max(0, run.deadline - this.now()));
-        this.setOutcome(run.turnId, { kind: "running", startedAt, stages: {} }, true);
+        // A Stop ACR already confirmed (202, or 204 being read) keeps saying so (codex r1 on #1657).
+        if (this.turn(run.turnId)?.outcome.kind !== "canceling") {
+            this.setOutcome(run.turnId, { kind: "running", startedAt, stages: {} }, true);
+        }
     }
 
     /** Applies one event; `true` when it was the terminal. */

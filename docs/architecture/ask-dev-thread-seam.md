@@ -84,7 +84,7 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
     - after `accepted` on an attach, `started_at` + `budget_seconds` + 30 s (ACR's own bound);
     - otherwise the 10-minute observation window.
 
-    A fallback keeps a known D, and every status wait is clamped to the time left. At D: a known D → "Interrupted — ask again". The window → "The current state could not be confirmed", with "Last seen running at <time>" only from a status read that succeeded.
+    A fallback keeps a known D, and every status wait is clamped to the time left. The timer also covers the final answer read: a read that never answers ends the turn at D, and an answer that arrives after D changes nothing. A late `accepted` never takes back a confirmed Canceling…. At D: a known D → "Interrupted — ask again". The window → "The current state could not be confirmed", with "Last seen running at <time>" only from a status read that succeeded.
 
 - **Cancel state machine** (Stop on the last turn's run, submitted here or restored).
     - Stop sends `cancel` and keeps the stream as the completion channel. "Stopping…" shows until ACR answers, and a second Stop sends nothing.

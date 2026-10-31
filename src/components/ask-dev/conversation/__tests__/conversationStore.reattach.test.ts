@@ -476,3 +476,79 @@ describe("Stop through the cancel endpoint (design §5.4)", () => {
         expect(JSON.stringify(log.info.mock.calls)).not.toContain("Which projects are at risk?");
     });
 });
+
+describe("codex r1 on #1657", () => {
+    it("a late accepted on the attach keeps a confirmed Canceling… (P2-1)", async () => {
+        const store = makeStore();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "running")]));
+        const late = deferred();
+        transport.attachScripts.push([
+            { wait: late.promise },
+            accepted0(),
+            { wait: new Promise(() => undefined) },
+        ]);
+        transport.cancelAnswers.push({ kind: "running" });
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(transport.attachCalls).toHaveLength(1));
+        store.cancel();
+        await vi.waitFor(() => expect(kind(store)).toBe("canceling"));
+        late.resolve();
+        await vi.waitFor(() =>
+            expect(infoEvents("ask-dev attach selected").length).toBeGreaterThan(0),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(kind(store)).toBe("canceling");
+        expect(snap(store).stoppable).toBe(false);
+        expect(transport.cancelCalls).toEqual([SUB]);
+    });
+
+    it("a restored run's answer read that never answers ends at D, and the composer opens (P2-2)", async () => {
+        vi.useFakeTimers();
+        const store = makeStore({
+            now: Date.now,
+            sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        });
+        vi.setSystemTime(START);
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "running")]));
+        transport.attachScripts.push([
+            accepted0("2026-10-31T11:59:00Z", 60),
+            { fail: cursorExpired("ended") },
+        ]);
+        transport.statuses.push(status("done", "result_000000000009"));
+        transport.readHangs = true;
+        store.selectThread(THREAD_A, "incoming");
+        await vi.advanceTimersByTimeAsync(0);
+        expect(kind(store)).toBe("restoring");
+        expect(snap(store).inFlight).toBe(true);
+        // D = 11:59:00 + 60 s + 30 s = 12:00:30.
+        await vi.advanceTimersByTimeAsync(BUDGET_GRACE_MS);
+        expect(kind(store)).toBe("interrupted");
+        expect(snap(store).inFlight).toBe(false);
+        expect(snap(store).replaying).toBe(false);
+    });
+
+    it("an answer that arrives after D changes nothing: the turn stays interrupted", async () => {
+        vi.useFakeTimers();
+        const store = makeStore({
+            now: Date.now,
+            sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        });
+        vi.setSystemTime(START);
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "running")]));
+        transport.attachScripts.push([
+            accepted0("2026-10-31T11:59:00Z", 60),
+            { fail: cursorExpired("ended") },
+        ]);
+        transport.statuses.push(status("done", "result_000000000009"));
+        transport.results.set("result_000000000009", answer(9));
+        const late = deferred();
+        transport.readGates.set("result_000000000009", late.promise);
+        store.selectThread(THREAD_A, "incoming");
+        await vi.advanceTimersByTimeAsync(BUDGET_GRACE_MS);
+        expect(kind(store)).toBe("interrupted");
+        late.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(kind(store)).toBe("interrupted");
+        expect(snap(store).inFlight).toBe(false);
+    });
+});
