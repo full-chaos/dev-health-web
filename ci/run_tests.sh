@@ -53,6 +53,9 @@ run_build() {
     run_pnpm_script build
     echo "==> pnpm check:client-bundle --require-secrets"
     pnpm check:client-bundle --require-secrets
+    # CHAOS-12337: no page may be prerendered under the per-request nonce CSP (its scripts are blocked).
+    echo "==> pnpm check:nonce-csp-pages"
+    pnpm check:nonce-csp-pages
   )
 }
 
