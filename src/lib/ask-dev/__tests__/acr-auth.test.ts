@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     ACR_AUTHORIZATION_TTL_MS,
+    ACR_REQUEST_TIMEOUT_MS,
     ACR_BROWSER_SCOPE,
     ACR_PENDING_AUTHORIZATION_KEY,
     ACR_TAB_KEY,
@@ -576,6 +577,74 @@ describe("a duplicated tab (copied sessionStorage) — r1 on #1663", () => {
         const next = (await begin()).searchParams.get("state")!;
         await completeAcrAuthorization(callback({ code: "c-3", state: next, iss: ISSUER }));
         expect(Object.keys(JSON.parse(shared.getItem("ask-dev:acr-spent")!))).toHaveLength(1);
+    });
+});
+
+describe("deadlines (r3 on #1663)", () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    /** A fetch that never answers, until its signal aborts. */
+    function stalled(url: string) {
+        return (input: RequestInfo | URL, init?: RequestInit) => {
+            calls.push({ url: String(input), init });
+            if (String(input) !== url) {
+                return Promise.resolve(json(200, metadata));
+            }
+            return new Promise<Response>((_, reject) => {
+                init?.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+            });
+        };
+    }
+
+    it("gives up on metadata ACR never answers, after ACR_REQUEST_TIMEOUT_MS", async () => {
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        setAcrAuthDependenciesForTest({
+            now: () => now,
+            storage: () => storage,
+            shared: () => shared,
+            navigate: (url) => navigated.push(url),
+            config: () => CONFIG,
+            lock: (_name, task) => task(),
+            fetch: stalled(`${ISSUER}/.well-known/oauth-authorization-server`),
+        });
+        const outcome = beginAcrAuthorization("/dev");
+        await vi.advanceTimersByTimeAsync(ACR_REQUEST_TIMEOUT_MS - 1);
+        let settled = false;
+        void outcome.then(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await outcome).toEqual({ kind: "unavailable" });
+        expect(navigated).toEqual([]);
+    });
+
+    it("gives up on a token exchange ACR never answers, and holds nothing", async () => {
+        const state = (await begin()).searchParams.get("state")!;
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        setAcrAuthDependenciesForTest({
+            now: () => now,
+            storage: () => storage,
+            shared: () => shared,
+            config: () => CONFIG,
+            lock: (_name, task) => task(),
+            fetch: stalled(`${ISSUER}/token`),
+        });
+        const outcome = completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
+        // The claim hashes the state on real async I/O: wait until the exchange is in flight.
+        for (let i = 0; i < 200 && tokenCalls().length === 0; i += 1) {
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+        expect(tokenCalls()).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(ACR_REQUEST_TIMEOUT_MS - 1);
+        let settled = false;
+        void outcome.then(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await outcome).toMatchObject({ kind: "failed", reason: "token_unavailable" });
+        expect(getAcrAccessToken()).toEqual({ kind: "authorization_required" });
     });
 });
 

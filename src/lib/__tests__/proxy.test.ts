@@ -146,19 +146,28 @@ describe("org-scoped route guard", () => {
         expect(res.status).not.toBe(303);
     });
 
-    it("never carries the ACR callback's code, state or iss into the sign-in URL (r2 on #1663)", async () => {
+    // CHAOS-12303 (r2, r3 on #1663): the ACR callback's URL carries a code, a state and an iss.
+    // The page must run and scrub it first, so no auth step may answer in its place.
+    const CALLBACK = "/ask-dev/oauth/callback?code=c-1&state=s-1&iss=https%3A%2F%2Facr.example";
+
+    it("lets a signed-out ACR callback render, so the query never goes into a sign-in URL", async () => {
         mockAuth.mockResolvedValue(null);
 
-        const res = await proxy(
-            makeRequest("/ask-dev/oauth/callback?code=c-1&state=s-1&iss=https%3A%2F%2Facr.example"),
-        );
-        const location = new URL(res.headers.get("Location")!);
+        const res = await proxy(makeRequest(CALLBACK));
 
-        expect(res.status).toBe(303);
-        expect(location.pathname).toBe("/auth/signin");
-        expect(location.searchParams.get("callbackUrl")).toBe("/ask-dev/oauth/callback");
-        expect(location.href).not.toMatch(/c-1|s-1|acr\.example/u);
+        expect(res.status).not.toBe(303);
+        expect(res.headers.get("Location")).toBeNull();
         expect(res.headers.get("Referrer-Policy")).toBe("no-referrer");
+        expect(res.headers.get("Content-Security-Policy")).toContain("default-src 'self'");
+    });
+
+    it("does not answer an ACR callback with 503 while web auth is slow", async () => {
+        mockAuth.mockReturnValue(new Promise(() => undefined) as never);
+
+        const res = await proxy(makeRequest(CALLBACK));
+
+        expect(res.status).not.toBe(503);
+        expect(res.headers.get("Location")).toBeNull();
     });
 
     it("preserves the requested path and query when redirecting to sign in", async () => {

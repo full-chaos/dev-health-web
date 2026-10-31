@@ -47,6 +47,11 @@ export const ACR_BROWSER_SCOPE = "context:read evidence:read";
 
 /** How long a started authorization may take to come back. */
 export const ACR_AUTHORIZATION_TTL_MS = 10 * 60 * 1000;
+/**
+ * How long one ACR request may take, its body included (r3 on web #1663). Design §5's status reads
+ * are bounded at 15 s too. A request that hits it counts as "ACR unavailable".
+ */
+export const ACR_REQUEST_TIMEOUT_MS = 15_000;
 /** An access token this close to its expiry counts as expired. */
 export const ACR_ACCESS_TOKEN_SKEW_MS = 30 * 1000;
 
@@ -183,6 +188,28 @@ export function setAcrAuthDependenciesForTest(next?: Partial<Dependencies>): voi
     if (next === undefined) held = null;
 }
 
+/** A signal that aborts at ACR_REQUEST_TIMEOUT_MS, or when `outer` aborts; `clear` ends it. */
+function deadline(outer?: AbortSignal): {
+    readonly signal: AbortSignal;
+    readonly clear: () => void;
+} {
+    const controller = new AbortController();
+    const timer = setTimeout(
+        () => controller.abort(new DOMException("ACR did not answer in time", "TimeoutError")),
+        ACR_REQUEST_TIMEOUT_MS,
+    );
+    const follow = () => controller.abort(outer?.reason);
+    if (outer?.aborted) follow();
+    else outer?.addEventListener("abort", follow, { once: true });
+    return {
+        signal: controller.signal,
+        clear: () => {
+            clearTimeout(timer);
+            outer?.removeEventListener("abort", follow);
+        },
+    };
+}
+
 function base64Url(bytes: Uint8Array): string {
     let binary = "";
     for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -252,6 +279,7 @@ export async function discoverAcrAuthorizationServer(
     signal?: AbortSignal,
 ): Promise<AcrAuthorizationServer | null> {
     let body: unknown;
+    const limit = deadline(signal);
     try {
         const response = await dependencies.fetch(
             `${issuer}/.well-known/oauth-authorization-server`,
@@ -261,13 +289,15 @@ export async function discoverAcrAuthorizationServer(
                 credentials: "omit",
                 cache: "no-store",
                 redirect: "error",
-                signal,
+                signal: limit.signal,
             },
         );
         if (!response.ok) return null;
         body = await response.json();
     } catch {
         return null;
+    } finally {
+        limit.clear();
     }
     if (!isRecord(body) || body.issuer !== issuer) return null;
     const methods = body.code_challenge_methods_supported;
@@ -405,26 +435,32 @@ async function exchangeCode(pending: PendingAuthorization, code: string): Promis
         resource: pending.issuer,
     });
     let response: Response;
-    try {
-        // A form POST with only safelisted headers: no CORS preflight (design §7).
-        response = await dependencies.fetch(pending.tokenEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: form,
-            credentials: "omit",
-            cache: "no-store",
-            redirect: "error",
-        });
-    } catch {
-        return { kind: "unavailable" };
-    }
-    if (response.status === 400 || response.status === 401) return { kind: "refused" };
-    if (!response.ok) return { kind: "unavailable" };
     let body: unknown;
+    const limit = deadline();
     try {
-        body = await response.json();
-    } catch {
-        return { kind: "invalid" };
+        try {
+            // A form POST with only safelisted headers: no CORS preflight (design §7).
+            response = await dependencies.fetch(pending.tokenEndpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: form,
+                credentials: "omit",
+                cache: "no-store",
+                redirect: "error",
+                signal: limit.signal,
+            });
+        } catch {
+            return { kind: "unavailable" };
+        }
+        if (response.status === 400 || response.status === 401) return { kind: "refused" };
+        if (!response.ok) return { kind: "unavailable" };
+        try {
+            body = await response.json();
+        } catch {
+            return limit.signal.aborted ? { kind: "unavailable" } : { kind: "invalid" };
+        }
+    } finally {
+        limit.clear();
     }
     if (!isRecord(body)) return { kind: "invalid" };
     const {
