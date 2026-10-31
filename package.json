@@ -30,6 +30,7 @@
         "format:check:changed": "node scripts/check-format-changed.mjs",
         "typecheck": "tsc --noEmit",
         "check:client-bundle": "node scripts/check-client-bundle.mjs",
+        "check:nonce-csp-pages": "node scripts/check-nonce-csp-pages.mjs",
         "codegen": "graphql-codegen --config codegen.ts",
         "codegen:check": "graphql-codegen --config codegen.ts --check",
         "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate --allow-write",

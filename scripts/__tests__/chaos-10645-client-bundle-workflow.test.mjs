@@ -86,11 +86,25 @@ describe("the client bundle scan in the test harness", () => {
         expect(line[1].split(" ")).toEqual(SECRET_NAMES);
     });
 
-    it("runs the build tier as build, then the scan, and nothing else", () => {
+    it("runs the build tier as build, then the scans, and nothing else", () => {
         const run = recordHarnessPackageCommands(["build"]);
 
         expect(run.result.status).toBe(0);
-        expect(run.commands).toEqual(["build", "check:client-bundle --require-secrets"]);
+        // CHAOS-12337: the nonce-CSP page check runs on the same build output.
+        expect(run.commands).toEqual([
+            "build",
+            "check:client-bundle --require-secrets",
+            "check:nonce-csp-pages",
+        ]);
+    });
+
+    it("fails the build tier when the nonce-CSP page check fails (CHAOS-12337)", () => {
+        const red = recordHarnessPackageCommands(["build"], {
+            failScript: "check:nonce-csp-pages",
+        });
+
+        expect(red.result.status).not.toBe(0);
+        expect(red.commands).toContain("check:nonce-csp-pages");
     });
 
     it("fails the build tier when the scan fails, and does not run the scan after a failed build", () => {
