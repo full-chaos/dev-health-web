@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { nextDevNodeOptions } from "./ci/next-dev-env";
 
@@ -34,6 +36,81 @@ const serverStdout = isCI ? "pipe" : "ignore";
 //    fully broken file of those stops its shard early.
 // 4. Logo canary: see the `shell-logo-canary` project below.
 const ciMaxFailures = 6;
+
+// CHAOS-12170. The mock's entitlement scenario (`POST /__test/entitlements`) is process-global: a
+// spec that sets it and a spec in another worker that sets it too read each other's scenario (the
+// Ask Dev launcher vanished mid-test in local multi-worker runs). Every spec of this suite that sets
+// it, directly or through test helper modules, is found by its content, so a new one cannot be
+// forgotten, and runs in the serial
+// `entitlement-scenario` project instead of the parallel `authenticated` one. Specs ignored by this
+// config (live, production harnesses) are not picked up.
+const ENTITLEMENT_ENDPOINT = "/__test/entitlements";
+const IGNORED_ELSEWHERE = /\.production\.spec\.ts$|^pagerduty-final-qa-p[0-3]\.spec\.ts$/u;
+/** Not scanned: the mock server (it serves the endpoint) and the live suite (ignored here). */
+const SKIPPED_DIRECTORIES = new Set(["mocks", "live"]);
+const RELATIVE_IMPORT =
+    /\bfrom\s+["'](\.{1,2}\/[^"']+)["']|\bimport\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/gu;
+
+/**
+ * The specs under `testsDirectory` that set the scenario (paths relative to it, `/`-separated): the
+ * spec posts the endpoint itself, or imports a test helper module that does, at any depth and
+ * through any chain of helper imports (codex r1 and r2 on #1634: admin-integrations.spec.ts sets it
+ * through pagerduty-final-qa.helpers.ts).
+ */
+export function findScenarioSetterSpecs(testsDirectory: string): string[] {
+    const walk = (directory: string): string[] =>
+        readdirSync(path.resolve(testsDirectory, directory), { withFileTypes: true }).flatMap(
+            (entry) => {
+                const relative = directory === "" ? entry.name : `${directory}/${entry.name}`;
+                if (entry.isDirectory())
+                    return SKIPPED_DIRECTORIES.has(relative) ? [] : walk(relative);
+                return entry.name.endsWith(".ts") ? [relative] : [];
+            },
+        );
+    const files = walk("");
+    const sources = new Map(
+        files.map((file) => [file, readFileSync(path.resolve(testsDirectory, file), "utf8")]),
+    );
+    const importsOf = (file: string): string[] =>
+        [...(sources.get(file) ?? "").matchAll(RELATIVE_IMPORT)].flatMap((match) => {
+            const target = path.posix.normalize(
+                path.posix.join(path.posix.dirname(file), match[1] ?? match[2]!),
+            );
+            return [`${target}.ts`, `${target}/index.ts`, target]
+                .filter((candidate) => sources.has(candidate))
+                .slice(0, 1);
+        });
+    const setters = new Set(
+        files.filter((file) => sources.get(file)!.includes(ENTITLEMENT_ENDPOINT)),
+    );
+    for (let grew = true; grew;) {
+        grew = false;
+        for (const file of files) {
+            if (setters.has(file) || file.endsWith(".spec.ts")) continue;
+            if (importsOf(file).some((target) => setters.has(target))) {
+                setters.add(file);
+                grew = true;
+            }
+        }
+    }
+    return files
+        .filter(
+            (file) =>
+                file.endsWith(".spec.ts") && !IGNORED_ELSEWHERE.test(path.posix.basename(file)),
+        )
+        .filter(
+            (file) => setters.has(file) || importsOf(file).some((target) => setters.has(target)),
+        )
+        .sort();
+}
+export const entitlementScenarioSpecs: readonly string[] = findScenarioSetterSpecs(
+    path.resolve(__dirname, "tests"),
+);
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+const entitlementScenarioPattern = new RegExp(
+    `(?:^|/)(?:${entitlementScenarioSpecs.map(escapeRegExp).join("|")})$`,
+    "u",
+);
 
 // The guided first-run onboarding journey (auth-onboard.spec.ts) runs with
 // NEXT_PUBLIC_GUIDED_ONBOARDING enabled and therefore lives in its own config
@@ -110,8 +187,19 @@ export default defineConfig({
             },
         },
         {
+            // CHAOS-12170: the specs that set the process-global entitlement scenario, one at a time.
+            name: "entitlement-scenario",
+            testMatch: entitlementScenarioPattern,
+            dependencies: ["auth-setup", "shell-logo-canary"],
+            workers: 1,
+            use: {
+                storageState: authFile,
+            },
+        },
+        {
             name: "authenticated",
             testIgnore: [
+                entitlementScenarioPattern,
                 /auth-signin\.spec\.ts/,
                 /(?:^|\/)admin\.spec\.ts$/,
                 /auth\.setup\.ts/,

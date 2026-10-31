@@ -1,6 +1,8 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import config from "../../playwright.config.ts";
+import config, { findScenarioSetterSpecs } from "../../playwright.config.ts";
 import customerPushConfig from "../../playwright.customer-push.config.ts";
 import navigationConfig from "../../playwright.navigation.config.ts";
 
@@ -103,8 +105,9 @@ describe("default Playwright web servers", () => {
 
     it("keeps stateful PagerDuty QA out of the canonical E2E command", () => {
         expect(packageJson.scripts["test:e2e"]).toBe(
-            "playwright test --project=authenticated --project=unauthenticated",
+            "playwright test --project=authenticated --project=entitlement-scenario --project=unauthenticated",
         );
+        expect(packageJson.scripts["test:e2e"]).not.toContain("pagerduty-final-qa");
         expect(packageJson.scripts["test:e2e:pagerduty-final-qa"]).toBe(
             "playwright test --project=pagerduty-final-qa",
         );
@@ -123,5 +126,98 @@ describe("default Playwright web servers", () => {
         // …but no workflow spends a runner on it per PR.
         expect(testsWorkflow).not.toContain("pagerduty-final-qa");
         expect(staticBuildWorkflow).not.toContain("pagerduty-final-qa");
+    });
+});
+
+// CHAOS-12170: the mock's entitlement scenario is process-global, so every spec of the default
+// suite that sets it runs in one serial project, never in the parallel `authenticated` one.
+describe("entitlement-scenario specs run one at a time", () => {
+    const testsDir = new URL("../../tests/", import.meta.url);
+    // An independent scan (not the config's own list): every default-suite spec that sets it,
+    // directly or through a test helper module that does.
+    const source = (file) => readFileSync(new URL(file, testsDir), "utf8");
+    const setterHelpers = readdirSync(testsDir)
+        .filter((file) => file.endsWith(".ts") && !file.endsWith(".spec.ts"))
+        .filter((file) => source(file).includes("/__test/entitlements"))
+        .map((file) => file.replace(/\.ts$/u, ""));
+    const flipping = readdirSync(testsDir)
+        .filter((file) => file.endsWith(".spec.ts"))
+        .filter(
+            (file) => !/\.production\.spec\.ts$|^pagerduty-final-qa-p[0-3]\.spec\.ts$/u.test(file),
+        )
+        .filter(
+            (file) =>
+                source(file).includes("/__test/entitlements") ||
+                setterHelpers.some((helper) => source(file).includes(`"./${helper}"`)),
+        )
+        .sort();
+    const project = (name) => config.projects?.find((candidate) => candidate.name === name);
+    const matches = (patterns, file) =>
+        [patterns]
+            .flat()
+            .some((pattern) => (pattern instanceof RegExp ? pattern.test(`tests/${file}`) : false));
+
+    it("finds the specs that set it, including the race canaries", () => {
+        expect(flipping).toContain("ask-dev-launcher.spec.ts");
+        // Sets it through a helper module (codex r1 on #1634), not by the endpoint text itself.
+        expect(flipping).toContain("admin-integrations.spec.ts");
+        expect(flipping).toContain("entitlement-scenario-race-a.spec.ts");
+        expect(flipping).toContain("entitlement-scenario-race-b.spec.ts");
+        expect(flipping.length).toBeGreaterThanOrEqual(15);
+    });
+
+    it("puts each of them in the serial project and none in the parallel one", () => {
+        const serial = project("entitlement-scenario");
+        const parallel = project("authenticated");
+        expect(serial?.workers).toBe(1);
+        for (const file of flipping) {
+            expect(matches(serial?.testMatch, file), `${file} in entitlement-scenario`).toBe(true);
+            expect(matches(parallel?.testIgnore, file), `${file} ignored by authenticated`).toBe(
+                true,
+            );
+        }
+        // A spec that does not set it stays in the parallel project.
+        expect(matches(serial?.testMatch, "ask-dev-not-a-real.spec.ts")).toBe(false);
+        expect(matches(parallel?.testIgnore, "filter-propagation.spec.ts")).toBe(false);
+    });
+
+    it("is selected by the default CI e2e script, so the specs still run in CI", () => {
+        expect(packageJson.scripts["test:e2e"]).toContain("--project=entitlement-scenario");
+        expect(packageJson.scripts["test:e2e"]).toContain("--project=authenticated");
+    });
+});
+
+// CHAOS-12170 (codex r2 opinion on #1634): a setter helper in a subfolder, or one reached through
+// another helper, sets the scenario too.
+describe("the scenario-setter scan follows helper imports", () => {
+    it("finds specs that set it directly, through a nested helper, and through two hops", () => {
+        const root = mkdtempSync(join(tmpdir(), "chaos-12170-"));
+        try {
+            const write = (file, text) => {
+                mkdirSync(join(root, file, ".."), { recursive: true });
+                writeFileSync(join(root, file), text);
+            };
+            const post =
+                "await request.post(`${MOCK}/__test/entitlements`, { data: { scenario } });";
+            write("direct.spec.ts", post);
+            write("helpers/entitlement.ts", `export async function set() { ${post} }`);
+            write("helpers/indirect.ts", 'export { set } from "./entitlement";');
+            write("nested.spec.ts", 'import { set } from "./helpers/entitlement";');
+            write("two-hops.spec.ts", 'import { set } from "./helpers/indirect";');
+            write("sub/deep.spec.ts", 'import { set } from "../helpers/entitlement";');
+            write("unrelated.spec.ts", 'import { other } from "./helpers/other";');
+            write("helpers/other.ts", "export const other = 1;");
+            write("mocks/http-server.ts", 'app.post("/__test/entitlements", () => {});');
+            write("live/x.spec.ts", post);
+            write("y.production.spec.ts", post);
+            expect(findScenarioSetterSpecs(root)).toEqual([
+                "direct.spec.ts",
+                "nested.spec.ts",
+                "sub/deep.spec.ts",
+                "two-hops.spec.ts",
+            ]);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
     });
 });
