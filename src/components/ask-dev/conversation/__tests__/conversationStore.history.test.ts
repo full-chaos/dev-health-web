@@ -778,3 +778,111 @@ describe("restored turns keep their thread (design §3.2)", () => {
         expect(threads).toEqual(new Set([THREAD_A, fresh.threadId]));
     });
 });
+
+describe("codex r1 on #1648", () => {
+    it("an earlier page that names another thread commits nothing (P2-1)", async () => {
+        seedThread(THREAD_A, [threadTurn(sub(3), "done", { resultId: resultId(3) })], "cursor_1");
+        transport.threads.set(
+            `${THREAD_A}|cursor_1`,
+            threadView(THREAD_B, [
+                threadTurn(sub(1), "done_unsaved", { question: "Other thread" }),
+            ]),
+        );
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await loaded(store);
+        store.loadEarlierTurns();
+        await vi.waitFor(() =>
+            expect(snap(store).thread).toEqual({ kind: "loaded", earlier: "failed" }),
+        );
+        expect(snap(store).turns.map((turn) => turn.submissionId)).toEqual([sub(3)]);
+        expect(JSON.stringify(snap(store).turns)).not.toContain("Other thread");
+    });
+
+    it("a restored run that turns done keeps the composer closed until its answer is read (P2-2)", async () => {
+        seedThread(THREAD_A, [threadTurn(sub(1), "running")]);
+        transport.results.set(resultId(9), answer(9));
+        const replay = deferred();
+        transport.readGates.set(resultId(9), replay.promise);
+        transport.statuses.push(status("done", resultId(9)));
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(transport.readCalls).toEqual([resultId(9)]));
+        expect(kinds(store)).toEqual(["restoring"]);
+        expect(snap(store).inFlight).toBe(true);
+        expect(store.submit("And the next?")).toBe(false);
+
+        replay.resolve();
+        await vi.waitFor(() => expect(kinds(store)).toEqual(["answered"]));
+        expect(snap(store).inFlight).toBe(false);
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        expect(store.submit("And the next?")).toBe(true);
+        const { request } = transport.calls[0]!;
+        expect(request.parent_result_id).toBe(resultId(9));
+        expect(request.conversation?.map((turn) => turn.content)).toContain("Answer 9.");
+    });
+
+    it.each([
+        [
+            "deleting the conversation shown",
+            (store: ConversationStore, id: string) => store.deleteThread(id),
+        ],
+        ["starting a new conversation", (store: ConversationStore) => store.newConversation()],
+        [
+            "selecting another conversation",
+            (store: ConversationStore) => store.selectThread(THREAD_B, "local"),
+        ],
+    ])(
+        "%s detaches a running question: no abort, no late commit, abort only at its deadline (P2-3)",
+        async (_, leave) => {
+            seedThread(THREAD_B, [threadTurn(sub(2), "done", { resultId: resultId(2) })]);
+            const gate = deferred();
+            transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(answer(7))]);
+            const store = makeStore({ runTimeoutMs: 120_000 });
+            store.submit("Which projects are at risk?");
+            await vi.waitFor(() => expect(snap(store).turns[0]?.reservedResultId).toBeDefined());
+            const { signal, threadId } = transport.calls[0]!;
+
+            leave(store, threadId);
+            await vi.waitFor(() => expect(snap(store).threadId).not.toBe(threadId));
+            expect(signal.aborted).toBe(false);
+
+            gate.resolve();
+            // The stream is read to its terminal (closing it early would be a disconnect).
+            await vi.waitFor(() => expect(transport.finishedStreams).toBe(1));
+            expect(
+                snap(store).turns.some(
+                    (turn) => turn.outcome.kind === "answered" && turn.threadId === threadId,
+                ),
+            ).toBe(false);
+            expect(signal.aborted).toBe(false);
+        },
+    );
+
+    it("a detached run that never ends is aborted at its deadline", async () => {
+        vi.useFakeTimers();
+        try {
+            transport.scripts.push([accepted(), { wait: new Promise(() => undefined) }]);
+            const store = makeStore({ runTimeoutMs: 120_000, now: Date.now });
+            store.submit("Which projects are at risk?");
+            await vi.advanceTimersByTimeAsync(0);
+            const { signal } = transport.calls[0]!;
+            store.newConversation();
+            expect(signal.aborted).toBe(false);
+            await vi.advanceTimersByTimeAsync(120_000);
+            expect(signal.aborted).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("a partition change still aborts the running question", async () => {
+        transport.scripts.push([accepted(), { wait: new Promise(() => undefined) }]);
+        const store = makeStore();
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(snap(store).turns[0]?.reservedResultId).toBeDefined());
+        const { signal } = transport.calls[0]!;
+        store.setPartition(ORG_B);
+        expect(signal.aborted).toBe(true);
+    });
+});

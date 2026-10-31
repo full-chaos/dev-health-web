@@ -612,8 +612,18 @@ type ActiveRun = {
     readonly controller: AbortController;
     /** When the run began (epoch ms): the panel's elapsed time counts from it. */
     readonly startedAt: number;
+    /** The run's absolute deadline D (epoch ms). */
+    deadline: number;
     /** Fires at the run's deadline D (plan §2.7.6 "abort at D"), whatever the run is waiting on. */
     timer: ReturnType<typeof setTimeout> | undefined;
+    /**
+     * The conversation it belongs to is no longer shown (another selection, a new conversation, a
+     * delete): the stream stays open to its terminal so ACR's run is not ended by a disconnect
+     * (a run without a lease ends on one), and nothing it delivers commits. `detachTimer` closes
+     * it at D.
+     */
+    detached: boolean;
+    detachTimer: ReturnType<typeof setTimeout> | undefined;
 };
 
 export class ConversationStore {
@@ -705,7 +715,7 @@ export class ConversationStore {
     clear(reason: "partition_changed" | "unmounted"): void {
         const aborted = this.active;
         const observed = this.observed.size;
-        this.dropSelectionWork();
+        this.dropSelectionWork("abort");
         this.historyAbort.abort();
         this.historyAbort = new AbortController();
         this.deleteAbort.abort();
@@ -995,11 +1005,12 @@ export class ConversationStore {
      * Ends every piece of work of the current selection: the submitted run, the observed runs,
      * the thread and answer reads. A late answer of any of them fails its ownership check.
      */
-    private dropSelectionWork(): void {
+    private dropSelectionWork(run: "abort" | "detach"): void {
         const active = this.active;
         if (active !== null) {
             this.release(active);
-            active.controller.abort();
+            if (run === "abort") active.controller.abort();
+            else this.detach(active);
         }
         for (const run of this.observed.values()) run.controller.abort();
         this.observed.clear();
@@ -1019,12 +1030,13 @@ export class ConversationStore {
     private resetSelection(
         reason: "selection_changed" | "new_conversation" | "thread_deleted",
     ): void {
-        const aborted = this.active;
+        const detached = this.active;
         const observed = this.observed.size;
-        this.dropSelectionWork();
+        // Delete is not Stop, and a switch does not stop the run either (E6 design v5 §4.2, Q2).
+        this.dropSelectionWork("detach");
         const selection = this.snapshot.selection + 1;
         logger.info(
-            { selection, reason, run_aborted: aborted !== null, observed_aborted: observed },
+            { selection, reason, run_detached: detached !== null, observed_aborted: observed },
             "ask-dev conversation cleared",
         );
         this.commit({
@@ -1158,7 +1170,7 @@ export class ConversationStore {
                 { thread_id: threadId, stage: "earlier", status: 404, selection },
                 "ask-dev thread restore failed",
             );
-            this.dropSelectionWork();
+            this.dropSelectionWork("detach");
             this.commit({
                 ...this.snapshot,
                 threadId: null,
@@ -1166,6 +1178,15 @@ export class ConversationStore {
                 turns: [],
                 inFlight: false,
             });
+            return;
+        }
+        if (view.threadId !== threadId) {
+            // Another thread's page is never this conversation's (codex r1 on #1648).
+            logger.info(
+                { thread_id: threadId, stage: "earlier", status: "invalid_upstream", selection },
+                "ask-dev thread restore failed",
+            );
+            this.commit({ ...this.snapshot, thread: { kind: "loaded", earlier: "failed" } });
             return;
         }
         const known = new Set(this.snapshot.turns.map((turn) => turn.submissionId));
@@ -1226,10 +1247,11 @@ export class ConversationStore {
         resultId: string,
         selection: number,
         counted: boolean,
+        onSettled?: () => void,
     ): void {
         const signal = this.selectionAbort.signal;
         this.replayQueue.push(() =>
-            this.replayRestored(submissionId, resultId, selection, signal, counted),
+            this.replayRestored(submissionId, resultId, selection, signal, counted, onSettled),
         );
         this.pumpReplays();
     }
@@ -1256,12 +1278,14 @@ export class ConversationStore {
         selection: number,
         signal: AbortSignal,
         counted: boolean,
+        onSettled?: () => void,
     ): Promise<void> {
         let result: TranscriptResult;
         try {
             result = await this.transport.readResult(resultId, signal);
         } catch (error) {
             if (!this.ownsSelection(selection, "replay")) return;
+            onSettled?.();
             const unavailable = error instanceof TransportRefusal && error.status === 404;
             logger.warn(
                 {
@@ -1279,6 +1303,7 @@ export class ConversationStore {
             return;
         }
         if (!this.ownsSelection(selection, "replay")) return;
+        onSettled?.();
         this.updateRestored(submissionId, { kind: "answered", result });
         if (counted) this.restoreCounted(selection, "answered");
     }
@@ -1371,8 +1396,14 @@ export class ConversationStore {
                     return;
                 }
                 this.restoredResultIds.set(submissionId, status.result_id);
-                finish({ kind: "restoring" });
-                this.queueReplay(submissionId, status.result_id, selection, false);
+                // The run stays observed until its answer is read: a follow-up must carry it
+                // (codex r1 on #1648).
+                this.updateRestored(submissionId, { kind: "restoring" });
+                this.queueReplay(submissionId, status.result_id, selection, false, () => {
+                    if (this.observed.get(submissionId) === handle) {
+                        this.observed.delete(submissionId);
+                    }
+                });
                 return;
             }
             if (status?.state === "done_unsaved") {
@@ -1517,6 +1548,18 @@ export class ConversationStore {
         return this.active === run;
     }
 
+    /**
+     * Keeps a released run's stream open to its terminal (a disconnect would end a run that has no
+     * lease), and closes it at its deadline D whatever it is waiting on.
+     */
+    private detach(run: ActiveRun): void {
+        run.detached = true;
+        run.detachTimer = setTimeout(
+            () => run.controller.abort(),
+            Math.max(0, run.deadline - this.now()),
+        );
+    }
+
     /** Lets the run go: nothing it still delivers changes the store after this. */
     private release(run: ActiveRun): void {
         if (this.active === run) this.active = null;
@@ -1570,14 +1613,17 @@ export class ConversationStore {
         // A restored turn has no request: it is never sent (E6 design v5 §3.2).
         if (turn?.origin !== "submitted" || threadId === null) return;
         const startedAt = turn.outcome.kind === "running" ? turn.outcome.startedAt : this.now();
+        const deadline = this.now() + this.runTimeoutMs;
         const run: ActiveRun = {
             turnId,
             controller: new AbortController(),
             startedAt,
+            deadline,
             timer: undefined,
+            detached: false,
+            detachTimer: undefined,
         };
         this.active = run;
-        const deadline = this.now() + this.runTimeoutMs;
         run.timer = setTimeout(() => this.expire(run), Math.max(0, deadline - this.now()));
         const submissionId = turn.submissionId;
         const requestId = turn.request.request_id;
@@ -1591,12 +1637,15 @@ export class ConversationStore {
                 signal: run.controller.signal,
             });
             for await (const event of events) {
+                // A detached run is read to its end, and nothing it delivers commits.
+                if (run.detached) continue;
                 // A late event of a run the store gave up (cleared, canceled) is dropped.
                 if (!this.owns(run)) return;
                 if (event.type === "accepted") accepted = true;
                 if (this.apply(run, event)) return;
             }
         } catch (error) {
+            if (run.detached) clearTimeout(run.detachTimer);
             if (!this.owns(run)) return;
             if (error instanceof TransportRefusal) {
                 await this.refused(run, deadline, error);
@@ -1611,6 +1660,7 @@ export class ConversationStore {
                 "ask-dev stream dropped",
             );
         }
+        if (run.detached) clearTimeout(run.detachTimer);
         if (!this.owns(run)) return;
         logger.warn(
             { submission_id: submissionId, request_id: requestId, accepted },

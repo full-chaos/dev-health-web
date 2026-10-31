@@ -59,6 +59,7 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
     | Feedback _(11958)_                                                   | partition + `result_id` + write revision         | yes                                                          |
     | Attach _(11957)_                                                     | selection + run revision + attachment generation | no                                                           |
 
+- **Leaving a conversation does not stop its run.** A switch, a new conversation or a delete _detaches_ the submitted run: the store keeps reading its stream to the terminal and commits nothing from it. ACR's run lease is behind a flag, and without a lease a disconnect ends the run. The store closes a detached stream at the run's deadline D. Only a partition change (org switch, impersonation, sign-out) or leaving the shell aborts it. A restored running turn stays observed until its final answer is read, so a follow-up always carries it.
 - **History.** There is one list per partition, shared by the panel and `/dev`. Its tombstones filter every page, so a late page cannot bring a deleted row back.
 
 ## Reattach and cancel (CHAOS-11957, planned)

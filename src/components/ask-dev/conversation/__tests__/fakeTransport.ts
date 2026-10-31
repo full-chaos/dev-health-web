@@ -131,6 +131,8 @@ export function summary(threadId: string, lastTurnAt = "2026-10-30T00:00:00Z"): 
  */
 export class FakeTransport implements AskDevTransport {
     readonly calls: InvestigateCall[] = [];
+    /** Streams whose every step was read (a consumer that stops early leaves one unfinished). */
+    finishedStreams = 0;
     readonly scripts: Step[][] = [];
     readonly statuses: (ContextFabricSubmissionStatusV1 | null | Error)[] = [];
     /** A status read or a replay that never answers (and ignores the abort signal). */
@@ -166,12 +168,16 @@ export class FakeTransport implements AskDevTransport {
     readonly investigate = (call: InvestigateCall): AsyncIterable<InvestigationEvent> => {
         this.calls.push(call);
         const steps = this.scripts.shift() ?? [];
+        const done = () => {
+            this.finishedStreams += 1;
+        };
         return (async function* () {
             for (const step of steps) {
                 if ("wait" in step) await step.wait;
                 else if ("fail" in step) throw step.fail;
                 else yield step;
             }
+            done();
         })();
     };
 
