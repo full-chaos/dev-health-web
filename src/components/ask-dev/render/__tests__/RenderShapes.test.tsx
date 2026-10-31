@@ -36,6 +36,7 @@ import {
 
 import { AskDevAnswer } from "../../answer/AskDevAnswer";
 import type { AnswerResult } from "../../answer/answerModel";
+import { AskDevTurn, type TranscriptResult } from "../../answer/AskDevTurn";
 import { CHART_READY_TIMEOUT_MS } from "../AskDevEChart";
 import { RENDER_BOUND_MS, RenderShapesProvider, AnswerWithheldNotice } from "../RenderShapes";
 import { media, stub } from "./echartsStub";
@@ -401,6 +402,24 @@ describe("a refreshed answer keeps its charts accounted for (codex r1c P2)", () 
         expect(errorEvents()).toEqual([]);
         expect(withheldLogs()).toEqual([]);
     });
+});
+
+describe("a non-answer turn that carries shapes (codex r3 P2)", () => {
+    it.each(["clarification_required", "no_match"] as const)(
+        "%s: every served shape is withheld once, at answer level, and logged",
+        (status) => {
+            const turn = { ...k1(), status } as unknown as TranscriptResult;
+            render(<AskDevTurn turn={turn} />);
+            expect(figures()).toHaveLength(0);
+            expect(screen.getByTestId("ask-dev-answer-withheld")).toHaveTextContent(
+                "2 charts were withheld: they do not belong to one fact table of this answer.",
+            );
+            expect(withheldLogs().map(([fields]) => [fields.shape_index, fields.reason])).toEqual([
+                [0, "placement_missing"],
+                [1, "placement_missing"],
+            ]);
+        },
+    );
 });
 
 describe("StrictMode replays an attempt (codex r2b P2)", () => {

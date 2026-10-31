@@ -6,6 +6,8 @@ import type {
     ACRContextFabricInvestigationResultV1,
 } from "@/lib/acr/generated";
 
+import { AnswerWithheldNotice, RenderShapesProvider } from "../render/RenderShapes";
+
 import { AskDevAnswer } from "./AskDevAnswer";
 import { AskDevClarification } from "./AskDevClarification";
 import { AskDevRefusal } from "./AskDevRefusal";
@@ -93,7 +95,12 @@ export function AskDevTurn({
             {refused ? (
                 <AskDevRefusal turn={turn} onReask={onReask} />
             ) : isNonAnswer(turn.status) ? (
-                <AskDevClarification result={turn} onConfirm={onConfirm} />
+                // A non-answer renders no table group or ranking panel, so every shape it carries
+                // is withheld at answer level, once (G4; codex r3 on #1629).
+                <RenderShapesProvider result={turn} groups={null}>
+                    <AskDevClarification result={turn} onConfirm={onConfirm} />
+                    <AnswerWithheldNotice />
+                </RenderShapesProvider>
             ) : (
                 <AskDevAnswer result={turn} />
             )}
