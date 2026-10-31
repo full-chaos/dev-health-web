@@ -82,12 +82,16 @@ export function RenderShapesProvider({
     readonly groups: readonly (readonly string[])[] | null;
     readonly children: ReactNode;
 }) {
+    // Planned again only when a field the plan reads changes, not when the answer object is
+    // copied (codex r1c on #1629: a refreshed answer object made a new ledger that no chart settled).
+    const { render_shapes: shapes, cohort, claimed_facts: facts, interpretation } = result;
     const { planned, ledger } = useMemo(() => {
-        const plan = planRenderShapes(result, { groups, paletteSize: chartColors.length });
-        const book = new OccurrenceLedger(result.render_shapes?.length ?? 0);
+        const input = { render_shapes: shapes, cohort, claimed_facts: facts, interpretation };
+        const plan = planRenderShapes(input, { groups, paletteSize: chartColors.length });
+        const book = new OccurrenceLedger(shapes?.length ?? 0);
         for (const entry of plan) book.record(entry.index, entry.initial);
         return { planned: plan, ledger: book };
-    }, [result, groups]);
+    }, [shapes, cohort, facts, interpretation, groups]);
     const [state, dispatch] = useReducer(reduce, { version: 0, violatedLedger: null });
     const violated = state.violatedLedger === ledger;
     const ids = useMemo(
@@ -225,7 +229,8 @@ export function FactTrendSlot({ claimIds }: { readonly claimIds: readonly string
                                       return null;
                                   return (
                                       <RenderShapeFigure
-                                          key={entry.index}
+                                          // A new ledger remounts its figures: each ledger gets its own chart attempt.
+                                          key={`${context.ledger.id}:${entry.index}`}
                                           index={entry.index}
                                           shape={entry.shape}
                                           cohort={context.result.cohort}

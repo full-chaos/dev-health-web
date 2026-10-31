@@ -36,6 +36,9 @@ export type LedgerViolation =
  * index is a violation, not an overwrite), so the check can see a duplicate that balances a drop.
  */
 export class OccurrenceLedger {
+    private static made = 0;
+    /** Distinct per ledger: a view keys its figures by it so each ledger gets its own attempt. */
+    readonly id = ++OccurrenceLedger.made;
     private readonly entries = new Map<number, Outcome[]>();
     private readonly strays: number[] = [];
 

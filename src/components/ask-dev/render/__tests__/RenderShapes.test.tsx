@@ -351,6 +351,57 @@ describe("the value table (E8 §9)", () => {
     });
 });
 
+describe("a refreshed answer keeps its charts accounted for (codex r1c P2)", () => {
+    it("keeps each occurrence drawn after a shallow refresh of the answer object", () => {
+        vi.useFakeTimers();
+        const result = k1();
+        const view = answer(result);
+        const inits = stub.inits;
+        view.rerender(
+            <AskDevAnswer
+                result={{ ...result, result_id: "result_12345678" } as unknown as AnswerResult}
+            />,
+        );
+        // Same served fields: same ledger, no new chart attempt.
+        expect(stub.inits).toBe(inits);
+        expect(figures().map((figure) => figure.getAttribute("data-state"))).toEqual([
+            "drawn",
+            "drawn",
+        ]);
+        act(() => vi.advanceTimersByTime(RENDER_BOUND_MS + 1000));
+        expect(figures()).toHaveLength(2);
+        expect(errorEvents()).toEqual([]);
+        expect(screen.queryByTestId("ask-dev-answer-withheld")).toBeNull();
+    });
+
+    it("draws again against a new ledger when the table groups change but the shapes do not", () => {
+        vi.useFakeTimers();
+        const result = k1();
+        const view = answer(result);
+        const inits = stub.inits;
+        // A new facts array (same facts, same shape objects): the groups and the ledger are new.
+        view.rerender(
+            <AskDevAnswer
+                result={
+                    {
+                        ...result,
+                        claimed_facts: [...result.claimed_facts],
+                    } as unknown as AnswerResult
+                }
+            />,
+        );
+        expect(figures().map((figure) => figure.getAttribute("data-state"))).toEqual([
+            "drawn",
+            "drawn",
+        ]);
+        act(() => vi.advanceTimersByTime(RENDER_BOUND_MS + 1000));
+        expect(stub.inits).toBe(inits + 2);
+        expect(figures()).toHaveLength(2);
+        expect(errorEvents()).toEqual([]);
+        expect(withheldLogs()).toEqual([]);
+    });
+});
+
 describe("a redraw is a new attempt (codex r1 opinions)", () => {
     it("is not ready again until its own finished, and withdraws the figure if that never comes", () => {
         vi.useFakeTimers();
