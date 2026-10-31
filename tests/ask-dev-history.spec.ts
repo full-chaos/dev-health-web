@@ -65,13 +65,14 @@ const thread = (id: string, turns: TurnBody[], extra: TurnBody = {}) => ({
     turns,
     ...extra,
 });
-const summary = (id: string, turns = 1) => ({
+const summary = (id: string, turns = 1, extra: Record<string, unknown> = {}) => ({
     thread_id: id,
     retention_days: 30,
     turn_count: turns,
     created_at: AT,
     last_turn_at: LATER,
     expires_at: EXPIRES,
+    ...extra,
 });
 const listPage = (...ids: string[]) => ({
     schema_version: "context_fabric_thread_list.v1",
@@ -620,5 +621,86 @@ test.describe("mobile (390px)", () => {
         await expect(sheet.getByTestId("ask-dev-history-row")).toHaveCount(2);
         await shot(page, "sheet-mobile-history-light");
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
+    });
+});
+
+// CHAOS-12238: a row is titled by its thread's first question when ACR serves one (its switch on),
+// and keeps the date-and-count label when it serves none (the switch off, or a legacy turn).
+const FIRST_QUESTION =
+    "Which teams are overloaded this quarter, and what is driving the extra review load on the platform repositories?";
+const titledList = {
+    schema_version: "context_fabric_thread_list.v1",
+    threads: [summary(THREAD_A, 3, { first_question: FIRST_QUESTION }), summary(THREAD_B, 1)],
+};
+
+test.describe("first question as the row title (CHAOS-12238)", () => {
+    test.describe("desktop (1280px)", () => {
+        test.use({ viewport: { width: 1280, height: 900 } });
+
+        test("a served first question titles its row; a row without one keeps its date label", async ({
+            page,
+        }, testInfo) => {
+            await seed(page, {
+                threads: {
+                    [THREAD_A]: thread(THREAD_A, [doneTurn("sub_e2e_a_0001", PARTIAL_ID, "Qa")]),
+                },
+                results: { [PARTIAL_ID]: PARTIAL },
+                list: [titledList],
+            });
+            await page.goto("/dev");
+            const titled = historyRow(page, THREAD_A);
+            const legacy = historyRow(page, THREAD_B);
+            const question = titled.getByTestId("ask-dev-history-question");
+            await expect(question).toHaveText(FIRST_QUESTION);
+            await expect(titled.getByTestId("ask-dev-history-meta")).toHaveText(/ · 3 questions$/u);
+            await expect(legacy.getByTestId("ask-dev-history-question")).toHaveCount(0);
+            await expect(legacy.getByTestId("ask-dev-history-open")).toHaveText(
+                /^Conversation of .+ · 1 question$/u,
+            );
+            // One line at rest: the question is cut, not wrapped.
+            expect(await question.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(
+                true,
+            );
+            await page.screenshot({
+                path: testInfo.outputPath("history-first-question-desktop.png"),
+            });
+
+            // The full text on focus (and on hover): the line wraps instead of being cut.
+            await titled.getByTestId("ask-dev-history-open").focus();
+            await page.keyboard.press("Shift+Tab");
+            await page.keyboard.press("Tab");
+            await expect(titled.getByTestId("ask-dev-history-open")).toBeFocused();
+            expect(await question.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(
+                true,
+            );
+            await page.screenshot({
+                path: testInfo.outputPath("history-first-question-focused-desktop.png"),
+            });
+            expect(await axeViolations(page, "[data-testid=ask-dev-history]")).toEqual([]);
+        });
+    });
+
+    test.describe("mobile (390px)", () => {
+        test.use({ viewport: { width: 390, height: 844 } });
+
+        test("the sheet lists the titled row and the legacy row, with no sideways scroll", async ({
+            page,
+        }, testInfo) => {
+            await seed(page, { list: [titledList] });
+            await page.goto("/dashboard");
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const sheet = page.getByTestId("ask-dev-sheet");
+            await expect(sheet.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
+            await sheet.getByTestId("ask-dev-history-toggle").click();
+            await expect(sheet.getByTestId("ask-dev-history-row")).toHaveCount(2);
+            await expect(
+                historyRow(page, THREAD_A).getByTestId("ask-dev-history-question"),
+            ).toHaveText(FIRST_QUESTION);
+            await page.screenshot({
+                path: testInfo.outputPath("history-first-question-mobile.png"),
+            });
+            expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+            expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
+        });
     });
 });

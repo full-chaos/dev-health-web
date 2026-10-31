@@ -188,6 +188,11 @@ export type ThreadSummaryView = {
     readonly createdAt: string;
     readonly lastTurnAt: string;
     readonly expiresAt: string;
+    /**
+     * The question of the thread's first turn, as the caller sent it (`first_question`, acr #1823;
+     * CHAOS-12238). `null` when ACR serves none: a legacy turn, or its switch is off.
+     */
+    readonly firstQuestion: string | null;
 };
 
 /** One page of the list: newest `last_turn_at` first, then `thread_id`. */

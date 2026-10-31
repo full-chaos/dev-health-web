@@ -50,6 +50,7 @@ type SummaryBody = {
     readonly created_at: string;
     readonly last_turn_at: string;
     readonly expires_at: string;
+    readonly first_question?: string;
 };
 
 type ListBody = {
@@ -75,6 +76,7 @@ function summaryView(summary: SummaryBody): ThreadSummaryView {
         createdAt: summary.created_at,
         lastTurnAt: summary.last_turn_at,
         expiresAt: summary.expires_at,
+        firstQuestion: summary.first_question ?? null,
     };
 }
 
