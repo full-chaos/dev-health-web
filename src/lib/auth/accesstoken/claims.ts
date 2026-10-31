@@ -23,6 +23,7 @@ export interface AccessTokenClaims {
     nbf: number;
     exp: number;
     org_id?: string;
+    act?: { sub: string };
     scope: string;
 }
 
@@ -67,12 +68,12 @@ export function asClaims(v: unknown): AccessTokenClaims | null {
         !exactKeys(
             v,
             ["iss", "aud", "sub", "principal_type", "sid", "jti", "iat", "nbf", "exp", "scope"],
-            ["org_id"],
+            ["org_id", "act"],
         )
     ) {
         return null;
     }
-    const { iss, aud, sub, principal_type, sid, jti, iat, nbf, exp, scope, org_id } = v;
+    const { iss, aud, sub, principal_type, sid, jti, iat, nbf, exp, scope, org_id, act } = v;
     if (!isString(iss, ISSUER) || typeof aud !== "string" || !Object.hasOwn(AUDIENCE_SCOPES, aud))
         return null;
     if (
@@ -85,6 +86,11 @@ export function asClaims(v: unknown): AccessTokenClaims | null {
     if (!isDate(iat) || !isDate(nbf) || !isDate(exp)) return null;
     if (scope !== AUDIENCE_SCOPES[aud]) return null;
     if (org_id !== undefined && !isString(org_id, ORG)) return null;
+    if (
+        act !== undefined &&
+        (!isObject(act) || !exactKeys(act, ["sub"], []) || !isString(act.sub, SUB))
+    )
+        return null;
     return {
         iss,
         aud,
@@ -97,5 +103,6 @@ export function asClaims(v: unknown): AccessTokenClaims | null {
         exp,
         scope,
         ...(org_id === undefined ? {} : { org_id }),
+        ...(act === undefined ? {} : { act: { sub: (act as { sub: string }).sub } }),
     };
 }

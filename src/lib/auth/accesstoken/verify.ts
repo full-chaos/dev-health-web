@@ -46,7 +46,7 @@ export type RefusalReason =
 export type ContractStage = "size" | "framing" | "schema" | "duplicate_member" | "client_rule";
 
 export type VerifyResult =
-    | { ok: true; claims: AccessTokenClaims }
+    | { ok: true; claims: AccessTokenClaims; actor: string | null }
     | { ok: false; reason: RefusalReason; stage?: ContractStage };
 
 const contract = (stage: ContractStage): VerifyResult => ({ ok: false, reason: "contract", stage });
@@ -130,7 +130,7 @@ export function verifyAccessToken(parts: TokenParts, ctx: VerifyContext): Verify
     if (claims.aud !== ctx.audience) return refuse("audience");
     if (ctx.nowSeconds + LEEWAY_SECONDS < claims.nbf) return refuse("not_yet_valid");
     if (ctx.nowSeconds >= claims.exp + LEEWAY_SECONDS) return refuse("expired");
-    return { ok: true, claims };
+    return { ok: true, claims, actor: claims.act?.sub ?? null };
 }
 
 const B64URL = /^[A-Za-z0-9_-]+$/;
