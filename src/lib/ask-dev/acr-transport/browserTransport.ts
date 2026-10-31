@@ -92,16 +92,25 @@ function retryAfterOf(response: Response): number | undefined {
     return Number(raw.trim());
 }
 
-/** Reads a JSON body of at most `MAX_BODY_BYTES`; `undefined` when it is larger or not JSON. */
-async function boundedJson(response: Response): Promise<unknown> {
+/**
+ * Reads a JSON body of at most `MAX_BODY_BYTES`; `undefined` when it is larger or not JSON. An end
+ * of `signal` cancels the read and throws the signal's reason: a body that stalls never outlives
+ * its call (codex r3).
+ */
+async function boundedJson(response: Response, signal: AbortSignal): Promise<unknown> {
+    if (signal.aborted) throw signal.reason;
     const body = response.body;
     if (body === null) return undefined;
     const reader = body.getReader();
+    const stop = () => void reader.cancel(signal.reason).catch(() => undefined);
+    signal.addEventListener("abort", stop, { once: true });
     const parts: Uint8Array[] = [];
     let size = 0;
     try {
         for (;;) {
             const { done, value } = await reader.read();
+            // A canceled read reads as done: the abort decides what that means.
+            if (signal.aborted) throw signal.reason;
             if (done) break;
             size += value.length;
             if (size > MAX_BODY_BYTES) {
@@ -111,7 +120,11 @@ async function boundedJson(response: Response): Promise<unknown> {
             parts.push(value);
         }
     } catch {
+        // A body fetch errors on abort reads as the abort, not as a broken body.
+        if (signal.aborted) throw signal.reason;
         return undefined;
+    } finally {
+        signal.removeEventListener("abort", stop);
     }
     const joined = new Uint8Array(size);
     let offset = 0;
@@ -174,10 +187,14 @@ export function createAcrBrowserTransport(
      * Throws what a non-2xx answer means: 401 is "authorization required"; an `error.v1` body is
      * a `TransportRefusal`; anything else is a dropped call (the store recovers it).
      */
-    async function refuse(response: Response, operation: string): Promise<never> {
+    async function refuse(
+        response: Response,
+        operation: string,
+        signal: AbortSignal,
+    ): Promise<never> {
         logger.info({ operation, status: response.status }, "ask-dev acr call refused");
         if (response.status === 401) throw new TransportFailure("authorization_required");
-        const body = await boundedJson(response);
+        const body = await boundedJson(response, signal);
         if (body !== undefined && dependencies.envelope.validateErrorEnvelope(body)) {
             throw new TransportRefusal(response.status, body as ACRErrorV1, retryAfterOf(response));
         }
@@ -216,7 +233,7 @@ export function createAcrBrowserTransport(
             });
             clearTimeout(timer);
             if (response.status === 404 || !response.ok) return { response, body: undefined };
-            return { response, body: await boundedJson(response) };
+            return { response, body: await boundedJson(response, signal) };
         } catch (error) {
             if (timedOut) throw new Error(`ask-dev acr ${operation}: no answer in time`);
             throw error;
@@ -291,7 +308,7 @@ export function createAcrBrowserTransport(
                 throw halted() ?? error;
             }
             clearTimeout(timer);
-            if (!response.ok) await refuse(response, "investigate");
+            if (!response.ok) await refuse(response, "investigate", call.signal);
             const type = response.headers.get("Content-Type") ?? "";
             if (!/^text\/event-stream\b/iu.test(type) || response.body === null) {
                 logger.warn(
@@ -412,7 +429,7 @@ export function createAcrBrowserTransport(
             const path = `/investigations/submissions/${encodeURIComponent(submissionId)}`;
             const { response, body } = await getJson(path, "status", signal);
             if (response.status === 404) return null;
-            if (!response.ok) return refuse(response, "status");
+            if (!response.ok) return refuse(response, "status", signal);
             if (body === undefined || !dependencies.envelope.validateSubmissionStatus(body)) {
                 throw new TransportFailure("invalid_upstream");
             }
@@ -423,7 +440,7 @@ export function createAcrBrowserTransport(
             // The full checks load in parallel with the replay.
             const full = startFullChecks();
             const { response, body } = await getJson(path, "replay", signal);
-            if (!response.ok) return refuse(response, "replay");
+            if (!response.ok) return refuse(response, "replay", signal);
             const validators = await full;
             const valid =
                 body !== undefined &&

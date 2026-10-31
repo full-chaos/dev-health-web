@@ -609,6 +609,77 @@ describe("submissionStatus and readResult", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it("an abort while an answer's body is read cancels the read and ends with the abort (codex r3)", async () => {
+        const reason = new DOMException("deadline", "AbortError");
+        const reads: [string, number, (t: AskDevTransport, s: AbortSignal) => Promise<unknown>][] =
+            [
+                ["status, refused", 503, (t, s) => t.submissionStatus(SUBMISSION, s)],
+                ["status, answered", 200, (t, s) => t.submissionStatus(SUBMISSION, s)],
+                ["replay, refused", 503, (t, s) => t.readResult("result_x", s)],
+                ["replay, answered", 200, (t, s) => t.readResult("result_x", s)],
+                [
+                    "investigate, refused",
+                    503,
+                    (t, s) => collect(t.investigate({ ...call(), signal: s })),
+                ],
+            ];
+        const seen: string[] = [];
+        for (const [name, status, read] of reads) {
+            // A body that starts and never ends.
+            const body = sseBody();
+            body.push("{");
+            fetchMock.mockResolvedValueOnce(
+                new Response(body.stream, {
+                    status,
+                    headers: { "Content-Type": "application/json" },
+                }),
+            );
+            const controller = new AbortController();
+            const pending = read(transport(), controller.signal);
+            const outcome = pending.then(
+                () => "resolved",
+                (error: unknown) => error,
+            );
+            await new Promise((ok) => setTimeout(ok, 5));
+            controller.abort(reason);
+            const settled = await Promise.race([
+                outcome,
+                new Promise((ok) => setTimeout(() => ok("still pending"), 200)),
+            ]);
+            seen.push(
+                `${name}: ${settled === reason ? "ended with the abort" : String(settled)}, ${body.cancelled.mock.calls.length > 0 ? "read canceled" : "read left open"}`,
+            );
+        }
+        expect(seen).toEqual(reads.map(([name]) => `${name}: ended with the abort, read canceled`));
+    });
+
+    it("an abort that errors the body, as fetch does, ends with the abort, not invalid_upstream", async () => {
+        const reason = new DOMException("deadline", "AbortError");
+        let source!: ReadableStreamDefaultController<Uint8Array>;
+        const stream = new ReadableStream<Uint8Array>({
+            start(c) {
+                source = c;
+                c.enqueue(new TextEncoder().encode("{"));
+            },
+        });
+        fetchMock.mockImplementationOnce(async (_url: string, init: RequestInit) => {
+            init.signal!.addEventListener("abort", () => source.error(init.signal!.reason));
+            return new Response(stream, {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            });
+        });
+        const controller = new AbortController();
+        const pending = transport().submissionStatus(SUBMISSION, controller.signal);
+        const outcome = pending.then(
+            () => "resolved",
+            (error: unknown) => error,
+        );
+        await new Promise((ok) => setTimeout(ok, 5));
+        controller.abort(reason);
+        await expect(outcome).resolves.toBe(reason);
+    });
+
     it("replay: the stored result, checked against result v1 or v2", async () => {
         fetchMock.mockResolvedValue(jsonResponse(result, 200));
         const id = String((result as { result_id: string }).result_id);
