@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -28,6 +29,9 @@ export const HISTORY_COPY = {
 
 const SECONDARY_BUTTON =
     "inline-flex items-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) disabled:opacity-50";
+
+const ICON_BUTTON =
+    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) disabled:opacity-50";
 
 const LINK_BUTTON =
     "min-w-0 flex-1 rounded-(--radius-sm) px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)";
@@ -65,7 +69,7 @@ function HistoryRow({
             data-thread-id={row.threadId}
             data-current={current ? "true" : undefined}
         >
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
                 <button
                     type="button"
                     className={LINK_BUTTON}
@@ -83,12 +87,14 @@ function HistoryRow({
                 {confirming ? null : (
                     <button
                         type="button"
-                        className={SECONDARY_BUTTON}
+                        className={ICON_BUTTON}
                         data-testid="ask-dev-history-delete"
+                        aria-label={CTA_LABELS.askDevDeleteConversation}
+                        title={CTA_LABELS.askDevDeleteConversation}
                         disabled={deleting}
                         onClick={() => setConfirming(true)}
                     >
-                        {CTA_LABELS.askDevDeleteConversation}
+                        <Trash2 aria-hidden="true" className="h-4 w-4" />
                     </button>
                 )}
             </div>

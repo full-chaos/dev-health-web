@@ -148,7 +148,7 @@ export function AskDevFullPage() {
                 <section
                     aria-labelledby={conversationId}
                     data-testid="ask-dev-page-conversation"
-                    className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6"
+                    className={`mx-auto flex w-full flex-1 flex-col gap-6 ${hasComposer ? "max-w-4xl lg:max-w-6xl" : "max-w-4xl"}`}
                 >
                     {/* The panel's title is the h2 its answers' h3 parts sit under; here this is. */}
                     <h2 id={conversationId} className="sr-only">
