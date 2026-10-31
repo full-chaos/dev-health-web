@@ -58,7 +58,12 @@ export type InvestigationEvent =
           readonly state: "started" | "completed";
           readonly elapsed_ms: number;
       })
-    | (EventBase & { readonly type: "heartbeat"; readonly stage?: InvestigationStage | undefined })
+    | (EventBase & {
+          readonly type: "heartbeat";
+          readonly stage?: InvestigationStage | undefined;
+          /** Milliseconds since `started_at` (CHAOS-11957: the attach continuity check reads it). */
+          readonly elapsed_ms: number;
+      })
     | (EventBase & { readonly type: "result"; readonly result: TranscriptResult })
     | (EventBase & {
           readonly type: "error";
@@ -202,6 +207,20 @@ export type ThreadListView = {
     readonly nextCursor: string | null;
 };
 
+/**
+ * ACR's answer to Stop (CHAOS-11957; acr `ContextFabricSubmissionCancelHandler`):
+ *
+ * - `running` (202): ACR recorded the cancel request (`t_req` is ACR's). The run ends on its own
+ *   terminal: `canceled`, or a result that finished first.
+ * - `final` (204): the submission is no longer running (done, done_unsaved or abandoned).
+ * - `not_leased` (409 `submission_in_progress`, `details.reason: not_leased`): the run has no lease,
+ *   so the cancel endpoint cannot stop it. Only the connection that owns it can (a disconnect).
+ */
+export type CancelAnswer =
+    | { readonly kind: "running" }
+    | { readonly kind: "final" }
+    | { readonly kind: "not_leased"; readonly retryAfterSeconds?: number | undefined };
+
 export type AskDevTransport = {
     /**
      * Opens one investigation stream (`Accept: text/event-stream`). It yields the events in `seq`
@@ -254,6 +273,30 @@ export type AskDevTransport = {
         readonly threadId: string;
         readonly signal: AbortSignal;
     }) => Promise<void>;
+    /**
+     * `GET …/investigations/submissions/{submission_id}/events` (CHAOS-11957): attaches to the
+     * caller's own leased run. The request sends exactly `Accept: text/event-stream`, and
+     * `Last-Event-ID` (a safe integer, in decimal) when `lastEventId` is given. The stream yields the
+     * run's own events after the cursor (from `accepted`, `seq` 1, without one), then the new ones,
+     * then the terminal. ACR's 404 (not the caller's open submission) and 410 `cursor_expired` (the
+     * cursor is outside the kept window, the run has no lease, or it ended) throw a
+     * `TransportRefusal`; the store then reads the submission status. The pre-header wait (15 s) and
+     * the stall rule (30 s with no byte; a `: keepalive` comment counts) throw a `TransportFailure`.
+     * The store checks the continuity of what it yields (`seq`, `request_id`, `elapsed_ms`).
+     */
+    readonly attach: (call: {
+        readonly submissionId: string;
+        readonly lastEventId?: number | undefined;
+        readonly signal: AbortSignal;
+    }) => AsyncIterable<InvestigationEvent>;
+    /**
+     * `POST …/investigations/submissions/{submission_id}/cancel` (CHAOS-11957). ACR's 404 (not the
+     * caller's open submission) throws a `TransportRefusal`.
+     */
+    readonly cancel: (call: {
+        readonly submissionId: string;
+        readonly signal: AbortSignal;
+    }) => Promise<CancelAnswer>;
 };
 
 /**

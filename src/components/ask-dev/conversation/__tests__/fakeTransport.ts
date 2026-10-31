@@ -4,8 +4,10 @@ import { join } from "node:path";
 import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
 
 import type { TranscriptResult } from "../../answer/AskDevTurn";
+import { TransportRefusal } from "../transport";
 import type {
     AskDevTransport,
+    CancelAnswer,
     InvestigateCall,
     InvestigationEvent,
     ThreadListView,
@@ -58,6 +60,37 @@ export const errorEvent = (
     reserved_result_id: reserved,
     error: acrError(code, 422, false),
 });
+
+/** One event at an explicit `seq` (an attach replays the run's own numbering). */
+export function at<E extends InvestigationEvent>(
+    seq: number,
+    event: E,
+    requestId = "request_test",
+): E {
+    return { ...event, seq, request_id: requestId };
+}
+
+export const stageEvent = (
+    stage: Extract<InvestigationEvent, { type: "stage" }>["stage"],
+    state: "started" | "completed",
+    elapsed: number,
+): InvestigationEvent => ({ ...base(), type: "stage", stage, state, elapsed_ms: elapsed });
+
+export const heartbeat = (elapsed: number): InvestigationEvent => ({
+    ...base(),
+    type: "heartbeat",
+    elapsed_ms: elapsed,
+});
+
+/** ACR's 410 for an attach (`details.reason`: not_logged, expired, ahead, ended). */
+export const cursorExpired = (reason = "not_logged") =>
+    new TransportRefusal(410, {
+        ...acrError("cursor_expired", 410, false),
+        error: {
+            ...acrError("cursor_expired", 410, false).error,
+            details: { reason },
+        },
+    } as ACRErrorV1);
 
 export function acrError(code: string, status: number, retryable: boolean): ACRErrorV1 {
     return {
@@ -134,6 +167,18 @@ export class FakeTransport implements AskDevTransport {
     readonly calls: InvestigateCall[] = [];
     /** Streams whose every step was read (a consumer that stops early leaves one unfinished). */
     finishedStreams = 0;
+    /** Attaches in order; with none left, an attach is ACR's 410 `not_logged` (no lease). */
+    readonly attachScripts: Step[][] = [];
+    readonly attachCalls: {
+        readonly submissionId: string;
+        readonly lastEventId?: number | undefined;
+        readonly signal: AbortSignal;
+    }[] = [];
+    /** Stop's answers in order (the last one repeats); none is `not_leased` (no lease). */
+    readonly cancelAnswers: (CancelAnswer | { readonly fail: unknown })[] = [];
+    readonly cancelCalls: string[] = [];
+    /** A cancel waits for this before it answers. */
+    cancelGate: Promise<void> | undefined;
     readonly scripts: Step[][] = [];
     readonly statuses: (ContextFabricSubmissionStatusV1 | null | Error)[] = [];
     /** A status read or a replay that never answers (and ignores the abort signal). */
@@ -180,6 +225,33 @@ export class FakeTransport implements AskDevTransport {
             }
             done();
         })();
+    };
+
+    readonly attach = (call: {
+        readonly submissionId: string;
+        readonly lastEventId?: number | undefined;
+        readonly signal: AbortSignal;
+    }): AsyncIterable<InvestigationEvent> => {
+        this.attachCalls.push(call);
+        const steps = this.attachScripts.shift();
+        return (async function* () {
+            if (steps === undefined) throw cursorExpired();
+            for (const step of steps) {
+                if ("wait" in step) await step.wait;
+                else if ("fail" in step) throw step.fail;
+                else yield step;
+            }
+        })();
+    };
+
+    readonly cancel = async (call: { readonly submissionId: string }): Promise<CancelAnswer> => {
+        this.cancelCalls.push(call.submissionId);
+        if (this.cancelGate !== undefined) await this.cancelGate;
+        const next =
+            this.cancelAnswers.length > 1 ? this.cancelAnswers.shift() : this.cancelAnswers[0];
+        if (next === undefined) return { kind: "not_leased" };
+        if ("fail" in next) throw next.fail;
+        return next;
     };
 
     readonly submissionStatus = async (
