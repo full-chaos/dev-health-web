@@ -145,8 +145,11 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
             [PENDING_KEY, FAMILY_KEY] as const,
         );
         expect(stored.pending).toBeNull();
+        // CHAOS-12305: v2 binds the family to the web principal and names it for the refresh lock.
         expect(JSON.parse(stored.family!)).toMatchObject({
-            v: 1,
+            v: 2,
+            userId: expect.any(String),
+            familyId: expect.stringMatching(/^[A-Za-z0-9_-]{22}$/u),
             issuer: harness.origin,
             clientId: ACR_DEV_BROWSER_CLIENT_ID,
             refreshToken: expect.stringMatching(/^acrrt_[A-Za-z0-9_-]{43}$/u),

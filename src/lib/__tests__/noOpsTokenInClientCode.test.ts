@@ -28,7 +28,10 @@ const clientModules = sourceFiles(SRC)
  * OAuth client parsing its own token answer) is listed in ALLOWED with the reason.
  */
 const READS_TOKEN = /\b(?:access_token|refresh_token)\b/u;
-const ALLOWED: Record<string, string> = {};
+const ALLOWED: Record<string, string> = {
+    "lib/ask-dev/acr-auth.ts":
+        "ACR's browser OAuth client: it parses ACR's own token answer (fcacr_/acrrt_), never an Ops token. It imports next-auth/react only to read the web principal (CHAOS-12305).",
+};
 /** A browser `update()` that carries a token pair: only server code writes tokens into the session. */
 const WRITES_TOKEN_PAIR = /\bupdate\(\s*\{\s*(?:activeOrg|onboardComplete)\b/u;
 

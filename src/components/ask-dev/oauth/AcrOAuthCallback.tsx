@@ -13,6 +13,7 @@ const log = logger.child({ component: "ask-dev-acr-callback" });
 type View =
     | { readonly kind: "working" }
     | { readonly kind: "denied"; readonly returnTo: string }
+    | { readonly kind: "signed_out"; readonly returnTo: string }
     | { readonly kind: "failed"; readonly retry: boolean; readonly returnTo: string };
 
 /** The failures where starting again may help; the others ask the user to start from Ask Dev. */
@@ -20,6 +21,8 @@ const RETRYABLE = new Set(["token_unavailable", "expired", "claim_unavailable"])
 
 function viewOf(outcome: Exclude<AcrCallbackOutcome, { kind: "authorized" }>): View {
     if (outcome.kind === "denied") return { kind: "denied", returnTo: outcome.returnTo };
+    // No web session: no code was sent (CHAOS-12305). Signing in again is the way on.
+    if (outcome.reason === "signed_out") return { kind: "signed_out", returnTo: outcome.returnTo };
     return { kind: "failed", retry: RETRYABLE.has(outcome.reason), returnTo: outcome.returnTo };
 }
 
@@ -31,6 +34,12 @@ function copyOf(view: View): { readonly title: string; readonly description: str
             return {
                 title: "Ask Dev was not connected",
                 description: "Access to Ask Dev was not granted. Return to Ask Dev to try again.",
+            };
+        case "signed_out":
+            return {
+                title: "Sign in to connect Ask Dev",
+                description:
+                    "Your Dev Health session ended before Ask Dev was connected. Sign in, then connect Ask Dev again.",
             };
         case "failed":
             return view.retry
