@@ -29,9 +29,14 @@ type AnswerFields =
     | "evidence_ref_labels"
     // CHAOS-12157: the status ACR replaced, when its completeness authority corrected it.
     | "status_correction"
-    // CHAOS-11945: the claimed-fact tables and the answer's evidence window.
-    | "claimed_facts"
-    | "effective_evidence_window";
+    // CHAOS-11944: the cohort ranking (cohort, the question's shape, ACR's cohort-rule render shapes)
+    // and the answer window in its header.
+    | "cohort"
+    | "interpretation"
+    | "render_shapes"
+    | "effective_evidence_window"
+    // CHAOS-11945: the claimed-fact tables (their window is effective_evidence_window above).
+    | "claimed_facts";
 
 export type AnswerResult =
     | Pick<ACRContextFabricInvestigationResultV1, AnswerFields>

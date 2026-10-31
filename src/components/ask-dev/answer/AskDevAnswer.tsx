@@ -18,6 +18,7 @@ import {
     type AnswerFinding,
     type AnswerResult,
 } from "./answerModel";
+import { AskDevCohortRanking } from "./AskDevCohortRanking";
 import { AskDevCoverage } from "./AskDevCoverage";
 import { ClaimedFactTables } from "./ClaimedFactTables";
 import { quickStatus } from "./quickStatus";
@@ -167,7 +168,8 @@ function FindingsPart({
  * (remaining work, readiness gaps, conflicts: completion and readiness are never merged). The
  * current state and a differing service sentence sit behind "More detail". Every served string is
  * inert text through `SafeAnswerText`. After the findings, how complete the answer is: coverage,
- * completeness, limitations and evidence references (CHAOS-11932, `AskDevCoverage`).
+ * completeness, limitations and evidence references (CHAOS-11932, `AskDevCoverage`). A cohort
+ * ranking, when the answer carries one, comes before the drivers (CHAOS-11944, `AskDevCohortRanking`).
  */
 export function AskDevAnswer({ result }: { result: AnswerResult }) {
     const lead = leadSentence(result);
@@ -239,6 +241,8 @@ export function AskDevAnswer({ result }: { result: AnswerResult }) {
 
             {answered || hasAnalysis ? (
                 <>
+                    <AskDevCohortRanking result={result} />
+
                     <Part title={ANSWER_COPY.driversTitle} testId="ask-dev-answer-drivers">
                         {result.drivers.length === 0 ? (
                             <p className="text-sm text-(--ink-muted)">{ANSWER_COPY.driversEmpty}</p>

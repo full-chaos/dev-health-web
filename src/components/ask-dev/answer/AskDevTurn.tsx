@@ -35,9 +35,13 @@ type TranscriptFields =
     | "warnings"
     | "evidence_ref_ids"
     | "evidence_ref_labels"
-    // CHAOS-11945: the claimed-fact tables and the answer's evidence window.
-    | "claimed_facts"
-    | "effective_evidence_window";
+    // CHAOS-11944: the cohort ranking.
+    | "cohort"
+    | "interpretation"
+    | "render_shapes"
+    | "effective_evidence_window"
+    // CHAOS-11945: the claimed-fact tables (their window is effective_evidence_window above).
+    | "claimed_facts";
 
 /** One turn's result: what both the answer view and the clarification view read. */
 export type TranscriptResult =
