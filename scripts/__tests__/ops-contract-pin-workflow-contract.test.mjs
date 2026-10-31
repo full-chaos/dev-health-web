@@ -78,6 +78,7 @@ const CANONICAL = [
             "                      contracts/auth/v1/jsonschema/discovery.v1.schema.json",
             "                      contracts/auth/v1/jsonschema/session.v1.schema.json",
             "                      contracts/auth/v1/golden/access-token/",
+            "                      contracts/auth/v1/examples/discovery/",
             "                  sparse-checkout-cone-mode: false",
         ],
     },
