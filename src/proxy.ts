@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClientIpFromEnv } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
+import { acrIssuerOriginForCsp } from "@/lib/ask-dev/acr-browser-config";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
@@ -95,6 +96,8 @@ const EXACT_PUBLIC_PATHS = [
     "/theme-init.js",
     "/robots.txt",
     "/sitemap.xml",
+    // CHAOS-12302: ACR fetches web's OAuth client metadata document with no credential.
+    "/oauth/acr-client.json",
 ];
 
 const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next", "/marketing"];
@@ -186,13 +189,17 @@ function allowsScriptEval(): boolean {
  * so unsafe-inline is also removed from script-src.
  */
 function buildCspHeader(nonce: string): string {
+    // CHAOS-12302: the browser calls ACR directly (Ask Dev direct browser design §5), so
+    // connect-src gains exactly ACR's issuer origin when ACR_OAUTH_ISSUER is set, and nothing
+    // otherwise. Only a value that is exactly an https (or loopback http) origin is added.
+    const acrOrigin = acrIssuerOriginForCsp(process.env.ACR_OAUTH_ISSUER);
     return [
         "default-src 'self'",
         `script-src 'self' 'nonce-${nonce}'${allowsScriptEval() ? " 'unsafe-eval'" : ""}`,
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
-        "connect-src 'self' https://*.vercel.app https://*.sentry.io https://bugs.fullchaos.dev http://localhost:8800",
+        `connect-src 'self' https://*.vercel.app https://*.sentry.io https://bugs.fullchaos.dev http://localhost:8800${acrOrigin === undefined ? "" : ` ${acrOrigin}`}`,
         "frame-ancestors 'none'",
     ].join("; ");
 }
