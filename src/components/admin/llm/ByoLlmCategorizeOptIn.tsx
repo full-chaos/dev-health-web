@@ -9,6 +9,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { categorizeRefusalMessage } from "@/lib/admin/categorizeRefusals";
 import { notifyByoLlmConfigChanged, onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE, SAVE_FAILED_MESSAGE } from "@/lib/readFailure";
+import { isUnreadableSettings } from "@/lib/admin/types";
 import type {
     LLMSettingsActionResult,
     LLMSettingsResponse,
@@ -39,8 +40,12 @@ export function ByoLlmCategorizeOptIn({
         const result = await loadSettingsAction();
         if (!result.data) {
             setState(null);
+            // 402/403: BYO is gated; 409 llm_settings_undecryptable: the BYO LLM card above owns the
+            // unreadable key and offers Replace and Remove (CHAOS-12173). Neither gets a Retry here.
             setLoadError(
-                result.status === 402 || result.status === 403 ? null : READ_FAILED_MESSAGE,
+                result.status === 402 || result.status === 403 || isUnreadableSettings(result)
+                    ? null
+                    : READ_FAILED_MESSAGE,
             );
             return;
         }

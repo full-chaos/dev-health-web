@@ -42,6 +42,7 @@ export default function ByoLlmAISetupPage() {
                 loadStatusAction={getLLMSettingsStatus}
                 saveSettingsAction={upsertLLMSettings}
                 removeSettingsAction={deleteLLMSettings}
+                removePurposeAction={deleteLLMPurpose}
                 runReadinessAction={runLLMSettingsReadiness}
                 modelPicker
             />

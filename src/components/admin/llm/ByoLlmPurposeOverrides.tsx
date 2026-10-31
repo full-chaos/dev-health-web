@@ -15,6 +15,7 @@ import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
     LLM_PURPOSES,
+    isUnreadableSettings,
     LLM_PURPOSE_LABELS,
     type LLMPurpose,
     type LLMPurposeSettings,
@@ -65,10 +66,11 @@ export function ByoLlmPurposeOverrides({
         const result = await loadSettingsAction();
         if (!result.data) {
             setLoaded(null);
-            // 402/403 mean BYO is gated; the default section already says so.
-            setLoadError(
-                result.status === 402 || result.status === 403 ? null : READ_FAILED_MESSAGE,
-            );
+            // 402/403 mean BYO is gated, and a 409 llm_settings_undecryptable means the saved key cannot be
+            // read (CHAOS-12173): the default section above says so and offers Replace and Remove.
+            const ownedAbove =
+                result.status === 402 || result.status === 403 || isUnreadableSettings(result);
+            setLoadError(ownedAbove ? null : READ_FAILED_MESSAGE);
             return;
         }
         setLoadError(null);
@@ -85,6 +87,7 @@ export function ByoLlmPurposeOverrides({
         void load();
     }, [load]);
 
+    // A save, Replace or Remove in the default section changes what this section shows.
     useEffect(() => onByoLlmConfigChanged(() => void load()), [load]);
 
     if (loadError) {

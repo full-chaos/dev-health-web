@@ -15,7 +15,11 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
+    ALL_LLM_PURPOSES,
+    LLM_PURPOSE_LABELS,
+    isUnreadableSettings,
     type LLMBudgetResponse,
+    type LLMPurpose,
     type LLMModelListResponse,
     type LLMProvider,
     type LLMSettingsActionResult,
@@ -57,6 +61,13 @@ export type ByoLlmSettingsProps = {
         data: LLMSettingsUpsert,
     ) => Promise<LLMSettingsActionResult<LLMSettingsResponse>>;
     removeSettingsAction: () => Promise<LLMSettingsActionResult<{ deleted: boolean }>>;
+    /**
+     * Removes one purpose override (CHAOS-12173): Remove on unreadable settings also removes each
+     * override the 409 named, so the page can be read again.
+     */
+    removePurposeAction?: (
+        purpose: LLMPurpose,
+    ) => Promise<LLMSettingsActionResult<{ deleted: boolean; purpose: string }>>;
     /**
      * Runs the BYO preflight against the saved configuration (CHAOS-3265).
      * Independent of `status?.active`/`mode` — rendered whenever a BYO
@@ -255,12 +266,42 @@ const BASE_URL_HELP: Record<string, string> = {
 /** The one-line description of the BYO LLM card (design: "Bring your own model provider for AI explanations and reports."). */
 const BYO_DESCRIPTION = "Bring your own model provider for AI explanations and reports.";
 
+/**
+ * CHAOS-12173: the saved settings exist but the configured encryption key cannot read their key (it
+ * was saved under a key since replaced, or restored from elsewhere). A retry never helps; the admin
+ * replaces the key or removes the settings. The words are the card's own; no key text is shown.
+ */
+export const UNREADABLE_COPY = {
+    notice: "The saved key can no longer be read. Replace or remove it.",
+    defaultScope: "The default configuration",
+    purposeScope: (purposes: readonly LLMPurpose[]) =>
+        `the ${purposes.map((purpose) => LLM_PURPOSE_LABELS[purpose]).join(" and ")} model ${purposes.length === 1 ? "override" : "overrides"}`,
+    replace: "Replace",
+    remove: "Remove",
+    confirmRemove: "Confirm remove?",
+    removing: "Removing…",
+    removed: "BYO-LLM settings removed.",
+    removeFailed: "Could not remove BYO-LLM settings.",
+} as const;
+
+/** The scope sentence: which saved settings the 409 named. */
+function unreadableScope(purposes: readonly LLMPurpose[]): string {
+    if (purposes.length === 0) return `${UNREADABLE_COPY.defaultScope} cannot be read.`;
+    return `${UNREADABLE_COPY.defaultScope} or ${UNREADABLE_COPY.purposeScope(purposes)} cannot be read.`;
+}
+
+/** Every purpose id the API can name, categorize included (codex r2); any other id is dropped, never sent. */
+function knownPurposes(purposes: readonly string[] | undefined): LLMPurpose[] {
+    return ALL_LLM_PURPOSES.filter((purpose) => purposes?.includes(purpose));
+}
+
 export function ByoLlmSettings({
     loadSettingsAction,
     loadBudgetAction,
     loadStatusAction,
     saveSettingsAction,
     removeSettingsAction,
+    removePurposeAction,
     runReadinessAction,
     loadModelsAction: loadModelsProp,
     modelPicker,
@@ -268,6 +309,7 @@ export function ByoLlmSettings({
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [unreadable, setUnreadable] = useState<{ purposes: LLMPurpose[] } | null>(null);
 
     const [mode, setMode] = useState<Mode>("edit");
     const [savedSettings, setSavedSettings] = useState<LLMSettingsResponse | null>(null);
@@ -336,6 +378,7 @@ export function ByoLlmSettings({
     const fetchSettings = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
+        setUnreadable(null);
         setLocked(null);
         setBudgetLoading(true);
         setBudgetLoadError(null);
@@ -354,6 +397,10 @@ export function ByoLlmSettings({
                     ? result.error
                     : "BYO-LLM is not enabled for this organization.",
             });
+        } else if (isUnreadableSettings(result)) {
+            setUnreadable({ purposes: knownPurposes(result.purposes) });
+            // The budget does not read the key: load it, so Replace opens with it editable (codex r1).
+            void fetchBudget();
         } else if (result.error) {
             setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
@@ -527,6 +574,14 @@ export function ByoLlmSettings({
             toast.error("Could not save BYO-LLM settings.");
             return;
         }
+        if (isUnreadableSettings(result)) {
+            // Replace while a named override is still unreadable: go-api answers the 409. The card goes
+            // back to its own notice (Replace or Remove), never the served text (codex r3 on #1630).
+            setUnreadable({ purposes: knownPurposes(result.purposes) });
+            setFormError(null);
+            toast.error("Could not save BYO-LLM settings.");
+            return;
+        }
         if (result.error) {
             setFormError(result.error);
             toast.error("Could not save BYO-LLM settings.");
@@ -568,6 +623,47 @@ export function ByoLlmSettings({
         setMode("edit");
         notifyByoLlmConfigChanged();
         toast.success("BYO-LLM settings removed.");
+    };
+
+    /** Replace: the setup form, empty; saving a new key overwrites the unreadable one (CHAOS-12172). */
+    const handleReplace = () => {
+        setUnreadable(null);
+        setFormError(null);
+        setConfirmingDelete(false);
+        setProvider(DEFAULT_PROVIDER);
+        setModel("");
+        setBaseUrl("");
+        setApiKey("");
+        setMaskedKey(null);
+        setHasStoredKey(false);
+        setHasSavedSettings(false);
+        setMode("edit");
+    };
+
+    /** Remove: the default settings, then each override the 409 named; none of it needs the old key. */
+    const handleRemoveUnreadable = async () => {
+        if (!confirmingDelete) {
+            setConfirmingDelete(true);
+            return;
+        }
+        setDeleting(true);
+        setFormError(null);
+        const results = [await removeSettingsAction()];
+        for (const purpose of unreadable?.purposes ?? []) {
+            if (removePurposeAction) results.push(await removePurposeAction(purpose));
+        }
+        setDeleting(false);
+        setConfirmingDelete(false);
+        const failed = results.find((result) => result.error && result.status !== 404);
+        if (failed) {
+            // The card's own words: a served 4xx text never reaches it (codex r2); the action logged it.
+            setFormError(UNREADABLE_COPY.removeFailed);
+            toast.error(UNREADABLE_COPY.removeFailed);
+            return;
+        }
+        notifyByoLlmConfigChanged();
+        toast.success(UNREADABLE_COPY.removed);
+        await fetchSettings();
     };
 
     const runByoPreflight = async () => {
@@ -626,6 +722,48 @@ export function ByoLlmSettings({
                             >
                                 {`Upgrade to ${BYO_REQUIRED_TIER_LABEL}`}
                             </Link>
+                        ) : null}
+                    </div>
+                </div>
+            </Section>
+        );
+    }
+
+    if (unreadable) {
+        return (
+            <Section title="BYO LLM" description={BYO_DESCRIPTION}>
+                <div
+                    className="rounded-2xl border border-(--caution)/40 bg-(--caution)/10 p-6 text-sm"
+                    data-testid="byo-llm-unreadable"
+                >
+                    <p className="font-semibold text-foreground">{UNREADABLE_COPY.notice}</p>
+                    <p className="mt-1 text-(--ink-muted)" data-testid="byo-llm-unreadable-scope">
+                        {unreadableScope(unreadable.purposes)}
+                    </p>
+                    {formError ? (
+                        <p className="mt-3 text-(--negative)" role="alert">
+                            {formError}
+                        </p>
+                    ) : null}
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <Button variant="secondary" onClick={handleReplace} disabled={deleting}>
+                            {UNREADABLE_COPY.replace}
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={() => void handleRemoveUnreadable()}
+                            disabled={deleting}
+                        >
+                            {deleting
+                                ? UNREADABLE_COPY.removing
+                                : confirmingDelete
+                                  ? UNREADABLE_COPY.confirmRemove
+                                  : UNREADABLE_COPY.remove}
+                        </Button>
+                        {confirmingDelete && !deleting ? (
+                            <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                                {CTA_LABELS.cancel}
+                            </Button>
                         ) : null}
                     </div>
                 </div>

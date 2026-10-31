@@ -8,6 +8,8 @@ export class AdminApiError extends Error {
         public detail?: string,
         public method?: string,
         public code?: string,
+        /** The purposes a served `detail.purposes` names (CHAOS-12173: unreadable BYO overrides); ids only. */
+        public purposes?: string[],
     ) {
         super(detail || `${status} ${statusText}`);
         this.name = "AdminApiError";
@@ -18,6 +20,16 @@ function errorCodeOf(raw: unknown): string | undefined {
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
     const code = (raw as Record<string, unknown>).error;
     return typeof code === "string" ? code : undefined;
+}
+
+/** A served `detail.purposes`: a list of ids, kept only when every entry is a string. */
+function purposesOf(raw: unknown): string[] | undefined {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const purposes = (raw as Record<string, unknown>).purposes;
+    if (!Array.isArray(purposes) || !purposes.every((item) => typeof item === "string")) {
+        return undefined;
+    }
+    return purposes as string[];
 }
 
 function formatErrorDetail(raw: unknown): string | undefined {
@@ -96,10 +108,12 @@ export async function request<T>(
     if (!response.ok) {
         let detail: string | undefined;
         let code: string | undefined;
+        let purposes: string[] | undefined;
         try {
             const errorData = await response.json();
             detail = formatErrorDetail(errorData.detail || errorData.message);
             code = errorCodeOf(errorData.detail);
+            purposes = purposesOf(errorData.detail);
         } catch {
             detail = undefined;
         }
@@ -109,6 +123,7 @@ export async function request<T>(
             detail,
             options.method ?? "GET",
             code,
+            purposes,
         );
     }
 
