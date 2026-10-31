@@ -11,7 +11,7 @@
  *     platform admin used only to verify those new users. It is never conflated
  *     with the orgless test users.
  */
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 // Backend URL resolution — mirrors impersonation.spec.ts convention
 export const liveBackendUrl =
@@ -193,4 +193,46 @@ export async function provisionUser(
         data: superuser ? { is_verified: true, is_superuser: true } : { is_verified: true },
     });
     return patch.ok() ? userId : "";
+}
+
+/** The onboarding steps mark themselves interactive once React has attached their handlers. */
+export const ONBOARDING_HYDRATED = '[data-onboarding-interactive="true"]';
+
+/** How long a hydrated control may take to show its handler ran, before the click counts as dropped. */
+export const CLICK_REACTION_MS = 5_000;
+
+/**
+ * Clicks an onboarding control only after its step has hydrated, then proves the click reached the
+ * handler (CHAOS-12176).
+ *
+ * The live suite runs `next dev`, which compiles a route on its first request: the server-rendered
+ * button is visible, but its handler is attached only when the client JS has loaded. A click in that
+ * window is discarded, and the journey then sat on a 30 s URL wait that ended at the test timeout,
+ * with the button still unpressed (a fallback path, three CI occurrences). So: wait for the step's
+ * hydration marker, click, and fail within {@link CLICK_REACTION_MS}, by name, if the control shows
+ * no reaction (the page left the URL, or the control's label changed).
+ */
+export async function clickHydratedOnboardingControl(
+    page: Page,
+    control: Locator,
+    label: string,
+): Promise<void> {
+    await expect(
+        page.locator(ONBOARDING_HYDRATED),
+        `onboarding step hydrated before clicking "${label}" (CHAOS-12176)`,
+    ).toBeVisible({ timeout: 30_000 });
+    const before = page.url();
+    await control.click();
+    // A reaction: the page left the URL, the control is gone (the page moved on), or its label changed.
+    const reacted = async (): Promise<boolean> => {
+        if (page.url() !== before) return true;
+        if ((await control.count()) === 0) return true;
+        return (await control.first().innerText()) !== label;
+    };
+    await expect
+        .poll(reacted, {
+            message: `"${label}" was clicked but no handler ran: the click was dropped (CHAOS-12176)`,
+            timeout: CLICK_REACTION_MS,
+        })
+        .toBe(true);
 }
