@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 import { defaultMetricFilter } from "../src/lib/filters/defaults";
 import { encodeFilter } from "../src/lib/filters/encode";
@@ -81,11 +81,25 @@ const investigations = async (page: Page) =>
         )
     ).filter((call) => call.kind === "investigate");
 
+/**
+ * Opens Ask Dev once the launcher is hydrated. On a constrained CI runner the server-rendered
+ * launcher is clickable before its handler hydrates, and that click is lost (CI run 41197195971:
+ * the launcher focused, the panel never opened). Retry the click and its result together, as
+ * `admin-sync-observability.spec.ts` does, and never click a launcher that is already open.
+ */
+async function openAskDev(page: Page, surface: Locator) {
+    const launcher = page.getByRole("button", { name: "Open Ask Dev" });
+    await expect(async () => {
+        if ((await launcher.getAttribute("aria-expanded")) !== "true") await launcher.click();
+        await expect(surface).toBeVisible({ timeout: 3000 });
+    }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
+    return surface;
+}
+
 async function openPanel(page: Page, path: string) {
     await seedStream(page);
     await page.goto(path);
-    await page.getByRole("button", { name: "Open Ask Dev" }).click();
-    return page.getByRole("complementary", { name: "Ask Dev" });
+    return openAskDev(page, page.getByRole("complementary", { name: "Ask Dev" }));
 }
 
 async function expectChips(page: Page, path: string, chips: string[]) {
@@ -252,8 +266,7 @@ test.describe("mobile (390px)", () => {
                 what: { repos: ["dev-health-web"] },
             })}`,
         );
-        await page.getByRole("button", { name: "Open Ask Dev" }).click();
-        const sheet = page.getByTestId("ask-dev-sheet");
+        const sheet = await openAskDev(page, page.getByTestId("ask-dev-sheet"));
         await expect(sheet.getByTestId("ask-dev-context-chip")).toHaveCount(3);
         await sheet.getByTestId("ask-dev-context").scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("context-cognitive-load-mobile.png") });
