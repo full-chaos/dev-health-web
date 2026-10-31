@@ -53,3 +53,6 @@ package-lock.json
 
 # Review-round PR body the codex launcher writes into the worktree; never committed.
 .codex-review-context.md
+
+# Written at start-up by scripts/write-runtime-config.mjs; never committed.
+/public/runtime-config.js
