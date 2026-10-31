@@ -149,7 +149,7 @@ test.describe("answer feedback (CHAOS-11958)", () => {
         test("set, read back after a reload, and unset", async ({ page }, testInfo) => {
             await seed(page, {});
             await page.goto(`/dev?thread=${THREAD_A}`);
-            const region = page.getByRole("region", { name: "Feedback on this answer" });
+            const region = page.getByRole("group", { name: "Feedback on this answer" });
             await expect(choice(region, "Correct?", "Yes")).toBeEnabled();
             await expect(choice(region, "Correct?", "Yes")).toHaveAttribute(
                 "aria-pressed",
@@ -188,7 +188,7 @@ test.describe("answer feedback (CHAOS-11958)", () => {
         }, testInfo) => {
             await seed(page, { feedbackSets: [refusal(503, "unavailable")] });
             await page.goto(`/dev?thread=${THREAD_A}`);
-            const region = page.getByRole("region", { name: "Feedback on this answer" });
+            const region = page.getByRole("group", { name: "Feedback on this answer" });
             await expect(choice(region, "Useful?", "Yes")).toBeEnabled();
             await choice(region, "Useful?", "Yes").click();
             await expect(region.getByText("Feedback was not saved.")).toBeVisible();
@@ -232,7 +232,7 @@ test.describe("answer feedback (CHAOS-11958)", () => {
             await page.getByRole("button", { name: "Open Ask Dev" }).click();
             const sheet = page.getByTestId("ask-dev-sheet");
             await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
-            const region = sheet.getByRole("region", { name: "Feedback on this answer" });
+            const region = sheet.getByRole("group", { name: "Feedback on this answer" });
             await expect(choice(region, "Correct?", "Yes")).toHaveAttribute("aria-pressed", "true");
             await choice(region, "Useful?", "Yes").click();
             await expect.poll(() => sets(page)).toEqual(["yes/yes"]);

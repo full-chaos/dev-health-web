@@ -142,7 +142,7 @@ describe("feedback on an answer (CHAOS-11958)", () => {
     it("shows Correct? and Useful? under an answer; a press sets the flag, a second press clears it", async () => {
         const transport = new FakeTransport();
         await answered(transport);
-        const region = await within(panel()).findByRole("region", {
+        const region = await within(panel()).findByRole("group", {
             name: FEEDBACK_COPY.region,
         });
         await waitFor(() => expect(choice(region, "correct", "Yes")).toBeEnabled());
@@ -321,7 +321,7 @@ describe("no free text in telemetry (CHAOS-11958 AC)", () => {
         const transport = new FakeTransport();
         transport.feedbackSets.push({}, { fail: new Error("network") });
         await answered(transport);
-        const region = await within(panel()).findByRole("region", {
+        const region = await within(panel()).findByRole("group", {
             name: FEEDBACK_COPY.region,
         });
         await waitFor(() => expect(choice(region, "correct", "Yes")).toBeEnabled());

@@ -69,7 +69,10 @@ function FeedbackControls({ store, resultId }: { store: FeedbackStore; resultId:
     if (entry === undefined || entry.state === "unavailable") return null;
     const enabled = entry.state === "ready";
     return (
-        <section
+        // A named group, not a landmark: a conversation has one per answer, and landmarks must be
+        // unique (axe landmark-unique, CI on #1658).
+        <div
+            role="group"
             aria-label={FEEDBACK_COPY.region}
             data-testid="ask-dev-feedback"
             data-state={entry.state}
@@ -111,7 +114,7 @@ function FeedbackControls({ store, resultId }: { store: FeedbackStore; resultId:
                     {FEEDBACK_COPY.notSaved}
                 </p>
             ) : null}
-        </section>
+        </div>
     );
 }
 
