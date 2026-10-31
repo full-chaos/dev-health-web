@@ -34,6 +34,8 @@ const ISSUERS = [
     "http://localhost:8800",
     "https://*.fullchaos.dev",
     "https://user@acr.fullchaos.dev",
+    "https://user:secret@acr.fullchaos.dev",
+    "https://acr.fullchaos.dev?key=secret",
 ];
 
 const WEB: ReadonlyArray<readonly [string | undefined, string | undefined]> = [
@@ -91,6 +93,10 @@ describe("the ACR browser client: server, T4c and browser agree", () => {
         }
         // The browser is the same client as the server, or none.
         expect(browser).toEqual(server);
+        // The public file carries an issuer only when it is exactly an origin (r2: never user info,
+        // a path or a query from a mistyped setting).
+        const copied = publicEnv[ACR_ISSUER_PUBLIC_KEY];
+        if (copied !== undefined) expect(new URL(copied).origin).toBe(copied);
     });
 
     it("the generator writes the keys the browser reads", () => {

@@ -147,6 +147,21 @@ describe("the browser ACR config in runtime-config.js (CHAOS-12302)", () => {
         expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_ACR_WEB_ORIGIN");
     });
 
+    it.each([
+        ["user info", "https://review-user:review-secret@acr.fullchaos.dev"],
+        ["a path", "https://acr.fullchaos.dev/token?key=secret"],
+        ["a fragment", "https://acr.fullchaos.dev#secret"],
+        ["no URL", "secret-value"],
+    ])("copies no issuer that is not exactly an origin: %s (r2)", (_, issuer) => {
+        const { contents, publicEnv } = runGenerator({
+            ACR_OAUTH_ISSUER: issuer,
+            AUTH_URL: "https://www.fullchaos.dev",
+        });
+        expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_ACR_OAUTH_ISSUER");
+        expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_ACR_WEB_ORIGIN");
+        expect(contents).not.toContain("secret");
+    });
+
     it("never carries a server secret alongside", () => {
         const { contents } = runGenerator({
             ACR_OAUTH_ISSUER: "https://acr.fullchaos.dev",
