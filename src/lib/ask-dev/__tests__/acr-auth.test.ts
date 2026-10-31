@@ -595,6 +595,17 @@ describe("a duplicated tab (copied sessionStorage) — r1 on #1663", () => {
 });
 
 describe("deadlines (r3 on #1663)", () => {
+    /**
+     * The claim hashes the state on real async I/O, which no count of event-loop turns bounds on a
+     * slow runner (CHAOS-12349). Wait on the real clock (only setTimeout is faked) for up to 5 s.
+     */
+    async function untilExchangeInFlight() {
+        const until = Date.now() + 5_000;
+        while (tokenCalls().length === 0 && Date.now() < until) {
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+    }
+
     afterEach(() => {
         vi.useRealTimers();
     });
@@ -646,10 +657,39 @@ describe("deadlines (r3 on #1663)", () => {
             fetch: stalled(`${ISSUER}/token`),
         });
         const outcome = completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
-        // The claim hashes the state on real async I/O: wait until the exchange is in flight.
-        for (let i = 0; i < 200 && tokenCalls().length === 0; i += 1) {
-            await new Promise((resolve) => setImmediate(resolve));
-        }
+        await untilExchangeInFlight();
+        expect(tokenCalls()).toHaveLength(1);
+        await vi.advanceTimersByTimeAsync(ACR_REQUEST_TIMEOUT_MS - 1);
+        let settled = false;
+        void outcome.then(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await outcome).toMatchObject({ kind: "failed", reason: "token_unavailable" });
+        expect(getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+    });
+
+    it("waits for the exchange however slow the claim's hash is (CHAOS-12349)", async () => {
+        // CI's runner took longer than 200 event-loop turns for the digest: make it slower still.
+        const digest = crypto.subtle.digest.bind(crypto.subtle);
+        vi.spyOn(crypto.subtle, "digest").mockImplementation(async (...args) => {
+            for (let turn = 0; turn < 400; turn += 1) {
+                await new Promise((resolve) => setImmediate(resolve));
+            }
+            return digest(...(args as Parameters<typeof digest>));
+        });
+        const state = (await begin()).searchParams.get("state")!;
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+        setAcrAuthDependenciesForTest({
+            now: () => now,
+            storage: () => storage,
+            shared: () => shared,
+            config: () => CONFIG,
+            lock: (_name, task) => task(),
+            fetch: stalled(`${ISSUER}/token`),
+        });
+        const outcome = completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
+        await untilExchangeInFlight();
         expect(tokenCalls()).toHaveLength(1);
         await vi.advanceTimersByTimeAsync(ACR_REQUEST_TIMEOUT_MS - 1);
         let settled = false;

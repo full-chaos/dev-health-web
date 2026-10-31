@@ -381,6 +381,11 @@ jobs:
                       contracts/auth/v1/credential-classes.schema.json
                       contracts/auth/v1/jsonschema/endpoint-auth-profile.v1.schema.json
                       contracts/auth/v1/jsonschema/principal.v1.schema.json
+                      contracts/auth/v1/jsonschema/access-token.v1.schema.json
+                      contracts/auth/v1/jsonschema/jwks.v1.schema.json
+                      contracts/auth/v1/jsonschema/discovery.v1.schema.json
+                      contracts/auth/v1/jsonschema/session.v1.schema.json
+                      contracts/auth/v1/golden/access-token/
                   sparse-checkout-cone-mode: false
             # credential-classes.schema.json joined this list at the
             # merge-gate round: the gate harvested class ids from the
@@ -399,6 +404,10 @@ jobs:
                   WEB_CREDENTIAL_CLASSES: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.json
                   WEB_CREDENTIAL_CLASSES_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.schema.json
               run: bash ci/run_tests.sh auth-profiles-gate
+            - name: Run the access-token verifier against the pinned golden corpus (CHAOS-10461)
+              env:
+                  WEB_OPS_CONTRACT_ROOT: ${{ github.workspace }}/.ops-contract
+              run: bash ci/run_tests.sh access-token-corpus
             - run: bash ci/run_tests.sh quality
             - name: Lint baseline diagnostics (CHAOS-8789)
               # Diagnostic only: splits lint output into changed-path findings
