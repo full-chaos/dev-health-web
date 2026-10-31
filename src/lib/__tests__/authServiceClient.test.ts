@@ -301,3 +301,51 @@ describe("readSessionAccessToken", () => {
         expect(Object.keys(got).sort()).toEqual(["kind", "reason"]);
     });
 });
+
+describe("readAccessToken, class hs256_compat: aud is a closed shape", () => {
+    const read = (aud?: unknown) =>
+        readAccessToken(hs256Token(aud === undefined ? {} : { aud }), "hs256_compat", ctx);
+
+    it("refuses an aud array that holds auth-service, in any position", () => {
+        const refused = [
+            ["auth-service"],
+            ["auth-service", "dev-health-api"],
+            ["dev-health-api", "auth-service", "other"],
+            ["dev-health-api", "other", "auth-service"],
+        ];
+        for (const aud of refused) {
+            expect(read(aud), JSON.stringify(aud)).toEqual({ ok: false, reason: "shape" });
+        }
+    });
+
+    it("refuses a scalar auth-service aud", () => {
+        expect(read("auth-service")).toEqual({ ok: false, reason: "shape" });
+    });
+
+    it("refuses an aud that is not a string or an array of strings", () => {
+        for (const aud of [
+            7,
+            true,
+            null,
+            {},
+            { a: "auth-service" },
+            ["dev-health-api", 7],
+            [null],
+            [["auth-service"]],
+        ]) {
+            expect(read(aud), JSON.stringify(aud)).toEqual({ ok: false, reason: "shape" });
+        }
+    });
+
+    it("accepts a scalar dev-health-api aud, an array without auth-service, and no aud", () => {
+        for (const aud of [
+            "dev-health-api",
+            ["dev-health-api"],
+            ["dev-health-api", "other"],
+            [],
+            undefined,
+        ]) {
+            expect(read(aud), JSON.stringify(aud)).toMatchObject({ ok: true, verified: false });
+        }
+    });
+});
