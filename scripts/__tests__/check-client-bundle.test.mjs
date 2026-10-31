@@ -633,6 +633,22 @@ describe("the lazy chunk rule", () => {
         expect(result.failures.join("\n")).toMatch(/names chunks\/full\.js up front.*rule L1/u);
     });
 
+    it("fails when a page names a chunk in a nested folder (codex r1)", () => {
+        const paths = lazyTree({ manifest: '{"chunks":["static/chunks/app/page/full.js"]}' });
+        write(join(paths.dist, "static/chunks/full.js"), "x()");
+        write(join(paths.dist, "static/chunks/app/page/full.js"), 'x("full-checks-marker")');
+        const result = checkLazyChunks({ ...paths, chunks: CHUNKS });
+        expect(result.ok).toBe(false);
+        expect(result.failures.join("\n")).toMatch(/names chunks\/app\/page\/full\.js up front/u);
+    });
+
+    it("does not flag a page that names another chunk of the same file name", () => {
+        const paths = lazyTree({ manifest: '{"chunks":["static/chunks/app/page/full.js"]}' });
+        write(join(paths.dist, "static/chunks/app/page/full.js"), "x()");
+        const result = checkLazyChunks({ ...paths, chunks: CHUNKS });
+        expect(result.failures).toEqual([]);
+    });
+
     it("fails when a prerendered page or a build manifest names the chunk", () => {
         for (const [name, text] of [
             ["server/app/dashboard.html", '<script src="/_next/static/chunks/full.js"></script>'],

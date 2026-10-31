@@ -141,6 +141,13 @@ describe("any break before a terminal is invalid", () => {
             "submission_mismatch",
         ],
     ];
+    // The pinned schema: on accepted, submission_id is optional ("echoed once the route binds the
+    // investigation to a submission"). So a missing one is accepted; another one is not.
+    it("accepts an accepted event with no submission id (the schema makes it optional)", () => {
+        const { submission_id: _omitted, ...withoutSubmission } = accepted();
+        expect(feed([withoutSubmission])).toEqual([expect.objectContaining({ kind: "event" })]);
+    });
+
     for (const [name, events, reason] of cases) {
         it(name, () => {
             const verdicts = feed(events);

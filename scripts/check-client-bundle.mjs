@@ -32,7 +32,7 @@
  * Usage: node scripts/check-client-bundle.mjs [--dist .next] [--root .] [--require-secrets]
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -424,7 +424,9 @@ export function checkLazyChunks({ root, dist, chunks = LAZY_CHUNKS }) {
         }
         const holders = clientScripts
             .filter((path) => readFileSync(path, "utf8").includes(chunk.marker))
-            .map((path) => basename(path));
+            // The path under `static` (`chunks/…`, nested folders kept), as entry lists name it: a
+            // bare file name would miss a nested chunk and match another chunk of the same name.
+            .map((path) => relative(join(dist, "static"), path).replaceAll("\\", "/"));
         if (holders.length === 0) {
             failures.push(
                 `rule ${chunk.id}: no client chunk holds "${chunk.marker}" (did the build run?)`,
@@ -435,10 +437,10 @@ export function checkLazyChunks({ root, dist, chunks = LAZY_CHUNKS }) {
         for (const list of lists) {
             const text = readFileSync(list, "utf8");
             for (const holder of holders) {
-                if (!text.includes(`chunks/${holder}`)) continue;
+                if (!text.includes(`static/${holder}`)) continue;
                 entryHits += 1;
                 failures.push(
-                    `${relative(dist, list)}: names chunks/${holder} up front, which holds ${chunk.what} (rule ${chunk.id}: load it only on demand)`,
+                    `${relative(dist, list)}: names ${holder} up front, which holds ${chunk.what} (rule ${chunk.id}: load it only on demand)`,
                 );
             }
         }
