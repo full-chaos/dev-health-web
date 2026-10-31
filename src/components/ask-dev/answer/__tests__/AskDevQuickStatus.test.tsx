@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { rawWordsIn } from "@/test/rawWords";
 import { render, screen, within } from "@/test/utils";
 
 import { AskDevAnswer } from "../AskDevAnswer";
@@ -101,7 +102,7 @@ describe("a served status correction is shown as served, never re-derived", () =
         expect(note).toHaveTextContent(
             `The service lowered this answer from ${statusLabel("complete", corrected.completeness)} to ${statusLabel("partial", corrected.completeness)}: health was read only in part.`,
         );
-        expect(note.textContent).not.toMatch(RAW_STATUS);
+        expect(rawWordsIn(note, RAW_STATUS)).toEqual([]);
     });
 
     it("names a 'complete' status whose completeness was not derived as the pill does: Answer", () => {
@@ -112,7 +113,7 @@ describe("a served status correction is shown as served, never re-derived", () =
         expect(note).toHaveTextContent(
             "The service lowered this answer from Answer to Partial answer: health was read only in part.",
         );
-        expect(note.textContent).not.toMatch(RAW_STATUS);
+        expect(rawWordsIn(note, RAW_STATUS)).toEqual([]);
     });
 
     it("says 'raised' for a degraded_to_partial correction, never 'lowered'", () => {
@@ -131,7 +132,7 @@ describe("a served status correction is shown as served, never re-derived", () =
             "The service raised this answer from Degraded answer to Partial answer: health was read in full.",
         );
         expect(note).not.toHaveTextContent("lowered");
-        expect(note.textContent).not.toMatch(RAW_STATUS);
+        expect(rawWordsIn(note, RAW_STATUS)).toEqual([]);
     });
 
     it("does not upgrade a corrected status, whatever the completeness says", () => {

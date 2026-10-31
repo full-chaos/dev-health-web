@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { rawWordsIn } from "@/test/rawWords";
 import { render, screen, within } from "@/test/utils";
 
 vi.mock(
@@ -35,8 +36,7 @@ const STATE_WORDS =
 const answer = () => screen.getByTestId("ask-dev-answer");
 const stateLine = () => within(answer()).queryByTestId("ask-dev-coverage-state");
 const note = () => within(answer()).queryByTestId("ask-dev-answer-completeness");
-const coverageText = () =>
-    within(answer()).getByTestId("ask-dev-coverage-completeness").textContent;
+const coverageBlock = () => within(answer()).getByTestId("ask-dev-coverage-completeness");
 
 describe("the captures hold each state", () => {
     it("has not_derived, partial and degraded answers", () => {
@@ -57,14 +57,14 @@ describe("web never shows the raw completeness state (CHAOS-12245)", () => {
         render(<AskDevAnswer result={complete} />);
         expect(stateLine()).toBeNull();
         expect(note()).toBeNull();
-        expect(coverageText()).not.toMatch(STATE_WORDS);
+        expect(rawWordsIn(coverageBlock(), STATE_WORDS)).toEqual([]);
     });
 
     it("not_derived: nothing at all about completeness; the pill claims neither full nor a gap", () => {
         render(<AskDevAnswer result={notDerived} />);
         expect(stateLine()).toBeNull();
         expect(note()).toBeNull();
-        expect(coverageText()).not.toMatch(STATE_WORDS);
+        expect(rawWordsIn(coverageBlock(), STATE_WORDS)).toEqual([]);
         expect(within(answer()).getByTestId("ask-dev-answer-status")).toHaveTextContent(
             /^Answer$/u,
         );
@@ -86,7 +86,7 @@ describe("web never shows the raw completeness state (CHAOS-12245)", () => {
             /^Missing data: health read in part \(1 of 1\); status read in part \(1 of 4\)\.$/u,
         );
         expect(answer().textContent?.split("Missing data:")).toHaveLength(2);
-        expect(stateLine()?.textContent).not.toMatch(STATE_WORDS);
+        expect(rawWordsIn(stateLine()!, STATE_WORDS)).toEqual([]);
     });
 
     it("degraded: exactly one plain sentence that names what was not available", () => {
@@ -97,7 +97,7 @@ describe("web never shows the raw completeness state (CHAOS-12245)", () => {
             expect(line.textContent).toBe(
                 "Missing data: health read in part (1 of 1); ranking not available; status read in part (2 of 5).",
             );
-            expect(line.textContent).not.toMatch(STATE_WORDS);
+            expect(rawWordsIn(line, STATE_WORDS)).toEqual([]);
         }
         expect(lines.length).toBeGreaterThan(0);
     });
