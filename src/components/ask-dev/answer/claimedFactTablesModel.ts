@@ -18,8 +18,9 @@ import type { ClaimedFact, ClaimedFactRow } from "@/lib/ask-dev/render/contracts
  *   observation that no row has keeps its column (the schema allows it to be absent): every cell
  *   says "not in this row". A declared KEY column that no row has means the declaration does not
  *   describe these rows: first-seen order is used and the mismatch is reported (`mismatch`).
- * - an `X_id` column whose rows also carry `X_name` shows the name in the id's place, and the raw
- *   id is left out (web/AGENTS.md: resolved names, no raw ids); an id with no name column stays;
+ * - an `X_id` column whose rows also carry `X_name` shows the name in the id's place (web/AGENTS.md:
+ *   resolved names, no raw ids); a row with no name (absent or null) shows its served id there, so
+ *   no row loses its key; an id with no name column stays;
  * - measure columns are marked;
  * - an absent cell and an explicit null are told apart, both shown as a dash, never as 0
  *   (check 17); no row is ever added.
@@ -31,6 +32,11 @@ export type FactTableColumn = {
     /** The served column name, shown in the header's title. */
     readonly key: string;
     readonly measure: boolean;
+    /**
+     * Set when this `X_name` column stands in the place of the served `X_id` column: a row whose
+     * name is absent or null shows its served id instead, so no row loses its key.
+     */
+    readonly idKey?: string;
 };
 
 export type FactTableCell =
@@ -68,15 +74,25 @@ function uniqueInOrder(names: readonly string[]): string[] {
 }
 
 /**
- * Puts each `X_name` column in the place of its `X_id` column, when both are served, and drops the
- * id: the name is the same entity's resolved label.
+ * Puts each `X_name` column in the place of its `X_id` column, when both are served: the name is the
+ * same entity's resolved label. The column keeps the id key for the rows that have no name.
  */
-function namesForIds(order: readonly string[], present: ReadonlySet<string>): string[] {
+function namesForIds(
+    order: readonly string[],
+    present: ReadonlySet<string>,
+): { readonly key: string; readonly idKey?: string }[] {
     const named = order.map((key) => {
         const prefix = /^(.+)_id$/u.exec(key)?.[1];
-        return prefix !== undefined && present.has(`${prefix}_name`) ? `${prefix}_name` : key;
+        return prefix !== undefined && present.has(`${prefix}_name`)
+            ? { idKey: key, key: `${prefix}_name` }
+            : { key };
     });
-    return uniqueInOrder(named);
+    const seen = new Set<string>();
+    return named.filter((column) => {
+        if (seen.has(column.key)) return false;
+        seen.add(column.key);
+        return true;
+    });
 }
 
 /** The columns of one fact's rows, in declared order when the declaration fits them. */
@@ -87,7 +103,7 @@ export function factColumns(fact: ClaimedFact): {
     const rows: readonly ClaimedFactRow[] = fact.rows ?? [];
     const firstSeen = columnOrder(rows);
     const present = new Set(firstSeen);
-    const plain = namesForIds(firstSeen, present).map((key) => ({ key, measure: false }));
+    const plain = namesForIds(firstSeen, present).map((column) => ({ ...column, measure: false }));
     const table = fact.table;
     if (table === undefined) return { columns: plain, mismatch: null };
     if (!table.key.every((key) => present.has(key))) {
@@ -105,19 +121,26 @@ export function factColumns(fact: ClaimedFact): {
         present,
     );
     return {
-        columns: order.map((key) => ({
-            key,
-            measure: measures.has(key) && !table.key.includes(key),
+        columns: order.map((column) => ({
+            ...column,
+            measure: measures.has(column.key) && !table.key.includes(column.key),
         })),
         mismatch: null,
     };
 }
 
-function cellOf(row: ClaimedFactRow, key: string): FactTableCell {
-    const value = row.fields[key];
+function readCell(value: ClaimedFactRow["fields"][string]): FactTableCell {
     if (value === undefined) return { kind: "absent" };
     if (cellValue(value) === null) return { kind: "null" };
     return { kind: "value", text: cellText(value) };
+}
+
+function cellOf(row: ClaimedFactRow, column: FactTableColumn): FactTableCell {
+    const own = readCell(row.fields[column.key]);
+    if (column.idKey === undefined || own.kind === "value") return own;
+    // This row has no name: its served id stands in, when it has one.
+    const id = readCell(row.fields[column.idKey]);
+    return id.kind === "absent" ? own : id;
 }
 
 /** One table per cited table (claims citing the same table are one group), in served order. */
@@ -131,9 +154,7 @@ export function claimedFactTables(facts: readonly ClaimedFact[]): readonly FactT
             subjectLabel: primary.subject.label?.trim() ? primary.subject.label : null,
             alsoFields: alsoClaims.map((claim) => claim.field),
             columns,
-            rows: (primary.rows ?? []).map((row) =>
-                columns.map((column) => cellOf(row, column.key)),
-            ),
+            rows: (primary.rows ?? []).map((row) => columns.map((column) => cellOf(row, column))),
             mismatch:
                 mismatch === null ? null : { claimIndex: facts.indexOf(primary), reason: mismatch },
         };

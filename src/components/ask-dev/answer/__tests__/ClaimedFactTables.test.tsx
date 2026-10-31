@@ -207,6 +207,33 @@ describe("claimed-fact tables in the answer (CHAOS-11945)", () => {
         expect(headerKeys(tableFor("claim-flow-completed"))[0]).toBe("team_id");
     });
 
+    it("shows a row's served id where that row has no name, though other rows have one", () => {
+        const merged = copyOf(mergedPrsDegraded);
+        const fact = merged.claimed_facts!.find((candidate) => candidate.rows?.length)!;
+        // Changed for the test: a second row with the key and no `scope_name` (an observation may
+        // be absent from a row), and a third whose name is an explicit null.
+        fact.rows!.push(
+            { fields: { scope_id: { string: "project.v2:linear:unresolved" } } },
+            {
+                fields: {
+                    scope_id: { string: "project.v2:linear:nulled" },
+                    scope_name: { null: true },
+                },
+            },
+        );
+        render(<AskDevAnswer result={merged} />);
+
+        const table = tableFor(fact.claim_id);
+        const body = within(table).getAllByRole("row").slice(1);
+        expect(within(body[0]!).getAllByRole("cell")[0]).not.toHaveTextContent(/^project\.v2:/u);
+        expect(within(body[1]!).getAllByRole("cell")[0]).toHaveTextContent(
+            "project.v2:linear:unresolved",
+        );
+        expect(within(body[2]!).getAllByRole("cell")[0]).toHaveTextContent(
+            "project.v2:linear:nulled",
+        );
+    });
+
     it("renders no table part when no claimed fact has rows", () => {
         render(<AskDevAnswer result={copyOf(ciRateComplete)} />);
 
