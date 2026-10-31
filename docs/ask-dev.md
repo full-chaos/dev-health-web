@@ -33,3 +33,17 @@ A page can tell Ask Dev which entities it shows. The next question then sends th
 ## Conversations: history, reload, reattach, feedback
 
 A conversation is ACR's thread. The panel and `/dev` share one history; a reload or `/dev?thread=<id>` restores a conversation with no new investigation, and a delete works from either surface (CHAOS-11956). The seam calls, the selection rules, the restore barrier, the ownership tokens, the cancel state machine and the browser contract checks are in [`architecture/ask-dev-thread-seam.md`](architecture/ask-dev-thread-seam.md).
+
+## Answer completeness
+
+An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. Web never shows it (CHAOS-12245, chris 2026-10-31). `missingDataSentence` and `quickStatus` (`src/components/ask-dev/answer/`) apply these rules:
+
+| State                                           | The coverage block and the quick answer                                                                                                                                                      | The status pill, for a `complete` status            |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `complete`                                      | nothing extra                                                                                                                                                                                | "Full answer"                                       |
+| `not_derived`, or no completeness on the result | nothing about completeness                                                                                                                                                                   | "Answer": it claims neither a full answer nor a gap |
+| `partial`, `degraded`                           | at most one plain sentence that names what was missing, from the requirement rows: "Missing data: status read in part (2 of 5); ranking not available." No sentence when no row names a gap. | "Answer, not fully covered"                         |
+
+- The state word never appears in the sentence. The coverage details keep their own block ("What limits this answer").
+- A served status correction names the statuses by their labels, for example "from full answer to partial answer", never by the machine words.
+- The Ask Dev Workbench (an engineering inspector) is not in this rule.

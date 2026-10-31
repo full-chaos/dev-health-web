@@ -65,7 +65,7 @@ test.describe("desktop (1280px)", () => {
         await expect(statuses.nth(1)).toHaveText("Partial answer");
         await expect(panel.getByText("Full answer", { exact: true })).toHaveCount(0);
         await expect(panel.getByTestId("ask-dev-answer-correction")).toHaveText(
-            "The service lowered this answer from complete to partial: health was read only in part.",
+            "The service lowered this answer from full answer to partial answer: health was read only in part.",
         );
         await page.waitForLoadState("networkidle");
         await page.screenshot({ path: testInfo.outputPath("quick-status-desktop.png") });

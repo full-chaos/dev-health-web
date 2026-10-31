@@ -3,7 +3,6 @@ import { render, screen, within } from "@/test/utils";
 
 import { AskDevAnswer } from "../AskDevAnswer";
 import { ANSWER_STATUS_LABEL, type AnswerResult } from "../answerModel";
-import { COMPLETENESS_TEXT } from "../coverageModel";
 import ownerComplete from "./captures/kiac_repo_owner_complete.event.json";
 import ownerCorrected from "./captures/kiac_repo_owner_status_corrected.event.json";
 import ciRateComplete from "./captures/kiac_repo_ci_rate_complete.event.json";
@@ -45,28 +44,26 @@ describe("the quick answer never says 'Full answer' unless completeness is compl
         render(<AskDevAnswer result={knobOff} />);
         expect(pill()).not.toHaveTextContent(ANSWER_STATUS_LABEL.complete);
         expect(pill()).toHaveAttribute("data-coverage", "partial");
+        // CHAOS-12245: one plain sentence of missing data, never the state word.
         expect(within(quick()).getByTestId("ask-dev-answer-completeness")).toHaveTextContent(
-            COMPLETENESS_TEXT.partial,
+            "Missing data: health read in part (1 of 1); status read in part (1 of 4).",
         );
     });
 
-    it("a 'complete' status whose completeness was not derived is not a full answer", () => {
+    // CHAOS-12245: not derived renders nothing about completeness; the pill claims neither.
+    it("a 'complete' status whose completeness was not derived is a plain answer, not a full one", () => {
         render(<AskDevAnswer result={notDerived} />);
-        expect(pill()).not.toHaveTextContent(ANSWER_STATUS_LABEL.complete);
-        expect(within(quick()).getByTestId("ask-dev-answer-completeness")).toHaveTextContent(
-            COMPLETENESS_TEXT.not_derived,
-        );
+        expect(pill()).toHaveTextContent(/^Answer$/u);
+        expect(within(quick()).queryByTestId("ask-dev-answer-completeness")).toBeNull();
     });
 
-    it("a 'complete' status with no completeness at all is not a full answer", () => {
+    it("a 'complete' status with no completeness at all is a plain answer, not a full one", () => {
         // A copy of a real answer without completeness (an older stored result has none).
         const copy = copyOf(ownerComplete) as unknown as Record<string, unknown>;
         delete copy.completeness;
         render(<AskDevAnswer result={copy as unknown as AnswerResult} />);
-        expect(pill()).not.toHaveTextContent(ANSWER_STATUS_LABEL.complete);
-        expect(within(quick()).getByTestId("ask-dev-answer-completeness")).toHaveTextContent(
-            COMPLETENESS_TEXT.absent,
-        );
+        expect(pill()).toHaveTextContent(/^Answer$/u);
+        expect(within(quick()).queryByTestId("ask-dev-answer-completeness")).toBeNull();
     });
 
     it("says 'Full answer' when the status and the completeness are both complete", () => {
@@ -84,8 +81,12 @@ describe("a served status correction is shown as served, never re-derived", () =
         render(<AskDevAnswer result={corrected} />);
         expect(pill()).toHaveTextContent(ANSWER_STATUS_LABEL.partial);
         const note = within(quick()).getByTestId("ask-dev-answer-correction");
-        expect(note).toHaveTextContent("The service lowered this answer from complete to partial");
+        // CHAOS-12245: the statuses by their labels, never the raw machine words.
+        expect(note).toHaveTextContent(
+            "The service lowered this answer from full answer to partial answer",
+        );
         expect(note).toHaveTextContent("health was read only in part");
+        expect(note.textContent).not.toContain("from complete to partial");
     });
 
     it("says 'raised' for a degraded_to_partial correction, never 'lowered'", () => {
@@ -101,7 +102,7 @@ describe("a served status correction is shown as served, never re-derived", () =
         render(<AskDevAnswer result={copy} />);
         const note = within(quick()).getByTestId("ask-dev-answer-correction");
         expect(note).toHaveTextContent(
-            "The service raised this answer from degraded to partial: health was read in full.",
+            "The service raised this answer from degraded answer to partial answer: health was read in full.",
         );
         expect(note).not.toHaveTextContent("lowered");
     });

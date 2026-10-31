@@ -1,12 +1,16 @@
 import { ANSWER_STATUS_LABEL, labelFor, type AnswerResult } from "./answerModel";
-import { COMPLETENESS_TEXT, OBLIGATION_LABEL, completenessOf } from "./coverageModel";
+import { OBLIGATION_LABEL, completenessOf, missingDataSentence } from "./coverageModel";
 
 /**
  * The quick answer's status line (CHAOS-12157). North Star checks 11 and 12 rank the answer's own
  * completeness above its status: "Full answer" is said only when the status AND the completeness
- * are complete. A `complete` status beside partial, degraded, not-derived or missing completeness
- * reads as not fully covered, with the completeness sentence beside it. A status ACR corrected is
- * shown as served, with the correction in words; this view never re-derives or upgrades a status.
+ * are complete. A `complete` status beside partial or degraded completeness reads as not fully
+ * covered, with the one missing-data sentence beside it. A status ACR corrected is shown as served,
+ * with the correction in words; this view never re-derives or upgrades a status.
+ *
+ * CHAOS-12245, chris's ruling (2026-10-31): web never shows the raw completeness state. Not derived
+ * (or no completeness) renders nothing about completeness: a `complete` status then reads as a
+ * plain "Answer", which claims neither a full answer nor a gap.
  */
 export type QuickStatus = {
     readonly label: string;
@@ -18,6 +22,7 @@ export type QuickStatus = {
 
 export const QUICK_STATUS_COPY = {
     notFullyCovered: "Answer, not fully covered",
+    answer: "Answer",
 } as const;
 
 const OUTCOME_WORDS: Record<string, string> = {
@@ -50,7 +55,9 @@ function correctionNote(result: AnswerResult): string | null {
     // The served pair names the direction: only degraded_to_partial raises a status (codex r1 P2).
     const [from, to] = correction.direction.split("_to_");
     const verb = DIRECTION_VERB[correction.direction] ?? "changed";
-    return `The service ${verb} this answer from ${from ?? correction.replaced_status} to ${to ?? result.status}${why}.`;
+    // CHAOS-12245: each status by its label, never the raw machine word.
+    const named = (status: string) => labelFor(ANSWER_STATUS_LABEL, status).toLowerCase();
+    return `The service ${verb} this answer from ${named(from ?? correction.replaced_status)} to ${named(to ?? result.status)}${why}.`;
 }
 
 export function quickStatus(result: AnswerResult): QuickStatus {
@@ -74,10 +81,18 @@ export function quickStatus(result: AnswerResult): QuickStatus {
             correctionNote: correction,
         };
     }
+    if (state !== "partial" && state !== "degraded") {
+        return {
+            label: QUICK_STATUS_COPY.answer,
+            coverage: state,
+            completenessNote: null,
+            correctionNote: correction,
+        };
+    }
     return {
         label: QUICK_STATUS_COPY.notFullyCovered,
         coverage: state,
-        completenessNote: COMPLETENESS_TEXT[state],
+        completenessNote: missingDataSentence(completeness),
         correctionNote: correction,
     };
 }
