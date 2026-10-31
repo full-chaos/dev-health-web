@@ -23,6 +23,8 @@ import { investigationStreamFor } from "./mocks/acr-investigation-stream";
 
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const QUESTION = "Which projects are at risk this quarter?";
+/** A well-formed thread id: its read goes to ACR (CHAOS-12336). */
+const THREAD = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 type AcrCall = {
     readonly method: string;
@@ -113,6 +115,24 @@ async function acrOn(context: BrowserContext, harness: Harness) {
                 });
                 return;
             }
+            // T14b (CHAOS-12336): the answer's feedback control reads its feedback. A never-rated
+            // result, as ACR answers it.
+            const feedback = /^\/api\/v1\/context-fabric\/investigations\/feedback\/([^/]+)$/u.exec(
+                new URL(request.url()).pathname,
+            );
+            if (request.method() === "GET" && feedback !== null) {
+                await route.fulfill({
+                    status: 200,
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                    body: JSON.stringify({
+                        schema_version: "context_fabric_result_feedback.v1",
+                        result_id: decodeURIComponent(feedback[1]!),
+                        correct: "unset",
+                        useful: "unset",
+                    }),
+                });
+                return;
+            }
             await route.fulfill({ status: 404, body: "" });
         },
     );
@@ -167,8 +187,22 @@ test.describe("desktop (1280px)", () => {
 
         await ask(page, panel);
         await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
-        expect(harness.calls).toHaveLength(1);
-        const [sent] = harness.calls;
+        // The question, then (T14b) the answer's feedback read: both from the browser, with the
+        // bearer and no cookie.
+        await expect.poll(() => harness.calls.length).toBe(2);
+        const [sent, feedbackRead] = harness.calls;
+        expect(feedbackRead!.method).toBe("GET");
+        expect(feedbackRead!.url).toMatch(
+            new RegExp(
+                `^${harness.origin}/api/v1/context-fabric/investigations/feedback/[^/?]+$`,
+                "u",
+            ),
+        );
+        expect(feedbackRead!.headers).toMatchObject({
+            authorization: `Bearer ${harness.tokens[0]}`,
+            "x-acr-resource": harness.origin,
+        });
+        expect(feedbackRead!.headers.cookie).toBeUndefined();
         expect(sent!.method).toBe("POST");
         expect(sent!.url).toBe(`${harness.origin}/api/v1/context-fabric/investigations`);
         expect(sent!.url).not.toContain(harness.tokens[0]!);
@@ -215,8 +249,94 @@ test.describe("desktop (1280px)", () => {
     });
 });
 
+// CHAOS-12336 (T14b, the lead's ruling 2 = A): with no ACR access token, the history list and a
+// conversation opened by its link show Connect Ask Dev, and nothing is sent to ACR.
+test.describe("desktop (1280px), T14b", () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    test("not connected: History shows Connect Ask Dev", async ({ page }, testInfo) => {
+        const harness = await setUp(page);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByTestId("ask-dev-panel");
+        await panel.getByTestId("ask-dev-history-toggle").click();
+        const connect = panel.getByTestId("ask-dev-history-connect");
+        await expect(connect.getByRole("link", { name: "Connect Ask Dev" })).toHaveAttribute(
+            "href",
+            /^\/ask-dev\/oauth\/start\?return=%2Fdashboard(%3F|$)/u,
+        );
+        await expect(panel.getByTestId("ask-dev-history-retry")).toHaveCount(0);
+        expect(harness.calls).toEqual([]);
+        await page.screenshot({
+            path: testInfo.outputPath("browser-calls-history-connect-desktop.png"),
+            animations: "disabled",
+        });
+    });
+
+    test("not connected: a conversation opened by its link shows Connect Ask Dev", async ({
+        page,
+    }, testInfo) => {
+        const harness = await setUp(page);
+        await page.goto(`/dev?thread=${THREAD}`);
+        const connect = page.getByTestId("ask-dev-conversation-connect");
+        await expect(connect.getByRole("link", { name: "Connect Ask Dev" })).toHaveAttribute(
+            "href",
+            `/ask-dev/oauth/start?return=${encodeURIComponent(`/dev?thread=${THREAD}`)}`,
+        );
+        await expect(page.getByTestId("ask-dev-conversation-retry")).toHaveCount(0);
+        expect(harness.calls).toEqual([]);
+        await page.screenshot({
+            path: testInfo.outputPath("browser-calls-conversation-connect-desktop.png"),
+            animations: "disabled",
+        });
+    });
+});
+
 test.describe("mobile (390px)", () => {
     test.use({ viewport: { width: 390, height: 844 } });
+
+    test("not connected, in the sheet: History shows Connect Ask Dev, with no sideways scroll", async ({
+        page,
+    }, testInfo) => {
+        const harness = await setUp(page);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const sheet = page.getByTestId("ask-dev-sheet");
+        await sheet.getByTestId("ask-dev-history-toggle").click();
+        await expect(
+            sheet
+                .getByTestId("ask-dev-history-connect")
+                .getByRole("link", { name: "Connect Ask Dev" }),
+        ).toBeVisible();
+        expect(harness.calls).toEqual([]);
+        await page.screenshot({
+            path: testInfo.outputPath("browser-calls-history-connect-mobile.png"),
+            animations: "disabled",
+        });
+        expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    });
+
+    test("not connected: a conversation opened by its link shows Connect Ask Dev, with no sideways scroll", async ({
+        page,
+    }, testInfo) => {
+        const harness = await setUp(page);
+        await page.goto(`/dev?thread=${THREAD}`);
+        await expect(
+            page
+                .getByTestId("ask-dev-conversation-connect")
+                .getByRole("link", { name: "Connect Ask Dev" }),
+        ).toBeVisible();
+        expect(harness.calls).toEqual([]);
+        await page.screenshot({
+            path: testInfo.outputPath("browser-calls-conversation-connect-mobile.png"),
+            animations: "disabled",
+        });
+        expect(
+            await page.evaluate(
+                () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+            ),
+        ).toBe(true);
+    });
 
     test("not connected, in the sheet: Connect Ask Dev, with no sideways scroll", async ({
         page,

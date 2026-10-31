@@ -27,15 +27,19 @@ import { ACR_CLIENT_VERSION, MAX_BODY_BYTES, MAX_EVENT_BYTES, MAX_STREAM_BYTES }
 import { SseEventTooLargeError, SseMalformedError, SseParser } from "./sseParser";
 
 /**
- * The browser's ACR transport (CHAOS-12104, T14a; design amendment §2.2, §4, §6, §8; plan §2.7.5 to
- * §2.7.7). The browser calls acr-api directly; there is no web route.
+ * The browser's ACR transport (CHAOS-12104, T14a; CHAOS-12336, T14b; design amendment §2.2, §4, §5,
+ * §6, §7, §8; plan §2.7.5 to §2.7.7). The browser calls acr-api directly; there is no web route.
  *
- * - **Calls:** `investigate` (the event stream), `submissionStatus` and `readResult` (the replay).
- *   Every call is a `fetch` with `credentials: "omit"` and `redirect: "error"`. Its headers are
+ * - **Calls:** `investigate` (the event stream), `submissionStatus` and `readResult` (the replay)
+ *   (T14a); `listThreads`, `readThread`, `deleteThread`, `attach`, `cancel`, `readFeedback` and
+ *   `setFeedback` (T14b), each mapping every status ACR's OpenAPI names for its route. Every call
+ *   is a `fetch` with `credentials: "omit"` and `redirect: "error"`. Its headers are
  *   `Authorization: Bearer` with the in-memory access token, `X-ACR-Resource` (ACR's issuer, the
  *   only resource the browser class binds) and `X-ACR-Client-Version`. No token ever goes in a
- *   URL. The threads, attach, cancel and feedback calls are T14b (CHAOS-12336). Until then they
- *   refuse locally and send nothing.
+ *   URL.
+ * - **Attach:** `GET …/submissions/{id}/events` with exactly `Accept: text/event-stream` and
+ *   `Last-Event-ID` (a safe integer) when the store has a cursor. It is read as the create stream
+ *   is; after a cursor the gate resumes mid-run (`GateResume` in `eventGate.ts`).
  * - **Token:** read right before each call, from the token store's memory only
  *   (`getAcrAccessToken`). The `sessionStorage` family is never read here. No token, or ACR's 401,
  *   is `TransportFailure("authorization_required")`: the panel's "Connect Ask Dev" state. There is
