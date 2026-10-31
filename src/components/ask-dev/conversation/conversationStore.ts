@@ -1928,6 +1928,9 @@ export class ConversationStore {
                 if (run.detached) continue;
                 // A late event of a run the store gave up (cleared, canceled) is dropped.
                 if (!this.owns(run)) return;
+                // Past D nothing is taken, even an event that was already buffered (codex r2 on
+                // #1657): the deadline timer may not have run yet.
+                if (this.pastDeadline(run)) return;
                 if (event.type === "accepted") accepted = true;
                 // The transport owns this stream's grammar (T14); the store records where it is,
                 // so an attach can resume from the same point (E6 design v5 §5.2).
@@ -1961,6 +1964,13 @@ export class ConversationStore {
         if (accepted && (await this.reattach(run)) === "done") return;
         if (!this.owns(run)) return;
         await this.recover(run, deadline, accepted);
+    }
+
+    /** At or past D: the run ends now (as its timer would), and nothing more is taken. */
+    private pastDeadline(run: ActiveRun): boolean {
+        if (this.now() < run.deadline) return false;
+        this.expire(run);
+        return true;
     }
 
     /** Where the run is after `event` (applied): the resume state of §5.2. */
@@ -2039,6 +2049,8 @@ export class ConversationStore {
                 });
                 let broke = false;
                 for await (const event of events) {
+                    // A detached run is drained to its terminal, as its own stream is.
+                    if (run.detached) continue;
                     if (!current()) {
                         logger.info(
                             { operation: "attach", scope: "run", revision: generation },
@@ -2053,12 +2065,21 @@ export class ConversationStore {
                         broke = true;
                         break;
                     }
+                    if (this.pastDeadline(run)) return "done";
                     this.record(run, event);
                     if (this.apply(run, event)) return "done";
+                }
+                if (run.detached) {
+                    clearTimeout(run.detachTimer);
+                    return "done";
                 }
                 attachment.abort();
                 if (!broke) reason = "dropped";
             } catch (error) {
+                if (run.detached) {
+                    clearTimeout(run.detachTimer);
+                    return "done";
+                }
                 attachment.abort();
                 if (!current()) return "done";
                 if (error instanceof TransportRefusal) {

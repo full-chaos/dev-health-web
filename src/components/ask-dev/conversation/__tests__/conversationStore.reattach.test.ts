@@ -222,13 +222,15 @@ describe("attach after the store's own stream dropped (design §5.2)", () => {
         expect(transport.attachCalls).toEqual([]);
     });
 
+    // A partition change lets the run go (a switch detaches and drains it instead, see the r2
+    // tests): the fake ignores the abort, so the late event reaches the store and is dropped.
     it("a late event of an attachment the store let go changes nothing (ownership)", async () => {
         const store = makeStore();
         const gate = deferred();
         transport.attachScripts.push([{ wait: gate.promise }, resultAt(2)]);
         await droppedRun(store, [accepted0()]);
         const turnId = lastTurn(store).id;
-        store.newConversation();
+        store.setPartition("org-b\u0000user-1\u0000");
         gate.resolve();
         await vi.waitFor(() =>
             expect(infoEvents("ask-dev stale answer dropped")).toContainEqual(
@@ -550,5 +552,53 @@ describe("codex r1 on #1657", () => {
         await vi.advanceTimersByTimeAsync(0);
         expect(kind(store)).toBe("interrupted");
         expect(snap(store).inFlight).toBe(false);
+    });
+});
+
+describe("codex r2 on #1657", () => {
+    it("a result after an accepted whose deadline is already past is not taken (P2-1)", async () => {
+        const store = makeStore();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "running")]));
+        // D = 11:00:00 + 60 s + 30 s, long before now (12:00:00).
+        transport.attachScripts.push([accepted0("2026-10-31T11:00:00Z", 60), resultAt(2)]);
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(["answered", "interrupted"]).toContain(kind(store)));
+        expect(kind(store)).toBe("interrupted");
+    });
+
+    it("a result on the store's own stream after D is not taken", async () => {
+        const store = makeStore({ runTimeoutMs: 1_000 });
+        const gate = deferred();
+        transport.scripts.push([accepted0(), { wait: gate.promise }, resultAt(2)]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(lastTurn(store).reservedResultId).toBe(RESERVED));
+        clock += 1_000;
+        gate.resolve();
+        await vi.waitFor(() => expect(snap(store).inFlight).toBe(false));
+        expect(kind(store)).toBe("interrupted");
+    });
+
+    it("leaving the conversation during a reattach drains the attachment to its terminal (P2-2)", async () => {
+        const store = makeStore({ runTimeoutMs: 120_000 });
+        const gate = deferred();
+        transport.attachScripts.push([{ wait: gate.promise }, resultAt(2)]);
+        let attachFinished = false;
+        const attach = transport.attach;
+        Object.defineProperty(transport, "attach", {
+            value: (call: Parameters<typeof attach>[0]) => {
+                const events = attach(call);
+                return (async function* () {
+                    yield* events;
+                    attachFinished = true;
+                })();
+            },
+        });
+        await droppedRun(store, [accepted0()]);
+        const signal = transport.attachCalls[0]!.signal;
+        store.newConversation();
+        gate.resolve();
+        await vi.waitFor(() => expect(attachFinished).toBe(true));
+        expect(signal.aborted).toBe(false);
+        expect(snap(store).turns).toEqual([]);
     });
 });
