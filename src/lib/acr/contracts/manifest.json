@@ -1,9 +1,9 @@
 {
-  "source_commit": "6aece91e0d6d0cf6c4c57d7a918e6844cec3792e",
+  "source_commit": "33ada20a830d474161113f3f516ea675b16efbc1",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "2c857775960bfd3f5aca9b7440c4c4cd80cf076ea479f1b473b061f3c46e0ae0"
+      "sha256": "afcc61ef084c76022adfa0d73634222599d15d12347fd1f9b824537b82174546"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -23,7 +23,7 @@
     },
     {
       "path": "schemas/error.v1.schema.json",
-      "sha256": "6288668c6b51f170f46237c63cff33e2e7805c5188c0124e7dad38dddfc506bf"
+      "sha256": "ba24b482af78d234ea2d722340d2a472f950d6f2256c436980c45a3d0baa9ff5"
     },
     {
       "path": "schemas/evidence_ref.v1.schema.json",
@@ -55,11 +55,11 @@
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "1e9f88709c557ac5f524dcf5e574a433095b1734368956af38538c49aeaefba3"
+      "sha256": "0fea1cb2d6deab0a2826e1eeb6bc956b519ebabb382d3e927853f7b2f1843db0"
     },
     {
       "path": "schemas/context_fabric_answer_projection.v1.schema.json",
-      "sha256": "65ab0d4dc9786adc10149dc894b00956605270afc3d17e026b5b8689a2fd355d"
+      "sha256": "c9f2de3eb0fca5ea319b7c70f36d7c2ef926eeff0478f40426c52fda57509c04"
     },
     {
       "path": "schemas/context_fabric_investigation_event.v1.schema.json",
@@ -84,6 +84,14 @@
     {
       "path": "schemas/context_fabric_investigation_result.v2.schema.json",
       "sha256": "b94847ecec4df64f83fdbcc9e8795762076225f1ff29c6a8d3d6cfd84f2a250d"
+    },
+    {
+      "path": "schemas/context_fabric_result_feedback.v1.schema.json",
+      "sha256": "b5089a8de6205de3c2fe99f05e9da4e0974db428b3b1e22f6624ad8e2f2f36da"
+    },
+    {
+      "path": "schemas/context_fabric_result_feedback_request.v1.schema.json",
+      "sha256": "cb31b4c0d11cab02c41e56a4c32ae041df17f8c85d4f5e17e74973b6cceebd17"
     },
     {
       "path": "schemas/context_fabric_submission_status.v1.schema.json",

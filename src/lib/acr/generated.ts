@@ -4782,6 +4782,41 @@ export type ACRContextFabricInvestigationResultV1 = {
 };
 
 /**
+ * Sets the caller's feedback on one of its own Ask Dev results: POST /api/v1/context-fabric/investigations/feedback/{result_id}. The body is the whole feedback, so a repeat is harmless. Both flags are required; unset clears one. No field is nullable.
+ */
+export interface ContextFabricResultFeedbackRequestV1 {
+    schema_version: "context_fabric_result_feedback_request.v1";
+    /**
+     * Whether the caller found the answer correct: yes, no, or unset.
+     */
+    correct: "yes" | "no" | "unset";
+    /**
+     * Whether the caller found the answer useful: yes, no, or unset.
+     */
+    useful: "yes" | "no" | "unset";
+}
+
+/**
+ * The caller's feedback on one of its own Ask Dev results: GET and POST /api/v1/context-fabric/investigations/feedback/{result_id}. A result takes feedback only when GET /api/v1/context-fabric/investigations/{result_id} would serve it to the caller now and it completed an Ask Dev submission (it has an owner); unknown other result id, an unknown or malformed one included, gets the same 404 not_found. The feedback is part of the result's backing set and goes with its retention.
+ */
+export interface ContextFabricResultFeedbackV1 {
+    schema_version: "context_fabric_result_feedback.v1";
+    result_id: string;
+    /**
+     * Whether the caller found the answer correct: yes, no, or unset.
+     */
+    correct: "yes" | "no" | "unset";
+    /**
+     * Whether the caller found the answer useful: yes, no, or unset.
+     */
+    useful: "yes" | "no" | "unset";
+    /**
+     * When the feedback was last set. Absent when it was never set; both flags are then unset.
+     */
+    updated_at?: string;
+}
+
+/**
  * The caller's own submission record (CHAOS-11913): GET /api/v1/context-fabric/investigations/submissions/{submission_id}. Served to the principal that admitted the submission only; unknown other caller, and an unknown id, get the same 404 not_found. A client that lost a create response polls this and replays result_id when state is done.
  */
 export interface ContextFabricSubmissionStatusV1 {
@@ -5118,7 +5153,7 @@ export interface ACRErrorV1 {
     request_id: string;
     error: {
         /**
-         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. submission_required is the 400 of a create-investigation request by a browser-class credential that names no single well-formed X-ACR-Submission-ID (missing, malformed or repeated): refused before admission and model work, nothing ran, and it is not retryable as sent. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted. thread_closed is the 409 of a create-investigation request whose X-ACR-Thread-ID, or X-ACR-Submission-ID, belongs to a conversation of the caller that was deleted, has expired or is full (1000000 turns): nothing ran, and the request is not retryable under those ids; start a new conversation.
+         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. submission_required is the 400 of a create-investigation request by a browser-class credential that names no single well-formed X-ACR-Submission-ID (missing, malformed or repeated): refused before admission and model work, nothing ran, and it is not retryable as sent. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted. thread_closed is the 409 of a create-investigation request whose X-ACR-Thread-ID, or X-ACR-Submission-ID, belongs to a conversation of the caller that was deleted, has expired or is full (1000000 turns): nothing ran, and the request is not retryable under those ids; start a new conversation. canceled, run_lost and cursor_expired belong to the run lease (CHAOS-11949): canceled (409) is the terminal error of a run its owner canceled; run_lost (503) is the terminal error of a run whose service instance stopped and whose lease ended; neither is retryable under the submission id. cursor_expired (410) is the answer to an attach whose Last-Event-ID the event log cannot serve (malformed, never written, older than the kept window, or at or past the terminal): read the submission status and replay the result by id instead. access_denied, no_repository and budget_exhausted are the per-call access read's refusals of a call by a user-class credential (browser, OAuth user, native device), which re-reads the user's access live on every protected call: access_denied is the 403 when the user is not a member of the organization, is impersonating, the browser credential's session is not live, or the organization or user is unknown (one code for every reason, not retryable); no_repository is the 409 when the credential's repository grant within the organization's live repository inventory is empty (not retryable as sent); budget_exhausted is the 503 of a create-investigation request whose wait budget left after the access read is below the minimum, refused before admission with nothing run (retryable).
          */
         code:
             | "invalid_request"
@@ -5145,7 +5180,13 @@ export interface ACRErrorV1 {
             | "submission_required"
             | "concurrency_limited"
             | "allowance_exhausted"
-            | "thread_closed";
+            | "thread_closed"
+            | "canceled"
+            | "run_lost"
+            | "cursor_expired"
+            | "access_denied"
+            | "no_repository"
+            | "budget_exhausted";
         message: string;
         http_status: number;
         retryable: boolean;
@@ -5511,6 +5552,7 @@ export type ClaimedFact = {
      */
     time_series_rows?: ClaimedFactRow[];
     time_series_table?: ClaimedFactTable1;
+    investment_mix?: ClaimedInvestmentMix;
 };
 export type ScalarValue = {
     string?: string;
@@ -9116,6 +9158,18 @@ export interface ClaimedFactTable1 {
      * For `ranking` only: which declared measure the row order is by.
      */
     order_by?: string;
+}
+/**
+ * Additive (CHAOS-12160): which attribution produced an investment claim's value about a project, and over how many work units in the read window. owning_team_rollup is the owning teams' roll-up, served because the project has no measurable work of its own in the window (project_own_work_unit_count says how many own units it has); project_native is the project's own work. Set by the server from the claim's grounding fact, never model-authored, and only on an investment claim.
+ */
+export interface ClaimedInvestmentMix {
+    /**
+     * Open vocabulary; documented values: project_native, owning_team_rollup. A client must tolerate values it does not know.
+     */
+    investment_mix_source: string;
+    rollup_basis: string;
+    work_unit_count: number;
+    project_own_work_unit_count: number;
 }
 export interface CohortExclusion {
     subject: SubjectRef;
