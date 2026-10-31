@@ -11,7 +11,6 @@ const CLASS_OF: Partial<Record<WithheldReason, NoticeClass>> = {
     kind_not_drawable: "unsupported",
     presentation_missing: "unsupported",
     time_axis_requires_line: "unsupported",
-    presentation_not_rendered: "unsupported",
     multi_claim_trend: "unplaced",
     placement_missing: "unplaced",
     render_error: "not_drawn",

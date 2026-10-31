@@ -257,12 +257,16 @@ describe("one notice owner per occurrence (E8 §4.3)", () => {
         );
     });
 
-    it("the ranking panel's slot states the cohort shapes it holds until I-41 draws them", () => {
+    it("the ranking panel's slot draws the verified cohort shapes (CHAOS-11943)", () => {
         answer((attentionRanking as { result: unknown }).result as Result);
-        expect(screen.getByTestId("ask-dev-ranking-chart-slot")).not.toHaveAttribute("hidden");
-        expect(screen.getByTestId("ask-dev-ranking-chart-withheld")).toHaveTextContent(
-            "2 charts were withheld: they are kinds of chart this view does not draw.",
-        );
+        const slot = screen.getByTestId("ask-dev-ranking-chart-slot");
+        expect(slot).not.toHaveAttribute("hidden");
+        expect(
+            within(slot)
+                .getAllByTestId("ask-dev-render-figure")
+                .map((figure) => figure.getAttribute("data-state")),
+        ).toEqual(["drawn", "drawn"]);
+        expect(screen.queryByTestId("ask-dev-ranking-chart-withheld")).toBeNull();
         expect(screen.queryByTestId("ask-dev-answer-withheld")).toBeNull();
     });
 });

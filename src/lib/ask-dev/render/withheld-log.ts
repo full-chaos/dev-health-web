@@ -54,8 +54,6 @@ const RENDER_REASONS = [
     "placement_missing",
     "ranking_not_computed",
     "ranking_not_requested",
-    // CHAOS-11942: a verified cohort bar or stacked-bar shape until I-41 (CHAOS-11943) draws it.
-    "presentation_not_rendered",
 ] as const;
 
 export const WITHHELD_REASONS = [...VERIFY_REASONS, ...GUARD_REASONS, ...RENDER_REASONS] as const;

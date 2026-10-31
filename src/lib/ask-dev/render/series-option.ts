@@ -1,4 +1,4 @@
-import type { EChartsOption, LineSeriesOption } from "echarts";
+import type { BarSeriesOption, EChartsOption, LineSeriesOption } from "echarts";
 
 import {
     cohortCategoryOrder,
@@ -11,6 +11,7 @@ import type {
     RenderSeries,
     RenderShape,
 } from "@/lib/ask-dev/render/contracts";
+import { formatDisplay } from "@/lib/ask-dev/render/format";
 import { utcInstant } from "@/lib/ask-dev/render/guards";
 import { COHORT_SHAPE_RULES } from "@/lib/ask-dev/render/verify";
 
@@ -168,4 +169,123 @@ export function lineOption(
             silent: true,
         })),
     };
+}
+
+/** A bar no wider than this: one bar in a wide panel still reads as a bar (ask-dev MAX_BAR_WIDTH). */
+const MAX_BAR_WIDTH = 88;
+
+/** One legend row per series (a vertical legend never wraps, whatever the panel width). */
+const LEGEND_ROW = 20;
+
+/**
+ * §7.4 bars and stacked bars on a category axis (CHAOS-11943). `bars`: one series carries a value
+ * label on top, in the display form (the value table has the exact form); several series carry
+ * none. `stacked_bars`: every series is stacked (`stack: "s"`) in served order, bottom up; G6 has
+ * refused a negative value, so the default same-sign stacking applies. A series with no point at a
+ * position gets `null` there (no zero-height segment). No total anywhere (G3): no total label,
+ * series, axis-max text, table column or summary.
+ */
+export function barOption(
+    shape: RenderShape,
+    positions: readonly ShapePosition[],
+    context: SeriesOptionContext,
+): EChartsOption {
+    const stacked = shape.presentation === "stacked_bars";
+    const legend = shape.series.length >= 2;
+    const valueLabels = !stacked && shape.series.length === 1;
+    const colors = shape.series.map((_, index) => context.colors[index]!);
+    const axisText = { color: context.theme.muted, fontFamily: FONT };
+    return {
+        animation: !context.reducedMotion,
+        color: colors,
+        backgroundColor: "transparent",
+        textStyle: { color: context.theme.text, fontFamily: FONT },
+        tooltip: { show: false },
+        legend: legend
+            ? {
+                  show: true,
+                  selectedMode: false,
+                  orient: "vertical",
+                  top: 0,
+                  left: 0,
+                  itemGap: 4,
+                  data: shape.series.map((series) => series.label),
+                  textStyle: { color: context.theme.text, fontFamily: FONT },
+              }
+            : { show: false },
+        // The rotated member names and both axis names stay inside the chart (no clipped name).
+        grid: {
+            left: 8,
+            right: 16,
+            top: legend ? 16 + LEGEND_ROW * shape.series.length : 16,
+            bottom: 8,
+            outerBoundsMode: "same",
+            outerBoundsContain: "all",
+        },
+        xAxis: {
+            type: "category",
+            data: positions.map((position) => position.label),
+            name: shape.axis_label,
+            nameLocation: "middle",
+            nameGap: 28,
+            nameTextStyle: axisText,
+            // Long member names are drawn at an angle and never shortened; the value table has
+            // every name in full.
+            axisLabel: { ...axisText, rotate: 30, hideOverlap: true },
+            axisLine: { lineStyle: { color: context.theme.grid } },
+        },
+        yAxis: {
+            type: "value",
+            scale: false,
+            name: shape.value_label,
+            // Along the axis, so a wrapped legend never sits on it.
+            nameLocation: "middle",
+            nameRotate: 90,
+            nameGap: 36,
+            nameTextStyle: axisText,
+            axisLabel: axisText,
+            splitLine: { lineStyle: { color: context.theme.grid } },
+        },
+        series: shape.series.map((series, index): BarSeriesOption => ({
+            type: "bar",
+            id: series.key,
+            name: series.label,
+            data: positions.map((position) => pointAt(series, position)?.value ?? null),
+            ...(stacked ? { stack: "s" } : {}),
+            barMaxWidth: MAX_BAR_WIDTH,
+            itemStyle: { color: colors[index] },
+            label: valueLabels
+                ? {
+                      show: true,
+                      position: "top",
+                      color: context.theme.text,
+                      fontFamily: FONT,
+                      formatter: (params: { value?: unknown }) =>
+                          typeof params.value === "number" ? formatDisplay(params.value) : "",
+                  }
+                : { show: false },
+            emphasis: { disabled: true },
+            silent: true,
+        })),
+    };
+}
+
+/**
+ * The chart's height in px: a line 224; bars 256, plus one legend row per series when there are
+ * several, so the plot keeps its height under a vertical legend.
+ */
+export function chartHeight(shape: RenderShape): number {
+    if (shape.presentation === "line") return 224;
+    return 256 + (shape.series.length >= 2 ? LEGEND_ROW * shape.series.length : 0);
+}
+
+/** The option for a verified series shape: `line` (I-24), `bars` and `stacked_bars` (I-41). */
+export function seriesOption(
+    shape: RenderShape,
+    positions: readonly ShapePosition[],
+    context: SeriesOptionContext,
+): EChartsOption {
+    return shape.presentation === "line"
+        ? lineOption(shape, positions, context)
+        : barOption(shape, positions, context);
 }

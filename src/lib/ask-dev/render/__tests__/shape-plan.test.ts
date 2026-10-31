@@ -183,20 +183,17 @@ describe("cohort shapes until I-41 draws them", () => {
         expect(planned[0]!.owner).toEqual({ kind: "answer" });
     });
 
-    it("holds the verified cohort shapes in the ranking panel slot, withheld as not drawn yet", () => {
+    it("places the verified cohort shapes PENDING in the ranking panel's chart slot (CHAOS-11943)", () => {
         const result = (attentionRanking as { result: unknown }).result as Result;
         const planned = plan(result);
         expect(planned.map((entry) => [entry.placement, entry.owner.kind, entry.initial])).toEqual([
-            [
-                "cohort_panel",
-                "cohort_panel",
-                { kind: "WITHHELD", reason: "presentation_not_rendered" },
-            ],
-            [
-                "cohort_panel",
-                "cohort_panel",
-                { kind: "WITHHELD", reason: "presentation_not_rendered" },
-            ],
+            ["cohort_panel", "cohort_panel", { kind: "PENDING", component: "cohort_panel" }],
+            ["cohort_panel", "cohort_panel", { kind: "PENDING", component: "cohort_panel" }],
+        ]);
+        // All 4 ranked repositories are scored and charted: no coverage cause to state.
+        expect(planned.map((entry) => entry.caption)).toEqual([
+            { sentences: [], mismatch: null },
+            { sentences: [], mismatch: null },
         ]);
     });
 });

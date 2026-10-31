@@ -1,12 +1,12 @@
 "use client";
 
 import type { EChartsOption } from "echarts";
-import { LineChart } from "echarts/charts";
+import { BarChart, LineChart } from "echarts/charts";
 import { useEffect, useRef, useState } from "react";
 
 import { echarts } from "@/lib/echartsInit";
 
-echarts.use([LineChart]);
+echarts.use([LineChart, BarChart]);
 
 /** How long a chart may take to report `finished` before it is WITHHELD (E8 design §4.1). */
 export const CHART_READY_TIMEOUT_MS = 5000;
@@ -18,6 +18,7 @@ type Props = {
     readonly onReady: () => void;
     readonly onError: (reason: ChartFailure, elapsedMs: number) => void;
     readonly className?: string;
+    readonly height?: number;
 };
 
 /**
@@ -30,7 +31,7 @@ type Props = {
  * attempt settles once, on the first of `finished` (ready), a throw (render_error) or the timer
  * (render_timeout); a later event is ignored. `data-chart-ready="true"` only after `finished`.
  */
-export function AskDevEChart({ option, onReady, onError, className }: Props) {
+export function AskDevEChart({ option, onReady, onError, className, height }: Props) {
     const ref = useRef<HTMLDivElement | null>(null);
     // Ready only after THIS attempt's `finished`: each attempt starts not ready (see the cleanup).
     const [ready, setReady] = useState(false);
@@ -96,6 +97,7 @@ export function AskDevEChart({ option, onReady, onError, className }: Props) {
         <div
             ref={ref}
             className={className}
+            style={height === undefined ? undefined : { height }}
             data-testid="ask-dev-echart"
             data-chart-ready={ready ? "true" : "false"}
             data-animation={option.animation === false ? "off" : "on"}

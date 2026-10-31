@@ -1,5 +1,6 @@
 import { webCohortRanking } from "@/lib/ask-dev/cohort/web-cohort-ranking";
 import type { InvestigationResult, RenderShape } from "@/lib/ask-dev/render/contracts";
+import { coverageCaption, type CoverageCaption } from "@/lib/ask-dev/render/coverage-caption";
 import { webGuardReason } from "@/lib/ask-dev/render/guards";
 import { placementFor, type Outcome, type Placement } from "@/lib/ask-dev/render/placement";
 import { admissionReason } from "@/lib/ask-dev/render/verify-reasons";
@@ -29,6 +30,8 @@ export type PlannedShape = {
     readonly group: string | null;
     readonly owner: NoticeOwner;
     readonly initial: Outcome;
+    /** E8 §7.4: the coverage caption of a cohort chart the slot draws. */
+    readonly caption?: CoverageCaption;
 };
 
 /** §4.3: these are always shown once, in the answer-level notice. */
@@ -120,8 +123,16 @@ export function planRenderShapes(result: PlanInput, options: PlanOptions): Plann
             if (!panel) return entry(ANSWER, "placement_missing");
             // The panel's gate (intent, ranking computed) is stated by the panel itself.
             if ("withheld" in gate!) return entry(at(true), gate.withheld);
-            // Bars and stacked bars are drawn by I-41 (CHAOS-11943); until then the slot says so.
-            return entry(at(true), "presentation_not_rendered");
+            // A verified cohort shape is drawn in the ranking panel's chart slot (CHAOS-11943).
+            return {
+                index,
+                shape,
+                placement,
+                group: null,
+                owner: at(true),
+                initial: { kind: "PENDING", component: "cohort_panel" },
+                caption: coverageCaption(shape, result.cohort),
+            };
         }
 
         if (placement === "fact_group" && options.groups !== null) {
