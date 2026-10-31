@@ -25,6 +25,7 @@ import {
     TransportFailure,
     TransportRefusal,
     type AskDevTransport,
+    type CancelAnswer,
     type InvestigationEvent,
     type InvestigationStage,
     type ThreadSummaryView,
@@ -66,6 +67,18 @@ export const STATUS_POLL_INTERVAL_MS = 3_000;
  * a run still `running` after this window has a state the browser cannot confirm.
  */
 export const OBSERVATION_CAP_MS = 10 * 60_000;
+
+/**
+ * E6 design v5 §5.2: one attach and at most two reattaches (after a gap, a protocol error, a stall
+ * or a drop), then the submission status.
+ */
+export const ATTACH_ATTEMPTS = 3;
+
+/** `context_fabric_investigation_event.v1` `elapsed_ms`: at most this much more than the last one. */
+export const ELAPSED_STEP_MAX_MS = 11_000;
+
+/** ACR ends a run at its budget plus 30 s (abandoned): an observed run's own bound (§5.3). */
+export const BUDGET_GRACE_MS = 30_000;
 
 /** E6 design v5 §4.2: at most this many answers of a restored thread are read at a time. */
 export const REPLAY_CONCURRENCY = 4;
@@ -182,7 +195,24 @@ export type TurnOutcome =
      * The observation window ended without a final state: the browser cannot confirm the run's
      * state (a failed read confirms nothing). The turn stays restorable from history.
      */
-    | { readonly kind: "unconfirmed" };
+    | {
+          readonly kind: "unconfirmed";
+          /**
+           * The last status read that succeeded and said `running` (epoch ms), if any: a failed
+           * read confirms nothing, so this is the only state the turn may name (§5.3, N4).
+           */
+          readonly lastSeenRunningAt?: number | undefined;
+      }
+    /**
+     * Stop reached ACR and the run is still running (202): the run ends on its own terminal
+     * (`canceled`, or a result that finished first, which is kept). CHAOS-11957.
+     */
+    | { readonly kind: "canceling"; readonly startedAt: number }
+    /**
+     * A run that was asked to stop ended `abandoned`, as its status said. The status cannot tell a
+     * cancel from a lost run, so the turn says either (E6 design v5 §5.4).
+     */
+    | { readonly kind: "halted" };
 
 /** ACR's refusals before a run that have no state of their own above (error.v1). */
 export type NotRunReason =
@@ -253,6 +283,11 @@ type TurnBase = {
     /** The result id ACR reserved at admission (`accepted`), once seen. */
     readonly reservedResultId?: string | undefined;
     readonly outcome: TurnOutcome;
+    /**
+     * Stop and its answer (CHAOS-11957): `requested` while ACR has not answered, `not_leased` when
+     * ACR said the run cannot be stopped (it ends on its own). Absent otherwise.
+     */
+    readonly stop?: "requested" | "not_leased" | undefined;
 };
 
 /** A turn this tab sent: a retry sends `request` again under the same `submission_id`. */
@@ -463,7 +498,21 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
     });
 }
 
-const IN_FLIGHT = new Set<TurnOutcome["kind"]>(["running", "recovering", "observing"]);
+const IN_FLIGHT = new Set<TurnOutcome["kind"]>(["running", "recovering", "observing", "canceling"]);
+
+/** The states Stop can end (the run is this tab's, submitted or observed). */
+const STOPPABLE = new Set<TurnOutcome["kind"]>(["running", "recovering", "observing"]);
+
+/** One event's own content, to tell a duplicate from a changed event at the same `seq`. */
+const fingerprint = (event: InvestigationEvent): string => JSON.stringify(event);
+
+/** A child controller: it aborts with `parent`, and alone. */
+function childController(parent: AbortSignal): AbortController {
+    const child = new AbortController();
+    if (parent.aborted) child.abort(parent.reason);
+    else parent.addEventListener("abort", () => child.abort(parent.reason), { once: true });
+    return child;
+}
 
 /** A correlation code the panel may show: a plain id, never free text. */
 const REFERENCE_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/u;
@@ -543,12 +592,6 @@ function conversationOf(turns: readonly StoreTurn[]) {
     return buildConversationTurns(toSourceTurns(turns.filter((turn) => turn.question !== null)));
 }
 
-/** A restored running turn the store observes through its status (E6 design v5 §3.3). */
-type ObservedRun = {
-    readonly submissionId: string;
-    readonly controller: AbortController;
-};
-
 /** The hint's stored shape: a thread id, the partition's tag, and ACR's `expires_at`. */
 type ThreadHint = {
     readonly thread_id: string;
@@ -613,8 +656,14 @@ const epochOf = (iso: string): number => {
     return Number.isNaN(value) ? Date.now() : value;
 };
 
+/**
+ * One run the store follows (E6 design v5 §5.2): the submitted run of this tab (`active`), or a
+ * restored turn still running (`observed`). It is also the resume state an attach serves.
+ */
 type ActiveRun = {
     readonly turnId: number;
+    readonly submissionId: string;
+    readonly origin: "submitted" | "restored";
     readonly controller: AbortController;
     /** When the run began (epoch ms): the panel's elapsed time counts from it. */
     readonly startedAt: number;
@@ -630,6 +679,22 @@ type ActiveRun = {
      */
     detached: boolean;
     detachTimer: ReturnType<typeof setTimeout> | undefined;
+    /** Where D comes from (E6 design v5 §5.3): submit time + W, `accepted`, or the 10-minute cap. */
+    deadlineSource: "memory" | "accepted" | "observation_cap";
+    /** The run's `request_id`, from `accepted` or the first event seen. */
+    requestId: string | null;
+    /** The next `seq` the run must deliver. */
+    nextSeq: number;
+    /** The last `elapsed_ms` applied (0 at `accepted`). */
+    lastElapsedMs: number | null;
+    /** Each applied event by `seq`, to tell a duplicate from a changed event. */
+    readonly applied: Map<number, string>;
+    /** Bumped on every attach: an event of an older attachment changes nothing. */
+    attachmentGeneration: number;
+    /** Stop's progress (§5.4). */
+    stop: "idle" | "requested" | "canceling" | "not_leased" | "final";
+    /** When a status read last confirmed the run `running` (epoch ms). */
+    lastSeenRunningAt: number | undefined;
 };
 
 export class ConversationStore {
@@ -644,7 +709,7 @@ export class ConversationStore {
     private active: ActiveRun | null = null;
     private nextTurnId = 0;
     /** Restored running turns the store observes, by `submission_id`. */
-    private readonly observed = new Map<string, ObservedRun>();
+    private readonly observed = new Map<string, ActiveRun>();
     /** Aborts every transcript read of the current selection (thread, replays, earlier pages). */
     private selectionAbort = new AbortController();
     /** The `submission_id`s whose answer is queued or being read in this selection. */
@@ -826,22 +891,31 @@ export class ConversationStore {
         return true;
     }
 
-    /** Stops the run in flight (a disconnect is ACR's only cancel). A finished answer is kept. */
+    /**
+     * Stop (CHAOS-11957, E6 design v5 §5.4): asks ACR to cancel the run of the last turn, submitted
+     * here or observed after a reload, through the cancel endpoint. The stream stays open: it is the
+     * completion channel, and a result that finished first is kept. Before ACR admitted the run
+     * (no `accepted`), and for a run ACR cannot stop (no lease) whose connection this tab holds,
+     * the disconnect is the cancel.
+     */
     cancel(): void {
-        const active = this.active;
-        if (active === null) return;
-        this.release(active);
-        const turn = this.turn(active.turnId);
+        const run = this.stoppableRun();
+        if (run === null) return;
+        if (run.origin === "submitted" && run.requestId === null) {
+            this.disconnect(run, "not_admitted");
+            return;
+        }
+        run.stop = "requested";
+        this.update(run.turnId, (turn) => ({ ...turn, stop: "requested" }), true);
         logger.info(
             {
-                submission_id: turn?.submissionId,
-                request_id: turn?.request?.request_id,
-                t_req: new Date(this.now()).toISOString(),
+                submission_id: run.submissionId,
+                // The browser's own time; ACR records its own t_req.
+                browser_requested_at: new Date(this.now()).toISOString(),
             },
-            "ask-dev run canceled",
+            "ask-dev cancel requested",
         );
-        active.controller.abort();
-        this.setOutcome(active.turnId, { kind: "canceled" }, false);
+        void this.requestCancel(run);
     }
 
     /**
@@ -988,6 +1062,130 @@ export class ConversationStore {
         return true;
     }
 
+    /** The store follows a run for this turn (submitted, or observed after a reload). */
+    private followsTurn(turnId: number): boolean {
+        if (this.active?.turnId === turnId) return true;
+        for (const run of this.observed.values()) if (run.turnId === turnId) return true;
+        return false;
+    }
+
+    /** The run Stop acts on: the last turn of the conversation shown, while it runs. */
+    private stoppableRun(): ActiveRun | null {
+        const { threadId, turns } = this.snapshot;
+        const last = [...turns].reverse().find((turn) => turn.threadId === threadId);
+        if (last === undefined || last.stop !== undefined || !STOPPABLE.has(last.outcome.kind)) {
+            return null;
+        }
+        if (this.active?.turnId === last.id && !this.active.detached) {
+            return this.active.stop === "idle" ? this.active : null;
+        }
+        for (const run of this.observed.values()) {
+            if (run.turnId === last.id) return run.stop === "idle" ? run : null;
+        }
+        return null;
+    }
+
+    /**
+     * The disconnect cancel: this tab holds the run's connection, and ACR cannot stop the run any
+     * other way (not admitted yet, or no lease).
+     */
+    private disconnect(run: ActiveRun, reason: "not_admitted" | "not_leased"): void {
+        this.release(run);
+        logger.info(
+            {
+                submission_id: run.submissionId,
+                reason,
+                browser_requested_at: new Date(this.now()).toISOString(),
+            },
+            "ask-dev run canceled",
+        );
+        run.controller.abort();
+        this.update(
+            run.turnId,
+            (turn) => ({ ...turn, stop: undefined, outcome: { kind: "canceled" } }),
+            false,
+        );
+    }
+
+    private async requestCancel(run: ActiveRun): Promise<void> {
+        let answer: CancelAnswer;
+        try {
+            answer = await this.transport.cancel({
+                submissionId: run.submissionId,
+                signal: run.controller.signal,
+            });
+        } catch (error) {
+            if (!this.owns(run)) return;
+            if (error instanceof TransportRefusal && error.status === 404) {
+                // Not the caller's open submission any more: read what it became.
+                answer = { kind: "final" };
+            } else {
+                logger.warn(
+                    { submission_id: run.submissionId, status: failureStatus(error) },
+                    "ask-dev cancel not sent",
+                );
+                run.stop = "idle";
+                this.update(run.turnId, (turn) => ({ ...turn, stop: undefined }), true);
+                return;
+            }
+        }
+        if (!this.owns(run)) return;
+        logger.info(
+            { submission_id: run.submissionId, answer: answer.kind },
+            "ask-dev cancel answered",
+        );
+        switch (answer.kind) {
+            case "running": {
+                // 202: the stream stays the completion channel; its terminal ends the turn.
+                run.stop = "canceling";
+                const turn = this.turn(run.turnId);
+                const startedAt =
+                    turn !== undefined && "startedAt" in turn.outcome
+                        ? turn.outcome.startedAt
+                        : run.startedAt;
+                this.update(
+                    run.turnId,
+                    (current) => ({
+                        ...current,
+                        stop: undefined,
+                        outcome: { kind: "canceling", startedAt },
+                    }),
+                    true,
+                );
+                return;
+            }
+            case "final": {
+                // 204: the run is not running any more; its status says how it ended.
+                run.stop = "final";
+                const turn = this.turn(run.turnId);
+                const startedAt =
+                    turn !== undefined && "startedAt" in turn.outcome
+                        ? turn.outcome.startedAt
+                        : run.startedAt;
+                this.update(
+                    run.turnId,
+                    (current) => ({
+                        ...current,
+                        stop: undefined,
+                        outcome: { kind: "canceling", startedAt },
+                    }),
+                    true,
+                );
+                if (run.origin === "submitted") await this.recover(run, run.deadline, true);
+                else await this.observeStatus(run);
+                return;
+            }
+            case "not_leased":
+                if (run.origin === "submitted" && this.active === run && !run.detached) {
+                    this.disconnect(run, "not_leased");
+                    return;
+                }
+                run.stop = "not_leased";
+                this.update(run.turnId, (turn) => ({ ...turn, stop: "not_leased" }), true);
+                return;
+        }
+    }
+
     /** A run that just began: no stage yet, and the elapsed time counts from now. */
     private running(): TurnOutcome {
         return { kind: "running", startedAt: this.now(), stages: {} };
@@ -1001,8 +1199,9 @@ export class ConversationStore {
             replaying: this.replaying.size > 0,
             stoppable: next.turns.some(
                 (turn) =>
-                    turn.origin === "submitted" &&
-                    (turn.outcome.kind === "running" || turn.outcome.kind === "recovering"),
+                    turn.stop === undefined &&
+                    STOPPABLE.has(turn.outcome.kind) &&
+                    (turn.origin === "submitted" || this.followsTurn(turn.id)),
             ),
         };
         for (const listener of this.listeners) listener();
@@ -1023,7 +1222,10 @@ export class ConversationStore {
             if (run === "abort") active.controller.abort();
             else this.detach(active);
         }
-        for (const run of this.observed.values()) run.controller.abort();
+        for (const run of this.observed.values()) {
+            clearTimeout(run.timer);
+            run.controller.abort();
+        }
         this.observed.clear();
         this.selectionAbort.abort();
         this.selectionAbort = new AbortController();
@@ -1240,7 +1442,7 @@ export class ConversationStore {
     ): void {
         for (const turn of turns) {
             if (turn.state === "running") {
-                void this.observe(turn.submissionId, selection);
+                void this.followRestored(turn.submissionId, selection);
             } else if (turn.state === "done" && turn.resultId !== null) {
                 this.restoredResultIds.set(turn.submissionId, turn.resultId);
                 if (counted && this.restore !== null) {
@@ -1259,7 +1461,7 @@ export class ConversationStore {
         resultId: string,
         selection: number,
         counted: boolean,
-        onSettled?: () => void,
+        onSettled?: () => boolean,
     ): void {
         const signal = this.selectionAbort.signal;
         this.replaying.add(submissionId);
@@ -1293,7 +1495,7 @@ export class ConversationStore {
         selection: number,
         signal: AbortSignal,
         counted: boolean,
-        onSettled?: () => void,
+        onSettled?: () => boolean,
     ): Promise<void> {
         let result: TranscriptResult;
         try {
@@ -1301,7 +1503,8 @@ export class ConversationStore {
         } catch (error) {
             if (!this.ownsSelection(selection, "replay")) return;
             this.replaying.delete(submissionId);
-            onSettled?.();
+            // The run it belongs to already ended (its deadline): this answer changes nothing.
+            if (onSettled !== undefined && !onSettled()) return;
             const unavailable = error instanceof TransportRefusal && error.status === 404;
             logger.warn(
                 {
@@ -1320,7 +1523,7 @@ export class ConversationStore {
         }
         if (!this.ownsSelection(selection, "replay")) return;
         this.replaying.delete(submissionId);
-        onSettled?.();
+        if (onSettled !== undefined && !onSettled()) return;
         this.updateRestored(submissionId, { kind: "answered", result });
         if (counted) this.restoreCounted(selection, "answered");
     }
@@ -1375,69 +1578,107 @@ export class ConversationStore {
     }
 
     /**
-     * A restored turn that was still running: its status is read every 3 s until a final state,
-     * for at most `OBSERVATION_CAP_MS` (no run budget is known here; E6 design v5 §5.3). A failed
-     * read confirms nothing: at the cap the turn says its state could not be confirmed.
+     * A restored turn that was still running (CHAOS-11957, E6 design v5 §5): the store attaches to
+     * its events from `accepted` (a reload has no cursor), shows its progress, and ends it on its
+     * terminal. When ACR cannot serve the events (404, 410: no lease, the window moved, it ended),
+     * the status is read every 3 s instead. Its deadline is `started_at` + budget + 30 s once
+     * `accepted` is seen, else the 10-minute observation window; a timer at D ends it whatever it
+     * waits on.
      */
-    private async observe(submissionId: string, selection: number): Promise<void> {
-        const handle: ObservedRun = { submissionId, controller: new AbortController() };
-        this.observed.set(submissionId, handle);
-        const signal = handle.controller.signal;
-        const capAt = this.now() + OBSERVATION_CAP_MS;
-        const owns = (operation: string) =>
-            this.observed.get(submissionId) === handle && this.ownsSelection(selection, operation);
-        const finish = (outcome: TurnOutcome) => {
-            this.observed.delete(submissionId);
-            this.updateRestored(submissionId, outcome);
+    private async followRestored(submissionId: string, selection: number): Promise<void> {
+        const turn = this.snapshot.turns.find(
+            (candidate) =>
+                candidate.submissionId === submissionId && candidate.origin === "restored",
+        );
+        if (turn === undefined || selection !== this.snapshot.selection) return;
+        const startedAt = "startedAt" in turn.outcome ? turn.outcome.startedAt : this.now();
+        const run: ActiveRun = {
+            turnId: turn.id,
+            submissionId,
+            origin: "restored",
+            controller: new AbortController(),
+            startedAt,
+            deadline: this.now() + OBSERVATION_CAP_MS,
+            timer: undefined,
+            detached: false,
+            detachTimer: undefined,
+            deadlineSource: "observation_cap",
+            requestId: null,
+            nextSeq: 1,
+            lastElapsedMs: null,
+            applied: new Map(),
+            attachmentGeneration: 0,
+            stop: "idle",
+            lastSeenRunningAt: undefined,
         };
+        this.observed.set(submissionId, run);
+        run.timer = setTimeout(() => this.expire(run), Math.max(0, run.deadline - this.now()));
+        this.commit({ ...this.snapshot });
+        if ((await this.reattach(run)) === "done") return;
+        if (!this.owns(run)) return;
+        await this.observeStatus(run);
+    }
+
+    /**
+     * An observed run's status, every 3 s until a final state or its D (§5.3). A failed read
+     * confirms nothing. Every wait is clamped to the time left before D.
+     */
+    private async observeStatus(run: ActiveRun): Promise<void> {
+        const { submissionId } = run;
+        const signal = run.controller.signal;
+        const selection = this.snapshot.selection;
+        if (this.turn(run.turnId)?.outcome.kind !== "canceling") {
+            this.setOutcome(run.turnId, { kind: "observing", startedAt: run.startedAt }, true);
+        }
         for (;;) {
             let status;
             try {
                 status = await this.transport.submissionStatus(submissionId, signal);
             } catch (error) {
-                if (!owns("observed_status")) return;
+                if (!this.owns(run)) return;
                 logger.warn(
                     { err: error, submission_id: submissionId },
                     "ask-dev submission status read failed",
                 );
                 status = undefined;
             }
-            if (!owns("observed_status")) return;
+            if (!this.owns(run)) return;
             if (status === null) {
-                finish({ kind: "unavailable" });
+                this.settle(run, { kind: "unavailable" });
                 return;
             }
             if (status?.state === "done") {
                 if (status.result_id === undefined) {
-                    finish({ kind: "unavailable" });
+                    this.settle(run, { kind: "unavailable" });
                     return;
                 }
                 this.restoredResultIds.set(submissionId, status.result_id);
-                // The run stays observed until its answer is read: a follow-up must carry it
-                // (codex r1 on #1648).
+                // The run stays followed until its answer is read: a follow-up must carry it
+                // (codex r1 on #1648). Its timer stays too: a read that never answers ends at D
+                // (codex r1 on #1657), and an answer after that is dropped.
                 this.updateRestored(submissionId, { kind: "restoring" });
                 this.queueReplay(submissionId, status.result_id, selection, false, () => {
-                    if (this.observed.get(submissionId) === handle) {
-                        this.observed.delete(submissionId);
-                    }
+                    if (!this.owns(run)) return false;
+                    this.release(run);
+                    return true;
                 });
                 return;
             }
             if (status?.state === "done_unsaved") {
-                finish({ kind: "unsaved" });
+                this.settle(run, { kind: "unsaved" });
                 return;
             }
             if (status?.state === "abandoned") {
-                finish({ kind: "interrupted" });
+                this.settle(
+                    run,
+                    run.stop === "idle" ? { kind: "interrupted" } : { kind: "halted" },
+                );
                 return;
             }
-            const left = capAt - this.now();
+            if (status?.state === "running") run.lastSeenRunningAt = this.now();
+            const left = run.deadline - this.now();
             if (left <= 0) {
-                logger.info(
-                    { submission_id: submissionId, deadline_source: "observation_cap" },
-                    "ask-dev observed run expired",
-                );
-                finish({ kind: "unconfirmed" });
+                this.expire(run);
                 return;
             }
             try {
@@ -1445,7 +1686,7 @@ export class ConversationStore {
             } catch {
                 return;
             }
-            if (!owns("observed_status")) return;
+            if (!this.owns(run)) return;
         }
     }
 
@@ -1562,7 +1803,7 @@ export class ConversationStore {
      * the active run, so an event, a status answer or a replay of the run they ended changes nothing.
      */
     private owns(run: ActiveRun): boolean {
-        return this.active === run;
+        return this.active === run || this.observed.get(run.submissionId) === run;
     }
 
     /**
@@ -1580,6 +1821,7 @@ export class ConversationStore {
     /** Lets the run go: nothing it still delivers changes the store after this. */
     private release(run: ActiveRun): void {
         if (this.active === run) this.active = null;
+        if (this.observed.get(run.submissionId) === run) this.observed.delete(run.submissionId);
         clearTimeout(run.timer);
     }
 
@@ -1589,6 +1831,24 @@ export class ConversationStore {
      */
     private expire(run: ActiveRun): void {
         if (!this.owns(run)) return;
+        if (run.origin === "restored") {
+            // An answer read still pending for this run no longer holds the composer.
+            this.replaying.delete(run.submissionId);
+            // E6 design v5 §5.3: a known D ends as interrupted; the observation cap confirms
+            // nothing, so it says so.
+            logger.info(
+                { submission_id: run.submissionId, deadline_source: run.deadlineSource },
+                "ask-dev observed run expired",
+            );
+            this.settle(
+                run,
+                run.deadlineSource === "observation_cap"
+                    ? { kind: "unconfirmed", lastSeenRunningAt: run.lastSeenRunningAt }
+                    : { kind: "interrupted" },
+            );
+            run.controller.abort();
+            return;
+        }
         const turn = this.turn(run.turnId);
         logger.warn(
             {
@@ -1633,12 +1893,22 @@ export class ConversationStore {
         const deadline = this.now() + this.runTimeoutMs;
         const run: ActiveRun = {
             turnId,
+            submissionId: turn.submissionId,
+            origin: "submitted",
             controller: new AbortController(),
             startedAt,
             deadline,
             timer: undefined,
             detached: false,
             detachTimer: undefined,
+            deadlineSource: "memory",
+            requestId: null,
+            nextSeq: 1,
+            lastElapsedMs: null,
+            applied: new Map(),
+            attachmentGeneration: 0,
+            stop: "idle",
+            lastSeenRunningAt: undefined,
         };
         this.active = run;
         run.timer = setTimeout(() => this.expire(run), Math.max(0, deadline - this.now()));
@@ -1659,6 +1929,9 @@ export class ConversationStore {
                 // A late event of a run the store gave up (cleared, canceled) is dropped.
                 if (!this.owns(run)) return;
                 if (event.type === "accepted") accepted = true;
+                // The transport owns this stream's grammar (T14); the store records where it is,
+                // so an attach can resume from the same point (E6 design v5 §5.2).
+                this.record(run, event);
                 if (this.apply(run, event)) return;
             }
         } catch (error) {
@@ -1683,13 +1956,157 @@ export class ConversationStore {
             { submission_id: submissionId, request_id: requestId, accepted },
             "ask-dev stream ended without a terminal; recovering",
         );
+        // ACR admitted the run: a leased run goes on, so attach from the last event seen. Before
+        // `accepted` the call may never have been admitted, so only the status can say.
+        if (accepted && (await this.reattach(run)) === "done") return;
+        if (!this.owns(run)) return;
         await this.recover(run, deadline, accepted);
+    }
+
+    /** Where the run is after `event` (applied): the resume state of §5.2. */
+    private record(run: ActiveRun, event: InvestigationEvent): void {
+        if (run.requestId === null) run.requestId = event.request_id;
+        run.applied.set(event.seq, fingerprint(event));
+        run.nextSeq = event.seq + 1;
+        if (event.type === "accepted") run.lastElapsedMs = 0;
+        if (
+            (event.type === "stage" || event.type === "heartbeat") &&
+            Number.isSafeInteger(event.elapsed_ms)
+        ) {
+            run.lastElapsedMs = event.elapsed_ms;
+        }
+    }
+
+    /**
+     * What an attached event is (E6 design v5 §5.2), checked in this order: the run's own
+     * `request_id`; an older `seq` (a duplicate when identical, dropped with no `elapsed` check);
+     * a gap; then, for the next event, an `elapsed_ms` that goes back or jumps more than 11 s.
+     */
+    private admit(
+        run: ActiveRun,
+        event: InvestigationEvent,
+    ): "apply" | "duplicate" | "gap" | "request_changed" | "payload_changed" | "elapsed_invalid" {
+        if (run.requestId !== null && event.request_id !== run.requestId) return "request_changed";
+        if (event.seq < run.nextSeq) {
+            return run.applied.get(event.seq) === fingerprint(event)
+                ? "duplicate"
+                : "payload_changed";
+        }
+        if (event.seq > run.nextSeq) return "gap";
+        if (event.type === "stage" || event.type === "heartbeat") {
+            const last = run.lastElapsedMs ?? 0;
+            const elapsed = event.elapsed_ms;
+            if (
+                !Number.isSafeInteger(elapsed) ||
+                elapsed < last ||
+                elapsed - last > ELAPSED_STEP_MAX_MS
+            ) {
+                return "elapsed_invalid";
+            }
+        }
+        return "apply";
+    }
+
+    /**
+     * Attaches to the run's events (E6 design v5 §5.2): from its last seen `seq`, or from
+     * `accepted` when none was seen (a reload). A gap, a protocol error, a stall or a drop attaches
+     * again, at most `ATTACH_ATTEMPTS` times; ACR's 404 or 410 (the cursor left the window, the run
+     * has no lease, or it ended) falls back at once. `done` when a terminal ended the run (or the
+     * store let it go); `fallback` when only the status can say.
+     */
+    private async reattach(run: ActiveRun): Promise<"done" | "fallback"> {
+        let reason = "dropped";
+        for (let attempt = 1; attempt <= ATTACH_ATTEMPTS; attempt++) {
+            if (!this.owns(run)) return "done";
+            const generation = ++run.attachmentGeneration;
+            const attachment = childController(run.controller.signal);
+            const cursor = run.applied.size === 0 ? undefined : run.nextSeq - 1;
+            logger.info(
+                {
+                    submission_id: run.submissionId,
+                    cursor: cursor ?? "none",
+                    attempt,
+                    selection: this.snapshot.selection,
+                },
+                "ask-dev attach selected",
+            );
+            const current = () => this.owns(run) && generation === run.attachmentGeneration;
+            try {
+                const events = this.transport.attach({
+                    submissionId: run.submissionId,
+                    lastEventId: cursor,
+                    signal: attachment.signal,
+                });
+                let broke = false;
+                for await (const event of events) {
+                    if (!current()) {
+                        logger.info(
+                            { operation: "attach", scope: "run", revision: generation },
+                            "ask-dev stale answer dropped",
+                        );
+                        return "done";
+                    }
+                    const verdict = this.admit(run, event);
+                    if (verdict === "duplicate") continue;
+                    if (verdict !== "apply") {
+                        reason = verdict;
+                        broke = true;
+                        break;
+                    }
+                    this.record(run, event);
+                    if (this.apply(run, event)) return "done";
+                }
+                attachment.abort();
+                if (!broke) reason = "dropped";
+            } catch (error) {
+                attachment.abort();
+                if (!current()) return "done";
+                if (error instanceof TransportRefusal) {
+                    reason =
+                        error.error.error.code === "cursor_expired"
+                            ? "cursor_expired"
+                            : String(error.status);
+                    logger.info(
+                        { submission_id: run.submissionId, reason, attempts: attempt },
+                        "ask-dev attach fell back",
+                    );
+                    return "fallback";
+                }
+                reason = error instanceof TransportFailure ? error.reason : "dropped";
+            }
+        }
+        if (!this.owns(run)) return "done";
+        logger.info(
+            { submission_id: run.submissionId, reason, attempts: ATTACH_ATTEMPTS },
+            "ask-dev attach fell back",
+        );
+        return "fallback";
+    }
+
+    /**
+     * A restored run's `accepted` (the cursorless attach replays it): its deadline is ACR's own
+     * bound, `started_at` + `budget_seconds` + 30 s (E6 design v5 §5.3), and its progress shows.
+     */
+    private acceptedOnAttach(
+        run: ActiveRun,
+        event: Extract<InvestigationEvent, { type: "accepted" }>,
+    ): void {
+        const startedAt = epochOf(event.started_at);
+        run.deadline = startedAt + event.budget_seconds * 1000 + BUDGET_GRACE_MS;
+        run.deadlineSource = "accepted";
+        clearTimeout(run.timer);
+        run.timer = setTimeout(() => this.expire(run), Math.max(0, run.deadline - this.now()));
+        // A Stop ACR already confirmed (202, or 204 being read) keeps saying so (codex r1 on #1657).
+        if (this.turn(run.turnId)?.outcome.kind !== "canceling") {
+            this.setOutcome(run.turnId, { kind: "running", startedAt, stages: {} }, true);
+        }
     }
 
     /** Applies one event; `true` when it was the terminal. */
     private apply(run: ActiveRun, event: InvestigationEvent): boolean {
         switch (event.type) {
             case "accepted": {
+                if (run.origin === "restored") this.acceptedOnAttach(run, event);
                 this.update(
                     run.turnId,
                     (turn) => ({ ...turn, reservedResultId: event.reserved_result_id }),
@@ -1915,7 +2332,10 @@ export class ConversationStore {
         const submissionId = turn.submissionId;
         const requestId = turn.request?.request_id;
         const signal = run.controller.signal;
-        this.setOutcome(run.turnId, { kind: "recovering", startedAt: run.startedAt }, true);
+        // A Stop in progress keeps saying so while the status is read.
+        if (turn.outcome.kind !== "canceling") {
+            this.setOutcome(run.turnId, { kind: "recovering", startedAt: run.startedAt }, true);
+        }
         for (;;) {
             let status;
             try {
@@ -1954,7 +2374,11 @@ export class ConversationStore {
                 return;
             }
             if (status?.state === "abandoned") {
-                this.settle(run, { kind: "interrupted" });
+                // After a Stop the status cannot tell a cancel from a lost run (§5.4).
+                this.settle(
+                    run,
+                    run.stop === "idle" ? { kind: "interrupted" } : { kind: "halted" },
+                );
                 return;
             }
             if (this.now() + STATUS_POLL_INTERVAL_MS > deadline) {

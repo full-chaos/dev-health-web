@@ -1,6 +1,6 @@
 # Architecture: Ask Dev thread seam (history, reattach, feedback)
 
-**Status:** Authoritative. History and reload recovery are built (CHAOS-11956). Reattach and cancel (CHAOS-11957) and answer feedback (CHAOS-11958) follow this design.
+**Status:** Authoritative. History and reload recovery (CHAOS-11956) and reattach and cancel (CHAOS-11957) are built. Answer feedback (CHAOS-11958) follows this design.
 **Scope:** dev-health-web: how the browser reads, restores, deletes and observes Ask Dev conversations held by ACR.
 **Design of record:** E6 web design v5. It went through three astra review rounds, with the triage on Linear CHAOS-11956. This page is its repo summary.
 **Code:** `src/components/ask-dev/conversation/` (the seam is `transport.ts`; the store is `conversationStore.ts`).
@@ -18,8 +18,8 @@
 | `deleteThread`                           | `DELETE …/threads/{thread_id}`                       | 204 for any well-formed id (a foreign id too); delete is not Stop                              |
 | `readResult`                             | `GET …/investigations/{result_id}`                   | the replayed answer; 404 → "not available to you now"                                          |
 | `submissionStatus`                       | `GET …/submissions/{submission_id}`                  | `running`, `done`, `done_unsaved` or `abandoned`                                               |
-| `attach` _(11957)_                       | `GET …/submissions/{id}/events` with `Last-Event-ID` | the leased run's own events; 410 means fall back to status, then replay                        |
-| `cancel` _(11957)_                       | `POST …/submissions/{id}/cancel`                     | 202 running, 204 final, 409 `not_leased`                                                       |
+| `attach`                                 | `GET …/submissions/{id}/events` with `Last-Event-ID` | the leased run's own events; 410 means fall back to status, then replay                        |
+| `cancel`                                 | `POST …/submissions/{id}/cancel`                     | 202 running, 204 final, 409 `not_leased`                                                       |
 | `readFeedback` / `setFeedback` _(11958)_ | `GET`/`POST …/feedback/{result_id}`                  | `correct` and `useful`, each yes, no or unset                                                  |
 
 `ACR_BROWSER_TRANSPORT` is `null` until T14 (CHAOS-12104). Test mode supplies `testModeTransport.ts`. The live proofs are CHAOS-12232, 12233 and 12234.
@@ -53,35 +53,50 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
 - **Restore barrier.** While a thread is read and its answers are replayed (at most 4 at a time, kept in the served order), the thread is `restoring` and submit is refused. A turn still `running` is observed through its status every 3 s, for at most 10 minutes. At that cap it says "The current state could not be confirmed". The composer stays closed while any run of the thread is running or observed. Every answer read (a restore, "Load again", an earlier page, an observed run's final answer) also holds submit until it settles, so a follow-up never goes out without the answer it threads on.
 - **Ownership tokens.** Every async commit first checks the token of what it writes. A late answer that fails the check is dropped, and Info logs `ask-dev stale answer dropped`.
 
-    | Work                                                                 | Token                                            | Survives a thread switch                                     |
-    | -------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------ |
-    | Transcript (thread read, replays, earlier pages, observed runs, URL) | partition + selection                            | no                                                           |
-    | History pages                                                        | partition + history revision                     | yes                                                          |
-    | Delete tombstones                                                    | partition                                        | yes (a delete that lands after a switch still hides its row) |
-    | Feedback _(11958)_                                                   | partition + `result_id` + write revision         | yes                                                          |
-    | Attach _(11957)_                                                     | selection + run revision + attachment generation | no                                                           |
+    | Work                                                                 | Token                                                                           | Survives a thread switch                                     |
+    | -------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+    | Transcript (thread read, replays, earlier pages, observed runs, URL) | partition + selection                                                           | no                                                           |
+    | History pages                                                        | partition + history revision                                                    | yes                                                          |
+    | Delete tombstones                                                    | partition                                                                       | yes (a delete that lands after a switch still hides its row) |
+    | Feedback _(11958)_                                                   | partition + `result_id` + write revision                                        | yes                                                          |
+    | Attach (a followed run's events)                                     | the run is still followed (a selection change drops it) + attachment generation | no                                                           |
 
 - **Leaving a conversation does not stop its run.** A switch, a new conversation or a delete _detaches_ the submitted run: the store keeps reading its stream to the terminal and commits nothing from it. ACR's run lease is behind a flag, and without a lease a disconnect ends the run. The store closes a detached stream at the run's deadline D. Only a partition change (org switch, impersonation, sign-out) or leaving the shell aborts it. A restored running turn stays observed until its final answer is read, so a follow-up always carries it.
 - **History.** There is one list per partition, shared by the panel and `/dev`. Its tombstones filter every page, so a late page cannot bring a deleted row back.
 
-## Reattach and cancel (CHAOS-11957, planned)
+## Reattach and cancel (CHAOS-11957)
 
-- **Attach.** A reload drops the stream, and a leased run continues on ACR. On attach, the store checks each event in a fixed order:
-    1. ownership;
+- **Detach.** A client route change keeps the store and the run. A reload or a tab close drops the connection: a leased run goes on on ACR, and one without a lease ends. Leaving the shell aborts (the store goes away with it). A switch, a new conversation or a delete detaches (see Store rules).
+- **Which runs attach.**
+    - The store's own stream drops after `accepted`: attach from the last `seq` seen. Before `accepted` the call may never have been admitted, so only the status can say.
+    - A restored turn still `running`: attach with no cursor, which replays from `accepted` (`seq` 1). Its progress shows, and it ends on its terminal (`run_lost` is the interrupted state).
+- **Each attached event is checked in a fixed order** (`admit`):
+    1. ownership: the run is still followed and the attachment is the current one (`attachmentGeneration`);
     2. `request_id`;
-    3. an older event with the same payload: a duplicate, dropped with no `elapsed` check;
+    3. an older event with the same payload: a duplicate, dropped with no `elapsed` check; a changed payload is a protocol error;
     4. a gap;
-    5. for a new event, `elapsed` (non-decreasing, and at most 11 s more).
+    5. for a new event, `elapsed_ms` (non-decreasing, and at most 11 s more; 0 at `accepted`).
 
-    After a gap or a protocol error, the store reattaches up to twice, then falls back to status.
+    A protocol error, a gap, a stall or a drop attaches again, at most 3 attaches in all. ACR's 404 or 410 `cursor_expired` (`not_logged` for a run without a lease, `expired`, `ahead`, `ended`, `malformed`) falls back at once. The fallback reads the status every 3 s, and a `done` status replays the final result.
 
-- **Deadline.** Each observed run has one absolute D: in memory, the run's own; after a reload with `accepted`, `started_at` + `budget_seconds` + 30 s; otherwise the 10-minute observation window. Every wait is clamped to the time left.
-- **Cancel state machine.**
-    - Stop sends `cancel` and keeps the stream as the completion channel.
-    - 202 → "Canceling…" until the terminal. A result that wins the race is kept.
-    - 204 → the store reads the status and maps `done`, `done_unsaved` and `abandoned`.
-    - 409 `not_leased` → "This run cannot be stopped. It ends on its own." No automatic second cancel.
-    - `t_req` is ACR's time.
+- **Deadline.** Each followed run has one absolute D, with a timer that ends it whatever it waits on:
+    - in memory, the run's own (submit time + W);
+    - after `accepted` on an attach, `started_at` + `budget_seconds` + 30 s (ACR's own bound);
+    - otherwise the 10-minute observation window.
+
+    A fallback keeps a known D, and every status wait is clamped to the time left. The timer also covers the final answer read: a read that never answers ends the turn at D, and an answer that arrives after D changes nothing. A late `accepted` never takes back a confirmed Canceling…. At D: a known D → "Interrupted — ask again". The window → "The current state could not be confirmed", with "Last seen running at <time>" only from a status read that succeeded.
+
+- **Cancel state machine** (Stop on the last turn's run, submitted here or restored).
+    - Stop sends `cancel` and keeps the stream as the completion channel. "Stopping…" shows until ACR answers, and a second Stop sends nothing.
+    - 202 → "Canceling…" until the terminal: `canceled` → canceled; a result that finished first is kept. A drop attaches again.
+    - 204, or a 404 on the cancel → the status: `done` → the answer, `done_unsaved` → unsaved, `abandoned` → "Stopped or interrupted. Ask again." The status cannot tell a cancel from a lost run.
+    - 409 `not_leased`:
+        - when this tab holds the run's connection (its own stream), the disconnect is the cancel, as before the lease;
+        - otherwise "This run cannot be stopped. It ends on its own.", and Stop goes away. No second cancel is sent.
+    - Before `accepted` nothing is admitted to cancel: Stop disconnects.
+    - A cancel that does not reach ACR leaves the run running and Stop available.
+    - `t_req` is ACR's time; the browser logs only `browser_requested_at`.
+- **Keepalive (INV-3)** belongs to the transport (T14): the 15 s pre-header wait and the 30 s stall rule (a `: keepalive` comment counts) end an attach with a `TransportFailure`, which attaches again. The live proof is CHAOS-12233.
 
 ## Feedback (CHAOS-11958, planned)
 
@@ -94,12 +109,14 @@ Add a browser-read schema to `STANDALONE_VALIDATORS` in the generator. Never imp
 
 There is no product telemetry. Info events are content-free: operation, outcome, counts, duration and ids, never a question, an answer, a URL or a flag value.
 
-- Built: `ask-dev thread restored`, `ask-dev thread restore failed`, `ask-dev stale answer dropped` and `ask-dev observed run expired`.
-- Planned: `attach selected` / `attach fell back` (11957) and `feedback saved` / `feedback not saved` (11958).
+- Built:
+    - `ask-dev thread restored`, `ask-dev thread restore failed`, `ask-dev stale answer dropped`, `ask-dev observed run expired` (11956);
+    - `ask-dev attach selected`, `ask-dev attach fell back`, `ask-dev cancel requested`, `ask-dev cancel answered`, `ask-dev cancel not sent` and `ask-dev run canceled` (the disconnect cancel) (11957).
+- Planned: `feedback saved` / `feedback not saved` (11958).
 
 ## Tests
 
-- **Store:** `conversationStore.history.test.ts`.
+- **Store:** `conversationStore.history.test.ts`, `conversationStore.reattach.test.ts`.
 - **Views:** `src/components/ask-dev/__tests__/AskDevHistory.test.tsx`.
 - **Contract oracle:** `src/lib/acr/__tests__/threadContract.differential.test.ts`.
-- **E2E:** `tests/ask-dev-history.spec.ts`.
+- **E2E:** `tests/ask-dev-history.spec.ts`, `tests/ask-dev-reattach-cancel.spec.ts`.

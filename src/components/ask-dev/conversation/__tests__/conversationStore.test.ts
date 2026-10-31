@@ -257,7 +257,9 @@ describe("partition, abort, clear and generation (D-20)", () => {
 });
 
 describe("cancel (plan §2.7.4)", () => {
-    it("aborts the stream, says so, and drops a late answer", async () => {
+    // CHAOS-11957: Stop asks ACR's cancel endpoint first. Without the run lease ACR answers
+    // `not_leased` (the fake's default), and the disconnect this tab holds is the cancel.
+    it("without a lease, disconnects, says so, and drops a late answer", async () => {
         const store = makeStore();
         const gate = deferred();
         transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
@@ -265,7 +267,8 @@ describe("cancel (plan §2.7.4)", () => {
         await vi.waitFor(() => expect(last(store).reservedResultId).toBeDefined());
 
         store.cancel();
-        expect(transport.calls[0]!.signal.aborted).toBe(true);
+        await vi.waitFor(() => expect(transport.calls[0]!.signal.aborted).toBe(true));
+        expect(transport.cancelCalls).toEqual([transport.calls[0]!.submissionId]);
         expect(last(store).outcome).toEqual({ kind: "canceled" });
         expect(store.getSnapshot().inFlight).toBe(false);
         expect(log.info).toHaveBeenCalledWith(

@@ -61,7 +61,7 @@ vi.mock("next-auth/react", () => ({
     }),
 }));
 
-import { useSyncExternalStore } from "react";
+import { StrictMode, useSyncExternalStore } from "react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { resetRightDrawerForTest } from "@/lib/shell/rightDrawer";
@@ -448,6 +448,80 @@ describe("the composer draft belongs to one conversation (codex r2 on #1648)", (
             </AdminTierProvider>,
         );
         await waitFor(() => expect(field()).toHaveValue(""));
+        expect(transport.calls).toHaveLength(0);
+    });
+});
+
+describe("Stop on a conversation restored while it runs (CHAOS-11957)", () => {
+    it("offers Stop for the restored run; without a lease it says the run cannot be stopped", async () => {
+        const transport = new FakeTransport();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB_A, "running")]));
+        transport.attachScripts.push([
+            {
+                seq: 1,
+                request_id: "request_run",
+                type: "accepted",
+                reserved_result_id: "result_reserved_0001",
+                // The page runs on the real clock: a run that started now, so D is ahead.
+                started_at: new Date().toISOString(),
+                budget_seconds: 110,
+            },
+            { wait: new Promise(() => undefined) },
+        ]);
+        nav.go(`/dev?thread=${THREAD_A}`);
+        renderShell(transport);
+        const stop = await within(page()).findByTestId("ask-dev-composer-stop");
+        await userEvent.click(stop);
+        expect(await within(page()).findByTestId("ask-dev-turn-stop")).toHaveTextContent(
+            TURN_STATUS_COPY.stopNotLeased,
+        );
+        expect(within(page()).queryByTestId("ask-dev-composer-stop")).toBeNull();
+        expect(transport.cancelCalls).toEqual([SUB_A]);
+        expect(transport.calls).toHaveLength(0);
+    });
+});
+
+describe("dev StrictMode remount (CHAOS-11957)", () => {
+    it("restores and attaches once: the first mount's thread read is dropped before any attach", async () => {
+        const transport = new FakeTransport();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB_A, "running")]));
+        const accepted = {
+            seq: 1,
+            request_id: "request_run",
+            type: "accepted" as const,
+            reserved_result_id: "result_reserved_0001",
+            started_at: new Date().toISOString(),
+            budget_seconds: 110,
+        };
+        const hold = { wait: new Promise<void>(() => undefined) };
+        transport.attachScripts.push([accepted, hold]);
+        window.sessionStorage.setItem(
+            THREAD_HINT_KEY,
+            JSON.stringify({
+                thread_id: THREAD_A,
+                partition: partitionTag(PARTITION),
+                expires_at: null,
+            }),
+        );
+        render(
+            <StrictMode>
+                <AdminTierProvider tier="team" features={ON}>
+                    <AskDevShellProvider>
+                        <AskDevConversationProvider transport={transport}>
+                            <Page />
+                            <AskDevPanel />
+                        </AskDevConversationProvider>
+                    </AskDevShellProvider>
+                </AdminTierProvider>
+            </StrictMode>,
+        );
+        await waitFor(() => expect(transport.attachCalls.length).toBeGreaterThanOrEqual(1));
+        expect(transport.attachCalls.every((call) => call.lastEventId === undefined)).toBe(true);
+        // Dev StrictMode mounts, unmounts (a clear) and mounts again: the first selection's thread
+        // read is stale before it can attach, so exactly one attach follows the run.
+        expect(transport.attachCalls).toHaveLength(1);
+        expect(transport.attachCalls[0]!.signal.aborted).toBe(false);
+        expect(transport.threadCalls).toHaveLength(2);
         expect(transport.calls).toHaveLength(0);
     });
 });
