@@ -45,11 +45,12 @@ const GENERAL_TIERS = [
         tier: "quality",
     },
     {
-        commands: ["build", "check:client-bundle --require-secrets"],
+        commands: ["build", "check:client-bundle --require-secrets", "check:nonce-csp-pages"],
         jobId: "build",
         packageScripts: {
             build: "next build",
             "check:client-bundle": "node scripts/check-client-bundle.mjs",
+            "check:nonce-csp-pages": "node scripts/check-nonce-csp-pages.mjs",
         },
         tier: "build",
     },
