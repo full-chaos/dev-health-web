@@ -26,13 +26,20 @@ import { fileURLToPath } from "node:url";
 
 const SCRIPT_TAG = /<script\b([^>]*)>/giu;
 
-/** Pages prerendered with blocked scripts on main when this check was added (CHAOS-12337). */
+/**
+ * Pages prerendered with blocked scripts on main when this check was added (CHAOS-12337), each
+ * with a recorded decision on CHAOS-12344 (a production-build browser survey, 2026-10-31):
+ * - `/`, `/_not-found` and the `/marketing` pages have no control a user needs (0 buttons,
+ *   inputs or menus); their links work without scripts. They stay static.
+ * - `/_global-error` has a "Try again" button but shows only when the root layout fails, and its
+ *   client-only special file cannot be made dynamic by route config. Reload still works.
+ * `/auth/forgot-password` (a form) is fixed: it renders per request.
+ */
 export const KNOWN_PRERENDERED = new Map(
     [
         "/",
         "/_global-error",
         "/_not-found",
-        "/auth/forgot-password",
         "/marketing",
         "/marketing/about",
         "/marketing/billing-refunds-test",

@@ -80,13 +80,12 @@ describe("checkNonceCspPages with the known list (CHAOS-12344)", () => {
         ]);
     });
 
-    it("the CLI uses the checked-in list: exactly CHAOS-12344's 16 pages", async () => {
+    it("the CLI uses the checked-in list: exactly CHAOS-12344's 15 static pages (forgot-password is fixed)", async () => {
         const { KNOWN_PRERENDERED } = await import("../check-nonce-csp-pages.mjs");
         expect([...KNOWN_PRERENDERED.keys()].sort()).toEqual([
             "/",
             "/_global-error",
             "/_not-found",
-            "/auth/forgot-password",
             "/marketing",
             "/marketing/about",
             "/marketing/billing-refunds-test",
