@@ -32,6 +32,15 @@ export const ACR_PENDING_AUTHORIZATION_KEY = "ask-dev:acr-authorization";
 export const ACR_TOKEN_FAMILY_KEY = "ask-dev:acr-family";
 /** This tab's id. c4 replaces it when it finds a cloned tab. */
 export const ACR_TAB_KEY = "ask-dev:acr-tab";
+/**
+ * In `localStorage`, shared by every tab of the origin: the SHA-256 of each state whose code was
+ * sent, until its authorization would have expired. A duplicated tab gets a copy of this tab's
+ * `sessionStorage`, pending entry included, so the tab id cannot tell it from the original while
+ * the original is on ACR's pages. This marker makes one start give at most one code exchange,
+ * whichever tab gets there first (r1 on web #1663). It holds no state and no token.
+ */
+export const ACR_SPENT_KEY = "ask-dev:acr-spent";
+const ACR_LOCK = "ask-dev:acr-authorization";
 
 /** The scopes the Ask Dev routes need: context:read; evidence:read for evidence. Never data:read. */
 export const ACR_BROWSER_SCOPE = "context:read evidence:read";
@@ -106,7 +115,8 @@ export type AcrCallbackFailure =
     | "missing_code"
     | "token_refused"
     | "token_unavailable"
-    | "invalid_token_response";
+    | "invalid_token_response"
+    | "already_used";
 
 export type AcrCallbackOutcome =
     | { readonly kind: "authorized"; readonly returnTo: string }
@@ -130,6 +140,10 @@ type Dependencies = {
     readonly fetch: typeof fetch;
     readonly now: () => number;
     readonly storage: () => Storage | null;
+    /** The origin's `localStorage`, for the spent marker only. */
+    readonly shared: () => Storage | null;
+    /** Runs `task` while no other tab of the origin holds the same lock. */
+    readonly lock: <T>(name: string, task: () => Promise<T>) => Promise<T>;
     readonly navigate: (url: string) => void;
     readonly config: () => AcrBrowserClientConfig | undefined;
 };
@@ -144,6 +158,17 @@ const browserDependencies: Dependencies = {
             return null;
         }
     },
+    shared: () => {
+        try {
+            return typeof window === "undefined" ? null : window.localStorage;
+        } catch {
+            return null;
+        }
+    },
+    lock: (name, task) =>
+        typeof navigator !== "undefined" && navigator.locks !== undefined
+            ? navigator.locks.request(name, task)
+            : task(),
     // Replace, not assign: Back from where the flow returns must not start it again.
     navigate: (url) => window.location.replace(url),
     config: browserAcrClientConfig,
@@ -317,6 +342,36 @@ function pendingFrom(value: unknown): PendingAuthorization | null {
     return value as unknown as PendingAuthorization;
 }
 
+/**
+ * Claims the right to send this start's code, once across all tabs. `false` when a tab already
+ * sent it. Without `localStorage` it allows the exchange: the pending entry is still single use in
+ * this tab.
+ */
+async function claimOnce(pending: PendingAuthorization): Promise<boolean> {
+    const shared = dependencies.shared();
+    if (shared === null) return true;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pending.state));
+    const key = base64Url(new Uint8Array(digest));
+    return dependencies.lock(ACR_LOCK, async () => {
+        const now = dependencies.now();
+        const stored = readJson(shared, ACR_SPENT_KEY);
+        const spent: Record<string, number> = {};
+        if (isRecord(stored)) {
+            for (const [hash, expiresAt] of Object.entries(stored)) {
+                if (typeof expiresAt === "number" && expiresAt > now) spent[hash] = expiresAt;
+            }
+        }
+        if (key in spent) return false;
+        spent[key] = pending.expiresAt;
+        try {
+            shared.setItem(ACR_SPENT_KEY, JSON.stringify(spent));
+        } catch {
+            // A full or blocked store: the pending entry is still single use in this tab.
+        }
+        return true;
+    });
+}
+
 /** Takes (reads and removes) this tab's pending authorization: one callback per start. */
 function takePending(storage: Storage): PendingAuthorization | null {
     const pending = pendingFrom(readJson(storage, ACR_PENDING_AUTHORIZATION_KEY));
@@ -424,6 +479,7 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     }
     const code = params.get("code");
     if (code === null || code === "") return fail("missing_code");
+    if (!(await claimOnce(pending))) return fail("already_used");
     const answer = await exchangeCode(pending, code);
     if (answer.kind === "refused") return fail("token_refused");
     if (answer.kind === "unavailable") return fail("token_unavailable");

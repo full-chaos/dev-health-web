@@ -228,6 +228,37 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
         await other.close();
     });
 
+    test("a duplicated tab and the original cannot both exchange a code for one start (r1)", async ({
+        page,
+        context,
+    }) => {
+        const harness = await setUp(page, { follow: false });
+        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
+        await expect.poll(() => harness.redirects.length).toBe(1);
+        const [callbackUrl] = harness.redirects;
+        // A duplicated tab gets a copy of the original's sessionStorage, pending entry included.
+        const copied = await page.evaluate(() => JSON.stringify({ ...window.sessionStorage }));
+
+        const clone = await context.newPage();
+        await clone.addInitScript((entries) => {
+            for (const [key, value] of Object.entries(
+                JSON.parse(entries) as Record<string, string>,
+            )) {
+                window.sessionStorage.setItem(key, value);
+            }
+        }, copied);
+        await clone.goto(callbackUrl!);
+        await clone.waitForURL((url) => url.pathname === "/dashboard");
+        expect(tokenCalls(harness)).toHaveLength(1);
+
+        await page.goto(callbackUrl!);
+        await expect(
+            page.getByRole("heading", { name: "This sign-in link is not valid here" }),
+        ).toBeVisible();
+        expect(tokenCalls(harness)).toHaveLength(1);
+        await clone.close();
+    });
+
     test("without the browser client the start page sends nothing", async ({ page }) => {
         const harness = await setUp(page, { on: false });
         await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");

@@ -76,6 +76,8 @@ let calls: Call[];
 let navigated: string[];
 let tokenResponse: () => Response;
 let metadata: unknown;
+/** The origin's localStorage, shared by every tab (a clone shares it too). */
+let shared: MemoryStorage;
 
 function json(status: number, body: unknown) {
     return new Response(JSON.stringify(body), {
@@ -89,6 +91,7 @@ function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | u
     setAcrAuthDependenciesForTest({
         now: () => now,
         storage: () => tab,
+        shared: () => shared,
         navigate: (url) => navigated.push(url),
         config: () => config ?? undefined,
         fetch: async (input, init) => {
@@ -104,6 +107,7 @@ function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | u
 
 beforeEach(() => {
     storage = new MemoryStorage();
+    shared = new MemoryStorage();
     calls = [];
     navigated = [];
     metadata = METADATA;
@@ -450,6 +454,90 @@ describe("completeAcrAuthorization", () => {
         ).toMatchObject({ kind: "authorized" });
         expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
         expect(getAcrAccessToken()).toMatchObject({ kind: "token" });
+    });
+});
+
+describe("a duplicated tab (copied sessionStorage) — r1 on #1663", () => {
+    /** A tab duplicated while the flow is at ACR: it gets a copy of this tab's sessionStorage. */
+    function duplicate(tab: MemoryStorage): MemoryStorage {
+        const copy = new MemoryStorage();
+        for (const [key, value] of Object.entries(tab.snapshot())) copy.setItem(key, value);
+        return copy;
+    }
+
+    it("cannot exchange a code for an authorization the original already completed", async () => {
+        const state = (await begin()).searchParams.get("state")!;
+        const clone = duplicate(storage);
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "authorized" });
+
+        configure(clone);
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-2", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "failed", reason: "already_used" });
+        expect(tokenCalls()).toHaveLength(1);
+    });
+
+    it("lets one start give one exchange: when the copy completes first, the original cannot", async () => {
+        const state = (await begin()).searchParams.get("state")!;
+        const clone = duplicate(storage);
+        configure(clone);
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-2", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "authorized" });
+
+        configure(storage);
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "failed", reason: "already_used" });
+        expect(tokenCalls()).toHaveLength(1);
+    });
+
+    it("writes the spent marker only inside the origin-wide lock", async () => {
+        const state = (await begin()).searchParams.get("state")!;
+        let inLock = false;
+        const names: string[] = [];
+        const original = shared.setItem.bind(shared);
+        shared.setItem = (key, value) => {
+            expect(inLock, "the spent marker is written outside the lock").toBe(true);
+            original(key, value);
+        };
+        setAcrAuthDependenciesForTest({
+            now: () => now,
+            storage: () => storage,
+            shared: () => shared,
+            config: () => CONFIG,
+            fetch: async (input, init) => {
+                calls.push({ url: String(input), init });
+                return tokenResponse();
+            },
+            lock: async (name, task) => {
+                names.push(name);
+                inLock = true;
+                try {
+                    return await task();
+                } finally {
+                    inLock = false;
+                }
+            },
+        });
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "authorized" });
+        expect(names).toEqual(["ask-dev:acr-authorization"]);
+    });
+
+    it("stores no state in shared storage, only its hash, and drops it after the expiry", async () => {
+        const state = (await begin()).searchParams.get("state")!;
+        await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER }));
+        const spent = JSON.stringify(shared.snapshot());
+        expect(spent).not.toContain(state);
+        expect(spent).not.toMatch(/fcacr_|acrrt_/u);
+        now += ACR_AUTHORIZATION_TTL_MS;
+        const next = (await begin()).searchParams.get("state")!;
+        await completeAcrAuthorization(callback({ code: "c-3", state: next, iss: ISSUER }));
+        expect(Object.keys(JSON.parse(shared.getItem("ask-dev:acr-spent")!))).toHaveLength(1);
     });
 });
 

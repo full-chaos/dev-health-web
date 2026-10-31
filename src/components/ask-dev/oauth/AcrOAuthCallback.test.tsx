@@ -81,6 +81,7 @@ describe("AcrOAuthCallback (CHAOS-12303)", () => {
         ["wrong_tab", "This sign-in link is not valid here"],
         ["iss_mismatch", "This sign-in link is not valid here"],
         ["token_refused", "This sign-in link is not valid here"],
+        ["already_used", "This sign-in link is not valid here"],
         ["expired", "Ask Dev could not connect"],
         ["token_unavailable", "Ask Dev could not connect"],
     ])("shows %s as a failure, naming nothing from the URL", async (reason, title) => {
