@@ -202,6 +202,19 @@ export type ThreadListView = {
     readonly nextCursor: string | null;
 };
 
+/** One feedback flag (`context_fabric_result_feedback.v1`): yes, no, or unset. */
+export type FeedbackFlag = "yes" | "no" | "unset";
+
+/**
+ * The caller's feedback on one of its own results, as the feedback store reads it (CHAOS-11958):
+ * the two flags and nothing else. There is no free text in the contract.
+ */
+export type FeedbackView = {
+    readonly resultId: string;
+    readonly correct: FeedbackFlag;
+    readonly useful: FeedbackFlag;
+};
+
 export type AskDevTransport = {
     /**
      * Opens one investigation stream (`Accept: text/event-stream`). It yields the events in `seq`
@@ -254,6 +267,28 @@ export type AskDevTransport = {
         readonly threadId: string;
         readonly signal: AbortSignal;
     }) => Promise<void>;
+    /**
+     * `GET …/investigations/feedback/{result_id}` (CHAOS-11958): the caller's feedback on one of
+     * its own results, or `null` for ACR's 404 (not the caller's Ask Dev result, or one ACR would
+     * not serve now: the same answer). A never-rated result reads `unset`/`unset`. The body is
+     * checked with `parseResultFeedback` before it is mapped; a body that fails it throws
+     * `TransportFailure("invalid_upstream")`.
+     */
+    readonly readFeedback: (call: {
+        readonly resultId: string;
+        readonly signal: AbortSignal;
+    }) => Promise<FeedbackView | null>;
+    /**
+     * `POST …/investigations/feedback/{result_id}` with the whole feedback (both flags; `unset`
+     * clears one): ACR answers what it stored, checked as above. ACR's 404 throws a
+     * `TransportRefusal` with status 404.
+     */
+    readonly setFeedback: (call: {
+        readonly resultId: string;
+        readonly correct: FeedbackFlag;
+        readonly useful: FeedbackFlag;
+        readonly signal: AbortSignal;
+    }) => Promise<FeedbackView>;
 };
 
 /**

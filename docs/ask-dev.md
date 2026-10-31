@@ -40,6 +40,13 @@ A history row is titled by its thread's first question when ACR serves `first_qu
 - With no first question (a legacy turn, or the switch off), or only blanks, the row keeps its name "Conversation of <date> · <n> questions". A row is never blank.
 - The question is never logged and never reported.
 
+An answer has "Correct?" and "Useful?" controls (CHAOS-11958). A clarification or a no-match has none.
+
+- Each is yes or no. Pressing the chosen value again clears it. There is no free text.
+- One state per answer, in the panel and on `/dev`. ACR stores it and authorizes every read and write. ACR's 404 hides the controls.
+- A failed save is rolled back and says "Feedback was not saved."
+- No feedback goes to product telemetry. The logs carry the result id and a status, never a choice.
+
 ## Answer completeness
 
 An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. Web never shows it (CHAOS-12245, chris 2026-10-31). `missingDataSentence` and `quickStatus` (`src/components/ask-dev/answer/`) apply these rules:

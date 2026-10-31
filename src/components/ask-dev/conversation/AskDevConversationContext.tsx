@@ -14,6 +14,7 @@ import { useSession } from "next-auth/react";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 
 import { ConversationStore, THREAD_HINT_KEY, type ConversationSnapshot } from "./conversationStore";
+import { FeedbackStore } from "./feedbackStore";
 import { partitionTag } from "./keys";
 import { testModeTransport } from "./testModeTransport";
 import { ACR_BROWSER_TRANSPORT, type AskDevTransport } from "./transport";
@@ -27,6 +28,12 @@ const noSnapshot = () => null;
  * CHAOS-12104, is not wired yet): the panel then draws no composer and sends nothing.
  */
 const ConversationContext = createContext<ConversationStore | null>(null);
+
+/**
+ * The answer feedback of this tab (CHAOS-11958), beside the conversation store and bound to the same
+ * (org, principal): both surfaces show one state per result. `null` when there is no transport.
+ */
+const FeedbackContext = createContext<FeedbackStore | null>(null);
 
 /**
  * CHAOS-11934 (plan §2.5): conversations live in this tab's memory until Phase 4 (E6) stores them,
@@ -105,10 +112,15 @@ export function AskDevConversationProvider({
     // hydration would reach every Suspense boundary still hydrating under the shell, switch it to
     // client rendering and drop a click made in that window (the launcher, CI on #1632). Only the
     // consuming hook below differs between server and client.
-    const [store] = useState(() => {
+    const [{ store, feedback }] = useState(() => {
         const chosen =
             transport === undefined ? (ACR_BROWSER_TRANSPORT ?? testModeTransport()) : transport;
-        return chosen === null ? null : new ConversationStore({ transport: chosen });
+        return chosen === null
+            ? { store: null, feedback: null }
+            : {
+                  store: new ConversationStore({ transport: chosen }),
+                  feedback: new FeedbackStore({ transport: chosen }),
+              };
     });
     const { data: session, status } = useSession();
     const partition = partitionKey(session, status);
@@ -116,12 +128,15 @@ export function AskDevConversationProvider({
     useEffect(() => {
         if (store === null || partition === undefined) return;
         store.setPartition(partition);
+        // The same key, in the same step: feedback of another (org, principal) is never shown.
+        feedback?.setPartition(partition);
         // CHAOS-11956: with the partition known, a reload restores this tab's conversation from
         // its hint (never before: the hint names its partition, and ACR authorizes the read).
         if (!urlNamesThread()) store.restoreFromHint();
-    }, [store, partition]);
+    }, [store, feedback, partition]);
     // Leaving the shell (sign-out, another route group) ends the run with it.
     useEffect(() => () => store?.clear("unmounted"), [store]);
+    useEffect(() => () => feedback?.reset(), [feedback]);
 
     // The marker as this page load found it (the server and hydration render none). Read once: a
     // marker this tab writes later is for the next reload, not this one.
@@ -160,7 +175,9 @@ export function AskDevConversationProvider({
 
     return (
         <ConversationContext.Provider value={store}>
-            <NotSavedContext.Provider value={notSaved}>{children}</NotSavedContext.Provider>
+            <FeedbackContext.Provider value={feedback}>
+                <NotSavedContext.Provider value={notSaved}>{children}</NotSavedContext.Provider>
+            </FeedbackContext.Provider>
         </ConversationContext.Provider>
     );
 }
@@ -189,4 +206,9 @@ export function useAskDevConversation(): AskDevConversation | null {
         noSnapshot,
     );
     return store === null || snapshot === null ? null : { store, snapshot };
+}
+
+/** The feedback store of this tab, or `null` when there is no transport (CHAOS-11958). */
+export function useAskDevFeedbackStore(): FeedbackStore | null {
+    return useContext(FeedbackContext);
 }

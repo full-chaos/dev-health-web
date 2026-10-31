@@ -6,6 +6,8 @@ import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/gene
 import type { TranscriptResult } from "../../answer/AskDevTurn";
 import type {
     AskDevTransport,
+    FeedbackFlag,
+    FeedbackView,
     InvestigateCall,
     InvestigationEvent,
     ThreadListView,
@@ -237,5 +239,53 @@ export class FakeTransport implements AskDevTransport {
         this.deleteCalls.push(call.threadId);
         if (this.deleteGate !== undefined) await this.deleteGate;
         if (this.deleteFails !== undefined) throw this.deleteFails;
+    };
+
+    /** Feedback reads (CHAOS-11958): by `result_id`; no entry is never-rated; `null` is a 404. */
+    readonly feedback = new Map<string, FeedbackView | null | { readonly fail: unknown }>();
+    readonly feedbackReads: string[] = [];
+    /** A feedback read waits for this before it answers (and ignores the abort signal). */
+    feedbackReadGate: Promise<void> | undefined;
+    /**
+     * Feedback sets in order: each waits for its `gate` (if any; it ignores the abort signal), then
+     * throws its `fail`, or stores the body and answers it. Absent, a set stores at once.
+     */
+    readonly feedbackSets: { readonly gate?: Promise<void>; readonly fail?: unknown }[] = [];
+    readonly feedbackSetCalls: { resultId: string; correct: FeedbackFlag; useful: FeedbackFlag }[] =
+        [];
+
+    readonly readFeedback = async (call: {
+        readonly resultId: string;
+    }): Promise<FeedbackView | null> => {
+        this.feedbackReads.push(call.resultId);
+        if (this.feedbackReadGate !== undefined) await this.feedbackReadGate;
+        const answer = this.feedback.get(call.resultId);
+        if (answer === undefined)
+            return { resultId: call.resultId, correct: "unset", useful: "unset" };
+        if (answer !== null && "fail" in answer) throw answer.fail;
+        return answer;
+    };
+
+    readonly setFeedback = async (call: {
+        readonly resultId: string;
+        readonly correct: FeedbackFlag;
+        readonly useful: FeedbackFlag;
+        readonly signal: AbortSignal;
+    }): Promise<FeedbackView> => {
+        this.feedbackSetCalls.push({
+            resultId: call.resultId,
+            correct: call.correct,
+            useful: call.useful,
+        });
+        const step = this.feedbackSets.shift();
+        if (step?.gate !== undefined) await step.gate;
+        if (step !== undefined && "fail" in step) throw step.fail;
+        const stored: FeedbackView = {
+            resultId: call.resultId,
+            correct: call.correct,
+            useful: call.useful,
+        };
+        this.feedback.set(call.resultId, stored);
+        return stored;
     };
 }

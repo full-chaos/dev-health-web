@@ -1,6 +1,7 @@
 "use client";
 
 import type { ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
+import { parseResultFeedback } from "@/lib/acr/feedbackContract";
 import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
 import { logger } from "@/lib/logger";
 
@@ -40,6 +41,13 @@ import {
  *   reads and lists (as on ACR). An id in `TEST_MODE_FOREIGN_KEY` is another principal's: its
  *   delete answers 204 as ACR does, and changes nothing.
  * - A `TEST_MODE_RESULTS_KEY` entry `{ refuse: { status, error } }` refuses the replay.
+ * - `TEST_MODE_FEEDBACK_KEY` (CHAOS-11958): ACR's feedback bodies by `result_id`, as ACR sends
+ *   them (checked with `parseResultFeedback`). No entry is a never-rated result (`unset`/`unset`);
+ *   `null` is ACR's 404; `{ refuse }` refuses the read. A successful set stores its body here, as ACR
+ *   does, so a later read (a reload, the other surface) reads it back.
+ * - `TEST_MODE_FEEDBACK_SETS_KEY`: the set answers in order (the last one repeats): `"store"` (ACR
+ *   stores the body and answers it), `{ refuse }`, or `{ delayMs }` (stores after the wait). Absent,
+ *   every set stores.
  *
  * It never ships: a production build inlines `process.env.NODE_ENV`, so `TEST_MODE` is `false` and
  * `testModeTransport` returns `null` (`check:client-bundle` rule K6 fails the build if a key leaks).
@@ -52,6 +60,8 @@ export const TEST_MODE_THREADS_KEY = "ask-dev:test-mode-threads";
 export const TEST_MODE_THREAD_LIST_KEY = "ask-dev:test-mode-thread-list";
 export const TEST_MODE_DELETED_KEY = "ask-dev:test-mode-deleted";
 export const TEST_MODE_FOREIGN_KEY = "ask-dev:test-mode-foreign";
+export const TEST_MODE_FEEDBACK_KEY = "ask-dev:test-mode-feedback";
+export const TEST_MODE_FEEDBACK_SETS_KEY = "ask-dev:test-mode-feedback-sets";
 
 const TEST_MODE =
     process.env.NODE_ENV !== "production" &&
@@ -83,7 +93,14 @@ type Call =
     | { readonly kind: "read"; readonly result_id: string }
     | { readonly kind: "list"; readonly cursor: string | null }
     | { readonly kind: "thread"; readonly thread_id: string; readonly before: string | null }
-    | { readonly kind: "delete"; readonly thread_id: string };
+    | { readonly kind: "delete"; readonly thread_id: string }
+    | { readonly kind: "feedback_read"; readonly result_id: string }
+    | {
+          readonly kind: "feedback_set";
+          readonly result_id: string;
+          readonly correct: string;
+          readonly useful: string;
+      };
 
 function read(key: string): unknown {
     try {
@@ -151,10 +168,19 @@ function deletedIds(): string[] {
     return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
 }
 
+/** ACR's body for a never-rated result. */
+const neverRated = (resultId: string) => ({
+    schema_version: "context_fabric_result_feedback.v1",
+    result_id: resultId,
+    correct: "unset",
+    useful: "unset",
+});
+
 function scriptedTransport(plays: readonly Play[]): AskDevTransport {
     let investigations = 0;
     let statuses = 0;
     let lists = 0;
+    let feedbackSets = 0;
     return {
         async *investigate(call: InvestigateCall) {
             record({
@@ -240,6 +266,52 @@ function scriptedTransport(plays: readonly Play[]): AskDevTransport {
                     "test-mode delete not stored",
                 );
             }
+        },
+        async readFeedback({ resultId }) {
+            record({ kind: "feedback_read", result_id: resultId });
+            const stored = read(TEST_MODE_FEEDBACK_KEY) as Record<string, unknown> | undefined;
+            const body =
+                stored === undefined || !(resultId in stored)
+                    ? neverRated(resultId)
+                    : stored[resultId];
+            if (body === null) return null;
+            const refusal = refusalOf(body);
+            if (refusal !== null) throw refusal;
+            const view = parseResultFeedback(body);
+            if (view === null) throw new TransportFailure("invalid_upstream");
+            return view;
+        },
+        async setFeedback({ resultId, correct, useful, signal }) {
+            record({ kind: "feedback_set", result_id: resultId, correct, useful });
+            const answers = read(TEST_MODE_FEEDBACK_SETS_KEY);
+            const answer: unknown = Array.isArray(answers) ? at(answers, feedbackSets++) : "store";
+            const refusal = refusalOf(answer);
+            if (refusal !== null) throw refusal;
+            if (typeof answer === "object" && answer !== null && "delayMs" in answer) {
+                await wait(Number((answer as { delayMs: unknown }).delayMs), signal);
+            }
+            const body = {
+                schema_version: "context_fabric_result_feedback.v1",
+                result_id: resultId,
+                correct,
+                useful,
+                updated_at: new Date().toISOString(),
+            };
+            const view = parseResultFeedback(body);
+            if (view === null) throw new TransportFailure("invalid_upstream");
+            try {
+                const stored = (read(TEST_MODE_FEEDBACK_KEY) as Record<string, unknown>) ?? {};
+                window.sessionStorage.setItem(
+                    TEST_MODE_FEEDBACK_KEY,
+                    JSON.stringify({ ...stored, [resultId]: body }),
+                );
+            } catch (error) {
+                logger.warn(
+                    { err: error, key: TEST_MODE_FEEDBACK_KEY },
+                    "test-mode feedback not stored",
+                );
+            }
+            return view;
         },
     };
 }

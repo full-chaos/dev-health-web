@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { validateAcrContract } from "../contracts";
+import { parseResultFeedback } from "../feedbackContract";
 import { parseThread, parseThreadList } from "../threadContract";
 
 /**
@@ -424,6 +425,23 @@ const LIST_BASES: readonly Record<string, unknown>[] = [
     { schema_version: "context_fabric_thread_list.v1", threads: [] },
 ];
 
+// CHAOS-11958: a never-rated body (no `updated_at`) and a rated one.
+const FEEDBACK_BASES: readonly Record<string, unknown>[] = [
+    {
+        schema_version: "context_fabric_result_feedback.v1",
+        result_id: "result-12345678",
+        correct: "unset",
+        useful: "unset",
+    },
+    {
+        schema_version: "context_fabric_result_feedback.v1",
+        result_id: "result-87654321",
+        correct: "yes",
+        useful: "no",
+        updated_at: TS,
+    },
+];
+
 type Suite = {
     readonly name: string;
     readonly file: string;
@@ -469,6 +487,10 @@ function expectedList(body: Record<string, unknown>): unknown {
     };
 }
 
+function expectedFeedback(body: Record<string, unknown>): unknown {
+    return { resultId: body.result_id, correct: body.correct, useful: body.useful };
+}
+
 const SUITES: readonly Suite[] = [
     {
         name: "thread",
@@ -485,6 +507,14 @@ const SUITES: readonly Suite[] = [
         parse: parseThreadList,
         expectedView: expectedList,
         floor: 800,
+    },
+    {
+        name: "result feedback",
+        file: "context_fabric_result_feedback.v1.schema.json",
+        bases: FEEDBACK_BASES,
+        parse: parseResultFeedback,
+        expectedView: expectedFeedback,
+        floor: 100,
     },
 ];
 
