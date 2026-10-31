@@ -29,6 +29,8 @@ import {
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
+import { loadScopePageEntities } from "@/lib/ask-dev/load-page-scope-entities";
 
 type CognitiveLoadPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -98,6 +100,10 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             : null;
     const repoId = cognitiveLoadRepoIdFromFilter(filters);
     const { startDate: sinceDate, endDate: untilDate } = buildDateRange(filters);
+    // Ask Dev page context (CHAOS-11938): read beside the page data, awaited at render.
+    const scopeEntitiesRead = orgId
+        ? loadScopePageEntities({ routeId: "cognitive_load", view: "cognitive-load", filters })
+        : Promise.resolve([]);
 
     let cognitiveLoadData: Awaited<ReturnType<typeof getCognitiveLoadViaGraphQL>> | null = null;
     let fetchError: string | null = null;
@@ -278,6 +284,8 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             : []),
     ];
 
+    const scopeEntities = await scopeEntitiesRead;
+
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
@@ -285,6 +293,10 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             className="flex min-w-0 flex-1 flex-col gap-6 text-foreground"
             data-testid="cognitive-load-dashboard"
         >
+            {/* The organization, the page's one team and its one repository; no person. */}
+            {orgId && canShowSelectedScope ? (
+                <AskDevPageEntities organization entities={scopeEntities} />
+            ) : null}
             <PageHeader
                 title="Cognitive Load"
                 subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}

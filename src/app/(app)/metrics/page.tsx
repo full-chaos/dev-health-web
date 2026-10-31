@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Info } from "lucide-react";
 
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
@@ -13,6 +14,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
+import { loadScopePageEntities } from "@/lib/ask-dev/load-page-scope-entities";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getQuadrant } from "@/lib/api/visuals";
@@ -72,7 +74,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               : "org";
 
     // Run health check in parallel with all data fetches to eliminate the waterfall.
-    const [health, home, highlight, quadrant] = await Promise.all([
+    const [health, home, highlight, quadrant, scopeEntities] = await Promise.all([
         checkApiHealth(),
         fetchOrNull(getHomeDataViaGraphQL(filters), "metrics/home-data"),
         fetchOrNull(
@@ -92,6 +94,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             }),
             "metrics/quadrant",
         ),
+        loadScopePageEntities({ routeId: "flow_metrics", view: "metrics", filters }),
     ]);
 
     if (!health.ok) {
@@ -128,6 +131,8 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            {/* Ask Dev page context (CHAOS-11938): the organization and the page's one scope. */}
+            <AskDevPageEntities organization entities={scopeEntities} />
             <PageHeader
                 title="Flow"
                 subtitle={activeTab.description}

@@ -7,6 +7,8 @@ import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { withFilterParam } from "@/lib/filters/url";
 import { InvestmentGatedBody } from "./_components/InvestmentGatedBody";
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
+import { loadScopePageEntities } from "@/lib/ask-dev/load-page-scope-entities";
 import type { InvestmentTab } from "@/components/work/investment/types";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
@@ -60,10 +62,11 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         "investment",
     );
 
-    const [health, orgResult, home] = await Promise.all([
+    const [health, orgResult, home, scopeEntities] = await Promise.all([
         checkApiHealth(),
         boundedRead(getCurrentOrg(), "step current org").catch(() => ({ data: undefined })),
         fetchOrNull(getHomeDataViaGraphQL(filters), "investment/home-data"),
+        loadScopePageEntities({ routeId: "investment", view: "investment", filters }),
     ]);
 
     if (!health.ok) {
@@ -94,6 +97,10 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <UpgradeGate feature="investment_view" requiredTier="team" features={features}>
+                {/* Ask Dev page context (CHAOS-11938): the organization and the page's one team. */}
+                {investmentEnabled ? (
+                    <AskDevPageEntities organization entities={scopeEntities} />
+                ) : null}
                 <PageHeader
                     title="Investment"
                     subtitle={TAB_SUBTITLE[activeTab]}
