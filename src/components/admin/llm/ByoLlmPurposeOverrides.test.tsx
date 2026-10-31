@@ -47,6 +47,132 @@ describe("ByoLlmPurposeOverrides", () => {
         expect(screen.queryByText(/categoriz/i)).toBeNull();
     });
 
+    it("hides the categorize row when the org has not opted in", async () => {
+        load.mockResolvedValue({
+            data: { provider: "anthropic", api_key: "sk-a…1234", categorize_byo: false },
+        });
+        renderIt();
+        expect(await screen.findAllByText("Use default")).toHaveLength(2);
+        expect(screen.queryByText("Categorization")).toBeNull();
+    });
+
+    it("shows the categorize row when opted in", async () => {
+        load.mockResolvedValue({
+            data: { provider: "anthropic", api_key: "sk-a…1234", categorize_byo: true },
+        });
+        renderIt();
+        expect(await screen.findAllByText("Use default")).toHaveLength(3);
+        expect(screen.getByText("Categorization")).toBeInTheDocument();
+    });
+
+    it("lists a stored categorize override with the Cloudflare provider label", async () => {
+        load.mockResolvedValue({
+            data: {
+                provider: "anthropic",
+                categorize_byo: true,
+                purposes: {
+                    categorize: {
+                        purpose: "categorize",
+                        provider: "clef",
+                        model: "clef-flash",
+                        base_url: "https://api.cloudflare.com/client/v4/accounts/a1/ai/run",
+                    },
+                },
+            },
+        });
+        renderIt();
+        expect(await screen.findByText("Cloudflare Workers AI · clef-flash")).toBeInTheDocument();
+    });
+
+    it("offers only clef and clef-flash for the categorize model", async () => {
+        load.mockResolvedValue({
+            data: { provider: "anthropic", api_key: "sk-a…1234", categorize_byo: true },
+        });
+        renderIt();
+        const buttons = await screen.findAllByRole("button", { name: "Set model" });
+        await userEvent.click(buttons[2]);
+        const select = screen.getByLabelText("Model") as HTMLSelectElement;
+        expect(select.tagName).toBe("SELECT");
+        expect(Array.from(select.options).map((o) => o.value)).toEqual(["clef", "clef-flash"]);
+        expect(screen.queryByRole("option", { name: "OpenAI" })).toBeNull();
+    });
+
+    it("saves the categorize override without categorize_byo", async () => {
+        load.mockResolvedValue({
+            data: { provider: "anthropic", api_key: "sk-a…1234", categorize_byo: true },
+        });
+        save.mockResolvedValue({
+            data: { purpose: "categorize", provider: "clef", model: "clef" },
+        });
+        renderIt();
+        const buttons = await screen.findAllByRole("button", { name: "Set model" });
+        await userEvent.click(buttons[2]);
+        await userEvent.selectOptions(screen.getByLabelText("Model"), "clef-flash");
+        await userEvent.type(screen.getByLabelText("API Key"), "cf-token");
+        await userEvent.type(
+            screen.getByLabelText("Base URL"),
+            "https://api.cloudflare.com/client/v4/accounts/a1/ai/run",
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+        const body = save.mock.calls[0][0];
+        expect(body).toEqual({
+            purpose: "categorize",
+            provider: "clef",
+            model: "clef-flash",
+            api_key: "cf-token",
+            base_url: "https://api.cloudflare.com/client/v4/accounts/a1/ai/run",
+        });
+        expect("categorize_byo" in body).toBe(false);
+    });
+
+    it("removes the categorize override", async () => {
+        load.mockResolvedValue({
+            data: {
+                provider: "anthropic",
+                categorize_byo: true,
+                purposes: {
+                    categorize: { purpose: "categorize", provider: "clef", model: "clef" },
+                },
+            },
+        });
+        remove.mockResolvedValue({ data: { deleted: true, purpose: "categorize" } });
+        renderIt();
+        await userEvent.click(await screen.findByRole("button", { name: "Use default" }));
+        await waitFor(() => expect(remove).toHaveBeenCalledWith("categorize"));
+    });
+
+    it.each([
+        ["categorize_byo_model_unsupported", /clef or clef-flash/],
+        ["purpose_not_configurable", /opt in/i],
+        ["invalid_base_url", /Cloudflare account/],
+    ])("shows a fixed message for the refusal %s", async (code, text) => {
+        load.mockResolvedValue({
+            data: { provider: "anthropic", api_key: "sk-a…1234", categorize_byo: true },
+        });
+        save.mockResolvedValue({ error: "served text must not show", status: 400, code });
+        renderIt();
+        const buttons = await screen.findAllByRole("button", { name: "Set model" });
+        await userEvent.click(buttons[2]);
+        await userEvent.type(screen.getByLabelText("API Key"), "k");
+        await userEvent.type(screen.getByLabelText("Base URL"), "https://x");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(text);
+        expect(alert).not.toHaveTextContent("served text must not show");
+    });
+
+    it("falls back to the served error for an unknown code", async () => {
+        load.mockResolvedValue({ data: { provider: "anthropic", api_key: "sk-a…1234" } });
+        save.mockResolvedValue({ error: "Could not be saved", status: 400, code: "other" });
+        renderIt();
+        const buttons = await screen.findAllByRole("button", { name: "Set model" });
+        await userEvent.click(buttons[0]);
+        await userEvent.type(screen.getByLabelText("Model"), "m");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Could not be saved");
+    });
+
     it("saves a same-provider override without a key and sends the purpose", async () => {
         load.mockResolvedValue({ data: { provider: "anthropic", api_key: "sk-a…1234" } });
         save.mockResolvedValue({ data: { purpose: "explain", provider: "anthropic", model: "m" } });

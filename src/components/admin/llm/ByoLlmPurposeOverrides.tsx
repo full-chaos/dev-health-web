@@ -5,9 +5,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Section } from "@/components/ui/Section";
-import { notifyByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
+import { notifyByoLlmConfigChanged, onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { categorizeRefusalMessage } from "@/lib/admin/categorizeRefusals";
 import {
+    CATEGORIZE_MODELS,
+    CATEGORIZE_PROVIDER,
+    CATEGORIZE_PROVIDER_LABEL,
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
     LLM_PURPOSES,
@@ -34,11 +38,18 @@ const labelClass = "mb-1 block text-xs font-medium uppercase tracking-wide text-
 const PURPOSE_HELP: Record<LLMPurpose, string> = {
     investigate: "Answering a question: the heavier model for complex investigations.",
     explain: "Short explanations of a chart or work unit: a smaller, cheaper model fits.",
+    categorize: "Sorting work into categories: runs on your Cloudflare Workers AI account.",
 };
+
+function providerLabel(provider: string): string {
+    if (provider === CATEGORIZE_PROVIDER) return CATEGORIZE_PROVIDER_LABEL;
+    return LLM_PROVIDER_LABELS[provider as keyof typeof LLM_PROVIDER_LABELS] ?? provider;
+}
 
 type Loaded = {
     defaultProvider: string | null;
     hasDefaultKey: boolean;
+    optedIn: boolean;
     overrides: Partial<Record<LLMPurpose, LLMPurposeSettings>>;
 };
 
@@ -64,6 +75,7 @@ export function ByoLlmPurposeOverrides({
         setLoaded({
             defaultProvider: result.data.provider ?? null,
             hasDefaultKey: Boolean(result.data.api_key),
+            optedIn: result.data.categorize_byo === true,
             overrides: result.data.purposes ?? {},
         });
     }, [loadSettingsAction]);
@@ -72,6 +84,8 @@ export function ByoLlmPurposeOverrides({
         // eslint-disable-next-line react-hooks/set-state-in-effect -- load on mount
         void load();
     }, [load]);
+
+    useEffect(() => onByoLlmConfigChanged(() => void load()), [load]);
 
     if (loadError) {
         return (
@@ -84,13 +98,15 @@ export function ByoLlmPurposeOverrides({
     }
     if (!loaded || !loaded.defaultProvider) return null;
 
+    const purposes: LLMPurpose[] = loaded.optedIn ? [...LLM_PURPOSES, "categorize"] : LLM_PURPOSES;
+
     return (
         <Section
             title="Models per purpose"
             description="Optional. Each purpose uses the default configuration above unless you set its own model."
         >
             <div className="flex flex-col gap-6">
-                {LLM_PURPOSES.map((purpose) => (
+                {purposes.map((purpose) => (
                     <PurposeForm
                         key={purpose}
                         purpose={purpose}
@@ -120,20 +136,27 @@ function PurposeForm({
 }) {
     const stored = loaded.overrides[purpose];
     const [editing, setEditing] = useState(false);
-    const [provider, setProvider] = useState(stored?.provider ?? loaded.defaultProvider ?? "");
+    const [provider, setProvider] = useState(
+        purpose === "categorize"
+            ? CATEGORIZE_PROVIDER
+            : (stored?.provider ?? loaded.defaultProvider ?? ""),
+    );
     const [model, setModel] = useState(stored?.model ?? "");
     const [apiKey, setApiKey] = useState("");
     const [baseUrl, setBaseUrl] = useState(stored?.base_url ?? "");
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const idPrefix = `byo-${purpose}`;
+    const isCategorize = purpose === "categorize";
 
-    const sameProvider = provider === loaded.defaultProvider;
+    const sameProvider = !isCategorize && provider === loaded.defaultProvider;
     const keyInherited = sameProvider && loaded.hasDefaultKey;
 
     function open() {
-        setProvider(stored?.provider ?? loaded.defaultProvider ?? "");
-        setModel(stored?.model ?? "");
+        setProvider(
+            isCategorize ? CATEGORIZE_PROVIDER : (stored?.provider ?? loaded.defaultProvider ?? ""),
+        );
+        setModel(stored?.model ?? (isCategorize ? CATEGORIZE_MODELS[0] : ""));
         setApiKey("");
         setBaseUrl(stored?.base_url ?? "");
         setError(null);
@@ -160,7 +183,7 @@ function PurposeForm({
         });
         setBusy(false);
         if (result.error) {
-            setError(result.error);
+            setError(categorizeRefusalMessage(result.code) ?? result.error);
             return;
         }
         toast.success(`${LLM_PURPOSE_LABELS[purpose]} model saved.`);
@@ -174,7 +197,7 @@ function PurposeForm({
         const result = await removeAction(purpose);
         setBusy(false);
         if (result.error) {
-            setError(result.error);
+            setError(categorizeRefusalMessage(result.code) ?? result.error);
             return;
         }
         toast.success(`${LLM_PURPOSE_LABELS[purpose]} now uses the default.`);
@@ -192,7 +215,7 @@ function PurposeForm({
                     {!editing ? (
                         <p className="mt-1 text-sm">
                             {stored
-                                ? `${LLM_PROVIDER_LABELS[stored.provider as keyof typeof LLM_PROVIDER_LABELS] ?? stored.provider} · ${stored.model}`
+                                ? `${providerLabel(stored.provider)} · ${stored.model}`
                                 : "Use default"}
                         </p>
                     ) : null}
@@ -225,25 +248,47 @@ function PurposeForm({
                             value={provider}
                             onChange={(e) => setProvider(e.target.value)}
                             className={inputClass}
+                            disabled={isCategorize}
                         >
-                            {LLM_PROVIDERS.map((p) => (
-                                <option key={p} value={p}>
-                                    {LLM_PROVIDER_LABELS[p]}
+                            {isCategorize ? (
+                                <option value={CATEGORIZE_PROVIDER}>
+                                    {CATEGORIZE_PROVIDER_LABEL}
                                 </option>
-                            ))}
+                            ) : (
+                                LLM_PROVIDERS.map((p) => (
+                                    <option key={p} value={p}>
+                                        {LLM_PROVIDER_LABELS[p]}
+                                    </option>
+                                ))
+                            )}
                         </select>
                     </div>
                     <div>
                         <label htmlFor={`${idPrefix}-model`} className={labelClass}>
                             Model
                         </label>
-                        <input
-                            id={`${idPrefix}-model`}
-                            value={model}
-                            onChange={(e) => setModel(e.target.value)}
-                            className={inputClass}
-                            autoComplete="off"
-                        />
+                        {isCategorize ? (
+                            <select
+                                id={`${idPrefix}-model`}
+                                value={model}
+                                onChange={(e) => setModel(e.target.value)}
+                                className={inputClass}
+                            >
+                                {CATEGORIZE_MODELS.map((m) => (
+                                    <option key={m} value={m}>
+                                        {m}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                id={`${idPrefix}-model`}
+                                value={model}
+                                onChange={(e) => setModel(e.target.value)}
+                                className={inputClass}
+                                autoComplete="off"
+                            />
+                        )}
                     </div>
                     <div>
                         <label htmlFor={`${idPrefix}-key`} className={labelClass}>
