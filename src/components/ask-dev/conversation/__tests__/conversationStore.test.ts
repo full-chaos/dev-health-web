@@ -480,6 +480,49 @@ describe("refusals before the stream (plan §2.7.5 repeat key)", () => {
         expect(transport.statusCalls).toEqual([]);
     });
 
+    // codex r2 on #1632: ACR closed the conversation (deleted, expired or full); the contract says
+    // start a new one. The next question gets a new thread and carries nothing from the old one.
+    it("starts a new conversation after thread_closed, keeping the old turns on screen", async () => {
+        const store = makeStore();
+        transport.scripts.push(
+            [resultEvent(PARTIAL)],
+            [refuse("thread_closed")],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        store.submit("Why?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "thread_closed" });
+        expect(store.retry(last(store).id)).toBe(false);
+        expect(store.getSnapshot().threadId).toBeNull();
+
+        store.submit("Which teams are overloaded?");
+        await settled(store);
+        const [first, closed, fresh] = transport.calls;
+        expect(closed!.threadId).toBe(first!.threadId);
+        expect(fresh!.threadId).not.toBe(first!.threadId);
+        expect(fresh!.request).not.toHaveProperty("parent_result_id");
+        expect(fresh!.request).not.toHaveProperty("conversation");
+        expect(fresh!.request.requested_scope).toBeUndefined();
+        expect(store.getSnapshot().turns).toHaveLength(3);
+        expect(store.getSnapshot().threadId).toBe(fresh!.threadId);
+    });
+
+    it("logs a create without a submission id as a defect", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            { fail: new TransportRefusal(400, acrError("submission_required", 400, false)) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({ kind: "failed", retry: false });
+        expect(log.error).toHaveBeenCalledWith(
+            expect.objectContaining({ code: "submission_required" }),
+            "ask-dev create sent without a submission id",
+        );
+    });
+
     it("logs a reused key for another request as a defect", async () => {
         const store = makeStore();
         transport.scripts.push([refuse("submission_mismatch")]);

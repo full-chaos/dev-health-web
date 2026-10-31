@@ -22,6 +22,8 @@ export const TURN_STATUS_COPY = {
     unsaved: "The answer was shown but not saved — ask again",
     interrupted: "Interrupted — ask again",
     canceled: "Canceled. If the answer had already finished, it is kept.",
+    threadClosed:
+        "This conversation has ended (deleted, expired or full). Ask again to start a new one.",
 } as const satisfies Record<string, string>;
 
 type StatusOutcome = Exclude<TurnOutcome, { kind: "answered" } | { kind: "refused" }>;
@@ -40,6 +42,8 @@ function statusLine(outcome: StatusOutcome): string {
             return TURN_STATUS_COPY.interrupted;
         case "canceled":
             return TURN_STATUS_COPY.canceled;
+        case "thread_closed":
+            return TURN_STATUS_COPY.threadClosed;
     }
 }
 

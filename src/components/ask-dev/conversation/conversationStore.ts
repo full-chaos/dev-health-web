@@ -62,7 +62,12 @@ export type TurnOutcome =
     | { readonly kind: "unsaved" }
     /** `abandoned`, a lost record or the deadline: the run ended without an answer. */
     | { readonly kind: "interrupted" }
-    | { readonly kind: "canceled" };
+    | { readonly kind: "canceled" }
+    /**
+     * `409 thread_closed`: ACR closed this conversation (deleted, expired or full). Nothing ran; the
+     * next question starts a new conversation with a new `thread_id`.
+     */
+    | { readonly kind: "thread_closed" };
 
 export type StoreTurn = {
     readonly id: number;
@@ -178,6 +183,8 @@ export class ConversationStore {
     private partition: string | null | undefined = undefined;
     private active: ActiveRun | null = null;
     private nextTurnId = 0;
+    /** The first turn of the current thread; earlier turns stay on screen but are not threaded. */
+    private threadStart = 0;
     private snapshot: ConversationSnapshot = {
         generation: 0,
         threadId: null,
@@ -237,7 +244,10 @@ export class ConversationStore {
             return false;
         }
         const threadId = this.snapshot.threadId ?? newThreadId(this.uuid());
-        const prior = toSourceTurns(this.snapshot.turns);
+        // Only the current thread's turns: a closed conversation's turns carry nothing forward.
+        const prior = toSourceTurns(
+            this.snapshot.turns.filter((turn) => turn.id >= this.threadStart),
+        );
         const parent = deriveParentReference(prior);
         const request = buildInvestigationRequest({
             question: trimmed,
@@ -459,6 +469,19 @@ export class ConversationStore {
                 return;
             case "submission_abandoned":
                 this.settle(run, { kind: "interrupted" });
+                return;
+            case "thread_closed":
+                // The contract: nothing ran, not retryable under these ids; start a new
+                // conversation. The next submit mints a new thread and carries nothing from this one.
+                logger.warn(fields, "ask-dev thread closed; the next question starts a new one");
+                this.threadStart = this.nextTurnId;
+                this.settle(run, { kind: "thread_closed" });
+                this.commit({ ...this.snapshot, threadId: null });
+                return;
+            case "submission_required":
+                // The store sends a submission id on every create: a defect, never a user error.
+                logger.error(fields, "ask-dev create sent without a submission id");
+                this.settle(run, { kind: "failed", retry: false });
                 return;
             case "submission_mismatch":
                 // The store reused a key for another request: a defect, never a user error.
