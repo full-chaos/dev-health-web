@@ -139,6 +139,10 @@
         "log": 1,
         "sentry": 0
     },
+    "src/components/ask-dev/answer/ClaimedFactTables.tsx": {
+        "log": 1,
+        "sentry": 0
+    },
     "src/components/ask-dev/answer/testModeAnswer.ts": {
         "log": 3,
         "sentry": 0
