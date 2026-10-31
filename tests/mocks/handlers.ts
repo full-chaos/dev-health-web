@@ -889,11 +889,49 @@ const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
 const MOCK_PEOPLE: (typeof SAMPLE_PEOPLE)[number][] = [];
 
-let mockLlmDefault: Record<string, string | undefined> | null = {
+const MOCK_LLM_DEFAULT_SEED = {
     provider: "anthropic",
     model: "claude-large",
     api_key: "sk-d…1234",
-};
+} as const;
+let mockLlmDefault: Record<string, string | undefined> | null = { ...MOCK_LLM_DEFAULT_SEED };
+// CHAOS-12173: saved settings the configured key cannot decrypt (go-api's 409 llm_settings_undecryptable,
+// CHAOS-12172): the default key and/or named purpose overrides; or a transient read failure (500).
+let mockLlmUnreadable: { main: boolean; purposes: string[] } | null = null;
+let mockLlmTransient = false;
+/** `/__test/llm-settings-unreadable`: seed the unreadable or transient state, or reset (default config restored). */
+export function setMockLlmUnreadable(seed: {
+    unreadable: boolean;
+    purposes?: string[];
+    transient?: boolean;
+}): void {
+    mockLlmUnreadable = seed.unreadable
+        ? { main: true, purposes: [...(seed.purposes ?? [])] }
+        : null;
+    mockLlmTransient = seed.transient ?? false;
+    if (!seed.unreadable && !seed.transient) mockLlmDefault = { ...MOCK_LLM_DEFAULT_SEED };
+}
+function mockLlmUnreadableResponse() {
+    const state = mockLlmUnreadable;
+    if (!state) return null;
+    const settings = [
+        ...(state.main ? ["api_key"] : []),
+        ...state.purposes.map((purpose) => `purpose:${purpose}:api_key`),
+    ];
+    if (settings.length === 0) return null;
+    return HttpResponse.json(
+        {
+            detail: {
+                error: "llm_settings_undecryptable",
+                feature: "byo_llm",
+                message: "The saved key can no longer be read. Replace or remove it.",
+                settings,
+                purposes: state.purposes,
+            },
+        },
+        { status: 409 },
+    );
+}
 const mockLlmPurposes: Record<string, Record<string, string | undefined>> = {};
 function mockOwnModelBody() {
     return {
@@ -1676,6 +1714,51 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         scope?: AIScopeVars | null;
         dimension?: { dimension?: string } | string;
     };
+
+    // Data Confidence overview (CHAOS-11938 e2e): the three reads of `/data-health`, in the served
+    // shape. Without them the overview had no mock and the page could not render.
+    if (query.includes("GetConnectorsDataHealth")) {
+        return HttpResponse.json({
+            data: {
+                dataHealth: {
+                    connectors: [
+                        {
+                            provider: "github",
+                            scope: "full-chaos",
+                            lastSyncAt: "2026-10-30T12:00:00Z",
+                            rowsIngested: 1200,
+                            lastFailure: null,
+                        },
+                    ],
+                },
+            },
+        });
+    }
+    if (query.includes("DataHealthIdentity")) {
+        return HttpResponse.json({
+            data: {
+                dataHealth: {
+                    identityMapping: {
+                        unmappedCount: 0,
+                        unmappedIdentities: [],
+                        suggestedAliases: [],
+                    },
+                },
+            },
+        });
+    }
+    if (query.includes("GetMappingCoverageHealth")) {
+        return HttpResponse.json({
+            data: {
+                dataHealth: {
+                    mappingCoverage: {
+                        deployments: { totalRepos: 2, coveredRepos: 1, coveragePct: 50 },
+                        workItems: { totalRepos: 2, coveredRepos: 2, coveragePct: 100 },
+                    },
+                },
+            },
+        });
+    }
 
     // Platform product telemetry (CHAOS-8968): the prod shape. Two days with rows
     // inside a 30-day window, one org without a served name, empty event kinds.
@@ -2567,6 +2650,8 @@ function buildSetupStatus() {
 export const handlers = [
     ...pagerDutyHandlers,
     // ---- Auth (for e2e test authentication) ----
+    // Sign-out step 1 (CHAOS-12096): web's /api/auth/revoke-session calls Ops logout.
+    http.post("*/api/v1/auth/logout", () => HttpResponse.json({ message: "Logout successful" })),
     http.post("*/api/v1/auth/login", async ({ request }) => {
         const body = (await request.json()) as {
             email?: string;
@@ -2899,16 +2984,37 @@ export const handlers = [
             features:
                 scenario === "provisioned"
                     ? { ...MOCK_ORG_ENTITLEMENTS.features, agent_context_runtime: true }
-                    : scenario === "investment-enabled"
-                      ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
-                      : scenario === "canonical-enabled"
-                        ? { ...MOCK_ORG_ENTITLEMENTS.features, canonical_incident_ingestion: true }
-                        : scenario === "canonical-disabled"
+                    : scenario === "provisioned-investment"
+                      ? {
+                            ...MOCK_ORG_ENTITLEMENTS.features,
+                            agent_context_runtime: true,
+                            investment_view: true,
+                        }
+                      : scenario === "ask-dev-off"
+                        ? {
+                              ...MOCK_ORG_ENTITLEMENTS.features,
+                              agent_context_runtime: true,
+                              ask_dev: false,
+                          }
+                        : scenario === "ask-dev-enabled"
                           ? {
                                 ...MOCK_ORG_ENTITLEMENTS.features,
-                                canonical_incident_ingestion: false,
+                                agent_context_runtime: true,
+                                ask_dev: true,
                             }
-                          : MOCK_ORG_ENTITLEMENTS.features,
+                          : scenario === "investment-enabled"
+                            ? { ...MOCK_ORG_ENTITLEMENTS.features, investment_view: true }
+                            : scenario === "canonical-enabled"
+                              ? {
+                                    ...MOCK_ORG_ENTITLEMENTS.features,
+                                    canonical_incident_ingestion: true,
+                                }
+                              : scenario === "canonical-disabled"
+                                ? {
+                                      ...MOCK_ORG_ENTITLEMENTS.features,
+                                      canonical_incident_ingestion: false,
+                                  }
+                                : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 
@@ -2995,7 +3101,12 @@ export const handlers = [
                 "alex.harper@example.com": "Alex Harper",
                 "jordan.lee@example.com": "Jordan Lee",
             },
-            repo_names: {},
+            // CHAOS-11938: repository id -> name, as ops serves it (`toString(repos.id)`); the
+            // filter holds names, so a page maps a name back to its id through this.
+            repo_names: {
+                "00000000-0000-4000-8000-0000000e2e01": "dev-health-web",
+                "00000000-0000-4000-8000-0000000e2e02": "dev-health-ops",
+            },
             work_category: ["feature", "maintenance", "support"],
             issue_type: ["bug", "story", "task"],
             flow_stage: ["review", "build", "deploy"],
@@ -3660,9 +3771,22 @@ export const handlers = [
     ),
 
     // BYO LLM settings with per-purpose overrides (CHAOS-10040): one stateful org row.
-    http.get("*/api/v1/admin/llm-settings", () => HttpResponse.json(mockLlmSettingsBody())),
+    http.get("*/api/v1/admin/llm-settings", () => {
+        if (mockLlmTransient) {
+            return HttpResponse.json({ detail: "Internal Server Error" }, { status: 500 });
+        }
+        return mockLlmUnreadableResponse() ?? HttpResponse.json(mockLlmSettingsBody());
+    }),
     http.put("*/api/v1/admin/llm-settings", async ({ request }) => {
         const body = (await request.json()) as Record<string, string | undefined>;
+        // Replace: a new default key overwrites the unreadable one; a write that keeps it, or that
+        // leaves an override unreadable, is refused with the same 409 (as go-api's response read).
+        if (mockLlmUnreadable && !body.purpose) {
+            if (body.api_key) mockLlmUnreadable.main = false;
+            const refused = mockLlmUnreadableResponse();
+            if (refused) return refused;
+            mockLlmUnreadable = null;
+        }
         if (body.purpose) {
             if (!body.model)
                 return HttpResponse.json({ detail: "model required" }, { status: 422 });
@@ -3678,6 +3802,9 @@ export const handlers = [
         mockLlmDefault = { provider: body.provider, model: body.model, api_key: "sk-d…1234" };
         return HttpResponse.json(mockLlmSettingsBody());
     }),
+    // CHAOS-12173: go-api's spend route reads the saved key too, so it answers the same 409 (CHAOS-12172).
+    // Otherwise unhandled here, as before.
+    http.get("*/api/v1/admin/llm-settings/spend", () => mockLlmUnreadableResponse() ?? undefined),
     // The platform catalog for the asked provider (no key needed), plus the provider's live list for the saved one.
     http.get("*/api/v1/admin/llm-settings/models", ({ request }) => {
         const asked =
@@ -3752,9 +3879,15 @@ export const handlers = [
     http.delete("*/api/v1/admin/llm-settings", ({ request }) => {
         const purpose = new URL(request.url).searchParams.get("purpose");
         if (purpose) {
+            if (mockLlmUnreadable) {
+                mockLlmUnreadable.purposes = mockLlmUnreadable.purposes.filter(
+                    (p) => p !== purpose,
+                );
+            }
             delete mockLlmPurposes[purpose];
             return HttpResponse.json({ deleted: true, purpose });
         }
+        if (mockLlmUnreadable) mockLlmUnreadable.main = false;
         mockLlmDefault = null;
         mockPromptCacheEnabled = false;
         return HttpResponse.json({ deleted: true });

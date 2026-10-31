@@ -1,0 +1,1320 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_3f687d501d57bf81dad070861babe53b",
+    "seq": 13,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_388f6da8a895e9d858e8002895d2a857",
+        "request_id": "req_3f687d501d57bf81dad070861babe53b",
+        "generated_at": "2026-10-30T20:27:30.513057503Z",
+        "status": "complete",
+        "question": "What is the CI success rate of full-chaos/dev-health-web over the last 30 days?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "CI success rate over the last 30 days",
+            "subject_terms": ["full-chaos/dev-health-web"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "continuous_integration"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000002d",
+                    "subject": {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    },
+                    "state": "committed",
+                    "matched_terms": ["full-chaos/dev-health-web"],
+                    "match_reasons": ["Exact canonical subject label match."],
+                    "confidence": 1,
+                    "evidence_ref_ids": ["acr:v1:repository:00000000-0000-4000-8000-00000000002c"],
+                    "provider": "github",
+                    "match_mechanisms": ["exact", "lexical"]
+                }
+            ],
+            "committed": [
+                {
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                    "label": "full-chaos/dev-health-web"
+                }
+            ],
+            "commit_decision_digests": [
+                {
+                    "subject": {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    },
+                    "commit_gate": "exact_index",
+                    "search_truncated": true,
+                    "alias_lookup_complete": true,
+                    "identity_lookup": "complete"
+                }
+            ]
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["continuous_integration"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "narrowing": [
+                {
+                    "stage": "cardinality",
+                    "basis": "canonical_id_lexical",
+                    "before": 50,
+                    "after": 18
+                }
+            ]
+        },
+        "direct_judgment": "This investigation is complete. Principal driver: CI success rate is 75% over the last 30 days.",
+        "current_state": "Current observed values: avg duration minutes: 5.53 (full-chaos/dev-health-web); avg queue minutes: 0 (full-chaos/dev-health-web); day: 2026-10-30 (full-chaos/dev-health-web); p90 duration minutes: 14.74 (full-chaos/dev-health-web); pipelines count: 206 (full-chaos/dev-health-web); success rate: 0.75 (full-chaos/dev-health-web).",
+        "strongest_pressures": [],
+        "drivers": [
+            {
+                "driver_id": "driver_ci_success_rate",
+                "standing": "principal",
+                "category": "continuous_integration",
+                "title": "CI success rate is 75% over the last 30 days",
+                "summary": "The CI success rate for full-chaos/dev-health-web is 75% over the last 30 days, based on 206 pipeline runs as of October 30, 2026.",
+                "affected_subjects": [
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "evidence_ref_ids": ["acr:v1:repository:00000000-0000-4000-8000-00000000002c"],
+                "claimed_fact_ids": ["claim_ci_success_rate"],
+                "derivation": "canonical_structured",
+                "epistemic_status": "observed",
+                "confidence": 1,
+                "current": true
+            }
+        ],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [
+            {
+                "path_id": "00000000-0000-4000-8000-00000000002e",
+                "nodes": [
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    },
+                    {
+                        "kind": "team",
+                        "canonical_id": "team:linear:TEAMA",
+                        "label": "Teamalpha"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "OWNED_BY_TEAM",
+                        "from": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "to": {
+                            "kind": "team",
+                            "canonical_id": "team:linear:TEAMA",
+                            "label": "Teamalpha"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "inferred",
+                        "observed_at": "2026-10-30T20:00:15.76Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:repository:00000000-0000-4000-8000-00000000002c",
+                            "acr:v1:team:linear:TEAMA"
+                        ]
+                    }
+                ],
+                "why_relevant": "full-chaos/dev-health-web owned by team linear:TEAMA",
+                "evidence_ref_ids": [
+                    "acr:v1:repository:00000000-0000-4000-8000-00000000002c",
+                    "acr:v1:team:linear:TEAMA"
+                ],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000002f",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589546051",
+                        "label": "Synthetic CI run title 026"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589546051",
+                            "label": "Synthetic CI run title 026"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T02:47:46Z",
+                        "valid_from": "2026-05-09T02:46:16Z",
+                        "valid_to": "2026-05-09T02:47:46Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589546051"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 026 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589546051"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000030",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579166",
+                        "label": "Synthetic CI run title 027"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579166",
+                            "label": "Synthetic CI run title 027"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T02:51:07Z",
+                        "valid_from": "2026-05-09T02:47:48Z",
+                        "valid_to": "2026-05-09T02:51:07Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579166"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 027 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579166"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000031",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579167",
+                        "label": "Synthetic CI run title 028"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579167",
+                            "label": "Synthetic CI run title 028"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:31:09Z",
+                        "valid_from": "2026-05-12T16:30:30Z",
+                        "valid_to": "2026-05-12T16:31:09Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579167"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 028 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579167"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000032",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579168",
+                        "label": "Synthetic CI run title 029"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579168",
+                            "label": "Synthetic CI run title 029"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T02:49:09Z",
+                        "valid_from": "2026-05-09T02:47:48Z",
+                        "valid_to": "2026-05-09T02:49:09Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579168"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 029 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579168"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000033",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579173",
+                        "label": "Synthetic CI run title 030"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579173",
+                            "label": "Synthetic CI run title 030"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T02:54:27Z",
+                        "valid_from": "2026-05-09T02:47:48Z",
+                        "valid_to": "2026-05-09T02:54:27Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579173"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 030 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579173"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000034",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579174",
+                        "label": "Synthetic CI run title 031"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25589579174",
+                            "label": "Synthetic CI run title 031"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T02:55:59Z",
+                        "valid_from": "2026-05-09T02:47:48Z",
+                        "valid_to": "2026-05-09T02:55:59Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579174"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 031 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579174"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000035",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25590274157",
+                        "label": "Synthetic CI run title 032"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25590274157",
+                            "label": "Synthetic CI run title 032"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T03:20:33Z",
+                        "valid_from": "2026-05-09T03:19:41Z",
+                        "valid_to": "2026-05-09T03:20:33Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25590274157"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 032 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25590274157"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000036",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25597584776",
+                        "label": "Synthetic CI run title 033"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25597584776",
+                            "label": "Synthetic CI run title 033"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T09:23:55Z",
+                        "valid_from": "2026-05-09T09:22:51Z",
+                        "valid_to": "2026-05-09T09:23:55Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25597584776"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 033 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25597584776"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000037",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25599463225",
+                        "label": "Synthetic CI run title 034"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25599463225",
+                            "label": "Synthetic CI run title 034"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-09T11:00:16Z",
+                        "valid_from": "2026-05-09T10:59:27Z",
+                        "valid_to": "2026-05-09T11:00:16Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25599463225"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 034 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25599463225"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000038",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25659231312",
+                        "label": "Synthetic CI run title 035"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25659231312",
+                            "label": "Synthetic CI run title 035"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-11T08:34:04Z",
+                        "valid_from": "2026-05-11T08:32:10Z",
+                        "valid_to": "2026-05-11T08:34:04Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25659231312"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 035 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25659231312"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000039",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25659232280",
+                        "label": "Synthetic CI run title 036"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25659232280",
+                            "label": "Synthetic CI run title 036"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-11T08:33:30Z",
+                        "valid_from": "2026-05-11T08:32:11Z",
+                        "valid_to": "2026-05-11T08:33:30Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25659232280"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 036 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25659232280"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000003a",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748412821",
+                        "label": "Synthetic CI run title 037"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748412821",
+                            "label": "Synthetic CI run title 037"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:39:33Z",
+                        "valid_from": "2026-05-12T16:38:44Z",
+                        "valid_to": "2026-05-12T16:39:33Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748412821"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 037 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748412821"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000003b",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748412884",
+                        "label": "Synthetic CI run title 038"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748412884",
+                            "label": "Synthetic CI run title 038"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:40:10Z",
+                        "valid_from": "2026-05-12T16:38:44Z",
+                        "valid_to": "2026-05-12T16:40:10Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748412884"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 038 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748412884"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000003c",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748415634",
+                        "label": "Synthetic CI run title 039"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748415634",
+                            "label": "Synthetic CI run title 039"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:53:01Z",
+                        "valid_from": "2026-05-12T16:38:47Z",
+                        "valid_to": "2026-05-12T16:53:01Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748415634"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 039 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748415634"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000003d",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748974514",
+                        "label": "Synthetic CI run title 040"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748974514",
+                            "label": "Synthetic CI run title 040"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:50:51Z",
+                        "valid_from": "2026-05-12T16:49:31Z",
+                        "valid_to": "2026-05-12T16:50:51Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748974514"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 040 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748974514"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000003e",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748974785",
+                        "label": "Synthetic CI run title 041"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748974785",
+                            "label": "Synthetic CI run title 041"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:50:46Z",
+                        "valid_from": "2026-05-12T16:49:31Z",
+                        "valid_to": "2026-05-12T16:50:46Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748974785"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 041 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748974785"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-00000000003f",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977136",
+                        "label": "Synthetic CI run title 042"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977136",
+                            "label": "Synthetic CI run title 042"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:51:13Z",
+                        "valid_from": "2026-05-12T16:49:34Z",
+                        "valid_to": "2026-05-12T16:51:13Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977136"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 042 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977136"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000040",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977187",
+                        "label": "Synthetic CI run title 043"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977187",
+                            "label": "Synthetic CI run title 043"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:50:36Z",
+                        "valid_from": "2026-05-12T16:49:34Z",
+                        "valid_to": "2026-05-12T16:50:36Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977187"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 043 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977187"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000041",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977201",
+                        "label": "Synthetic CI run title 044"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977201",
+                            "label": "Synthetic CI run title 044"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:50:14Z",
+                        "valid_from": "2026-05-12T16:49:34Z",
+                        "valid_to": "2026-05-12T16:50:14Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977201"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 044 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977201"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000042",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977231",
+                        "label": "Synthetic CI run title 045"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977231",
+                            "label": "Synthetic CI run title 045"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:53:24Z",
+                        "valid_from": "2026-05-12T16:49:34Z",
+                        "valid_to": "2026-05-12T16:53:24Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977231"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 045 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977231"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000043",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977258",
+                        "label": "Synthetic CI run title 046"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25748977258",
+                            "label": "Synthetic CI run title 046"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:56:16Z",
+                        "valid_from": "2026-05-12T16:49:34Z",
+                        "valid_to": "2026-05-12T16:56:16Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977258"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 046 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977258"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000044",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25749164573",
+                        "label": "Synthetic CI run title 047"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25749164573",
+                            "label": "Synthetic CI run title 047"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:56:27Z",
+                        "valid_from": "2026-05-12T16:53:03Z",
+                        "valid_to": "2026-05-12T16:56:27Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164573"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 047 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164573"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000045",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25749164576",
+                        "label": "Synthetic CI run title 048"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25749164576",
+                            "label": "Synthetic CI run title 048"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:54:04Z",
+                        "valid_from": "2026-05-12T16:53:03Z",
+                        "valid_to": "2026-05-12T16:54:04Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164576"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 048 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164576"],
+                "truncated": false
+            },
+            {
+                "path_id": "00000000-0000-4000-8000-000000000046",
+                "nodes": [
+                    {
+                        "kind": "ci_pipeline_run",
+                        "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25749164591",
+                        "label": "Synthetic CI run title 049"
+                    },
+                    {
+                        "kind": "repository",
+                        "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                        "label": "full-chaos/dev-health-web"
+                    }
+                ],
+                "edges": [
+                    {
+                        "type": "BELONGS_TO_REPOSITORY",
+                        "from": {
+                            "kind": "ci_pipeline_run",
+                            "canonical_id": "ci_pipeline_run.v2:00000000-0000-4000-8000-00000000002c:25749164591",
+                            "label": "Synthetic CI run title 049"
+                        },
+                        "to": {
+                            "kind": "repository",
+                            "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                            "label": "full-chaos/dev-health-web"
+                        },
+                        "derivation": "graph_associated",
+                        "epistemic_status": "observed",
+                        "observed_at": "2026-05-12T16:56:55Z",
+                        "valid_from": "2026-05-12T16:53:03Z",
+                        "valid_to": "2026-05-12T16:56:55Z",
+                        "evidence_ref_ids": [
+                            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164591"
+                        ]
+                    }
+                ],
+                "why_relevant": "Synthetic CI run title 049 belongs to repository full-chaos/dev-health-web",
+                "evidence_ref_ids": ["acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164591"],
+                "truncated": false
+            }
+        ],
+        "conflicts": [],
+        "limitations": [],
+        "evidence_ref_ids": ["acr:v1:repository:00000000-0000-4000-8000-00000000002c"],
+        "claimed_facts": [
+            {
+                "claim_id": "claim_ci_success_rate",
+                "kind": "continuous_integration",
+                "subject": {
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                    "label": "full-chaos/dev-health-web"
+                },
+                "field": "success_rate",
+                "value": {
+                    "number": 0.7475728155339806
+                },
+                "fact_id": "fact_0f3e7523fade6b6e66dd5bf2"
+            },
+            {
+                "claim_id": "claim_ci_pipelines_count",
+                "kind": "continuous_integration",
+                "subject": {
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                    "label": "full-chaos/dev-health-web"
+                },
+                "field": "pipelines_count",
+                "value": {
+                    "integer": 206
+                },
+                "fact_id": "fact_0f3e7523fade6b6e66dd5bf2"
+            },
+            {
+                "claim_id": "claim_ci_day",
+                "kind": "continuous_integration",
+                "subject": {
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                    "label": "full-chaos/dev-health-web"
+                },
+                "field": "day",
+                "value": {
+                    "string": "2026-10-30"
+                },
+                "fact_id": "fact_0f3e7523fade6b6e66dd5bf2"
+            },
+            {
+                "claim_id": "claim_ci_avg_duration",
+                "kind": "continuous_integration",
+                "subject": {
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                    "label": "full-chaos/dev-health-web"
+                },
+                "field": "avg_duration_minutes",
+                "value": {
+                    "number": 5.525970873786405
+                },
+                "fact_id": "fact_0f3e7523fade6b6e66dd5bf2"
+            },
+            {
+                "claim_id": "claim_ci_avg_queue",
+                "kind": "continuous_integration",
+                "subject": {
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                    "label": "full-chaos/dev-health-web"
+                },
+                "field": "avg_queue_minutes",
+                "value": {
+                    "number": 0
+                },
+                "fact_id": "fact_0f3e7523fade6b6e66dd5bf2"
+            },
+            {
+                "claim_id": "claim_ci_p90_duration",
+                "kind": "continuous_integration",
+                "subject": {
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-00000000002c",
+                    "label": "full-chaos/dev-health-web"
+                },
+                "field": "p90_duration_minutes",
+                "value": {
+                    "number": 14.741666666666667
+                },
+                "fact_id": "fact_0f3e7523fade6b6e66dd5bf2"
+            }
+        ],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "canonical_fact:continuous_integration",
+                    "state": "available",
+                    "label": "Canonical facts — CI",
+                    "state_label": "available"
+                },
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T20:27:17.131382387Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": false
+        },
+        "evidence_ref_labels": {
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589546051": "CI run: 00000000-0000-4000-8000-00000000002c:25589546051",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579166": "CI run: 00000000-0000-4000-8000-00000000002c:25589579166",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579167": "CI run: 00000000-0000-4000-8000-00000000002c:25589579167",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579168": "CI run: 00000000-0000-4000-8000-00000000002c:25589579168",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579173": "CI run: 00000000-0000-4000-8000-00000000002c:25589579173",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25589579174": "CI run: 00000000-0000-4000-8000-00000000002c:25589579174",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25590274157": "CI run: 00000000-0000-4000-8000-00000000002c:25590274157",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25597584776": "CI run: 00000000-0000-4000-8000-00000000002c:25597584776",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25599463225": "CI run: 00000000-0000-4000-8000-00000000002c:25599463225",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25659231312": "CI run: 00000000-0000-4000-8000-00000000002c:25659231312",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25659232280": "CI run: 00000000-0000-4000-8000-00000000002c:25659232280",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748412821": "CI run: 00000000-0000-4000-8000-00000000002c:25748412821",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748412884": "CI run: 00000000-0000-4000-8000-00000000002c:25748412884",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748415634": "CI run: 00000000-0000-4000-8000-00000000002c:25748415634",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748974514": "CI run: 00000000-0000-4000-8000-00000000002c:25748974514",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748974785": "CI run: 00000000-0000-4000-8000-00000000002c:25748974785",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977136": "CI run: 00000000-0000-4000-8000-00000000002c:25748977136",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977187": "CI run: 00000000-0000-4000-8000-00000000002c:25748977187",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977201": "CI run: 00000000-0000-4000-8000-00000000002c:25748977201",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977231": "CI run: 00000000-0000-4000-8000-00000000002c:25748977231",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25748977258": "CI run: 00000000-0000-4000-8000-00000000002c:25748977258",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164573": "CI run: 00000000-0000-4000-8000-00000000002c:25749164573",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164576": "CI run: 00000000-0000-4000-8000-00000000002c:25749164576",
+            "acr:v1:ci:00000000-0000-4000-8000-00000000002c:25749164591": "CI run: 00000000-0000-4000-8000-00000000002c:25749164591",
+            "acr:v1:repository:00000000-0000-4000-8000-00000000002c": "Repository: 00000000-0000-4000-8000-00000000002c",
+            "acr:v1:team:linear:TEAMA": "Team: linear:TEAMA"
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "context-fabric-synthesis.v27+gpt-5.6-luna",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna",
+            "synthesis_source": "server"
+        },
+        "deterministic_answer": "This investigation is complete. Principal driver(s): CI success rate is 75% over the last 30 days.",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "completeness": {
+            "terminal_status": "complete",
+            "claimed_facts_count": 6,
+            "rows_count": 0,
+            "state": "not_derived"
+        }
+    }
+}

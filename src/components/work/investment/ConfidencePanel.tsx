@@ -35,6 +35,7 @@ import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 import { AllocationCoverage } from "./AllocationCoverage";
 import { ThemeMeasureNote } from "./ThemeMeasureNote";
 import { EvidenceQualityBands } from "./EvidenceQualityBands";
+import { UncategorizedNote } from "./UncategorizedNote";
 import type { MixExplanationState } from "./types";
 
 type ConfidencePanelProps = {
@@ -293,6 +294,7 @@ export function ConfidencePanel({
                     <EvidenceQualityBands
                         evidenceQualityDistribution={investmentMix?.evidence_quality_distribution}
                     />
+                    <UncategorizedNote stats={investmentMix?.evidence_quality_stats} />
                 </Section>
 
                 <AllocationCoverage

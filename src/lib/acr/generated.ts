@@ -4781,6 +4781,63 @@ export type ACRContextFabricInvestigationResultV1 = {
     };
 };
 
+/**
+ * Sets the caller's feedback on one of its own Ask Dev results: POST /api/v1/context-fabric/investigations/feedback/{result_id}. The body is the whole feedback, so a repeat is harmless. Both flags are required; unset clears one. No field is nullable.
+ */
+export interface ContextFabricResultFeedbackRequestV1 {
+    schema_version: "context_fabric_result_feedback_request.v1";
+    /**
+     * Whether the caller found the answer correct: yes, no, or unset.
+     */
+    correct: "yes" | "no" | "unset";
+    /**
+     * Whether the caller found the answer useful: yes, no, or unset.
+     */
+    useful: "yes" | "no" | "unset";
+}
+
+/**
+ * The caller's feedback on one of its own Ask Dev results: GET and POST /api/v1/context-fabric/investigations/feedback/{result_id}. A result takes feedback only when GET /api/v1/context-fabric/investigations/{result_id} would serve it to the caller now and it completed an Ask Dev submission (it has an owner); unknown other result id, an unknown or malformed one included, gets the same 404 not_found. The feedback is part of the result's backing set and goes with its retention.
+ */
+export interface ContextFabricResultFeedbackV1 {
+    schema_version: "context_fabric_result_feedback.v1";
+    result_id: string;
+    /**
+     * Whether the caller found the answer correct: yes, no, or unset.
+     */
+    correct: "yes" | "no" | "unset";
+    /**
+     * Whether the caller found the answer useful: yes, no, or unset.
+     */
+    useful: "yes" | "no" | "unset";
+    /**
+     * When the feedback was last set. Absent when it was never set; both flags are then unset.
+     */
+    updated_at?: string;
+}
+
+/**
+ * The caller's own submission record (CHAOS-11913): GET /api/v1/context-fabric/investigations/submissions/{submission_id}. Served to the principal that admitted the submission only; unknown other caller, and an unknown id, get the same 404 not_found. A client that lost a create response polls this and replays result_id when state is done.
+ */
+export interface ContextFabricSubmissionStatusV1 {
+    schema_version: "context_fabric_submission_status.v1";
+    submission_id: string;
+    /**
+     * running: the run is live. done: result_id names the final result. done_unsaved: the answer was served but not stored, so there is nothing to replay. abandoned: the run ended without an answer, or ran past its budget plus 30 seconds. No state runs the request again.
+     */
+    state: "running" | "done" | "done_unsaved" | "abandoned";
+    reserved_result_id: string;
+    /**
+     * Present exactly when state is done: the reserved id, or the reused answer's id when the run served one. Read it with GET /api/v1/context-fabric/investigations/{result_id}, which decides the read again.
+     */
+    result_id?: string;
+    /**
+     * The X-ACR-Thread-ID the submission was admitted with, when it named one.
+     */
+    thread_id?: string;
+    updated_at: string;
+}
+
 export type ACRContextPacketItemV1 = {
     schema_version: "context_packet_item.v1";
     packet_item_id: string;
@@ -5095,6 +5152,9 @@ export interface ACRErrorV1 {
     schema_version: "error.v1";
     request_id: string;
     error: {
+        /**
+         * stream_unavailable is the 406 of a create-investigation request that asks for the event stream (Accept: text/event-stream) while the deployment has the stream turned off. It is written before unknown admission work and is not retryable. submission_mismatch, submission_in_progress, submission_unsaved and submission_abandoned are the 409s of a create-investigation request whose X-ACR-Submission-ID was already admitted: a different request under that id; its run still live (retryable, with Retry-After); answered but not stored; ended without an answer. None of them runs the request again. submission_required is the 400 of a create-investigation request by a browser-class credential that names no single well-formed X-ACR-Submission-ID (missing, malformed or repeated): refused before admission and model work, nothing ran, and it is not retryable as sent. concurrency_limited and allowance_exhausted are the 429s of a create-investigation request that names a new X-ACR-Submission-ID over a shared Ask Dev limit: running runs per principal or per organization (details.limit principal or org), or the organization's monthly allowance of runs on the deployment's model. Both carry Retry-After; nothing was admitted. thread_closed is the 409 of a create-investigation request whose X-ACR-Thread-ID, or X-ACR-Submission-ID, belongs to a conversation of the caller that was deleted, has expired or is full (1000000 turns): nothing ran, and the request is not retryable under those ids; start a new conversation. canceled, run_lost and cursor_expired belong to the run lease (CHAOS-11949): canceled (409) is the terminal error of a run its owner canceled; run_lost (503) is the terminal error of a run whose service instance stopped and whose lease ended; neither is retryable under the submission id. cursor_expired (410) is the answer to an attach whose Last-Event-ID the event log cannot serve (malformed, never written, older than the kept window, or at or past the terminal): read the submission status and replay the result by id instead. access_denied, no_repository and budget_exhausted are the per-call access read's refusals of a call by a user-class credential (browser, OAuth user, native device), which re-reads the user's access live on every protected call: access_denied is the 403 when the user is not a member of the organization, is impersonating, the browser credential's session is not live, or the organization or user is unknown (one code for every reason, not retryable); no_repository is the 409 when the credential's repository grant within the organization's live repository inventory is empty (not retryable as sent); budget_exhausted is the 503 of a create-investigation request whose wait budget left after the access read is below the minimum, refused before admission with nothing run (retryable).
+         */
         code:
             | "invalid_request"
             | "budget_refusal"
@@ -5111,7 +5171,22 @@ export interface ACRErrorV1 {
             | "store_unavailable"
             | "interpretation_rejected"
             | "synthesis_rejected"
-            | "internal_error";
+            | "internal_error"
+            | "stream_unavailable"
+            | "submission_mismatch"
+            | "submission_in_progress"
+            | "submission_unsaved"
+            | "submission_abandoned"
+            | "submission_required"
+            | "concurrency_limited"
+            | "allowance_exhausted"
+            | "thread_closed"
+            | "canceled"
+            | "run_lost"
+            | "cursor_expired"
+            | "access_denied"
+            | "no_repository"
+            | "budget_exhausted";
         message: string;
         http_status: number;
         retryable: boolean;
@@ -5122,9 +5197,13 @@ export interface ACRErrorV1 {
             reason?: string;
             field?: string;
             /**
-             * On a 429 rate_limited: which limit refused the request. request_budget is the organization's request budget; capabilities_budget is the capabilities handshake's own budget, spent by the caller-resolution call every MCP request makes; the credential was already decided in both cases. A consumer treats a value outside this enum as absent.
+             * On a 429 rate_limited: which limit refused the request. request_budget is the organization's request budget; capabilities_budget is the capabilities handshake's own budget, spent by the caller-resolution call every MCP request makes; the credential was already decided in both cases. On a 429 concurrency_limited (CHAOS-11914): principal or org, the shared running-run limit that refused the submission. A consumer treats a value outside this enum as absent.
              */
-            limit?: "request_budget" | "capabilities_budget";
+            limit?: "request_budget" | "capabilities_budget" | "principal" | "org";
+            /**
+             * On a 504 upstream_unavailable: which deadline ended the investigation. model is one model attempt reaching its own timeout (ACR_CONTEXT_FABRIC_MODEL_TIMEOUT) before the request deadline; request is the request deadline (ACR_REQUEST_TIMEOUT or the caller's shorter wait budget). Absent when the answer cannot tell which. A consumer treats a value outside this enum as absent.
+             */
+            deadline?: "model" | "request";
             [k: string]: unknown | undefined;
         };
     };
@@ -5473,6 +5552,7 @@ export type ClaimedFact = {
      */
     time_series_rows?: ClaimedFactRow[];
     time_series_table?: ClaimedFactTable1;
+    investment_mix?: ClaimedInvestmentMix;
 };
 export type ScalarValue = {
     string?: string;
@@ -8090,18 +8170,19 @@ export type DriverJudgment = {
     current: boolean;
 };
 /**
- * CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire.
+ * CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire. CHAOS-11601: as_of (date-time) is the third form, a current-state snapshot read at that instant with no read window; it is legal only with no start, end or relative_id.
  */
 export type EffectiveEvidenceWindow = EffectiveEvidenceWindow1 & {
     start?: string;
     end?: string;
+    as_of?: string;
     relative_id?: RelativeWindowID;
     /**
      * Open vocabulary; documented values: trend_assessment, recent_activity_lookup, state_snapshot, explicit_window. A client must tolerate values it does not know.
      */
     window_class?: string;
     /**
-     * Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed. A client must tolerate values it does not know.
+     * Open vocabulary; documented values: inferred_default, question_stated, clarification_confirmed, server_default. A client must tolerate values it does not know.
      */
     provenance: string;
     /**
@@ -9077,6 +9158,18 @@ export interface ClaimedFactTable1 {
      * For `ranking` only: which declared measure the row order is by.
      */
     order_by?: string;
+}
+/**
+ * Additive (CHAOS-12160): which attribution produced an investment claim's value about a project, and over how many work units in the read window. owning_team_rollup is the owning teams' roll-up, served because the project has no measurable work of its own in the window (project_own_work_unit_count says how many own units it has); project_native is the project's own work. Set by the server from the claim's grounding fact, never model-authored, and only on an investment claim.
+ */
+export interface ClaimedInvestmentMix {
+    /**
+     * Open vocabulary; documented values: project_native, owning_team_rollup. A client must tolerate values it does not know.
+     */
+    investment_mix_source: string;
+    rollup_basis: string;
+    work_unit_count: number;
+    project_own_work_unit_count: number;
 }
 export interface CohortExclusion {
     subject: SubjectRef;
@@ -10902,7 +10995,7 @@ export interface WindowExpandOption {
     candidate_kind?: SubjectKind;
 }
 /**
- * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1.
+ * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1. CHAOS-11975: anchor_options, when present, is non-empty. A v2 result carries at least one membership-verify anchor option (ACR's validator refuses one without); the schema states only the non-empty rule in this release, and requires structure_needs and anchor_options from the next one (a field is optional for one release before it becomes required).
  */
 export interface StructureNeedsV2 {
     /**
@@ -11142,10 +11235,10 @@ export interface StructureNeedsV2 {
               KindOption,
           ];
     /**
+     * @minItems 1
      * @maxItems 20
      */
     anchor_options?:
-        | []
         | [AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2, AnchorOptionV2]

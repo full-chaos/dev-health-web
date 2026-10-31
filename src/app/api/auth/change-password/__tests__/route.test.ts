@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn(), sealSessionHandoff: vi.fn() }));
 vi.mock("@/lib/origin", () => ({ getBackendUrl: () => "http://ops.example.test" }));
 
-import { auth } from "@/lib/auth";
+import { auth, sealSessionHandoff } from "@/lib/auth";
 import { POST } from "../route";
 
 const SECRET_CURRENT = "current-secret-value-1";
@@ -35,8 +35,11 @@ describe("POST /api/auth/change-password", () => {
         vi.unstubAllGlobals();
         vi.mocked(auth).mockResolvedValue({
             access_token: "session-access",
+            user: { id: "u" },
             expires: "2026-12-31T00:00:00.000Z",
         } as never);
+        vi.mocked(sealSessionHandoff).mockReset();
+        vi.mocked(sealSessionHandoff).mockResolvedValue("sealed-handoff");
     });
 
     it("refuses an anonymous caller before any backend call", async () => {
@@ -54,12 +57,32 @@ describe("POST /api/auth/change-password", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("forwards the bearer and both passwords, and returns the fresh pair uncached", async () => {
-        const fetchMock = backend(200, { access_token: "a2", refresh_token: "r2", user: {} });
+    it("forwards the bearer and both passwords, and answers a sealed handoff of the fresh pair", async () => {
+        const pair = {
+            access_token: "a2",
+            refresh_token: "r2",
+            expires_in: 60,
+            user: { org_id: "o" },
+        };
+        const fetchMock = backend(200, pair);
         const response = await call({ current_password: SECRET_CURRENT, new_password: SECRET_NEW });
         expect(response.status).toBe(200);
         expect(response.headers.get("cache-control")).toBe("no-store");
-        expect(await response.json()).toMatchObject({ access_token: "a2", refresh_token: "r2" });
+        // CHAOS-12088: the page gets a sealed handoff, never the pair in clear.
+        expect(sealSessionHandoff).toHaveBeenCalledWith(
+            "activeOrg",
+            {
+                access_token: "a2",
+                refresh_token: "r2",
+                expires_in: 60,
+                user: { org_id: "o", role: undefined, is_superuser: undefined },
+            },
+            "u",
+        );
+        const text = await response.text();
+        expect(JSON.parse(text)).toEqual({ ok: true, sessionHandoff: "sealed-handoff" });
+        expect(text).not.toContain("a2");
+        expect(text).not.toContain("r2");
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(url).toBe("http://ops.example.test/api/v1/auth/change-password");
         expect((init.headers as Record<string, string>).Authorization).toBe(
@@ -97,6 +120,19 @@ describe("POST /api/auth/change-password", () => {
             error: "The new password was not accepted.",
             violations: ["Password must include at least one letter"],
         });
+    });
+
+    it.each([
+        ["the seal fails", () => vi.mocked(sealSessionHandoff).mockRejectedValue(new Error("x"))],
+        ["the answer has no pair", () => backend(200, { user: {} })],
+    ])("answers 502 without the pair when %s", async (_label, arrange) => {
+        backend(200, { access_token: "a2", refresh_token: "r2", user: {} });
+        arrange();
+        const response = await call({ current_password: SECRET_CURRENT, new_password: SECRET_NEW });
+        expect(response.status).toBe(502);
+        const text = await response.text();
+        expect(JSON.parse(text)).toEqual({ error: "Password changed. Sign in again to continue." });
+        expect(text).not.toContain("a2");
     });
 
     it("answers a generic 502 when the backend is unreachable", async () => {

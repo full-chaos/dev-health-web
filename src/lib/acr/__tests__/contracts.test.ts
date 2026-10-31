@@ -57,11 +57,17 @@ describe("ACR REST contract boundary", () => {
             "schemas/agent_episode_create.v1.schema.json",
             "schemas/context_fabric_common.v1.schema.json",
             "schemas/context_fabric_answer_projection.v1.schema.json",
+            "schemas/context_fabric_investigation_event.v1.schema.json",
             "schemas/context_fabric_investigation_request.v1.schema.json",
             "schemas/context_fabric_investigation_response.v1.schema.json",
             "schemas/context_fabric_investigation_response.v2.schema.json",
             "schemas/context_fabric_investigation_result.v1.schema.json",
             "schemas/context_fabric_investigation_result.v2.schema.json",
+            "schemas/context_fabric_result_feedback.v1.schema.json",
+            "schemas/context_fabric_result_feedback_request.v1.schema.json",
+            "schemas/context_fabric_submission_status.v1.schema.json",
+            "schemas/context_fabric_thread.v1.schema.json",
+            "schemas/context_fabric_thread_list.v1.schema.json",
             "schemas/credential_ack_request.v1.schema.json",
             "schemas/credential_ack_response.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
@@ -85,7 +91,7 @@ describe("ACR REST contract boundary", () => {
             "schemas/token_exchange_response.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("ae88ef719eaff8f689c9b621b7c453c40bbdc446");
+        expect(manifest.source_commit).toBe("a5c1ab432cfedac801240e4310199745ff5378fe");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {

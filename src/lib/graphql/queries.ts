@@ -23,6 +23,7 @@ query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
       stddev
       total
       bandCounts
+      uncategorizedCount
     }
   }
 }

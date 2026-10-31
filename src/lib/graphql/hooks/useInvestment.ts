@@ -24,6 +24,7 @@ import {
     ScopeLevelInput,
 } from "../types";
 import { adaptSankeyResult, buildDateRange } from "../investmentFetchers";
+import { adaptEvidenceQualityStats } from "../evidenceQualityStats";
 import { useOrgId } from "../provider";
 
 function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
@@ -131,18 +132,9 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
             evidence_quality_distribution:
                 (result.data.analytics.evidenceQualityDistribution as
                     Record<string, number> | undefined) ?? undefined,
-            evidence_quality_stats: result.data.analytics.evidenceQualityStats
-                ? {
-                      mean: result.data.analytics.evidenceQualityStats.mean ?? null,
-                      stddev: result.data.analytics.evidenceQualityStats.stddev ?? null,
-                      band_counts:
-                          (result.data.analytics.evidenceQualityStats.bandCounts as Record<
-                              string,
-                              number
-                          >) ?? {},
-                      quality_drivers: [],
-                  }
-                : undefined,
+            evidence_quality_stats: adaptEvidenceQualityStats(
+                result.data.analytics.evidenceQualityStats,
+            ),
         };
     }, [result.data, result.error]);
 

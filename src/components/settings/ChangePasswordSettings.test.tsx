@@ -36,16 +36,22 @@ describe("ChangePasswordSettings", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("adopts the fresh token pair and clears the fields on success", async () => {
-        const pair = { access_token: "a2", refresh_token: "r2", user: { org_id: "o" } };
+    it("adopts the sealed handoff and clears the fields on success", async () => {
         vi.stubGlobal(
             "fetch",
-            vi.fn().mockResolvedValue(new Response(JSON.stringify(pair), { status: 200 })),
+            vi.fn().mockResolvedValue(
+                new Response(JSON.stringify({ ok: true, sessionHandoff: "sealed-handoff" }), {
+                    status: 200,
+                }),
+            ),
         );
         const user = userEvent.setup();
         render(<ChangePasswordSettings />);
         await fill(user, "old-password-1", "new-password-long-1", "new-password-long-1");
-        await waitFor(() => expect(update).toHaveBeenCalledWith({ activeOrg: pair }));
+        // CHAOS-12088: the page passes the sealed handoff on, unread; no token pair in clear.
+        await waitFor(() =>
+            expect(update).toHaveBeenCalledWith({ sessionHandoff: "sealed-handoff" }),
+        );
         expect(
             await screen.findByText("Password changed. Your other sessions were signed out."),
         ).toBeInTheDocument();

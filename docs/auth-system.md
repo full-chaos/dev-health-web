@@ -19,10 +19,33 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 
 **Session Data**:
 
-- `access_token`: Backend API bearer token
+- `access_token`: Backend API bearer token — **server only** (see below)
 - `role`: User's primary role (e.g., "admin", "viewer")
 - `is_superuser`: Boolean flag for global access
 - `permissions`: Array of specific permission strings
+
+**The Ops token never reaches page JS (CHAOS-12088).** Server code (`auth()`, `src/proxy.ts`,
+route handlers, server actions) reads `session.access_token` from the in-process session. The
+HTTP route `/api/auth/*` (what `useSession` reads) is wrapped by `browserSafeAuthHandlers`
+(`src/lib/authBrowserSession.ts`): it removes `access_token` and `refresh_token` from every JSON
+answer, refuses (500) an answer that still holds a token value under another key, and refuses
+(400) a browser `update()` that carries a token pair in clear (`activeOrg`, `onboardComplete`).
+
+A new token pair (organization switch, password change, workspace creation) reaches the session
+as a **sealed handoff**: the route or server action that got the pair from Ops seals it with
+`sealSessionHandoff()` (`src/lib/auth.ts`: an encrypted JWT under the auth secret, its own salt,
+120 s, bound to the user id) and the page passes it on with `useSession().update({ sessionHandoff })`
+without being able to read it. The jwt callback opens it and refuses a forged, expired or
+other-user handoff. The write goes through the page's own `update()` on purpose: a cookie written
+by the server action itself was overwritten when a `/api/auth/session` read the page had started
+before it finished later and re-issued the old session.
+
+A client component that needs an authenticated Ops call uses a server action or a route handler,
+never the session token; that handler serves named fields or a fixed error, never the Ops body as
+it came. Guards: `src/app/api/auth/[...nextauth]/__tests__/route.test.ts` and
+`src/lib/__tests__/auth-session-handoff.test.ts` (real Auth.js handlers),
+`src/lib/__tests__/noOpsTokenInClientCode.test.ts` (source scan) and
+`tests/session-token-boundary.production.spec.ts` (production build, served bytes).
 
 ## User Journeys
 
@@ -247,11 +270,15 @@ sequenceDiagram
     U->>RS: Access any (app) route
     RS->>RS: Check needs_onboarding
     RS->>O: Redirect to /auth/onboard
+    participant A as createWorkspace (server action)
+
     U->>OF: Enter organization name
-    OF->>B: POST /auth/onboard {action: "create_org", org_name}
+    OF->>A: createWorkspace(org_name)
+    A->>B: POST /auth/onboard {action: "create_org", org_name} (session bearer)
     B->>B: Create Organization + Membership (role=owner)
-    B-->>OF: OnboardResponse {tokens, org_id, org_name, role}
-    OF->>S: session.update() with new tokens
+    B-->>A: OnboardResponse {tokens, org_id, org_name, role}
+    A-->>OF: {ok, orgId, sessionHandoff} (pair sealed, unreadable to the page)
+    OF->>S: session.update({sessionHandoff})
     S->>D: Redirect to /dashboard
 ```
 
@@ -259,6 +286,7 @@ sequenceDiagram
 | ------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
 | Backend unit  | `tests/test_onboarding.py`                        | Org creation, token return, already-onboarded rejection            |
 | Frontend unit | `src/components/auth/OnboardForm.test.tsx`        | Form submission, redirect, error handling                          |
+| Frontend unit | `src/lib/onboarding/__tests__/actions.test.ts`    | Server action: bearer, session write, no token in the result       |
 | Frontend E2E  | `tests/auth-onboard.spec.ts`                      | Form renders, creates workspace, blank name fallback               |
 | Frontend E2E  | `tests/account-creation-journey.spec.ts` (step 3) | Login -> onboard -> dashboard                                      |
 | Live E2E      | `tests/live/journey.spec.ts`                      | POST /onboard with org_name, re-login shows needs_onboarding=false |

@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
+import { AskDevPanel } from "@/components/ask-dev/AskDevPanel";
+import { AskDevShellProvider } from "@/components/ask-dev/AskDevShellContext";
+import { AskDevConversationProvider } from "@/components/ask-dev/conversation/AskDevConversationContext";
+import { AskDevPageContextProvider } from "@/components/ask-dev/pageContext/AskDevPageContext";
 import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -54,67 +58,74 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     }, []);
 
     return (
-        <>
-            <a
-                href="#main-content"
-                className="sr-only rounded-(--radius-sm) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
-            >
-                {CTA_LABELS.skipToMainContent}
-            </a>
-            {/* Prototype `body::before`: a 2px orange-to-teal line along the top edge. z-35: over the sticky top bar (z-30), under the mobile
+        <AskDevShellProvider>
+            {/* The pages' typed context for Ask Dev (CHAOS-3584): a page registers, the panel proposes. */}
+            <AskDevPageContextProvider>
+                {/* Above the panel: closing the panel keeps the conversation and its run (CHAOS-11928). */}
+                <AskDevConversationProvider>
+                    <a
+                        href="#main-content"
+                        className="sr-only rounded-(--radius-sm) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                    >
+                        {CTA_LABELS.skipToMainContent}
+                    </a>
+                    {/* Prototype `body::before`: a 2px orange-to-teal line along the top edge. z-35: over the sticky top bar (z-30), under the mobile
             slide-over and its backdrop (z-40/50), drawers and dialogs (z-50), so it never covers them. Fixed, so it adds no scroll offset. */}
-            <div
-                aria-hidden="true"
-                data-testid="shell-ribbon"
-                className="pointer-events-none fixed inset-x-0 top-0 z-35 h-0.5 bg-(image:--ribbon)"
-            />
-            {banners}
-            <ShellMobileBar
-                open={mobileOpen}
-                onToggle={() => setNavOpenedAt(mobileOpen ? null : pathname)}
-                controlRef={menuControlRef}
-            />
-            <div className="flex flex-col md:flex-row" data-testid="app-shell">
-                <ShellSidebar
-                    organization={organization}
-                    onActiveOrganizationChange={handleActiveOrganizationChange}
-                    mobileOpen={mobileOpen}
-                    onMobileClose={closeMobileNav}
-                    mobileControlRef={menuControlRef}
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <ShellTopBar themeToggle={themeToggle} />
-                    <FilterPendingProvider>
-                        {(pending) => (
-                            <main
-                                id="main-content"
-                                tabIndex={-1}
-                                aria-busy={pending ? true : undefined}
-                                data-filter-pending={pending ? "true" : undefined}
-                                className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none aria-busy:cursor-progress aria-busy:[&_[data-testid=scope-bar]~*]:opacity-60 motion-safe:[&_[data-testid=scope-bar]~*]:transition-opacity sm:px-6 md:px-8 md:pt-8"
-                            >
-                                {pending ? (
-                                    <>
-                                        {/* Busy mark: the values below are those of the previous filter until the line is gone. */}
-                                        <div
-                                            aria-hidden="true"
-                                            data-testid="filter-pending-bar"
-                                            className="pointer-events-none fixed inset-x-0 top-0.5 z-35 h-0.5 animate-pulse bg-(--accent-2) motion-reduce:animate-none"
-                                        />
-                                        <p role="status" className="sr-only">
-                                            Loading the new window. The values shown are from the
-                                            previous one.
-                                        </p>
-                                    </>
-                                ) : null}
-                                <ShellOrganizationProvider value={organization}>
-                                    {children}
-                                </ShellOrganizationProvider>
-                            </main>
-                        )}
-                    </FilterPendingProvider>
-                </div>
-            </div>
-        </>
+                    <div
+                        aria-hidden="true"
+                        data-testid="shell-ribbon"
+                        className="pointer-events-none fixed inset-x-0 top-0 z-35 h-0.5 bg-(image:--ribbon)"
+                    />
+                    {banners}
+                    <ShellMobileBar
+                        open={mobileOpen}
+                        onToggle={() => setNavOpenedAt(mobileOpen ? null : pathname)}
+                        controlRef={menuControlRef}
+                    />
+                    <div className="flex flex-col md:flex-row" data-testid="app-shell">
+                        <ShellSidebar
+                            organization={organization}
+                            onActiveOrganizationChange={handleActiveOrganizationChange}
+                            mobileOpen={mobileOpen}
+                            onMobileClose={closeMobileNav}
+                            mobileControlRef={menuControlRef}
+                        />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                            <ShellTopBar themeToggle={themeToggle} />
+                            <FilterPendingProvider>
+                                {(pending) => (
+                                    <main
+                                        id="main-content"
+                                        tabIndex={-1}
+                                        aria-busy={pending ? true : undefined}
+                                        data-filter-pending={pending ? "true" : undefined}
+                                        className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none aria-busy:cursor-progress aria-busy:[&_[data-testid=scope-bar]~*]:opacity-60 motion-safe:[&_[data-testid=scope-bar]~*]:transition-opacity sm:px-6 md:px-8 md:pt-8"
+                                    >
+                                        {pending ? (
+                                            <>
+                                                {/* Busy mark: the values below are those of the previous filter until the line is gone. */}
+                                                <div
+                                                    aria-hidden="true"
+                                                    data-testid="filter-pending-bar"
+                                                    className="pointer-events-none fixed inset-x-0 top-0.5 z-35 h-0.5 animate-pulse bg-(--accent-2) motion-reduce:animate-none"
+                                                />
+                                                <p role="status" className="sr-only">
+                                                    Loading the new window. The values shown are
+                                                    from the previous one.
+                                                </p>
+                                            </>
+                                        ) : null}
+                                        <ShellOrganizationProvider value={organization}>
+                                            {children}
+                                        </ShellOrganizationProvider>
+                                    </main>
+                                )}
+                            </FilterPendingProvider>
+                        </div>
+                        <AskDevPanel />
+                    </div>
+                </AskDevConversationProvider>
+            </AskDevPageContextProvider>
+        </AskDevShellProvider>
     );
 }

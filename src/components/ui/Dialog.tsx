@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
 
+import { BodyPortal, usePortalMounted } from "@/components/ui/BodyPortal";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 
 type DialogProps = {
@@ -33,8 +34,10 @@ export function Dialog({
     const titleId = useId();
     const panelRef = useRef<HTMLDivElement>(null);
 
+    // The panel exists only once the portal has mounted; focus must wait for it.
+    const portalMounted = usePortalMounted();
     const onKeyDown = useModalFocus({
-        open,
+        open: open && portalMounted,
         panelRef,
         initialFocusRef,
         onEscape: onCloseAction,
@@ -52,31 +55,33 @@ export function Dialog({
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]">
-            <div
-                aria-hidden="true"
-                data-testid="dialog-backdrop"
-                className="absolute inset-0 bg-black/40"
-                onClick={onCloseAction}
-            />
-            <div
-                ref={panelRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={titleId}
-                tabIndex={-1}
-                data-testid={testId ?? "dialog"}
-                onKeyDown={onKeyDown}
-                className="relative flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--surface) shadow-(--elevation-drawer) focus:outline-none"
-            >
-                <h2
-                    id={titleId}
-                    className={hideTitle ? "sr-only" : "px-5 pt-4 text-h3 font-semibold"}
+        <BodyPortal>
+            <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]">
+                <div
+                    aria-hidden="true"
+                    data-testid="dialog-backdrop"
+                    className="absolute inset-0 bg-black/40"
+                    onClick={onCloseAction}
+                />
+                <div
+                    ref={panelRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={titleId}
+                    tabIndex={-1}
+                    data-testid={testId ?? "dialog"}
+                    onKeyDown={onKeyDown}
+                    className="relative flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--surface) shadow-(--elevation-drawer) focus:outline-none"
                 >
-                    {title}
-                </h2>
-                {children}
+                    <h2
+                        id={titleId}
+                        className={hideTitle ? "sr-only" : "px-5 pt-4 text-h3 font-semibold"}
+                    >
+                        {title}
+                    </h2>
+                    {children}
+                </div>
             </div>
-        </div>
+        </BodyPortal>
     );
 }

@@ -2,6 +2,9 @@ import type { Page, Request } from "@playwright/test";
 
 const CAPABILITIES_PATH = "/api/v1/dev/capabilities";
 const REQUEST_ABORTED = "net::ERR_ABORTED";
+const RSC_QUERY_KEY = "_rsc";
+const SERVER_ACTION_HEADER = "next-action";
+const SERVER_ACTION_CONTENT_TYPE = "text/x-component";
 
 export type BrowserRequestEvent =
     | {
@@ -10,12 +13,20 @@ export type BrowserRequestEvent =
           readonly url: string;
           readonly method: string;
           readonly errorText: string;
+          readonly serverAction?: boolean;
       }
     | {
           readonly kind: "finished";
           readonly sequence: number;
           readonly url: string;
           readonly status: number | null;
+      }
+    | {
+          readonly kind: "responded";
+          readonly sequence: number;
+          readonly url: string;
+          readonly status: number;
+          readonly contentType: string;
       };
 
 export type BrowserRequestFailure = Extract<BrowserRequestEvent, { kind: "failed" }>;
@@ -54,6 +65,64 @@ function isRecoveredCapabilityAbort(
     );
 }
 
+// The Next client cancels the end of a server action's text/x-component stream once the action result
+// is decoded: Chromium reports that as net::ERR_ABORTED after a 200 response (dev and prod builds, the
+// result resolves before the cancel; CHAOS-11098). An abort before any response stays a failure.
+function isCancelledAfterServerActionResponse(
+    failure: BrowserRequestFailure,
+    events: readonly BrowserRequestEvent[],
+    pageOrigin: string | null,
+): boolean {
+    if (
+        failure.errorText !== REQUEST_ABORTED ||
+        failure.method !== "POST" ||
+        failure.serverAction !== true ||
+        pageOrigin === null ||
+        requestOrigin(failure.url) !== pageOrigin
+    ) {
+        return false;
+    }
+
+    const failedAt = events.indexOf(failure);
+    return events.some(
+        (event, index) =>
+            index < failedAt &&
+            event.kind === "responded" &&
+            event.sequence === failure.sequence &&
+            event.status === 200 &&
+            event.contentType.toLowerCase().startsWith(SERVER_ACTION_CONTENT_TYPE),
+    );
+}
+
+// router.refresh() fetches an RSC payload (GET with an `_rsc` query key); the Next client can cancel the
+// stream after the 200 response, which Chromium reports as net::ERR_ABORTED. An abort before any
+// response, a non-200 response or any other error stays a failure.
+function isCancelledAfterRscResponse(
+    failure: BrowserRequestFailure,
+    events: readonly BrowserRequestEvent[],
+    pageOrigin: string | null,
+): boolean {
+    if (
+        failure.errorText !== REQUEST_ABORTED ||
+        failure.method !== "GET" ||
+        pageOrigin === null ||
+        requestOrigin(failure.url) !== pageOrigin ||
+        !new URL(failure.url).searchParams.has(RSC_QUERY_KEY)
+    ) {
+        return false;
+    }
+
+    const failedAt = events.indexOf(failure);
+    return events.some(
+        (event, index) =>
+            index < failedAt &&
+            event.kind === "responded" &&
+            event.sequence === failure.sequence &&
+            event.status === 200 &&
+            event.contentType.toLowerCase().startsWith(SERVER_ACTION_CONTENT_TYPE),
+    );
+}
+
 export function unrecoveredBrowserRequestFailures(
     events: readonly BrowserRequestEvent[],
     pageUrl: string,
@@ -61,7 +130,10 @@ export function unrecoveredBrowserRequestFailures(
     const pageOrigin = requestOrigin(pageUrl);
     return events.filter(
         (event): event is BrowserRequestFailure =>
-            event.kind === "failed" && !isRecoveredCapabilityAbort(event, events, pageOrigin),
+            event.kind === "failed" &&
+            !isRecoveredCapabilityAbort(event, events, pageOrigin) &&
+            !isCancelledAfterServerActionResponse(event, events, pageOrigin) &&
+            !isCancelledAfterRscResponse(event, events, pageOrigin),
     );
 }
 
@@ -113,8 +185,18 @@ export function recordCapabilityRequestFaults(page: Page): CapabilityRequestFaul
             url: request.url(),
             method: request.method(),
             errorText: request.failure()?.errorText ?? "",
+            serverAction: SERVER_ACTION_HEADER in request.headers(),
         });
         markCapabilityRequestSettled(request);
+    });
+    page.on("response", (response) => {
+        events.push({
+            kind: "responded",
+            sequence: sequenceFor(response.request()),
+            url: response.url(),
+            status: response.status(),
+            contentType: response.headers()["content-type"] ?? "",
+        });
     });
     page.on("requestfinished", (request) => {
         void request

@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { RefObject } from "react";
 
 import fcLogo from "@/assets/fc-logo.svg";
+import { AskDevLauncher } from "@/components/ask-dev/AskDevLauncher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -60,6 +61,7 @@ export function ShellMobileBar({ open, onToggle, controlRef }: ShellMobileBarPro
                     </span>
                 </Link>
                 <div className="ml-auto flex items-center gap-3">
+                    <AskDevLauncher placement="mobile-bar" />
                     <ThemeToggle />
                     <UserMenu />
                 </div>

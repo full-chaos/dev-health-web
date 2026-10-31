@@ -5,6 +5,7 @@ import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
+import { routedPathname, shouldProxyToOps } from "@/lib/proxyRouting";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
 import { isServerDeadlineError, withDeadline } from "@/lib/serverDeadline";
 import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
@@ -120,7 +121,8 @@ const DELETED_ASK_DEV_PATH_FAMILIES = [
     "/api/v1/admin/platform/ask-dev",
 ] as const;
 
-export function isDeletedAskDevPath(pathname: string): boolean {
+export function isDeletedAskDevPath(rawPathname: string): boolean {
+    const pathname = routedPathname(rawPathname);
     return DELETED_ASK_DEV_PATH_FAMILIES.some(
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
     );
@@ -395,13 +397,7 @@ async function handleRequest(request: NextRequest) {
         return rateLimitResponse;
     }
 
-    const shouldProxy =
-        pathname === "/graphql" ||
-        (pathname.startsWith("/api/") &&
-            !pathname.startsWith("/api/auth") &&
-            !pathname.startsWith("/api/acr") &&
-            !pathname.startsWith("/api/agent-context") &&
-            !pathname.startsWith("/api/v1/llm-proxy"));
+    const shouldProxy = shouldProxyToOps(pathname);
 
     if (!shouldProxy) {
         const response = NextResponse.next({

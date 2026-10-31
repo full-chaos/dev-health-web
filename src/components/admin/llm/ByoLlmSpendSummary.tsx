@@ -12,6 +12,8 @@ import { DataState } from "@/components/ui/DataState";
 import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
 import { logger } from "@/lib/logger";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { isUnreadableSettings } from "@/lib/admin/types";
+import { onByoLlmConfigChanged } from "@/lib/admin/byoLlmConfigChanges";
 import type {
     LLMBudgetResponse,
     LLMSettingsActionResult,
@@ -54,6 +56,9 @@ function focusBudgetField() {
 }
 
 const PANEL_TITLE = "AI / LLM Spend Summary (BYO-LLM)";
+/** CHAOS-12173: the saved key cannot be decrypted; the BYO LLM card above offers Replace and Remove. */
+export const SPEND_UNREADABLE =
+    "Spend shows again once the saved key above is replaced or removed.";
 const PANEL_DESCRIPTION =
     "Per-run LLM call volume, token usage, and model for the latest runs in the last 30 days.";
 
@@ -122,12 +127,14 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [unreadable, setUnreadable] = useState(false);
     const [summary, setSummary] = useState<LLMSpendSummaryResponse | null>(null);
     const [budget, setBudget] = useState<LLMBudgetResponse | null>(null);
 
     const fetchSpend = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
+        setUnreadable(false);
         setLocked(null);
         const result = await loadSpendAction();
         if (result.status === 402) {
@@ -144,6 +151,10 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
                     ? result.error
                     : "BYO-LLM is not enabled for this organization.",
             });
+        } else if (isUnreadableSettings(result)) {
+            // The saved key cannot be decrypted (CHAOS-12173): the BYO LLM card owns that state and
+            // offers Replace and Remove; a Retry here could never help.
+            setUnreadable(true);
         } else if (result.error) {
             setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
@@ -160,6 +171,9 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSpend coordinates async loading state after mount.
         fetchSpend();
     }, [fetchSpend]);
+
+    // Replace or Remove in the BYO LLM card changes what spend can be read.
+    useEffect(() => onByoLlmConfigChanged(() => void fetchSpend()), [fetchSpend]);
 
     useEffect(() => {
         if (!loadBudgetAction) return;
@@ -233,6 +247,12 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
                     </Link>
                 ) : null}
             </div>
+        );
+    } else if (unreadable) {
+        body = (
+            <p className="text-sm text-(--ink-muted)" data-testid="byo-llm-spend-unreadable">
+                {SPEND_UNREADABLE}
+            </p>
         );
     } else if (loadError) {
         body = (

@@ -1,4 +1,5 @@
 import { getLocalStorage, getWindow } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 import {
     consoleTelemetryAdapter,
@@ -10,6 +11,7 @@ import { canTrackProductTelemetry } from "./telemetry/config";
 import { createTelemetryQueue, type TelemetryQueue } from "./telemetry/queue";
 import { routePatternForPathname } from "./telemetry/routePatterns";
 import { sanitizeTelemetryPayload } from "./telemetry/sanitize";
+import { applyTelemetrySchema, closedRoutePattern, closeTelemetryEvent } from "./telemetry/schema";
 import type { TelemetryEvent, TelemetryEventName, TelemetryPayloadByName } from "./telemetry/types";
 
 const DEFAULT_SESSION_ID_KEY = "devhealth-product-telemetry-session-id";
@@ -179,6 +181,26 @@ export function resetTelemetryForTests(): void {
     memorySession = null;
 }
 
+/** The ids every ingested event needs, from the same sources trackTelemetryEvent uses; synchronous, so a beacon path can call it. */
+export function telemetryEnvelopeIdentity(now: number): {
+    eventId: string;
+    sessionId: string;
+    anonymousUserId: string;
+    routePattern: string | null;
+} {
+    const win = getWindow();
+    const pattern =
+        telemetryContext.routePattern ??
+        (win ? routePatternForPathname(win.location.pathname) : null);
+    return {
+        eventId: randomId(),
+        sessionId: telemetryContext.sessionId ?? activeSessionId(now),
+        anonymousUserId:
+            telemetryContext.anonymousUserId ?? storedId(DEFAULT_ANONYMOUS_USER_ID_KEY),
+        routePattern: pattern === null ? null : closedRoutePattern(pattern),
+    };
+}
+
 export function trackTelemetryEvent<Name extends TelemetryEventName>(
     name: Name,
     payload: TelemetryPayloadByName[Name],
@@ -193,6 +215,23 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         win.dispatchEvent(new Event(TELEMETRY_INTERACTION_EVENT));
     }
 
+    const closed = applyTelemetrySchema(name, payload);
+    if (!closed.ok) {
+        logger.debug(
+            { event: name, key: closed.key },
+            "Telemetry event dropped: a payload value is outside its closed set",
+        );
+        return;
+    }
+    const sanitized = sanitizeTelemetryPayload(closed.payload);
+    if (!sanitized.ok) {
+        logger.debug(
+            { event: name, key: sanitized.key },
+            "Telemetry event dropped: a payload value is out of bounds",
+        );
+        return;
+    }
+
     const now = Date.now();
     const event: TelemetryEvent<Name> = {
         name,
@@ -203,12 +242,21 @@ export function trackTelemetryEvent<Name extends TelemetryEventName>(
         anonymousUserId:
             telemetryContext.anonymousUserId ?? storedId(DEFAULT_ANONYMOUS_USER_ID_KEY),
         orgIdHash: telemetryContext.orgIdHash ?? null,
-        routePattern:
+        routePattern: closedRoutePattern(
             telemetryContext.routePattern ?? routePatternForPathname(win.location.pathname),
-        payload: sanitizeTelemetryPayload(payload) as TelemetryPayloadByName[Name],
+        ),
+        payload: sanitized.payload as TelemetryPayloadByName[Name],
     };
 
-    getTelemetryQueue().enqueue(event);
+    const closedEvent = closeTelemetryEvent(event);
+    if (!closedEvent) {
+        logger.debug(
+            { event: name },
+            "Telemetry event dropped: an envelope value is outside its closed set",
+        );
+        return;
+    }
+    getTelemetryQueue().enqueue(closedEvent);
 }
 
 export type { TelemetryAdapter, TelemetryEvent, TelemetryEventName, TelemetryPayloadByName };

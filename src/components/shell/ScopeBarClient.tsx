@@ -17,6 +17,7 @@ import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 import { FilterDrawer } from "./FilterDrawer";
 import { SCOPE_BAR_LABEL_CLASS, SCOPE_BAR_ORG_FALLBACK, ScopeBarCard } from "./ScopeBarFrame";
@@ -117,6 +118,17 @@ export function ScopeBarClient({
         setOpenMenu(null);
         setFiltersMode(wide ? "drawer" : "inline");
     };
+    // A peer drawer opened: close without moving focus to this button.
+    const closeFiltersFromPeer = () => {
+        setOpenMenu(null);
+        setFiltersMode(null);
+    };
+    // The drawer is a right drawer: while it is open it holds the edge (it takes it from the
+    // evidence drawer or Ask Dev). Below `md` the panel is inline under the bar, not a drawer, and
+    // takes no claim. Held by an effect, as the shared `Drawer` holds it (CHAOS-12211): an imperative
+    // claim in `openFilters` was released by StrictMode's re-run of this component's mount effects
+    // under `next dev` when the open landed before them. Closing and unmounting release it.
+    useRightDrawerClaim("filters", filtersMode === "drawer", closeFiltersFromPeer);
     const closeFilters = () => {
         setOpenMenu(null);
         setFiltersMode(null);

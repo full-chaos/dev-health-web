@@ -14,10 +14,12 @@
 import { expect, test } from "@playwright/test";
 import {
     authHeaders,
+    envFault,
     getSuperuserToken,
     liveBackendUrl,
     loginUser,
     testEmail,
+    userIdByEmail,
     verifyUser,
 } from "./helpers";
 
@@ -61,23 +63,39 @@ async function listCredentialIds(
 // Registration & Login (2 tests — independent, no serial needed)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("POST /register \u2192 201 with user_id and org_id", async ({ request }) => {
+test("POST /register \u2192 accepted (201 or 202)", async ({ request }) => {
     const email = testEmail("reg");
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
         data: { email, password: "TestPass123!", full_name: "Reg User" },
         headers: { Origin: liveBackendUrl },
     });
     if (res.status() === 429) {
-        test.skip(true, "Register rate-limited (429)");
+        envFault("Register rate-limited (429)");
         return;
     }
-    expect(res.status()).toBe(201);
+    expect([201, 202]).toContain(res.status());
 
-    const data = (await res.json()) as Record<string, unknown>;
-    expect(typeof data.user_id === "string" || typeof data.id === "string").toBe(true);
+    // From 202 on, the answer is one message with no ids, and a taken address gets the same status and body.
+    if (res.status() === 202) {
+        const data = (await res.json()) as Record<string, unknown>;
+        expect(typeof data.message).toBe("string");
+        expect(data.user_id).toBeUndefined();
+        expect(data.org_id).toBeUndefined();
+
+        const again = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
+            data: { email, password: "TestPass123!", full_name: "Reg User" },
+            headers: { Origin: liveBackendUrl },
+        });
+        if (again.status() !== 429) {
+            expect(again.status()).toBe(202);
+            expect(await again.text()).toBe(JSON.stringify(data));
+        }
+    }
 });
 
-test("POST /login after fresh registration \u2192 needs_onboarding true", async ({ request }) => {
+test("POST /login after fresh registration \u2192 needs_onboarding true @guided", async ({
+    request,
+}) => {
     test.skip(
         !liveGuidedOnboarding,
         "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless needs_onboarding assertion",
@@ -88,16 +106,15 @@ test("POST /login after fresh registration \u2192 needs_onboarding true", async 
         headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) {
-        test.skip(true, "Registration failed \u2014 backend may be unavailable");
+        envFault("Registration failed \u2014 backend may be unavailable");
         return;
     }
 
     // Verify the user's email via superuser so login returns tokens
-    const regData = (await regRes.json()) as Record<string, unknown>;
-    const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
+    const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
     if (!suToken || !userId) {
-        test.skip(true, "Cannot verify user \u2014 superuser unavailable");
+        envFault("Cannot verify user \u2014 superuser unavailable");
         return;
     }
     await verifyUser(request, userId, suToken);
@@ -114,7 +131,7 @@ test("POST /login after fresh registration \u2192 needs_onboarding true", async 
 // Onboarding Journey (serial — tests depend on each other)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test.describe("onboarding journey", () => {
+test.describe("onboarding journey @guided", () => {
     test.describe.configure({ mode: "serial" });
     test.skip(
         !liveGuidedOnboarding,
@@ -133,9 +150,8 @@ test.describe("onboarding journey", () => {
         if (!regRes.ok()) return;
 
         // Verify the user's email so login returns tokens
-        const regData = (await regRes.json()) as Record<string, unknown>;
-        const userId = (regData.user_id ?? regData.id ?? "") as string;
         const suToken = await getSuperuserToken(request);
+        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
         if (suToken && userId) await verifyUser(request, userId, suToken);
 
         const loginData = (await loginUser(request, email, password)) as { access_token?: string };
@@ -144,7 +160,7 @@ test.describe("onboarding journey", () => {
 
     test("POST /onboard with org_name → success, returns org_id", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -162,7 +178,7 @@ test.describe("onboarding journey", () => {
 
     test("re-login after onboarding → needs_onboarding false", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -174,7 +190,7 @@ test.describe("onboarding journey", () => {
 
     test("second POST /onboard → 400 (already onboarded)", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -206,9 +222,8 @@ test.describe("credentials journey", () => {
         if (!regRes.ok()) return;
 
         // Verify the user's email so login returns tokens
-        const regData = (await regRes.json()) as Record<string, unknown>;
-        const userId = (regData.user_id ?? regData.id ?? "") as string;
         const suToken = await getSuperuserToken(request);
+        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
         if (suToken && userId) await verifyUser(request, userId, suToken);
 
         const loginData = (await loginUser(request, email, password)) as { access_token?: string };
@@ -230,7 +245,7 @@ test.describe("credentials journey", () => {
 
     test("POST /credentials → created credential", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -269,7 +284,7 @@ test.describe("credentials journey", () => {
 
     test("POST /credentials/test → success false (fake token expected)", async ({ request }) => {
         if (!token || !credentialId) {
-            test.skip(true, "No token or credential — skipping test check");
+            envFault("No token or credential — skipping test check");
             return;
         }
 
@@ -304,7 +319,7 @@ test.describe("credentials journey", () => {
 
     test("GET /credentials → array includes the created credential", async ({ request }) => {
         if (!token || !credentialId) {
-            test.skip(true, "No token or credential — skipping list check");
+            envFault("No token or credential — skipping list check");
             return;
         }
 
@@ -344,9 +359,8 @@ test.describe("sync journey", () => {
         if (!regRes.ok()) return;
 
         // Verify the user's email so login returns tokens
-        const regData = (await regRes.json()) as Record<string, unknown>;
-        const userId = (regData.user_id ?? regData.id ?? "") as string;
         const suToken = await getSuperuserToken(request);
+        const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
         if (suToken && userId) await verifyUser(request, userId, suToken);
 
         const loginData = (await loginUser(request, email, password)) as { access_token?: string };
@@ -368,7 +382,7 @@ test.describe("sync journey", () => {
 
     test("POST /sync-configs → created; POST trigger → 202", async ({ request }) => {
         if (!token) {
-            test.skip(true, "No token — backend may be unavailable");
+            envFault("No token — backend may be unavailable");
             return;
         }
 
@@ -410,7 +424,7 @@ test.describe("sync journey", () => {
 
     test("GET /sync-configs/:id/jobs → returns array", async ({ request }) => {
         if (!token || !syncConfigId) {
-            test.skip(true, "No token or sync config — skipping jobs check");
+            envFault("No token or sync config — skipping jobs check");
             return;
         }
 

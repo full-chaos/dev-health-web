@@ -1,6 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import {
+    claimRightDrawer,
+    resetRightDrawerForTest,
+    rightDrawerOwnerForTest,
+} from "@/lib/shell/rightDrawer";
 import { BugReportButton } from "./BugReportButton";
 
 vi.mock("sonner", () => ({
@@ -35,5 +40,17 @@ describe("BugReportButton", () => {
         expect(close).toHaveFocus();
         await user.tab({ shift: true });
         expect(submit).toHaveFocus();
+    });
+
+    it("holds the right edge while open, and closes when another right drawer takes it", async () => {
+        resetRightDrawerForTest();
+        const user = userEvent.setup();
+        render(<BugReportButton />);
+        await user.click(screen.getByTestId("bug-report-trigger"));
+        expect(rightDrawerOwnerForTest()).toBe("bug-report");
+
+        act(() => claimRightDrawer("ask-dev", vi.fn()));
+
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 });

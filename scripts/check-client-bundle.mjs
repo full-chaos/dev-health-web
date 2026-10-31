@@ -45,6 +45,7 @@ export const SERVER_ONLY_MODULES = [
         markers: ["/api/v1/auth/social-login", "/api/v1/auth/refresh"],
     },
     { file: "src/lib/authValidationMemo.ts", markers: ["authValidationMemo"] },
+    { file: "src/lib/authBrowserSession.ts", markers: ["unsupported_session_update"] },
     { file: "src/lib/impersonationStatusMemo.ts", markers: ["impersonationStatusShared"] },
     { file: "src/lib/serverEnv.server.ts", markers: ["TRUSTED_PROXY_HOPS"] },
     { file: "src/lib/acr/assertion.ts", markers: ["EdDSA"] },
@@ -52,6 +53,10 @@ export const SERVER_ONLY_MODULES = [
     { file: "src/lib/acr/client.ts", markers: ["/api/v1/agent-context/capabilities"] },
     { file: "src/lib/acr/ops.ts", markers: ["/api/v1/licensing/entitlements/"] },
     { file: "src/lib/acr/service.ts", markers: ["Approval is unavailable while impersonating."] },
+    {
+        file: "src/lib/ask-dev/investigation.server.ts",
+        markers: ["Ask Dev is unavailable while impersonating."],
+    },
 ];
 
 /**
@@ -98,6 +103,18 @@ export const PATTERN_RULES = [
         pattern: /createPrivateKey|EdDSA/,
         seed: "createPrivateKey",
         benign: "createHash",
+        value: false,
+    },
+    {
+        // CHAOS-11930, CHAOS-3440: the Ask Dev test-mode seam (`testModeAnswer.ts`: turns in, the
+        // chosen receipts and the narrower re-ask out) is for `next dev` under Playwright only; a
+        // production build must have dropped it. The prefix is matched, so a key composed at run
+        // time from it is caught too.
+        id: "K6",
+        what: "Ask Dev test-mode answer seam",
+        pattern: /ask-dev:test-mode-/,
+        seed: "ask-dev:test-mode-choice",
+        benign: "ask-dev-transcript",
         value: false,
     },
 ];

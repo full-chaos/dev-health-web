@@ -94,6 +94,34 @@ describe("failureFromError", () => {
         ).toBeUndefined();
     });
 
+    // CHAOS-12173: a failed READ keeps a served code and the purposes it names, so the BYO card can tell
+    // saved settings it cannot decrypt (409 llm_settings_undecryptable) from a transient failure.
+    it("a read keeps the served code and purposes of a validation answer, never the served text", () => {
+        expect(
+            failureFromError(
+                "op",
+                new AdminApiError(409, "Conflict", HOSTILE, "GET", "llm_settings_undecryptable", [
+                    "explain",
+                ]),
+            ),
+        ).toEqual({
+            error: "Could not be read",
+            status: 409,
+            code: "llm_settings_undecryptable",
+            purposes: ["explain"],
+        });
+    });
+
+    it("a read drops the code of a non-validation answer", () => {
+        const out = failureFromError(
+            "op",
+            new AdminApiError(500, "Server Error", HOSTILE, "GET", "llm_settings_undecryptable", [
+                "explain",
+            ]),
+        );
+        expect(out).toEqual({ error: "Could not be read", status: 500 });
+    });
+
     it("treats a GET AdminApiError as a read and a PATCH one as an action", () => {
         expect(
             failureFromError("op", new AdminApiError(404, "Not Found", HOSTILE, "GET")).error,

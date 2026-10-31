@@ -37,7 +37,7 @@
         "graphql:wire-parity:check": "tsx scripts/graphql-wire-parity.ts check",
         "graphql:wire-parity:generate": "tsx scripts/graphql-wire-parity.ts generate",
         "auth-profiles:gate": "tsx ci/gate_web_auth_profiles.ts",
-        "test:e2e": "playwright test --project=authenticated --project=unauthenticated",
+        "test:e2e": "playwright test --project=authenticated --project=entitlement-scenario --project=unauthenticated",
         "test:e2e:customer-push": "playwright test -c playwright.customer-push.config.ts",
         "test:e2e:navigation": "playwright test -c playwright.navigation.config.ts",
         "test:e2e:pagerduty-final-qa": "playwright test --project=pagerduty-final-qa",
@@ -46,6 +46,8 @@
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
+        "ask-dev-oracle:check": "bash scripts/ask-dev-oracle/check.sh",
+        "test:ask-dev-oracle": "bash scripts/ask-dev-oracle/render-check.sh",
         "test:ci": "bash ci/run_tests.sh ci"
     },
     "dependencies": {
@@ -92,6 +94,7 @@
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "@vitest/coverage-v8": "^4.1.12",
+        "axe-core": "4.14.0",
         "eslint": "^10.13.0",
         "eslint-config-next": "16.4.2",
         "eslint-config-prettier": "^10.1.8",

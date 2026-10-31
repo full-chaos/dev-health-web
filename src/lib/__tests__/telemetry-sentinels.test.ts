@@ -349,9 +349,9 @@ describe("telemetry hygiene: userinfo without a scheme or with spaces", () => {
     });
 
     it.each([
-        "see https://example.com for details, mail me@x.example",
+        "see https://example.com for details, mail the team",
         "took 12:30 at db.internal",
-        "mailto:me@x.example",
+        "mailto:",
     ])("leaves %s readable", (text) => {
         expect(scrubTelemetryText(text)).not.toContain("[Filtered]");
     });
@@ -388,8 +388,8 @@ describe("telemetry hygiene: error reporter chain", () => {
 
 describe("telemetry hygiene: userinfo rule keeps ordinary URLs", () => {
     it.each([
-        "http://host:8080/path?e=a@b.example",
-        "https://example.com/p?email=a@b.example",
+        "http://host:8080/path?e=a",
+        "https://example.com/p?name=a",
         "https://example.com/a/b",
     ])("leaves %s readable", (text) => {
         expect(scrubTelemetryText(text)).not.toContain("[Filtered]");
@@ -408,11 +408,504 @@ describe("telemetry hygiene: scrubber cost on hostile text", () => {
         "repeated at": "x@".repeat(8_000),
         "repeated scheme and colon": "ab://c:".repeat(2_000),
         "scheme then many at": `a://${"@".repeat(15_000)}`,
+        "at after a long local part": `${"a".repeat(15_000)}@b.example`,
+        "local part with dots then at": `${"a.".repeat(7_000)}@`,
+        "repeated address start": "a@b.".repeat(4_000),
+        "repeated label run": `x@${"a.".repeat(7_000)}`,
+        "repeated encoded at": "a%40".repeat(4_000),
+        "many addresses": "ab@cd.example ".repeat(1_100),
+        "dots only after at": `x@${".".repeat(15_000)}`,
+        "unicode letters": "\u00e4".repeat(16_000),
+        "unicode dotted local part": "\u00e4.".repeat(8_000) + "@",
+        "unicode label run": `x@${"\u00e4.".repeat(7_000)}`,
+        "full width at signs": "a\uFF20".repeat(8_000),
+        "nested escapes": "%25".repeat(5_000) + "40",
+        "unicode escapes": "%C3%A4".repeat(2_500),
+        "numeric then letter labels": `a@${"1.2.".repeat(3_500)}x`,
+        "repeated version starts": "a@1.2.3-".repeat(2_000),
+        "version with a long pre-release": `a@1.2.3-${"a.".repeat(7_000)}`,
+        "version with a long build": `a@1.2.3+${"b.".repeat(7_000)}`,
+        "mixed escape runs": "%41%42".repeat(2_600),
+        "version suffix runs": "a@1.2.3.min.".repeat(1_300),
+        "retina name runs": "a@2x.".repeat(3_000),
+        "address then extension runs": "ab@cd.example.json ".repeat(840),
+        "repeated escapes": "%41".repeat(5_000),
+        "long token then an escape": `${"a".repeat(15_900)}%41`,
+        "percent signs only": "%".repeat(16_000),
+        "bad escapes in words": "a%zz ".repeat(3_000),
+        "escape and dot runs": "a%2E".repeat(4_000),
+        "escapes split by spaces": "x%40y ".repeat(2_500),
+        "hyphen run after at": `x@${"-".repeat(15_000)}.com`,
     };
 
     it.each(Object.entries(hostile))("scrubs %s in under 250 ms", (_name, text) => {
         const start = performance.now();
         scrubTelemetryText(text);
         expect(performance.now() - start).toBeLessThan(250);
+    });
+});
+
+// Address shapes are built at run time from random text and never printed.
+type AddressParts = { local: string; domain: string; text: string };
+function address(): { local: string; domain: string; text: string } {
+    const local = `${token()}`;
+    const domain = `h${Math.random().toString(36).slice(2, 8)}.example`;
+    return { local, domain, text: `${local}@${domain}` };
+}
+
+describe("telemetry hygiene: e-mail shapes", () => {
+    const encodeAll = (text: string): string =>
+        [...text]
+            .map((c) => (/[a-z\d]/i.test(c) ? c : `%${c.charCodeAt(0).toString(16)}`))
+            .join("");
+    const forms: Array<[string, (a: string) => string]> = [
+        ["plain", (a) => a],
+        ["in a sentence", (a) => `failed for ${a}, retry later`],
+        ["upper case", (a) => a.toUpperCase()],
+        ["in parentheses", (a) => `user (${a}) not found`],
+        ["with a plus tag", (a) => a.replace("@", "+tag@")],
+        ["with dots", (a) => `first.last.${a}`],
+        ["with a trailing period", (a) => `sent to ${a}.`],
+        ["after a colon", (a) => `to: ${a}`],
+        ["two on one line", (a) => `${a} and ${a.replace("@", "2@")}`],
+        ["in a url query", (a) => `GET /search?q=${a}&x=1`],
+        ["in an encoded url query", (a) => `GET /search?q=${encodeURIComponent(a)}`],
+        ["in a url path", (a) => `GET /users/${a}/settings`],
+        ["in an encoded url path", (a) => `GET /users/${a.replace(/@/gu, "%40")}/settings`],
+        ["in an absolute url path", (a) => `https://app.example/users/${a}/x`],
+        ["after a mailto scheme", (a) => `mailto:${a}`],
+        ["in a json string", (a) => JSON.stringify({ to: a })],
+        ["fully encoded", (a) => encodeAll(a)],
+        ["encoded at and dots", (a) => a.replace(/@/gu, "%40").replace(/\./g, "%2E")],
+        ["encoded in lower case", (a) => a.replace(/@/gu, "%40").replace(/\./g, "%2e")],
+        ["encoded twice", (a) => encodeAll(encodeAll(a))],
+        ["encoded in a url path", (a) => `GET /u/${encodeAll(a)}/x`],
+        ["encoded in an absolute url path", (a) => `https://app.example/u/${encodeAll(a)}/x`],
+        ["encoded in a url query", (a) => `GET /search?q=${encodeAll(a)}`],
+        ["encoded four times", (a) => encodeAll(encodeAll(encodeAll(encodeAll(a))))],
+        [
+            "encoded eight times",
+            (a) => Array.from({ length: 8 }).reduce<string>((v) => encodeAll(v), a),
+        ],
+        ["encoded with a bad escape after", (a) => `${encodeAll(a)}%ZZ`],
+        ["encoded with a bad escape before", (a) => `%ZZ${encodeAll(a)}`],
+        ["encoded after a stray percent sign", (a) => `100%${encodeAll(a)}`],
+        [
+            "a utf-8 host with a bad escape after",
+            (a) => `${a.replace("example", "ex%C3%A4mple")}%ZZ`,
+        ],
+        [
+            "a utf-8 host with a stray percent sign",
+            (a) => `100%${a.replace("example", "ex%C3%A4mple")}`,
+        ],
+        [
+            "a full width at sign as escapes with a bad escape",
+            (a) => `${a.replace(/@/gu, "%EF%BC%A0")}%ZZ`,
+        ],
+        ["a cut utf-8 escape before a valid address", (a) => `%C3${encodeAll(a)}`],
+    ];
+
+    it.each(forms)("removes an address from text: %s", (_name, build) => {
+        const a = address();
+        const out = scrubTelemetryText(build(a.text));
+        expect(out).not.toContain(a.local);
+        expect(out).not.toContain(a.domain);
+        expect(out).toMatch(/\[Filtered\]|%5BFiltered%5D/u);
+    });
+
+    it.each(forms)("removes an address from a request url: %s", (_name, build) => {
+        const a = address();
+        const out = scrubTelemetryUrl(
+            `https://app.example/x/${build(a.text).replace(/\s+/g, ",")}`,
+        );
+        expect(out).not.toContain(a.local);
+        expect(out.toLowerCase()).not.toContain(a.domain);
+    });
+
+    it.each([
+        ["a numeric first label", (a: AddressParts) => `${a.local}@123.${a.domain}`],
+        ["a digit then letters", (a: AddressParts) => `${a.local}@1${a.domain}`],
+        ["a short numeric host name", (a: AddressParts) => `${a.local}@3m.example`],
+        [
+            "a numeric label and a long path",
+            (a: AddressParts) => `GET https://x.example/u/${a.local}@123.${a.domain}/x`,
+        ],
+    ])("removes an address with %s", (_name, build) => {
+        const a = address();
+        const out = scrubTelemetryText(build(a));
+        expect(out).not.toContain(a.local);
+        expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}/x`)).not.toContain(a.local);
+    });
+
+    it.each([
+        ["two numeric labels, then a name", (a: AddressParts) => `${a.local}@123.456.${a.domain}`],
+        ["three numeric labels, then a name", (a: AddressParts) => `${a.local}@1.2.3.${a.domain}`],
+        ["a unicode host", (a: AddressParts) => `${a.local}@ex\u00e4mple-${a.domain}`],
+        ["a unicode local part", (a: AddressParts) => `r\u00e9${a.local}@${a.domain}`],
+        ["an escaped unicode host", (a: AddressParts) => `${a.local}@ex%C3%A4mple-${a.domain}`],
+        [
+            "a punycode host",
+            (a: AddressParts) => `${a.local}@${a.domain.replace("example", "xn--mnchen-3ya")}`,
+        ],
+        ["a punycode last label", (a: AddressParts) => `${a.local}@mail.xn--p1ai`],
+        ["a full width at sign", (a: AddressParts) => `${a.local}\uFF20${a.domain}`],
+        [
+            "a host label that starts with a digit and letters",
+            (a: AddressParts) => `${a.local}@2xx.${a.domain}`,
+        ],
+        [
+            "a host label made of a digit and a name",
+            (a: AddressParts) => `${a.local}@1password.${a.domain}`,
+        ],
+        ["two numeric labels then a name", (a: AddressParts) => `${a.local}@1.2.${a.domain}`],
+        ["three numeric labels then a name", (a: AddressParts) => `${a.local}@1.2.3.${a.domain}`],
+        [
+            "numeric labels with letters and more labels",
+            (a: AddressParts) => `${a.local}@123.45.${a.domain}`,
+        ],
+        ["an ideographic full stop", (a: AddressParts) => `${a.local}@mail\u3002${a.domain}`],
+    ])("removes an address with %s", (_name, build) => {
+        const a = address();
+        expect(scrubTelemetryText(`for ${build(a)} now`)).not.toContain(a.local);
+        expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}/x`)).not.toContain(a.local);
+    });
+
+    it.each([
+        ["a json file name", (a: AddressParts) => `${a.text}.json`],
+        [
+            "a png file name in a url path",
+            (a: AddressParts) => `https://app.example/u/${a.text}.png`,
+        ],
+        ["a pdf file name", (a: AddressParts) => `report for ${a.text}.pdf done`],
+        ["a txt file name", (a: AddressParts) => `${a.text}.txt`],
+        ["a min.js file name", (a: AddressParts) => `${a.text}.min.js`],
+        [
+            "a numeric suffix in a query value",
+            (a: AddressParts) => `https://app.example/x?q=${a.text}.2`,
+        ],
+        ["a css map name", (a: AddressParts) => `${a.text}.css.map`],
+        ["a tar.gz name", (a: AddressParts) => `${a.text}.tar.gz`],
+        ["a version-like suffix", (a: AddressParts) => `${a.text}.1.2.3`],
+    ])("removes an address followed by %s", (_name, build) => {
+        const a = address();
+        expect(scrubTelemetryText(build(a))).not.toContain(a.local);
+        expect(scrubTelemetryUrl(`https://app.example/u/${build(a)}`)).not.toContain(a.local);
+    });
+
+    it("removes an address whose host is not exactly version text", () => {
+        const a = address();
+        const local = a.local;
+        for (const host of ["1.2xx.example", "1.2.example", "2xx.example", "1password.example"]) {
+            expect(scrubTelemetryText(`for ${local}@${host} now`)).not.toContain(local);
+        }
+    });
+
+    it("keeps the words around an address", () => {
+        const a = address();
+        expect(scrubTelemetryText(`user ${a.text} not found`)).toBe("user [Filtered] not found");
+    });
+
+    it("keeps the userinfo rules first: a connection string stays one filtered span", () => {
+        expect(scrubTelemetryText("see https://fake@sentry.io/1")).toBe("see https://sentry.io/1");
+        expect(scrubTelemetryText("x svc:pw@db.internal:5432/app y")).toBe(
+            "x [Filtered]:5432/app y",
+        );
+    });
+
+    it("keeps an address out of a log field, an error, a nested object, a binding and a message", () => {
+        const { lines, logger } = capture();
+        const a = address();
+        logger.error({ detail: `for ${a.text}` }, "a field");
+        logger.error({ err: new Error(`for ${a.text}`) }, "an error");
+        logger.error({ nested: { deep: [a.text] } }, "a nested value");
+        logger.child({ who: a.text }).info("a binding");
+        logger.error({ operation: "x" }, `failed for ${a.text}`);
+        logger.error(`failed for ${a.text}`);
+        (logger.error as (...args: unknown[]) => void)({ operation: "x" }, "failed %s", a.text);
+        expect(lines).toHaveLength(7);
+        for (const line of lines) {
+            expect(line).not.toContain(a.local);
+            expect(line).not.toContain(a.domain);
+        }
+    });
+
+    it("keeps an address out of an event, a breadcrumb, a span and a transaction", async () => {
+        const config = attachBeforeSend({});
+        const a = address();
+        const event = {
+            message: `for ${a.text}`,
+            exception: { values: [{ type: "Error", value: `for ${a.text}` }] },
+            request: { url: `https://app.example/users/${a.text}/x?q=${a.text}`, data: a.text },
+            breadcrumbs: [{ message: a.text, data: { note: a.text } }],
+            extra: { who: a.text },
+            tags: { who: a.text },
+        } as unknown as ErrorEvent;
+        const out = await config.beforeSend?.(event, {});
+        const crumb = config.beforeBreadcrumb?.({ message: a.text, data: { note: a.text } });
+        const tx = await config.beforeSendTransaction?.(
+            {
+                type: "transaction",
+                transaction: `GET /users/${a.text}`,
+                spans: [{ description: a.text }],
+            } as never,
+            {},
+        );
+        for (const part of [out, crumb, tx]) {
+            expect(JSON.stringify(part)).not.toContain(a.local);
+            expect(JSON.stringify(part)).not.toContain(a.domain);
+        }
+    });
+
+    it("keeps an address out of the browser shim", async () => {
+        vi.resetModules();
+        vi.stubGlobal("window", {});
+        const calls: unknown[][] = [];
+        const spy = vi
+            .spyOn(console, "error")
+            .mockImplementation((...args) => void calls.push(args));
+        try {
+            const { logger } = await import("../logger");
+            const a = address();
+            logger.error({ operation: "x", who: a.text }, `failed for ${a.text}`);
+            logger.error(`failed for ${a.text}`);
+            expect(calls).toHaveLength(2);
+            for (const call of calls) expect(JSON.stringify(call)).not.toContain(a.local);
+        } finally {
+            spy.mockRestore();
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it.each([
+        "install @scope/pkg now",
+        "resolved @types/node@20.1.0 and pkg@1.2.3",
+        "resolved pkg@1.2.3-rc.next and pkg@latest and eslint@^8.0.0",
+        "resolved pkg@1.0.0-beta.next and tool@2x.png",
+        "resolved lib@2.0.0-rc.1+build.5 and lib@1.2.3-alpha.beta.1 and lib@1.2.3+meta.next",
+        "loading jquery@3.7.1.min.js and app@1.4.0.min.css and vendor@1.2.3.js.map",
+        "loading lib@1.2.3-beta.1.min.js and lib@1.2.3.css.map",
+        "resolved pkg@v1.2.3-rc.next and pkg@v2.0.0-beta.1.next. Done",
+        "took 100% of 50%25 budget",
+        "path /a/b%20c/d and q=a%2Fb",
+        "ping @bob and @alice about it",
+        "clone git@github.com:org/repo.git first",
+        "ssh git@host.example:repo",
+        "assets logo@2x.png and bg@3x.webp",
+        "GET https://registry.example/@scope/pkg/-/pkg-1.0.0.tgz",
+        "GET https://example.com/@user/page",
+        "GET https://example.com/a@b/c",
+        "listening on host:8080 at 12:30",
+        "a@b.c is too short to be a host",
+        "user@localhost and user@host",
+        "email me",
+    ])("leaves %s readable", (text) => {
+        expect(scrubTelemetryText(text)).toBe(text);
+    });
+
+    it("keeps a scoped package url readable as a request url", () => {
+        expect(scrubTelemetryUrl("https://registry.example/@scope/pkg")).toBe(
+            "https://registry.example/@scope/pkg",
+        );
+        expect(scrubTelemetryUrl("/packages/@scope/pkg@1.2.3")).toBe("/packages/@scope/pkg@1.2.3");
+    });
+});
+
+describe("telemetry hygiene: e-mail rule cost", () => {
+    it("scrubs a log line that holds an address within the per-line limit", () => {
+        const { lines, logger } = capture();
+        const a = address();
+        const rounds = 300;
+        const start = performance.now();
+        for (let i = 0; i < rounds; i += 1) {
+            logger.error(
+                { err: new Error(`upstream answered 502 for ${a.text}`), operation: "sample" },
+                `Server call failed for ${a.text}`,
+            );
+        }
+        const perLineMs = (performance.now() - start) / rounds;
+        expect(lines).toHaveLength(rounds);
+        console.info(`scrub cost per log line with an address: ${perLineMs.toFixed(3)} ms`);
+        expect(perLineMs).toBeLessThan(5);
+    });
+
+    it("scrubs 16 KB of mixed text and addresses in under 250 ms", () => {
+        const chunk = "request failed for someone@mail.example and pkg@1.2.3 at /x/y?q=1 ";
+        const text = chunk.repeat(Math.floor(16_000 / chunk.length));
+        const start = performance.now();
+        const out = scrubTelemetryText(text);
+        expect(performance.now() - start).toBeLessThan(250);
+        expect(out).not.toContain("someone@mail.example");
+    });
+});
+
+describe("telemetry hygiene: residual address forms", () => {
+    type Parts = { local: string; host: string };
+    const parts = (): Parts => ({
+        local: token(),
+        host: `h${Math.random().toString(36).slice(2, 8)}.example`,
+    });
+    const octets = ["192", "0", "2", String(1 + Math.floor(Math.random() * 200))];
+    const v4 = octets.join(".");
+    const v6 = ["2001", "db8", "", String(1 + Math.floor(Math.random() * 90))].join(":");
+    const joiners = ["‍", "‌", "​", "⁠", "﻿", "­", "‎"];
+
+    const forms: Array<[string, (p: Parts) => string]> = [
+        ["a decimal reference", (p) => `${p.local}&#64;${p.host}`],
+        ["a padded decimal reference", (p) => `${p.local}&#0064;${p.host}`],
+        ["a hex reference", (p) => `${p.local}&#x40;${p.host}`],
+        ["a padded hex reference", (p) => `${p.local}&#x0040;${p.host}`],
+        ["an upper case hex reference", (p) => `${p.local}&#X40;${p.host}`],
+        ["a named reference", (p) => `${p.local}&commat;${p.host}`],
+        ["a decimal reference without a semicolon", (p) => `${p.local}&#64${p.host}`],
+        ["a hex reference without a semicolon", (p) => `${p.local}&#x40${p.host}`],
+        ["a decimal reference with many zeros", (p) => `${p.local}&#${"0".repeat(40)}64;${p.host}`],
+        ["a hex reference with many zeros", (p) => `${p.local}&#x${"0".repeat(40)}40;${p.host}`],
+        ["a dot reference without a semicolon", (p) => `${p.local}@${p.host.replace(".", "&#46")}`],
+        [
+            "a dot reference with many zeros",
+            (p) => `${p.local}@${p.host.replace(".", `&#x${"0".repeat(40)}2e;`)}`,
+        ],
+        [
+            "many format chars after the at sign",
+            (p) => `${p.local}@${"\u200D".repeat(30)}${p.host}`,
+        ],
+        [
+            "many format chars after the dot",
+            (p) => `${p.local}@${p.host.replace(".", `.${"\u200D".repeat(30)}`)}`,
+        ],
+        [
+            "many format chars inside a label",
+            (p) => `${p.local}@${p.host.replace("exa", `ex${"\u200D".repeat(90)}a`)}`,
+        ],
+        [
+            "many format chars inside the last label",
+            (p) => `${p.local}@${p.host.replace("example", `exa${"\u200D".repeat(90)}mple`)}`,
+        ],
+        ["many format chars after the host", (p) => `${p.local}@${p.host}${"\u200D".repeat(40)}`],
+        ["a decimal reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&#46;")}`],
+        ["a hex reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&#x2e;")}`],
+        ["a named reference for the dot", (p) => `${p.local}@${p.host.replace(".", "&period;")}`],
+        ["references for both", (p) => `${p.local}&#64;${p.host.replace(".", "&#46;")}`],
+        ["a small at sign", (p) => `${p.local}﹫${p.host}`],
+        ["a small full stop", (p) => `${p.local}@${p.host.replace(".", "﹒")}`],
+        ["a one dot leader", (p) => `${p.local}@${p.host.replace(".", "․")}`],
+        ...joiners.flatMap((j, i): Array<[string, (p: Parts) => string]> => [
+            [
+                `format char ${i} inside a label`,
+                (p) => `${p.local}@${p.host.replace("exa", `ex${j}a`)}`,
+            ],
+            [
+                `format char ${i} before the dot`,
+                (p) => `${p.local}@${p.host.replace(".", `${j}.`)}`,
+            ],
+            [`format char ${i} after the dot`, (p) => `${p.local}@${p.host.replace(".", `.${j}`)}`],
+            [`format char ${i} before the host`, (p) => `${p.local}@${j}${p.host}`],
+            [`format char ${i} before the at sign`, (p) => `${p.local}${j}@${p.host}`],
+            [
+                `format char ${i} inside the local part`,
+                (p) => `${p.local.slice(0, 8)}${j}${p.local.slice(8)}@${p.host}`,
+            ],
+            [
+                `format char ${i} inside the last label`,
+                (p) => `${p.local}@${p.host.replace("example", `exa${j}mple`)}`,
+            ],
+        ]),
+        ["an ipv4 host", (p) => `${p.local}@${v4}`],
+        ["an ipv6 literal", (p) => `${p.local}@[${v6}]`],
+        ["a tagged ipv6 literal", (p) => `${p.local}@[IPv6:${v6}]`],
+        ["an ipv6 literal with a zone", (p) => `${p.local}@[fe80::1%eth0]`],
+        ["an encoded ipv4 host", (p) => `${p.local}%40${v4}`],
+    ];
+
+    const stripCf = (text: string): string => text.replace(/\p{Cf}/gu, "");
+
+    it.each(forms)("removes an address with %s", (_name, build) => {
+        const p = parts();
+        const text = build(p);
+        const key = p.local.slice(0, 8);
+        const out = scrubTelemetryText(`for ${text} now`);
+        expect(stripCf(out)).toBe("for [Filtered] now");
+        const url = scrubTelemetryUrl(
+            `https://app.example/u/${text.replace(/[ \t\r\n]+/g, ",")}/x`,
+        );
+        expect(stripCf(url)).not.toContain(key);
+    });
+
+    it.each(forms)("removes an address with %s in a nested value", (_name, build) => {
+        const p = parts();
+        const { lines, logger } = capture();
+        logger.error({ nested: { deep: [build(p)] } }, "a nested value");
+        expect(stripCf(lines[0])).not.toContain(p.local.slice(0, 8));
+    });
+
+    it("removes an address with an ipv4 host and a trailing period", () => {
+        const p = parts();
+        const out = scrubTelemetryText(`for ${p.local}@${v4}. now`);
+        expect(out).toBe("for [Filtered]. now");
+        const url = scrubTelemetryUrl(`https://app.example/u/${p.local}@${v4}./x`);
+        expect(url).not.toContain(p.local.slice(0, 8));
+        expect(url).not.toContain(v4);
+    });
+
+    it("keeps text that is not an address", () => {
+        for (const text of [
+            "pkg@1.2.3 installed",
+            "see &commat;scope for details",
+            "a &amp; b &#38; c",
+            "@[team] was mentioned",
+            "svc@[team:ops] and svc@[host:port]",
+            "x @ [y]",
+            "ver@1.2.3-rc.1",
+            "price &#36;5 &#x24;6",
+            "ok‍ done",
+            "file name⁠ here",
+            "host 192.0.2.7 refused",
+            "at [fe80::1] listening",
+        ]) {
+            expect(scrubTelemetryText(text)).toBe(text);
+        }
+    });
+
+    const hostile: Record<string, (n: number) => string> = {
+        "decimal references": (n) => "&#64;".repeat(n / 5),
+        "padded hex references": (n) => "&#x00000040;".repeat(n / 12),
+        "references after a local part": (n) => "a&#64;b&#46;".repeat(n / 12),
+        "format chars only": (n) => "‍".repeat(n),
+        "a local part of format chars": (n) => `a${"‍".repeat(n - 2)}@`,
+        "format chars in a label run": (n) => `a@${"b‍.".repeat(n / 3)}`,
+        "format chars around dots": (n) => `a@${"‍.‍".repeat(n / 3)}`,
+        "ipv4 starts": (n) => "a@1.2.3.".repeat(n / 8),
+        "ipv4 runs": (n) => `a@${"1.".repeat(n / 2)}`,
+        "bracket starts": (n) => "a@[1:".repeat(n / 5),
+        "an open bracket run": (n) => `a@[${"1:".repeat(n / 2)}`,
+        "small at signs": (n) => "a﹫".repeat(n / 2),
+        "small full stops": (n) => `a@${"b﹒".repeat(n / 2)}`,
+        "one dot leaders": (n) => `a@${"b․".repeat(n / 2)}`,
+        "references without a semicolon": (n) => "a&#64".repeat(n / 5),
+        "a long zero run": (n) => `a&#${"0".repeat(n - 8)}64;`,
+        "a long zero run after at": (n) => `a@b&#x${"0".repeat(n - 12)}2e;`,
+        "zero runs before refs": (n) => "&#0000000000".repeat(n / 12),
+        "format chars after at": (n) => `a@${"\u200D".repeat(n - 4)}b`,
+        "format chars in a long label": (n) => `a@b${"\u200D".repeat(n - 8)}.c`,
+        "format chars between letters": (n) => `a@${"b\u200D".repeat(n / 2)}`,
+        "format chars at tld": (n) => `a@b.${"c\u200D".repeat(n / 2)}`,
+        "mixed forms": (n) => "a&#64;b‍.﹒[1:".repeat(n / 14),
+    };
+    const best = (text: string): number => {
+        let min = Infinity;
+        for (let i = 0; i < 5; i += 1) {
+            const start = performance.now();
+            scrubTelemetryText(text);
+            min = Math.min(min, performance.now() - start);
+        }
+        return min;
+    };
+
+    it.each(Object.entries(hostile))("scrubs %s in bounded and linear time", (_name, build) => {
+        const small = best(build(8_192));
+        const large = best(build(16_000));
+        expect(large).toBeLessThan(250);
+        // Twice the input may cost about twice the time: a quadratic rule grows about four times.
+        expect(large < 25 || large / Math.max(small, 0.5) < 3.2).toBe(true);
     });
 });

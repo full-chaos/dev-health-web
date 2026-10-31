@@ -1,0 +1,204 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_0123456789abcdef0123456789abcdef",
+    "seq": 6,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_d8cb84508995cb31f9374863ab7daf9b",
+        "request_id": "req_0123456789abcdef0123456789abcdef",
+        "generated_at": "2026-10-30T20:00:00Z",
+        "status": "clarification_required",
+        "question": "How is dev-health doing right now?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "status",
+            "subject_terms": ["dev-health"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "status"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [],
+            "committed": [],
+            "clarification_prompt": "Confirm the evidence window for this answer."
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["status"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            }
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "This answer requires confirming the evidence window it should read against. Confirm one of the offered options to proceed."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [],
+            "partial": false
+        },
+        "versions": {
+            "service_version": "tuple-test",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "projection-v1",
+            "query_version": "query-v1",
+            "interpretation_version": "schema-v1",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "unwired",
+            "model_identity": "test-provider/test-model",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "test-provider/test-model"
+        },
+        "deterministic_answer": "This answer requires confirming the evidence window it should read against. Confirm one of the offered options to proceed.",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "inferred_default",
+            "confidence": "low"
+        },
+        "window_clarification": {
+            "options": [
+                {
+                    "receipt_id": "winr_ce8203e4de4f9259365a6a2f",
+                    "option_id": "opt_e0ef87234cee91cf",
+                    "label": "the last 30 days",
+                    "relative_id": "trailing_30d",
+                    "start": "2026-09-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_6a162eec79a34c5faa0ecea6",
+                    "option_id": "opt_1030693f8b381669",
+                    "label": "the last 90 days",
+                    "relative_id": "trailing_90d",
+                    "start": "2026-08-01T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_b80e91aef4abbedf32c58510",
+                    "option_id": "opt_c81950e16a6236ff",
+                    "label": "the last 365 days",
+                    "relative_id": "trailing_365d",
+                    "start": "2025-10-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_42bd230f5c55fa6bf589f2a7",
+                    "option_id": "opt_9556d16e687fac83",
+                    "label": "all time",
+                    "relative_id": "all_time"
+                }
+            ]
+        },
+        "structure_needs": {
+            "missing": ["window", "subject_anchor"],
+            "anchor_options": [
+                {
+                    "receipt_id": "ancr_0a7b69ce213a47d3c6c3f55a",
+                    "option_id": "opt_2afdbcd005d11436",
+                    "label": "full-chaos/dev-health-acr",
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-000000000001",
+                    "matched_term_hash": "03ebcbc7dc574441da3c560f",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "ancr_5cefb53bce1bf6f9ed223f22",
+                    "option_id": "opt_bdf078f770cb9826",
+                    "label": "full-chaos/dev-health-ops",
+                    "kind": "repository",
+                    "canonical_id": "repository:00000000-0000-4000-8000-000000000002",
+                    "matched_term_hash": "166f12446d72728cc8a21dd3",
+                    "offer_source": "engine"
+                }
+            ],
+            "window_options": [
+                {
+                    "receipt_id": "winr_ce8203e4de4f9259365a6a2f",
+                    "option_id": "opt_e0ef87234cee91cf",
+                    "label": "the last 30 days",
+                    "relative_id": "trailing_30d",
+                    "start": "2026-09-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_6a162eec79a34c5faa0ecea6",
+                    "option_id": "opt_1030693f8b381669",
+                    "label": "the last 90 days",
+                    "relative_id": "trailing_90d",
+                    "start": "2026-08-01T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_b80e91aef4abbedf32c58510",
+                    "option_id": "opt_c81950e16a6236ff",
+                    "label": "the last 365 days",
+                    "relative_id": "trailing_365d",
+                    "start": "2025-10-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_42bd230f5c55fa6bf589f2a7",
+                    "option_id": "opt_9556d16e687fac83",
+                    "label": "all time",
+                    "relative_id": "all_time"
+                }
+            ],
+            "window_expand_options": [
+                {
+                    "receipt_id": "winr_6a162eec79a34c5faa0ecea6",
+                    "option_id": "opt_1030693f8b381669",
+                    "label": "the last 90 days",
+                    "relative_id": "trailing_90d",
+                    "window_class": "recent_activity_lookup",
+                    "candidate_label": "full-chaos/dev-health-acr",
+                    "candidate_kind": "repository"
+                }
+            ]
+        },
+        "completeness": {
+            "terminal_status": "clarification_required",
+            "terminal_reason": "clarification_reason_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "state": "not_derived"
+        }
+    }
+}

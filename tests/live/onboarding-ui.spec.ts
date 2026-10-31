@@ -8,7 +8,16 @@
  * Run with playwright.live.config.ts (baseURL = http://127.0.0.1:3002).
  */
 import { expect, test } from "@playwright/test";
-import { getSuperuserToken, liveBackendUrl, testEmail, verifyUser } from "./helpers";
+import {
+    clickHydratedOnboardingControl,
+    envFault,
+    getSuperuserToken,
+    isServerActionTo,
+    liveBackendUrl,
+    testEmail,
+    userIdByEmail,
+    verifyUser,
+} from "./helpers";
 
 // The orgless guided journey (registration creates an identity only, then
 // routes into /auth/onboard) only holds when the live backend runs with
@@ -49,13 +58,12 @@ test("signup form submits successfully and redirects with registered banner", as
 
     // Skip if the backend rate-limits this IP (3 registrations / hour).
     if (registerResponse.status() === 429) {
-        test.skip(true, "Register rate-limited (429) \u2014 skipping browser signup test");
+        envFault("Register rate-limited (429) \u2014 skipping browser signup test");
         return;
     }
-    expect(
+    expect([201, 202], `Unexpected register status: ${await registerResponse.text()}`).toContain(
         registerResponse.status(),
-        `Unexpected register status: ${await registerResponse.text()}`,
-    ).toBe(201);
+    );
 
     // Should redirect to signin with registered=true banner
     await expect(page).toHaveURL(/\/auth\/signin\?registered=true/, { timeout: 15_000 });
@@ -67,7 +75,10 @@ test("signup form submits successfully and redirects with registered banner", as
 //    (registration does NOT silently create a workspace — needs_onboarding=true)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("fresh verified user lands on onboarding, not the dashboard", async ({ page, request }) => {
+test("fresh verified user lands on onboarding, not the dashboard @guided", async ({
+    page,
+    request,
+}) => {
     test.skip(
         !liveGuidedOnboarding,
         "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) to run the orgless onboarding journey",
@@ -81,22 +92,21 @@ test("fresh verified user lands on onboarding, not the dashboard", async ({ page
         headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) {
-        test.skip(true, "Registration failed \u2014 backend may be unavailable");
+        envFault("Registration failed \u2014 backend may be unavailable");
         return;
     }
 
     // Verify the email so login succeeds. Requires the seeded superuser admin,
     // which is kept distinct from this orgless test user.
-    const regData = (await regRes.json()) as Record<string, unknown>;
-    const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
+    const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
     if (!suToken || !userId) {
-        test.skip(true, "Superuser credentials not usable \u2014 cannot verify the test user");
+        envFault("Superuser credentials not usable \u2014 cannot verify the test user");
         return;
     }
     const verified = await verifyUser(request, userId, suToken);
     if (!verified) {
-        test.skip(true, "verifyUser() returned non-OK \u2014 skipping onboarding redirect test");
+        envFault("verifyUser() returned non-OK \u2014 skipping onboarding redirect test");
         return;
     }
 
@@ -116,7 +126,7 @@ test("fresh verified user lands on onboarding, not the dashboard", async ({ page
 //    Workspace creation is an explicit, asserted step (no hidden auto-org).
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("full signup then explicit workspace creation reaches dashboard", async ({
+test("full signup then explicit workspace creation reaches dashboard @guided", async ({
     page,
     request,
 }) => {
@@ -133,21 +143,20 @@ test("full signup then explicit workspace creation reaches dashboard", async ({
         headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) {
-        test.skip(true, "Registration failed \u2014 backend may be unavailable");
+        envFault("Registration failed \u2014 backend may be unavailable");
         return;
     }
 
     // Verify the email via the seeded superuser admin so login succeeds.
-    const regData = (await regRes.json()) as Record<string, unknown>;
-    const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
+    const userId = suToken ? await userIdByEmail(request, email, suToken) : "";
     if (!suToken || !userId) {
-        test.skip(true, "Superuser credentials not usable \u2014 cannot verify the test user");
+        envFault("Superuser credentials not usable \u2014 cannot verify the test user");
         return;
     }
     const verified = await verifyUser(request, userId, suToken);
     if (!verified) {
-        test.skip(true, "verifyUser() returned non-OK \u2014 skipping journey test");
+        envFault("verifyUser() returned non-OK \u2014 skipping journey test");
         return;
     }
 
@@ -165,7 +174,21 @@ test("full signup then explicit workspace creation reaches dashboard", async ({
     await page.getByLabel("Organization Name").fill("UI Journey Org");
     await page.getByRole("button", { name: "Create Workspace" }).click();
 
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+    // With the guided flag on, workspace creation routes through the integration step
+    // (skippable) and the completion page before the dashboard (CHAOS-12138: this spec
+    // asserted the old direct redirect and had never run flag-on).
+    await expect(page).toHaveURL(/\/auth\/onboard\/integration/, { timeout: 30_000 });
+    // CHAOS-12176: click Skip only once the step has hydrated, and fail loudly if the click is dropped.
+    await clickHydratedOnboardingControl(
+        page,
+        page.getByRole("button", { name: "Skip for now" }),
+        "Skip for now",
+        isServerActionTo("/auth/onboard/integration"),
+    );
+    await expect(page).toHaveURL(/\/auth\/onboard\/complete/, { timeout: 30_000 });
+    await page.getByRole("link", { name: "Go to dashboard" }).click();
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "Home" })).toBeVisible({
         timeout: 10_000,
     });

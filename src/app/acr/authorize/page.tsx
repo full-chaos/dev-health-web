@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { OAuthConsentForm } from "@/components/acr/OAuthConsentForm";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "@/lib/acr/errors";
-import { previewOAuthConsent } from "@/lib/acr/service";
+import { openOAuthConsent } from "@/lib/acr/service";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -36,40 +36,41 @@ export default async function OAuthAuthorizePage({
             `/auth/signin?callbackUrl=${encodeURIComponent(`/acr/authorize?handle=${handle}`)}`,
         );
     }
-    if (
-        session.user.real_org_id !== undefined &&
-        session.user.real_org_id !== session.user.org_id
-    ) {
-        return <OAuthConsentForm initialState="denied" />;
-    }
-
     // JSX is never constructed inside the try below (react-hooks/error-boundaries) —
-    // the preview call result and any mapped error state are resolved first, and
-    // the return/JSX happens after the catch.
-    let preview: Awaited<ReturnType<typeof previewOAuthConsent>> | undefined;
-    let previewErrorState: "expired" | "completed" | "invalid" | "unavailable" | undefined;
+    // the consent step result and any mapped error state are resolved first, and
+    // the return/JSX happens after the catch. The impersonation refusal is in the
+    // service, by the impersonation state (CHAOS-12095): "denied".
+    let opening: Awaited<ReturnType<typeof openOAuthConsent>> | undefined;
+    let errorState: "completed" | "denied" | "expired" | "invalid" | "unavailable" | undefined;
     try {
-        preview = await previewOAuthConsent({ handle, signal: new AbortController().signal });
+        opening = await openOAuthConsent({ handle, signal: new AbortController().signal });
     } catch (error) {
         if (error instanceof AcrRuntimeError && error.code === acrRuntimeErrorCodes.expired) {
-            previewErrorState = "expired";
+            errorState = "expired";
         } else if (
             error instanceof AcrRuntimeError &&
             error.code === acrRuntimeErrorCodes.alreadyCompleted
         ) {
-            previewErrorState = "completed";
+            errorState = "completed";
         } else if (
             error instanceof AcrRuntimeError &&
             error.code === acrRuntimeErrorCodes.invalidRequest
         ) {
-            previewErrorState = "invalid";
+            errorState = "invalid";
+        } else if (
+            error instanceof AcrRuntimeError &&
+            error.code === acrRuntimeErrorCodes.notEntitled
+        ) {
+            errorState = "denied";
         } else {
-            previewErrorState = "unavailable";
+            errorState = "unavailable";
         }
     }
 
-    if (preview) {
-        return <OAuthConsentForm handle={handle} preview={preview} />;
+    // The first-party browser client: approved by the server, no click (chris decision 2).
+    if (opening?.kind === "approved") redirect(opening.redirectUrl);
+    if (opening?.kind === "review") {
+        return <OAuthConsentForm handle={handle} preview={opening.preview} />;
     }
-    return <OAuthConsentForm initialState={previewErrorState ?? "unavailable"} />;
+    return <OAuthConsentForm initialState={errorState ?? "unavailable"} />;
 }

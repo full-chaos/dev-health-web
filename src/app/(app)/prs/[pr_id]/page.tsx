@@ -1,4 +1,5 @@
 import { SERVICE_UNAVAILABLE_TEXT } from "@/components/ServiceUnavailable";
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
 import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
@@ -10,6 +11,8 @@ import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { RelatedEntitiesPanel } from "@/components/work/RelatedEntitiesPanel";
 import { requireSession } from "@/lib/auth";
+import { SUBJECT_ID } from "@/lib/ask-dev/page-context-ids";
+import type { PageEntityInput } from "@/lib/ask-dev/page-context";
 import { formatNumber } from "@/lib/formatters";
 import { getServerEnv } from "@/lib/config";
 import {
@@ -56,6 +59,17 @@ function emptyDrilldown(orgId: string, rootId: string): AIWorkflowDrilldownResul
         partial: false,
         dataAvailable: false,
     };
+}
+
+/**
+ * The served pull request as Ask Dev page context (CHAOS-11938): ACR's id, from the served repo id
+ * and number, never the URL id; labelled by its title, or its repository and number.
+ */
+function pullRequestEntities(pr: PullRequestDetail): PageEntityInput[] {
+    const id = SUBJECT_ID.pullRequest(pr.repoId, pr.number);
+    const title = pr.title?.trim() ?? "";
+    const label = title !== "" ? title : `${pr.repoName ?? "Repository"} #${String(pr.number)}`;
+    return id === null ? [] : [{ kind: "pull_request", id, label }];
 }
 
 function metricValue(value: number | null | undefined): string {
@@ -214,7 +228,10 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
             <PrHeader />
 
             {prResult.pr ? (
-                <PrDetailSummary pr={prResult.pr} />
+                <>
+                    <AskDevPageEntities entities={pullRequestEntities(prResult.pr)} />
+                    <PrDetailSummary pr={prResult.pr} />
+                </>
             ) : (
                 <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
                     No PR detail found for this id. Check that the URL uses a persisted PR id such

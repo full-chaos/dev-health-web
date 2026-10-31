@@ -1,5 +1,6 @@
 import "server-only";
 import NextAuth, { CredentialsSignin } from "next-auth";
+import { decode, encode, getToken } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
@@ -195,6 +196,8 @@ const nextAuth = NextAuth({
                         token.is_superuser = data.user.is_superuser || false;
                         token.permissions = [];
                         token.needs_onboarding = data.needs_onboarding ?? false;
+                        // Only the exchange response can say the account is new; a client update() never can.
+                        token.is_new_user = data.is_new_user === true;
                         token.access_token = data.access_token;
                         token.refresh_token = data.refresh_token;
                         token.expires_at = Date.now() + (data.expires_in || 3600) * 1000;
@@ -218,24 +221,36 @@ const nextAuth = NextAuth({
                 }
             }
 
-            // Handle onboarding completion
-            if (trigger === "update" && session?.onboardComplete) {
-                token.access_token = session.onboardComplete.access_token;
-                token.refresh_token = session.onboardComplete.refresh_token;
-                token.org_id = session.onboardComplete.org_id;
-                token.role = session.onboardComplete.role;
+            // A new Ops token pair (workspace creation, org switch, password change) enters the
+            // session only as a sealed handoff the server made (CHAOS-12088): the browser passes
+            // it to update() and cannot read it. A plain `activeOrg` / `onboardComplete` payload is
+            // refused by the HTTP route and ignored here.
+            const handoff =
+                trigger === "update"
+                    ? await openSessionHandoff(
+                          (session as { sessionHandoff?: unknown } | undefined)?.sessionHandoff,
+                          token.id as string | undefined,
+                      )
+                    : null;
+            if (handoff?.kind === "onboardComplete") {
+                const pair = handoff.pair as OnboardPair;
+                token.access_token = pair.access_token;
+                token.refresh_token = pair.refresh_token;
+                token.org_id = pair.org_id;
+                token.role = pair.role;
                 token.needs_onboarding = false;
-                token.expires_at = Date.now() + (session.onboardComplete.expires_in || 3600) * 1000;
+                token.expires_at = Date.now() + (pair.expires_in || 3600) * 1000;
             }
 
-            if (trigger === "update" && session?.activeOrg) {
-                token.access_token = session.activeOrg.access_token;
-                token.refresh_token = session.activeOrg.refresh_token;
-                token.org_id = session.activeOrg.user.org_id;
-                token.role = session.activeOrg.user.role;
-                token.is_superuser = session.activeOrg.user.is_superuser ?? false;
+            if (handoff?.kind === "activeOrg") {
+                const pair = handoff.pair as ActiveOrgPair;
+                token.access_token = pair.access_token;
+                token.refresh_token = pair.refresh_token;
+                token.org_id = pair.user.org_id;
+                token.role = pair.user.role;
+                token.is_superuser = pair.user.is_superuser ?? false;
                 token.needs_onboarding = false;
-                token.expires_at = Date.now() + (session.activeOrg.expires_in || 3600) * 1000;
+                token.expires_at = Date.now() + (pair.expires_in || 3600) * 1000;
                 token.last_validated = Date.now();
                 token.error = undefined;
             }
@@ -419,6 +434,7 @@ const nextAuth = NextAuth({
                 session.user.is_superuser = (token.is_superuser as boolean) ?? false;
                 session.user.permissions = token.permissions as string[];
                 session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
+                session.user.is_new_user = token.is_new_user === true;
                 session.access_token = token.access_token as string;
                 if (token.error) {
                     session.error = token.error as string;
@@ -435,6 +451,89 @@ const nextAuth = NextAuth({
 });
 
 export const { handlers, signIn, signOut } = nextAuth;
+
+/** Salt of the session-handoff key (HKDF from the auth secret); never the session cookie salt. */
+export const SESSION_HANDOFF_SALT = "dev-health.session-handoff.v1";
+/** A handoff is used at once by the page that received it; a short life bounds a copied one. */
+const SESSION_HANDOFF_MAX_AGE_SECONDS = 120;
+
+export type SessionHandoffKind = "activeOrg" | "onboardComplete";
+
+type OnboardPair = {
+    access_token: string;
+    refresh_token?: string;
+    org_id?: string;
+    role?: string;
+    expires_in?: number;
+};
+
+type ActiveOrgPair = {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    user: { org_id?: string; role?: string; is_superuser?: boolean };
+};
+
+/**
+ * Seals a new Ops token pair for the signed-in user (CHAOS-12088). The result is an encrypted JWT
+ * (the auth secret, its own salt, 120 s, bound to the user id): the page passes it to
+ * `useSession().update({ sessionHandoff })` and cannot read it. The update goes through the page's
+ * own session channel, so a session read the page started earlier cannot write the old session
+ * back over the new one.
+ */
+export async function sealSessionHandoff(
+    kind: SessionHandoffKind,
+    pair: OnboardPair | ActiveOrgPair,
+    userId: string,
+): Promise<string> {
+    if (!authSecret) throw new Error("no auth secret to seal a session handoff");
+    if (!userId) throw new Error("no user id to bind a session handoff to");
+    return encode({
+        secret: authSecret,
+        salt: SESSION_HANDOFF_SALT,
+        maxAge: SESSION_HANDOFF_MAX_AGE_SECONDS,
+        token: { sub: userId, kind, pair },
+    });
+}
+
+async function openSessionHandoff(
+    value: unknown,
+    userId: string | undefined,
+): Promise<{ kind: SessionHandoffKind; pair: unknown } | null> {
+    if (value === undefined) return null;
+    const refuse = (reason: string) => {
+        authLogger.warn({ reason, userId }, "session handoff refused");
+        return null;
+    };
+    if (typeof value !== "string" || !value) return refuse("not_a_string");
+    if (!authSecret || !userId) return refuse("no_secret_or_user");
+    let payload: Record<string, unknown> | null;
+    try {
+        payload = (await decode({
+            secret: authSecret,
+            salt: SESSION_HANDOFF_SALT,
+            token: value,
+        })) as Record<string, unknown> | null;
+    } catch (error) {
+        authLogger.warn(
+            { reason: "unreadable_or_expired", errorName: thrownErrorName(error), userId },
+            "session handoff refused",
+        );
+        return null;
+    }
+    if (!payload) return refuse("empty");
+    if (payload.sub !== userId) return refuse("other_user");
+    const kind = payload.kind;
+    if (kind !== "activeOrg" && kind !== "onboardComplete") return refuse("unknown_kind");
+    const pair = payload.pair as { access_token?: unknown; user?: unknown } | undefined;
+    if (!pair || typeof pair.access_token !== "string" || !pair.access_token) {
+        return refuse("no_access_token");
+    }
+    if (kind === "activeOrg" && (!pair.user || typeof pair.user !== "object")) {
+        return refuse("no_user");
+    }
+    return { kind, pair };
+}
 
 import type { Session } from "next-auth";
 
@@ -466,6 +565,50 @@ export async function auth(): Promise<Session | null> {
     if (!session?.access_token) return null;
     if (session.error) return null;
     return session;
+}
+
+/** The session cookie names Auth.js uses: the `__Secure-` one on https, the plain one on http. */
+const SESSION_COOKIE_NAMES = ["__Secure-authjs.session-token", "authjs.session-token"] as const;
+
+/**
+ * The Ops tokens of the signed-in session, for sign-out only (CHAOS-12096: the Ops logout revokes
+ * the session its refresh token belongs to). Read from the sealed session cookie of the request
+ * and nothing else: an `Authorization` header is never read, and no refresh runs (a refresh would
+ * rotate the credential the logout names). `null` unless the cookie is one this server sealed and
+ * holds both tokens. Never log the result.
+ */
+export async function readSessionCredentialsForSignOut(request: Request): Promise<{
+    readonly access_token: string;
+    readonly refresh_token: string;
+    readonly user_id?: string;
+} | null> {
+    const cookie = request.headers.get("cookie");
+    if (!authSecret || !cookie) return null;
+    const req = { headers: new Headers({ cookie }) };
+    for (const cookieName of SESSION_COOKIE_NAMES) {
+        const token = await getToken({
+            cookieName,
+            req,
+            secret: authSecret,
+            secureCookie: cookieName.startsWith("__Secure-"),
+        }).catch((error: unknown) => {
+            authLogger.warn(
+                { cookieName, errorName: thrownErrorName(error) },
+                "sign-out: the session cookie could not be read",
+            );
+            return null;
+        });
+        if (!token) continue;
+        const { access_token: accessToken, refresh_token: refreshToken } = token;
+        if (typeof accessToken !== "string" || accessToken === "") return null;
+        if (typeof refreshToken !== "string" || refreshToken === "") return null;
+        return {
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            ...(typeof token.id === "string" ? { user_id: token.id } : {}),
+        };
+    }
+    return null;
 }
 
 export async function requireSession(callbackUrl?: string): Promise<Session> {

@@ -1,12 +1,14 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { envFault, provisionUser } from "./helpers";
 
 const liveBackendUrl =
     process.env.PLAYWRIGHT_LIVE_BACKEND_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 const superuserEmail = process.env.TEST_SUPERUSER_EMAIL ?? "admin@test.com";
 const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD ?? "secret";
-const targetUserId = process.env.TEST_TARGET_USER_ID ?? "";
-const superuserTargetUserId = process.env.TEST_SUPERUSER_TARGET_USER_ID ?? "";
+// CHAOS-12138: targets are provisioned through the API when the env does not name one.
+let targetUserId = process.env.TEST_TARGET_USER_ID ?? "";
+let superuserTargetUserId = process.env.TEST_SUPERUSER_TARGET_USER_ID ?? "";
 
 /** Authenticate as superuser and return the access token, or null on failure. */
 async function getSuperuserToken(request: APIRequestContext): Promise<string | null> {
@@ -35,7 +37,7 @@ test("superuser login returns access_token with needs_onboarding false", async (
         data: { email: superuserEmail, password: superuserPassword },
     });
     if (!res.ok()) {
-        test.skip(true, "Superuser login failed \u2014 backend may not have test superuser seeded");
+        envFault("Superuser login failed \u2014 backend may not have test superuser seeded");
         return;
     }
 
@@ -55,7 +57,7 @@ test("superuser login returns access_token with needs_onboarding false", async (
 test("impersonation status is false when not impersonating", async ({ request }) => {
     const token = await getSuperuserToken(request);
     if (!token) {
-        test.skip(true, "Could not obtain superuser token — backend may be unavailable");
+        envFault("Could not obtain superuser token — backend may be unavailable");
         return;
     }
 
@@ -83,16 +85,19 @@ test.describe("impersonation lifecycle", () => {
 
     test.beforeAll(async ({ request }) => {
         superuserToken = await getSuperuserToken(request);
+        if (!targetUserId && superuserToken) {
+            targetUserId = await provisionUser(request, superuserToken, "imp-target");
+        }
     });
 
     test("start impersonation returns active status without access_token", async ({ request }) => {
         if (!targetUserId) {
-            test.skip(true, "TEST_TARGET_USER_ID not set — skipping start impersonation test");
+            envFault("TEST_TARGET_USER_ID not set — skipping start impersonation test");
             return;
         }
         const token = superuserToken;
         if (!token) {
-            test.skip(true, "Could not obtain superuser token");
+            envFault("Could not obtain superuser token");
             return;
         }
 
@@ -118,15 +123,12 @@ test.describe("impersonation lifecycle", () => {
 
     test("impersonation status is true while impersonating", async ({ request }) => {
         if (!targetUserId) {
-            test.skip(
-                true,
-                "TEST_TARGET_USER_ID not set — skipping impersonation active status check",
-            );
+            envFault("TEST_TARGET_USER_ID not set — skipping impersonation active status check");
             return;
         }
         const token = superuserToken;
         if (!token) {
-            test.skip(true, "Could not obtain superuser token");
+            envFault("Could not obtain superuser token");
             return;
         }
 
@@ -147,12 +149,12 @@ test.describe("impersonation lifecycle", () => {
 
     test("stop impersonation returns stopped status", async ({ request }) => {
         if (!targetUserId) {
-            test.skip(true, "TEST_TARGET_USER_ID not set — skipping stop impersonation test");
+            envFault("TEST_TARGET_USER_ID not set — skipping stop impersonation test");
             return;
         }
         const token = superuserToken;
         if (!token) {
-            test.skip(true, "Could not obtain superuser token");
+            envFault("Could not obtain superuser token");
             return;
         }
 
@@ -185,9 +187,12 @@ test.describe("impersonation lifecycle", () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 test("cannot impersonate another superuser — expects 403", async ({ request }) => {
+    const suToken = await getSuperuserToken(request);
+    if (!superuserTargetUserId && suToken) {
+        superuserTargetUserId = await provisionUser(request, suToken, "imp-su-target", true);
+    }
     if (!superuserTargetUserId) {
-        test.skip(
-            true,
+        envFault(
             "TEST_SUPERUSER_TARGET_USER_ID not set — skipping superuser-to-superuser impersonation test",
         );
         return;
@@ -195,7 +200,7 @@ test("cannot impersonate another superuser — expects 403", async ({ request })
 
     const token = await getSuperuserToken(request);
     if (!token) {
-        test.skip(true, "Could not obtain superuser token");
+        envFault("Could not obtain superuser token");
         return;
     }
 
@@ -207,11 +212,12 @@ test("cannot impersonate another superuser — expects 403", async ({ request })
 });
 
 test("unauthenticated request to impersonate endpoint is rejected", async ({ request }) => {
+    const suToken = await getSuperuserToken(request);
+    if (!targetUserId && suToken) {
+        targetUserId = await provisionUser(request, suToken, "imp-target");
+    }
     if (!targetUserId) {
-        test.skip(
-            true,
-            "TEST_TARGET_USER_ID not set — skipping unauthenticated impersonation test",
-        );
+        envFault("TEST_TARGET_USER_ID not set — skipping unauthenticated impersonation test");
         return;
     }
 

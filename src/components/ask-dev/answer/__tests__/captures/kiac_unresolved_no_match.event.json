@@ -1,0 +1,173 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_6af93ec8430fe528743bc2c365a12878",
+    "seq": 7,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_7b5addeb63a2a3df11cd4b7f84ef6ede",
+        "request_id": "req_6af93ec8430fe528743bc2c365a12878",
+        "generated_at": "2026-10-30T18:31:55.549256042Z",
+        "status": "no_match",
+        "question": "What work remains to finish the Synthetic Project Beta project?",
+        "interpretation": {
+            "shape": "explicit_cohort",
+            "requested_judgment": "Identify the work items remaining to finish the Synthetic Project Beta project.",
+            "subject_terms": ["Synthetic Project Beta"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "work"
+                },
+                {
+                    "kind": "status"
+                },
+                {
+                    "kind": "actual_completion"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [],
+            "committed": []
+        },
+        "answer_plan": {
+            "family": "scoped_cohort_status",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table"],
+            "fact_kinds": [
+                "work",
+                "status",
+                "actual_completion",
+                "health",
+                "workload",
+                "readiness",
+                "operational_deficiencies",
+                "investment"
+            ],
+            "axes": ["subject_anchor", "expected_kind", "window"],
+            "budget": {
+                "max_items": 66,
+                "max_serialized_bytes": 262144,
+                "max_members": 50,
+                "synthesis_headroom": 16,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "requirements": [
+                {
+                    "requirement": "completion/member/work_item",
+                    "obligation": "completion",
+                    "role": "member",
+                    "subject": "work_item",
+                    "kind": "read",
+                    "fact_kinds": ["actual_completion"],
+                    "scope": "each_member",
+                    "quantifier": "at_least_one"
+                },
+                {
+                    "requirement": "health/member/work_item",
+                    "obligation": "health",
+                    "role": "member",
+                    "subject": "work_item",
+                    "kind": "read",
+                    "scope": "each_member",
+                    "quantifier": "none",
+                    "unavailable": "no_declaring_producer"
+                },
+                {
+                    "requirement": "state/member/work_item",
+                    "obligation": "state",
+                    "role": "member",
+                    "subject": "work_item",
+                    "kind": "read",
+                    "fact_kinds": ["status"],
+                    "scope": "each_member",
+                    "quantifier": "corroborated"
+                }
+            ]
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "This question asked about a population of work items, which this service has no way to enumerate, so it was not searched and no canonical facts were read."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [],
+            "partial": false
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna"
+        },
+        "deterministic_answer": "No investigation subject could be resolved for this question.",
+        "warnings": [],
+        "reused": false,
+        "completeness": {
+            "terminal_status": "no_match",
+            "terminal_reason": "limitation_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "refusal_basis": "member_kind_unservable",
+            "state": "partial",
+            "outcomes": [
+                {
+                    "stage": "planning",
+                    "requirement": "completion/member/work_item",
+                    "obligation": "completion",
+                    "outcome": "not_attempted",
+                    "impact": "dimension",
+                    "cause_coverage": "answer_terminated_before_attempt",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "health/member/work_item",
+                    "obligation": "health",
+                    "outcome": "not_applicable",
+                    "impact": "none",
+                    "cause_coverage": "fact_no_declaring_producer",
+                    "cause_observed": true,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "state/member/work_item",
+                    "obligation": "state",
+                    "outcome": "not_attempted",
+                    "impact": "dimension",
+                    "cause_coverage": "answer_terminated_before_attempt",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                }
+            ]
+        },
+        "refusal_basis": "member_kind_unservable"
+    }
+}

@@ -57,6 +57,33 @@ describe("admin request error code", () => {
         expect((error as Error).message).toBe("model is required");
     });
 
+    it("carries the purposes a served detail names, only when every entry is a string", async () => {
+        fetchMock.mockResolvedValue({
+            ok: false,
+            status: 409,
+            statusText: "Conflict",
+            json: async () => ({
+                detail: {
+                    error: "llm_settings_undecryptable",
+                    message: "The saved key can no longer be read. Replace or remove it.",
+                    settings: ["api_key", "purpose:explain:api_key"],
+                    purposes: ["explain"],
+                },
+            }),
+        });
+        const error = await request("/llm-settings").catch((e: Error) => e);
+        expect((error as { code?: string }).code).toBe("llm_settings_undecryptable");
+        expect((error as { purposes?: string[] }).purposes).toEqual(["explain"]);
+        fetchMock.mockResolvedValue({
+            ok: false,
+            status: 409,
+            statusText: "Conflict",
+            json: async () => ({ detail: { error: "x", purposes: ["explain", 7] } }),
+        });
+        const mixed = await request("/llm-settings").catch((e: Error) => e);
+        expect((mixed as { purposes?: string[] }).purposes).toBeUndefined();
+    });
+
     it("has no code for a string or list detail", async () => {
         fetchMock.mockResolvedValue({
             ok: false,

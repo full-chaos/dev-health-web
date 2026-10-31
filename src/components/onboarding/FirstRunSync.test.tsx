@@ -5,11 +5,11 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { connectGitHubHref, repoSelectionHref } from "@/lib/onboarding/setupSurface";
 import type { SetupStatus } from "@/lib/onboarding/types";
 
-const emitOnboardingEvent = vi.fn();
-const emitOnboardingEventOnce = vi.fn();
-vi.mock("@/lib/onboarding/telemetry", () => ({
-    emitOnboardingEvent: (...args: unknown[]) => emitOnboardingEvent(...args),
-    emitOnboardingEventOnce: (...args: unknown[]) => emitOnboardingEventOnce(...args),
+const trackOnboardingEvent = vi.fn();
+const trackOnboardingEventOnce = vi.fn();
+vi.mock("@/lib/onboarding/track", () => ({
+    trackOnboardingEvent: (...args: unknown[]) => trackOnboardingEvent(...args),
+    trackOnboardingEventOnce: (...args: unknown[]) => trackOnboardingEventOnce(...args),
 }));
 
 const triggerSync = vi.fn();
@@ -40,19 +40,17 @@ const status = (overrides: Partial<SetupStatus>): SetupStatus => ({
 });
 
 afterEach(() => {
-    emitOnboardingEvent.mockClear();
-    emitOnboardingEventOnce.mockClear();
+    trackOnboardingEvent.mockClear();
+    trackOnboardingEventOnce.mockClear();
     triggerSync.mockReset();
 });
 
 describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
     it("emits github_app_connected once (deduped) on a connected arrival", () => {
         render(<FirstRunSync status={status({})} arrival="connected" orgId="org-1" />);
-        expect(emitOnboardingEventOnce).toHaveBeenCalledWith(
-            "github_app_connected:org-1",
-            "github_app_connected",
-            { orgId: "org-1" },
-        );
+        expect(trackOnboardingEventOnce).toHaveBeenCalledWith("github_app_connected", {
+            orgId: "org-1",
+        });
     });
 
     it("ready-to-sync → Start sync triggers the backend, then emits first_sync_started and shows syncing", async () => {
@@ -62,7 +60,7 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
 
         expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "ready-to-sync");
         // Not emitted before explicit confirmation.
-        expect(emitOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
+        expect(trackOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
             false,
         );
 
@@ -71,7 +69,7 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         // The backend trigger is actually invoked with the sync config id.
         expect(triggerSync).toHaveBeenCalledWith("sync-1");
         await waitFor(() =>
-            expect(emitOnboardingEvent).toHaveBeenCalledWith("first_sync_started", {
+            expect(trackOnboardingEvent).toHaveBeenCalledWith("first_sync_started", {
                 orgId: "org-1",
             }),
         );
@@ -92,7 +90,7 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         expect(screen.getByTestId("first-run-sync-submit-error")).toHaveTextContent(
             "Sync service unavailable",
         );
-        expect(emitOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
+        expect(trackOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
             false,
         );
         // Stays on the ready-to-sync surface so the user can retry.
@@ -108,7 +106,7 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
 
         expect(triggerSync).not.toHaveBeenCalled();
         expect(await screen.findByTestId("first-run-sync-submit-error")).toBeInTheDocument();
-        expect(emitOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
+        expect(trackOnboardingEvent.mock.calls.some((c) => c[0] === "first_sync_started")).toBe(
             false,
         );
     });
@@ -165,7 +163,7 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         await user.click(screen.getByTestId("first-run-sync-retry"));
         expect(triggerSync).toHaveBeenCalledWith("sync-1");
         await waitFor(() =>
-            expect(emitOnboardingEvent).toHaveBeenCalledWith("first_sync_started", {
+            expect(trackOnboardingEvent).toHaveBeenCalledWith("first_sync_started", {
                 orgId: "org-1",
             }),
         );
@@ -183,11 +181,9 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
             />,
         );
         expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "complete");
-        expect(emitOnboardingEventOnce).toHaveBeenCalledWith(
-            "onboarding_completed:org-1",
-            "onboarding_completed",
-            { orgId: "org-1" },
-        );
+        expect(trackOnboardingEventOnce).toHaveBeenCalledWith("onboarding_completed", {
+            orgId: "org-1",
+        });
         expect(screen.getByRole("link", { name: CTA_LABELS.backToCockpit })).toHaveAttribute(
             "href",
             "/dashboard",
@@ -219,7 +215,7 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
         );
         // No funnel completion emitted on an error arrival.
         expect(
-            emitOnboardingEventOnce.mock.calls.some((c) => c[1] === "onboarding_completed"),
+            trackOnboardingEventOnce.mock.calls.some((c) => c[0] === "onboarding_completed"),
         ).toBe(false);
     });
 

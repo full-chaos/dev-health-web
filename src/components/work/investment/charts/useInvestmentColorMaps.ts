@@ -23,6 +23,7 @@ import { allocationNodeLabel } from "@/lib/allocationSelection";
 import { computeSankeyMetrics, limitRepoNodes } from "@/lib/sankey";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyNode, SankeyResponse, WorkUnitInvestment } from "@/lib/types";
+import { escapeHtml } from "@/components/charts/escapeHtml";
 
 type InvestmentMix = ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix>;
 
@@ -402,12 +403,12 @@ export function useInvestmentColorMaps({
 
                 if (isEdge) {
                     const lines = [
-                        `<strong>Allocated:</strong> ${formatNumber(currentValue)} ${unit}`,
-                        `<strong>From:</strong> ${shownName(sourceName)}${groupLabel(sourceName) ? ` (${groupLabel(sourceName)})` : ""}`,
-                        `<strong>To:</strong> ${shownName(targetName)}${groupLabel(targetName) ? ` (${groupLabel(targetName)})` : ""}`,
+                        `<strong>Allocated:</strong> ${formatNumber(currentValue)} ${escapeHtml(unit)}`,
+                        `<strong>From:</strong> ${escapeHtml(shownName(sourceName))}${groupLabel(sourceName) ? ` (${groupLabel(sourceName)})` : ""}`,
+                        `<strong>To:</strong> ${escapeHtml(shownName(targetName))}${groupLabel(targetName) ? ` (${groupLabel(targetName)})` : ""}`,
                     ];
                     if (timeLabel) {
-                        lines.push(`<strong>Window:</strong> ${timeLabel}`);
+                        lines.push(`<strong>Window:</strong> ${escapeHtml(timeLabel)}`);
                     }
                     const edgeUnassigned = unassignedLine(sourceName) || unassignedLine(targetName);
                     if (edgeUnassigned) {
@@ -420,13 +421,13 @@ export function useInvestmentColorMaps({
                 }
 
                 const lines = [
-                    `<strong>Total allocated:</strong> ${formatNumber(nodeValue)} ${unit}`,
+                    `<strong>Total allocated:</strong> ${formatNumber(nodeValue)} ${escapeHtml(unit)}`,
                 ];
                 if (clampedShare !== null) {
                     lines.push(`<strong>Share:</strong> ${formatNumber(clampedShare * 100)}%`);
                 }
                 if (timeLabel) {
-                    lines.push(`<strong>Window:</strong> ${timeLabel}`);
+                    lines.push(`<strong>Window:</strong> ${escapeHtml(timeLabel)}`);
                 }
                 const nodeUnassigned = unassignedLine(nodeName);
                 if (nodeUnassigned) {
@@ -435,7 +436,7 @@ export function useInvestmentColorMaps({
                     );
                 }
                 const meaning = `<div style=\"margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};\">Attribution under current filters (not dependency or causation).</div>`;
-                return `<div style=\"padding: 4px;\"><div style=\"font-weight: 600;\">${shownName(nodeName)}${typeBadge(nodeName)}</div><div style=\"margin-top: 6px;\">${lines.join("<br/>")}</div>${deltaHtml}${meaning}</div>`;
+                return `<div style=\"padding: 4px;\"><div style=\"font-weight: 600;\">${escapeHtml(shownName(nodeName))}${typeBadge(nodeName)}</div><div style=\"margin-top: 6px;\">${lines.join("<br/>")}</div>${deltaHtml}${meaning}</div>`;
             };
         },
         [

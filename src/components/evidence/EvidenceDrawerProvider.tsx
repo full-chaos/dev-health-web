@@ -15,6 +15,7 @@ import {
 import { usePathname } from "next/navigation";
 
 import type { MetricFilter } from "@/lib/filters/types";
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
 import { EvidencePanel } from "./EvidencePanel";
@@ -124,11 +125,22 @@ const hasContent = (subject: EvidenceSubject): subject is EvidenceContentSubject
 export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const [state, setState] = useState<OpenState | null>(null);
+    const hasSubject = state !== null;
     // The open subject and a counter, for the event handlers only (never read during render).
-    const current = useRef<{ subject: EvidenceSubject | null; id: number }>({
+    const current = useRef<{
+        subject: EvidenceSubject | null;
+        id: number;
+        path: string | null;
+    }>({
         subject: null,
         id: 0,
+        path: null,
     });
+    // No open subject (closed, or dropped by a navigation): forget the subject, so that coming
+    // back to its path never calls an `onClose` of a page visit that is over.
+    useEffect(() => {
+        if (!hasSubject) current.current = { ...current.current, subject: null, path: null };
+    }, [hasSubject]);
 
     // Drop the subject of another path during render (no effect, no extra paint). React renders
     // again before it commits, so the drawer is never shown on another path, and it does not
@@ -137,19 +149,38 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
         setState(null);
     }
 
+    // A peer drawer opened: drop the subject, with the same hooks as `close`, and keep the claim.
+    const closeFromPeer = useCallback(() => {
+        const previous = current.current.subject;
+        current.current = { subject: null, id: current.current.id, path: null };
+        previous?.onClose?.();
+        setState(null);
+    }, []);
+    // The drawer holds the right edge exactly while it has a subject (CHAOS-12211), as the shared
+    // `Drawer` does. An imperative claim in `open` was released by this provider's own first
+    // passive effects when the open landed before them (a click while the page hydrates), and
+    // again by StrictMode's re-run under `next dev`. Closing, a navigation that drops the subject
+    // (whose `onClose` belongs to a page that is gone) and unmounting release it.
+    useRightDrawerClaim("evidence", hasSubject, closeFromPeer);
+
     const open = useCallback(
         (subject: EvidenceSubject) => {
             const previous = current.current.subject;
-            if (previous !== null && previous !== subject) previous.onClose?.();
+            // A subject opened on another path was dropped by the navigation: forget it, and do
+            // not call its `onClose` (the opener left the page).
+            const dropped = current.current.path !== pathname;
+            if (previous !== null && previous !== subject && !dropped) previous.onClose?.();
             const id = current.current.id + 1;
-            current.current = { subject, id };
+            current.current = { subject, id, path: pathname };
+            // One right drawer at a time: holding a subject takes the edge from the filters or Ask
+            // Dev (`useRightDrawerClaim` above).
             setState({ subject, path: pathname, id });
         },
         [pathname],
     );
     const close = useCallback(() => {
         const previous = current.current.subject;
-        current.current = { subject: null, id: current.current.id };
+        current.current = { subject: null, id: current.current.id, path: null };
         previous?.onClose?.();
         setState(null);
     }, []);

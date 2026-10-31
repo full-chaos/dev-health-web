@@ -34,6 +34,8 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { filtersFromPageParams } from "@/components/shell/scopeBarConfig";
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
+import { loadScopePageEntities } from "@/lib/ask-dev/load-page-scope-entities";
 import { RepoLinkPageNote } from "@/components/shared/RepoLinkPageNote";
 import { BottleneckTiles } from "./BottleneckTiles";
 import { BOTTLENECK_TILES } from "./tiles";
@@ -61,40 +63,42 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
               ? filters.scope.level
               : "org";
 
-    const [health, home, wipExplain, reviewQuadrant, reviewHeatmap] = await Promise.all([
-        checkApiHealth(),
-        fetchOrNull(getHomeDataViaGraphQL(filters), "bottleneck/home-data"),
-        fetchOrNull(
-            getExplainData({ metric: "wip_saturation", filters }),
-            "bottleneck/explain-wip_saturation",
-        ),
-        fetchOrNull(
-            getQuadrant({
-                type: "review_load_latency",
-                scope_type: quadrantScope,
-                scope_id: scopeId,
-                range_days: filters.time.range_days,
-                bucket: "week",
-                start_date: filters.time.start_date,
-                end_date: filters.time.end_date,
-                filters,
-            }),
-            "bottleneck/review-load-latency-quadrant",
-        ),
-        fetchOrNull(
-            getHeatmap({
-                type: "temporal_load",
-                metric: "review_wait_density",
-                scope_type: filters.scope.level,
-                scope_id: scopeId,
-                range_days: filters.time.range_days,
-                start_date: filters.time.start_date,
-                end_date: filters.time.end_date,
-                filters,
-            }),
-            "bottleneck/review-heatmap",
-        ),
-    ]);
+    const [health, home, wipExplain, reviewQuadrant, reviewHeatmap, scopeEntities] =
+        await Promise.all([
+            checkApiHealth(),
+            fetchOrNull(getHomeDataViaGraphQL(filters), "bottleneck/home-data"),
+            fetchOrNull(
+                getExplainData({ metric: "wip_saturation", filters }),
+                "bottleneck/explain-wip_saturation",
+            ),
+            fetchOrNull(
+                getQuadrant({
+                    type: "review_load_latency",
+                    scope_type: quadrantScope,
+                    scope_id: scopeId,
+                    range_days: filters.time.range_days,
+                    bucket: "week",
+                    start_date: filters.time.start_date,
+                    end_date: filters.time.end_date,
+                    filters,
+                }),
+                "bottleneck/review-load-latency-quadrant",
+            ),
+            fetchOrNull(
+                getHeatmap({
+                    type: "temporal_load",
+                    metric: "review_wait_density",
+                    scope_type: filters.scope.level,
+                    scope_id: scopeId,
+                    range_days: filters.time.range_days,
+                    start_date: filters.time.start_date,
+                    end_date: filters.time.end_date,
+                    filters,
+                }),
+                "bottleneck/review-heatmap",
+            ),
+            loadScopePageEntities({ routeId: "bottlenecks", view: "work", filters }),
+        ]);
 
     if (!health.ok) {
         return <ServiceUnavailable landmark={false} />;
@@ -138,6 +142,8 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            {/* Ask Dev page context (CHAOS-11938): the organization and the page's one scope. */}
+            <AskDevPageEntities organization entities={scopeEntities} />
             <PageHeader
                 title="Bottlenecks"
                 subtitle="WIP saturation, review latency, and blocked work in one view."

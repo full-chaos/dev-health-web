@@ -1,5 +1,6 @@
 "use client";
 
+import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 import { useEffect, useRef, useState } from "react";
 import { Bug } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -34,6 +35,8 @@ export function BugReportButton() {
         if (isOpen) titleInputRef.current?.focus();
         else openerRef.current?.focus();
     }, [isOpen]);
+
+    useRightDrawerClaim("bug-report", isOpen, () => setIsOpen(false));
 
     const openPanel = (event: React.MouseEvent<HTMLButtonElement>) => {
         openerRef.current = event.currentTarget;

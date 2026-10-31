@@ -1,3 +1,4 @@
+import { AskDevPageEntities } from "@/components/ask-dev/pageContext/AskDevPageEntities";
 import Link from "next/link";
 import { ArrowRight, CircleAlert } from "lucide-react";
 
@@ -100,6 +101,8 @@ export default async function DataHealthOverviewPage() {
 
     return (
         <div className="space-y-8">
+            {/* Ask Dev page context (CHAOS-11938): the organization; the overview has no scope. */}
+            <AskDevPageEntities organization />
             <AdminHeader
                 title="Data Confidence"
                 description="Monitor connector freshness, identity coverage, and mapping health."

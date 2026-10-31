@@ -4,6 +4,7 @@ import { setEntitlementScenario } from "./entitlementScenario";
 import {
     handlers,
     setMockAdminRows,
+    setMockLlmUnreadable,
     setMockOwnModel,
     setMockPromptCache,
     setMockServiceModel,
@@ -156,6 +157,31 @@ app.post("/__test/service-model", (req, res) => {
         return;
     }
     setMockServiceModel({ override, managed: seed.managed });
+    res.status(204).end();
+});
+
+// CHAOS-12173: saved BYO settings whose key cannot be decrypted (409), a transient read failure (500), or
+// back to the readable default config.
+app.post("/__test/llm-settings-unreadable", (req, res) => {
+    const seed = req.body as
+        { unreadable?: unknown; purposes?: unknown; transient?: unknown } | undefined;
+    if (
+        !seed ||
+        typeof seed.unreadable !== "boolean" ||
+        (seed.transient !== undefined && typeof seed.transient !== "boolean") ||
+        (seed.purposes !== undefined &&
+            (!Array.isArray(seed.purposes) || !seed.purposes.every((p) => typeof p === "string")))
+    ) {
+        res.status(400).json({
+            error: "Expected { unreadable: boolean, purposes?: string[], transient?: boolean }",
+        });
+        return;
+    }
+    setMockLlmUnreadable({
+        unreadable: seed.unreadable,
+        purposes: seed.purposes as string[] | undefined,
+        transient: seed.transient as boolean | undefined,
+    });
     res.status(204).end();
 });
 

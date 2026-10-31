@@ -185,8 +185,9 @@ describe("CHAOS-3017 executable CI boundaries", () => {
     it("binds every E2E job and harness path to its real package script", () => {
         const workflow = contents(TESTS_WORKFLOW);
         const scripts = JSON.parse(contents(PACKAGE_JSON)).scripts;
+        // CHAOS-12170: the serial entitlement-scenario project is part of the default suite.
         expect(scripts["test:e2e"]).toBe(
-            "playwright test --project=authenticated --project=unauthenticated",
+            "playwright test --project=authenticated --project=entitlement-scenario --project=unauthenticated",
         );
         expect(scripts["test:e2e:onboarding"]).toBe(
             "playwright test -c playwright.onboarding.config.ts",

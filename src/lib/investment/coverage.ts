@@ -70,3 +70,28 @@ export function readFlowSizing(...flows: Array<SankeyResponse | null | undefined
     }
     return { state: "not-measured" };
 }
+
+export type UncategorizedReading =
+    | { state: "not-measured" }
+    | { state: "none" }
+    | { state: "partial"; count: number; total: number; share: number };
+
+/**
+ * Read how many work units the theme mix leaves out for too little text. Missing is not zero: a count
+ * the API did not produce, a window with no unit, or a count above the total (an impossible state) is
+ * "not-measured". A produced 0 over a window with units means none are left out.
+ */
+export function readUncategorizedCoverage(
+    count: number | null | undefined,
+    total: number | null | undefined,
+): UncategorizedReading {
+    const left = produced(count);
+    const all = produced(total);
+    if (left === null || all === null || all <= 0 || left > all) {
+        return { state: "not-measured" };
+    }
+    if (left === 0) {
+        return { state: "none" };
+    }
+    return { state: "partial", count: left, total: all, share: left / all };
+}

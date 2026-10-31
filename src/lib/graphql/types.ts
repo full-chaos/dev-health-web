@@ -184,6 +184,8 @@ export interface EvidenceQualityStatsResult {
     stddev?: number | null;
     total: number;
     bandCounts: Record<string, number>;
+    /** Work units the theme mix leaves out for too little text; null/absent = not measured. */
+    uncategorizedCount?: number | null;
 }
 
 export interface AnalyticsResult {

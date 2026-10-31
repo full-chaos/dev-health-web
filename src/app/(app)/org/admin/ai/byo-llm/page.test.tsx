@@ -15,6 +15,9 @@ vi.mock("@/components/admin/llm/ByoLlmSettings", () => ({
 vi.mock("@/components/admin/llm/ByoLlmPurposeOverrides", () => ({
     ByoLlmPurposeOverrides: () => <section>BYO purpose models</section>,
 }));
+vi.mock("@/components/admin/llm/ByoLlmCategorizeOptIn", () => ({
+    ByoLlmCategorizeOptIn: () => <section>Categorize opt-in</section>,
+}));
 vi.mock("@/components/admin/llm/ByoLlmSpendSummary", () => ({
     ByoLlmSpendSummary: () => <section>BYO spend summary</section>,
 }));
@@ -59,6 +62,7 @@ describe("ByoLlmAISetupPage", () => {
         expect(screen.getByText("Own model toggle")).toBeInTheDocument();
         expect(screen.getByText("Prompt cache toggle")).toBeInTheDocument();
         expect(screen.getByText("BYO purpose models")).toBeInTheDocument();
+        expect(screen.getByText("Categorize opt-in")).toBeInTheDocument();
         expect(screen.getByText("BYO spend summary")).toBeInTheDocument();
         expect(screen.getByText("BYO error guidance")).toBeInTheDocument();
         expect(screen.queryByText(/Ask Dev controls/i)).not.toBeInTheDocument();

@@ -22,10 +22,12 @@ beforeEach(() => {
 });
 
 vi.mock("next-auth/react", () => ({
-    useSession: () => ({
-        data: { access_token: "test-token" },
-        status: "authenticated",
-    }),
+    useSession: () => ({ data: { user: { id: "user-1" } }, status: "authenticated" }),
+}));
+
+const mockSkip = vi.fn();
+vi.mock("@/lib/onboarding/actions", () => ({
+    skipIntegrationStep: (...args: unknown[]) => mockSkip(...args),
 }));
 
 vi.mock("@/lib/origin", () => ({
@@ -56,6 +58,7 @@ import { OnboardIntegrationStep } from "./OnboardIntegrationStep";
 describe("OnboardIntegrationStep", () => {
     afterEach(() => {
         vi.restoreAllMocks();
+        mockSkip.mockReset();
         mockTrack.mockReset();
         resetOnboardingOnceTracking();
     });
@@ -114,9 +117,9 @@ describe("OnboardIntegrationStep", () => {
         expect(mockTrack).toHaveBeenCalledWith("github_app_install_started", { orgId: "org-123" });
     });
 
-    it("skips: emits integration_skipped, persists via the API, and advances to completion", async () => {
+    it("skips: emits integration_skipped, persists via the server action, and advances to completion", async () => {
+        mockSkip.mockResolvedValue({ ok: true });
         const fetchSpy = vi.spyOn(global, "fetch");
-        fetchSpy.mockResolvedValue(new Response("{}", { status: 200 }));
 
         render(<OnboardIntegrationStep orgId="org-123" />);
         const user = userEvent.setup();
@@ -128,15 +131,13 @@ describe("OnboardIntegrationStep", () => {
             expect(locationHref).toBe("/auth/onboard/complete");
         });
 
-        const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-        expect(url).toContain("/auth/onboarding/skip-integration");
-        expect(init.method).toBe("POST");
-        expect((init.headers as Record<string, string>).Authorization).toBe("Bearer test-token");
+        expect(mockSkip).toHaveBeenCalledTimes(1);
+        // CHAOS-12088: the page sends no bearer request of its own; the action holds the token.
+        expect(fetchSpy).not.toHaveBeenCalled();
     });
 
     it("surfaces an error when the skip request fails and stays on the step", async () => {
-        const fetchSpy = vi.spyOn(global, "fetch");
-        fetchSpy.mockResolvedValue(new Response("nope", { status: 500 }));
+        mockSkip.mockResolvedValue({ ok: false, status: 500 });
 
         render(<OnboardIntegrationStep orgId="org-123" />);
         const user = userEvent.setup();
@@ -148,6 +149,21 @@ describe("OnboardIntegrationStep", () => {
         });
         expect(locationHref).toBe("");
         // The skip event must NOT fire when the persist POST fails — no false skip.
+        expect(mockTrack).not.toHaveBeenCalledWith("integration_skipped", expect.anything());
+    });
+
+    it("surfaces an error when the action call itself fails", async () => {
+        mockSkip.mockRejectedValue(new Error("network"));
+
+        render(<OnboardIntegrationStep orgId="org-123" />);
+        const user = userEvent.setup();
+
+        await user.click(screen.getByRole("button", { name: "Skip for now" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("alert")).toHaveTextContent(/couldn't skip/i);
+        });
+        expect(locationHref).toBe("");
         expect(mockTrack).not.toHaveBeenCalledWith("integration_skipped", expect.anything());
     });
 

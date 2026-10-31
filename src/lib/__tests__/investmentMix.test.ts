@@ -47,6 +47,36 @@ describe("normalizeInvestmentMix", () => {
         });
     });
 
+    it("carries the total and the count of work units left out of the mix", () => {
+        const normalized = normalizeInvestmentMix({
+            theme_distribution: { quality: 1 },
+            subcategory_distribution: {},
+            evidence_quality_stats: {
+                mean: 0.5,
+                band_counts: { high: 1 },
+                total: 10,
+                uncategorized_count: 4,
+            },
+        });
+        expect(normalized.evidence_quality_stats?.total).toBe(10);
+        expect(normalized.evidence_quality_stats?.uncategorized_count).toBe(4);
+    });
+
+    it("keeps a missing or invalid count as null, never 0", () => {
+        for (const stats of [
+            { mean: 0.5, band_counts: {}, total: 10 },
+            { mean: 0.5, band_counts: {}, total: 10, uncategorized_count: -1 },
+            { mean: 0.5, band_counts: {}, total: 10, uncategorized_count: "4" },
+        ]) {
+            const normalized = normalizeInvestmentMix({
+                theme_distribution: { quality: 1 },
+                subcategory_distribution: {},
+                evidence_quality_stats: stats as never,
+            });
+            expect(normalized.evidence_quality_stats?.uncategorized_count).toBeNull();
+        }
+    });
+
     it("passes through evidence_quality_stats when present", () => {
         const normalized = normalizeInvestmentMix({
             theme_distribution: { feature_delivery: 40 },

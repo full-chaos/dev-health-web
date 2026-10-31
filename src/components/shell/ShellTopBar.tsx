@@ -10,6 +10,7 @@ import {
     useEvidenceDrawer,
     usePageEvidenceSubject,
 } from "@/components/evidence/EvidenceDrawerProvider";
+import { AskDevLauncher } from "@/components/ask-dev/AskDevLauncher";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { metricEvidenceLeaf } from "@/lib/navigation/evidenceTrail";
 
@@ -94,6 +95,7 @@ export function ShellTopBar({ themeToggle }: ShellTopBarProps) {
             {/* Prototype `.topbar`: breadcrumb, then the search, then the toggle. */}
             <CommandPalette />
             <div className="ml-auto flex shrink-0 items-center gap-3">
+                <AskDevLauncher placement="top-bar" />
                 <SourcesEntry />
                 <div data-slot="theme-toggle" className="flex items-center empty:hidden">
                     {themeToggle}
