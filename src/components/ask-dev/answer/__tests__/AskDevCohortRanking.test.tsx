@@ -409,6 +409,8 @@ describe("a member that serves no driver rows (CHAOS-12283)", () => {
 
     it("a pull-request cohort whose members serve no driver rows shows no member at all, so no completeness text", () => {
         const members = (PRS as any).cohort.members as any[];
+        // codex r1 on #1660: `every` holds for an empty list, so the premise is pinned by count.
+        expect(members).toHaveLength(25);
         expect(
             members.every((m) => m.drivers === undefined && m.data_completeness === "degraded"),
         ).toBe(true);
