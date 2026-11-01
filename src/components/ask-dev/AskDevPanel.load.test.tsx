@@ -36,6 +36,18 @@ function StubRender({ onMounted }: { onMounted?: (focusBefore: Element | null) =
     return <textarea aria-label="composer" ref={composer} />;
 }
 
+/** `matches` answers the `md` query: false is the sheet. */
+function setDesktop(desktop: boolean) {
+    vi.stubGlobal(
+        "matchMedia",
+        vi.fn(() => ({
+            matches: desktop,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        })),
+    );
+}
+
 async function openPanel() {
     const { AskDevPanel } = await import("./AskDevPanel");
     render(<AskDevPanel />);
@@ -59,14 +71,7 @@ beforeEach(() => {
         if (load.fail) throw new Error("chunk did not load");
         return { AskDevRender: StubRender };
     });
-    vi.stubGlobal(
-        "matchMedia",
-        vi.fn(() => ({
-            matches: true,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-        })),
-    );
+    setDesktop(true);
 });
 
 afterEach(() => {
@@ -97,6 +102,18 @@ describe("the panel while the render loads", () => {
 
         expect(outside).toHaveFocus();
         outside.remove();
+    });
+
+    it("leaves focus on the sheet's Close when the render arrives there too", async () => {
+        setDesktop(false);
+        await openPanel();
+        const close = screen.getByTestId("drawer-close");
+        expect(close).toHaveFocus();
+
+        await arrive();
+        await screen.findByRole("textbox", { name: "composer" });
+
+        expect(close).toHaveFocus();
     });
 
     it("says so when the chunk does not load, logs it, and keeps the page", async () => {

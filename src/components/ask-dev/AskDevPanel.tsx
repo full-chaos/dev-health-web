@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { Maximize2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
@@ -31,6 +31,15 @@ export const RENDER_LOAD_COPY = {
     loading: "Loading Ask Dev…",
     failed: "Ask Dev could not load. Reload the page to try again.",
 } as const;
+
+/**
+ * The render arrives after the panel on a first open, and its composer takes focus as it mounts.
+ * Its arrival must not move focus: not from the panel, the sheet's Close, or wherever the viewer
+ * went while it loaded.
+ */
+function keepFocus(focusBefore: Element | null) {
+    if (focusBefore instanceof HTMLElement) focusBefore.focus();
+}
 
 function RenderLoading() {
     return (
@@ -125,12 +134,6 @@ function DesktopPanel({ onClose }: { onClose: () => void }) {
         return () => document.removeEventListener("keydown", onKeyDown);
     }, []);
 
-    // The render arrives after the panel on a first open, and its composer takes focus as it
-    // mounts. Its arrival must not move focus: from the panel, or from wherever the viewer went.
-    const holdFocus = useCallback((focusBefore: Element | null) => {
-        if (focusBefore instanceof HTMLElement) focusBefore.focus();
-    }, []);
-
     return (
         <aside
             id={ASK_DEV_PANEL_ID}
@@ -157,7 +160,7 @@ function DesktopPanel({ onClose }: { onClose: () => void }) {
                 </button>
             </div>
             <div className="flex min-h-0 flex-1">
-                <AskDevRender onMounted={holdFocus} />
+                <AskDevRender onMounted={keepFocus} />
             </div>
         </aside>
     );
@@ -191,7 +194,7 @@ export function AskDevPanel() {
             // The sheet header has only Close: the full page link sits in its action row.
             footer={<ExpandButton withText />}
         >
-            <AskDevRender />
+            <AskDevRender onMounted={keepFocus} />
         </Drawer>
     );
 }
