@@ -3,11 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order.
-vi.mock(
-    "@/lib/echartsInit",
-    async () => (await import("../render/__tests__/echartsStub")).echartsStubModule,
-);
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 /** A router that changes the route the way Next does: the shell stays mounted, the page changes. */
@@ -62,13 +57,14 @@ vi.mock("next-auth/react", () => ({
 
 import { useSyncExternalStore } from "react";
 
+import { CHAT_STAGE_COPY, TRANSCRIPT_COPY } from "@full-chaos/ask-dev/render";
+
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { resetRightDrawerForTest, rightDrawerOwnerForTest } from "@/lib/shell/rightDrawer";
 
 import { AskDevFullPage, FULL_PAGE_COPY } from "../AskDevFullPage";
 import { AskDevLauncher } from "../AskDevLauncher";
 import { AskDevPanel } from "../AskDevPanel";
-import { TRANSCRIPT_COPY } from "../AskDevConversationView";
 import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
 import {
     AskDevConversationProvider,
@@ -76,7 +72,6 @@ import {
     UNSAVED_CONVERSATION_KEY,
     useAskDevNotSaved,
 } from "../conversation/AskDevConversationContext";
-import { COMPOSER_COPY } from "../conversation/AskDevComposer";
 import type { AskDevTransport } from "../conversation/transport";
 import {
     accepted,
@@ -132,8 +127,9 @@ const page = () => screen.getByTestId("ask-dev-page");
 
 async function askInPanel(question = "Which projects are at risk?") {
     await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+    await within(panel()).findByRole("textbox", { name: "Ask a question" });
     await userEvent.type(
-        within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label }),
+        within(panel()).getByRole("textbox", { name: "Ask a question" }),
         `${question}{Enter}`,
     );
 }
@@ -165,7 +161,9 @@ describe("Expand: the full page shows the same run, and nothing is sent again", 
         transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
         renderShell(transport);
         await askInPanel();
-        expect(await within(panel()).findByTestId("ask-dev-stages")).toBeInTheDocument();
+        expect(
+            await within(panel()).findByRole("list", { name: CHAT_STAGE_COPY.steps }),
+        ).toBeInTheDocument();
 
         await userEvent.click(within(panel()).getByRole("button", { name: "Open full page" }));
         expect(nav.pushes).toEqual(["/dev"]);
@@ -185,7 +183,7 @@ describe("Expand: the full page shows the same run, and nothing is sent again", 
         transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
         renderShell(transport);
         await askInPanel();
-        await within(panel()).findByTestId("ask-dev-answer");
+        await within(panel()).findByTestId("answer-panel");
         nav.hold = true;
         await userEvent.click(within(panel()).getByRole("button", { name: "Open full page" }));
         expect(nav.pushes).toEqual(["/dev"]);
@@ -198,7 +196,7 @@ describe("Expand: the full page shows the same run, and nothing is sent again", 
         transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
         renderShell(transport);
         await askInPanel();
-        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(panel()).findByTestId("answer-panel")).toBeInTheDocument();
 
         await userEvent.click(within(panel()).getByRole("button", { name: "Open full page" }));
         expect(within(page()).getByTestId("answer-panel")).toBeInTheDocument();
@@ -217,8 +215,6 @@ describe("/dev is ask-dev's own render (CHAOS-12383)", () => {
         expect(
             within(conversation).getAllByRole("textbox", { name: "Ask a question" }),
         ).toHaveLength(1);
-        expect(screen.queryByTestId("ask-dev-transcript")).toBeNull();
-        expect(screen.queryByTestId("ask-dev-composer")).toBeNull();
     });
 
     it("asks through web's store: the render's composer reaches the transport, once", async () => {
@@ -255,18 +251,18 @@ describe("Minimize: back to the page it came from, with the panel open on the sa
         transport.scripts.push([accepted(), resultEvent(PARTIAL)], [resultEvent(PARTIAL)]);
         renderShell(transport);
         await askInPanel();
-        await within(panel()).findByTestId("ask-dev-answer");
+        await within(panel()).findByTestId("answer-panel");
         await userEvent.click(within(panel()).getByRole("button", { name: "Open full page" }));
 
         await userEvent.click(within(page()).getByRole("button", { name: "Minimize to panel" }));
         expect(nav.pushes).toEqual(["/dev", "/dashboard?f=team"]);
         expect(await screen.findByRole("complementary", { name: "Ask Dev" })).toBeInTheDocument();
-        expect(within(panel()).getByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(within(panel()).getByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(1);
 
         // The next question goes on in the same conversation.
         await userEvent.type(
-            within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label }),
+            within(panel()).getByRole("textbox", { name: "Ask a question" }),
             "Why?{Enter}",
         );
         await waitFor(() => expect(transport.calls).toHaveLength(2));
@@ -300,7 +296,7 @@ describe("a reload loses the conversation, and says so (plan §2.5)", () => {
         renderShell(transport);
         expect(window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY)).toBeNull();
         await askInPanel();
-        await within(panel()).findByTestId("ask-dev-answer");
+        await within(panel()).findByTestId("answer-panel");
         expect(window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY)).toBe(TAG);
         expect(TAG).toMatch(/^[0-9a-f]{8}$/u);
     });
@@ -337,10 +333,10 @@ describe("a reload loses the conversation, and says so (plan §2.5)", () => {
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         expect(within(panel()).getByTestId("ask-dev-not-saved")).toBeInTheDocument();
         await userEvent.type(
-            within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label }),
+            within(panel()).getByRole("textbox", { name: "Ask a question" }),
             "Which projects are at risk?{Enter}",
         );
-        await within(panel()).findByTestId("ask-dev-answer");
+        await within(panel()).findByTestId("answer-panel");
         expect(within(panel()).queryByTestId("ask-dev-not-saved")).toBeNull();
         // The hook itself says so too: the lost conversation is no longer the tab's state.
         expect(screen.getByTestId("not-saved-probe")).toHaveTextContent("false");

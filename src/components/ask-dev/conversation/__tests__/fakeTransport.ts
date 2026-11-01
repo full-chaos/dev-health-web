@@ -3,12 +3,13 @@ import { join } from "node:path";
 
 import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
 
-import type { TranscriptResult } from "../../answer/AskDevTurn";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import { TransportRefusal } from "../transport";
 import type {
     AskDevTransport,
     CancelAnswer,
     FeedbackFlag,
+    EvidenceView,
     FeedbackView,
     InvestigateCall,
     InvestigationEvent,
@@ -18,7 +19,7 @@ import type {
     ThreadView,
 } from "../transport";
 
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 
 /** A real (scrubbed) ACR result from the capture set. */
 export function captureResult(file: string): TranscriptResult {
@@ -325,6 +326,29 @@ export class FakeTransport implements AskDevTransport {
     readonly feedbackSets: { readonly gate?: Promise<void>; readonly fail?: unknown }[] = [];
     readonly feedbackSetCalls: { resultId: string; correct: FeedbackFlag; useful: FeedbackFlag }[] =
         [];
+
+    /** Keyed `refId|resultId`. Absent is ACR's 404 (`null`). */
+    readonly evidence = new Map<string, EvidenceView | { readonly fail: unknown }>();
+    readonly evidenceCalls: {
+        readonly refId: string;
+        readonly resultId: string;
+        readonly signal: AbortSignal;
+    }[] = [];
+    /** An evidence read waits for this before it answers (and ignores the abort signal). */
+    evidenceGate: Promise<void> | undefined;
+
+    readonly readEvidence = async (call: {
+        readonly refId: string;
+        readonly resultId: string;
+        readonly signal: AbortSignal;
+    }): Promise<EvidenceView | null> => {
+        this.evidenceCalls.push(call);
+        if (this.evidenceGate !== undefined) await this.evidenceGate;
+        const answer = this.evidence.get(`${call.refId}|${call.resultId}`);
+        if (answer === undefined) return null;
+        if ("fail" in answer) throw answer.fail;
+        return answer;
+    };
 
     readonly readFeedback = async (call: {
         readonly resultId: string;

@@ -18,15 +18,14 @@ import {
 } from "@/lib/ask-dev/request-builder";
 import { logger } from "@/lib/logger";
 
-import type { TranscriptResult } from "../answer/AskDevTurn";
-import type { ClarificationChoice } from "../answer/clarificationModel";
-import type { RefusalEvent } from "../answer/refusalModel";
+import type { RefusalEvent, TranscriptResult } from "@/lib/ask-dev/transcript";
 import { isCorrelationId, newSubmissionId, newThreadId, partitionTag } from "./keys";
 import {
     TransportFailure,
     TransportRefusal,
     type AskDevTransport,
     type CancelAnswer,
+    type EvidenceView,
     type InvestigationEvent,
     type InvestigationStage,
     type ThreadSummaryView,
@@ -259,6 +258,10 @@ const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
 const needsConnect = (error: unknown): boolean =>
     error instanceof TransportFailure && error.reason === "authorization_required";
 
+/** ACR's 409: no repository in scope. Reading again cannot help, so nothing offers a retry. */
+export const noRepositoryInScope = (error: unknown): boolean =>
+    error instanceof TransportRefusal && error.error.error.code === "no_repository";
+
 const connectOutcome: TurnOutcome = { kind: "connect" };
 
 const notRunReasonOf = (code: string): NotRunReason | undefined =>
@@ -351,8 +354,11 @@ export type SelectionSource = "initial" | "incoming" | "local";
 
 /** The history list of the bound partition (E6 design v5 §4.3), shared by both surfaces. */
 export type HistorySnapshot = {
-    /** `connect`: no ACR access token, or ACR's 401, on the first page (CHAOS-12336). */
-    readonly status: "idle" | "loading" | "ready" | "read_failed" | "connect";
+    /**
+     * `connect`: no ACR access token, or ACR's 401, on the first page (CHAOS-12336).
+     * `no_repository`: ACR's 409, no repository in scope (CHAOS-12439); there are no rows.
+     */
+    readonly status: "idle" | "loading" | "ready" | "read_failed" | "connect" | "no_repository";
     readonly threads: readonly ThreadSummaryView[];
     readonly nextCursor: string | null;
     readonly loadingMore: boolean;
@@ -447,24 +453,6 @@ function mergeSubjectHints(
         seen.add(key);
         return true;
     });
-}
-
-/**
- * A clarification choice as a follow-up's carry: its parent result and the receipts it picked, each
- * already bound to that result (`buildChoice`, INV-1).
- */
-export function carryOfChoice(choice: ClarificationChoice): TurnCarry {
-    const { receipts } = choice;
-    return {
-        parentResultId: choice.parentResultId,
-        structureReceipts: {
-            priorKindReceipts: receipts.prior_kind_receipts,
-            priorAnchorReceipts: receipts.prior_anchor_receipts,
-            priorHandleReceipts: receipts.prior_handle_receipts,
-            priorWindowReceipts: receipts.prior_window_receipts,
-            priorCandidateReceipts: receipts.prior_candidate_receipts,
-        },
-    };
 }
 
 /** Where the store keeps its restore hint (session storage in the product). */
@@ -1049,6 +1037,15 @@ export class ConversationStore {
         return this.selectThread(hint.thread_id, "incoming");
     }
 
+    /** One evidence reference, as the result that cited it cites it (CHAOS-12105). */
+    readEvidence(call: {
+        readonly refId: string;
+        readonly resultId: string;
+        readonly signal: AbortSignal;
+    }): Promise<EvidenceView | null> {
+        return this.transport.readEvidence(call);
+    }
+
     /** "Show earlier turns": the page before the oldest shown, prepended (E6 design v5 §4.2.6). */
     loadEarlierTurns(): boolean {
         const { thread, threadId } = this.snapshot;
@@ -1171,8 +1168,10 @@ export class ConversationStore {
         } catch (error) {
             if (!this.owns(run)) return;
             if (error instanceof TransportRefusal && error.status === 404) {
-                // Not the caller's open submission any more: read what it became.
-                answer = { kind: "final" };
+                // ACR holds no lease on this run (its run lease may be off), so nothing here can
+                // stop it (CHAOS-12483). As for `not_leased`: a stream disconnects, which is the
+                // cancel, and "Canceling…" never shows for a run that nothing is canceling.
+                answer = { kind: "not_leased" };
             } else {
                 logger.warn(
                     { submission_id: run.submissionId, status: failureStatus(error) },
@@ -1374,6 +1373,12 @@ export class ConversationStore {
                 { thread_id: threadId, stage: "read", status: failureStatus(error), selection },
                 "ask-dev thread restore failed",
             );
+            if (noRepositoryInScope(error)) {
+                // No repository in scope: reading again cannot help, on this load or the next.
+                if (parseHint(this.hints.read())?.thread_id === threadId) this.hints.clear();
+                this.commit({ ...this.snapshot, threadId: null, thread: { kind: "unavailable" } });
+                return;
+            }
             this.commit({
                 ...this.snapshot,
                 thread: needsConnect(error) ? { kind: "connect" } : { kind: "read_failed" },
@@ -1434,6 +1439,19 @@ export class ConversationStore {
             if (error instanceof TransportRefusal && error.status === 400) {
                 // A stale cursor: read the thread again from its latest page.
                 this.reread(threadId);
+                return;
+            }
+            if (noRepositoryInScope(error)) {
+                // The scope has gone: "Try again" on the earlier page cannot help, nor can a reload.
+                if (parseHint(this.hints.read())?.thread_id === threadId) this.hints.clear();
+                this.dropSelectionWork("detach");
+                this.commit({
+                    ...this.snapshot,
+                    threadId: null,
+                    thread: { kind: "unavailable" },
+                    turns: [],
+                    inFlight: false,
+                });
                 return;
             }
             this.commit({ ...this.snapshot, thread: { kind: "loaded", earlier: "failed" } });
@@ -1567,7 +1585,9 @@ export class ConversationStore {
             this.replaying.delete(submissionId);
             // The run it belongs to already ended (its deadline): this answer changes nothing.
             if (onSettled !== undefined && !onSettled()) return;
-            const unavailable = error instanceof TransportRefusal && error.status === 404;
+            const unavailable =
+                (error instanceof TransportRefusal && error.status === 404) ||
+                noRepositoryInScope(error);
             logger.warn(
                 {
                     submission_id: submissionId,
@@ -1703,6 +1723,11 @@ export class ConversationStore {
                     { err: error, submission_id: submissionId },
                     "ask-dev submission status read failed",
                 );
+                if (noRepositoryInScope(error)) {
+                    // Polling again cannot help (CHAOS-12439).
+                    this.settle(run, { kind: "unavailable" });
+                    return;
+                }
                 status = undefined;
             }
             if (!this.owns(run)) return;
@@ -1774,6 +1799,17 @@ export class ConversationStore {
             if (cursor !== undefined && error instanceof TransportRefusal && error.status === 400) {
                 // A stale cursor: read the list again from its first page.
                 this.loadHistory();
+                return;
+            }
+            if (noRepositoryInScope(error)) {
+                // The scope has gone, on any page: no rows, nothing to retry (CHAOS-12439).
+                this.commitHistory({
+                    status: "no_repository",
+                    threads: [],
+                    nextCursor: null,
+                    loadingMore: false,
+                    moreFailed: false,
+                });
                 return;
             }
             this.commitHistory(
@@ -2462,6 +2498,11 @@ export class ConversationStore {
                     this.settle(run, connectOutcome);
                     return;
                 }
+                // No repository in scope: polling again cannot help (CHAOS-12439).
+                if (noRepositoryInScope(error)) {
+                    this.settle(run, { kind: "unavailable" });
+                    return;
+                }
                 // A failed poll is not an answer: poll again until the deadline.
                 logger.warn(
                     { err: error, submission_id: submissionId, request_id: requestId },
@@ -2529,6 +2570,11 @@ export class ConversationStore {
                 { err: error, submission_id: submissionId, result_id: resultId },
                 "ask-dev result replay failed",
             );
+            if (noRepositoryInScope(error)) {
+                // Reading the stored result again cannot help (CHAOS-12439).
+                this.settle(run, { kind: "unavailable" });
+                return;
+            }
             // The submission is done: the same key replays the stored result, it never runs again.
             this.settle(run, { kind: "failed", retry: true, reference: this.reference(run) });
             return;

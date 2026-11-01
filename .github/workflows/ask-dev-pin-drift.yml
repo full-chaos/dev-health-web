@@ -6,8 +6,8 @@
 # also open (or update) one "ask-dev pin drift: <ask-dev sha>" issue, and close it when it clears.
 # A PR run is strict only when the PR moves the pin (scripts/ask-dev-pin-scope.mjs), and it then
 # names both SHAs on the run, so a pin never moves unseen. For any other PR, drift is a warning, so
-# an ask-dev main move never turns unrelated PRs red. Exit 1 = the pin is wrong, exit 2 = the check
-# could not fetch (also red where strict).
+# an ask-dev main move never turns unrelated PRs red, and a tool failure is a named warning, never
+# "current" and never drift. Exit 1 = the pin is wrong, exit 2 = a tool failure (also red where strict).
 name: ask-dev pin drift
 
 on:
@@ -66,14 +66,17 @@ jobs:
                   PR_PIN: ${{ steps.scope.outputs.pr_pin }}
               run: |
                   echo "::notice title=ask-dev pin moved::$BASE_PIN -> $PR_PIN"
+            # ASK_DEV_PIN_ENFORCE only sets the annotation level (error or warning); the exit code is the
+            # same, and the step below decides whether the job fails. The script names each outcome on its
+            # own: "ask-dev pin drift", "ask-dev pin not on ask-dev main", "ask-dev pin carries another
+            # ACR contract", and "ask-dev pin drift: tool failure, not drift" (a fetch is tried 3 times,
+            # a broken pin or manifest once). No generic advisory step is needed.
             - name: Compare the pin with ask-dev main
               id: check
               continue-on-error: true
+              env:
+                  ASK_DEV_PIN_ENFORCE: ${{ steps.scope.outputs.enforce }}
               run: node scripts/check-ask-dev-pin-drift.mjs
-            - name: Advisory drift (this PR does not move the pin)
-              if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce != 'true'
-              run: |
-                  echo "::warning title=ask-dev pin drift (advisory)::The ask-dev pin differs from ask-dev main or the check could not run. This PR does not move the pin, so it is not blocked. See the check step log; main carries the drift issue."
             - name: Fail on a wrong pin
               if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce == 'true'
               run: exit 1

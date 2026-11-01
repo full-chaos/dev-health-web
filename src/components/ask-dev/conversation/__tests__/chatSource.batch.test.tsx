@@ -111,7 +111,7 @@ const BUDGET_REFUSAL = JSON.parse(
     readFileSync(
         join(
             process.cwd(),
-            "src/components/ask-dev/answer/__tests__/captures/acr_encoder_budget_refusal_evidence_window.event.json",
+            "tests/fixtures/ask-dev/captures/acr_encoder_budget_refusal_evidence_window.event.json",
         ),
         "utf8",
     ),

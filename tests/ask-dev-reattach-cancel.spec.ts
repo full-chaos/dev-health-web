@@ -6,7 +6,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // (`conversation/testModeTransport.ts`) plays ACR's thread list, thread reads, result reads and
 // deletes from session storage and records every call there; no request leaves the browser for ACR.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const SHOTS = process.env.ASK_DEV_REATTACH_SHOTS ?? "";
 const KEYS = {
     stream: "ask-dev:test-mode-stream",
@@ -155,7 +155,11 @@ const openPanel = async (page: Page, path: string | null = "/dashboard") => {
     if (path !== null) await page.goto(path);
     await page.getByRole("button", { name: "Open Ask Dev" }).click();
     const panel = page.getByRole("complementary", { name: "Ask Dev" });
-    await expect(panel.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
+    const input = panel.getByRole("textbox", { name: "Ask a question" });
+    // Ask-dev's render holds its composer while a question runs, so a panel reopened on a run in
+    // flight (`null`: after a reload) is ready when the composer shows, not when it is enabled.
+    if (path === null) await expect(input).toBeVisible();
+    else await expect(input).toBeEnabled();
     return panel;
 };
 
@@ -188,11 +192,13 @@ const ask = async (scope: ReturnType<Page["getByTestId"]>, text = QUESTION) => {
     await input.press("Enter");
 };
 const stopOf = (scope: ReturnType<Page["getByTestId"]>) =>
-    scope.getByTestId("ask-dev-composer-stop");
-const statusOf = (scope: ReturnType<Page["getByTestId"]>) =>
-    scope.getByTestId("ask-dev-turn-status");
+    scope.getByRole("button", { name: "Stop" });
+const statusOf = (scope: ReturnType<Page["getByTestId"]>) => scope.getByTestId("chat-progress");
+/** "canceling" is the progress view's words; every other state is the render's status panel. */
 const turnIn = (scope: ReturnType<Page["getByTestId"]>, state: string) =>
-    scope.locator(`[data-testid=ask-dev-turn][data-status=${state}]`);
+    state === "canceling"
+        ? scope.getByTestId("chat-progress").filter({ hasText: "Canceling…" })
+        : scope.locator(`[data-testid=chat-status][data-status=${state}]`);
 
 /**
  * A run that this tab started, then lost to a reload: ask once on a stream that never ends, hand
@@ -272,9 +278,9 @@ test.describe("desktop (1280px)", () => {
         const before = (await investigations(page)).length;
         await page.reload();
         const reopened = await openPanel(page, null);
-        await expect(reopened.getByTestId("ask-dev-stages")).toBeVisible();
+        await expect(reopened.getByTestId("chat-progress")).toBeVisible();
         await shot(page, "panel-reattached-progress-light", reopened);
-        await expect(reopened.getByTestId("ask-dev-answer")).toBeVisible({ timeout: 20_000 });
+        await expect(reopened.getByTestId("answer-panel")).toBeVisible({ timeout: 20_000 });
         expect((await investigations(page)).length).toBe(before);
         // One page load after the reload: one cursorless attach.
         expect(await kinds(page, "attach")).toEqual([
@@ -291,7 +297,7 @@ test.describe("desktop (1280px)", () => {
         const { panel, submission } = await reloadDuringRun(page, (id) => ({
             status: [status(id, "done", PARTIAL_ID)],
         }));
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible({ timeout: 20_000 });
+        await expect(panel.getByTestId("answer-panel")).toBeVisible({ timeout: 20_000 });
         expect((await investigations(page)).length).toBe(1);
         expect((await kinds(page, "attach")).length).toBeGreaterThan(0);
         expect(
@@ -312,7 +318,7 @@ test.describe("desktop (1280px)", () => {
         );
         await stopOf(panel).click();
         await expect(turnIn(panel, "canceling")).toBeVisible();
-        await expect(statusOf(panel)).toHaveText("Canceling…");
+        await expect(statusOf(panel).getByRole("status")).toHaveText("Canceling…");
         await shot(page, "panel-canceling-light", panel);
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
         await expect(turnIn(panel, "canceled")).toBeVisible({ timeout: 20_000 });
@@ -332,7 +338,7 @@ test.describe("desktop (1280px)", () => {
         );
         await stopOf(panel).click();
         await expect(turnIn(panel, "canceling")).toBeVisible();
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible({ timeout: 20_000 });
+        await expect(panel.getByTestId("answer-panel")).toBeVisible({ timeout: 20_000 });
         expect((await investigations(page)).length).toBe(1);
         expect(await kinds(page, "cancel")).toHaveLength(1);
     });
@@ -355,7 +361,9 @@ test.describe("desktop (1280px)", () => {
         );
         await stopOf(panel).click();
         await expect(turnIn(panel, "halted")).toBeVisible({ timeout: 20_000 });
-        await expect(statusOf(panel)).toHaveText("Stopped or interrupted. Ask again.");
+        await expect(panel.getByTestId("chat-status")).toContainText(
+            "Stopped or interrupted. Ask again.",
+        );
         await shot(page, "panel-halted-light", panel);
         expect(await kinds(page, "cancel")).toHaveLength(1);
         expect((await kinds(page, "status")).length).toBeGreaterThan(0);
@@ -376,7 +384,7 @@ test.describe("desktop (1280px)", () => {
             },
         );
         await stopOf(panel).click();
-        const note = panel.getByTestId("ask-dev-turn-stop");
+        const note = panel.getByTestId("chat-progress-stop");
         await expect(note).toHaveText("This run cannot be stopped. It ends on its own.");
         await expect(stopOf(panel)).toHaveCount(0);
         await shot(page, "panel-not-leased-light", panel);
@@ -401,6 +409,47 @@ test.describe("desktop (1280px)", () => {
         await stopOf(panel).click();
         await expect(turnIn(panel, "canceled")).toBeVisible();
         expect(await kinds(page, "cancel")).toHaveLength(1);
+        expect((await investigations(page)).length).toBe(1);
+    });
+
+    // CHAOS-12483: ACR answers 404 with its run lease off. Nothing shows "Canceling…" for a run
+    // that nothing is canceling, and no answer arrives after Stop.
+    test("7b. Stop, and ACR answers 404: the stream disconnects at once", async ({ page }) => {
+        await seed(page, {
+            stream: [
+                { events: [accepted, stage(2, "interpreting", "started", 100)], then: "hold" },
+            ],
+            cancel: [
+                {
+                    refuse: {
+                        status: 404,
+                        error: {
+                            schema_version: "error.v1",
+                            request_id: "req_cancel_404",
+                            error: {
+                                code: "not_found",
+                                message: "Context Fabric investigation submission was not found",
+                                http_status: 404,
+                                retryable: false,
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        const panel = await openPanel(page);
+        await ask(panel);
+        await expect(panel.locator('[data-stage="interpreting"][data-state="active"]')).toBeVisible(
+            {
+                timeout: 15_000,
+            },
+        );
+        await stopOf(panel).click();
+        await expect(turnIn(panel, "canceled")).toBeVisible();
+        await expect(panel.getByTestId("chat-progress")).toHaveCount(0);
+        await shot(page, "panel-cancel-404-light", panel);
+        expect(await kinds(page, "cancel")).toHaveLength(1);
+        expect(await kinds(page, "status")).toHaveLength(0);
         expect((await investigations(page)).length).toBe(1);
     });
 
@@ -434,7 +483,7 @@ test.describe("mobile (390px)", () => {
         );
         await stopOf(sheet).click();
         await expect(turnIn(sheet, "canceling")).toBeVisible();
-        await expect(statusOf(sheet)).toHaveText("Canceling…");
+        await expect(statusOf(sheet).getByRole("status")).toHaveText("Canceling…");
         await shot(page, "sheet-mobile-canceling-light");
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
     });

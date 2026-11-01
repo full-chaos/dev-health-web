@@ -7,8 +7,8 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // repositories, and a kiac answer whose cohort is 25 pull requests (G1: Ranking not shown). The
 // panel's test-mode source reads them from session storage; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const ORACLE = join(process.cwd(), "src/lib/ask-dev/render/__oracle__/captures");
-const ANSWERS = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const ORACLE = join(process.cwd(), "tests/fixtures/ask-dev/captures");
+const ANSWERS = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 
 const resultOf = (path: string) => {
@@ -63,17 +63,30 @@ test.describe("desktop (1280px)", () => {
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         const ranking = panel.getByRole("group", { name: "Ranked teams", exact: true });
-        await expect(ranking.getByTestId("ask-dev-ranking-row")).toHaveCount(3);
-        await expect(ranking.getByTestId("ask-dev-ranking-window")).toHaveText(
-            "Window: Last 90 days",
-        );
-        await expect(ranking.getByTestId("ask-dev-ranking-outcome").first()).toHaveText(
-            "Provisional",
+        const table = ranking.getByRole("group", { name: "Ranking" }).getByRole("table");
+        const rows = table.locator("tbody tr");
+        await expect(rows).toHaveCount(3);
+        // The window is a column of each row in the render: every ranked row states it.
+        await expect(table.getByRole("cell", { name: "current period", exact: true })).toHaveCount(
+            3,
         );
         await expect(
-            ranking.locator("[data-testid=ask-dev-ranking-score][data-state=score]"),
-        ).toHaveCount(1);
-        await expect(ranking.getByTestId("ask-dev-ranking-driver")).toHaveCount(2);
+            rows.first().getByRole("cell", { name: "provisional", exact: true }),
+        ).toBeVisible();
+        // Exactly one row carries a score; it sits beside its outcome, with its drivers.
+        const scored = rows.filter({ has: page.locator("td:nth-child(3)", { hasText: /^\d/u }) });
+        await expect(scored).toHaveCount(1);
+        await expect(scored.getByRole("cell", { name: "provisional", exact: true })).toHaveCount(1);
+        await expect(scored.getByRole("listitem")).toHaveCount(2);
+        await expect(table.getByRole("listitem")).toHaveCount(2);
+        // An unscored row shows a dash and says why, never a number.
+        await expect(rows.nth(1).getByRole("cell", { name: "—", exact: true })).toHaveCount(1);
+        await expect(rows.nth(1)).toContainText("not enough evidence");
+        // The ranking comes before the drivers that explain it.
+        const drivers = panel.getByRole("group", { name: "Drivers", exact: true });
+        const rankingBox = await ranking.boundingBox();
+        const driversBox = await drivers.boundingBox();
+        expect(rankingBox!.y).toBeLessThan(driversBox!.y);
         await page.waitForLoadState("networkidle");
         await ranking.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("ranking-teams-desktop.png") });
@@ -86,30 +99,43 @@ test.describe("desktop (1280px)", () => {
         await seedAnswer(page, REPOS);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        // The render builds the heading as "Ranked <kind>s"; assert the word it uses.
         const ranking = page
             .getByRole("complementary", { name: "Ask Dev" })
-            .getByRole("group", { name: "Ranked repositories", exact: true });
-        await expect(ranking.getByTestId("ask-dev-ranking-row")).toHaveCount(4);
-        await expect(ranking.getByTestId("ask-dev-ranking-driver")).toHaveCount(8);
+            .getByRole("group", { name: /^Ranked repositor(y|ie)s$/u });
+        const rows = ranking.getByRole("group", { name: "Ranking" }).locator("tbody tr");
+        await expect(rows).toHaveCount(4);
+        await expect(rows.getByRole("cell", { name: "provisional", exact: true })).toHaveCount(4);
+        await expect(
+            ranking.getByRole("group", { name: "Ranking" }).getByRole("listitem"),
+        ).toHaveCount(8);
+        for (const row of await rows.all()) await expect(row.getByRole("listitem")).toHaveCount(2);
         await page.waitForLoadState("networkidle");
         await ranking.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("ranking-repos-desktop.png") });
     });
 
-    test("a pull-request cohort: Ranking not shown, no name or score", async ({
+    // CHAOS-12477: ACR's ranking pass marks every member computed, and this answer has no score and
+    // no driver, so nothing was ranked: the members are the answer. This changes CHAOS-12429 G1
+    // for a list; a real ranking of a kind this view does not rank still reads "Ranking not shown".
+    test("a pull-request cohort with nothing ranked lists its members", async ({
         page,
     }, testInfo) => {
         await seedAnswer(page, PRS);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        const notice = panel.getByRole("group", { name: "Ranking not shown", exact: true });
-        await expect(notice).toContainText("does not rank");
-        await expect(panel.getByTestId("ask-dev-ranking-row")).toHaveCount(0);
-        await expect(panel.getByTestId("ask-dev-ranking-score")).toHaveCount(0);
+        const list = panel.getByTestId("cohort-members-panel");
+        await expect(list.getByRole("heading", { name: "pull requests" })).toBeVisible();
+        await expect(list.locator("li.record__title")).toHaveCount(25);
+        await expect(list.getByTestId("cohort-members-notice")).toContainText(
+            "not every pull request",
+        );
+        await expect(panel.getByRole("group", { name: "Ranking not shown" })).toHaveCount(0);
+        await expect(panel.getByRole("group", { name: /^Ranked / })).toHaveCount(0);
         await page.waitForLoadState("networkidle");
-        await notice.scrollIntoViewIfNeeded();
-        await page.screenshot({ path: testInfo.outputPath("ranking-not-shown-desktop.png") });
+        await list.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath("cohort-members-desktop.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
 });
@@ -117,22 +143,34 @@ test.describe("desktop (1280px)", () => {
 test.describe("mobile (390px)", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test("the ranking table fits the sheet; nothing scrolls sideways", async ({
-        page,
-    }, testInfo) => {
+    test("the ranking table is in the sheet, in its own scroll box", async ({ page }, testInfo) => {
         await seedAnswer(page, REPOS);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const sheet = page.getByRole("dialog", { name: "Ask Dev" });
-        const ranking = sheet.getByRole("group", { name: "Ranked repositories", exact: true });
-        await expect(ranking.getByTestId("ask-dev-ranking-row")).toHaveCount(4);
+        const ranking = sheet.getByRole("group", { name: /^Ranked repositor(y|ie)s$/u });
+        const scroll = ranking.getByRole("group", { name: "Ranking" });
+        await expect(scroll.locator("tbody tr")).toHaveCount(4);
         await page.waitForLoadState("networkidle");
         await ranking.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("ranking-repos-mobile.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
+        // The wide table may scroll inside its own box, but the box itself stays inside the sheet.
+        const sheetBox = (await sheet.boundingBox())!;
+        const scrollBox = (await scroll.boundingBox())!;
+        expect(scrollBox.x + scrollBox.width).toBeLessThanOrEqual(sheetBox.x + sheetBox.width + 1);
+    });
+
+    test("nothing scrolls sideways", async ({ page }) => {
+        await seedAnswer(page, REPOS);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const sheet = page.getByRole("dialog", { name: "Ask Dev" });
+        const ranking = sheet.getByRole("group", { name: /^Ranked repositor(y|ie)s$/u });
+        await expect(
+            ranking.getByRole("group", { name: "Ranking" }).locator("tbody tr"),
+        ).toHaveCount(4);
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
         expect(await ranking.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-        const table = ranking.getByTestId("ask-dev-ranking-table");
-        expect(await table.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 });

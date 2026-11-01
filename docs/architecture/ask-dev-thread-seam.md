@@ -19,7 +19,7 @@
 | `readResult`                             | `GET …/investigations/{result_id}`                   | the replayed answer; 404 → "not available to you now"                                          |
 | `submissionStatus`                       | `GET …/submissions/{submission_id}`                  | `running`, `done`, `done_unsaved` or `abandoned`                                               |
 | `attach`                                 | `GET …/submissions/{id}/events` with `Last-Event-ID` | the leased run's own events; 410 means fall back to status, then replay                        |
-| `cancel`                                 | `POST …/submissions/{id}/cancel`                     | 202 running, 204 final, 409 `not_leased`                                                       |
+| `cancel`                                 | `POST …/submissions/{id}/cancel`                     | 202 running, 204 final, 409 `not_leased`, 404                                                  |
 | `readFeedback` / `setFeedback` _(11958)_ | `GET`/`POST …/feedback/{result_id}`                  | `correct` and `useful`, each yes, no or unset                                                  |
 
 The live transport is `src/lib/ask-dev/acr-transport/` (`acrBrowserTransport()`). It is `null` while the browser ACR config is unset (`ACR_OAUTH_ISSUER`; prod until the T13 roll), so the panel draws no composer and sends nothing. T14a (CHAOS-12104) serves `investigate`, `submissionStatus` and `readResult`; T14b (CHAOS-12336) serves the thread, attach, cancel and feedback calls, each mapping every status ACR's OpenAPI names for its route. An attach reads its stream as a create does; with no cursor the whole grammar holds from `accepted`, and after a cursor the gate holds the stream-local rules at once and the stage rules from the first stage event on (the lead's ruling 1 = A). One stage break across the join is not seen until then; the store checks `seq`, `request_id` and `elapsed_ms` across it. Each stream event passes `eventGate.ts`, which holds the rules of ACR's own stream check (`ContextFabricInvestigationEventStreamCheck`): seq, `request_id`, `elapsed_ms` (non-decreasing, at most 11 s more), the stage order, the stage a heartbeat or an error names, no `result` while a stage is open, and one terminal. A break is `invalid_upstream`. Test mode supplies `testModeTransport.ts`. The live proofs are CHAOS-12192, 12199, 12232, 12233 and 12234, after CHAOS-12313.
@@ -38,6 +38,17 @@ Production CSP has no `unsafe-eval` (`src/proxy.ts`). The runtime Ajv of `src/li
 - `threadContract.differential.test.ts` holds the generated code equal to `validateAcrContract`, over cases built from the schema files. It also checks that the code answers with `eval` and `Function` disabled.
 
 Add a browser-read schema to a module of `STANDALONE_MODULES` in the generator. Never import `ajv` or `contracts.ts` into browser code.
+
+## Evidence (CHAOS-12105)
+
+`readEvidence` is the one call outside the Context Fabric API: `GET /api/v1/agent-context/evidence/{ref}?result_id=`. The ref is one encoded path segment, because it may hold a `/`. `result_id` scopes the read to the answer that cited the ref. The body is checked with `parseExpandedEvidence` (`expanded_evidence.v1`, Ajv standalone, as for the thread bodies).
+
+- **The seam:** ask-dev's `ChatSource.evidence.open(ref)` hands web the ref, the result id and the served label. `AskDevEvidence.tsx` reads, maps the answer to a `ChatEvidenceState`, and passes only that state to ask-dev's `ChatEvidenceBody`. The bearer stays in web. With no `EvidenceDrawerProvider` the source offers no `evidence`, so references stay plain text. The hook knows that during render, because a restored answer's first paint needs its buttons.
+- **The states:** ACR's 404 is `not_found`. 403 is `denied`. 409 `no_repository` is its own state. No access or ACR's 401 is `connect`. Any other refusal, a dropped call and a broken body are `unavailable`. `availability` selects `stale` or `redacted`, and a value with no state of its own shows what ACR served: it is an open vocabulary with no served label, so it never prints.
+- **Try again** follows ACR's own `retryable`. A dropped call offers it.
+- **The drawer's body is mounted by the open,** so a click is one read, and closing aborts the read.
+- **Org switch:** the body compares the store's `generation` with the one at the open. It renders nothing as soon as they differ, and closes the drawer.
+- **The right edge:** `onDismiss` on a subject runs only when the user closes the drawer, not when a peer drawer or another subject takes over. That is what brings the panel back, and only when the panel was open at the click.
 
 ## Selection: URL, storage and store
 
@@ -92,8 +103,8 @@ Add a browser-read schema to a module of `STANDALONE_MODULES` in the generator. 
 - **Cancel state machine** (Stop on the last turn's run, submitted here or restored).
     - Stop sends `cancel` and keeps the stream as the completion channel. "Stopping…" shows until ACR answers, and a second Stop sends nothing.
     - 202 → "Canceling…" until the terminal: `canceled` → canceled; a result that finished first is kept. A drop attaches again.
-    - 204, or a 404 on the cancel → the status: `done` → the answer, `done_unsaved` → unsaved, `abandoned` → "Stopped or interrupted. Ask again." The status cannot tell a cancel from a lost run.
-    - 409 `not_leased`:
+    - 204 → the status: `done` → the answer, `done_unsaved` → unsaved, `abandoned` → "Stopped or interrupted. Ask again." The status cannot tell a cancel from a lost run.
+    - 409 `not_leased`, or a 404 (ACR holds no lease on this run, for example with its run lease off; CHAOS-12483):
         - when this tab's own stream for the run is still open, the disconnect is the cancel, as before the lease;
         - otherwise "This run cannot be stopped. It ends on its own.", and Stop goes away. No second cancel is sent.
     - Before `accepted` nothing is admitted to cancel: Stop disconnects.

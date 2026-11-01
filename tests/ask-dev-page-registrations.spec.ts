@@ -12,7 +12,7 @@ import type { MetricFilter } from "../src/lib/filters/types";
 // browser for ACR. The mock backend serves the organization "E2E Organization" (`org-e2e`), the
 // teams by id with no names, and the repository id -> name map.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = { stream: "ask-dev:test-mode-stream", calls: "ask-dev:test-mode-calls" } as const;
 const SOURCE = "ask_dev_page_context";
 
@@ -114,7 +114,7 @@ async function askAndReadScope(page: Page, panel: ReturnType<Page["getByRole"]>)
     const input = panel.getByRole("textbox", { name: "Ask a question" });
     await input.fill("Where is the effort going?");
     await input.press("Enter");
-    await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+    await expect(panel.getByTestId("answer-panel")).toBeVisible();
     const [sent] = await investigations(page);
     return sent?.request?.requested_scope;
 }

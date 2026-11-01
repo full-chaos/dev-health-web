@@ -704,7 +704,6 @@ describe("refreshSession", () => {
             refreshToken: "ref-2",
             accessExp: EXP,
             sid: SID,
-            expiresIn: 3600,
             user: { id: "u1" },
         });
     });
@@ -774,6 +773,39 @@ describe("refreshSession", () => {
         expect(vi.mocked(logSessionBranch).mock.calls.map(([f]) => f)).toEqual([
             { operation: "refresh", branch: "token_shape_refused" },
         ]);
+    });
+
+    const hsWith = (payload: string) =>
+        `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(payload)}.${b64u("sig")}`;
+    const expCases: Array<[string, string]> = [
+        ["exp 0", `{"sub":"u1","sid":"${SID}","exp":0}`],
+        ["exp -1", `{"sub":"u1","sid":"${SID}","exp":-1}`],
+        ["exp missing", `{"sub":"u1","sid":"${SID}"}`],
+        ["exp null", `{"sub":"u1","sid":"${SID}","exp":null}`],
+        ["exp a string", `{"sub":"u1","sid":"${SID}","exp":"1760003600"}`],
+        ["exp a float", `{"sub":"u1","sid":"${SID}","exp":1760003600.5}`],
+        ["exp an unsafe integer", `{"sub":"u1","sid":"${SID}","exp":1152921504606846976}`],
+    ];
+
+    it.each(expCases)(
+        "refresh 200 whose HS256 access token has %s is terminal; the body expires_in never sets a lifetime",
+        async (_name, payload) => {
+            route({ [REFRESH_URL]: () => json(200, refreshBody(hsWith(payload))) });
+            expect(await refreshSession("ref-1", cfg())).toEqual({
+                kind: "terminal",
+                reason: "token_refused",
+            });
+        },
+    );
+
+    it("refresh 200 with a normal HS256 token keeps its exp and carries no body lifetime", async () => {
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody(hsWith(`{"sub":"u1","sid":"${SID}","exp":${EXP}}`))),
+        });
+        const got = await refreshSession("ref-1", cfg());
+        expect(got).toMatchObject({ kind: "rotated", accessExp: EXP, sid: SID });
+        expect(got).not.toHaveProperty("expiresIn");
     });
 
     it("refresh 200 whose access token fails verification under eddsa is terminal and logs refresh_invalid_response", async () => {

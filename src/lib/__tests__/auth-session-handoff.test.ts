@@ -281,3 +281,180 @@ describe("a handoff drops the service session token of the old pair (CHAOS-10876
         },
     );
 });
+
+describe("the handoff pair carries the service token fields (CHAOS-10876 C2)", () => {
+    const NEW_SID = "ses_NewSessionAAAAAAAAAAAA";
+    const ACT = "prn_ACTACTACTACTACTACTACTA";
+
+    function baseToken(now: number): Record<string, unknown> {
+        return {
+            sub: "user-1",
+            id: "user-1",
+            org_id: "org-1",
+            role: "member",
+            access_token: "old-access",
+            refresh_token: "old-refresh",
+            sid: "ses_OldSessionAAAAAAAAAAAA",
+            session_access_token: "old-service-token",
+            session_expires_at: now + 3600_000,
+            act_sub: "prn_OLDOLDOLDOLDOLDOLDOLDO",
+            expires_at: now + 3600_000,
+            last_validated: now,
+        };
+    }
+
+    async function updateWith(handoff: string) {
+        const now = Date.now();
+        const value = await encode({ secret: SECRET, salt: COOKIE, token: baseToken(now) });
+        const cookie = `${COOKIE}=${value}`;
+        const csrfRes = await GET(
+            new NextRequest(`${ORIGIN}/api/auth/csrf`, { headers: { cookie } }),
+        );
+        const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
+        const csrfCookie = csrfRes.headers
+            .getSetCookie()
+            .map((c) => c.split(";")[0])
+            .find((c) => c.startsWith("authjs.csrf-token="));
+        const res = await POST(
+            new NextRequest(`${ORIGIN}/api/auth/session`, {
+                method: "POST",
+                headers: { cookie: `${cookie}; ${csrfCookie}`, "content-type": "application/json" },
+                body: JSON.stringify({ csrfToken, data: { sessionHandoff: handoff } }),
+            }),
+        );
+        const setCookies = res.headers.getSetCookie();
+        const chunks = setCookies
+            .filter((c) => c.startsWith(`${COOKIE}`))
+            .map((c) => c.split(";")[0]);
+        // Auth.js splits a long session cookie into name.0, name.1, ...: put them back in order.
+        const joined = chunks
+            .map((c) => {
+                const eq = c.indexOf("=");
+                return { name: c.slice(0, eq), value: c.slice(eq + 1) };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((c) => c.value)
+            .join("");
+        const token = joined ? await decode({ secret: SECRET, salt: COOKIE, token: joined }) : null;
+        return { res, text: await res.text(), setCookies, token, chunks };
+    }
+
+    const fullPair = (exp: number, extra: Record<string, unknown> = {}) => ({
+        access_token: "new-access",
+        refresh_token: "new-refresh",
+        expires_in: 3600,
+        access_exp: exp,
+        sid: NEW_SID,
+        session_access_token: "new-service-token",
+        session_exp: exp,
+        act_sub: ACT,
+        user: { org_id: "org-2", role: "admin", is_superuser: false },
+        ...extra,
+    });
+
+    it("activeOrg with the new fields: the session adopts the service token, its expiry, the actor and the sid, and expires_at comes from access_exp", async () => {
+        const exp = Math.floor(Date.now() / 1000) + 1800;
+        const { token } = await updateWith(
+            await auth.sealSessionHandoff("activeOrg", fullPair(exp), "user-1"),
+        );
+        expect(token).toMatchObject({
+            access_token: "new-access",
+            session_access_token: "new-service-token",
+            session_expires_at: exp * 1000,
+            act_sub: ACT,
+            sid: NEW_SID,
+            expires_at: exp * 1000,
+        });
+    });
+
+    it("activeOrg without the fields (legacy): expires_at from expires_in, the sid is unchanged and the old service token, expiry and actor are cleared", async () => {
+        const legacy = {
+            access_token: "new-access",
+            refresh_token: "new-refresh",
+            expires_in: 3600,
+            user: { org_id: "org-2", role: "admin", is_superuser: false },
+        };
+        const before = Date.now();
+        const { token } = await updateWith(
+            await auth.sealSessionHandoff("activeOrg", legacy, "user-1"),
+        );
+        expect(token?.access_token).toBe("new-access");
+        expect(token?.sid).toBe("ses_OldSessionAAAAAAAAAAAA");
+        expect(token?.session_access_token).toBeUndefined();
+        expect(token?.session_expires_at).toBeUndefined();
+        expect(token?.act_sub).toBeUndefined();
+        expect(token?.expires_at as number).toBeGreaterThanOrEqual(before + 3600_000);
+        expect(token?.expires_at as number).toBeLessThanOrEqual(Date.now() + 3600_000);
+    });
+
+    it.each([
+        ["a non-string session_access_token", { session_access_token: 7 }],
+        ["an empty session_access_token", { session_access_token: "" }],
+        ["a non-numeric session_exp", { session_exp: "soon" }],
+        ["a non-numeric access_exp", { access_exp: "soon" }],
+        ["a non-string sid", { sid: 5 }],
+        ["a non-string act_sub", { act_sub: { sub: "x" } }],
+    ])("the handoff is refused for %s and the session keeps the old pair", async (_label, bad) => {
+        const exp = Math.floor(Date.now() / 1000) + 1800;
+        const handoff = await auth.sealSessionHandoff(
+            "activeOrg",
+            fullPair(exp, bad) as never,
+            "user-1",
+        );
+        const { token } = await updateWith(handoff);
+        expect(token?.access_token).toBe("old-access");
+        expect(token?.session_access_token).toBe("old-service-token");
+    });
+
+    it("the update answer and every cookie other than the sealed session cookie hold no service token or actor", async () => {
+        const exp = Math.floor(Date.now() / 1000) + 1800;
+        const { res, text, setCookies } = await updateWith(
+            await auth.sealSessionHandoff("activeOrg", fullPair(exp), "user-1"),
+        );
+        const headers = [...res.headers.entries()].map(([k, v]) => `${k}: ${v}`).join("\n");
+        const others = setCookies.filter((c) => !c.startsWith(COOKIE)).join("\n");
+        for (const secret of ["new-service-token", ACT, "old-service-token"]) {
+            expect(text).not.toContain(secret);
+            expect(others).not.toContain(secret);
+        }
+        // Set-Cookie holds the sealed session only; the handoff channel was the JSON body.
+        expect(headers).not.toContain("new-service-token");
+        expect(res.headers.get("location")).toBeNull();
+    });
+
+    const compact = (length: number) => "e".repeat(length);
+
+    it("a pair with both tokens at the largest compact size the verifier accepts (4096 bytes each), the actor included, seals, opens and lands in the session cookie under 12 KiB", async () => {
+        const exp = Math.floor(Date.now() / 1000) + 1800;
+        const pair = fullPair(exp, {
+            access_token: compact(4096),
+            session_access_token: compact(4096),
+        });
+        const handoff = await auth.sealSessionHandoff("activeOrg", pair as never, "user-1");
+        const { token, chunks } = await updateWith(handoff);
+        expect(token).toMatchObject({
+            access_token: compact(4096),
+            session_access_token: compact(4096),
+            act_sub: ACT,
+        });
+        const bytes = chunks.reduce((n, c) => n + c.length, 0);
+        // Node's default request header limit is 16 KiB for all cookies together; 4 KiB stay free.
+        expect(bytes).toBeLessThan(12 * 1024);
+    });
+
+    it("a pair with both tokens at the size of a real token (about 600 bytes each) seals and opens", async () => {
+        const exp = Math.floor(Date.now() / 1000) + 1800;
+        const pair = fullPair(exp, {
+            access_token: compact(600),
+            session_access_token: compact(600),
+        });
+        const { token, chunks } = await updateWith(
+            await auth.sealSessionHandoff("activeOrg", pair as never, "user-1"),
+        );
+        expect(token).toMatchObject({
+            access_token: compact(600),
+            session_access_token: compact(600),
+        });
+        expect(chunks.length).toBeLessThanOrEqual(2);
+    });
+});

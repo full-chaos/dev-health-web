@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import {
     expect,
     test,
@@ -25,6 +28,30 @@ const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const QUESTION = "Which projects are at risk this quarter?";
 /** A well-formed thread id: its read goes to ACR (CHAOS-12336). */
 const THREAD = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+/**
+ * ACR's 409 on a read when the viewer's grant is empty: the example
+ * `contracts/examples/v1/error_context_fabric_no_repository.v1.json` at web's acr pin. Web vendors
+ * no copy of it.
+ */
+const NO_REPOSITORY = {
+    schema_version: "error.v1",
+    request_id: "req_00000000000000000000000000011912",
+    error: {
+        code: "no_repository",
+        message: "No repository is in scope for this credential",
+        http_status: 409,
+        retryable: false,
+    },
+};
+
+/** ACR's own example at web's pin. */
+const EVIDENCE = JSON.parse(
+    readFileSync(
+        join(process.cwd(), "src/lib/acr/contracts/examples/expanded_evidence.v1.json"),
+        "utf8",
+    ),
+) as { evidence: { citation: string } };
+const EVIDENCE_PATH = "/api/v1/agent-context/evidence/";
 
 type AcrCall = {
     readonly method: string;
@@ -40,6 +67,10 @@ type Harness = {
     readonly calls: AcrCall[];
     /** The access tokens the mock's /token issued. */
     readonly tokens: string[];
+    /** CHAOS-12439: ACR's thread routes answer 409 `no_repository`. */
+    threadsRefused: boolean;
+    /** CHAOS-12105: what ACR's evidence route answers. */
+    evidenceAnswer: { readonly status: number; readonly body: unknown };
 };
 
 test.describe.configure({ mode: "serial" });
@@ -91,7 +122,9 @@ async function acrOn(context: BrowserContext, harness: Harness) {
     );
     await context.route(
         (url) =>
-            url.origin === harness.origin && url.pathname.startsWith("/api/v1/context-fabric/"),
+            url.origin === harness.origin &&
+            (url.pathname.startsWith("/api/v1/context-fabric/") ||
+                url.pathname.startsWith(EVIDENCE_PATH)),
         async (route) => {
             const request = route.request();
             const headers = await request.allHeaders();
@@ -112,6 +145,25 @@ async function acrOn(context: BrowserContext, harness: Harness) {
                         headers["x-acr-thread-id"] ?? "",
                         headers["x-acr-submission-id"] ?? "",
                     ),
+                });
+                return;
+            }
+            if (new URL(request.url()).pathname.startsWith(EVIDENCE_PATH)) {
+                await route.fulfill({
+                    status: harness.evidenceAnswer.status,
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                    body: JSON.stringify(harness.evidenceAnswer.body),
+                });
+                return;
+            }
+            if (
+                harness.threadsRefused &&
+                /^\/api\/v1\/context-fabric\/threads(\/|$)/u.test(new URL(request.url()).pathname)
+            ) {
+                await route.fulfill({
+                    status: 409,
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                    body: JSON.stringify(NO_REPOSITORY),
                 });
                 return;
             }
@@ -145,11 +197,26 @@ async function setUp(page: Page): Promise<Harness> {
         acr: new AcrOAuthMock({ issuer: origin, redirectUri: `${origin}/ask-dev/oauth/callback` }),
         calls: [],
         tokens: [],
+        threadsRefused: false,
+        evidenceAnswer: { status: 200, body: EVIDENCE },
     };
     await clientOn(page.context(), origin);
     await acrOn(page.context(), harness);
     return harness;
 }
+
+/** The OAuth flow, then every thread read refused: a viewer connected with no repository in scope. */
+async function connectedWithNoRepository(page: Page): Promise<Harness> {
+    const harness = await setUp(page);
+    harness.threadsRefused = true;
+    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
+    await page.waitForURL((url) => url.pathname === "/dashboard");
+    await expect.poll(() => harness.tokens.length).toBe(1);
+    return harness;
+}
+
+const callsTo = (harness: Harness, path: string) =>
+    harness.calls.filter((call) => call.url.includes(`/context-fabric/${path}`));
 
 async function ask(page: Page, surface: ReturnType<Page["getByTestId"]>) {
     const input = surface.getByRole("textbox", { name: "Ask a question" });
@@ -186,11 +253,13 @@ test.describe("desktop (1280px)", () => {
         expect(harness.calls).toEqual([]);
 
         await ask(page, panel);
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
-        // The question, then (T14b) the answer's feedback read: both from the browser, with the
-        // bearer and no cookie.
+        await expect(panel.getByTestId("answer-panel")).toBeVisible();
+        // The question and (T14b) the answer's feedback read: both from the browser, with the bearer
+        // and no cookie. The history list stays off screen in the panel, so nothing reads it.
         await expect.poll(() => harness.calls.length).toBe(2);
-        const [sent, feedbackRead] = harness.calls;
+        expect(harness.calls.filter((c) => c.url.includes("/context-fabric/threads?"))).toEqual([]);
+        const sent = harness.calls.find((c) => c.method === "POST");
+        const feedbackRead = harness.calls.find((c) => c.url.includes("/investigations/feedback/"));
         expect(feedbackRead!.method).toBe("GET");
         expect(feedbackRead!.url).toMatch(
             new RegExp(
@@ -355,3 +424,164 @@ test.describe("mobile (390px)", () => {
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 });
+
+// CHAOS-12439: a connected viewer whose grant holds no repository. ACR answers every thread read
+// with 409 `no_repository`; reading again cannot help, so nothing offers it, and no code shows.
+for (const [name, viewport, surface] of [
+    ["desktop", { width: 1280, height: 900 }, "ask-dev-panel"],
+    ["mobile", { width: 390, height: 844 }, "ask-dev-sheet"],
+] as const) {
+    test.describe(`no repository in scope, ${name}`, () => {
+        test.use({ viewport });
+
+        test("History says so, once, with no Try again", async ({ page }, testInfo) => {
+            const harness = await connectedWithNoRepository(page);
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const view = page.getByTestId(surface);
+            await view.getByTestId("ask-dev-history-toggle").click();
+            const note = view.getByTestId("ask-dev-history-no-repository");
+            await expect(note).toBeVisible();
+            await expect(note).not.toContainText("no_repository");
+            await expect(view.getByTestId("ask-dev-history-retry")).toHaveCount(0);
+            await expect(view.getByTestId("ask-dev-history-connect")).toHaveCount(0);
+            await expect(view.getByTestId("ask-dev-history-row")).toHaveCount(0);
+            expect(callsTo(harness, "threads?")).toHaveLength(1);
+            await page.screenshot({
+                path: testInfo.outputPath(`no-repository-history-${name}.png`),
+                animations: "disabled",
+            });
+            expect(await view.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+        });
+
+        test("a conversation opened by its link is unavailable, with no Try again", async ({
+            page,
+        }, testInfo) => {
+            const harness = await connectedWithNoRepository(page);
+            await page.goto(`/dev?thread=${THREAD}`);
+            const unavailable = page.getByTestId("ask-dev-conversation-unavailable");
+            await expect(unavailable).toBeVisible();
+            await expect(unavailable).not.toContainText("no_repository");
+            await expect(page.getByTestId("ask-dev-conversation-retry")).toHaveCount(0);
+            await expect(page.getByTestId("ask-dev-conversation-read-failed")).toHaveCount(0);
+            // One read of the thread. The list is another call: the render reads it once for
+            // each conversation shown, so this page's list runs for the thread and for none.
+            expect(callsTo(harness, `threads/${THREAD}`)).toHaveLength(1);
+            await page.screenshot({
+                path: testInfo.outputPath(`no-repository-conversation-${name}.png`),
+                animations: "disabled",
+            });
+            expect(
+                await page.evaluate(
+                    () =>
+                        document.documentElement.scrollWidth <=
+                        document.documentElement.clientWidth,
+                ),
+            ).toBe(true);
+        });
+    });
+}
+
+const refused = (code: string, status: number, retryable: boolean) => ({
+    status,
+    body: {
+        schema_version: "error.v1",
+        request_id: "req_00000000000000000000000000012105",
+        error: { code, message: "Refused", http_status: status, retryable },
+    },
+});
+
+// CHAOS-12105: an evidence reference, read from the browser and drawn by ask-dev's body in the app's
+// one drawer. The drawer takes the right edge from the panel, and closing it brings the panel back.
+for (const [name, viewport, surface] of [
+    ["desktop", { width: 1280, height: 900 }, "ask-dev-panel"],
+    ["mobile", { width: 390, height: 844 }, "ask-dev-sheet"],
+] as const) {
+    test.describe(`evidence, ${name}`, () => {
+        test.use({ viewport });
+
+        async function answered(page: Page) {
+            const harness = await setUp(page);
+            await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
+            await page.waitForURL((url) => url.pathname === "/dashboard");
+            await expect.poll(() => harness.tokens.length).toBe(1);
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const view = page.getByTestId(surface);
+            await ask(page, view);
+            await expect(view.getByTestId("answer-panel")).toBeVisible();
+            return { harness, view };
+        }
+        const openRef = (view: ReturnType<Page["getByTestId"]>) =>
+            view.locator("button.evidence-ref--open:visible").last().click();
+        const evidenceCalls = (harness: Harness) =>
+            harness.calls.filter((call) => call.url.includes(EVIDENCE_PATH));
+
+        test("a reference opens from the browser, and closing brings the panel back", async ({
+            page,
+        }, testInfo) => {
+            const { harness, view } = await answered(page);
+            await openRef(view);
+            const body = page.getByTestId("ask-dev-evidence-body");
+            await expect(body).toContainText(EVIDENCE.evidence.citation);
+            await expect(body).toHaveAttribute("data-state", "ready");
+            await expect(view).toHaveCount(0);
+
+            const [call] = evidenceCalls(harness);
+            expect(evidenceCalls(harness)).toHaveLength(1);
+            expect(new URL(call!.url).searchParams.get("result_id")).toBeTruthy();
+            expect(call!.url).not.toContain(harness.tokens[0]!);
+            expect(call!.headers).toMatchObject({
+                authorization: `Bearer ${harness.tokens[0]}`,
+                "x-acr-resource": harness.origin,
+            });
+            expect(call!.headers.cookie).toBeUndefined();
+            await page.screenshot({
+                path: testInfo.outputPath(`evidence-ready-${name}.png`),
+                animations: "disabled",
+            });
+            expect(
+                await page
+                    .getByRole("dialog", { name: "Evidence & Context" })
+                    .evaluate((node) => node.scrollWidth <= node.clientWidth),
+            ).toBe(true);
+
+            await page.getByRole("button", { name: "Close" }).first().click();
+            await expect(body).toHaveCount(0);
+            await expect(view.getByTestId("answer-panel")).toBeVisible();
+        });
+
+        test("each refused or partial answer has its own state", async ({ page }, testInfo) => {
+            const { harness, view } = await answered(page);
+            const expanded = EVIDENCE as unknown as Record<string, unknown>;
+            for (const [state, answer] of [
+                [
+                    "redacted",
+                    {
+                        status: 200,
+                        body: {
+                            ...expanded,
+                            availability: "redacted",
+                            redaction_reason: "Removed at the source.",
+                        },
+                    },
+                ],
+                ["stale", { status: 200, body: { ...expanded, availability: "stale" } }],
+                ["not_found", refused("not_found", 404, false)],
+                ["denied", refused("access_denied", 403, false)],
+                ["no_repository", refused("no_repository", 409, false)],
+                ["unavailable", refused("upstream_unavailable", 503, true)],
+            ] as const) {
+                harness.evidenceAnswer = answer;
+                await openRef(view);
+                const body = page.getByTestId("ask-dev-evidence-body");
+                await expect(body).toHaveAttribute("data-state", state);
+                await expect(body).not.toContainText(/no_repository|access_denied|\b40[39]\b/u);
+                await page.screenshot({
+                    path: testInfo.outputPath(`evidence-${state}-${name}.png`),
+                    animations: "disabled",
+                });
+                await page.getByRole("button", { name: "Close" }).first().click();
+                await expect(view.getByTestId("answer-panel")).toBeVisible();
+            }
+        });
+    });
+}

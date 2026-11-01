@@ -64,7 +64,7 @@ const SUB = "sub_00000000000000000000000000000001";
 const START = Date.parse("2026-10-31T12:00:00Z");
 const START_ISO = "2026-10-31T12:00:00.000Z";
 const QUESTION = "Which projects are at risk?";
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 
 let transport: FakeTransport;
 let clock: number;
@@ -711,6 +711,21 @@ describe("the snapshot", () => {
         source.history?.load();
         await vi.waitFor(() => expect(source.getSnapshot().history?.status).toBe("ready"));
         expect(source.getSnapshot().history?.hasMore).toBe(false);
+    });
+
+    it("publishes ACR's 409 no_repository with no rows and nothing to load (CHAOS-12439)", async () => {
+        const { source } = makeSource();
+        transport.listPages.push({
+            fail: new TransportRefusal(409, acrError("no_repository", 409, false)),
+        });
+        source.history?.load();
+        await vi.waitFor(() => expect(source.getSnapshot().history?.status).toBe("no_repository"));
+        expect(source.getSnapshot().history).toMatchObject({
+            rows: [],
+            hasMore: false,
+            loadingMore: false,
+            moreFailed: false,
+        });
     });
 
     describe("composerLocked, as the seam documents it", () => {

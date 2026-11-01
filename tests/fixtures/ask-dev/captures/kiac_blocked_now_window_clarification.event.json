@@ -1,0 +1,247 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_a486c98c7ddc981a7bb8d47551f06199",
+    "seq": 6,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_2542b0e1a3dbf1bac66d41faa42dd094",
+        "request_id": "req_a486c98c7ddc981a7bb8d47551f06199",
+        "generated_at": "2026-10-30T19:40:38.141193298Z",
+        "status": "clarification_required",
+        "question": "What is blocked right now?",
+        "interpretation": {
+            "shape": "discovered_cohort",
+            "requested_judgment": "Identify what is currently blocked",
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "blockers"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [],
+            "committed": [],
+            "clarification_prompt": "Confirm the evidence window for this answer."
+        },
+        "answer_plan": {
+            "family": "discovered_cohort_ranking",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": true,
+            "require_ranking": true,
+            "render_kinds": ["series"],
+            "fact_kinds": [
+                "blockers",
+                "health",
+                "workload",
+                "readiness",
+                "operational_deficiencies",
+                "investment"
+            ],
+            "axes": ["window"],
+            "budget": {
+                "max_items": 66,
+                "max_serialized_bytes": 262144,
+                "max_members": 50,
+                "synthesis_headroom": 16,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "requirements": [
+                {
+                    "requirement": "health/member/work_item",
+                    "obligation": "health",
+                    "role": "member",
+                    "subject": "work_item",
+                    "kind": "read",
+                    "scope": "each_member",
+                    "quantifier": "none",
+                    "unavailable": "no_declaring_producer"
+                },
+                {
+                    "requirement": "remaining_work/member/work_item",
+                    "obligation": "remaining_work",
+                    "role": "member",
+                    "subject": "work_item",
+                    "kind": "read",
+                    "fact_kinds": ["blockers", "required_children"],
+                    "scope": "each_member",
+                    "quantifier": "at_least_one"
+                },
+                {
+                    "requirement": "state/member/work_item",
+                    "obligation": "state",
+                    "role": "member",
+                    "subject": "work_item",
+                    "kind": "read",
+                    "fact_kinds": ["status"],
+                    "scope": "each_member",
+                    "quantifier": "corroborated"
+                }
+            ]
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "This answer requires confirming the evidence window it should read against. Confirm one of the offered options to proceed."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [],
+            "partial": false
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna"
+        },
+        "deterministic_answer": "This answer requires confirming the evidence window it should read against. Confirm one of the offered options to proceed.",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-08-01T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_90d",
+            "window_class": "trend_assessment",
+            "provenance": "inferred_default",
+            "confidence": "low"
+        },
+        "window_clarification": {
+            "options": [
+                {
+                    "receipt_id": "winr_8c11d98822c307471491bf02",
+                    "option_id": "opt_f5f3e8beb6214fd2",
+                    "label": "the last 30 days",
+                    "relative_id": "trailing_30d",
+                    "start": "2026-09-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_875c1ef36ac419089f58a1ce",
+                    "option_id": "opt_6fb7e19dbcffb54c",
+                    "label": "the last 90 days",
+                    "relative_id": "trailing_90d",
+                    "start": "2026-08-01T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_97b0358ec28245b844129c15",
+                    "option_id": "opt_3a60485f1330ca5b",
+                    "label": "the last 365 days",
+                    "relative_id": "trailing_365d",
+                    "start": "2025-10-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_6234bc5c06a01d7dccbea359",
+                    "option_id": "opt_90d276a0b7e87288",
+                    "label": "all time",
+                    "relative_id": "all_time"
+                }
+            ]
+        },
+        "structure_needs": {
+            "missing": ["window"],
+            "window_options": [
+                {
+                    "receipt_id": "winr_8c11d98822c307471491bf02",
+                    "option_id": "opt_f5f3e8beb6214fd2",
+                    "label": "the last 30 days",
+                    "relative_id": "trailing_30d",
+                    "start": "2026-09-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_875c1ef36ac419089f58a1ce",
+                    "option_id": "opt_6fb7e19dbcffb54c",
+                    "label": "the last 90 days",
+                    "relative_id": "trailing_90d",
+                    "start": "2026-08-01T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_97b0358ec28245b844129c15",
+                    "option_id": "opt_3a60485f1330ca5b",
+                    "label": "the last 365 days",
+                    "relative_id": "trailing_365d",
+                    "start": "2025-10-30T00:00:00Z",
+                    "end": "2026-10-30T00:00:00Z"
+                },
+                {
+                    "receipt_id": "winr_6234bc5c06a01d7dccbea359",
+                    "option_id": "opt_90d276a0b7e87288",
+                    "label": "all time",
+                    "relative_id": "all_time"
+                }
+            ]
+        },
+        "completeness": {
+            "terminal_status": "clarification_required",
+            "terminal_reason": "clarification_reason_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "state": "partial",
+            "outcomes": [
+                {
+                    "stage": "planning",
+                    "requirement": "health/member/work_item",
+                    "obligation": "health",
+                    "outcome": "not_applicable",
+                    "impact": "none",
+                    "cause_coverage": "fact_no_declaring_producer",
+                    "cause_observed": true,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "remaining_work/member/work_item",
+                    "obligation": "remaining_work",
+                    "outcome": "not_attempted",
+                    "impact": "dimension",
+                    "cause_coverage": "answer_terminated_before_attempt",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                },
+                {
+                    "stage": "planning",
+                    "requirement": "state/member/work_item",
+                    "obligation": "state",
+                    "outcome": "not_attempted",
+                    "impact": "dimension",
+                    "cause_coverage": "answer_terminated_before_attempt",
+                    "cause_observed": false,
+                    "served": 0,
+                    "declared": 0
+                }
+            ]
+        },
+        "vocabulary_labels": {
+            "answer_status:clarification_required": "Answer needs your confirmation",
+            "requirement_outcome:not_applicable": "not applicable",
+            "requirement_outcome:not_attempted": "not attempted",
+            "window_provenance:inferred_default": "default window",
+            "window_relative_id:trailing_90d": "last 90 days"
+        }
+    }
+}

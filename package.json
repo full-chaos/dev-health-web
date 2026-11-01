@@ -46,13 +46,13 @@
         "test:e2e:context-fabric": "node scripts/context-fabric-qa.mjs",
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
+        "test:e2e:live:ask-dev": "LIVE_ASK_DEV=1 playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
         "ask-dev-oracle:check": "bash scripts/ask-dev-oracle/check.sh",
-        "test:ask-dev-oracle": "bash scripts/ask-dev-oracle/render-check.sh",
         "test:ci": "bash ci/run_tests.sh ci"
     },
     "dependencies": {
-        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#3c1571a06833593bdd0b2390e5957f0a8af44916",
+        "@full-chaos/ask-dev": "github:full-chaos/ask-dev#b0d620e1b9a9693aaa968fd6ff7770e8477235c1",
         "@sentry/nextjs": "^11.7.0",
         "@tailwindcss/typography": "^0.5.20",
         "@urql/core": "^6",

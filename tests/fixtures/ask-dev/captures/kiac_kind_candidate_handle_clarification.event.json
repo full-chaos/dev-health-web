@@ -1,0 +1,574 @@
+{
+    "schema_version": "context_fabric_investigation_event.v1",
+    "type": "result",
+    "request_id": "req_fb709d19f650845a35c93d1219ce11f9",
+    "seq": 8,
+    "result": {
+        "schema_version": "context_fabric_investigation_result.v1",
+        "result_id": "result_f374a93b392f3bbeb0898fadb88baa07",
+        "request_id": "req_fb709d19f650845a35c93d1219ce11f9",
+        "generated_at": "2026-10-30T19:44:13.775811044Z",
+        "status": "clarification_required",
+        "question": "How is atlassian doing over the last 30 days?",
+        "interpretation": {
+            "shape": "single_subject",
+            "requested_judgment": "Assess how atlassian is doing over the last 30 days.",
+            "subject_terms": ["atlassian"],
+            "time_context": {
+                "axis": "current"
+            },
+            "fact_requirements": [
+                {
+                    "kind": "flow"
+                },
+                {
+                    "kind": "health"
+                },
+                {
+                    "kind": "incidents"
+                },
+                {
+                    "kind": "investment"
+                },
+                {
+                    "kind": "workload"
+                }
+            ],
+            "clarification_needed": false
+        },
+        "subject_resolution": {
+            "candidates": [
+                {
+                    "receipt_id": "00000000-0000-4000-8000-000000000006",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:1702",
+                        "label": "Synthetic pull request title 001"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1702"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-000000000007",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:242",
+                        "label": "Synthetic pull request title 002"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:242"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-000000000008",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:249",
+                        "label": "Synthetic pull request title 003"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:249"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-000000000009",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3042",
+                        "label": "Synthetic pull request title 004"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3042"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000000a",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3114",
+                        "label": "Synthetic pull request title 005"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3114"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000000b",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3129",
+                        "label": "Synthetic pull request title 006"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3129"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000000c",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3357",
+                        "label": "Synthetic pull request title 007"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3357"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000000d",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3365",
+                        "label": "Synthetic pull request title 008"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3365"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000000e",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3468",
+                        "label": "Synthetic pull request title 009"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3468"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                },
+                {
+                    "receipt_id": "00000000-0000-4000-8000-00000000000f",
+                    "subject": {
+                        "kind": "pull_request",
+                        "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3474",
+                        "label": "Synthetic pull request title 009"
+                    },
+                    "state": "ambiguous",
+                    "matched_terms": ["atlassian"],
+                    "match_reasons": [
+                        "Hybrid graph search matched the subject label or indexed context."
+                    ],
+                    "confidence": 0.75,
+                    "evidence_ref_ids": [
+                        "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3474"
+                    ],
+                    "match_mechanisms": ["lexical"]
+                }
+            ],
+            "committed": [],
+            "clarification_prompt": "Which subject did you mean: Synthetic pull request title 001, Synthetic pull request title 002, Synthetic pull request title 003?"
+        },
+        "answer_plan": {
+            "family": "subject_investigation",
+            "family_source": "model",
+            "family_version": "question-family.v4",
+            "require_drivers": false,
+            "require_ranking": false,
+            "render_kinds": ["table", "series"],
+            "fact_kinds": ["flow", "health", "incidents", "investment", "workload"],
+            "axes": [
+                "expected_kind",
+                "subject_handle",
+                "subject_candidate",
+                "subject_anchor",
+                "window"
+            ],
+            "budget": {
+                "max_items": 30,
+                "max_serialized_bytes": 262144,
+                "max_members": 18,
+                "synthesis_headroom": 12,
+                "narrowing_basis": "canonical_id_lexical"
+            },
+            "narrowing": [
+                {
+                    "stage": "cardinality",
+                    "basis": "canonical_id_lexical",
+                    "before": 50,
+                    "after": 18
+                }
+            ]
+        },
+        "direct_judgment": "",
+        "current_state": "",
+        "strongest_pressures": [],
+        "drivers": [],
+        "remaining_work": [],
+        "readiness_gaps": [],
+        "paths": [],
+        "conflicts": [],
+        "limitations": [
+            "The question matched more than one authorized subject, so no canonical facts were read until the intended subject is confirmed."
+        ],
+        "evidence_ref_ids": [],
+        "claimed_facts": [],
+        "coverage": {
+            "sources": [
+                {
+                    "source": "context-fabric:graph",
+                    "state": "available",
+                    "observed_at": "2026-10-30T19:44:13.775491044Z",
+                    "label": "Relationship graph",
+                    "state_label": "available"
+                }
+            ],
+            "partial": false
+        },
+        "evidence_ref_labels": {
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:1702": "Pull request: 00000000-0000-4000-8000-000000000002:1702",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:242": "Pull request: 00000000-0000-4000-8000-000000000002:242",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:249": "Pull request: 00000000-0000-4000-8000-000000000002:249",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3042": "Pull request: 00000000-0000-4000-8000-000000000002:3042",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3114": "Pull request: 00000000-0000-4000-8000-000000000002:3114",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3129": "Pull request: 00000000-0000-4000-8000-000000000002:3129",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3357": "Pull request: 00000000-0000-4000-8000-000000000002:3357",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3365": "Pull request: 00000000-0000-4000-8000-000000000002:3365",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3468": "Pull request: 00000000-0000-4000-8000-000000000002:3468",
+            "acr:v1:pull-request:00000000-0000-4000-8000-000000000002:3474": "Pull request: 00000000-0000-4000-8000-000000000002:3474"
+        },
+        "versions": {
+            "service_version": "0.0.0-dev",
+            "contract_version": "context_fabric_investigation_result.v1",
+            "backend": "graph",
+            "projection_version": "devhealthsource.clickhouse.v19+devhealthsource.episodes.v1+devhealthsource.teams_projects.v23",
+            "query_version": "devhealthfacts.clickhouse.v257",
+            "interpretation_version": "context-fabric-model-output.v12",
+            "synthesis_version": "not_synthesized",
+            "canonical_service_version": "context-fabric-facts.v2",
+            "model_identity": "openai/gpt-5.6-luna",
+            "interpretation_source": "server",
+            "interpretation_model_identity": "openai/gpt-5.6-luna"
+        },
+        "deterministic_answer": "Clarification is required before this question can be answered. Which subject did you mean: Synthetic pull request title 001, Synthetic pull request title 002, Synthetic pull request title 003?",
+        "warnings": [],
+        "reused": false,
+        "effective_evidence_window": {
+            "start": "2026-09-30T00:00:00Z",
+            "end": "2026-10-30T00:00:00Z",
+            "relative_id": "trailing_30d",
+            "window_class": "recent_activity_lookup",
+            "provenance": "question_stated",
+            "confidence": "low"
+        },
+        "structure_needs": {
+            "missing": ["expected_kind", "subject_candidate", "subject_anchor", "subject_handle"],
+            "kind_options": [
+                {
+                    "receipt_id": "kindr_deae832e964e3e9a0c1af75b",
+                    "option_id": "opt_56de5c44601c20da",
+                    "label": "Synthetic pull request title 010",
+                    "kind": "pull_request",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "kindr_baa2355ff65b381852d38017",
+                    "option_id": "opt_eeb4cd98a01694a0",
+                    "label": "Synthetic review title 001",
+                    "kind": "pull_request_review",
+                    "offer_source": "engine"
+                }
+            ],
+            "handle_options": [
+                {
+                    "receipt_id": "handr_2767ad29e8acdf25287621d4",
+                    "option_id": "opt_22f7b8a1d3ac5d8e",
+                    "label": "Synthetic pull request title 011",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "1702",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_5a0cf8b3f9398f1502b24a27",
+                    "option_id": "opt_dcb9d301a42753a1",
+                    "label": "Synthetic pull request title 012",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "242",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_3c75f28d57da2cea5238db37",
+                    "option_id": "opt_b9e7046e8b93464f",
+                    "label": "Synthetic pull request title 013",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "249",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_7adf436c7ab7341d80e0d16a",
+                    "option_id": "opt_64aa2c50cb6ae9ac",
+                    "label": "Synthetic pull request title 014",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3042",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_7e7dc15c46e54e672577df9d",
+                    "option_id": "opt_f0c808076b864c6c",
+                    "label": "Synthetic pull request title 015",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3114",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_5e61c5d2679e52fecf9e3f5c",
+                    "option_id": "opt_05395f869934ef94",
+                    "label": "Synthetic pull request title 016",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3129",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_4b9d9763e7bfb89da56f9f21",
+                    "option_id": "opt_6fd1c803fd4a298f",
+                    "label": "Synthetic pull request title 017",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3357",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_9a02fe10e3b12b6f031e80fb",
+                    "option_id": "opt_5dc02ed6a5db255a",
+                    "label": "Synthetic pull request title 018",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3365",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_561ac322a0c37716e39c4541",
+                    "option_id": "opt_275d769479388899",
+                    "label": "Synthetic pull request title 019",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3468",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_825ae9400ddec57358b42d1e",
+                    "option_id": "opt_34b98469d220d029",
+                    "label": "Synthetic pull request title 020",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3474",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_e612ab4d56c8d397e74c6921",
+                    "option_id": "opt_521523252dc8c17a",
+                    "label": "Synthetic pull request title 021",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3515",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_8f76bc1be342240a66c3534c",
+                    "option_id": "opt_094eb1c56498b6d9",
+                    "label": "Synthetic pull request title 022",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3534",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_7c0bcb77b4f1bff8d53dd6c6",
+                    "option_id": "opt_0e754fabb483bcfe",
+                    "label": "Synthetic pull request title 023",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3541",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_e3c9c86f5ec41aa2264a3134",
+                    "option_id": "opt_80c51e698ee6a274",
+                    "label": "Synthetic pull request title 024",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3563",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_84350ebd6228e3f4dfbe3f63",
+                    "option_id": "opt_dee4558f7450d7d7",
+                    "label": "Synthetic pull request title 025",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3622",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_10f5add40c9401dffea3508e",
+                    "option_id": "opt_18f61436feb14474",
+                    "label": "Synthetic pull request title 026",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3641",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_71c471dd2dd936ca23bd7078",
+                    "option_id": "opt_c0ead7aa329af090",
+                    "label": "Synthetic pull request title 027",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3681",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "handr_5d840fdbf5764c35f9d39e87",
+                    "option_id": "opt_ad331d7a4860e71a",
+                    "label": "Synthetic pull request title 028",
+                    "kind": "pull_request",
+                    "pattern_id": "pull_request_number",
+                    "value": "3869",
+                    "source_column": "git_pull_requests.number",
+                    "offer_source": "engine"
+                }
+            ],
+            "candidate_options": [
+                {
+                    "receipt_id": "candr_70941be6d47b05d717e920d4",
+                    "option_id": "opt_315746250dfb06d2",
+                    "label": "Synthetic pull request title 001",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:1702",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_93537eddcfdd5ecebced6aa0",
+                    "option_id": "opt_a5d96ee1448ce343",
+                    "label": "Synthetic pull request title 002",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:242",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_d4dae4872837c10ebfeceee3",
+                    "option_id": "opt_45db93cd2cde93af",
+                    "label": "Synthetic pull request title 003",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:249",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_30e67ddb9ddd88c3c117b2b4",
+                    "option_id": "opt_48afdd2b1b574555",
+                    "label": "Synthetic pull request title 004",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3042",
+                    "offer_source": "engine"
+                },
+                {
+                    "receipt_id": "candr_17bacd1c9c4f0321a0fe7d9c",
+                    "option_id": "opt_aec8aa434cf3f4be",
+                    "label": "Synthetic pull request title 005",
+                    "kind": "pull_request",
+                    "canonical_id": "pull_request:00000000-0000-4000-8000-000000000002:3114",
+                    "offer_source": "engine"
+                }
+            ]
+        },
+        "completeness": {
+            "terminal_status": "clarification_required",
+            "terminal_reason": "clarification_reason_disclosed",
+            "claimed_facts_count": 0,
+            "rows_count": 0,
+            "state": "not_derived"
+        },
+        "vocabulary_labels": {
+            "answer_status:clarification_required": "Answer needs your confirmation",
+            "candidate_state:ambiguous": "more than one match",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
+        }
+    }
+}

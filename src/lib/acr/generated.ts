@@ -4131,6 +4131,12 @@ export type ACRContextFabricInvestigationResponseV1 = {
         [k: string]: string | undefined;
     };
     /**
+     * CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.
+     */
+    vocabulary_labels?: {
+        [k: string]: string | undefined;
+    };
+    /**
      * CHAOS-5442: names WHY the server refused to act on this question's frame, over a vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence. Open vocabulary; documented values: member_kind_unservable, frame_invariant_violated, unspecified, continuation_context_unverifiable, declared_kind_unmatched, organization_scope_unsupported, subject_identity_unconfirmed. A client must tolerate values it does not know.
      */
     refusal_basis?: string;
@@ -4437,6 +4443,12 @@ export type ACRContextFabricInvestigationResponseV2 = {
         [k: string]: string | undefined;
     };
     /**
+     * CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.
+     */
+    vocabulary_labels?: {
+        [k: string]: string | undefined;
+    };
+    /**
      * CHAOS-5442: names WHY the server refused to act on this question's frame, over a vocabulary. ABSENT on every turn that was not refused -- absence means "not refused", never "refused for a reason nobody recorded" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence. Open vocabulary; documented values: member_kind_unservable, frame_invariant_violated, unspecified, continuation_context_unverifiable, declared_kind_unmatched, organization_scope_unsupported, subject_identity_unconfirmed. A client must tolerate values it does not know.
      */
     refusal_basis?: string;
@@ -4737,6 +4749,12 @@ export type ACRContextFabricInvestigationResultV1 = {
      * CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.
      */
     evidence_ref_labels?: {
+        [k: string]: string | undefined;
+    };
+    /**
+     * CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.
+     */
+    vocabulary_labels?: {
         [k: string]: string | undefined;
     };
     /**
@@ -9253,7 +9271,7 @@ export interface CoverageDetail {
     detail_id: string;
     source: string;
     /**
-     * Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld. A client must tolerate values it does not know.
+     * Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, graph_answer_pull_requests_on_explicit_text_links, graph_answer_pull_requests_on_heuristic_links, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, graph_hop_walk_truncated, graph_team_narrowing_undecided_paths, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld, project_scope_withheld. A client must tolerate values it does not know.
      */
     code: string;
     degrading: boolean;

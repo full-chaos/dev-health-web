@@ -5,9 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
 
-import type { TranscriptResult } from "../../answer/AskDevTurn";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import {
-    carryOfChoice,
     ConversationStore,
     STATUS_POLL_INTERVAL_MS,
     type ConversationStoreOptions,
@@ -166,13 +165,10 @@ describe("thread and submission keys (plan §2.5, INV-2)", () => {
         store.submit("What is the status of the project?");
         await settled(store);
         const receipt = { result_id: CLARIFICATION.result_id, receipt_id: "receipt_0001" };
-        store.submit(
-            "What is the status of the project?",
-            carryOfChoice({
-                parentResultId: CLARIFICATION.result_id,
-                receipts: { prior_anchor_receipts: [receipt] },
-            }),
-        );
+        store.submit("What is the status of the project?", {
+            parentResultId: CLARIFICATION.result_id,
+            structureReceipts: { priorAnchorReceipts: [receipt] },
+        });
         await settled(store);
         const request = transport.calls[1]!.request;
         expect(request.parent_result_id).toBe(CLARIFICATION.result_id);

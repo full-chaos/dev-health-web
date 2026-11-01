@@ -553,7 +553,7 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.refresh_token).toBe("rotated-refresh");
     });
 
-    it("(e7) expires_at comes from the token exp, and from expires_in when the token has none", async () => {
+    it("(e7) expires_at comes from the token exp; a token without a usable exp ends the session", async () => {
         const exp = Math.floor(Date.now() / 1000) + 7200;
         vi.stubGlobal(
             "fetch",
@@ -566,23 +566,29 @@ describe("jwt callback — token lifecycle", () => {
         });
         expect(withExp.expires_at).toBe(exp * 1000);
 
-        vi.stubGlobal(
-            "fetch",
-            vi.fn().mockResolvedValueOnce(
-                rotatedAnswer({
-                    access_token: hs256Access({ sid: "ses_NoExpAAAAAAAAAAAAAAAAA" }),
-                    expires_in: 1800,
-                }),
-            ),
-        );
-        const before = Date.now();
-        const noExp = await getJwtCallback()({
-            token: refreshDueToken(),
-            user: null,
-            account: null,
-        });
-        expect(noExp.expires_at as number).toBeGreaterThanOrEqual(before + 1800 * 1000);
-        expect(noExp.expires_at as number).toBeLessThanOrEqual(Date.now() + 1800 * 1000);
+        // A body expires_in never sets the lifetime of a token whose exp web cannot read.
+        for (const payload of [
+            { sid: "ses_NoExpAAAAAAAAAAAAAAAAA" },
+            { sid: "ses_NoExpAAAAAAAAAAAAAAAAA", exp: 0 },
+            { sid: "ses_NoExpAAAAAAAAAAAAAAAAA", exp: -1 },
+        ]) {
+            vi.stubGlobal(
+                "fetch",
+                vi
+                    .fn()
+                    .mockResolvedValueOnce(
+                        rotatedAnswer({ access_token: hs256Access(payload), expires_in: 1800 }),
+                    ),
+            );
+            const refused = await getJwtCallback()({
+                token: refreshDueToken(),
+                user: null,
+                account: null,
+            });
+            expect(refused.error, JSON.stringify(payload)).toBe("refresh_failed");
+            expect(refused.access_token).toBeUndefined();
+            expect(refused.refresh_token).toBeUndefined();
+        }
     });
 
     it("(e8) sid is stored on refresh and replaces the sign-in sid", async () => {
