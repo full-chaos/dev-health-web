@@ -59,7 +59,14 @@ export type SessionBranch =
     | "logout_failed";
 
 export interface SessionBranchFields {
-    readonly operation: "refresh" | "validate" | "login" | "logout";
+    readonly operation:
+        | "refresh"
+        | "validate"
+        | "login"
+        | "logout"
+        | "switch_org"
+        | "change_password"
+        | "social_login";
     readonly branch: SessionBranch;
     /** HTTP status of the backend answer. Absent when no answer arrived. */
     readonly status?: number;

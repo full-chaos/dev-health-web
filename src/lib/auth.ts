@@ -15,7 +15,13 @@ import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import { deadlineFetch } from "@/lib/serverDeadline";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
-import { passwordLogin, refreshSession } from "@/lib/authServiceWire";
+import {
+    passwordLogin,
+    readExchangeAnswer,
+    refreshSession,
+    wireConfigFromEnv,
+    wireConfigUsable,
+} from "@/lib/authServiceWire";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -183,7 +189,16 @@ const nextAuth = NextAuth({
             }
 
             // Social login: exchange OAuth token for backend JWT
-            if (account && account.provider !== "credentials" && account.access_token) {
+            const socialWire = wireConfigFromEnv();
+            if (
+                account &&
+                account.provider !== "credentials" &&
+                account.access_token &&
+                !wireConfigUsable(socialWire, "social_login")
+            ) {
+                // A wrong class setting is a configuration fault: no exchange is started.
+                token.error = "social_login_failed";
+            } else if (account && account.provider !== "credentials" && account.access_token) {
                 try {
                     const backendUrl = getBackendUrl();
                     const res = await deadlineFetch("auth")(
@@ -198,8 +213,26 @@ const nextAuth = NextAuth({
                         },
                     );
 
-                    if (res.ok) {
-                        const data = await res.json();
+                    const exchange = res.ok ? await res.json() : undefined;
+                    const read = exchange
+                        ? await readExchangeAnswer(
+                              {
+                                  accessToken:
+                                      typeof exchange.access_token === "string"
+                                          ? exchange.access_token
+                                          : "",
+                                  sessionAccessToken: exchange.session_access_token,
+                              },
+                              socialWire,
+                              "social_login",
+                          )
+                        : undefined;
+                    if (read?.kind === "refused" || read?.kind === "unavailable") {
+                        // Under eddsa an answer that cannot be read is no sign-in: the stored
+                        // session is left as it was.
+                        token.error = "social_login_failed";
+                    } else if (res.ok) {
+                        const data = exchange;
                         token.id = data.user.id;
                         token.org_id = data.user.org_id || undefined;
                         token.role = data.user.role || undefined;
@@ -211,8 +244,27 @@ const nextAuth = NextAuth({
                         token.access_token = data.access_token;
                         token.refresh_token = data.refresh_token;
                         // The exchange sets a new access token: the old service token is not its pair.
-                        setServiceToken(token, {});
-                        token.expires_at = Date.now() + (data.expires_in || 3600) * 1000;
+                        setServiceToken(
+                            token,
+                            read?.kind === "read" && read.session.kind === "ok"
+                                ? {
+                                      token: read.session.token,
+                                      exp: read.session.exp,
+                                      actor:
+                                          typeof read.actor === "string" ? read.actor : undefined,
+                                  }
+                                : {
+                                      actor:
+                                          read?.kind === "read" && typeof read.actor === "string"
+                                              ? read.actor
+                                              : undefined,
+                                  },
+                        );
+                        if (read?.kind === "read" && read.sid !== undefined) token.sid = read.sid;
+                        token.expires_at =
+                            read?.kind === "read" && read.accessExp
+                                ? read.accessExp * 1000
+                                : Date.now() + (data.expires_in || 3600) * 1000;
                         token.last_validated = Date.now();
                     } else {
                         const errorData = await res.json().catch((error) => {
@@ -260,13 +312,21 @@ const nextAuth = NextAuth({
                 const pair = handoff.pair as ActiveOrgPair;
                 token.access_token = pair.access_token;
                 token.refresh_token = pair.refresh_token;
-                // A pair of this kind holds no service token: the old one is not its pair.
-                setServiceToken(token, {});
+                // The service token of the old pair is not this pair's: it is replaced by the
+                // pair's own, or cleared when the pair has none (legacy pair).
+                setServiceToken(token, {
+                    token: pair.session_access_token,
+                    exp: pair.session_exp,
+                    actor: pair.act_sub,
+                });
+                if (pair.sid !== undefined) token.sid = pair.sid;
                 token.org_id = pair.user.org_id;
                 token.role = pair.user.role;
                 token.is_superuser = pair.user.is_superuser ?? false;
                 token.needs_onboarding = false;
-                token.expires_at = Date.now() + (pair.expires_in || 3600) * 1000;
+                token.expires_at = pair.access_exp
+                    ? pair.access_exp * 1000
+                    : Date.now() + (pair.expires_in || 3600) * 1000;
                 token.last_validated = Date.now();
                 token.error = undefined;
             }
@@ -474,6 +534,13 @@ type ActiveOrgPair = {
     access_token: string;
     refresh_token?: string;
     expires_in?: number;
+    // Under eddsa the route read the answer: the verified access expiry and session id, the verified
+    // actor, and the service token with its expiry (CHAOS-10876). Absent under hs256_compat.
+    access_exp?: number;
+    sid?: string;
+    act_sub?: string;
+    session_access_token?: string;
+    session_exp?: number;
     user: { org_id?: string; role?: string; is_superuser?: boolean };
 };
 
@@ -497,6 +564,19 @@ export async function sealSessionHandoff(
         maxAge: SESSION_HANDOFF_MAX_AGE_SECONDS,
         token: { sub: userId, kind, pair },
     });
+}
+
+// The service fields of a pair, when present: strings that are not empty and finite numbers.
+function validServiceFields(pair: Record<string, unknown>): boolean {
+    const text = (v: unknown) => v === undefined || (typeof v === "string" && v !== "");
+    const number = (v: unknown) => v === undefined || (typeof v === "number" && Number.isFinite(v));
+    return (
+        text(pair.session_access_token) &&
+        text(pair.sid) &&
+        text(pair.act_sub) &&
+        number(pair.session_exp) &&
+        number(pair.access_exp)
+    );
 }
 
 async function openSessionHandoff(
@@ -535,6 +615,7 @@ async function openSessionHandoff(
     if (kind === "activeOrg" && (!pair.user || typeof pair.user !== "object")) {
         return refuse("no_user");
     }
+    if (!validServiceFields(pair as Record<string, unknown>)) return refuse("bad_service_fields");
     return { kind, pair };
 }
 

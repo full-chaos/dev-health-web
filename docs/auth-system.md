@@ -66,6 +66,27 @@ callback puts it on the in-process session only; `authBrowserSession` removes it
 answer. C1 alone is not ready for the `eddsa` flip: the switch-org and change-password answers (C2)
 and a proof on an `eddsa` leg come first.
 
+**Service session token, other answers** (PR C2): the switch-org and change-password answers and the
+social exchange are read through `readExchangeAnswer` (`src/lib/authServiceWire.ts`). Under
+`hs256_compat` nothing changes: the access token of the answer is not read and a present
+`session_access_token` is ignored and counted (operation `switch_org`, `change_password` or
+`social_login`). Under `eddsa` the answer is read like a login answer; the sealed handoff pair then
+carries `access_exp`, `sid`, `act_sub`, `session_access_token` and `session_exp`, and the jwt callback
+adopts them (a pair without them clears the old service token; `sid` is set only when the pair has
+one). A refused or unreadable answer leaves the session as it is (switch-org: the fixed 502;
+change-password: the sign-in-again 502; social: `social_login_failed`); an unknown class setting or
+`eddsa` without an issuer refuses before the backend is called. `openSessionHandoff` refuses a pair
+whose service fields have the wrong type (`bad_service_fields`). The change-password Bearer follows
+the CLASS, not the session: under `eddsa` it is the service token when the session holds one, else the
+access token; under `hs256_compat` it is the access token even when a cookie kept across a rollback
+still holds a service token. switch-org and logout keep the access token as Bearer. Size: the pair
+travels sealed (an encrypted JWT, 120 s) in the JSON body of `update()`; the session cookie that
+results is split into chunks by Auth.js and, with two tokens of the largest size the verifier accepts
+(4096 bytes each), is about 11.8 KB in 3 chunks (Node's default request header limit is 16 KiB for all
+cookies together); with real-size tokens it is about 2.5 KB in 1 chunk. Before the `eddsa` flip:
+C1 and C2 rolled, `AUTH_PROXY_CREDENTIALS` on (CHAOS-12339) for the change-password Bearer, a proof on
+an `eddsa` leg, and the count of `session_token_missing` watched.
+
 **Session Data**:
 
 - `access_token`: Backend API bearer token — **server only** (see below)

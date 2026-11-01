@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { auth, sealSessionHandoff } from "@/lib/auth";
+import { servicePairFields } from "@/lib/authServicePair";
 import { logger } from "@/lib/logger";
+import { readExchangeAnswer, wireConfigFromEnv, wireConfigUsable } from "@/lib/authServiceWire";
 import { getBackendUrl } from "@/lib/origin";
 
 const routeLogger = logger.child({ module: "switch-org" });
@@ -20,6 +22,12 @@ export async function POST(request: Request) {
     }
     if (!payload || typeof payload.org_id !== "string" || !payload.org_id) {
         return NextResponse.json({ error: "Organization ID is required" }, { status: 400 });
+    }
+
+    // A wrong class setting is a configuration fault: refuse before the backend mints anything.
+    const wire = wireConfigFromEnv();
+    if (!wireConfigUsable(wire, "switch_org")) {
+        return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
     }
 
     let response: Response;
@@ -72,6 +80,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
     }
     const orgId = typeof pair.user.org_id === "string" ? pair.user.org_id : payload.org_id;
+    // Under eddsa the access token and the service token are read; under hs256_compat the pair is
+    // exactly what it was. A refused or unreadable answer leaves the session as it is.
+    const read = await readExchangeAnswer(
+        {
+            accessToken: pair.access_token,
+            sessionAccessToken: (data as { session_access_token?: unknown }).session_access_token,
+        },
+        wire,
+        "switch_org",
+    );
+    if (read.kind === "refused" || read.kind === "unavailable") {
+        routeLogger.error(
+            { status: response.status, orgId: payload.org_id },
+            "switch-org answer was refused; session not changed",
+        );
+        return NextResponse.json({ error: "Organization switch failed" }, { status: 502 });
+    }
     let sessionHandoff: string;
     try {
         sessionHandoff = await sealSessionHandoff(
@@ -81,6 +106,7 @@ export async function POST(request: Request) {
                 refresh_token: pair.refresh_token,
                 expires_in: pair.expires_in,
                 user: { org_id: orgId, role: pair.user.role, is_superuser: pair.user.is_superuser },
+                ...(read.kind === "read" ? servicePairFields(read) : {}),
             },
             session.user?.id ?? "",
         );
