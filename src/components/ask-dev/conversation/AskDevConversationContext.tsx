@@ -4,6 +4,7 @@ import {
     createContext,
     useContext,
     useEffect,
+    useRef,
     useState,
     useSyncExternalStore,
     type ReactNode,
@@ -141,16 +142,25 @@ export function AskDevConversationProvider({
     });
     const { data: session, status } = useSession();
     const partition = partitionKey(session, status);
+    const impersonating = session?.user?.is_impersonating === true;
+    const bound = useRef(false);
 
     useEffect(() => {
         if (store === null || partition === undefined) return;
         store.setPartition(partition);
+        // A page that loads while impersonating binds once with no change, so the store's hook does
+        // not run: an impersonating session holds no ACR token, so clear here (codex r1 on #1680).
+        // Later changes are the store's hook. Only with the browser ACR client on.
+        if (!bound.current) {
+            bound.current = true;
+            if (impersonating && browserAcrClientConfig() !== undefined) clearAcrTokensInAllTabs();
+        }
         // The same key, in the same step: feedback of another (org, principal) is never shown.
         feedback?.setPartition(partition);
         // CHAOS-11956: with the partition known, a reload restores this tab's conversation from
         // its hint (never before: the hint names its partition, and ACR authorizes the read).
         if (!urlNamesThread()) store.restoreFromHint();
-    }, [store, feedback, partition]);
+    }, [store, feedback, partition, impersonating]);
     // Leaving the shell (sign-out, another route group) ends the run with it.
     useEffect(() => () => store?.clear("unmounted"), [store]);
     useEffect(() => () => feedback?.reset(), [feedback]);

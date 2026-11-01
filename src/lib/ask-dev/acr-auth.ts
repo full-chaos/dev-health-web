@@ -574,7 +574,11 @@ export async function beginAcrAuthorization(returnTo: string): Promise<AcrBeginO
     listenForAcrTabs();
     // No ACR token for an impersonating session (CHAOS-12306): no metadata read, no navigation.
     // A signed-out start goes on: the callback refuses it before it sends the code.
-    if (isImpersonating(await dependencies.principal())) return { kind: "impersonating" };
+    if (isImpersonating(await dependencies.principal())) {
+        // A family stored before the impersonation started goes too (codex r1 on #1680).
+        dropTokens(dependencies.storage());
+        return { kind: "impersonating" };
+    }
     const server = await discoverAcrAuthorizationServer(config.issuer);
     if (server === null) return { kind: "unavailable" };
     const verifier = randomBase64Url(32);
@@ -799,7 +803,10 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     const principal = await dependencies.principal();
     if (principal === null) return fail("signed_out");
     // Impersonating (CHAOS-12306): as signed out, nothing is spent, sent or stored.
-    if (isImpersonating(principal)) return fail("impersonating");
+    if (isImpersonating(principal)) {
+        dropTokens(storage);
+        return fail("impersonating");
+    }
     const claim = await claimOnce(pending);
     if (claim === "spent") return fail("already_used");
     if (claim === "unavailable") return fail("claim_unavailable");
@@ -811,7 +818,10 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     // outlives the sign-out that could not revoke it (codex r2 on #1676).
     const after = await dependencies.principal();
     // An impersonation that started while the exchange ran: hold and store nothing (CHAOS-12306).
-    if (isImpersonating(after)) return fail("impersonating");
+    if (isImpersonating(after)) {
+        dropTokens(storage);
+        return fail("impersonating");
+    }
     if (drops !== dropsBefore || after === null || !samePrincipal(after, principal)) {
         return fail("signed_out");
     }

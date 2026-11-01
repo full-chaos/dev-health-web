@@ -279,6 +279,14 @@ describe("beginAcrAuthorization", () => {
         expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
     });
 
+    it("drops a family stored before the impersonation started (codex r1 on #1680)", async () => {
+        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
+        principal = IMPERSONATING;
+        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "impersonating" });
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+        expect(calls).toEqual([]);
+    });
+
     it("still starts with no web session: begin has no signed-out refusal (CHAOS-12306)", async () => {
         principal = null;
         expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
@@ -415,6 +423,17 @@ describe("completeAcrAuthorization", () => {
         expect(shared.getItem(ACR_SPENT_KEY)).toBeNull();
         principal = USER;
         expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("while impersonating, also drops a family stored before (codex r1 on #1680)", async () => {
+        const state = await started();
+        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
+        principal = IMPERSONATING;
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "failed", reason: "impersonating" });
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
         expect(tokenCalls()).toEqual([]);
     });
 
@@ -1704,6 +1723,8 @@ describe("the token store across tabs (CHAOS-12305)", () => {
         });
 
         it("an impersonation started while the code exchange ran: nothing is stored or held (CHAOS-12306)", async () => {
+            // A family this tab held from before goes too (codex r1 on #1680).
+            storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
             fates.push({
                 during: async () => {
                     principal = IMPERSONATING;

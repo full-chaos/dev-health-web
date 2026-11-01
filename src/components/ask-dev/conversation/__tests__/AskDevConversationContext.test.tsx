@@ -232,11 +232,44 @@ describe("the ACR tokens follow the partition (CHAOS-12306)", () => {
         const transport = new FakeTransport();
         const view = render(tree(transport));
         await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        // The first bind is impersonating: it clears once (codex r1 on #1680).
+        await waitFor(() => expect(clearTokens.spy).toHaveBeenCalledTimes(1));
         window.sessionStorage.setItem(ACR_TOKEN_FAMILY_KEY, FAMILY);
         sessionState.current = signedIn({});
         view.rerender(tree(transport));
+        await waitFor(() => expect(clearTokens.spy).toHaveBeenCalledTimes(2));
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("with the client on, a page load that binds an impersonating session first clears a family stored before (codex r1 on #1680)", async () => {
+        acrBrowserClientOn();
+        window.sessionStorage.setItem(ACR_TOKEN_FAMILY_KEY, FAMILY);
+        sessionState.current = signedIn({ is_impersonating: true, impersonated_user_id: "u9" });
+        const transport = new FakeTransport();
+        render(tree(transport));
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
         await waitFor(() => expect(clearTokens.spy).toHaveBeenCalledTimes(1));
         expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("with the client on, a first bind that is not impersonating clears nothing", async () => {
+        acrBrowserClientOn();
+        window.sessionStorage.setItem(ACR_TOKEN_FAMILY_KEY, FAMILY);
+        const transport = new FakeTransport();
+        render(tree(transport));
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        expect(clearTokens.spy).not.toHaveBeenCalled();
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBe(FAMILY);
+    });
+
+    it("with the client off, a first bind while impersonating clears nothing", async () => {
+        window.sessionStorage.setItem(ACR_TOKEN_FAMILY_KEY, FAMILY);
+        sessionState.current = signedIn({ is_impersonating: true, impersonated_user_id: "u9" });
+        const transport = new FakeTransport();
+        render(tree(transport));
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        expect(clearTokens.spy).not.toHaveBeenCalled();
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBe(FAMILY);
     });
 
     it("with the client off, clears nothing on an org switch or an impersonation start", async () => {
