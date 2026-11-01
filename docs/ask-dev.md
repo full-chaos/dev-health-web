@@ -92,13 +92,13 @@ The redirect URI stays registered, and the metadata document is unchanged: ACR r
 
 **When it fails.**
 
-| What happened                    | What the user sees                                                                                  |
-| -------------------------------- | --------------------------------------------------------------------------------------------------- |
-| ACR, web or the network failed   | "The question could not be sent. Try again." with Retry. History and evidence keep their Try again. |
-| ACR's limit (429)                | "Too many questions in a short time." with Retry. Nothing retries or waits by itself.               |
-| The web session has ended        | The normal sign-in, then back to this page                                                          |
-| Impersonating, or a race into it | Ask Dev says it is not available. No code and no token.                                             |
-| No Agent Context Runtime         | "Ask Dev is not available for this organization."                                                   |
+| What happened                            | What the user sees                                                                                  |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| ACR, web or the network failed           | "The question could not be sent. Try again." with Retry. History and evidence keep their Try again. |
+| ACR's limit, or this user's budget (429) | "Too many questions in a short time." with Retry. Nothing retries or waits by itself.               |
+| The web session has ended                | The normal sign-in, then back to this page                                                          |
+| Impersonating, or a race into it         | Ask Dev says it is not available. No code and no token.                                             |
+| No Agent Context Runtime                 | "Ask Dev is not available for this organization."                                                   |
 
 History before a token is never `ready`, so it never reads "No conversations yet.": it reads "Loading conversations…" while the silent step runs, then the list, or "History could not be read." with Try again. Each Try again is one click and one attempt.
 

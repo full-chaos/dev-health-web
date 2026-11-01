@@ -207,7 +207,7 @@ export type AcrSilentOutcome =
     | { readonly kind: "impersonating" }
     /** The organization has no Agent Context Runtime: asking again cannot help. */
     | { readonly kind: "not_entitled" }
-    /** ACR's limit on `/authorize` (429). The user's next act may try again; nothing here does. */
+    /** ACR's limit, or web's budget per user (429). The next act may try again; nothing here does. */
     | { readonly kind: "rate_limited" }
     | { readonly kind: "failed"; readonly reason: AcrAuthorizationFailure };
 
