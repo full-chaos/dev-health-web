@@ -68,6 +68,16 @@ Each reference under an answer is a button, with ACR's served label. It opens th
 - **Try again** shows only when ACR says another read can help, and it reads the same reference for the same answer.
 - **An org switch** closes the drawer, so one org's evidence never stays on screen in another.
 
+## The live acceptance suite
+
+`tests/live/ask-dev` holds Phase 1's live cases (CHAOS-11933). It runs against a deployed stack, not in CI: `pnpm test:e2e:live:ask-dev`. It has no skips: with no ACR, no stream, no data or no oracle it goes red, and `ci/live-e2e-skip-gate.mjs` reads its report.
+
+- **`phase1.spec.ts`** sends no question.
+- **`routed.spec.ts`** sends real questions, so a run needs acr's `modeloracle` (acr `docs/fullstack-acceptance.md` §6.2), never a real model. Write each run's plan with `npx tsx tests/live/ask-dev/make-plan.ts <acr plan> <output> <nonce>`: ACR reuses a stored answer, so a run needs fresh questions.
+- **The stack needs** the oracle env of §6.2, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED=true`, and the egress block as a second guard. Check ACR's model receipts after a run.
+- **Env:** `ASK_DEV_LIVE_WEB`, `ASK_DEV_LIVE_ACR`, `ASK_DEV_LIVE_EMAIL`, `ASK_DEV_LIVE_PASSWORD_FILE` (a 0600 file), `ASK_DEV_LIVE_THREAD` (a stored conversation with one ref cited by two answers), `ASK_DEV_LIVE_ORACLE` and `ASK_DEV_LIVE_NONCE`.
+- **Limits:** the auth service allows 20 logins in 15 minutes per IP, so each spec file signs in once. ACR allows one principal 60 requests a minute, so the suite waits between cases.
+
 ## Answer completeness
 
 An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. The render never shows it (CHAOS-12245, chris 2026-10-31). The rules live in ask-dev's render (`src/lib/missing-data.ts`, `CompletenessPanel`, CHAOS-12429):
