@@ -283,6 +283,8 @@ describe("POST /api/ask-dev/authorize", () => {
         ["no challenge", { state: STATE }],
         ["a short state", { code_challenge: CHALLENGE, state: "short" }],
         ["a state with an equals sign", { code_challenge: CHALLENGE, state: `${"S".repeat(42)}=` }],
+        ["a short challenge", { code_challenge: "short", state: STATE }],
+        ["a challenge with a plus sign", { code_challenge: `${"C".repeat(42)}+`, state: STATE }],
         ["a number", { code_challenge: 1, state: STATE }],
         ["the verifier", { code_challenge: CHALLENGE, state: STATE, code_verifier: "v" }],
         ["a client", { code_challenge: CHALLENGE, state: STATE, client_id: "x" }],
