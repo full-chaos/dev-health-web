@@ -15,7 +15,7 @@ import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import { deadlineFetch } from "@/lib/serverDeadline";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
-import { passwordLogin } from "@/lib/authServiceWire";
+import { passwordLogin, refreshSession } from "@/lib/authServiceWire";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -259,95 +259,72 @@ const nextAuth = NextAuth({
             const REFRESH_BACKOFF_CAP = 15 * 60 * 1000; // 15 min
             const REFRESH_BACKOFF_FLOOR = 5 * 1000; // 5 s minimum so next attempt isn't immediate
             if (tokenExpired && token.refresh_token) {
-                try {
-                    const backendUrl = getBackendUrl();
-                    const res = await deadlineFetch("auth")(`${backendUrl}/api/v1/auth/refresh`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ refresh_token: token.refresh_token }),
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        token.access_token = data.access_token;
-                        if (!data.access_token) {
-                            // A 2xx answer with no access token: the session loses its
-                            // access token and no error is set.
-                            logSessionBranch({
-                                operation: "refresh",
-                                branch: "refresh_no_access_token",
-                                status: res.status,
-                            });
-                        }
-                        // NOTE: Single-use token rotation — if multiple concurrent JWT callbacks
-                        // race (e.g., parallel SSR requests), a later callback may attempt to use
-                        // an already-rotated refresh_token and receive a 401. The ?? fallback below
-                        // preserves the most recently issued token if data.refresh_token is absent,
-                        // but a brief window exists between concurrent rotations.
-                        // Backend refresh grace shipped in CHAOS-2162 (PR #827); keep the client-side
-                        // fallback so older/mixed backend deployments remain safe during rollouts.
-                        token.refresh_token = data.refresh_token ?? token.refresh_token;
-                        token.expires_at = now + (data.expires_in || 3600) * 1000;
-                        token.last_validated = now;
-                        token.refresh_failures = 0;
-                        // A new access token starts with a clean validation count:
-                        // the count belongs to the token it replaces, and a stale
-                        // one keeps the next validation backoff at its cap.
-                        token.validation_failures = 0;
-                        token.error = undefined;
-                        if (data.user) {
-                            token.id = data.user.id;
-                            token.email = data.user.email;
-                            token.org_id = data.user.org_id;
-                            token.role = data.user.role;
-                            token.is_superuser = data.user.is_superuser ?? false;
-                        }
-                    } else if (res.status === 401) {
+                const env = getServerEnv();
+                const refreshed = await refreshSession(token.refresh_token as string, {
+                    tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
+                    issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
+                    backendUrl: getBackendUrl(),
+                });
+                if (refreshed.kind === "rotated") {
+                    // Single-use rotation: only the credential this answer carries is kept.
+                    token.access_token = refreshed.accessToken;
+                    token.refresh_token = refreshed.refreshToken;
+                    token.expires_at = refreshed.accessExp
+                        ? refreshed.accessExp * 1000
+                        : now + (refreshed.expiresIn || 3600) * 1000;
+                    token.sid = refreshed.sid;
+                    token.last_validated = now;
+                    token.refresh_failures = 0;
+                    // A new access token starts with a clean validation count:
+                    // the count belongs to the token it replaces, and a stale
+                    // one keeps the next validation backoff at its cap.
+                    token.validation_failures = 0;
+                    token.error = undefined;
+                    if (refreshed.user) {
+                        token.id = refreshed.user.id;
+                        token.email = refreshed.user.email;
+                        token.org_id = refreshed.user.orgId;
+                        token.role = refreshed.user.role;
+                        token.is_superuser = refreshed.user.isSuperuser;
+                    }
+                } else if (refreshed.kind === "terminal") {
+                    // The authority refused the credential, or answered with something web
+                    // refuses: both tokens go. The wire module logged the refused answers.
+                    if (refreshed.reason === "status") {
                         logSessionBranch({
                             operation: "refresh",
                             branch: "refresh_failed",
-                            status: res.status,
+                            status: refreshed.status,
                         });
-                        token.access_token = undefined;
-                        token.refresh_token = undefined;
-                        token.error = "refresh_failed";
-                        return token;
-                    } else {
-                        // 429/5xx/transient error — revoke access_token to prevent exposing an
-                        // expired bearer token, but keep refresh_token so a later JWT callback can
-                        // retry after full jittered exponential backoff (self-healing).
-                        token.access_token = undefined;
-                        const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
-                        token.refresh_failures = failures;
+                    }
+                    token.access_token = undefined;
+                    token.refresh_token = undefined;
+                    token.error = "refresh_failed";
+                    return token;
+                } else {
+                    // 429/5xx/network, or a refresh that could not be judged now: drop the access
+                    // token (never expose an expired bearer), keep the refresh token so a later JWT
+                    // callback retries after full jittered exponential backoff (self-healing). A
+                    // credential the answer already rotated replaces the spent one.
+                    token.access_token = undefined;
+                    if (refreshed.refreshToken) token.refresh_token = refreshed.refreshToken;
+                    const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
+                    token.refresh_failures = failures;
+                    if (refreshed.status !== undefined) {
                         logSessionBranch({
                             operation: "refresh",
                             branch: "refresh_unavailable",
-                            status: res.status,
+                            status: refreshed.status,
                             failures,
                         });
-                        const cappedDelay = Math.min(
-                            REFRESH_BACKOFF_CAP,
-                            REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),
-                        );
-                        // Full jitter: spread across [floor, cappedDelay]
-                        const jitteredDelay =
-                            REFRESH_BACKOFF_FLOOR +
-                            Math.random() * (cappedDelay - REFRESH_BACKOFF_FLOOR);
-                        token.expires_at = now + 5 * 60 * 1000 + jitteredDelay;
-                        token.error = "refresh_unavailable";
-                        return token;
+                    } else if (refreshed.errorName !== undefined) {
+                        logSessionBranch({
+                            operation: "refresh",
+                            branch: "refresh_call_failed",
+                            errorName: refreshed.errorName,
+                            failures,
+                        });
                     }
-                } catch (error) {
-                    // Network error — revoke access_token to prevent exposing an expired bearer
-                    // token, but keep refresh_token so a later JWT callback can retry after backoff.
-                    token.access_token = undefined;
-                    const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
-                    token.refresh_failures = failures;
-                    logSessionBranch({
-                        operation: "refresh",
-                        branch: "refresh_call_failed",
-                        errorName: thrownErrorName(error),
-                        failures,
-                    });
                     const cappedDelay = Math.min(
                         REFRESH_BACKOFF_CAP,
                         REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),

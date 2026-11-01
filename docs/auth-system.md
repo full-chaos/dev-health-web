@@ -36,6 +36,18 @@ per 30 s; when a refresh fails the last good keys are used until 10 minutes past
 then sign-in is `auth_unavailable`; a key id that is not in the keys gets one refresh, and a key id
 still unknown is refused. A key set with a repeated `kid` or an invalid key is refused whole.
 
+**Refresh** (`refreshSession` in `src/lib/authServiceWire.ts`; the jwt callback calls it when the access
+token is within 5 minutes of its `exp`): one backend call per refresh credential per process
+(parallel callbacks share it; the key is a hash). The answer maps by status: 408, 425, 429, 5xx and a
+failed call are transient (the access token is dropped, the refresh token is kept, jittered
+backoff); every other non-2xx status is terminal (both tokens are cleared, `refresh_failed`); a 200
+without both a non-empty access token and a non-empty rotated refresh token is terminal. The new
+access token is read by the token class (above); a token the class refuses is terminal. The
+credential is single use, so the rotated one is always stored, also when the key set cannot be read
+(then the access token is dropped and the refresh is retried). `expires_at` comes from the token
+`exp` (else `expires_in`) and `sid` is stored. An unknown class setting or a missing issuer never
+ends a session at refresh: it is transient.
+
 **Session Data**:
 
 - `access_token`: Backend API bearer token — **server only** (see below)

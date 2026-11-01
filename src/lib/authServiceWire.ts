@@ -6,6 +6,8 @@ import { readAccessToken, resolveTokenClass, type TokenClass } from "@/lib/authS
 import {
     classifyLogin,
     classifyLogout,
+    classifyRefresh,
+    singleFlightRefresh,
     type CallResult,
     type LogoutOutcome,
     type SessionUser,
@@ -74,10 +76,10 @@ function tokenKid(token: string): string | undefined {
 
 type Config = { ok: true; tokenClass: TokenClass } | { ok: false };
 
-function checkConfig(cfg: WireConfig): Config {
+function checkConfig(cfg: WireConfig, operation: "login" | "refresh"): Config {
     const tokenClass = resolveTokenClass(cfg.tokenClassRaw);
     if (tokenClass === null || (tokenClass === "eddsa" && !cfg.issuer)) {
-        logSessionBranch({ operation: "login", branch: "auth_config_invalid" });
+        logSessionBranch({ operation, branch: "auth_config_invalid" });
         return { ok: false };
     }
     return { ok: true, tokenClass };
@@ -92,6 +94,7 @@ async function readIssuedAccessToken(
     token: string,
     tokenClass: TokenClass,
     cfg: WireConfig,
+    operation: "login" | "refresh",
 ): Promise<Issued> {
     let ctx: VerifyContext = {
         issuer: cfg.issuer ?? "",
@@ -101,7 +104,12 @@ async function readIssuedAccessToken(
         removedKids: [],
     };
     if (tokenClass === "eddsa") {
-        const answer = await publishedKeysFor(ctx.issuer, tokenKid(token), () => nowOf(cfg));
+        const answer = await publishedKeysFor(
+            ctx.issuer,
+            tokenKid(token),
+            () => nowOf(cfg),
+            operation,
+        );
         if (!answer.ok) {
             return answer.reason === "unavailable"
                 ? { ok: false, reason: "unavailable" }
@@ -155,7 +163,7 @@ export async function passwordLogin(
     credentials: PasswordCredentials,
     cfg: WireConfig,
 ): Promise<PasswordLoginResult> {
-    const checked = checkConfig(cfg);
+    const checked = checkConfig(cfg, "login");
     if (!checked.ok) return { kind: "unavailable" };
     const sent = await send(`${cfg.backendUrl}/api/v1/auth/login`, {
         method: "POST",
@@ -183,6 +191,7 @@ export async function passwordLogin(
                 outcome.accessToken,
                 checked.tokenClass,
                 cfg,
+                "login",
             );
             if (!issued.ok) {
                 if (issued.reason === "unavailable") return { kind: "unavailable" };
@@ -229,4 +238,79 @@ export async function revokeSessionAtAuthService(
         });
     }
     return outcome;
+}
+
+export type RefreshResult =
+    | {
+          kind: "rotated";
+          accessToken: string;
+          refreshToken: string;
+          accessExp?: number;
+          sid?: string;
+          expiresIn?: number;
+          user?: SessionUser;
+      }
+    | { kind: "terminal"; reason: "status"; status: number }
+    | { kind: "terminal"; reason: "invalid_response" }
+    | { kind: "terminal"; reason: "token_refused" }
+    | { kind: "transient"; status?: number; errorName?: string; refreshToken?: string };
+
+// The refresh credential is single use: once the answer rotated it, the new one must be stored
+// whatever happens to the access token, and a refused access token ends the session.
+async function refreshOnce(
+    refreshToken: string,
+    tokenClass: TokenClass,
+    cfg: WireConfig,
+): Promise<RefreshResult> {
+    const sent = await send(`${cfg.backendUrl}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const outcome = classifyRefresh(sent.result);
+    if (outcome.kind === "transient") {
+        return {
+            kind: "transient",
+            ...(outcome.status === undefined ? {} : { status: outcome.status }),
+            ...(sent.errorName === undefined ? {} : { errorName: sent.errorName }),
+        };
+    }
+    if (outcome.kind === "terminal") {
+        if (outcome.reason === "invalid_response") {
+            logSessionBranch({ operation: "refresh", branch: "refresh_invalid_response" });
+        }
+        return outcome;
+    }
+    const issued = await readIssuedAccessToken(outcome.accessToken, tokenClass, cfg, "refresh");
+    if (!issued.ok) {
+        if (issued.reason === "unavailable") {
+            return { kind: "transient", refreshToken: outcome.refreshToken };
+        }
+        logSessionBranch({
+            operation: "refresh",
+            branch: issued.cause === "shape" ? "token_shape_refused" : "refresh_invalid_response",
+        });
+        return { kind: "terminal", reason: "token_refused" };
+    }
+    return {
+        kind: "rotated",
+        accessToken: outcome.accessToken,
+        refreshToken: outcome.refreshToken,
+        ...(issued.exp === undefined ? {} : { accessExp: issued.exp }),
+        ...(issued.sid === undefined ? {} : { sid: issued.sid }),
+        ...(outcome.expiresIn === undefined ? {} : { expiresIn: outcome.expiresIn }),
+        ...(outcome.user === undefined ? {} : { user: outcome.user }),
+    };
+}
+
+export async function refreshSession(
+    refreshToken: string,
+    cfg: WireConfig,
+): Promise<RefreshResult> {
+    // Our own setting never ends a session: the credential is untouched and the refresh is retried.
+    const checked = checkConfig(cfg, "refresh");
+    if (!checked.ok) return { kind: "transient" };
+    return singleFlightRefresh(refreshToken, () =>
+        refreshOnce(refreshToken, checked.tokenClass, cfg),
+    );
 }
