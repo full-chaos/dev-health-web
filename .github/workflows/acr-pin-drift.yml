@@ -9,7 +9,10 @@
 # dispatch off the default branch opens a draft PR from bot/acr-pin-bump-test, for tests).
 # A PR run is strict only when the PR changes the vendored contracts or the generator that writes
 # them (scripts/acr-pin-scope.mjs lists the paths). For any other PR, drift is a warning, so an acr
-# main move never turns unrelated PRs red. Exit 1 = drift, exit 2 = the check could not fetch (also red where strict).
+# main move never turns unrelated PRs red. Exit 1 = drift (annotation title "ACR contract pin drift"),
+# exit 2 = a tool failure (title "ACR pin drift: tool failure, not drift"; a fetch is tried 3 times, a
+# broken manifest once). Both are red where strict and a ::warning elsewhere. The bump job runs only on
+# status=drift, never on status=error.
 name: ACR pin drift
 
 on:
@@ -63,15 +66,17 @@ jobs:
                       exit 0
                   fi
                   node scripts/acr-pin-scope.mjs < "$RUNNER_TEMP/pr-files.txt" >> "$GITHUB_OUTPUT"
+            # No token here either. ACR_PIN_ENFORCE only sets the annotation level (error or warning); the
+            # exit code is the same, and the step below decides whether the job fails. The script names
+            # drift ("ACR contract pin drift") and a tool failure ("ACR pin drift: tool failure, not
+            # drift") on its own, so no generic advisory step is needed.
             - name: Compare the vendored pin with acr main
               id: check
               continue-on-error: true
+              env:
+                  ACR_PIN_ENFORCE: ${{ steps.scope.outputs.enforce }}
               run: node scripts/check-acr-pin-drift.mjs
-            - name: Advisory drift (this PR does not touch the pin)
-              if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce != 'true'
-              run: |
-                  echo "::warning title=ACR pin drift (advisory)::The ACR pin differs from acr main or the check could not run. This PR does not touch the pin, so it is not blocked. See the check step log; main carries the drift issue."
-            - name: Fail on drift
+            - name: Fail when enforced
               if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce == 'true'
               run: exit 1
 
