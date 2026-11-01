@@ -44,6 +44,18 @@ const NO_REPOSITORY = {
     },
 };
 
+/** acr `refuseOverLimitAccess`: the only 503 `upstream_unavailable` that is not retryable. */
+const OVER_LIMIT = {
+    schema_version: "error.v1",
+    request_id: "req_00000000000000000000000000012469",
+    error: {
+        code: "upstream_unavailable",
+        http_status: 503,
+        message: "This organization's inventory is above the supported access limit.",
+        retryable: false,
+    },
+};
+
 /** ACR's own example at web's pin. */
 const EVIDENCE = JSON.parse(
     readFileSync(
@@ -69,6 +81,8 @@ type Harness = {
     readonly tokens: string[];
     /** CHAOS-12439: ACR's thread routes answer 409 `no_repository`. */
     threadsRefused: boolean;
+    /** CHAOS-12469: ACR's thread routes answer an inventory above its limit. */
+    threadsOverLimit: boolean;
     /** CHAOS-12105: what ACR's evidence route answers. */
     evidenceAnswer: { readonly status: number; readonly body: unknown };
 };
@@ -157,13 +171,13 @@ async function acrOn(context: BrowserContext, harness: Harness) {
                 return;
             }
             if (
-                harness.threadsRefused &&
+                (harness.threadsRefused || harness.threadsOverLimit) &&
                 /^\/api\/v1\/context-fabric\/threads(\/|$)/u.test(new URL(request.url()).pathname)
             ) {
                 await route.fulfill({
-                    status: 409,
+                    status: harness.threadsRefused ? 409 : 503,
                     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-                    body: JSON.stringify(NO_REPOSITORY),
+                    body: JSON.stringify(harness.threadsRefused ? NO_REPOSITORY : OVER_LIMIT),
                 });
                 return;
             }
@@ -198,6 +212,7 @@ async function setUp(page: Page): Promise<Harness> {
         calls: [],
         tokens: [],
         threadsRefused: false,
+        threadsOverLimit: false,
         evidenceAnswer: { status: 200, body: EVIDENCE },
     };
     await clientOn(page.context(), origin);
@@ -433,6 +448,23 @@ for (const [name, viewport, surface] of [
 ] as const) {
     test.describe(`no repository in scope, ${name}`, () => {
         test.use({ viewport });
+
+        test("an organization above its limit: History says so, with no Try again", async ({
+            page,
+        }) => {
+            const harness = await setUp(page);
+            harness.threadsOverLimit = true;
+            await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
+            await page.waitForURL((url) => url.pathname === "/dashboard");
+            await expect.poll(() => harness.tokens.length).toBe(1);
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const view = page.getByTestId(surface);
+            await view.getByTestId("ask-dev-history-toggle").click();
+            await expect(view.getByTestId("ask-dev-history-unavailable")).toBeVisible();
+            await expect(view.getByTestId("ask-dev-history-retry")).toHaveCount(0);
+            await expect(view.getByTestId("ask-dev-history-read-failed")).toHaveCount(0);
+            expect(callsTo(harness, "threads?")).toHaveLength(1);
+        });
 
         test("History says so, once, with no Try again", async ({ page }, testInfo) => {
             const harness = await connectedWithNoRepository(page);

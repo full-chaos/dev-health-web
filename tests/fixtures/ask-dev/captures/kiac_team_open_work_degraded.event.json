@@ -1525,14 +1525,14 @@
                     "state": "truncated",
                     "reason": "canonical fact rows were omitted (omitted 136)",
                     "label": "Canonical facts — flow",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:health",
                     "state": "truncated",
                     "reason": "canonical fact result was truncated",
                     "label": "Canonical facts — health",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:investment",
@@ -1552,14 +1552,14 @@
                     "state": "truncated",
                     "reason": "canonical fact result was truncated",
                     "label": "Canonical facts — readiness",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:work",
                     "state": "truncated",
                     "reason": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: teams; supported kinds: work items) the requested subjects that hold this capability's facts directly were read; facts reachable only through scope expansion were not added because scope expansion reached only some of them (it covers work items; the request named a team)",
                     "label": "Canonical facts — work",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:workload",
@@ -1797,6 +1797,15 @@
                     ]
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:degraded": "Degraded answer",
+            "candidate_state:committed": "selected",
+            "driver_standing:principal": "main driver",
+            "fact_kind:workload": "workload",
+            "requirement_outcome:narrowed": "narrowed",
+            "requirement_outcome:satisfied": "met",
+            "requirement_outcome:unavailable": "unavailable"
         }
     }
 }

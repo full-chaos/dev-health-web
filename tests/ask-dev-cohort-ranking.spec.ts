@@ -67,7 +67,9 @@ test.describe("desktop (1280px)", () => {
         const rows = table.locator("tbody tr");
         await expect(rows).toHaveCount(3);
         // The window is a column of each row in the render: every ranked row states it.
-        await expect(table.getByRole("cell", { name: "current", exact: true })).toHaveCount(3);
+        await expect(table.getByRole("cell", { name: "current period", exact: true })).toHaveCount(
+            3,
+        );
         await expect(
             rows.first().getByRole("cell", { name: "provisional", exact: true }),
         ).toBeVisible();
@@ -79,7 +81,7 @@ test.describe("desktop (1280px)", () => {
         await expect(table.getByRole("listitem")).toHaveCount(2);
         // An unscored row shows a dash and says why, never a number.
         await expect(rows.nth(1).getByRole("cell", { name: "—", exact: true })).toHaveCount(1);
-        await expect(rows.nth(1)).toContainText("insufficient evidence");
+        await expect(rows.nth(1)).toContainText("not enough evidence");
         // The ranking comes before the drivers that explain it.
         const drivers = panel.getByRole("group", { name: "Drivers", exact: true });
         const rankingBox = await ranking.boundingBox();
@@ -113,20 +115,27 @@ test.describe("desktop (1280px)", () => {
         await page.screenshot({ path: testInfo.outputPath("ranking-repos-desktop.png") });
     });
 
-    test("a pull-request cohort: Ranking not shown, no name or score", async ({
+    // CHAOS-12477: ACR's ranking pass marks every member computed, and this answer has no score and
+    // no driver, so nothing was ranked: the members are the answer. This changes CHAOS-12429 G1
+    // for a list; a real ranking of a kind this view does not rank still reads "Ranking not shown".
+    test("a pull-request cohort with nothing ranked lists its members", async ({
         page,
     }, testInfo) => {
         await seedAnswer(page, PRS);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        const notice = panel.getByRole("group", { name: "Ranking not shown", exact: true });
-        await expect(notice).toContainText("does not rank");
-        await expect(panel.getByRole("group", { name: "Ranking", exact: true })).toHaveCount(0);
+        const list = panel.getByTestId("cohort-members-panel");
+        await expect(list.getByRole("heading", { name: "pull requests" })).toBeVisible();
+        await expect(list.locator("li.record__title")).toHaveCount(25);
+        await expect(list.getByTestId("cohort-members-notice")).toContainText(
+            "not every pull request",
+        );
+        await expect(panel.getByRole("group", { name: "Ranking not shown" })).toHaveCount(0);
         await expect(panel.getByRole("group", { name: /^Ranked / })).toHaveCount(0);
         await page.waitForLoadState("networkidle");
-        await notice.scrollIntoViewIfNeeded();
-        await page.screenshot({ path: testInfo.outputPath("ranking-not-shown-desktop.png") });
+        await list.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath("cohort-members-desktop.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
 });
