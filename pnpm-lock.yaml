@@ -20,6 +20,9 @@ importers:
 
   .:
     dependencies:
+      '@full-chaos/ask-dev':
+        specifier: github:full-chaos/ask-dev#0892e63f5dad8afc88957207bdf2c260a38c1746
+        version: https://codeload.github.com/full-chaos/ask-dev/tar.gz/0892e63f5dad8afc88957207bdf2c260a38c1746(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)
       '@sentry/nextjs':
         specifier: ^11.7.0
         version: 11.7.0(@babel/core@7.29.7(supports-color@8.1.1))(next@16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(webpack@5.105.4(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.30))
@@ -602,6 +605,11 @@ packages:
 
   '@fastify/busboy@3.2.3':
     resolution: {integrity: sha512-fmo/IKgkenPzz3qTKG+sIUXdF/Kv83AkvvOXJHPTHJeKJbat8SsL1ihUaFaDotqoEl4UZ1Lf8Eb/3vK6eaWX2A==}
+
+  '@full-chaos/ask-dev@https://codeload.github.com/full-chaos/ask-dev/tar.gz/0892e63f5dad8afc88957207bdf2c260a38c1746':
+    resolution: {gitHosted: true, integrity: sha512-45Opt86fzPw8+jykyDyDAggzBGRxR4SS25kDr0jWzFhsHGLda5BdATDJD38Zo53NEc81VJC/EceRBX5BGmPU5Q==, tarball: https://codeload.github.com/full-chaos/ask-dev/tar.gz/0892e63f5dad8afc88957207bdf2c260a38c1746}
+    version: 0.0.0
+    engines: {node: '>=22'}
 
   '@graphql-codegen/add@7.1.1':
     resolution: {integrity: sha512-xN4za/V9e1NentxtKQYKKWzSoWNs3x72vqUZ4YGIzFLLGOJOCNVrR9lXDDQHDPrtcPZaj06zksdrfuJ7qutNCA==}
@@ -1334,6 +1342,38 @@ packages:
   '@opentelemetry/api@1.9.1':
     resolution: {integrity: sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==}
     engines: {node: '>=8.0.0'}
+
+  '@openuidev/devtools@0.0.4':
+    resolution: {integrity: sha512-DVf5Bu6gpKEfAnETyl/ZOQMyZCi1vapGohNSxaIyZ03jVZ+e5F9fkQJp+5T1ryg0v3vYi3AC0B4NRwEuCbZmmQ==}
+    peerDependencies:
+      '@openuidev/observability': ^0.0.2
+      react: ^18.3.1 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+
+  '@openuidev/lang-core@0.2.18':
+    resolution: {integrity: sha512-I8kP9gI2MDNy9C7YuG2Rr8oS0o3SVA9GjYPpQFvTi+pZXX33nrHKar7aSbwL7CDFlBnvIxFuj6KMDjmG93/mVQ==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': '>=1.0.0'
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
+
+  '@openuidev/observability@0.0.2':
+    resolution: {integrity: sha512-uNtO4VGGwcL8Lg1L+9a8JCpee0dOm0djIjItxtGpUPkZNUwzpMQX6mQ4YCtA9Hho4VuqZgHBo1ON8FjsLbNMHg==}
+
+  '@openuidev/react-lang@0.2.11':
+    resolution: {integrity: sha512-RXyRmFLxRBQ/pNnCq4CYFLl/1SnUvv3O5cnyTaaG6RqtXQ/CLmRiooqCtNY8xqi/cDVt3HJTgrfQOCN2ZhAQbg==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': '>=1.0.0'
+      react: '*'
+      react-dom: '*'
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
+      react-dom:
+        optional: true
 
   '@oxc-parser/binding-android-arm-eabi@0.152.0':
     resolution: {integrity: sha512-393VtirINkae4XHBTkq/yQxhOwEr4V+r0et37P2fp+sYZSdYgZTRDPo5Um8vBh0QjMZ+RmaMy4PP0qwr4cTMwA==}
@@ -2644,6 +2684,10 @@ packages:
   chrome-trace-event@1.0.4:
     resolution: {integrity: sha512-rNjApaLzuwaOTjCiT8lSDdGN1APCiqkChLMJxJPWLunPAt5fy8xgU9/jNOchV84wfIxrA0lRQB7oCT8jrn/wrQ==}
     engines: {node: '>=6.0'}
+
+  ci-info@4.4.0:
+    resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
+    engines: {node: '>=8'}
 
   cli-cursor@5.0.0:
     resolution: {integrity: sha512-aCj4O5wKyszjMmDT4tZj93kxyydN/K5zPWSCe6/0AV/AA1pqe5ZBIw0a2ZfPQV7lL5/yb5HsUreJ6UFAF1tEQw==}
@@ -4051,6 +4095,11 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide-react@0.575.0:
+    resolution: {integrity: sha512-VuXgKZrk0uiDlWjGGXmKV6MSk9Yy4l10qgVvzGn2AWBx1Ylt0iBexKOAoA6I7JO3m+M9oeovJd3yYENfkUbOeg==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   lucide-react@1.59.0:
     resolution: {integrity: sha512-5qgMyyCPU6OvnKpLS2t693+ZtiqA8oaSweWoUows0BLFKFf6V75m4+CptpmohZHpD5IuOVIBXHBBiv2vpLJmtw==}
@@ -5961,6 +6010,26 @@ snapshots:
 
   '@fastify/busboy@3.2.3': {}
 
+  '@full-chaos/ask-dev@https://codeload.github.com/full-chaos/ask-dev/tar.gz/0892e63f5dad8afc88957207bdf2c260a38c1746(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)':
+    dependencies:
+      '@openuidev/react-lang': 0.2.11(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      next: 16.4.2(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+      server-only: 0.0.1
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@modelcontextprotocol/sdk'
+      - '@opentelemetry/api'
+      - '@playwright/test'
+      - '@types/node'
+      - babel-plugin-macros
+      - babel-plugin-react-compiler
+      - sass
+
   '@graphql-codegen/add@7.1.1(graphql@17.0.2)':
     dependencies:
       '@graphql-codegen/plugin-helpers': 7.4.2(graphql@17.0.2)
@@ -6742,6 +6811,30 @@ snapshots:
   '@open-draft/until@2.1.0': {}
 
   '@opentelemetry/api@1.9.1': {}
+
+  '@openuidev/devtools@0.0.4(@openuidev/observability@0.0.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+    dependencies:
+      '@openuidev/observability': 0.0.2
+      lucide-react: 0.575.0(react@19.3.1)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+
+  '@openuidev/lang-core@0.2.18(zod@4.6.7)':
+    dependencies:
+      ci-info: 4.4.0
+      zod: 4.6.7
+
+  '@openuidev/observability@0.0.2': {}
+
+  '@openuidev/react-lang@0.2.11(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)':
+    dependencies:
+      '@openuidev/devtools': 0.0.4(@openuidev/observability@0.0.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@openuidev/lang-core': 0.2.18(zod@4.6.7)
+      '@openuidev/observability': 0.0.2
+      react: 19.3.1
+      zod: 4.6.7
+    optionalDependencies:
+      react-dom: 19.3.1(react@19.3.1)
 
   '@oxc-parser/binding-android-arm-eabi@0.152.0':
     optional: true
@@ -7990,6 +8083,8 @@ snapshots:
 
   chrome-trace-event@1.0.4:
     optional: true
+
+  ci-info@4.4.0: {}
 
   cli-cursor@5.0.0:
     dependencies:
@@ -9567,6 +9662,10 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-react@0.575.0(react@19.3.1):
+    dependencies:
+      react: 19.3.1
 
   lucide-react@1.59.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:

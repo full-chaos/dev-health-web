@@ -1,4 +1,7 @@
 allowBuilds:
+    # Its postinstall only sends install telemetry; it comes with @full-chaos/ask-dev's
+    # Workbench dependency, which web's render entry does not use (CHAOS-12393).
+    "@openuidev/lang-core": false
     "@sentry/cli": true
     esbuild: true
     lefthook: true
