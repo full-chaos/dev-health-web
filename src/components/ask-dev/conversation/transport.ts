@@ -4,7 +4,7 @@ import type {
     ContextFabricSubmissionStatusV1,
 } from "@/lib/acr/generated";
 
-import type { TranscriptResult } from "../answer/AskDevTurn";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 
 /**
  * The one seam between the Ask Dev conversation store (CHAOS-11928) and ACR. The browser calls ACR

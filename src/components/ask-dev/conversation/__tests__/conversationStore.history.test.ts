@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
 
-import type { TranscriptResult } from "../../answer/AskDevTurn";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import {
     ConversationStore,
     OBSERVATION_CAP_MS,

@@ -2,11 +2,6 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order.
-vi.mock(
-    "@/lib/echartsInit",
-    async () => (await import("../../render/__tests__/echartsStub")).echartsStubModule,
-);
 const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
 
@@ -22,13 +17,13 @@ vi.mock("next-auth/react", () => ({
     }),
 }));
 
+import { CHAT_PROGRESS_COPY, CHAT_STAGE_COPY, CHAT_STATUS_COPY } from "@full-chaos/ask-dev/render";
+
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 
 import { AskDevPanel } from "../../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../../AskDevShellContext";
 import { AskDevConversationProvider } from "../AskDevConversationContext";
-import { TURN_STATUS_COPY } from "../AskDevConversationTurn";
-import { COMPOSER_COPY } from "../AskDevComposer";
 import type { AskDevTransport } from "../transport";
 import { accepted, captureResult, deferred, FakeTransport, resultEvent } from "./fakeTransport";
 
@@ -57,7 +52,7 @@ function renderPanel(transport: AskDevTransport | null) {
 }
 
 const panel = () => screen.getByRole("complementary", { name: "Ask Dev" });
-const input = () => within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label });
+const input = () => within(panel()).getByRole("textbox", { name: "Ask a question" });
 
 beforeEach(() => {
     // CHAOS-11956: a run's `accepted` writes the restore hint; each test starts with none.
@@ -84,7 +79,10 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         renderPanel(null);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         expect(panel()).toBeInTheDocument();
-        expect(screen.queryByTestId("ask-dev-composer")).toBeNull();
+        expect(
+            within(panel()).getByRole("region", { name: "Ask Dev conversation" }),
+        ).toBeInTheDocument();
+        expect(within(panel()).queryByRole("textbox", { name: "Ask a question" })).toBeNull();
         expect(fetchSpy).not.toHaveBeenCalled();
     });
 
@@ -98,10 +96,10 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         await userEvent.dblClick(within(panel()).getByRole("button", { name: "Send" }));
 
         expect(transport.calls).toHaveLength(1);
-        expect(await within(panel()).findByText(TURN_STATUS_COPY.running)).toBeInTheDocument();
+        expect(await within(panel()).findByText(CHAT_PROGRESS_COPY.running)).toBeInTheDocument();
         expect(within(panel()).getByRole("button", { name: "Send" })).toBeDisabled();
         gate.resolve();
-        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(panel()).findByTestId("answer-panel")).toBeInTheDocument();
         expect(input()).toHaveValue("");
         expect(transport.calls).toHaveLength(1);
     });
@@ -119,7 +117,7 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
 
         gate.resolve();
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(panel()).findByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(1);
     });
 
@@ -130,8 +128,8 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await userEvent.type(input(), "Which projects are at risk?{Enter}");
         await userEvent.click(await within(panel()).findByRole("button", { name: "Stop" }));
-        expect(within(panel()).getByTestId("ask-dev-turn-status")).toHaveTextContent(
-            TURN_STATUS_COPY.canceled,
+        expect(await within(panel()).findByTestId("chat-status")).toHaveTextContent(
+            CHAT_STATUS_COPY.canceled,
         );
         expect(transport.calls[0]!.signal.aborted).toBe(true);
         expect(within(panel()).queryByRole("button", { name: "Stop" })).toBeNull();
@@ -159,18 +157,17 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await userEvent.type(input(), "Which projects are at risk?{Enter}");
 
-        const steps = await within(panel()).findByRole("list", { name: "Investigation steps" });
+        const steps = await within(panel()).findByRole("list", { name: CHAT_STAGE_COPY.steps });
         await waitFor(() =>
             expect(within(steps).getAllByRole("listitem")[0]!.dataset.state).toBe("active"),
         );
-        expect(within(panel()).getByTestId("ask-dev-elapsed")).toBeInTheDocument();
+        expect(within(panel()).getByTestId("chat-elapsed")).toBeInTheDocument();
         expect(within(panel()).getByRole("button", { name: "Stop" })).toBeInTheDocument();
-        expect(within(panel()).queryByTestId("ask-dev-answer")).toBeNull();
-        expect(within(panel()).queryByTestId("ask-dev-coverage")).toBeNull();
+        expect(within(panel()).queryByTestId("answer-panel")).toBeNull();
 
         gate.resolve();
-        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
-        expect(within(panel()).queryByTestId("ask-dev-stages")).toBeNull();
+        expect(await within(panel()).findByTestId("answer-panel")).toBeInTheDocument();
+        expect(within(panel()).queryByRole("list", { name: CHAT_STAGE_COPY.steps })).toBeNull();
         expect(within(panel()).queryByRole("button", { name: "Stop" })).toBeNull();
     });
 
@@ -184,6 +181,6 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         await userEvent.click(await within(panel()).findByRole("button", { name: "Retry" }));
         await waitFor(() => expect(transport.calls).toHaveLength(2));
         expect(transport.calls[1]!.submissionId).toBe(transport.calls[0]!.submissionId);
-        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(panel()).findByTestId("answer-panel")).toBeInTheDocument();
     });
 });

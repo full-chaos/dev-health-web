@@ -139,14 +139,6 @@
         "log": 1,
         "sentry": 0
     },
-    "src/components/ask-dev/answer/ClaimedFactTables.tsx": {
-        "log": 1,
-        "sentry": 0
-    },
-    "src/components/ask-dev/answer/testModeAnswer.ts": {
-        "log": 3,
-        "sentry": 0
-    },
     "src/components/evidence/EvidencePanel.tsx": {
         "log": 1,
         "sentry": 0
@@ -201,10 +193,6 @@
     },
     "src/lib/ask-dev/investigation.server.ts": {
         "log": 2,
-        "sentry": 0
-    },
-    "src/lib/ask-dev/render/withheld-log.ts": {
-        "log": 1,
         "sentry": 0
     },
     "src/lib/auth.ts": {
@@ -311,10 +299,6 @@
         "log": 1,
         "sentry": 0
     },
-    "src/components/ask-dev/render/RenderShapes.tsx": {
-        "log": 3,
-        "sentry": 0
-    },
     "src/components/ask-dev/conversation/conversationStore.ts": {
         "log": 46,
         "sentry": 0
@@ -344,6 +328,10 @@
         "sentry": 0
     },
     "src/components/ask-dev/oauth/AcrOAuthStart.tsx": {
+        "log": 2,
+        "sentry": 0
+    },
+    "src/components/ask-dev/conversation/testModeAnswer.ts": {
         "log": 2,
         "sentry": 0
     }

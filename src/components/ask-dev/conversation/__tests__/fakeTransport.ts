@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
 
-import type { TranscriptResult } from "../../answer/AskDevTurn";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import { TransportRefusal } from "../transport";
 import type {
     AskDevTransport,
@@ -18,7 +18,7 @@ import type {
     ThreadView,
 } from "../transport";
 
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 
 /** A real (scrubbed) ACR result from the capture set. */
 export function captureResult(file: string): TranscriptResult {

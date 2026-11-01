@@ -38,7 +38,7 @@ const ORG_A = "org-a\u0000user-1\u0000";
 const THREAD_A = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const SUB = "sub_00000000000000000000000000000001";
 const QUESTION = "Which projects are at risk?";
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 
 let transport: FakeTransport;
 

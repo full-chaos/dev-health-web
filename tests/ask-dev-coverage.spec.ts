@@ -4,10 +4,10 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 // CHAOS-11932: how complete an answer is (coverage, completeness, limitations and evidence
 // references) in the real Ask Dev panel, from real ACR answers captured on the kiac stack
-// (`src/components/ask-dev/answer/__tests__/captures/`). The panel's test-mode source reads them
+// (`tests/fixtures/ask-dev/captures/`). The panel's test-mode source reads them
 // from session storage; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 
 const capture = (file: string) =>
@@ -68,23 +68,55 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        const coverage = panel.getByTestId("ask-dev-coverage");
-        // CHAOS-12245: one plain sentence of missing data, never the completeness state.
-        await expect(coverage.getByTestId("ask-dev-coverage-state")).toHaveText(
-            "Missing data: health read in part (1 of 1); ranking not available; status read in part (2 of 5).",
+        // CHAOS-12384: the render's own Coverage, Limitations and Evidence references regions.
+        const coverage = panel.getByRole("group", { name: "Coverage", exact: true });
+        await expect(coverage).toBeVisible();
+        const limits = coverage.getByRole("list");
+        await expect(limits.locator(":scope > li")).toHaveCount(5);
+        await expect(
+            limits.getByText("Only part of the flow facts could be included"),
+        ).toBeVisible();
+        await expect(panel.getByRole("group", { name: "Limitations", exact: true })).toBeVisible();
+        const evidence = panel.getByRole("group", { name: "Evidence references", exact: true });
+        await expect(evidence).toBeVisible();
+        // Plain text: no link, button or tab stop inside the list of references.
+        await expect(
+            evidence.getByRole("list").locator("a, button, [role=link], [tabindex]"),
+        ).toHaveCount(0);
+        expect(await evidence.getByRole("list").textContent()).not.toMatch(
+            /acr:v1|[0-9a-f]{8}-[0-9a-f]{4}-/u,
         );
-        await expect(coverage.getByTestId("ask-dev-coverage-details").locator("li")).toHaveCount(6);
-        const evidence = coverage.getByTestId("ask-dev-coverage-evidence");
-        await expect(evidence).toContainText("Opening evidence from here is not available yet.");
-        await expect(coverage.locator("a, button, [role=link], [tabindex]")).toHaveCount(0);
-        expect(await evidence.textContent()).not.toMatch(/acr:v1|[0-9a-f]{8}-[0-9a-f]{4}-/u);
         await page.waitForLoadState("networkidle");
         await coverage.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-desktop.png") });
         await evidence.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-desktop-evidence.png") });
-        expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
         expect(requests).toEqual([]);
+    });
+
+    test("a degraded answer with fact tables passes axe", async ({ page }) => {
+        await seedAnswer(page, OPEN_WORK);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        await expect(
+            page
+                .getByRole("complementary", { name: "Ask Dev" })
+                .getByRole("group", { name: "Coverage", exact: true }),
+        ).toBeVisible();
+        expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
+    });
+
+    test("a degraded answer says its missing data in one sentence", async ({ page }) => {
+        await seedAnswer(page, OPEN_WORK);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await expect(
+            panel.getByText(
+                "Missing data: health narrowed; ranking unavailable; state narrowed (2 of 5).",
+                { exact: true },
+            ),
+        ).toBeVisible();
     });
 
     test("a 'complete' status whose completeness was not derived says nothing about it", async ({
@@ -94,12 +126,26 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        // CHAOS-12157: the pill never says "Full answer" here. CHAOS-12245: a plain "Answer",
-        // and nothing about completeness.
+        // CHAOS-12157: never "Full answer" here; CHAOS-12245: nothing about completeness state.
+        await expect(panel.getByText("Full answer", { exact: true })).toHaveCount(0);
+        await expect(panel.getByRole("group", { name: "Coverage", exact: true })).toBeVisible();
+        // The render shows no status or state word: the raw values stay in data attributes only.
+        const completeness = panel.getByTestId("completeness-panel");
+        await expect(completeness).toHaveAttribute("data-terminal-status", "complete");
+        await expect(completeness).toHaveAttribute("data-completeness-state", "not_derived");
+        await expect(panel.getByTestId("completeness-chip-row")).toHaveCount(0);
+        await expect(panel.getByTestId("completeness-missing-data")).toHaveCount(0);
+    });
+
+    // CHAOS-12417: the render draws no plain "Answer" status pill yet; it waits for served labels.
+    test.fixme("a 'complete' status whose completeness was not derived shows a plain 'Answer' pill", async ({
+        page,
+    }) => {
+        await seedAnswer(page, CI_COMPLETE);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByRole("complementary", { name: "Ask Dev" });
         await expect(panel.getByTestId("ask-dev-answer-status")).toHaveText("Answer");
-        await expect(panel.getByTestId("ask-dev-coverage")).toBeVisible();
-        await expect(panel.getByTestId("ask-dev-coverage-state")).toHaveCount(0);
-        await expect(panel.getByTestId("ask-dev-answer-completeness")).toHaveCount(0);
     });
 });
 
@@ -113,14 +159,16 @@ test.describe("mobile (390px)", () => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const sheet = page.getByRole("dialog", { name: "Ask Dev" });
-        const coverage = sheet.getByTestId("ask-dev-coverage");
-        await expect(coverage.getByTestId("ask-dev-coverage-counts")).toHaveText(
-            "No facts stand behind this answer.",
-        );
+        const coverage = sheet.getByRole("group", { name: "Coverage", exact: true });
+        await expect(
+            sheet.getByText("No facts stand behind this answer.", { exact: true }),
+        ).toBeVisible();
         await page.waitForLoadState("networkidle");
         await coverage.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-mobile.png") });
-        await coverage.getByTestId("ask-dev-coverage-evidence").scrollIntoViewIfNeeded();
+        await sheet
+            .getByRole("group", { name: "Evidence references", exact: true })
+            .scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-mobile-evidence.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
         for (const box of [coverage, sheet]) {

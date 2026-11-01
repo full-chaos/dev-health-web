@@ -7,7 +7,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 // storage, stores each set as ACR does, and records every call there; no request leaves the browser
 // for ACR. The live proofs are CHAOS-12234.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = {
     stream: "ask-dev:test-mode-stream",
     results: "ask-dev:test-mode-results",
@@ -231,7 +231,7 @@ test.describe("answer feedback (CHAOS-11958)", () => {
             await page.goto("/dashboard");
             await page.getByRole("button", { name: "Open Ask Dev" }).click();
             const sheet = page.getByTestId("ask-dev-sheet");
-            await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
+            await expect(sheet.getByTestId("answer-panel")).toBeVisible();
             const region = sheet.getByRole("group", { name: "Feedback on this answer" });
             await expect(choice(region, "Correct?", "Yes")).toHaveAttribute("aria-pressed", "true");
             await choice(region, "Useful?", "Yes").click();

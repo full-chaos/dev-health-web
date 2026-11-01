@@ -18,9 +18,7 @@ import {
 } from "@/lib/ask-dev/request-builder";
 import { logger } from "@/lib/logger";
 
-import type { TranscriptResult } from "../answer/AskDevTurn";
-import type { ClarificationChoice } from "../answer/clarificationModel";
-import type { RefusalEvent } from "../answer/refusalModel";
+import type { RefusalEvent, TranscriptResult } from "@/lib/ask-dev/transcript";
 import { isCorrelationId, newSubmissionId, newThreadId, partitionTag } from "./keys";
 import {
     TransportFailure,
@@ -447,24 +445,6 @@ function mergeSubjectHints(
         seen.add(key);
         return true;
     });
-}
-
-/**
- * A clarification choice as a follow-up's carry: its parent result and the receipts it picked, each
- * already bound to that result (`buildChoice`, INV-1).
- */
-export function carryOfChoice(choice: ClarificationChoice): TurnCarry {
-    const { receipts } = choice;
-    return {
-        parentResultId: choice.parentResultId,
-        structureReceipts: {
-            priorKindReceipts: receipts.prior_kind_receipts,
-            priorAnchorReceipts: receipts.prior_anchor_receipts,
-            priorHandleReceipts: receipts.prior_handle_receipts,
-            priorWindowReceipts: receipts.prior_window_receipts,
-            priorCandidateReceipts: receipts.prior_candidate_receipts,
-        },
-    };
 }
 
 /** Where the store keeps its restore hint (session storage in the product). */

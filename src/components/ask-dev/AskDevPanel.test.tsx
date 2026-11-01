@@ -18,17 +18,7 @@ import {
     rightDrawerOwnerForTest,
 } from "@/lib/shell/rightDrawer";
 
-import type { TestModeTurns } from "./answer/testModeAnswer";
-import kindCandidate from "./answer/__tests__/captures/kiac_kind_and_candidate_clarification.event.json";
-import budgetRefusal from "./answer/__tests__/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
-
 const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
-
-// The panel's turn source (CHAOS-3440). No turns unless a test sets some.
-const turnsMock = vi.hoisted(() => ({
-    value: { turns: [], onConfirm: undefined, onReask: undefined } as unknown,
-}));
-vi.mock("./answer/testModeAnswer", () => ({ useTestModeTurns: () => turnsMock.value }));
 
 vi.mock("next/navigation", () => ({
     usePathname: () => navigationMock.pathname,
@@ -117,7 +107,6 @@ async function axeViolations(node: Element): Promise<string[]> {
 
 beforeEach(() => {
     navigationMock.pathname = "/dashboard";
-    turnsMock.value = { turns: [], onConfirm: undefined, onReask: undefined };
     resetRightDrawerForTest();
 });
 
@@ -221,27 +210,18 @@ describe("Ask Dev panel — desktop (non-modal right region)", () => {
         expect(await axeViolations(screen.getByTestId("ask-dev-panel"))).toEqual([]);
     });
 
-    it("gives the sinks to the last turn only: every earlier turn is read-only (CHAOS-3440)", async () => {
-        const onConfirm = vi.fn();
-        const onReask = vi.fn();
-        const refusal = {
-            question: "What is the status of every project the Web team owns?",
-            refusal: budgetRefusal,
-        };
-        turnsMock.value = {
-            turns: [kindCandidate.result, refusal],
-            onConfirm,
-            onReask,
-        } as unknown as TestModeTurns;
+    it("mounts ask-dev's own shell: its conversation region, and the panel draws none of its own", async () => {
         renderShell();
         await userEvent.click(launcher());
 
-        const turns = within(screen.getByTestId("ask-dev-panel")).getAllByTestId("ask-dev-turn");
-        expect(turns).toHaveLength(2);
-        expect(within(turns[0] as HTMLElement).queryAllByRole("button")).toEqual([]);
-        await userEvent.click(within(turns[1] as HTMLElement).getByTestId("ask-dev-refusal-reask"));
-        expect(onReask).toHaveBeenCalledWith({ question: refusal.question, axis: "scope_anchor" });
-        expect(onConfirm).not.toHaveBeenCalled();
+        const panel = screen.getByTestId("ask-dev-panel");
+        const region = within(panel).getByRole("region", { name: "Ask Dev conversation" });
+        expect(region).toHaveClass("chat");
+        // The render sits in ask-dev's scope class, which carries its stylesheet.
+        expect(region.closest(".ask-dev")).not.toBeNull();
+        expect(within(panel).getAllByRole("region", { name: "Ask Dev conversation" })).toHaveLength(
+            1,
+        );
     });
 });
 
@@ -299,6 +279,32 @@ describe("Ask Dev panel — mobile (modal sheet)", () => {
 
         expect(event.defaultPrevented).toBe(false);
         expect(screen.getByRole("dialog", { name: "Ask Dev" })).toBeInTheDocument();
+    });
+
+    it("mounts ask-dev's own shell in the sheet: its conversation region", async () => {
+        renderShell();
+
+        await userEvent.click(mobileLauncher());
+
+        const sheet = screen.getByRole("dialog", { name: "Ask Dev" });
+        const region = within(sheet).getByRole("region", { name: "Ask Dev conversation" });
+        expect(region).toHaveClass("chat");
+        expect(region.closest(".ask-dev")).not.toBeNull();
+        expect(within(sheet).getAllByRole("region", { name: "Ask Dev conversation" })).toHaveLength(
+            1,
+        );
+    });
+
+    it("gives the render the sheet's whole body: it scrolls inside itself", async () => {
+        const user = userEvent.setup();
+        renderShell();
+        await user.click(mobileLauncher());
+        const region = within(screen.getByTestId("ask-dev-sheet")).getByRole("region", {
+            name: "Ask Dev conversation",
+        });
+        const body = region.closest(".ask-frame")?.parentElement;
+        expect(body?.className).toContain("overflow-hidden");
+        expect(body?.className).not.toContain("overflow-y-auto");
     });
 
     it("points the launcher at the sheet it opened", async () => {
@@ -389,6 +395,25 @@ describe("one right drawer at a time", () => {
 
 describe("the surface is off", () => {
     beforeEach(() => setViewport(true));
+
+    it("draws no open panel once the entitlement is off", async () => {
+        const user = userEvent.setup();
+        const view = renderShell();
+        await user.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+        view.rerender(shellTree({ ...ON, ask_dev: false }));
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
+
+    it("draws no open panel on a route the panel does not serve", async () => {
+        const user = userEvent.setup();
+        const view = renderShell();
+        await user.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+        navigationMock.pathname = "/dev";
+        view.rerender(shellTree());
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
 
     it("draws no panel with an entitlement off, even if the flag were set", () => {
         render(

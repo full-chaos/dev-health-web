@@ -2,11 +2,6 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order.
-vi.mock(
-    "@/lib/echartsInit",
-    async () => (await import("../render/__tests__/echartsStub")).echartsStubModule,
-);
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 /** Every product telemetry event enters by `trackTelemetryEvent`: recorded, then passed on. */
 const telemetry = vi.hoisted(() => ({ track: vi.fn() }));
@@ -75,18 +70,24 @@ vi.mock("next-auth/react", () => ({
 
 import { StrictMode, useSyncExternalStore } from "react";
 
+import {
+    type ChatHistoryRow,
+    CHAT_PROGRESS_COPY,
+    CHAT_STATUS_COPY,
+    HISTORY_COPY,
+    historyRowLabel,
+    historyRowMeta,
+    TRANSCRIPT_COPY,
+} from "@full-chaos/ask-dev/render";
+
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { resetRightDrawerForTest } from "@/lib/shell/rightDrawer";
 
 import { AskDevFullPage } from "../AskDevFullPage";
 import { AskDevPanel } from "../AskDevPanel";
-import { TRANSCRIPT_COPY } from "../AskDevConversationView";
 import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
 import { AskDevConversationProvider } from "../conversation/AskDevConversationContext";
-import { TURN_STATUS_COPY } from "../conversation/AskDevConversationTurn";
-import { COMPOSER_COPY } from "../conversation/AskDevComposer";
-import { HISTORY_COPY, historyRowLabel, historyRowMeta } from "../conversation/AskDevHistory";
 import { THREAD_HINT_KEY } from "../conversation/conversationStore";
 import { partitionTag } from "../conversation/keys";
 import { TransportFailure, type AskDevTransport } from "../conversation/transport";
@@ -109,6 +110,14 @@ const THREAD_A = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const THREAD_B = "thread_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const SUB_A = "sub_00000000000000000000000000000001";
 const SUB_B = "sub_00000000000000000000000000000002";
+
+/** The seam's row of a thread summary, as web's source maps it. */
+const rowOf = (thread: ReturnType<typeof summary>): ChatHistoryRow => ({
+    id: thread.threadId,
+    firstQuestion: thread.firstQuestion,
+    lastTurnAt: thread.lastTurnAt,
+    turnCount: thread.turnCount,
+});
 
 const subscribe = (listener: () => void) => {
     nav.listeners.add(listener);
@@ -223,7 +232,7 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
         nav.go("/dev");
         renderShell(transport);
-        const field = within(page()).getByRole("textbox", { name: COMPOSER_COPY.label });
+        const field = within(page()).getByRole("textbox", { name: "Ask a question" });
         await waitFor(() => expect(field).toBeEnabled());
         await userEvent.type(field, "Which projects are at risk?{Enter}");
         await waitFor(() => expect(nav.writes).toHaveLength(1));
@@ -297,7 +306,7 @@ describe("the panel's history (design §4.3)", () => {
         );
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(panel()).findByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(0);
     });
 
@@ -307,14 +316,16 @@ describe("the panel's history (design §4.3)", () => {
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
         const list = await within(panel()).findByTestId("ask-dev-history-list");
-        expect(within(panel()).queryByTestId("ask-dev-composer")).toBeNull();
+        expect(within(panel()).queryByRole("textbox", { name: "Ask a question" })).toBeNull();
         expect(within(list).getAllByTestId("ask-dev-history-open")[0]).toHaveTextContent(
-            historyRowLabel(summary(THREAD_A)),
+            historyRowLabel(rowOf(summary(THREAD_A))),
         );
 
         await userEvent.click(within(list).getAllByTestId("ask-dev-history-open")[1]!);
-        expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
-        expect(within(panel()).getByTestId("ask-dev-composer")).toBeInTheDocument();
+        expect(await within(panel()).findByTestId("answer-panel")).toBeInTheDocument();
+        expect(
+            within(panel()).getByRole("textbox", { name: "Ask a question" }),
+        ).toBeInTheDocument();
         expect(transport.threadCalls.map((call) => call.threadId)).toEqual([THREAD_B]);
         expect(transport.calls).toHaveLength(0);
     });
@@ -349,9 +360,9 @@ describe("the panel's history (design §4.3)", () => {
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
         await userEvent.click((await within(panel()).findAllByTestId("ask-dev-history-open"))[0]!);
-        await within(panel()).findByTestId("ask-dev-answer");
+        await within(panel()).findByTestId("answer-panel");
         await userEvent.type(
-            within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label }),
+            within(panel()).getByRole("textbox", { name: "Ask a question" }),
             "And next?{Enter}",
         );
         await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
@@ -409,7 +420,7 @@ describe("restored turns in the transcript (design §3.2)", () => {
         renderShell(transport);
         expect(
             await within(page()).findByTestId("ask-dev-turn-question-not-recorded"),
-        ).toHaveTextContent(TURN_STATUS_COPY.questionNotRecorded);
+        ).toHaveTextContent(CHAT_STATUS_COPY.questionNotRecorded);
         await within(page()).findByRole("article");
         // Read-only: it offers no choice, and the question is never sent again.
         expect(within(page()).queryByRole("dialog")).toBeNull();
@@ -447,19 +458,19 @@ describe("restored turns in the transcript (design §3.2)", () => {
             name: CTA_LABELS.askDevLoadAgain,
         });
         expect(within(page()).getByTestId("ask-dev-turn-question-not-recorded")).toHaveTextContent(
-            TURN_STATUS_COPY.questionNotRecorded,
+            CHAT_STATUS_COPY.questionNotRecorded,
         );
         expect(within(page()).queryByRole("button", { name: "Retry" })).toBeNull();
         transport.readErrors.delete(PARTIAL.result_id);
         await userEvent.click(reload);
         expect(await within(page()).findByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(0);
-        expect(within(page()).getByText(TURN_STATUS_COPY.unsaved)).toBeInTheDocument();
+        expect(within(page()).getByText(CHAT_STATUS_COPY.unsaved)).toBeInTheDocument();
     });
 });
 
 describe("the composer draft belongs to one conversation (codex r2 on #1648)", () => {
-    const field = () => within(page()).getByRole("textbox", { name: COMPOSER_COPY.label });
+    const field = () => within(page()).getByRole("textbox", { name: "Ask a question" });
 
     it("selecting another conversation drops the draft", async () => {
         const transport = seeded();
@@ -517,7 +528,7 @@ describe("Stop on a conversation restored while it runs (CHAOS-11957)", () => {
         const stop = await within(page()).findByRole("button", { name: CTA_LABELS.askDevStop });
         await userEvent.click(stop);
         expect(await within(page()).findByTestId("chat-progress-stop")).toHaveTextContent(
-            TURN_STATUS_COPY.stopNotLeased,
+            CHAT_PROGRESS_COPY.stopNotLeased,
         );
         expect(within(page()).queryByRole("button", { name: CTA_LABELS.askDevStop })).toBeNull();
         expect(transport.cancelCalls).toEqual([SUB_A]);
@@ -588,27 +599,24 @@ describe("the first question as the row title (CHAOS-12238)", () => {
         return within(list).getAllByTestId("ask-dev-history-open");
     }
 
-    it("titles a row by its first question on one line, with the full text on hover and focus, then the date and count", async () => {
+    it("titles a row by its first question, with the full text as the title, then the date and count", async () => {
         const [a, b] = await historyOf(QUESTION);
         const title = within(a!).getByTestId("ask-dev-history-question");
         expect(title.textContent).toBe(QUESTION);
         expect(title).toHaveAttribute("title", QUESTION);
-        expect(title).toHaveClass("truncate");
-        expect(title.className).toMatch(/group-hover:whitespace-normal/u);
-        expect(title.className).toMatch(/group-focus-visible:whitespace-normal/u);
         expect(within(a!).getByTestId("ask-dev-history-meta").textContent).toBe(
-            historyRowMeta(summary(THREAD_A)),
+            historyRowMeta(rowOf(summary(THREAD_A))),
         );
         expect(a).toHaveAccessibleName(expect.stringContaining(QUESTION));
         // A row with no first question keeps the date-and-count label of CHAOS-11956.
-        expect(b).toHaveTextContent(historyRowLabel(summary(THREAD_B)));
+        expect(b).toHaveTextContent(historyRowLabel(rowOf(summary(THREAD_B))));
         expect(within(b!).queryByTestId("ask-dev-history-question")).toBeNull();
     });
 
     it("never shows a blank title: a blank first question keeps the date-and-count label", async () => {
         const [a] = await historyOf("   \n\t ");
         expect(within(a!).queryByTestId("ask-dev-history-question")).toBeNull();
-        expect(a).toHaveTextContent(historyRowLabel(summary(THREAD_A)));
+        expect(a).toHaveTextContent(historyRowLabel(rowOf(summary(THREAD_A))));
     });
 
     it("shows the question as inert text, and logs or reports none of it", async () => {

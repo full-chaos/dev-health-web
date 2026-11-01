@@ -10,8 +10,8 @@ import {
 import { logger } from "@/lib/logger";
 import { parseResultFeedback } from "@/lib/acr/feedbackContract";
 import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
-import { asTranscriptResult } from "@/components/ask-dev/answer/testModeAnswer";
-import type { TranscriptResult } from "@/components/ask-dev/answer/AskDevTurn";
+import { asTranscriptResult } from "@/components/ask-dev/conversation/testModeAnswer";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import {
     TransportFailure,
     TransportRefusal,

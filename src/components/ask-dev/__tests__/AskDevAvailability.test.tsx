@@ -43,7 +43,6 @@ import { AskDevLauncher } from "../AskDevLauncher";
 import { AskDevPanel } from "../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
 import { AskDevConversationProvider } from "../conversation/AskDevConversationContext";
-import { COMPOSER_COPY } from "../conversation/AskDevComposer";
 import type { AskDevTransport } from "../conversation/transport";
 import { FakeTransport } from "../conversation/__tests__/fakeTransport";
 import { type AskDevAvailability, useAskDevAvailability } from "../useAskDevAvailability";
@@ -235,10 +234,11 @@ describe("the full page /dev (CHAOS-12306)", () => {
         ).toBeVisible();
         expect(notice).toHaveTextContent("Stop impersonating to use Ask Dev.");
         expect(screen.queryByTestId("ask-dev-page-conversation")).toBeNull();
-        expect(screen.queryByTestId("ask-dev-transcript")).toBeNull();
-        expect(screen.queryByTestId("ask-dev-page-history")).toBeNull();
-        expect(screen.queryByTestId("ask-dev-page-history-disclosure")).toBeNull();
-        expect(screen.queryByRole("textbox", { name: COMPOSER_COPY.label })).toBeNull();
+        // Ask-dev's render draws its conversation, its history toggle and its transcript log.
+        expect(screen.queryByRole("region", { name: "Ask Dev conversation" })).toBeNull();
+        expect(screen.queryByTestId("ask-dev-history-toggle")).toBeNull();
+        expect(screen.queryByRole("log", { name: "Conversation" })).toBeNull();
+        expect(screen.queryByRole("textbox", { name: "Ask a question" })).toBeNull();
         expect(screen.queryByRole("button", { name: "Minimize to panel" })).toBeNull();
         expect(screen.queryByTestId("ask-dev-page-not-available")).toBeNull();
     });
@@ -247,7 +247,10 @@ describe("the full page /dev (CHAOS-12306)", () => {
         auth.session = IMPERSONATING;
         renderSurfaces();
         expect(within(page()).getByTestId("ask-dev-page-conversation")).toBeInTheDocument();
-        expect(screen.getByRole("textbox", { name: COMPOSER_COPY.label })).toBeInTheDocument();
+        expect(
+            within(page()).getByRole("region", { name: "Ask Dev conversation" }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("textbox", { name: "Ask a question" })).toBeInTheDocument();
         expect(screen.queryByTestId("ask-dev-page-impersonating")).toBeNull();
     });
 

@@ -6,7 +6,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // (`conversation/testModeTransport.ts`) plays ACR's thread list, thread reads, result reads and
 // deletes from session storage and records every call there; no request leaves the browser for ACR.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const SHOTS = process.env.ASK_DEV_HISTORY_SHOTS ?? "";
 const KEYS = {
     stream: "ask-dev:test-mode-stream",
@@ -301,7 +301,7 @@ test.describe("desktop (1280px)", () => {
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("Which projects are at risk?");
         await input.press("Enter");
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(panel.getByTestId("answer-panel")).toBeVisible();
         const [sent] = await investigations(page);
         expect(sent?.thread_id).toBeTruthy();
         const threadId = String(sent!.thread_id);
@@ -318,7 +318,7 @@ test.describe("desktop (1280px)", () => {
         const before = (await investigations(page)).length;
         await page.reload();
         const reopened = await openPanel(page, "/dashboard");
-        await expect(reopened.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(reopened.getByTestId("answer-panel")).toBeVisible();
         expect((await investigations(page)).length).toBe(before);
         expect(
             (await calls(page)).filter((c) => c.kind === "thread" && c.thread_id === threadId)
@@ -410,7 +410,7 @@ test.describe("desktop (1280px)", () => {
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("Which projects are at risk?");
         await input.press("Enter");
-        await expect(panel.getByTestId("ask-dev-turn-status")).toBeVisible();
+        await expect(panel.getByTestId("chat-progress")).toBeVisible();
         const [sent] = await investigations(page);
         const threadId = String(sent!.thread_id);
         await rescript(page, "list", [listPage(threadId)]);
@@ -606,7 +606,7 @@ test.describe("mobile (390px)", () => {
         await expect(input).toBeEnabled();
         await input.fill("Which projects are at risk?");
         await input.press("Enter");
-        await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(sheet.getByTestId("answer-panel")).toBeVisible();
         const [sent] = await investigations(page);
         const threadId = String(sent!.thread_id);
         await rescript(page, "threads", {
@@ -619,7 +619,7 @@ test.describe("mobile (390px)", () => {
 
         await page.reload();
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
-        await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(sheet.getByTestId("answer-panel")).toBeVisible();
         await shot(page, "sheet-mobile-restored-light");
         expect((await investigations(page)).length).toBe(before);
 

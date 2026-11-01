@@ -186,11 +186,13 @@ test.describe("desktop (1280px)", () => {
         expect(harness.calls).toEqual([]);
 
         await ask(page, panel);
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
-        // The question, then (T14b) the answer's feedback read: both from the browser, with the
-        // bearer and no cookie.
+        await expect(panel.getByTestId("answer-panel")).toBeVisible();
+        // The question and (T14b) the answer's feedback read: both from the browser, with the bearer
+        // and no cookie. The history list stays off screen in the panel, so nothing reads it.
         await expect.poll(() => harness.calls.length).toBe(2);
-        const [sent, feedbackRead] = harness.calls;
+        expect(harness.calls.filter((c) => c.url.includes("/context-fabric/threads?"))).toEqual([]);
+        const sent = harness.calls.find((c) => c.method === "POST");
+        const feedbackRead = harness.calls.find((c) => c.url.includes("/investigations/feedback/"));
         expect(feedbackRead!.method).toBe("GET");
         expect(feedbackRead!.url).toMatch(
             new RegExp(

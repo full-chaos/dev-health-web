@@ -1,8 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
-import { AskDevChat } from "@full-chaos/ask-dev/render";
-import "@full-chaos/ask-dev/ask-dev.css";
 import { Minimize2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -11,8 +9,8 @@ import { Notice } from "@/components/ui/Notice";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 import { CTA_LABELS } from "@/lib/design/cta";
 
+import { AskDevRender } from "./AskDevRender";
 import { useAskDevShell } from "./AskDevShellContext";
-import { useAskDevChatSource } from "./conversation/chatSource";
 import { useAskDevConversation } from "./conversation/AskDevConversationContext";
 import { useAskDevAvailability } from "./useAskDevAvailability";
 
@@ -104,9 +102,8 @@ function useHeightLeft() {
     return frame;
 }
 
-/** Ask-dev's own render over web's store. Nothing of the conversation is drawn on this side. */
+/** The full page's frame around the render, with the URL's thread in step. */
 function AskDevConversationFrame() {
-    const source = useAskDevChatSource();
     const frame = useHeightLeft();
     return (
         <div
@@ -117,7 +114,7 @@ function AskDevConversationFrame() {
             <Suspense fallback={null}>
                 <ThreadUrlSync />
             </Suspense>
-            {source === null ? null : <AskDevChat source={source} />}
+            <AskDevRender />
         </div>
     );
 }

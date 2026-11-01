@@ -22,10 +22,14 @@ import {
 } from "@full-chaos/ask-dev/render";
 
 import type { PageEntityRef } from "@/lib/ask-dev/page-context";
+import {
+    isRefusalTurn,
+    narrowingAxis,
+    type RefusalEvent,
+    type TranscriptResult,
+    type TranscriptTurn,
+} from "@/lib/ask-dev/transcript";
 
-import { isRefusalTurn, type TranscriptResult, type TranscriptTurn } from "../answer/AskDevTurn";
-import { narrowingAxis, type RefusalEvent } from "../answer/refusalModel";
-import { useTestModeTurns } from "../answer/testModeAnswer";
 import { pageHintsOf, useAskDevPageProposal } from "../pageContext/AskDevPageContext";
 import { ConnectAskDev } from "./AskDevConnect";
 import {
@@ -44,6 +48,7 @@ import {
     type TurnOutcome,
 } from "./conversationStore";
 import type { FeedbackEntry, FeedbackStore } from "./feedbackStore";
+import { useTestModeTurns } from "./testModeAnswer";
 
 /**
  * Web's conversation behind ask-dev's seam (CHAOS-12383; `ChatSource` in `@full-chaos/ask-dev/render`).
@@ -863,7 +868,7 @@ export function useAskDevChatSource(): ChatSource | null {
     const notSaved = useAskDevNotSaved();
     const partition = useAskDevSessionPartition();
     const { refs, remove } = useAskDevPageProposal();
-    const { turns } = useTestModeTurns();
+    const turns = useTestModeTurns();
     const store = live?.store;
     const source =
         store === undefined || feedback === null ? undefined : chatSourceOf(store, feedback);

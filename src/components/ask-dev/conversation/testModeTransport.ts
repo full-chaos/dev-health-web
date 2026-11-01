@@ -5,8 +5,9 @@ import { parseResultFeedback } from "@/lib/acr/feedbackContract";
 import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
 import { logger } from "@/lib/logger";
 
-import type { TranscriptResult } from "../answer/AskDevTurn";
-import { asTranscriptResult } from "../answer/testModeAnswer";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
+
+import { asTranscriptResult } from "./testModeAnswer";
 import {
     isTransportFailureReason,
     TransportFailure,

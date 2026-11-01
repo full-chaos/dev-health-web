@@ -7,7 +7,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 // panel's test-mode answer source reads the answer from session storage.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const KEY = "ask-dev:test-mode-answer";
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const capture = (file: string) =>
     (JSON.parse(readFileSync(join(CAPTURES, file), "utf8")) as { result: unknown }).result;
 const PROJECTS = capture("kiac_projects_feature_investment_rollup.event.json");
@@ -61,14 +61,28 @@ test.afterEach(async ({ request }) => {
 test.describe("desktop (1280px)", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
+    test("ranking: the 19 projects of the answer are ranked", async ({ page }, testInfo) => {
+        await seed(page, PROJECTS, "dark");
+        const panel = await openPanel(page);
+        const ranking = panel.getByRole("group", { name: /^Ranked project/u });
+        await expect(
+            ranking.getByRole("group", { name: "Ranking" }).locator("tbody tr"),
+        ).toHaveCount(19);
+        await ranking.scrollIntoViewIfNeeded();
+        await panel.screenshot({ path: testInfo.outputPath("rollup-ranking-desktop-dark.png") });
+        expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
+    });
+
     test("ranking: the 11 projects served the roll-up are labelled, the others are not", async ({
         page,
     }, testInfo) => {
         await seed(page, PROJECTS, "dark");
         const panel = await openPanel(page);
-        const ranking = panel.getByTestId("ask-dev-ranking");
-        await expect(ranking.getByTestId("ask-dev-ranking-row")).toHaveCount(19);
-        const labels = ranking.getByTestId("ask-dev-investment-rollup");
+        const ranking = panel.getByRole("group", { name: /^Ranked project/u });
+        await expect(
+            ranking.getByRole("group", { name: "Ranking" }).locator("tbody tr"),
+        ).toHaveCount(19);
+        const labels = ranking.getByTestId("investment-rollup");
         await expect(labels).toHaveCount(11);
         await expect(labels.first()).toBeVisible();
         await expect(labels.first().locator("[aria-hidden=true]")).toHaveText(LABEL);
@@ -82,11 +96,13 @@ test.describe("desktop (1280px)", () => {
     }, testInfo) => {
         await seed(page, PROJECTS, "dark");
         const panel = await openPanel(page);
-        const drivers = panel.getByTestId("ask-dev-answer-driver");
+        const drivers = panel
+            .getByRole("group", { name: "Drivers", exact: true })
+            .getByRole("listitem");
         const rollup = drivers.filter({ hasText: "Synthetic Project November: investment mix" });
         const native = drivers.filter({ hasText: "Synthetic Project Tango: investment mix" });
-        await expect(rollup.getByTestId("ask-dev-investment-rollup")).toHaveCount(1);
-        await expect(native.getByTestId("ask-dev-investment-rollup")).toHaveCount(0);
+        await expect(rollup.getByTestId("investment-rollup")).toHaveCount(1);
+        await expect(native.getByTestId("investment-rollup")).toHaveCount(0);
         await rollup.scrollIntoViewIfNeeded();
         await panel.screenshot({ path: testInfo.outputPath("rollup-drivers-desktop-dark.png") });
     });
@@ -95,8 +111,8 @@ test.describe("desktop (1280px)", () => {
         await seed(page, THEME_MIX, "light");
         const panel = await openPanel(page);
         const label = panel
-            .getByTestId("ask-dev-answer-driver")
-            .getByTestId("ask-dev-investment-rollup");
+            .getByRole("group", { name: "Drivers", exact: true })
+            .getByTestId("investment-rollup");
         await expect(label).toHaveCount(1);
         await label.scrollIntoViewIfNeeded();
         await panel.screenshot({ path: testInfo.outputPath("rollup-theme-mix-desktop-light.png") });
@@ -116,11 +132,11 @@ test.describe("mobile (390px)", () => {
         }, testInfo) => {
             await seed(page, answer);
             const sheet = await openPanel(page, true);
-            const label = sheet.getByTestId("ask-dev-investment-rollup").first();
+            const label = sheet.getByTestId("investment-rollup").first();
             await expect(label).toBeVisible();
             await label.scrollIntoViewIfNeeded();
             await sheet.screenshot({ path: testInfo.outputPath(`rollup-${name}-mobile.png`) });
-            const answerBox = sheet.getByTestId("ask-dev-answer");
+            const answerBox = sheet.getByRole("article", { name: "Answer" });
             for (const box of [answerBox, sheet])
                 expect(await box.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(
                     true,
