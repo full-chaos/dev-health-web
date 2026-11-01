@@ -18,7 +18,7 @@ export type JsonHttpResponse = {
     readonly retryAfterSeconds?: number;
 };
 
-function retryAfterSeconds(response: Response): number | undefined {
+export function retryAfterSeconds(response: Response): number | undefined {
     const value = response.headers.get("retry-after");
     if (value === null) return undefined;
     const seconds = Number(value);

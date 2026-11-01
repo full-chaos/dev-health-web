@@ -119,7 +119,7 @@ async function watchViolations(page: Page): Promise<() => Promise<string[]>> {
         );
 }
 
-/** The browser client on, a held ACR token, and the mocked ACR answering the stream. */
+/** The browser client on, and the mocked ACR answering the stream. The first question authorizes. */
 async function connect(page: Page, baseURL: string | undefined): Promise<void> {
     const web = new URL(baseURL ?? "http://127.0.0.1:3012").origin;
     await installCrossOriginAcr(page.context(), web, ACR_E2E_ISSUER);
@@ -163,8 +163,7 @@ async function connect(page: Page, baseURL: string | undefined): Promise<void> {
             });
         },
     );
-    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-    await page.waitForURL((url) => url.pathname === "/dashboard");
+    await page.goto("/dashboard");
 }
 
 async function ask(surface: Locator): Promise<Locator> {

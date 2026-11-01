@@ -188,12 +188,12 @@ describe("each state the store reaches has its own words and no answer content",
             [accepted(), errorEvent("thread_closed")],
             CHAT_STATUS_COPY.thread_closed,
         ],
-        // CHAOS-12104: no ACR access in this tab, or ACR's 401.
+        // CHAOS-12474: ACR's limit on the silent step.
         [
-            "connect",
-            "connect",
-            [{ fail: new TransportFailure("authorization_required") }],
-            CHAT_STATUS_COPY.connect,
+            "authorization limited",
+            "not_run",
+            [{ fail: new TransportFailure("authorization_limited") }],
+            NOT_RUN_COPY.rate_limited,
         ],
     ];
 
@@ -216,19 +216,24 @@ describe("each state the store reaches has its own words and no answer content",
         expect(new Set(copies).size).toBe(copies.length);
     });
 
-    it("connect: links to the ACR authorization with this page as the way back, and offers no retry", async () => {
-        window.history.pushState(null, "", "/dev?thread=thread_00000000000000000000000000000001");
+    it("a failed silent step: named words, and a Retry that sends the question once per click", async () => {
         const { source } = makeSource();
-        transport.scripts.push([{ fail: new TransportFailure("authorization_required") }]);
+        transport.scripts.push(
+            [{ fail: new TransportFailure("authorization_failed") }],
+            [accepted(), resultEvent(PARTIAL)],
+        );
         render(<AskDevChat source={source} />);
         await ask();
-        const link = await screen.findByRole("link", { name: "Connect Ask Dev" });
-        await waitFor(() =>
-            expect(link.getAttribute("href")).toBe(
-                "/ask-dev/oauth/start?return=%2Fdev%3Fthread%3Dthread_00000000000000000000000000000001",
-            ),
-        );
-        expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+        const status = await screen.findByTestId("chat-status");
+        expect(status.dataset.status).toBe("failed");
+        expect(status).toHaveTextContent(CHAT_STATUS_COPY.failedRetry);
+        expect(screen.queryByRole("link")).toBeNull();
+        expect(document.body.textContent).not.toMatch(/\bconnect\b/iu);
+        expect(transport.calls).toHaveLength(1);
+        await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+        await screen.findByTestId("answer-panel");
+        expect(transport.calls).toHaveLength(2);
+        expect(transport.calls[1]!.submissionId).toBe(transport.calls[0]!.submissionId);
     });
 
     it("draws the answer only for a validated result", async () => {

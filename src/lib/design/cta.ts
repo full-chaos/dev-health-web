@@ -25,8 +25,6 @@ export const CTA_LABELS = {
     askDevMinimize: "Minimize to panel",
     /** Ask Dev: read a restored answer again (a GET, never a new investigation; CHAOS-11956). */
     askDevLoadAgain: "Load again",
-    /** Ask Dev with no ACR access in this tab: open the ACR authorization (CHAOS-12104). */
-    askDevConnect: "Connect Ask Dev",
     /** Ask Dev: start a new, empty conversation; the old one stays in the history (CHAOS-11956). */
     askDevNewConversation: "New conversation",
     /** Ask Dev panel: show the list of past conversations (CHAOS-11956). */
@@ -39,10 +37,6 @@ export const CTA_LABELS = {
     askDevShowMoreConversations: "Show more",
     /** Ask Dev history: delete one past conversation, after a confirm (CHAOS-11956). */
     askDevDeleteConversation: "Delete conversation",
-    /** Ask Dev sign-in callback: go back to where the sign-in started (CHAOS-12303). */
-    askDevReturn: "Return to Ask Dev",
-    /** Ask Dev sign-in start: try to reach ACR again (CHAOS-12303). */
-    askDevTryAgain: "Try again",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */

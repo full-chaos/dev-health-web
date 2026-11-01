@@ -9919,6 +9919,79 @@
             }
         },
         {
+            "id": "POST /api/ask-dev/authorize [dev-health-web]",
+            "surface_kind": "rest",
+            "method": "POST",
+            "route": "/api/ask-dev/authorize",
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/app/api/ask-dev/authorize/route.ts",
+                "line": 63
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "Route: isSameOriginRequest (403) and a strict {code_challenge, state} body (400). authorizeAskDevBrowser() then calls readIssuanceContext() -> auth()+sessionOrError (401 if absent) and a fresh Ops impersonation read, and refuses an impersonating session (403) before any ACR call. openOAuthConsent() re-runs both for each credential:issue call and requires the agent_context_runtime entitlement.",
+                "anchor": {
+                    "path": "src/lib/acr/service.ts",
+                    "line": 512,
+                    "line_end": 548
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "proxy.ts's session+org gate also runs ahead ('/api/ask-dev' is not PREFIX_PUBLIC_PATH nor ORG_EXEMPT_PATH; shouldProxyToOps keeps it local). Its redirect to sign-in reaches the browser as an opaque redirect, which the token store reads as a session that ended.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 354,
+                        "line_end": 388
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": "ask_dev.authorize",
+            "resource_resolver": "org and subject from the session (impersonation refused, not resolved). The PKCE challenge and the state from the body; client, redirect, resource and scope from this server's config, never the browser.",
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Cache-Control: no-store on every response.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": "agent_context_runtime (requireAcrEntitlement via resolveOpsCredentialIssuanceAuthorization, src/lib/acr/ops.ts)",
+            "disclosure_behavior": "Success: {code, state, iss}. Failure: {error:{code}} with a closed name. An ACR body, ACR's Location and redirect URL never cross the browser boundary, and the route's one log line is {outcome, status}: no code, state, handle, URL or id.",
+            "gaps": [
+                "Origin/CSRF: the route refuses a POST whose Origin is not this site, before any session or ops read (src/lib/ask-dev/origin.ts).",
+                "ISSUER SURFACE: mints no token. It causes acr_web_assertion (credential:issue) mints through openOAuthConsent(), and it hands the browser an authorization code, which is useless without the verifier only the browser holds.",
+                "REDIRECT SURFACE: ACR's GET /authorize is called with redirect: manual and no web credential. Its Location must be web's own consent page with one handle; a 303 refusal is never followed.",
+                "impersonation_policy: subject_to_impersonation_override is the closest closed value. The route does not resolve the impersonated org: it refuses, with no ACR call, like approveDeviceAuthorization()."
+            ],
+            "issued_credential": [
+                {
+                    "class_id": "acr_web_assertion",
+                    "direction": "outbound_to_dependency",
+                    "anchor": {
+                        "path": "src/lib/acr/assertion.ts",
+                        "line": 30,
+                        "line_end": 53,
+                        "note": "Same single mint path as acr/authorize: signWebAssertion() via AcrRuntimeClient.request, called by oauthConsentPreview and oauthConsentDecide inside openOAuthConsent(). ACR's GET /authorize itself carries no assertion."
+                    },
+                    "issuer": "ACR_WEB_ASSERTION_ISSUER (deployment env var, read at src/lib/acr/config.ts; claim set at src/lib/acr/assertion.ts:38)",
+                    "audience": "ACR_WEB_ASSERTION_AUDIENCE (deployment env var, read at src/lib/acr/config.ts; claim set at src/lib/acr/assertion.ts:34)",
+                    "algorithm": "EdDSA (Ed25519). Header alg is a literal, not negotiated (src/lib/acr/assertion.ts:32); kid comes from ACR_WEB_ASSERTION_KID (src/lib/acr/config.ts).",
+                    "lifetime_seconds": 30,
+                    "key_source": "ACR_WEB_ASSERTION_KEY_FILE - a FILE PATH env var read at src/lib/acr/config.ts. readPrivateKey opens it O_NOFOLLOW, requires a regular file of 1..16384 bytes with no group/other permission bits, and rejects any key whose asymmetricKeyType is not ed25519. G-12 holds by construction here: web holds only this private key and acr verifies from a JWKS, so no key both signs and verifies.",
+                    "verified_by": "acr:internal/auth/web_assertion.go:90 (WebAssertionVerifier.Verify - Ed25519 JWKS keys, replay cache, and body-digest binding via internal/auth/web_assertion_binding.go)",
+                    "note": "One assertion per request, bound to the exact body bytes (body_sha256), path and repository scopes."
+                }
+            ]
+        },
+        {
             "id": "POST /api/ask-dev/investigations [dev-health-web]",
             "surface_kind": "rest",
             "method": "POST",

@@ -244,7 +244,19 @@ The first-party browser client (ACR's own issuer is its resource; `ACR_OAUTH_ISS
 consent click (chris decision 2): `openOAuthConsent()` approves it from the consent page's server
 render, server to server through ACR's consent route, with the live org scope grant (`["*"]`). It
 needs a session with a `sid`. The approve button route refuses that client (400). Third-party MCP
-clients keep the consent page and the repository choice.
+clients keep the consent page and the repository choice. Since CHAOS-12474 the first-party client
+comes to `openOAuthConsent()` only from `POST /api/ask-dev/authorize`, never by that page.
+
+### Ask Dev silent authorization (CHAOS-12474)
+
+`POST /api/ask-dev/authorize` runs ACR's `/authorize` from the signed-in session, and answers
+`{code, state, iss}` as JSON, `no-store`. It mints only through `openOAuthConsent()`, so its
+assertions are the `credential:issue` ones above. The browser stays the OAuth public client: the
+verifier and the `/token` exchange are the browser's, so no token reaches this route. It refuses a
+POST whose `Origin` is not this site, a body that is not exactly `{code_challenge, state}`, no
+session (401) and an impersonating session (403), each before any ACR call. The call to ACR's
+`GET /authorize` carries no web credential and follows no redirect. See
+[`ask-dev.md`](ask-dev.md) "Authorizing silently".
 
 ### Ask Dev route (CHAOS-11921)
 

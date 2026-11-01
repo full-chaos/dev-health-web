@@ -1283,32 +1283,69 @@ describe("panel states (plan §2.7.8)", () => {
         },
     );
 
-    // CHAOS-12104: no ACR access in this tab, or ACR's 401: "Connect Ask Dev", never retried.
-    it("ends a call that needs authorization as the connect state, without polling or retrying", async () => {
+    // CHAOS-12474: no ACR token came from the web session. Nothing retries here; the user's Try again
+    // repeats the question under its key.
+    it.each([
+        ["authorization_required", "failed", true],
+        ["authorization_failed", "failed", true],
+        ["authorization_limited", "rate_limited", true],
+        ["not_entitled", "not_entitled", false],
+        ["impersonating", "impersonating", false],
+        ["session_ended", "session_ended", false],
+    ] as const)(
+        "ends %s as its named failure, without polling or retrying",
+        async (cause, reason, retry) => {
+            const store = makeStore();
+            transport.scripts.push([{ fail: new TransportFailure(cause) }]);
+            store.submit("Which projects are at risk?");
+            await settled(store);
+            expect(last(store).outcome).toEqual({ kind: "authorization_failed", reason, retry });
+            expect(transport.calls).toHaveLength(1);
+            expect(transport.statusCalls).toEqual([]);
+            expect(transport.readCalls).toEqual([]);
+        },
+    );
+
+    it("a failed silent step's Try again sends the question again, under its key, once per click", async () => {
         const store = makeStore();
-        transport.scripts.push([{ fail: new TransportFailure("authorization_required") }]);
+        transport.scripts.push(
+            [{ fail: new TransportFailure("authorization_failed") }],
+            [{ fail: new TransportFailure("authorization_failed") }],
+        );
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "connect" });
-        expect(transport.calls).toHaveLength(1);
-        expect(transport.statusCalls).toEqual([]);
-        expect(transport.readCalls).toEqual([]);
-        expect(store.retry(last(store).id)).toBe(false);
+        const turn = last(store).id;
+        expect(store.retry(turn)).toBe(true);
+        expect(store.retry(turn)).toBe(false);
+        await settled(store);
+        expect(transport.calls).toHaveLength(2);
+        expect(transport.calls[1]!.submissionId).toBe(transport.calls[0]!.submissionId);
     });
 
-    it("stops recovery at the connect state when the status read needs authorization", async () => {
+    it.each(["not_entitled", "impersonating", "session_ended"] as const)(
+        "%s offers no Try again",
+        async (cause) => {
+            const store = makeStore();
+            transport.scripts.push([{ fail: new TransportFailure(cause) }]);
+            store.submit("Which projects are at risk?");
+            await settled(store);
+            expect(store.retry(last(store).id)).toBe(false);
+        },
+    );
+
+    it("stops recovery at the named failure when the status read needs authorization", async () => {
         const store = makeStore();
         // The stream dropped after `accepted`: the store reads the status.
         transport.scripts.push([accepted()]);
         transport.statuses.push(new TransportFailure("authorization_required"));
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "connect" });
+        expect(last(store).outcome).toMatchObject({ kind: "authorization_failed" });
         // One read, not a poll until the deadline.
         expect(transport.statusCalls).toHaveLength(1);
     });
 
-    it("ends at the connect state when the final replay needs authorization", async () => {
+    it("ends at the named failure when the final replay needs authorization", async () => {
         const store = makeStore();
         transport.scripts.push([accepted()]);
         transport.statuses.push(status("done", "result_final_00000001"));
@@ -1318,7 +1355,7 @@ describe("panel states (plan §2.7.8)", () => {
         );
         store.submit("Which projects are at risk?");
         await settled(store);
-        expect(last(store).outcome).toEqual({ kind: "connect" });
+        expect(last(store).outcome).toMatchObject({ kind: "authorization_failed" });
         expect(transport.readCalls).toEqual(["result_final_00000001"]);
     });
 

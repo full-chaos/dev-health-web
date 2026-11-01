@@ -53,7 +53,8 @@ function ThreadUrlSync() {
     useEffect(() => {
         if (store === undefined || !ready || handled.current === urlThread) return;
         handled.current = urlThread;
-        if (urlThread !== null) store.selectThread(urlThread, "incoming");
+        // The user's navigation: this read may run the silent step (CHAOS-12474).
+        if (urlThread !== null) store.selectThread(urlThread, "incoming", true);
     }, [store, ready, urlThread]);
 
     useEffect(() => {

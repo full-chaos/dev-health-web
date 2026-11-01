@@ -3,11 +3,13 @@ import "server-only";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import type { IssuanceProvenance } from "./assertion";
-import { AcrRuntimeClient, type OAuthConsentPreview } from "./client";
+import { ACR_BROWSER_SCOPE, type AcrBrowserClientConfig } from "@/lib/ask-dev/acr-browser-config";
+import { AcrRuntimeClient, type OAuthAuthorizeAnswer, type OAuthConsentPreview } from "./client";
 import {
     issuanceProvenanceClaimsEnabled,
     loadAcrRuntimeConfig,
     loadFirstPartyBrowserClient,
+    serverAcrClientConfig,
 } from "./config";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import {
@@ -23,6 +25,8 @@ const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
 // Opaque handle minted by ACR for the /acr/authorize flow — 43 base64url
 // characters (the un-padded encoding of a 256-bit value).
 const oauthHandlePattern = /^[A-Za-z0-9_-]{43}$/u;
+// Web's consent page: ACR's 302 from /authorize names it (`ACR_OAUTH_CONSENT_URL`).
+const OAUTH_CONSENT_PATH = "/acr/authorize";
 
 export type WebSession = {
     readonly accessToken: string;
@@ -169,12 +173,11 @@ type IssuanceContext = {
 };
 
 /**
- * Every `credential:issue` call starts here (CHAOS-12095, design T4c). The web server derives the
- * provenance it signs from its own session and a fresh Ops status read, and refuses while the
- * session impersonates, by the impersonation state: a same-org impersonation is refused too
- * (chris decision 6). Nothing here reads the request the browser sent.
+ * The session and the provenance a `credential:issue` assertion signs (CHAOS-12095, design T4c).
+ * The web server derives them from its own session and a fresh Ops status read. Nothing here reads
+ * the request the browser sent.
  */
-async function issuanceContext(signal: AbortSignal): Promise<IssuanceContext> {
+async function readIssuanceContext(signal: AbortSignal): Promise<IssuanceContext> {
     const rawSession = await auth();
     const session = sessionOrError(rawSession);
     const realOrgId = rawSession?.user.real_org_id;
@@ -186,6 +189,16 @@ async function issuanceContext(signal: AbortSignal): Promise<IssuanceContext> {
         signal,
         subject: session.subject,
     });
+    return { provenance, session };
+}
+
+/**
+ * Every `credential:issue` call starts here. It refuses while the session impersonates, by the
+ * impersonation state: a same-org impersonation is refused too (chris decision 6).
+ */
+async function issuanceContext(signal: AbortSignal): Promise<IssuanceContext> {
+    const context = await readIssuanceContext(signal);
+    const { provenance, session } = context;
     if (provenance.impersonating) {
         logger.warn(
             { module: "acr-consent", orgId: session.orgId, userId: session.subject },
@@ -199,7 +212,7 @@ async function issuanceContext(signal: AbortSignal): Promise<IssuanceContext> {
             },
         );
     }
-    return { provenance, session };
+    return context;
 }
 
 type IssuanceCall = {
@@ -353,6 +366,181 @@ export async function openOAuthConsent(input: {
         "acr browser consent approved with no click",
     );
     return { kind: "approved", redirectUrl: decision.redirectUrl };
+}
+
+/** Why the silent step gave no code (CHAOS-12474). Each is a name, with no ACR text in it. */
+export type AskDevAuthorizeFailure =
+    /** No browser client here (`ACR_OAUTH_ISSUER` or the web origin is unset). */
+    | "client_off"
+    | "impersonating"
+    | "not_entitled"
+    /** ACR's limit on `/authorize` or on its consent route. */
+    | "rate_limited"
+    /** ACR refused the request: a 303, a 400, or a handle it would not approve. */
+    | "acr_refused"
+    /** ACR answered 5xx, or nothing, or a dependency of the session read failed. */
+    | "acr_unavailable"
+    /** ACR's 302 did not name web's own consent page with one good handle. */
+    | "bad_location"
+    /** ACR's approval did not name web's own callback with exactly a code, a state and an iss. */
+    | "bad_redirect"
+    /** The first-party client reached the review step, which it never does. */
+    | "consent_review";
+
+export type AskDevAuthorization =
+    | {
+          readonly kind: "authorized";
+          readonly code: string;
+          readonly state: string;
+          readonly iss: string;
+      }
+    | {
+          readonly kind: "refused";
+          readonly reason: AskDevAuthorizeFailure;
+          readonly retryAfterSeconds?: number | undefined;
+      };
+
+function refused(
+    reason: AskDevAuthorizeFailure,
+    retryAfterSeconds?: number,
+): Extract<AskDevAuthorization, { kind: "refused" }> {
+    return { kind: "refused", reason, retryAfterSeconds };
+}
+
+/**
+ * The handle in `Location`, when that is web's own consent page and carries `handle` and nothing
+ * else: anything else is a named failure, so a redirect ACR did not mean for here is never used.
+ */
+function consentHandle(location: string | null, webOrigin: string): string | null {
+    if (location === null) return null;
+    let url: URL;
+    try {
+        url = new URL(location);
+    } catch {
+        return null;
+    }
+    if (
+        url.origin !== webOrigin ||
+        url.pathname !== OAUTH_CONSENT_PATH ||
+        url.username !== "" ||
+        url.password !== "" ||
+        url.hash !== "" ||
+        [...url.searchParams.keys()].join() !== "handle"
+    ) {
+        return null;
+    }
+    const handle = url.searchParams.get("handle") ?? "";
+    return oauthHandlePattern.test(handle) ? handle : null;
+}
+
+/**
+ * The code in ACR's approval redirect, when that URL is the client's exact redirect and holds a
+ * code, a state and an iss, and nothing else. The URL itself never leaves this function.
+ */
+function authorizationCode(
+    redirectUrl: string,
+    client: AcrBrowserClientConfig,
+): { readonly code: string; readonly state: string; readonly iss: string } | null {
+    let url: URL;
+    try {
+        url = new URL(redirectUrl);
+    } catch {
+        return null;
+    }
+    if (
+        `${url.origin}${url.pathname}` !== client.redirectUri ||
+        url.username !== "" ||
+        url.password !== "" ||
+        url.hash !== "" ||
+        [...url.searchParams.keys()].sort().join() !== "code,iss,state"
+    ) {
+        return null;
+    }
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    const iss = url.searchParams.get("iss");
+    return code && state && iss ? { code, state, iss } : null;
+}
+
+/** ACR's `/authorize` answer as a handle, or the name of what it was instead. */
+function handleOf(
+    answer: OAuthAuthorizeAnswer,
+    client: AcrBrowserClientConfig,
+): string | Extract<AskDevAuthorization, { kind: "refused" }> {
+    if (answer.status === 302) {
+        return consentHandle(answer.location, client.webOrigin) ?? refused("bad_location");
+    }
+    if (answer.status === 429) return refused("rate_limited", answer.retryAfterSeconds);
+    // A refusal redirect (303) carries an error for a browser. It is read as a refusal, never
+    // followed.
+    return refused(answer.status >= 500 ? "acr_unavailable" : "acr_refused");
+}
+
+function authorizeFailure(error: unknown): Extract<AskDevAuthorization, { kind: "refused" }> {
+    if (!(error instanceof AcrRuntimeError)) return refused("acr_unavailable");
+    switch (error.code) {
+        case acrRuntimeErrorCodes.unauthenticated:
+            throw error;
+        case acrRuntimeErrorCodes.notEntitled:
+            return refused("not_entitled");
+        case acrRuntimeErrorCodes.rateLimited:
+            return refused("rate_limited", error.retryAfterSeconds);
+        case acrRuntimeErrorCodes.invalidRequest:
+        case acrRuntimeErrorCodes.expired:
+        case acrRuntimeErrorCodes.alreadyCompleted:
+            return refused("acr_refused");
+        default:
+            return error.status === 429
+                ? refused("rate_limited", error.retryAfterSeconds)
+                : refused("acr_unavailable");
+    }
+}
+
+/**
+ * The silent step's server side (CHAOS-12474; ruling on the design amendment). The browser stays
+ * the OAuth public client: it holds the verifier and runs `/token`. This runs `/authorize` from the
+ * signed-in session, with what the browser cannot choose (client, redirect, resource, scope) from
+ * this server's config, and gives back the code.
+ *
+ * In order: the session and a fresh impersonation read, so an impersonating session makes no ACR
+ * call and gets no code (T13 c5); then ACR's `GET /authorize`, on the server's own ACR origin as
+ * every server call is, which gives a handle; then T4c's `openOAuthConsent`, which approves the
+ * first-party client with no click. A first-party client that reaches review is a loud failure.
+ *
+ * Throws only `unauthenticated`: the route's 401.
+ */
+export async function authorizeAskDevBrowser(input: {
+    readonly codeChallenge: string;
+    readonly state: string;
+    readonly signal: AbortSignal;
+}): Promise<AskDevAuthorization> {
+    const client = serverAcrClientConfig();
+    if (client === undefined) return refused("client_off");
+    try {
+        const { provenance } = await readIssuanceContext(input.signal);
+        if (provenance.impersonating) return refused("impersonating");
+        const answer = await new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthAuthorize({
+            query: {
+                response_type: "code",
+                client_id: client.clientId,
+                redirect_uri: client.redirectUri,
+                code_challenge: input.codeChallenge,
+                code_challenge_method: "S256",
+                state: input.state,
+                resource: client.issuer,
+                scope: ACR_BROWSER_SCOPE,
+            },
+            signal: input.signal,
+        });
+        const handle = handleOf(answer, client);
+        if (typeof handle !== "string") return handle;
+        const opening = await openOAuthConsent({ handle, signal: input.signal });
+        if (opening.kind !== "approved") return refused("consent_review");
+        const code = authorizationCode(opening.redirectUrl, client);
+        return code === null ? refused("bad_redirect") : { kind: "authorized", ...code };
+    } catch (error) {
+        return authorizeFailure(error);
+    }
 }
 
 /**

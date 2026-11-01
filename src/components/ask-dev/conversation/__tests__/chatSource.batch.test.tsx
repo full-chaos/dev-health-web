@@ -592,17 +592,17 @@ describe("what drops the queue", () => {
         expect(queued(source)).toHaveLength(2);
     });
 
-    it("an item that ends in connect", async () => {
+    it("an item that ends with no token from the session: the next item makes no attempt", async () => {
         const made = makeSource();
         const { source, store } = made;
         await clarified(made);
         transport.scripts.push(
-            [{ fail: new TransportFailure("authorization_required") }],
+            [{ fail: new TransportFailure("authorization_failed") }],
             gated().script,
         );
         source.askBatch([subjectItem("subject-a"), subjectItem("subject-b")], QUESTION);
         await vi.waitFor(() => expect(store.getSnapshot().inFlight).toBe(false));
-        expect(assistants(source).at(-1)!.outcome).toMatchObject({ status: { kind: "connect" } });
+        expect(assistants(source).at(-1)!.outcome).toMatchObject({ status: { kind: "failed" } });
         expect(queued(source)).toEqual([]);
         await nothingMoreGoesOut(2);
     });

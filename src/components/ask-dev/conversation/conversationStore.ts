@@ -178,10 +178,15 @@ export type TurnOutcome =
      */
     | { readonly kind: "stopped"; readonly reason: StoppedReason }
     /**
-     * The browser holds no ACR access token, or ACR answered 401 (CHAOS-12104). Nothing ran: the way
-     * on is "Connect Ask Dev", then the question again. Never retried here (connecting leaves the page).
+     * No ACR token came from the web session (CHAOS-12474): the silent step failed, or ACR refused
+     * the token twice. Nothing ran. `retry` lets the user's Try again repeat the question, under
+     * its key, once per click. Never retried here.
      */
-    | { readonly kind: "connect" }
+    | {
+          readonly kind: "authorization_failed";
+          readonly reason: AuthorizationFailure;
+          readonly retry: boolean;
+      }
     /** A restored turn whose answer is being read again (CHAOS-11956). */
     | { readonly kind: "restoring" }
     /**
@@ -254,15 +259,37 @@ const NOT_RUN_REASON_OF: Readonly<Record<string, NotRunReason>> = {
     rate_limited: "rate_limited",
 };
 
-/** The browser holds no ACR access token, or ACR answered 401 (CHAOS-12104). */
-const needsConnect = (error: unknown): boolean =>
-    error instanceof TransportFailure && error.reason === "authorization_required";
+/**
+ * Why no ACR token came from the web session (CHAOS-12474). `session_ended` is on its way to the
+ * normal sign-in; `impersonating` and `not_entitled` cannot be helped by trying again.
+ */
+export type AuthorizationFailure =
+    "failed" | "rate_limited" | "not_entitled" | "impersonating" | "session_ended";
+
+const AUTHORIZATION_FAILURE_OF: Readonly<
+    Partial<Record<TransportFailureReason, AuthorizationFailure>>
+> = {
+    authorization_required: "failed",
+    authorization_failed: "failed",
+    authorization_limited: "rate_limited",
+    not_entitled: "not_entitled",
+    impersonating: "impersonating",
+    session_ended: "session_ended",
+};
+
+/** The access failure a transport failure is, or `undefined` for anything else. */
+export const authorizationFailureOf = (error: unknown): AuthorizationFailure | undefined =>
+    error instanceof TransportFailure ? AUTHORIZATION_FAILURE_OF[error.reason] : undefined;
+
+const authorizationOutcome = (reason: AuthorizationFailure): TurnOutcome => ({
+    kind: "authorization_failed",
+    reason,
+    retry: reason === "failed" || reason === "rate_limited",
+});
 
 /** ACR's 409: no repository in scope. Reading again cannot help, so nothing offers a retry. */
 export const noRepositoryInScope = (error: unknown): boolean =>
     error instanceof TransportRefusal && error.error.error.code === "no_repository";
-
-const connectOutcome: TurnOutcome = { kind: "connect" };
 
 const notRunReasonOf = (code: string): NotRunReason | undefined =>
     Object.hasOwn(NOT_RUN_REASON_OF, code) ? NOT_RUN_REASON_OF[code] : undefined;
@@ -333,10 +360,9 @@ export type StoreTurn = SubmittedTurn | RestoredTurn;
  * - `restoring`: the thread is being read, or its answers replayed: submit waits.
  * - `loaded`: the thread is the store's. `earlier` says whether earlier turns can be read.
  * - `unavailable`: a malformed id, or ACR's 404 (the same for every cause): read-only.
- * - `read_failed`: the read failed (a 5xx, the network, a body that broke the contract):
- *   read-only, with "Try again" (a GET).
- * - `connect`: the tab holds no ACR access token, or ACR answered 401 (CHAOS-12336, the lead's
- *   ruling 2 = A): read-only, with "Connect Ask Dev". Nothing is retried.
+ * - `read_failed`: the read failed (a 5xx, the network, a body that broke the contract, or no ACR
+ *   token, CHAOS-12474): read-only, with "Try again". That click is a user act, so with no token it
+ *   runs the silent step.
  */
 export type ThreadAccess =
     | { readonly kind: "new" }
@@ -346,8 +372,7 @@ export type ThreadAccess =
           readonly earlier: "none" | "available" | "loading" | "failed";
       }
     | { readonly kind: "unavailable" }
-    | { readonly kind: "read_failed" }
-    | { readonly kind: "connect" };
+    | { readonly kind: "read_failed" };
 
 /** Who selected the current conversation: only a `local` selection writes the `/dev` URL. */
 export type SelectionSource = "initial" | "incoming" | "local";
@@ -355,10 +380,12 @@ export type SelectionSource = "initial" | "incoming" | "local";
 /** The history list of the bound partition (E6 design v5 §4.3), shared by both surfaces. */
 export type HistorySnapshot = {
     /**
-     * `connect`: no ACR access token, or ACR's 401, on the first page (CHAOS-12336).
      * `no_repository`: ACR's 409, no repository in scope (CHAOS-12439); there are no rows.
+     * `read_failed`: the list was not read, which says nothing of whether conversations exist. No
+     * ACR token lands here, never in `ready` (CHAOS-12474): an empty `ready` reads "No conversations
+     * yet", and with no token nothing is known.
      */
-    readonly status: "idle" | "loading" | "ready" | "read_failed" | "connect" | "no_repository";
+    readonly status: "idle" | "loading" | "ready" | "read_failed" | "no_repository";
     readonly threads: readonly ThreadSummaryView[];
     readonly nextCursor: string | null;
     readonly loadingMore: boolean;
@@ -911,9 +938,9 @@ export class ConversationStore {
 
     /**
      * Sends the last turn's request again under its own `submission_id` (INV-2: the only reuse of a
-     * key). Only for a submitted `failed`, `limited` or `not_run` turn that allows it (nothing was
-     * admitted, or the answer is stored), and only when no run is in flight. A restored turn has no
-     * request: it is never sent again (`reloadTurn` reads it again instead).
+     * key). Only for a submitted `failed`, `limited`, `not_run` or `authorization_failed` turn that
+     * allows it (nothing was admitted, or the answer is stored), and only when no run is in flight.
+     * A restored turn has no request: it is never sent again (`reloadTurn` reads it again instead).
      */
     retry(turnId: number): boolean {
         const last = this.snapshot.turns[this.snapshot.turns.length - 1];
@@ -923,7 +950,8 @@ export class ConversationStore {
         if (
             (outcome.kind !== "failed" &&
                 outcome.kind !== "limited" &&
-                outcome.kind !== "not_run") ||
+                outcome.kind !== "not_run" &&
+                outcome.kind !== "authorization_failed") ||
             !outcome.retry
         ) {
             return false;
@@ -974,8 +1002,15 @@ export class ConversationStore {
      * Selects a conversation by its `thread_id` and reads it back from ACR (E6 design v5 §4.1,
      * §4.2): zero investigation calls. Selecting the thread already shown is a no-op. A malformed
      * id, or ACR's 404, gives the neutral read-only `unavailable` state.
+     *
+     * `userAct` (CHAOS-12474): the user opened this conversation, by a row of the list (`local`) or
+     * by the `/dev` URL, so the read may run the silent step. A restore from the hint is not one.
      */
-    selectThread(threadId: string, source: "incoming" | "local"): boolean {
+    selectThread(
+        threadId: string,
+        source: "incoming" | "local",
+        userAct: boolean = source === "local",
+    ): boolean {
         if (!this.snapshot.ready) return false;
         const { thread } = this.snapshot;
         if (
@@ -1004,7 +1039,7 @@ export class ConversationStore {
             threadId,
             thread: { kind: "restoring" },
         });
-        void this.readThread(threadId);
+        void this.readThread(threadId, userAct);
         return true;
     }
 
@@ -1014,7 +1049,7 @@ export class ConversationStore {
         if (thread.kind !== "read_failed" || threadId === null || !this.snapshot.ready) {
             return false;
         }
-        this.reread(threadId);
+        this.reread(threadId, true);
         return true;
     }
 
@@ -1320,7 +1355,7 @@ export class ConversationStore {
     }
 
     /** The same thread read again from its latest page, under a new selection. */
-    private reread(threadId: string): void {
+    private reread(threadId: string, userAct = false): void {
         const source = this.snapshot.selectionSource;
         this.resetSelection("selection_changed");
         this.commit({
@@ -1329,7 +1364,7 @@ export class ConversationStore {
             threadId,
             thread: { kind: "restoring" },
         });
-        void this.readThread(threadId);
+        void this.readThread(threadId, userAct);
     }
 
     /** True when transcript work of `selection` may still commit; else logs the dropped answer. */
@@ -1358,13 +1393,13 @@ export class ConversationStore {
         this.hints.write(JSON.stringify(hint));
     }
 
-    private async readThread(threadId: string): Promise<void> {
+    private async readThread(threadId: string, userAct: boolean): Promise<void> {
         const selection = this.snapshot.selection;
         const signal = this.selectionAbort.signal;
         const startedAt = this.now();
         let view: ThreadView | null;
         try {
-            view = await this.transport.readThread({ threadId, signal });
+            view = await this.transport.readThread({ threadId, signal, userAct });
         } catch (error) {
             if (!this.ownsSelection(selection, "thread_read")) return;
             logger.info(
@@ -1377,9 +1412,12 @@ export class ConversationStore {
                 this.commit({ ...this.snapshot, threadId: null, thread: { kind: "unavailable" } });
                 return;
             }
+            // Impersonating, or no entitlement: another read cannot help, so nothing offers one.
+            const access = authorizationFailureOf(error);
+            const closed = access === "impersonating" || access === "not_entitled";
             this.commit({
                 ...this.snapshot,
-                thread: needsConnect(error) ? { kind: "connect" } : { kind: "read_failed" },
+                thread: closed ? { kind: "unavailable" } : { kind: "read_failed" },
             });
             return;
         }
@@ -1812,10 +1850,7 @@ export class ConversationStore {
             }
             this.commitHistory(
                 cursor === undefined
-                    ? {
-                          status: needsConnect(error) ? "connect" : "read_failed",
-                          loadingMore: false,
-                      }
+                    ? { status: "read_failed", loadingMore: false }
                     : { loadingMore: false, moreFailed: true },
             );
             return;
@@ -2445,7 +2480,15 @@ export class ConversationStore {
                 this.settle(run, { kind: "failed", retry: false, reference: this.reference(run) });
                 return;
             case "authorization_required":
-                this.settle(run, connectOutcome);
+            case "authorization_failed":
+            case "authorization_limited":
+            case "not_entitled":
+            case "impersonating":
+            case "session_ended":
+                this.settle(
+                    run,
+                    authorizationOutcome(AUTHORIZATION_FAILURE_OF[reason] as AuthorizationFailure),
+                );
                 return;
         }
     }
@@ -2492,8 +2535,9 @@ export class ConversationStore {
             } catch (error) {
                 if (!this.owns(run)) return;
                 // No token, or ACR's 401: polling again cannot help (CHAOS-12104).
-                if (needsConnect(error)) {
-                    this.settle(run, connectOutcome);
+                const access = authorizationFailureOf(error);
+                if (access !== undefined) {
+                    this.settle(run, authorizationOutcome(access));
                     return;
                 }
                 // No repository in scope: polling again cannot help (CHAOS-12439).
@@ -2560,8 +2604,9 @@ export class ConversationStore {
             result = await this.transport.readResult(resultId, run.controller.signal);
         } catch (error) {
             if (!this.owns(run)) return;
-            if (needsConnect(error)) {
-                this.settle(run, connectOutcome);
+            const access = authorizationFailureOf(error);
+            if (access !== undefined) {
+                this.settle(run, authorizationOutcome(access));
                 return;
             }
             logger.warn(

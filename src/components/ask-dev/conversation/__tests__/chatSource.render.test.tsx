@@ -8,7 +8,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
-import { AskDevChat, CHAT_PROGRESS_COPY, type BatchItem } from "@full-chaos/ask-dev/render";
+import {
+    AskDevChat,
+    CHAT_PROGRESS_COPY,
+    NOT_RUN_COPY,
+    type BatchItem,
+} from "@full-chaos/ask-dev/render";
 
 import { createChatSource, type HostChatSource } from "../chatSource";
 import { ConversationStore } from "../conversationStore";
@@ -268,18 +273,29 @@ describe("a restored conversation", () => {
     });
 });
 
-describe("no token, a closed door", () => {
-    it("a connect turn shows web's link and no Retry", async () => {
+describe("no token: no door to close (CHAOS-12474)", () => {
+    it("a failed silent step offers Retry, with no link", async () => {
         const { source } = makeSource();
-        transport.scripts.push([{ fail: new TransportFailure("authorization_required") }]);
+        transport.scripts.push([{ fail: new TransportFailure("authorization_failed") }]);
         render(<AskDevChat source={source} />);
         await ask();
         const status = await screen.findByTestId("chat-status");
-        expect(status).toHaveAttribute("data-status", "connect");
-        expect(within(status).getByRole("link", { name: "Connect Ask Dev" })).toHaveAttribute(
-            "data-testid",
-            "ask-dev-connect",
-        );
+        expect(status).toHaveAttribute("data-status", "failed");
+        expect(within(status).queryByRole("link")).toBeNull();
+        expect(within(status).getByRole("button", { name: "Retry" })).toBeVisible();
+    });
+
+    it.each([
+        ["impersonating", "access_denied"],
+        ["session_ended", "access_denied"],
+        ["not_entitled", "not_entitled"],
+    ] as const)("%s offers no Retry: trying again cannot help", async (reason, shown) => {
+        const { source } = makeSource();
+        transport.scripts.push([{ fail: new TransportFailure(reason) }]);
+        render(<AskDevChat source={source} />);
+        await ask();
+        const status = await screen.findByTestId("chat-status");
+        expect(status).toHaveTextContent(NOT_RUN_COPY[shown]);
         expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
     });
 });

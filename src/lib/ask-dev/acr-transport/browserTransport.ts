@@ -1,5 +1,5 @@
 import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
-import { type AcrAccessToken } from "@/lib/ask-dev/acr-auth";
+import { type AcrAccessToken, type AcrSilentOutcome } from "@/lib/ask-dev/acr-auth";
 import type { AcrBrowserClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import {
     ACR_MIN_WAIT_BUDGET_SECONDS,
@@ -21,6 +21,7 @@ import {
     type FeedbackView,
     type InvestigateCall,
     type InvestigationEvent,
+    type TransportFailureReason,
 } from "@/components/ask-dev/conversation/transport";
 
 import { InvestigationEventGate } from "./eventGate";
@@ -42,14 +43,20 @@ import { SseEventTooLargeError, SseMalformedError, SseParser } from "./sseParser
  *   `Last-Event-ID` (a safe integer) when the store has a cursor. It is read as the create stream
  *   is; after a cursor the gate resumes mid-run (`GateResume` in `eventGate.ts`).
  * - **Token:** read right before each call, from the token store's memory only
- *   (`getAcrAccessToken`). The `sessionStorage` family is never read here. No token is
- *   `TransportFailure("authorization_required")`: the panel's "Connect Ask Dev" state.
- * - **401 (CHAOS-12305):** ACR refused the token. The transport tells the store
+ *   (`getAcrAccessToken`). The `sessionStorage` family is never read here.
+ * - **The silent step (CHAOS-12474):** with no token, a user act runs `authorize` once, here and
+ *   nowhere else. The acts are `investigate`, `listThreads` (a History read, which the render asks
+ *   for only while the list is on screen), `readEvidence`, and `readThread` when the store says
+ *   the user opened it. Any other call is background: no token is
+ *   `TransportFailure("authorization_required")`, and nothing goes out. So a panel open sends 0
+ *   requests (P1-6).
+ * - **401 (CHAOS-12305):** ACR refused the token, on any call. The transport tells the store
  *   (`reportAcrTokenRejected`), which drops it if it is still held, and reads the token once
- *   more; the store then refreshes. A different token sends the call once more (the same
- *   `X-ACR-Submission-ID`, so a retried `investigate` is idempotent). The same token, no token, or
- *   a second 401 is "authorization required". There is no loop: at most 2 requests per call. All
- *   11 calls keep the rule: the JSON calls in `callUrl`, the two streams in `readStream`
+ *   more; the store then refreshes. With no other token, it makes one silent attempt. A different
+ *   token sends the call once more (the same `X-ACR-Submission-ID`, so a retried `investigate` is
+ *   idempotent). A failed attempt is its own failure; the same token, or a second 401, is
+ *   "authorization required". There is no loop: at most 2 requests and 1 attempt per call. All 11
+ *   calls keep the rule: the JSON calls in `callUrl`, the two streams in `readStream`
  *   (CHAOS-12336).
  * - **Deadline:** the store's absolute deadline D. The budget header is floor(D − now − 5 s) when
  *   the call is sent; below ACR's minimum the call is not sent (`budget_exhausted`). The response
@@ -90,9 +97,26 @@ export type BrowserTransportDependencies = {
     readonly token: () => AcrAccessToken | Promise<AcrAccessToken>;
     /** ACR answered 401 for `token`: the store drops it if it is still held (CHAOS-12305). */
     readonly rejected: (token: string) => void;
+    /** The silent step (`authorizeAcrSilently`): only at a user act or after a 401. */
+    readonly authorize: () => Promise<AcrSilentOutcome>;
     readonly envelope: StreamEnvelopeValidators;
     /** Starts (or joins) the load of the full checks. */
     readonly validators: () => Promise<StreamValidators>;
+};
+
+/** Whether a call may run the silent step when it has no token (CHAOS-12474). */
+type Moment = "user_act" | "background";
+
+/** What a silent step that gave no token means to the store. */
+const SILENT_FAILURE: Readonly<
+    Record<Exclude<AcrSilentOutcome["kind"], "token">, TransportFailureReason>
+> = {
+    off: "authorization_required",
+    session_ended: "session_ended",
+    impersonating: "impersonating",
+    not_entitled: "not_entitled",
+    rate_limited: "authorization_limited",
+    failed: "authorization_failed",
 };
 
 const API = "/api/v1/context-fabric";
@@ -210,16 +234,29 @@ export function createAcrBrowserTransport(
         return loading;
     }
 
-    /** The in-memory token, read right before a call; none is "authorization required". */
-    async function bearer(): Promise<string> {
-        const held = await dependencies.token();
-        if (held.kind !== "token") throw new TransportFailure("authorization_required");
-        return held.token;
+    /** The silent step's token, or the failure that names why there is none. */
+    function tokenOf(outcome: AcrSilentOutcome): string {
+        if (outcome.kind === "token") return outcome.token;
+        throw new TransportFailure(SILENT_FAILURE[outcome.kind]);
     }
 
     /**
-     * ACR answered 401 for `token` (CHAOS-12305). Tells the store, then reads the token once more:
-     * a different token is the one retry; anything else is null ("authorization required").
+     * The in-memory token, read right before a call. With none, a user act runs the silent step
+     * once; a background call has "authorization required", and sends nothing.
+     */
+    async function bearer(moment: Moment): Promise<string> {
+        const held = await dependencies.token();
+        if (held.kind === "token") return held.token;
+        if (held.kind === "off" || moment === "background") {
+            throw new TransportFailure("authorization_required");
+        }
+        return tokenOf(await dependencies.authorize());
+    }
+
+    /**
+     * ACR answered 401 for `token` (CHAOS-12305). Tells the store, then reads the token once more.
+     * With no other token, one silent attempt (CHAOS-12474). A different token is the one retry.
+     * The same token is null ("authorization required"); a failed attempt throws its own failure.
      */
     async function another(token: string, operation: string): Promise<string | null> {
         dependencies.rejected(token);
@@ -232,7 +269,8 @@ export function createAcrBrowserTransport(
         }
         const read = next.kind === "token" ? "same" : "none";
         logger.warn({ operation, reread: read }, "ask-dev acr call 401");
-        return null;
+        const silent = tokenOf(await dependencies.authorize());
+        return silent === token ? null : silent;
     }
 
     const headers = (token: string, extra: Record<string, string>): Record<string, string> => ({
@@ -281,7 +319,8 @@ export function createAcrBrowserTransport(
         signal: AbortSignal,
         method: "GET" | "POST" | "DELETE" = "GET",
         json?: unknown,
-    ) => callUrl(`${base}${path}`, operation, signal, method, json);
+        moment: Moment = "background",
+    ) => callUrl(`${base}${path}`, operation, signal, method, json, moment);
 
     /**
      * One JSON call with the 15 s header bound: a GET by default, or `method` with an optional JSON
@@ -294,9 +333,10 @@ export function createAcrBrowserTransport(
         signal: AbortSignal,
         method: "GET" | "POST" | "DELETE" = "GET",
         json?: unknown,
+        moment: Moment = "background",
     ): Promise<{ readonly response: Response; readonly body: unknown }> {
         if (signal.aborted) throw signal.reason;
-        const token = await bearer();
+        const token = await bearer(moment);
         let response = await sendJson(url, operation, signal, token, method, json);
         if (response.status === 401) {
             void response.body?.cancel().catch(() => undefined);
@@ -366,7 +406,8 @@ export function createAcrBrowserTransport(
         if (budgetNow() < ACR_MIN_WAIT_BUDGET_SECONDS) {
             throw new TransportFailure("budget_exhausted");
         }
-        const token = await bearer();
+        // A question is the first of the user's acts (CHAOS-12474).
+        const token = await bearer("user_act");
         // Option (c): the full checks start loading now, in parallel with the call; only the
         // `result` terminal waits for them.
         const full = startFullChecks();
@@ -424,7 +465,7 @@ export function createAcrBrowserTransport(
             );
         }
         if (call.signal.aborted) throw call.signal.reason;
-        const token = await bearer();
+        const token = await bearer("background");
         // Option (c): the full checks load in parallel; only a `result` waits for them.
         const full = startFullChecks();
         yield* readStream({
@@ -680,15 +721,30 @@ export function createAcrBrowserTransport(
         },
         async listThreads({ cursor, limit, signal }) {
             const path = `/threads${query({ limit: String(limit), cursor })}`;
-            const { response, body } = await callJson(path, "threads_list", signal);
+            // A History read: the render asks for it only while the list is on screen.
+            const { response, body } = await callJson(
+                path,
+                "threads_list",
+                signal,
+                "GET",
+                undefined,
+                "user_act",
+            );
             if (!response.ok) return refuse(response, "threads_list", signal);
             const view = parseThreadList(body);
             if (view === null) throw new TransportFailure("invalid_upstream");
             return view;
         },
-        async readThread({ threadId, before, signal }) {
+        async readThread({ threadId, before, signal, userAct }) {
             const path = `/threads/${encodeURIComponent(threadId)}${query({ before })}`;
-            const { response, body } = await callJson(path, "thread_read", signal);
+            const { response, body } = await callJson(
+                path,
+                "thread_read",
+                signal,
+                "GET",
+                undefined,
+                userAct === true ? "user_act" : "background",
+            );
             // ACR's 404 is one answer for every cause (another principal's, unknown, deleted,
             // expired or malformed).
             if (response.status === 404) return null;
@@ -726,7 +782,15 @@ export function createAcrBrowserTransport(
         async readEvidence({ refId, resultId, signal }) {
             const ref = encodeURIComponent(refId);
             const url = `${config.issuer}${EVIDENCE_API}/${ref}${query({ result_id: resultId })}`;
-            const { response, body } = await callUrl(url, "evidence_read", signal);
+            // Mounted by the open, so a read is one click, and "Try again" one more.
+            const { response, body } = await callUrl(
+                url,
+                "evidence_read",
+                signal,
+                "GET",
+                undefined,
+                "user_act",
+            );
             // Gone, or another principal's: the same answer.
             if (response.status === 404) return null;
             if (!response.ok) return refuse(response, "evidence_read", signal);

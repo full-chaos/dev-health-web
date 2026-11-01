@@ -2,7 +2,7 @@
 
 Ask Dev is the product surface over Context Fabric (ACR). ACR resolves, authorizes and answers. There is one render, in the ask-dev repo: web mounts `AskDevChat` from `@full-chaos/ask-dev/render` on the panel, the mobile sheet and `/dev` (`src/components/ask-dev/AskDevRender.tsx`, CHAOS-12378). Web draws only its frame around it.
 
-Web keeps what only a host has, behind ask-dev's `ChatSource` seam (`src/components/ask-dev/conversation/chatSource.tsx`): the conversation store and the ACR transport, consent and Connect, the partition and clear rules, the 401 rule, impersonation hiding and page context. A part the render lacks is built once, in ask-dev, never in web.
+Web keeps what only a host has, behind ask-dev's `ChatSource` seam (`src/components/ask-dev/conversation/chatSource.tsx`): the conversation store and the ACR transport, the silent authorization, the partition and clear rules, the 401 rule, impersonation hiding and page context. A part the render lacks is built once, in ask-dev, never in web.
 
 ## Where Ask Dev is entered
 
@@ -53,19 +53,64 @@ An answer has "Correct?" and "Useful?" controls (CHAOS-11958). A clarification o
 
 ## The browser's ACR transport
 
-The browser calls ACR directly; there is no web route (CHAOS-12104). The design, the stream grammar, the caps, the deadline rules and the token rules are in [`architecture/ask-dev-thread-seam.md`](architecture/ask-dev-thread-seam.md) ("Seam calls").
+The browser calls ACR directly; no web route carries its data (CHAOS-12104). The design, the stream grammar, the caps, the deadline rules and the token rules are in [`architecture/ask-dev-thread-seam.md`](architecture/ask-dev-thread-seam.md) ("Seam calls").
 
 - **Dark until the T13 roll.** With `ACR_OAUTH_ISSUER` unset, there is no transport: no composer, no request.
-- **Connect Ask Dev.** With no ACR access in this tab, or after ACR's 401, a turn says so and links to the ACR authorization. Nothing is retried; the user asks again after connecting. The history list and a conversation opened by its link show the same Connect state (CHAOS-12336); feedback and Stop keep their own states under a turn that already shows it.
-- **Nothing on panel open.** The token is read only when the user sends something or the history list comes on screen. At the panel's width the rail is hidden, so that means the History toggle.
+- **No connect step.** A user signed in to web never sees one: they ask, and the answer comes. "Authorizing silently" below says how.
+- **Nothing on panel open.** A panel open sends 0 requests (P1-6). At the panel's width the rail is hidden, so a History read waits for the History toggle.
+
+### Authorizing silently (CHAOS-12474)
+
+This amends the direct browser design (Linear "Ask Dev: browser calls ACR directly with an ACR OAuth credential" §2.1, §2.2, §7). The redirect to ACR's `/authorize` is gone, with the `/ask-dev/oauth/start` and `/ask-dev/oauth/callback` pages. `/authorize` now runs from web's server, by a same-origin `POST /api/ask-dev/authorize`.
+
+The browser stays the OAuth public client. It holds the PKCE verifier and runs the `/token` exchange. So this is not a data proxy, and the ruling against a server hop in front of ACR (CHAOS-3743) still holds: data calls go from the browser to ACR, with no web route between them.
+
+1. The browser makes the verifier and the state, in the memory of one call, and reads ACR's metadata. It needs that for the token endpoint, and for the revocation endpoint the family keeps for sign-out.
+2. It POSTs `{code_challenge, state}`. The shape is strict. The route takes the client, the redirect, the resource and the scope from its own config.
+3. The route checks `Origin` and the session, reads Ops for impersonation, and refuses an impersonating session before any ACR call. It answers `no-store`, and logs one line: an enum and a status.
+4. The route calls ACR's existing `GET /authorize` with the same parameters the browser sent before, on `ACR_API_ORIGIN`, like every server call. There is no cookie, and `redirect: "manual"`. A 302 to `{web origin}/acr/authorize?handle=<43 characters>`, with nothing else in it, is a success. Anything else is a named failure, and a 303 refusal is never followed.
+5. `openOAuthConsent` approves the first-party client with no click. A client that reaches review is a loud failure. The route checks that the redirect URL is web's own callback, and answers `{code, state, iss}`. It never returns or logs the URL.
+6. The browser checks `state`, the tab, the expiry and `iss` against the configured issuer, exchanges the code at `/token` with a form POST, and stores the tokens by the same rules as before.
+
+The redirect URI stays registered, and the metadata document is unchanged: ACR requires both. ACR puts the code on that URL and web's server reads it there, so no browser lands on it and no page serves it. The proxy keeps the path public and `no-referrer`, so a stale URL with a code in it gets a 404 and never a sign-in redirect that copies the code.
+
+`ACR_OAUTH_CONSENT_URL` must be `AUTH_URL`'s exact origin plus `/acr/authorize`, or every attempt is `bad_location`. `ACR_API_ORIGIN` may differ from the public issuer, and either may be http on a loopback host, where the config allows it.
+
+**When it runs.** Only at a user act, or after a 401. `getAcrAccessToken()` never starts it; the transport does.
+
+| Moment                                                                         | Runs the silent step                                          |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| A question, and its Retry                                                      | Yes                                                           |
+| History on screen (the toggle, the rail on `/dev`)                             | Yes. The render asks for the list only while it is on screen. |
+| A conversation opened by a row or by the `/dev` URL                            | Yes                                                           |
+| Evidence opened, and Try again on it or on a thread                            | Yes                                                           |
+| A 401 on any call                                                              | Yes, once. One resend, then a failure: never a loop.          |
+| A panel open                                                                   | No: it sends 0 requests                                       |
+| A restore from the tab's hint, a status poll, a replay, feedback, Stop, delete | No. With no token, these send nothing.                        |
+
+**One at a time.** One attempt runs per tab, and every caller that comes while it runs shares it, a failure too. Each tab holds its own family.
+
+**When it fails.**
+
+| What happened                    | What the user sees                                                                                  |
+| -------------------------------- | --------------------------------------------------------------------------------------------------- |
+| ACR, web or the network failed   | "The question could not be sent. Try again." with Retry. History and evidence keep their Try again. |
+| ACR's limit (429)                | "Too many questions in a short time." with Retry. Nothing retries or waits by itself.               |
+| The web session has ended        | The normal sign-in, then back to this page                                                          |
+| Impersonating, or a race into it | Ask Dev says it is not available. No code and no token.                                             |
+| No Agent Context Runtime         | "Ask Dev is not available for this organization."                                                   |
+
+History before a token is never `ready`, so it never reads "No conversations yet.": it reads "Loading conversations…" while the silent step runs, then the list, or "History could not be read." with Try again. Each Try again is one click and one attempt.
+
+ACR limits `/authorize` per source, and all users now share web's address. That stays as it is for now (the lead's ruling on CHAOS-12474).
 
 ## Evidence
 
 Each reference under an answer is a button, with ACR's served label. It opens the app's one evidence drawer, and web reads that reference with its own ACR access, scoped to the answer that cited it (CHAOS-12105). Two answers that cite one reference each open their own citation. Ask-dev's render draws the body; it holds no token and reads nothing.
 
 - **One right drawer at a time.** The drawer takes the right edge from the panel. The conversation stays in the store, and closing the drawer brings the panel back. If another drawer takes the edge, the panel stays closed.
-- **Each state has its own words:** the evidence, out of date, partly withheld, not available (the same words for a reference that is gone and one the viewer may not see, with no id), no access, no repository in scope, could not be read, and Connect Ask Dev.
-- **Try again** shows only when ACR says another read can help, and it reads the same reference for the same answer.
+- **Each state has its own words:** the evidence, out of date, partly withheld, not available (the same words for a reference that is gone and one the viewer may not see, with no id), no access, no repository in scope, and could not be read.
+- **Try again** shows only when ACR says another read can help, or when the silent step failed. It reads the same reference for the same answer.
 - **An org switch** closes the drawer, so one org's evidence never stays on screen in another.
 
 ## Answer completeness

@@ -5,7 +5,7 @@ vi.mock("@/lib/logger", () => ({ logger: log }));
 
 import * as streamEnvelopeValidators from "@/lib/acr/streamEnvelopeValidators";
 import * as streamValidators from "@/lib/acr/streamValidators";
-import type { AcrAccessToken } from "@/lib/ask-dev/acr-auth";
+import type { AcrAccessToken, AcrSilentOutcome } from "@/lib/ask-dev/acr-auth";
 import type { AcrBrowserClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import {
     TransportFailure,
@@ -58,6 +58,8 @@ let token: AcrAccessToken;
 let fetchMock: ReturnType<typeof vi.fn>;
 /** What the transport told the token store ACR refused (CHAOS-12305). */
 let rejected: ReturnType<typeof vi.fn<(token: string) => void>>;
+/** What the silent step answers; off, so a test here sees "authorization required" (CHAOS-12474). */
+const authorizeAnswer = (): AcrSilentOutcome => ({ kind: "off" });
 
 /** A controllable SSE body: push bytes, close, or leave it open. */
 function sseBody() {
@@ -94,6 +96,7 @@ function transport(): AskDevTransport {
         now: () => now,
         token: () => token,
         rejected: (refused: string) => rejected(refused),
+        authorize: async () => authorizeAnswer(),
         envelope: streamEnvelopeValidators,
         validators: async () => streamValidators,
     });
@@ -184,6 +187,7 @@ describe("investigate: the request", () => {
             now: () => now,
             token: read,
             rejected: (refused: string) => rejected(refused),
+            authorize: async () => authorizeAnswer(),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });
@@ -213,6 +217,7 @@ describe("investigate: the request", () => {
             now: () => now,
             token: async () => ({ kind: "token", token: TOKEN, issuer: ISSUER }),
             rejected: (refused: string) => rejected(refused),
+            authorize: async () => authorizeAnswer(),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });
@@ -344,6 +349,7 @@ describe("investigate: the full checks load in parallel (option (c))", () => {
             now: () => now,
             token: () => token,
             rejected: (refused: string) => rejected(refused),
+            authorize: async () => authorizeAnswer(),
             envelope: streamEnvelopeValidators,
             validators,
         });
@@ -568,6 +574,7 @@ function withStore(...reads: Array<AcrAccessToken | (() => AcrAccessToken)>) {
         now: () => now,
         token: read,
         rejected: (refused: string) => rejected(refused),
+        authorize: async () => authorizeAnswer(),
         envelope: streamEnvelopeValidators,
         validators: async () => streamValidators,
     });
@@ -726,6 +733,7 @@ describe("submissionStatus and readResult", () => {
             now: () => now,
             token: tokenRead,
             rejected: (refused: string) => rejected(refused),
+            authorize: async () => authorizeAnswer(),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });
@@ -746,6 +754,7 @@ describe("submissionStatus and readResult", () => {
                     return { kind: "token", token: TOKEN, issuer: ISSUER };
                 },
                 rejected: (refused: string) => rejected(refused),
+                authorize: async () => authorizeAnswer(),
                 envelope: streamEnvelopeValidators,
                 validators: async () => streamValidators,
             });

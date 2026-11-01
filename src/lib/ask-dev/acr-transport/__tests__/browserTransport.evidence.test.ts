@@ -72,6 +72,7 @@ function harness(answers: Response[], tokens: AcrAccessToken[] = []) {
             return tokens[reads - 1] ?? access(TOKEN);
         },
         rejected: (token) => rejected.push(token),
+        authorize: async () => ({ kind: "off" }),
         envelope: streamEnvelopeValidators,
         validators: async () => streamValidators,
     });

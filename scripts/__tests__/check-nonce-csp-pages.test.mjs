@@ -95,11 +95,11 @@ describe("inlineScripts", () => {
 describe("checkNonceCspPages with the known list (CHAOS-12344)", () => {
     it("passes a listed page, and still fails an unlisted one", () => {
         const result = checkNonceCspPages({
-            dist: build({ "/marketing/about": STATIC_HTML, "/ask-dev/oauth/start": STATIC_HTML }),
+            dist: build({ "/marketing/about": STATIC_HTML, "/acr/device": STATIC_HTML }),
             known: new Map([["/marketing/about", "CHAOS-12344"]]),
         });
         expect(result.failures).toEqual([
-            "/ask-dev/oauth/start: prerendered with 2 inline scripts, which cannot carry the per-request nonce",
+            "/acr/device: prerendered with 2 inline scripts, which cannot carry the per-request nonce",
         ]);
     });
 
@@ -144,11 +144,11 @@ describe("checkNonceCspPages with the known list (CHAOS-12344)", () => {
 describe("checkNonceCspPages", () => {
     it("fails a prerendered page whose inline scripts carry no nonce, by route", () => {
         const result = checkNonceCspPages({
-            dist: build({ "/ask-dev/oauth/start": STATIC_HTML }),
+            dist: build({ "/acr/device": STATIC_HTML }),
             known: new Map(),
         });
         expect(result.failures).toEqual([
-            "/ask-dev/oauth/start: prerendered with 2 inline scripts, which cannot carry the per-request nonce",
+            "/acr/device: prerendered with 2 inline scripts, which cannot carry the per-request nonce",
         ]);
     });
 

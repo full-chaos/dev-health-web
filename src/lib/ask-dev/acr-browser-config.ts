@@ -19,8 +19,15 @@
 /** Where web serves its client ID metadata document. */
 export const ACR_CLIENT_METADATA_PATH = "/oauth/acr-client.json";
 
-/** The exact redirect URI path ACR sends the authorization code back to. */
+/**
+ * The exact redirect URI path of the client. ACR puts the code on this URL, and web's server reads
+ * it from ACR's consent answer (CHAOS-12474): no browser lands here and no page serves it, but ACR
+ * holds it as the client's registered redirect, so it stays.
+ */
 export const ACR_OAUTH_CALLBACK_PATH = "/ask-dev/oauth/callback";
+
+/** The scopes the Ask Dev routes need: context:read; evidence:read for evidence. Never data:read. */
+export const ACR_BROWSER_SCOPE = "context:read evidence:read";
 
 /** ACR's development-only static browser client (acr `internal/auth/oauth.go`), never fetched. */
 export const ACR_DEV_BROWSER_CLIENT_ID = "https://localhost/acr/dev-browser-client";
@@ -35,7 +42,7 @@ export const ACR_WEB_ORIGIN_PUBLIC_KEY = "NEXT_PUBLIC_ACR_WEB_ORIGIN";
 export type AcrBrowserClientConfig = {
     /** ACR's OAuth issuer, an exact origin: also the only resource the browser class may bind. */
     readonly issuer: string;
-    /** This web app's origin, where the redirect comes back to. */
+    /** This web app's origin: the redirect URI's origin. */
     readonly webOrigin: string;
     /** The OAuth `client_id`. */
     readonly clientId: string;

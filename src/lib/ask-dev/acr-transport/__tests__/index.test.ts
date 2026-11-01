@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { AcrSilentOutcome } from "@/lib/ask-dev/acr-auth";
+
 /** Counts the loads of the full checks (the lazy ~205 KB chunk). */
 const loads = vi.hoisted(() => ({ count: 0 }));
 vi.mock("@/lib/acr/streamValidators", async (importOriginal) => {
@@ -11,6 +13,7 @@ vi.mock("@/lib/acr/streamValidators", async (importOriginal) => {
 const store = vi.hoisted(() => ({
     getAcrAccessToken: vi.fn(async () => ({ kind: "authorization_required" as const })),
     reportAcrTokenRejected: vi.fn(),
+    authorizeAcrSilently: vi.fn(async (): Promise<AcrSilentOutcome> => ({ kind: "off" })),
 }));
 vi.mock("@/lib/ask-dev/acr-auth", () => store);
 vi.mock("../browserTransport", async (importOriginal) => {
@@ -80,6 +83,43 @@ describe("acrBrowserTransport", () => {
         expect(store.getAcrAccessToken).toHaveBeenCalledTimes(1);
         dependencies.rejected("fcacr_refused");
         expect(store.reportAcrTokenRejected).toHaveBeenCalledExactlyOnceWith("fcacr_refused");
+    });
+
+    /** A page at `/dev?thread=t1`, and what its transport's `authorize` does for `outcome`. */
+    async function silentStep(outcome: AcrSilentOutcome) {
+        const assign = vi.fn();
+        vi.stubGlobal("window", {
+            __DEV_HEALTH_RUNTIME__: { publicEnv: SET },
+            location: {
+                origin: SET.NEXT_PUBLIC_ACR_WEB_ORIGIN,
+                pathname: "/dev",
+                search: "?thread=t1",
+                assign,
+            },
+        });
+        expect(acrBrowserTransport()).not.toBeNull();
+        store.authorizeAcrSilently.mockResolvedValueOnce(outcome);
+        const dependencies = vi.mocked(createAcrBrowserTransport).mock.calls[0]![1];
+        await expect(dependencies.authorize()).resolves.toEqual(outcome);
+        return assign;
+    }
+
+    // CHAOS-12474: the one place the flow leaves the page, and only for a session that has ended.
+    it("goes to the normal sign-in, back to this page, when the web session has ended", async () => {
+        const assign = await silentStep({ kind: "session_ended" });
+        expect(assign).toHaveBeenCalledExactlyOnceWith(
+            `${SET.NEXT_PUBLIC_ACR_WEB_ORIGIN}/auth/signin?callbackUrl=${encodeURIComponent("/dev?thread=t1")}`,
+        );
+    });
+
+    it.each([
+        { kind: "failed", reason: "unavailable" },
+        { kind: "rate_limited" },
+        { kind: "impersonating" },
+        { kind: "not_entitled" },
+        { kind: "token", token: "fcacr_x", issuer: SET.NEXT_PUBLIC_ACR_OAUTH_ISSUER },
+    ] as const)("does not leave the page for %j", async (outcome) => {
+        expect(await silentStep(outcome)).not.toHaveBeenCalled();
     });
 
     // Option (c): the provider makes the transport when the page loads; that loads nothing heavy.

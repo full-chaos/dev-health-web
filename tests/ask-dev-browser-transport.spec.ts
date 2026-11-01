@@ -9,6 +9,7 @@ import {
     type Page,
 } from "@playwright/test";
 
+import { serveAskDevAuthorize } from "./mocks/acr-browser-client";
 import { AcrOAuthMock } from "./mocks/acr-oauth";
 import { investigationStreamFor } from "./mocks/acr-investigation-stream";
 
@@ -202,17 +203,27 @@ async function setUp(page: Page): Promise<Harness> {
     };
     await clientOn(page.context(), origin);
     await acrOn(page.context(), harness);
+    await serveAskDevAuthorize(page.context(), harness.acr, origin, origin);
     return harness;
 }
 
-/** The OAuth flow, then every thread read refused: a viewer connected with no repository in scope. */
-async function connectedWithNoRepository(page: Page): Promise<Harness> {
+/** Every thread read refused: a signed-in viewer with no repository in scope. */
+async function withNoRepository(page: Page): Promise<Harness> {
     const harness = await setUp(page);
     harness.threadsRefused = true;
-    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-    await page.waitForURL((url) => url.pathname === "/dashboard");
-    await expect.poll(() => harness.tokens.length).toBe(1);
+    await page.goto("/dashboard");
     return harness;
+}
+
+/** Web's route refuses: the silent step fails, by name (CHAOS-12474). */
+async function authorizeFails(page: Page, harness: Harness) {
+    await page.context().route(`${harness.origin}/api/ask-dev/authorize`, (route) =>
+        route.fulfill({
+            status: 503,
+            headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+            body: JSON.stringify({ error: { code: "acr_unavailable" } }),
+        }),
+    );
 }
 
 const callsTo = (harness: Harness, path: string) =>
@@ -236,13 +247,11 @@ test.afterEach(async ({ request }) => {
 test.describe("desktop (1280px)", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
-    test("connected: the question goes to ACR from the browser, and the answer comes back", async ({
+    test("signed in: the first question authorizes, goes to ACR from the browser, and the answer comes back", async ({
         page,
     }, testInfo) => {
         const harness = await setUp(page);
-        await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-        await page.waitForURL((url) => url.pathname === "/dashboard");
-        await expect.poll(() => harness.tokens.length).toBe(1);
+        await page.goto("/dashboard");
 
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByTestId("ask-dev-panel");
@@ -251,9 +260,11 @@ test.describe("desktop (1280px)", () => {
         // here: `next dev` loads async chunks at page load; the production build loads it only
         // when the transport imports it. The unit tests pin the import's timing.)
         expect(harness.calls).toEqual([]);
+        expect(harness.acr.calls).toEqual([]);
 
         await ask(page, panel);
         await expect(panel.getByTestId("answer-panel")).toBeVisible();
+        expect(harness.tokens).toHaveLength(1);
         // The question and (T14b) the answer's feedback read: both from the browser, with the bearer
         // and no cookie. The history list stays off screen in the panel, so nothing reads it.
         await expect.poll(() => harness.calls.length).toBe(2);
@@ -294,68 +305,74 @@ test.describe("desktop (1280px)", () => {
         });
     });
 
-    test("not connected: Connect Ask Dev, and nothing is sent to ACR", async ({
+    test("the silent step fails: Retry, no link, and nothing is sent to ACR", async ({
         page,
     }, testInfo) => {
         const harness = await setUp(page);
+        await authorizeFails(page, harness);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByTestId("ask-dev-panel");
         await ask(page, panel);
-        const connect = panel.getByRole("link", { name: "Connect Ask Dev" });
-        await expect(connect).toBeVisible();
-        // The way back is this page, its query (the dashboard's filter) included.
-        await expect(connect).toHaveAttribute(
-            "href",
-            /^\/ask-dev\/oauth\/start\?return=%2Fdashboard(%3F|$)/u,
-        );
+        await expect(panel.getByTestId("chat-status")).toHaveAttribute("data-status", "failed");
+        await expect(panel.getByRole("button", { name: "Retry" })).toBeVisible();
+        await expect(panel.getByRole("link", { name: /connect/iu })).toHaveCount(0);
+        await expect(panel).not.toContainText(/\bconnect\b/iu);
         expect(harness.calls).toEqual([]);
-        expect(harness.acr.calls).toEqual([]);
         await page.screenshot({
-            path: testInfo.outputPath("browser-transport-connect-desktop.png"),
+            path: testInfo.outputPath("browser-transport-authorize-failed-desktop.png"),
             animations: "disabled",
         });
     });
 });
 
-// CHAOS-12336 (T14b, the lead's ruling 2 = A): with no ACR access token, the history list and a
-// conversation opened by its link show Connect Ask Dev, and nothing is sent to ACR.
+// CHAOS-12474: with no ACR access token, opening History or a conversation runs the silent step.
+// When it fails, each says the read failed, with Try again. Nothing says Connect.
 test.describe("desktop (1280px), T14b", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
-    test("not connected: History shows Connect Ask Dev", async ({ page }, testInfo) => {
+    test("History opens with no connect step", async ({ page }, testInfo) => {
         const harness = await setUp(page);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByTestId("ask-dev-panel");
         await panel.getByTestId("ask-dev-history-toggle").click();
-        const connect = panel.getByTestId("ask-dev-history-connect");
-        await expect(connect.getByRole("link", { name: "Connect Ask Dev" })).toHaveAttribute(
-            "href",
-            /^\/ask-dev\/oauth\/start\?return=%2Fdashboard(%3F|$)/u,
-        );
-        await expect(panel.getByTestId("ask-dev-history-retry")).toHaveCount(0);
-        expect(harness.calls).toEqual([]);
+        await expect.poll(() => harness.tokens.length).toBe(1);
+        await expect(panel.getByTestId("ask-dev-history-read-failed")).toHaveCount(0);
+        await expect(panel).not.toContainText(/\bconnect\b/iu);
         await page.screenshot({
-            path: testInfo.outputPath("browser-calls-history-connect-desktop.png"),
+            path: testInfo.outputPath("browser-calls-history-desktop.png"),
             animations: "disabled",
         });
     });
 
-    test("not connected: a conversation opened by its link shows Connect Ask Dev", async ({
+    test("the silent step fails: History says the read failed, and claims no empty list", async ({
+        page,
+    }) => {
+        const harness = await setUp(page);
+        await authorizeFails(page, harness);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByTestId("ask-dev-panel");
+        await panel.getByTestId("ask-dev-history-toggle").click();
+        await expect(panel.getByTestId("ask-dev-history-read-failed")).toBeVisible();
+        await expect(panel.getByTestId("ask-dev-history-retry")).toBeVisible();
+        await expect(panel.getByTestId("ask-dev-history-empty")).toHaveCount(0);
+        expect(harness.calls).toEqual([]);
+    });
+
+    test("the silent step fails: a conversation opened by its link offers Try again", async ({
         page,
     }, testInfo) => {
         const harness = await setUp(page);
+        await authorizeFails(page, harness);
         await page.goto(`/dev?thread=${THREAD}`);
-        const connect = page.getByTestId("ask-dev-conversation-connect");
-        await expect(connect.getByRole("link", { name: "Connect Ask Dev" })).toHaveAttribute(
-            "href",
-            `/ask-dev/oauth/start?return=${encodeURIComponent(`/dev?thread=${THREAD}`)}`,
-        );
-        await expect(page.getByTestId("ask-dev-conversation-retry")).toHaveCount(0);
+        await expect(page.getByTestId("ask-dev-conversation-read-failed")).toBeVisible();
+        await expect(page.getByTestId("ask-dev-conversation-retry")).toBeVisible();
+        await expect(page.locator("main")).not.toContainText(/\bconnect\b/iu);
         expect(harness.calls).toEqual([]);
         await page.screenshot({
-            path: testInfo.outputPath("browser-calls-conversation-connect-desktop.png"),
+            path: testInfo.outputPath("browser-calls-conversation-failed-desktop.png"),
             animations: "disabled",
         });
     });
@@ -364,40 +381,34 @@ test.describe("desktop (1280px), T14b", () => {
 test.describe("mobile (390px)", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test("not connected, in the sheet: History shows Connect Ask Dev, with no sideways scroll", async ({
+    test("the silent step fails, in the sheet: History offers Try again, with no sideways scroll", async ({
         page,
     }, testInfo) => {
         const harness = await setUp(page);
+        await authorizeFails(page, harness);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const sheet = page.getByTestId("ask-dev-sheet");
         await sheet.getByTestId("ask-dev-history-toggle").click();
-        await expect(
-            sheet
-                .getByTestId("ask-dev-history-connect")
-                .getByRole("link", { name: "Connect Ask Dev" }),
-        ).toBeVisible();
+        await expect(sheet.getByTestId("ask-dev-history-retry")).toBeVisible();
         expect(harness.calls).toEqual([]);
         await page.screenshot({
-            path: testInfo.outputPath("browser-calls-history-connect-mobile.png"),
+            path: testInfo.outputPath("browser-calls-history-failed-mobile.png"),
             animations: "disabled",
         });
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 
-    test("not connected: a conversation opened by its link shows Connect Ask Dev, with no sideways scroll", async ({
+    test("the silent step fails: a conversation opened by its link has no sideways scroll", async ({
         page,
     }, testInfo) => {
         const harness = await setUp(page);
+        await authorizeFails(page, harness);
         await page.goto(`/dev?thread=${THREAD}`);
-        await expect(
-            page
-                .getByTestId("ask-dev-conversation-connect")
-                .getByRole("link", { name: "Connect Ask Dev" }),
-        ).toBeVisible();
+        await expect(page.getByTestId("ask-dev-conversation-retry")).toBeVisible();
         expect(harness.calls).toEqual([]);
         await page.screenshot({
-            path: testInfo.outputPath("browser-calls-conversation-connect-mobile.png"),
+            path: testInfo.outputPath("browser-calls-conversation-failed-mobile.png"),
             animations: "disabled",
         });
         expect(
@@ -407,25 +418,26 @@ test.describe("mobile (390px)", () => {
         ).toBe(true);
     });
 
-    test("not connected, in the sheet: Connect Ask Dev, with no sideways scroll", async ({
+    test("the silent step fails, in the sheet: Retry, with no sideways scroll", async ({
         page,
     }, testInfo) => {
         const harness = await setUp(page);
+        await authorizeFails(page, harness);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const sheet = page.getByTestId("ask-dev-sheet");
         await ask(page, sheet);
-        await expect(sheet.getByRole("link", { name: "Connect Ask Dev" })).toBeVisible();
+        await expect(sheet.getByRole("button", { name: "Retry" })).toBeVisible();
         expect(harness.calls).toEqual([]);
         await page.screenshot({
-            path: testInfo.outputPath("browser-transport-connect-mobile.png"),
+            path: testInfo.outputPath("browser-transport-authorize-failed-mobile.png"),
             animations: "disabled",
         });
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 });
 
-// CHAOS-12439: a connected viewer whose grant holds no repository. ACR answers every thread read
+// CHAOS-12439: a signed-in viewer whose grant holds no repository. ACR answers every thread read
 // with 409 `no_repository`; reading again cannot help, so nothing offers it, and no code shows.
 for (const [name, viewport, surface] of [
     ["desktop", { width: 1280, height: 900 }, "ask-dev-panel"],
@@ -435,7 +447,7 @@ for (const [name, viewport, surface] of [
         test.use({ viewport });
 
         test("History says so, once, with no Try again", async ({ page }, testInfo) => {
-            const harness = await connectedWithNoRepository(page);
+            const harness = await withNoRepository(page);
             await page.getByRole("button", { name: "Open Ask Dev" }).click();
             const view = page.getByTestId(surface);
             await view.getByTestId("ask-dev-history-toggle").click();
@@ -443,7 +455,6 @@ for (const [name, viewport, surface] of [
             await expect(note).toBeVisible();
             await expect(note).not.toContainText("no_repository");
             await expect(view.getByTestId("ask-dev-history-retry")).toHaveCount(0);
-            await expect(view.getByTestId("ask-dev-history-connect")).toHaveCount(0);
             await expect(view.getByTestId("ask-dev-history-row")).toHaveCount(0);
             expect(callsTo(harness, "threads?")).toHaveLength(1);
             await page.screenshot({
@@ -456,7 +467,7 @@ for (const [name, viewport, surface] of [
         test("a conversation opened by its link is unavailable, with no Try again", async ({
             page,
         }, testInfo) => {
-            const harness = await connectedWithNoRepository(page);
+            const harness = await withNoRepository(page);
             await page.goto(`/dev?thread=${THREAD}`);
             const unavailable = page.getByTestId("ask-dev-conversation-unavailable");
             await expect(unavailable).toBeVisible();
@@ -501,9 +512,7 @@ for (const [name, viewport, surface] of [
 
         async function answered(page: Page) {
             const harness = await setUp(page);
-            await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-            await page.waitForURL((url) => url.pathname === "/dashboard");
-            await expect.poll(() => harness.tokens.length).toBe(1);
+            await page.goto("/dashboard");
             await page.getByRole("button", { name: "Open Ask Dev" }).click();
             const view = page.getByTestId(surface);
             await ask(page, view);

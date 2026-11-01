@@ -8,7 +8,7 @@ import type { AcrRuntimeConfig } from "./config";
 import capabilitiesContract from "./contracts/schemas/capabilities.v1.schema.json";
 import { validateAcrContract } from "./contracts";
 import { AcrRuntimeError, acrRuntimeErrorCodes, type AcrRuntimeErrorCode } from "./errors";
-import { fetchBoundedJson } from "./http";
+import { fetchBoundedJson, retryAfterSeconds } from "./http";
 import type { OpsAuthorization } from "./ops";
 
 // The tool list is the vendored capabilities schema's own enum (CHAOS-7141), so
@@ -148,6 +148,16 @@ export type OAuthConsentPreview = {
 };
 
 const oauthConsentDecisionResponseSchema = z.object({ redirect_url: z.string().min(1) }).strict();
+
+/** ACR's answer to `GET /authorize`: never read past its status and these two headers. */
+export type OAuthAuthorizeAnswer = {
+    readonly status: number;
+    readonly location: string | null;
+    readonly retryAfterSeconds?: number | undefined;
+};
+
+/** ACR's OAuth authorization endpoint. It takes no web assertion: a request names its client. */
+const OAUTH_AUTHORIZE_PATH = "/authorize";
 
 function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     const url = new URL(path, config.apiOrigin);
@@ -638,6 +648,58 @@ export class AcrRuntimeClient {
         }
         // Passed through unchanged — ACR is the only party allowed to build it.
         return { redirectUrl: parsed.data.redirect_url };
+    }
+
+    /**
+     * ACR's `GET /authorize`, server to server (CHAOS-12474), on this server's ACR origin like every
+     * call here, which need not be the public issuer. `redirect: "manual"`: a 302 is a handle for
+     * this server to read, and a 303 is a refusal to read. Neither is ever followed, and no cookie
+     * goes. A wire failure is an {@link AcrRuntimeError}.
+     */
+    async oauthAuthorize(input: {
+        readonly query: Readonly<Record<string, string>>;
+        readonly signal: AbortSignal;
+    }): Promise<OAuthAuthorizeAnswer> {
+        const url = clientUrl(this.config, OAUTH_AUTHORIZE_PATH);
+        for (const [name, value] of Object.entries(input.query)) {
+            url.searchParams.set(name, value);
+        }
+        const timeoutSignal = AbortSignal.timeout(this.config.timeoutMs);
+        let response: Response;
+        try {
+            response = await fetch(url, {
+                cache: "no-store",
+                credentials: "omit",
+                headers: {
+                    "Cache-Control": "no-store",
+                    "X-ACR-Client-Version": "0.1.0",
+                    "X-Request-ID": randomUUID(),
+                },
+                method: "GET",
+                redirect: "manual",
+                signal: AbortSignal.any([input.signal, timeoutSignal]),
+            });
+        } catch (error) {
+            if (timeoutSignal.aborted) {
+                throw new AcrRuntimeError(
+                    acrRuntimeErrorCodes.timeout,
+                    "Agent Context Runtime did not respond in time.",
+                    { cause: error, retryable: true, status: 504 },
+                );
+            }
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.unavailable,
+                "Agent Context Runtime is temporarily unavailable.",
+                { cause: error, retryable: true },
+            );
+        }
+        // Only the status and these headers count: ACR's HTML problem page is for a browser.
+        await response.body?.cancel().catch(() => undefined);
+        return {
+            location: response.headers.get("location"),
+            retryAfterSeconds: retryAfterSeconds(response),
+            status: response.status,
+        };
     }
 
     private async request(input: AcrRequest): Promise<unknown> {
