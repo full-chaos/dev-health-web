@@ -88,7 +88,7 @@ import { COMPOSER_COPY } from "../conversation/AskDevComposer";
 import { HISTORY_COPY, historyRowLabel, historyRowMeta } from "../conversation/AskDevHistory";
 import { THREAD_HINT_KEY } from "../conversation/conversationStore";
 import { partitionTag } from "../conversation/keys";
-import type { AskDevTransport } from "../conversation/transport";
+import { TransportFailure, type AskDevTransport } from "../conversation/transport";
 import {
     accepted,
     captureResult,
@@ -235,6 +235,22 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         });
     });
 
+    it("a conversation read with no ACR token shows Connect Ask Dev, read-only, with no Try again", async () => {
+        const transport = seeded();
+        transport.threads.set(THREAD_A, { fail: new TransportFailure("authorization_required") });
+        nav.go(`/dev?thread=${THREAD_A}`);
+        renderShell(transport);
+        const connect = await within(page()).findByTestId("ask-dev-conversation-connect");
+        expect(connect).toHaveTextContent(TRANSCRIPT_COPY.connect);
+        const link = within(connect).getByRole("link", { name: "Connect Ask Dev" });
+        expect(link.getAttribute("href")).toMatch(/^\/ask-dev\/oauth\/start\?return=%2F/u);
+        expect(within(page()).queryByTestId("ask-dev-conversation-retry")).toBeNull();
+        expect(within(page()).getByTestId("ask-dev-composer-locked")).toHaveTextContent(
+            TRANSCRIPT_COPY.lockedReadOnly,
+        );
+        expect(connect.textContent).not.toMatch(/authorization_required|read_failed/u);
+    });
+
     it("a malformed id shows the neutral state; New conversation names no thread", async () => {
         const transport = seeded();
         nav.go("/dev?thread=not%20a%20thread");
@@ -350,6 +366,22 @@ describe("the panel's history (design §4.3)", () => {
         expect(within(current).getByTestId("ask-dev-history-confirm-running")).toHaveTextContent(
             HISTORY_COPY.confirmRunning,
         );
+    });
+
+    // CHAOS-12336 (T14b, the lead's ruling 2 = A): no ACR token, or ACR's 401, shows Connect Ask Dev.
+    it("a list with no ACR token shows Connect Ask Dev, a link back here, and no Try again", async () => {
+        const transport = seeded();
+        transport.listPages.splice(0, 1, { fail: new TransportFailure("authorization_required") });
+        renderShell(transport);
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        const connect = await within(panel()).findByTestId("ask-dev-history-connect");
+        expect(connect).toHaveTextContent(HISTORY_COPY.connect);
+        const link = within(connect).getByRole("link", { name: "Connect Ask Dev" });
+        expect(link.getAttribute("href")).toMatch(/^\/ask-dev\/oauth\/start\?return=%2F/u);
+        expect(within(panel()).queryByTestId("ask-dev-history-retry")).toBeNull();
+        expect(within(panel()).queryByTestId("ask-dev-history-read-failed")).toBeNull();
+        expect(connect.textContent).not.toMatch(/authorization_required|read_failed/u);
     });
 
     it("a list that could not be read says so and reads again on Try again", async () => {

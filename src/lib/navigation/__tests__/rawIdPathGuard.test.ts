@@ -82,6 +82,16 @@ const ALLOWED: Allowed[] = [
         template: '/${normalized.join("/")}',
         reason: "Builds a route pattern label (`/people/[person_id]`) for telemetry, not a link.",
     },
+    {
+        file: "lib/ask-dev/acr-transport/browserTransport.ts",
+        template: "/threads${query({ limit: String(limit), cursor })}",
+        reason: `An ACR API path (under /api/v1/context-fabric, CHAOS-12336), not a link. ${QUERY_SUFFIX} \`query()\` encodes each value.`,
+    },
+    {
+        file: "lib/ask-dev/acr-transport/browserTransport.ts",
+        template: "/threads/${encodeURIComponent(threadId)}${query({ before })}",
+        reason: `An ACR API path (under /api/v1/context-fabric, CHAOS-12336), not a link. The id is encoded; ${QUERY_SUFFIX}`,
+    },
     fromParam(
         `${CP}/batches/[ingestion_id]/page.tsx`,
         "/org/admin/integrations/${provider}/customer-push/${sourceId}",

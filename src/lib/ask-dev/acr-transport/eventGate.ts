@@ -64,11 +64,25 @@ export type GateVerdict =
     // `eventType` is one of the closed event types, or "unknown".
     | { readonly kind: "invalid"; readonly reason: InvalidEventReason; readonly seq?: number };
 
-/** What the request sent, which `accepted` must name back. */
+/**
+ * What the request sent, which `accepted` must name back. An attach (CHAOS-12336) sends no thread,
+ * so its `accepted` is held to the submission only.
+ */
 export type GateRequest = {
-    readonly threadId: string;
+    readonly threadId?: string | undefined;
     readonly submissionId: string;
 };
+
+/**
+ * An attach after a cursor (CHAOS-12336; the lead's ruling 1 = A): the stream starts at the event
+ * after `resumeAfter`, mid-run. The rules that need no earlier event hold at once: `seq` from
+ * `resumeAfter` + 1, the SSE fields, one `request_id` (its first event's), `elapsed_ms` from its
+ * first value, one terminal. The stage rules (a heartbeat's and an error's stage, no result while a
+ * stage is open, the stage order) need the stage state, which the events before the cursor hold:
+ * they hold from the first `stage` event on, which makes it known. Until then one stage break
+ * across the join is not seen; the store checks `seq`, `request_id` and `elapsed_ms` across it.
+ */
+export type GateResume = { readonly resumeAfter?: number | undefined };
 
 type Wire = {
     readonly type: string;
@@ -92,17 +106,26 @@ export class InvestigationEventGate {
     private seq = 0;
     private requestId: string | undefined;
     private reserved: string | undefined;
-    /** The last `elapsed_ms`; `accepted` counts as 0. */
-    private elapsed = 0;
+    /** The last `elapsed_ms`; `accepted` counts as 0. Unknown after a cursor until one is seen. */
+    private elapsed: number | undefined = 0;
     /** The index of the last stage that started, and whether it is still open. */
     private lastStage = -1;
     private stageOpen = false;
+    /** Whether the stage state is known: from `accepted`, or after a cursor from a stage event. */
+    private stageKnown = true;
     private terminalType: "result" | "error" | undefined;
 
     constructor(
         private readonly validate: (value: unknown) => boolean,
         private readonly request: GateRequest,
-    ) {}
+        resume: GateResume = {},
+    ) {
+        if (resume.resumeAfter !== undefined) {
+            this.seq = resume.resumeAfter;
+            this.elapsed = undefined;
+            this.stageKnown = false;
+        }
+    }
 
     /** The `seq` of the last event passed on; 0 before the first. */
     get lastSeq(): number {
@@ -134,7 +157,9 @@ export class InvestigationEventGate {
         if (frame.id !== String(seq)) return invalid("id_field");
         if (this.seq === 0) {
             if (event.type !== "accepted" || seq !== 1) return invalid("first_not_accepted");
-            if (event.thread_id !== this.request.threadId) return invalid("thread_mismatch");
+            if (this.request.threadId !== undefined && event.thread_id !== this.request.threadId) {
+                return invalid("thread_mismatch");
+            }
             if (
                 event.submission_id !== undefined &&
                 event.submission_id !== this.request.submissionId
@@ -144,21 +169,34 @@ export class InvestigationEventGate {
         } else {
             if (event.type === "accepted") return invalid("accepted_repeated");
             if (seq !== this.seq + 1) return invalid("seq_gap");
-            if (event.request_id !== this.requestId) return invalid("request_id_changed");
+            // After a cursor, the first event names the run's request_id.
+            if (this.requestId !== undefined && event.request_id !== this.requestId) {
+                return invalid("request_id_changed");
+            }
         }
-        if (event.elapsed_ms !== undefined) {
+        if (event.elapsed_ms !== undefined && this.elapsed !== undefined) {
             if (event.elapsed_ms < this.elapsed) return invalid("elapsed_regressed");
             if (event.elapsed_ms - this.elapsed > ACR_MAX_SILENCE_MS) return invalid("silence");
         }
-        if (event.type === "stage" && !this.stageMoves(event)) return invalid("stage_order");
-        if (event.type === "heartbeat" && event.stage !== this.openStage()) {
+        const known = this.stageKnown;
+        if (known && event.type === "stage" && !this.stageMoves(event)) {
+            return invalid("stage_order");
+        }
+        if (known && event.type === "heartbeat" && event.stage !== this.openStage()) {
             return invalid("heartbeat_stage");
         }
-        if (event.type === "result" && this.stageOpen) return invalid("result_stage_open");
-        if (event.type === "error" && event.reserved_result_id !== this.reserved) {
+        if (known && event.type === "result" && this.stageOpen) {
+            return invalid("result_stage_open");
+        }
+        // After a cursor `accepted` is not seen, so its reserved result id is not known.
+        if (
+            event.type === "error" &&
+            this.reserved !== undefined &&
+            event.reserved_result_id !== this.reserved
+        ) {
             return invalid("reserved_mismatch");
         }
-        if (event.type === "error" && event.stage !== this.lastStarted()) {
+        if (known && event.type === "error" && event.stage !== this.lastStarted()) {
             return invalid("error_stage");
         }
         if (event.type === "result" && asTranscriptResult(event.result) === null) {
@@ -166,12 +204,17 @@ export class InvestigationEventGate {
         }
         // Valid: commit.
         this.seq = seq;
+        this.requestId ??= event.request_id;
         if (event.elapsed_ms !== undefined) this.elapsed = event.elapsed_ms;
         if (event.type === "accepted") {
             this.requestId = event.request_id;
             this.reserved = event.reserved_result_id;
         }
-        if (event.type === "stage") this.moveStage(event);
+        if (event.type === "stage") {
+            this.moveStage(event);
+            // After a cursor, a stage event makes the stage state known: the rules re-arm.
+            this.stageKnown = true;
+        }
         const terminal = event.type === "result" || event.type === "error";
         if (terminal) this.terminalType = event.type as "result" | "error";
         return { kind: "event", event: value as InvestigationEvent, terminal };
@@ -193,12 +236,10 @@ export class InvestigationEventGate {
     }
 
     private moveStage(event: Wire): void {
-        if (event.state === "started") {
-            this.lastStage = stageIndex(event.stage!);
-            this.stageOpen = true;
-        } else {
-            this.stageOpen = false;
-        }
+        // A stage that completes is the last one started (the open one), also when it opened
+        // before an attach's cursor.
+        this.lastStage = stageIndex(event.stage!);
+        this.stageOpen = event.state === "started";
     }
 
     private afterTerminal(frame: SseEvent): GateVerdict {
