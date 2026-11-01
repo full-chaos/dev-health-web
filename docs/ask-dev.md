@@ -1,6 +1,8 @@
 # Ask Dev in web
 
-Ask Dev is the product surface over Context Fabric (ACR). web draws it: the panel, the `/dev` full page and the chips. ACR resolves, authorizes and answers.
+Ask Dev is the product surface over Context Fabric (ACR). ACR resolves, authorizes and answers. There is one render, in the ask-dev repo: web mounts `AskDevChat` from `@full-chaos/ask-dev/render` on the panel, the mobile sheet and `/dev` (`src/components/ask-dev/AskDevRender.tsx`, CHAOS-12378). Web draws only its frame around it.
+
+Web keeps what only a host has, behind ask-dev's `ChatSource` seam (`src/components/ask-dev/conversation/chatSource.tsx`): the conversation store and the ACR transport, consent and Connect, the partition and clear rules, the 401 rule, impersonation hiding and page context. A part the render lacks is built once, in ask-dev, never in web.
 
 ## Where Ask Dev is entered
 
@@ -55,19 +57,19 @@ The browser calls ACR directly; there is no web route (CHAOS-12104). The design,
 
 - **Dark until the T13 roll.** With `ACR_OAUTH_ISSUER` unset, there is no transport: no composer, no request.
 - **Connect Ask Dev.** With no ACR access in this tab, or after ACR's 401, a turn says so and links to the ACR authorization. Nothing is retried; the user asks again after connecting. The history list and a conversation opened by its link show the same Connect state (CHAOS-12336); feedback and Stop keep their own states under a turn that already shows it.
-- **Nothing on panel open.** The token is read only when the user sends something.
+- **Nothing on panel open.** The token is read only when the user sends something or the history list comes on screen. At the panel's width the rail is hidden, so that means the History toggle.
 
 ## Answer completeness
 
-An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. Web never shows it (CHAOS-12245, chris 2026-10-31). `missingDataSentence` and `quickStatus` (`src/components/ask-dev/answer/`) apply these rules:
+An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. The render never shows it (CHAOS-12245, chris 2026-10-31). The rules live in ask-dev's render (`src/lib/missing-data.ts`, `CompletenessPanel`, CHAOS-12429):
 
-| State                                           | The coverage block and the quick answer                                                                                                                                                      | The status pill, for a `complete` status            |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `complete`                                      | nothing extra                                                                                                                                                                                | "Full answer"                                       |
-| `not_derived`, or no completeness on the result | nothing about completeness                                                                                                                                                                   | "Answer": it claims neither a full answer nor a gap |
-| `partial`, `degraded`                           | at most one plain sentence that names what was missing, from the requirement rows: "Missing data: status read in part (2 of 5); ranking not available." No sentence when no row names a gap. | "Answer, not fully covered"                         |
+| State                                           | The Completeness panel                                                                                                                          |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `complete`                                      | nothing extra                                                                                                                                   |
+| `not_derived`, or no completeness on the result | nothing about completeness                                                                                                                      |
+| `partial`, `degraded`                           | at most one plain sentence from the requirement rows: "Missing data: state narrowed (2 of 5); ranking unavailable." None if no row names a gap. |
 
-- The sentence is said once, in the coverage block ("How complete this answer is"), never also beside the pill. The state word never appears in it. A row with an empty obligation is named by its requirement; a row that names nothing is skipped. The coverage details keep their own block ("What limits this answer").
-- A served status correction names each status by the same function that labels the pill (`statusLabel`), never by the machine word: for example, "from Answer to Partial answer" when the completeness was not derived.
+- The state word never appears in the sentence. A row with an empty obligation is named by its requirement; a row that names nothing is skipped. There is no table over `outcome`: the sentence uses the generic path until ACR serves labels (CHAOS-12416, CHAOS-12417).
+- The raw values stay in `data-terminal-status` and `data-completeness-state`, for programs. `terminal_reason` sits in a closed fold, because a value can hold a state word.
 - A cohort member's `data_completeness` is never shown either. The ranking column and the unranked summary show the member's served driver rows, "3 of 5 drivers" (`memberDriversText`), never a number mapped from the state. A member that serves no driver rows shows nothing.
-- The Ask Dev Workbench (an engineering inspector) is not in this rule.
+- The status pill and the correction note wait for served labels (CHAOS-12417): no table over `status`. Their behavior stays CHAOS-12245's: "Full answer" only when the status and the completeness are both complete.

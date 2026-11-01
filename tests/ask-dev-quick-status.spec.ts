@@ -59,18 +59,15 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        // CHAOS-12384: the render draws no status pill and no correction sentence (see the fixme
-        // tests below). What it must still hold: two answers, and never the words "Full answer".
+        // The status pill and the correction sentence wait for CHAOS-12417 (see the fixme tests below).
+        // What it must still hold: two answers, and never the words "Full answer".
         await expect(panel.getByRole("article", { name: "Answer" })).toHaveCount(2);
         await expect(panel.getByText("Full answer", { exact: true })).toHaveCount(0);
         await page.waitForLoadState("networkidle");
         await page.screenshot({ path: testInfo.outputPath("quick-status-desktop.png") });
     });
 
-    // GAP: with two answers in one transcript the render repeats landmarks (axe landmark-unique:
-    // two "Answer", "Coverage", "Completeness" regions, each with the same name). Web's old answer
-    // used labelled groups, not landmarks, for this reason (CHAOS-12157).
-    test.fixme("two answers in one transcript pass axe", async ({ page }) => {
+    test("two answers in one transcript pass axe", async ({ page }) => {
         await seedTurns(page, [KNOB_OFF, CORRECTED]);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
@@ -82,8 +79,7 @@ test.describe("desktop (1280px)", () => {
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
 
-    // GAP: the render draws no status pill per answer ("Answer, not fully covered", "Partial
-    // answer"); only the Completeness panel's raw badges.
+    // CHAOS-12417: the render draws no status pill per answer yet; it waits for served labels.
     test.fixme("each answer carries its own status pill", async ({ page }) => {
         await seedTurns(page, [KNOB_OFF, CORRECTED]);
         await page.goto("/dashboard");
@@ -93,7 +89,7 @@ test.describe("desktop (1280px)", () => {
         await expect(panel.getByText("Partial answer", { exact: true })).toBeVisible();
     });
 
-    // GAP: the render does not say that the service lowered an answer's status, nor why.
+    // CHAOS-12417: the render does not say that the service lowered an answer's status yet.
     test.fixme("a corrected status is said in words", async ({ page }) => {
         await seedTurns(page, [KNOB_OFF, CORRECTED]);
         await page.goto("/dashboard");
@@ -122,7 +118,7 @@ test.describe("mobile (390px)", () => {
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 
-    // GAP: the render draws no status pill and no correction sentence for the corrected answer.
+    // CHAOS-12417: the render draws no status pill and no correction sentence yet.
     test.fixme("the corrected answer says so in the sheet", async ({ page }) => {
         await seedTurns(page, [CORRECTED]);
         await page.goto("/dashboard");

@@ -96,28 +96,15 @@ async function ask(panel: Locator, question: string): Promise<void> {
     await input.press("Enter");
 }
 
-/**
- * `twoTurns`: with two answers in the conversation, the render names the Coverage, Completeness and
- * Limitations regions of each turn alike, which axe reports as `landmark-unique`. That is a defect
- * of the render (ask-dev package), not of this spec; every other rule still runs.
- */
-async function axeViolations(page: Page, selector: string, twoTurns = false): Promise<string[]> {
+async function axeViolations(page: Page, selector: string): Promise<string[]> {
     await page.evaluate(readFileSync(require.resolve("axe-core/axe.min.js"), "utf8"));
-    return page.evaluate(
-        async ([target, skip]) => {
-            const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
-            const node = document.querySelector(target);
-            if (!node) return ["target not found"];
-            const result = await axe.run(
-                node,
-                skip ? { rules: { "landmark-unique": { enabled: false } } } : {},
-            );
-            return result.violations.map(
-                (v) => `${v.id}: ${v.nodes.map((n) => n.html).join(" | ")}`,
-            );
-        },
-        [selector, twoTurns] as const,
-    );
+    return page.evaluate(async (target) => {
+        const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
+        const node = document.querySelector(target);
+        if (!node) return ["target not found"];
+        const result = await axe.run(node);
+        return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.html).join(" | ")}`);
+    }, selector);
 }
 
 test.beforeEach(async ({ request }) => {
@@ -207,7 +194,7 @@ test.describe("desktop (1280px)", () => {
         await expect(live.getByRole("button", { pressed: true })).toContainText(kind[0]!.label);
         await live.getByRole("button", { name: "Next question" }).click();
         await page.screenshot({ path: testInfo.outputPath("clarification-desktop.png") });
-        expect(await axeViolations(page, "[data-testid=ask-dev-panel]", true)).toEqual([]);
+        expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
 
         // Before this click only the two questions were sent, and neither carried a receipt.
         const before = await investigations(page);
@@ -249,8 +236,7 @@ test.describe("desktop (1280px)", () => {
 test.describe("desktop (1280px): no-match status word", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
-    // GAP: the render draws no status word for a no-match answer; the article only carries
-    // data-state="no_match". Web pinned "No answer: no matching subject" (ANSWER_STATUS_LABEL.no_match).
+    // CHAOS-12417: the render draws no status word for a no-match answer yet; it waits for served labels.
     test.fixme("a no-match says there was no matching subject", async ({ page }) => {
         await seedStream(page, [answers(BARE_NO_MATCH)]);
         await page.goto("/dashboard");
@@ -289,7 +275,7 @@ test.describe("desktop (1280px): anchors and refusals", () => {
         const windows = ANCHOR_V2.structure_needs?.window_options as Option[];
         await live.getByRole("button", { name: anchors[0]!.label, exact: true }).click();
         await page.screenshot({ path: testInfo.outputPath("anchor-desktop.png") });
-        expect(await axeViolations(page, "[data-testid=ask-dev-panel]", true)).toEqual([]);
+        expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
         expect(await investigations(page)).toHaveLength(2);
         await live.getByRole("button", { name: windows[0]!.label, exact: true }).click();
         await expect(panel.getByText(/^Ask Dev · /u)).toHaveCount(3);
@@ -331,7 +317,7 @@ test.describe("desktop (1280px): anchors and refusals", () => {
             refusal.getByRole("heading", { name: "No answer: too large to send" }),
         ).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath("refusal-desktop.png") });
-        expect(await axeViolations(page, "[data-testid=ask-dev-panel]", true)).toEqual([]);
+        expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
         expect(await investigations(page)).toHaveLength(2);
         await refusal.getByTestId("ask-dev-refusal-reask").click();
         await expect(panel.getByText(/^Ask Dev · /u)).toHaveCount(3);

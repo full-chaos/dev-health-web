@@ -58,16 +58,13 @@ test.afterEach(async ({ request }) => {
     await setScenario(request, "unprovisioned");
 });
 
-// GAP (all label tests below): the ask-dev render has no owning-team roll-up label. It does not read the
-// claim's `investment_attribution` (owning_team_rollup, project_own_work_unit_count) at all, so a roll-up
-// figure about a project reads like the project's own work.
 test.describe("desktop (1280px)", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
     test("ranking: the 19 projects of the answer are ranked", async ({ page }, testInfo) => {
         await seed(page, PROJECTS, "dark");
         const panel = await openPanel(page);
-        const ranking = panel.getByRole("region", { name: /^Ranked project/u });
+        const ranking = panel.getByRole("group", { name: /^Ranked project/u });
         await expect(
             ranking.getByRole("group", { name: "Ranking" }).locator("tbody tr"),
         ).toHaveCount(19);
@@ -76,50 +73,46 @@ test.describe("desktop (1280px)", () => {
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
 
-    // GAP: no owning-team roll-up label in the render; 11 of the 19 ranked projects were served the roll-up.
-    test.fixme("ranking: the 11 projects served the roll-up are labelled, the others are not", async ({
+    test("ranking: the 11 projects served the roll-up are labelled, the others are not", async ({
         page,
     }, testInfo) => {
         await seed(page, PROJECTS, "dark");
         const panel = await openPanel(page);
-        const ranking = panel.getByRole("region", { name: /^Ranked project/u });
+        const ranking = panel.getByRole("group", { name: /^Ranked project/u });
         await expect(
             ranking.getByRole("group", { name: "Ranking" }).locator("tbody tr"),
         ).toHaveCount(19);
-        const labels = ranking.getByText(LABEL, { exact: true });
+        const labels = ranking.getByTestId("investment-rollup");
         await expect(labels).toHaveCount(11);
         await expect(labels.first()).toBeVisible();
+        await expect(labels.first().locator("[aria-hidden=true]")).toHaveText(LABEL);
         await labels.first().scrollIntoViewIfNeeded();
         await panel.screenshot({ path: testInfo.outputPath("rollup-ranking-desktop-dark.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
 
-    // GAP: no owning-team roll-up label on a driver in the render.
-    test.fixme("drivers: the roll-up driver is labelled, the project-native one is not", async ({
+    test("drivers: the roll-up driver is labelled, the project-native one is not", async ({
         page,
     }, testInfo) => {
         await seed(page, PROJECTS, "dark");
         const panel = await openPanel(page);
         const drivers = panel
-            .getByRole("region", { name: "Drivers", exact: true })
+            .getByRole("group", { name: "Drivers", exact: true })
             .getByRole("listitem");
         const rollup = drivers.filter({ hasText: "Synthetic Project November: investment mix" });
         const native = drivers.filter({ hasText: "Synthetic Project Tango: investment mix" });
-        await expect(rollup.getByText(LABEL, { exact: true })).toHaveCount(1);
-        await expect(native.getByText(LABEL, { exact: true })).toHaveCount(0);
+        await expect(rollup.getByTestId("investment-rollup")).toHaveCount(1);
+        await expect(native.getByTestId("investment-rollup")).toHaveCount(0);
         await rollup.scrollIntoViewIfNeeded();
         await panel.screenshot({ path: testInfo.outputPath("rollup-drivers-desktop-dark.png") });
     });
 
-    // GAP: no owning-team roll-up label in the render for one project's theme mix.
-    test.fixme("one project's theme mix: its driver is labelled (light)", async ({
-        page,
-    }, testInfo) => {
+    test("one project's theme mix: its driver is labelled (light)", async ({ page }, testInfo) => {
         await seed(page, THEME_MIX, "light");
         const panel = await openPanel(page);
         const label = panel
-            .getByRole("region", { name: "Drivers", exact: true })
-            .getByText(LABEL, { exact: true });
+            .getByRole("group", { name: "Drivers", exact: true })
+            .getByTestId("investment-rollup");
         await expect(label).toHaveCount(1);
         await label.scrollIntoViewIfNeeded();
         await panel.screenshot({ path: testInfo.outputPath("rollup-theme-mix-desktop-light.png") });
@@ -134,13 +127,12 @@ test.describe("mobile (390px)", () => {
         ["ranking", PROJECTS],
         ["theme-mix", THEME_MIX],
     ] as const) {
-        // GAP: no owning-team roll-up label in the render, so there is none to fit the sheet.
-        test.fixme(`${name}: the label fits the sheet with no sideways scroll`, async ({
+        test(`${name}: the label fits the sheet with no sideways scroll`, async ({
             page,
         }, testInfo) => {
             await seed(page, answer);
             const sheet = await openPanel(page, true);
-            const label = sheet.getByText(LABEL, { exact: true }).first();
+            const label = sheet.getByTestId("investment-rollup").first();
             await expect(label).toBeVisible();
             await label.scrollIntoViewIfNeeded();
             await sheet.screenshot({ path: testInfo.outputPath(`rollup-${name}-mobile.png`) });

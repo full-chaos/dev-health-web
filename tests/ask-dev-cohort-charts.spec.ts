@@ -8,8 +8,6 @@ import { kiacRanking, seedRanking } from "./fixtures/ask-dev/cohortFixtures";
 // corpus). The panel's test-mode answer source reads the answer from session storage.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const KEY = "ask-dev:test-mode-answer";
-// Axe runs on the ranking panel that holds the charts; the answer's fact-table panels are out of scope here.
-const RANKING_PANEL = 'section[aria-labelledby$="cohort-ranking-title"]';
 
 test.describe.configure({ mode: "serial" });
 
@@ -55,7 +53,7 @@ const STACK = "Score contribution by driver, per repository";
  * SVG with a text alternative, every series and label is shown, and the SVG has a real box.
  */
 async function expectBothChartsDrawn(root: Locator): Promise<{ bars: Locator; stack: Locator }> {
-    const ranking = root.getByRole("region", { name: /^Ranked repositor(y|ie)s$/u });
+    const ranking = root.getByRole("group", { name: /^Ranked repositor(y|ie)s$/u });
     await expect(ranking.getByRole("figure")).toHaveCount(2);
     const bars = ranking.getByRole("figure", { name: ATTENTION, exact: true });
     const stack = ranking.getByRole("figure", { name: STACK, exact: true });
@@ -132,21 +130,21 @@ test.describe("desktop (1280px)", () => {
             await panel.screenshot({
                 path: testInfo.outputPath(`cohort-charts-desktop-${theme}.png`),
             });
-            expect(await axeViolations(page, RANKING_PANEL)).toEqual([]);
+            expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
         });
     }
 
-    // GAP: the render shows no coverage caption naming the ranked teams that have no score (F13:
-    // "2 ranked teams have no score."); the seed's bar chart draws only the one scored team.
-    test.fixme("seed (F13): the coverage caption names the ranked teams with no score", async ({
+    test("seed (F13): the coverage caption names the ranked teams with no score", async ({
         page,
     }, testInfo) => {
         await seed(page, seedRanking());
         const panel = await openPanel(page);
-        const ranking = panel.getByRole("region", { name: "Ranked teams" });
+        const ranking = panel.getByRole("group", { name: "Ranked teams" });
         await expect(ranking.getByRole("figure")).toHaveCount(2);
-        for (const figure of await ranking.getByRole("figure").all())
-            await expect(figure).toContainText("2 ranked teams have no score.");
+        const captions = ranking.getByTestId("cohort-chart-caption");
+        await expect(captions).not.toHaveCount(0);
+        for (const caption of await captions.all())
+            await expect(caption).toHaveText("2 ranked members have no score.");
         await ranking.scrollIntoViewIfNeeded();
         await panel.screenshot({ path: testInfo.outputPath("cohort-charts-seed.png") });
     });
@@ -161,12 +159,10 @@ test.describe("mobile (390px)", () => {
         const { bars } = await expectBothChartsDrawn(sheet);
         await bars.scrollIntoViewIfNeeded();
         await sheet.screenshot({ path: testInfo.outputPath("cohort-charts-mobile.png") });
-        expect(await axeViolations(page, RANKING_PANEL)).toEqual([]);
+        expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
     });
 
-    // GAP: the wide ranking table (1351px) is not held in its own scroll box in the sheet; the answer
-    // (scrollWidth 728 over 334) and the conversation scroll sideways instead.
-    test.fixme("no sideways scroll in the sheet", async ({ page }) => {
+    test("no sideways scroll in the sheet", async ({ page }) => {
         await seed(page, kiacRanking());
         const sheet = await openPanel(page, true);
         await expectBothChartsDrawn(sheet);

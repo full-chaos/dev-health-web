@@ -60,7 +60,7 @@ const PANEL_OF: Record<string, string> = {
     [READINESS]: "readiness · estimated count",
 };
 const slotOf = (root: Locator, claimId: string) =>
-    root.getByRole("region", { name: PANEL_OF[claimId]!, exact: true });
+    root.getByRole("group", { name: PANEL_OF[claimId]!, exact: true });
 const figureOf = (root: Locator, claimId: string) => slotOf(root, claimId).getByRole("figure");
 
 /**
@@ -214,9 +214,7 @@ test.describe("mobile (390px)", () => {
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
     });
 
-    // GAP: a wide table (the 64-row readiness table) is not held in its own scroll box in the sheet; the
-    // answer and the conversation scroll sideways instead.
-    test.fixme("no sideways scroll in the sheet", async ({ page }) => {
+    test("no sideways scroll in the sheet", async ({ page }) => {
         await seed(page, k1());
         const sheet = await openPanel(page, true);
         await expectBothTrendsDrawn(sheet);

@@ -402,11 +402,7 @@ test.describe("desktop (1280px)", () => {
         expect([...deleted].sort()).toEqual([THREAD_A, THREAD_B]);
     });
 
-    // GAP: the old list mounted when History opened, so it read then (AskDevHistory.tsx:191-193 at
-    // 98600f25). ask-dev's AskDevChat reads on mount and once per conversation id (AskDevChat.tsx
-    // effect on `chat.history.load()`), never on opening History: the list read before this test
-    // scripted it stays, so the running conversation has no row and no delete.
-    test.fixme("5b. the confirm of the running conversation says delete does not stop it", async ({
+    test("5b. the confirm of the running conversation says delete does not stop it", async ({
         page,
     }) => {
         await seed(page, { stream: [{ events: [accepted], then: "hold" }] });
@@ -426,10 +422,7 @@ test.describe("desktop (1280px)", () => {
         await shot(page, "panel-delete-confirm-running-light", panel);
     });
 
-    // GAP: this test closes and reopens History to force a second list read (AskDevHistory.tsx:191-193
-    // at 98600f25 read on each mount). ask-dev's AskDevChat does not read again on the toggle
-    // (AskDevChat.tsx effect on `chat.history.load()`), so a late list cannot be provoked from the UI.
-    test.fixme("6. a late list after a delete does not bring the row back", async ({ page }) => {
+    test("6. a late list after a delete does not bring the row back", async ({ page }) => {
         await seed(page, {
             threads: {
                 [THREAD_A]: thread(THREAD_A, [doneTurn("sub_e2e_a_0001", PARTIAL_ID, "Qa")]),

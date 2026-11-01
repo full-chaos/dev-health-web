@@ -69,15 +69,15 @@ test.describe("desktop (1280px)", () => {
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         // CHAOS-12384: the render's own Coverage, Limitations and Evidence references regions.
-        const coverage = panel.getByRole("region", { name: "Coverage", exact: true });
+        const coverage = panel.getByRole("group", { name: "Coverage", exact: true });
         await expect(coverage).toBeVisible();
         const limits = coverage.getByRole("list");
         await expect(limits.locator(":scope > li")).toHaveCount(5);
         await expect(
             limits.getByText("Only part of the flow facts could be included"),
         ).toBeVisible();
-        await expect(panel.getByRole("region", { name: "Limitations", exact: true })).toBeVisible();
-        const evidence = panel.getByRole("region", { name: "Evidence references", exact: true });
+        await expect(panel.getByRole("group", { name: "Limitations", exact: true })).toBeVisible();
+        const evidence = panel.getByRole("group", { name: "Evidence references", exact: true });
         await expect(evidence).toBeVisible();
         // Plain text: no link, button or tab stop inside the list of references.
         await expect(
@@ -94,45 +94,28 @@ test.describe("desktop (1280px)", () => {
         expect(requests).toEqual([]);
     });
 
-    // GAP: the render's "Facts" table wrapper scrolls but cannot take focus (axe
-    // scrollable-region-focusable on `div.fact-table-wrap[role=group][aria-label=Facts]`).
-    test.fixme("a degraded answer with fact tables passes axe", async ({ page }) => {
+    test("a degraded answer with fact tables passes axe", async ({ page }) => {
         await seedAnswer(page, OPEN_WORK);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         await expect(
             page
                 .getByRole("complementary", { name: "Ask Dev" })
-                .getByRole("region", { name: "Coverage", exact: true }),
+                .getByRole("group", { name: "Coverage", exact: true }),
         ).toBeVisible();
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
 
-    // GAP: the render writes no one-sentence "Missing data: ..." line (CHAOS-12245); the reader gets
-    // the Coverage list and the Completeness panel's raw badges instead.
-    test.fixme("a degraded answer says its missing data in one sentence", async ({ page }) => {
+    test("a degraded answer says its missing data in one sentence", async ({ page }) => {
         await seedAnswer(page, OPEN_WORK);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         await expect(
             panel.getByText(
-                "Missing data: health read in part (1 of 1); ranking not available; status read in part (2 of 5).",
+                "Missing data: health narrowed; ranking unavailable; state narrowed (2 of 5).",
                 { exact: true },
             ),
-        ).toBeVisible();
-    });
-
-    // GAP: the render does not say that opening evidence from the answer is not available yet.
-    test.fixme("evidence says that opening it is not available yet", async ({ page }) => {
-        await seedAnswer(page, OPEN_WORK);
-        await page.goto("/dashboard");
-        await page.getByRole("button", { name: "Open Ask Dev" }).click();
-        const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        await expect(
-            panel
-                .getByRole("region", { name: "Evidence references", exact: true })
-                .getByText("Opening evidence from here is not available yet."),
         ).toBeVisible();
     });
 
@@ -145,13 +128,16 @@ test.describe("desktop (1280px)", () => {
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         // CHAOS-12157: never "Full answer" here; CHAOS-12245: nothing about completeness state.
         await expect(panel.getByText("Full answer", { exact: true })).toHaveCount(0);
-        await expect(panel.getByRole("region", { name: "Coverage", exact: true })).toBeVisible();
-        // The render shows the terminal status ("complete") alone; a not-derived state adds no badge.
-        await expect(panel.getByTestId("completeness-chip-row")).toHaveText("complete");
-        await expect(panel.getByTestId("completeness-chip-row").locator("> *")).toHaveCount(1);
+        await expect(panel.getByRole("group", { name: "Coverage", exact: true })).toBeVisible();
+        // The render shows no status or state word: the raw values stay in data attributes only.
+        const completeness = panel.getByTestId("completeness-panel");
+        await expect(completeness).toHaveAttribute("data-terminal-status", "complete");
+        await expect(completeness).toHaveAttribute("data-completeness-state", "not_derived");
+        await expect(panel.getByTestId("completeness-chip-row")).toHaveCount(0);
+        await expect(panel.getByTestId("completeness-missing-data")).toHaveCount(0);
     });
 
-    // GAP: the render draws no plain "Answer" status pill for the answer.
+    // CHAOS-12417: the render draws no plain "Answer" status pill yet; it waits for served labels.
     test.fixme("a 'complete' status whose completeness was not derived shows a plain 'Answer' pill", async ({
         page,
     }) => {
@@ -173,7 +159,7 @@ test.describe("mobile (390px)", () => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const sheet = page.getByRole("dialog", { name: "Ask Dev" });
-        const coverage = sheet.getByRole("region", { name: "Coverage", exact: true });
+        const coverage = sheet.getByRole("group", { name: "Coverage", exact: true });
         await expect(
             sheet.getByText("No facts stand behind this answer.", { exact: true }),
         ).toBeVisible();
@@ -181,7 +167,7 @@ test.describe("mobile (390px)", () => {
         await coverage.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-mobile.png") });
         await sheet
-            .getByRole("region", { name: "Evidence references", exact: true })
+            .getByRole("group", { name: "Evidence references", exact: true })
             .scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath("coverage-mobile-evidence.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);

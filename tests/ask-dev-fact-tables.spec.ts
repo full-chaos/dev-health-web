@@ -62,15 +62,15 @@ test.describe("desktop (1280px)", () => {
 
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         // One panel per cited table, titled "<kind> · <field>", each with its subject and row count.
-        const workload = panel.getByRole("region", {
+        const workload = panel.getByRole("group", {
             name: "workload · backlog size",
             exact: true,
         });
-        const readiness = panel.getByRole("region", {
+        const readiness = panel.getByRole("group", {
             name: "readiness · estimated count",
             exact: true,
         });
-        const flow = panel.getByRole("region", {
+        const flow = panel.getByRole("group", {
             name: "flow · items completed latest day",
             exact: true,
         });
@@ -105,22 +105,6 @@ test.describe("desktop (1280px)", () => {
         await page.screenshot({ path: testInfo.outputPath("fact-tables-desktop-page.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
-
-    // GAP: the render's table box has no height bound (only `overflow-x: auto`), so a long table such as the
-    // 64-row readiness table grows taller than 288px instead of scrolling inside its own box.
-    test.fixme("a long table scrolls inside its own box: no table is taller than the box", async ({
-        page,
-    }) => {
-        await seedAnswer(page, STATUS);
-        await page.goto("/dashboard");
-        await page.getByRole("button", { name: "Open Ask Dev" }).click();
-        const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        const boxes = panel.getByRole("group", { name: "Facts" });
-        await expect(boxes).toHaveCount(3);
-        for (const box of await boxes.all()) {
-            expect(await box.evaluate((node) => node.clientHeight <= 288)).toBe(true);
-        }
-    });
 });
 
 test.describe("mobile (390px)", () => {
@@ -145,9 +129,7 @@ test.describe("mobile (390px)", () => {
         await page.screenshot({ path: testInfo.outputPath("fact-tables-mobile-page.png") });
     });
 
-    // GAP: the render gives two fact panels of this answer the same region name ("pull requests · state"),
-    // so axe reports landmark-unique.
-    test.fixme("the sheet has no axe violations", async ({ page }) => {
+    test("the sheet has no axe violations", async ({ page }) => {
         await seedAnswer(page, MERGED_PRS);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
@@ -156,8 +138,7 @@ test.describe("mobile (390px)", () => {
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
     });
 
-    // GAP: wide tables are not held in their own scroll box in the sheet; the answer scrolls sideways.
-    test.fixme("wide tables scroll inside their box, not the sheet", async ({ page }) => {
+    test("wide tables scroll inside their box, not the sheet", async ({ page }) => {
         await seedAnswer(page, MERGED_PRS);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();

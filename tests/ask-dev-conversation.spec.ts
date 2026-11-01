@@ -85,28 +85,15 @@ const runningLine = (region: Locator) => region.getByTestId("chat-progress").get
 /** A turn that ended without an answer: the status panel (its words, then any meta lines). */
 const endedStatus = (region: Locator) => region.getByTestId("chat-status");
 
-/**
- * `twoTurns`: with two answers in the conversation, the render names the regions of each turn alike
- * (Answer, Drivers, Coverage, ...), which axe reports as `landmark-unique`. That is a defect of the
- * render (ask-dev package), not of this spec; every other rule still runs.
- */
-async function axeViolations(page: Page, selector: string, twoTurns = false): Promise<string[]> {
+async function axeViolations(page: Page, selector: string): Promise<string[]> {
     await page.evaluate(readFileSync(require.resolve("axe-core/axe.min.js"), "utf8"));
-    return page.evaluate(
-        async ([target, skip]) => {
-            const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
-            const node = document.querySelector(target);
-            if (!node) return ["target not found"];
-            const result = await axe.run(
-                node,
-                skip ? { rules: { "landmark-unique": { enabled: false } } } : {},
-            );
-            return result.violations.map(
-                (v) => `${v.id}: ${v.nodes.map((n) => n.html).join(" | ")}`,
-            );
-        },
-        [selector, twoTurns] as const,
-    );
+    return page.evaluate(async (target) => {
+        const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
+        const node = document.querySelector(target);
+        if (!node) return ["target not found"];
+        const result = await axe.run(node);
+        return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.html).join(" | ")}`);
+    }, selector);
 }
 
 test.beforeEach(async ({ request }) => {
@@ -157,7 +144,7 @@ test.describe("desktop (1280px)", () => {
         await expect(panel.getByTestId("answer-panel")).toHaveCount(2);
         await page.screenshot({ path: testInfo.outputPath("conversation-desktop.png") });
         await panel.screenshot({ path: testInfo.outputPath("conversation-desktop-panel.png") });
-        expect(await axeViolations(page, "[data-testid=ask-dev-panel]", true)).toEqual([]);
+        expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
 
         const sent = (await calls(page)).filter((call) => call.kind === "investigate");
         expect(sent).toHaveLength(2);

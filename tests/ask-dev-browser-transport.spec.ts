@@ -187,15 +187,10 @@ test.describe("desktop (1280px)", () => {
 
         await ask(page, panel);
         await expect(panel.getByTestId("answer-panel")).toBeVisible();
-        // The question, the history list read and (T14b) the answer's feedback read: all from the browser, with the
-        // bearer and no cookie.
-        await expect.poll(() => harness.calls.length).toBe(3);
-        // The third call is ask-dev's render reading the history list once ACR admitted the thread.
-        expect(
-            harness.calls.filter(
-                (c) => c.method === "GET" && c.url.includes("/context-fabric/threads?"),
-            ),
-        ).toHaveLength(1);
+        // The question and (T14b) the answer's feedback read: both from the browser, with the bearer
+        // and no cookie. The history list stays off screen in the panel, so nothing reads it.
+        await expect.poll(() => harness.calls.length).toBe(2);
+        expect(harness.calls.filter((c) => c.url.includes("/context-fabric/threads?"))).toEqual([]);
         const sent = harness.calls.find((c) => c.method === "POST");
         const feedbackRead = harness.calls.find((c) => c.url.includes("/investigations/feedback/"));
         expect(feedbackRead!.method).toBe("GET");

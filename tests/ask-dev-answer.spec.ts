@@ -65,15 +65,14 @@ test.describe("desktop (1280px)", () => {
 
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         // CHAOS-12384: the render's own answer (ask-dev package): an article "Answer" holding the
-        // judgment, then the Drivers region. It carries no status pill and no AI label (see the
-        // fixme tests below).
+        // judgment, then the Drivers panel. The status pill waits for CHAOS-12417 (fixme below).
         const answer = panel.getByRole("article", { name: "Answer" });
         await expect(answer).toBeVisible();
-        const judgment = answer.getByRole("region", { name: "Answer", exact: true });
+        const judgment = answer.getByRole("group", { name: "Answer", exact: true });
         await expect(
             judgment.getByText(String(PARTIAL.direct_judgment).trim(), { exact: true }),
         ).toBeVisible();
-        const drivers = answer.getByRole("region", { name: "Drivers", exact: true });
+        const drivers = answer.getByRole("group", { name: "Drivers", exact: true });
         await expect(drivers.getByRole("list").last().locator(":scope > li")).toHaveCount(
             (PARTIAL.drivers as unknown[]).length,
         );
@@ -89,8 +88,7 @@ test.describe("desktop (1280px)", () => {
         expect(requests).toEqual([]);
     });
 
-    // GAP: the render draws no status pill ("Partial answer") for an answer; only the Completeness
-    // panel's raw "partial" badge. Web pinned the pill by the answer's own status.
+    // CHAOS-12417: the render draws no status pill ("Partial answer") yet; it waits for served labels.
     test.fixme("shows the answer's status pill", async ({ page }) => {
         await seedAnswer(page, PARTIAL);
         await page.goto("/dashboard");
@@ -99,13 +97,15 @@ test.describe("desktop (1280px)", () => {
         await expect(panel.getByText("Partial answer", { exact: true })).toBeVisible();
     });
 
-    // GAP: the render draws no "AI-written" label for model-written analysis.
-    test.fixme("labels model-written analysis as AI-written", async ({ page }) => {
+    test("labels model-written analysis as AI-written", async ({ page }) => {
         await seedAnswer(page, PARTIAL);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        await expect(panel.getByText("AI-written", { exact: true })).toBeVisible();
+        await expect(panel.getByTestId("answer-ai-label")).toHaveText("AI-written");
+        await expect(
+            panel.getByTestId("answer-ai-note").getByTestId("answer-ai-label"),
+        ).toBeVisible();
     });
 });
 
@@ -122,10 +122,10 @@ test.describe("mobile (390px)", () => {
         const sheet = page.getByRole("dialog", { name: "Ask Dev" });
         const answer = sheet.getByRole("article", { name: "Answer" });
         await expect(answer).toBeVisible();
-        // The status pill is a GAP: see the fixme test in the desktop block.
+        // The status pill waits for CHAOS-12417: see the fixme test in the desktop block.
         await expect(
             answer
-                .getByRole("region", { name: "Readiness gaps", exact: true })
+                .getByRole("group", { name: "Readiness gaps", exact: true })
                 .getByRole("list")
                 .first()
                 .locator(":scope > li"),
@@ -133,13 +133,11 @@ test.describe("mobile (390px)", () => {
         await page.screenshot({ path: testInfo.outputPath("answer-mobile.png") });
         await sheet.screenshot({ path: testInfo.outputPath("answer-mobile-sheet.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
-        // The sheet itself does not scroll sideways. (The answer does: see the fixme test below.)
+        // The sheet itself does not scroll sideways.
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 
-    // GAP: at 390px the render's answer article is wider than the sheet (scrollWidth 805 > 334): the
-    // "strip" (chip row) inside it does not wrap or clip, so the conversation scrolls sideways.
-    test.fixme("the answer fits the sheet at phone width", async ({ page }) => {
+    test("the answer fits the sheet at phone width", async ({ page }) => {
         await seedAnswer(page, READINESS);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();

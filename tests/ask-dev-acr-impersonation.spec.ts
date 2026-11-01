@@ -129,11 +129,7 @@ function originOf(): string {
 test.describe("desktop (1280px)", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
-    // GAP: opening the panel sent nothing at 98600f25 (AskDevPanel mounted no read). With ask-dev's
-    // AskDevChat mounted, opening it with a held family sends two POST /token (seen in the failing
-    // run). AskDevChat.tsx reads the history list on mount (effect on `chat.history.load()`), the
-    // likely cause; the second request was not traced.
-    test.fixme("P1-6: a page load and opening the panel send nothing to ACR, with a family held", async ({
+    test("P1-6: a page load and opening the panel send nothing to ACR, with a family held", async ({
         page,
     }) => {
         const origin = originOf();
