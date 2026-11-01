@@ -462,7 +462,7 @@ const nextAuth = NextAuth({
                 !user &&
                 token.access_token &&
                 !token.error &&
-                (!lastValidated || now - lastValidated > VALIDATION_INTERVAL_MS)
+                (!lastValidated || now - lastValidated >= VALIDATION_INTERVAL_MS)
             ) {
                 await applyBackendValidationMemo(token, now);
             }
