@@ -18,7 +18,7 @@ const TTL_SECONDS = 300;
 const REFRESH_FLOOR_SECONDS = 30;
 const OUTAGE_GRACE_SECONDS = 600;
 
-type Operation = "login" | "refresh";
+type Operation = "login" | "refresh" | "switch_org" | "change_password" | "social_login";
 
 export type KeyAnswer =
     { ok: true; keys: Jwk[] } | { ok: false; reason: "unavailable" | "unknown_kid" };
