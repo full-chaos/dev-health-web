@@ -8,6 +8,7 @@ import {
     type AssistantOutcome,
     type BatchItem,
     type ChatAssistantTurn,
+    type ChatEvidenceSource,
     type ChatFeedbackEntry,
     type ChatFeedbackSource,
     type ChatHistorySnapshot,
@@ -21,6 +22,7 @@ import {
     type WorkbenchFailure,
 } from "@full-chaos/ask-dev/render";
 
+import { useEvidenceDrawerIfMounted } from "@/components/evidence/EvidenceDrawerProvider";
 import type { PageEntityRef } from "@/lib/ask-dev/page-context";
 import {
     isRefusalTurn,
@@ -32,6 +34,7 @@ import {
 
 import { pageHintsOf, useAskDevPageProposal } from "../pageContext/AskDevPageContext";
 import { ConnectAskDev } from "./AskDevConnect";
+import { useAskDevEvidenceOpener } from "./AskDevEvidence";
 import {
     useAskDevConversation,
     useAskDevFeedbackStore,
@@ -68,6 +71,8 @@ export type HostInputs = {
     readonly partition: string | null | undefined;
     readonly pageRefs: readonly PageEntityRef[];
     readonly removePageRef: (ref: PageEntityRef) => void;
+    /** Opens one evidence reference. */
+    readonly openEvidence?: ChatEvidenceSource["open"];
 };
 
 export type HostChatSource = ChatSource & {
@@ -81,7 +86,7 @@ export type HostChatSource = ChatSource & {
 
 const NO_REFS: readonly PageEntityRef[] = [];
 
-const NO_HOST: Omit<HostInputs, "removePageRef"> = {
+const NO_HOST: Omit<HostInputs, "removePageRef" | "openEvidence"> = {
     notSaved: false,
     partition: undefined,
     pageRefs: NO_REFS,
@@ -427,14 +432,23 @@ const connectSlot = () => <ConnectAskDev testId="ask-dev-connect" />;
 export function createChatSource({
     store,
     feedback,
+    showsEvidence = false,
 }: {
     readonly store: ConversationStore;
     readonly feedback: FeedbackStore;
+    /** A drawer can show a reference. No: the source offers none, so they stay plain text. */
+    readonly showsEvidence?: boolean;
 }): HostChatSource {
     const listeners = new Set<() => void>();
     const feedbackListeners = new Set<() => void>();
     let host = NO_HOST;
     let removePageRef: HostInputs["removePageRef"] = () => undefined;
+    let openEvidence: HostInputs["openEvidence"];
+    const evidence: ChatEvidenceSource = {
+        open(ref) {
+            openEvidence?.(ref);
+        },
+    };
     let selection = store.getSnapshot().selection;
     /** By web turn id. Render-only, so it goes with the conversation. */
     const intents = new Map<number, TurnIntent>();
@@ -684,6 +698,7 @@ export function createChatSource({
 
     function setHostInputs(next: HostInputs): void {
         removePageRef = next.removePageRef;
+        openEvidence = next.openEvidence;
         const partitionChanged = next.partition !== host.partition;
         if (
             !partitionChanged &&
@@ -771,6 +786,7 @@ export function createChatSource({
             },
         },
         feedback: feedbackSource,
+        ...(showsEvidence ? { evidence } : {}),
         pageContext: {
             remove(ref) {
                 removePageRef(ref);
@@ -790,10 +806,14 @@ export function createChatSource({
 const sources = new WeakMap<ConversationStore, HostChatSource>();
 
 /** The one source of a store: it outlives the page that first asked for it. */
-export function chatSourceOf(store: ConversationStore, feedback: FeedbackStore): HostChatSource {
+export function chatSourceOf(
+    store: ConversationStore,
+    feedback: FeedbackStore,
+    showsEvidence = false,
+): HostChatSource {
     let source = sources.get(store);
     if (source === undefined) {
-        source = createChatSource({ store, feedback });
+        source = createChatSource({ store, feedback, showsEvidence });
         sources.set(store, source);
     }
     return source;
@@ -870,12 +890,23 @@ export function useAskDevChatSource(): ChatSource | null {
     const { refs, remove } = useAskDevPageProposal();
     const turns = useTestModeTurns();
     const store = live?.store;
+    // Known during render: a restored answer's first paint already has its buttons.
+    const showsEvidence = useEvidenceDrawerIfMounted() !== null;
     const source =
-        store === undefined || feedback === null ? undefined : chatSourceOf(store, feedback);
+        store === undefined || feedback === null
+            ? undefined
+            : chatSourceOf(store, feedback, showsEvidence);
     const pageRefs = refs.length === 0 ? NO_REFS : refs;
+    const openEvidence = useAskDevEvidenceOpener(store);
     useLayoutEffect(() => {
-        source?.setHostInputs({ notSaved, partition, pageRefs, removePageRef: remove });
-    }, [source, notSaved, partition, pageRefs, remove]);
+        source?.setHostInputs({
+            notSaved,
+            partition,
+            pageRefs,
+            removePageRef: remove,
+            openEvidence,
+        });
+    }, [source, notSaved, partition, pageRefs, remove, openEvidence]);
     const readOnly = useMemo(() => readOnlyChatSource(turns), [turns]);
     if (!hydrated) return null;
     return source ?? readOnly;

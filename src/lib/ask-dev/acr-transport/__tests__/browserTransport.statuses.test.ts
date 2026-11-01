@@ -23,7 +23,7 @@ import { createAcrBrowserTransport } from "../browserTransport";
  * `browserTransport.ts` calls has a case in the table below, which says how the transport treats
  * it. A new status in a pin bump fails here until someone writes its case. The transport has no
  * branch per status: the table states what its generic rules do, and the 409 test proves the one
- * claim train 4 needs (the eight JSON calls carry ACR's `error.v1` as a `TransportRefusal`).
+ * claim train 4 needs (the nine JSON calls carry ACR's `error.v1` as a `TransportRefusal`).
  */
 
 const OPENAPI = JSON.parse(
@@ -237,13 +237,31 @@ const TABLE: Readonly<Record<string, Entry>> = {
             "504": REFUSAL,
         },
     },
+    getEvidence: {
+        method: "get",
+        path: "/api/v1/agent-context/evidence/{evidence_ref_id}",
+        source: "EVIDENCE_API",
+        statuses: {
+            "200": OK,
+            "401": AUTH,
+            "403": REFUSAL,
+            "404": NULL_404,
+            "409": REFUSAL,
+            "413": REFUSAL,
+            "426": REFUSAL,
+            "429": REFUSAL,
+            "500": REFUSAL,
+            "503": REFUSAL,
+            "504": REFUSAL,
+        },
+    },
 };
 
 describe("the statuses ACR's OpenAPI lists, per operation the transport calls", () => {
     const entries = Object.entries(TABLE);
 
-    it("reads at least the ten operations the transport calls", () => {
-        expect(entries).toHaveLength(10);
+    it("reads at least the eleven operations the transport calls", () => {
+        expect(entries).toHaveLength(11);
         const read = entries.filter(
             ([id, entry]) => OPENAPI.paths[entry.path]?.[entry.method]?.operationId === id,
         );
@@ -288,7 +306,7 @@ const TOKEN = "fcacr_test_token_0000000000000000000000000000000";
 const ACCESS: AcrAccessToken = { kind: "token", token: TOKEN, issuer: ISSUER };
 const signal = new AbortController().signal;
 
-describe("409 no_repository on the eight JSON calls", () => {
+describe("409 no_repository on the nine JSON calls", () => {
     let transport: AskDevTransport;
     let calls: number;
 
@@ -328,6 +346,7 @@ describe("409 no_repository on the eight JSON calls", () => {
         ["deleteThread", (t) => t.deleteThread({ threadId: "thread-12345678", signal })],
         ["cancel", (t) => t.cancel({ submissionId: "sub-12345678", signal })],
         ["readFeedback", (t) => t.readFeedback({ resultId: "res-12345678", signal })],
+        ["readEvidence", (t) => t.readEvidence({ refId: "ev-1", resultId: "res-1", signal })],
         [
             "setFeedback",
             (t) =>

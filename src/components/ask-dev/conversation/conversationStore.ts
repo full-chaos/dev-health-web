@@ -25,6 +25,7 @@ import {
     TransportRefusal,
     type AskDevTransport,
     type CancelAnswer,
+    type EvidenceView,
     type InvestigationEvent,
     type InvestigationStage,
     type ThreadSummaryView,
@@ -1034,6 +1035,15 @@ export class ConversationStore {
             return false;
         }
         return this.selectThread(hint.thread_id, "incoming");
+    }
+
+    /** One evidence reference, as the result that cited it cites it (CHAOS-12105). */
+    readEvidence(call: {
+        readonly refId: string;
+        readonly resultId: string;
+        readonly signal: AbortSignal;
+    }): Promise<EvidenceView | null> {
+        return this.transport.readEvidence(call);
     }
 
     /** "Show earlier turns": the page before the oldest shown, prepended (E6 design v5 §4.2.6). */
