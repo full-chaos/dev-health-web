@@ -4368,7 +4368,7 @@ export type ACRContextFabricInvestigationResponseV2 = {
     temporal?: TemporalLabel;
     effective_evidence_window?: EffectiveEvidenceWindow;
     window_clarification?: WindowClarification;
-    structure_needs?: StructureNeedsV2;
+    structure_needs: StructureNeedsV2;
     /**
      * @maxItems 4
      */
@@ -10995,7 +10995,7 @@ export interface WindowExpandOption {
     candidate_kind?: SubjectKind;
 }
 /**
- * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1. CHAOS-11975: anchor_options, when present, is non-empty. A v2 result carries at least one membership-verify anchor option (ACR's validator refuses one without); the schema states only the non-empty rule in this release, and requires structure_needs and anchor_options from the next one (a field is optional for one release before it becomes required).
+ * CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1. CHAOS-11975: anchor_options, when present, is non-empty. A v2 result carries at least one membership-verify anchor option (ACR's validator refuses one without); CHAOS-12073: the schemas require structure_needs on a v2 result and anchor_options here, both shipped optional in the release before (a field is optional for one release before it becomes required).
  */
 export interface StructureNeedsV2 {
     /**
@@ -11238,7 +11238,7 @@ export interface StructureNeedsV2 {
      * @minItems 1
      * @maxItems 20
      */
-    anchor_options?:
+    anchor_options:
         | [AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2]
         | [AnchorOptionV2, AnchorOptionV2, AnchorOptionV2]
