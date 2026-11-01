@@ -104,6 +104,7 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/investment");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await expect(panel).toBeVisible();
         const context = panel.getByRole("group", { name: "Context from this page" });
         await expect(context.getByTestId("ask-dev-context-chip")).toHaveText([
             "Organization:E2E Organization",
@@ -141,6 +142,7 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/investment");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await expect(panel).toBeVisible();
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("What is the status of this repository?");
         await input.press("Enter");
@@ -162,6 +164,7 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await expect(panel).toBeVisible();
         await expect(panel.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
         await expect(panel.getByTestId("ask-dev-context")).toHaveCount(0);
     });

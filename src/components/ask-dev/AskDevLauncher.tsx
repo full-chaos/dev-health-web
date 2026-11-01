@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
@@ -16,20 +17,29 @@ type AskDevLauncherProps = {
     placement: "top-bar" | "mobile-bar";
 };
 
+const noSubscription = () => () => undefined;
+const onClient = () => true;
+const onServer = () => false;
+
 /**
  * The one Ask Dev launcher of a bar: the Full Chaos logo, named "Open Ask Dev" (CHAOS-3247: no
  * sparkle or other AI glyph). It draws nothing when the organization has no Ask Dev entitlement,
  * while impersonating with the browser ACR client on (CHAOS-12306), or on an excluded route. A
  * click only flips the shared open flag; it sends no request.
+ *
+ * It is disabled until the page hydrates (CHAOS-12422): the server's button has no handler yet, so
+ * a click on a slow machine would be lost with no sign. The hydration render matches the server's.
  */
 export function AskDevLauncher({ placement }: AskDevLauncherProps) {
     const pathname = usePathname() ?? "";
     const availability = useAskDevAvailability();
     const { open, setOpen } = useAskDevShell();
+    const hydrated = useSyncExternalStore(noSubscription, onClient, onServer);
     if (availability !== "on" || !isAskDevPanelPath(pathname)) return null;
     return (
         <button
             type="button"
+            disabled={!hydrated}
             data-testid={`ask-dev-launcher-${placement}`}
             data-ask-dev-launcher=""
             aria-label={CTA_LABELS.openAskDev}
