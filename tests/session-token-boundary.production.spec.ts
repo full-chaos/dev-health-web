@@ -1,4 +1,5 @@
 import { expect, test, type Response } from "@playwright/test";
+import { MOCK_ACCESS_TOKEN, MOCK_REFRESHED_ACCESS_TOKEN } from "./mocks/mockTokens";
 
 /**
  * CHAOS-12088: page JS never receives the Ops token. Measured against the PRODUCTION build
@@ -10,9 +11,9 @@ import { expect, test, type Response } from "@playwright/test";
 
 /** Every token value the ops mock answers to a sign-in or a refresh (`tests/mocks/handlers.ts`). */
 const OPS_TOKENS = [
-    "mock-access-token-e2e",
+    MOCK_ACCESS_TOKEN,
     "mock-refresh-token-e2e",
-    "mock-refreshed-token-e2e",
+    MOCK_REFRESHED_ACCESS_TOKEN,
     "mock-refreshed-refresh-token-e2e",
 ];
 

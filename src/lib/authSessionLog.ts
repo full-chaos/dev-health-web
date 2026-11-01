@@ -19,6 +19,18 @@ const log = logger.child({ module: "auth-session" });
  *                           not JSON): the session is KEPT, retry after backoff.
  * - `validate_call_failed`  the validation call itself threw (no answer arrived): the session
  *                           is KEPT, retry after backoff.
+ * - `login_unavailable`     the credentials login got no usable answer (408, 425, 5xx, a thrown
+ *                           call): no session starts, the sign-in says "unavailable".
+ * - `login_invalid_response` the login answered 2xx with a body or an access token web refuses:
+ *                           no session starts.
+ * - `auth_config_invalid`   the token class setting is unknown, or class `eddsa` has no issuer:
+ *                           login is refused before any call.
+ * - `key_set_unusable`      class `eddsa`: the published key set could not be fetched or is
+ *                           refused as a whole (a repeated kid, an invalid key).
+ * - `token_shape_refused`  the login answered 2xx with an access token of the wrong shape for the
+ *                           token class (under hs256_compat: not a decodable HS256 token): no
+ *                           session starts. A fixed message; the token text is never logged.
+ * - `logout_failed`         the auth-service logout call did not answer 200.
  */
 export type SessionBranch =
     | "refresh_failed"
@@ -27,10 +39,16 @@ export type SessionBranch =
     | "refresh_no_access_token"
     | "user_invalid"
     | "validate_transient"
-    | "validate_call_failed";
+    | "validate_call_failed"
+    | "login_unavailable"
+    | "login_invalid_response"
+    | "auth_config_invalid"
+    | "key_set_unusable"
+    | "token_shape_refused"
+    | "logout_failed";
 
 export interface SessionBranchFields {
-    readonly operation: "refresh" | "validate";
+    readonly operation: "refresh" | "validate" | "login" | "logout";
     readonly branch: SessionBranch;
     /** HTTP status of the backend answer. Absent when no answer arrived. */
     readonly status?: number;
@@ -50,6 +68,12 @@ const MESSAGES: Record<SessionBranch, string> = {
     validate_transient:
         "session kept: backend validation got no usable answer; retry after backoff",
     validate_call_failed: "session kept: the backend validation call failed; retry after backoff",
+    login_unavailable: "login refused: the backend gave no usable answer",
+    login_invalid_response: "login refused: the backend answer or its access token was refused",
+    auth_config_invalid: "login refused: the access token class setting is unusable",
+    key_set_unusable: "login refused: the published key set is unusable",
+    token_shape_refused: "login refused: the access token has the wrong shape for the token class",
+    logout_failed: "sign-out: the backend logout did not answer 200",
 };
 
 /**

@@ -36,6 +36,10 @@ declare module "next-auth" {
         access_token?: string;
         refresh_token?: string;
         expires_in?: number;
+        /** `exp` of the access token (seconds), read from the token. */
+        access_exp?: number;
+        /** `sid` of the access token. */
+        sid?: string;
     }
 }
 
@@ -51,6 +55,7 @@ declare module "next-auth/jwt" {
         access_token?: string;
         refresh_token?: string;
         expires_at?: number;
+        sid?: string;
         error?: string;
         is_impersonating?: boolean;
         impersonated_user_id?: string;
