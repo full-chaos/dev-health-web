@@ -180,7 +180,7 @@ test.describe("desktop (1280px)", () => {
     }, testInfo) => {
         await seed(page, [slowRun(1_500)]);
         const panel = await askInPanel(page);
-        await expect(panel.getByTestId("ask-dev-stages")).toBeVisible();
+        await expect(panel.getByTestId("chat-progress")).toBeVisible();
 
         await panel.getByRole("button", { name: "Open full page" }).click();
         await expect(page).toHaveURL(NAMED_FULL_PAGE);
@@ -201,7 +201,7 @@ test.describe("desktop (1280px)", () => {
     }, testInfo) => {
         await seed(page, [quickRun, quickRun], "light");
         const panel = await askInPanel(page, "/metrics?tab=flow");
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(panel.getByTestId("answer-panel")).toBeVisible();
 
         await panel.getByRole("button", { name: "Open full page" }).click();
         await expect(page).toHaveURL(NAMED_FULL_PAGE);
@@ -214,14 +214,14 @@ test.describe("desktop (1280px)", () => {
         // The flow page keeps its own filter param (`f`) in the URL: Minimize returns to that URL.
         await expect(page).toHaveURL(/\/metrics\?tab=flow(?:&|$)/u);
         await expect(panel).toBeVisible();
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(panel.getByTestId("answer-panel")).toBeVisible();
         await panel.screenshot({ path: testInfo.outputPath("minimized-panel-desktop.png") });
         expect(await investigations(page)).toHaveLength(1);
 
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("Why is it behind?");
         await input.press("Enter");
-        await expect(panel.getByTestId("ask-dev-answer")).toHaveCount(2);
+        await expect(panel.getByTestId("answer-panel")).toHaveCount(2);
         const [first, second] = await investigations(page);
         expect(second!.thread_id).toBe(first!.thread_id);
         expect(second!.submission_id).not.toBe(first!.submission_id);
@@ -235,7 +235,7 @@ test.describe("desktop (1280px)", () => {
     }, testInfo) => {
         await seed(page, [{ refuse: { status: 429, error: rateLimited } }]);
         const panel = await askInPanel(page);
-        await expect(panel.getByTestId("ask-dev-turn")).toHaveAttribute("data-status", "not_run");
+        await expect(panel.getByTestId("chat-status")).toHaveAttribute("data-status", "not_run");
         await panel.getByRole("button", { name: "Open full page" }).click();
         await expect(page).toHaveURL(/\/dev$/u);
 
@@ -310,7 +310,7 @@ test.describe("mobile (390px)", () => {
         await expect(input).toBeEnabled();
         await input.fill(QUESTION);
         await input.press("Enter");
-        await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(sheet.getByTestId("answer-panel")).toBeVisible();
 
         await sheet.getByRole("button", { name: "Open full page" }).click();
         await expect(page).toHaveURL(NAMED_FULL_PAGE);
@@ -327,7 +327,7 @@ test.describe("mobile (390px)", () => {
         await page.getByRole("button", { name: "Minimize to panel" }).click();
         // The dashboard keeps its own filter param (`f`) in the URL: Minimize returns to that URL.
         await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u);
-        await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(sheet.getByTestId("answer-panel")).toBeVisible();
         expect(await investigations(page)).toHaveLength(1);
     });
 

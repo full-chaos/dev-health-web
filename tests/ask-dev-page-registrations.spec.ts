@@ -114,7 +114,7 @@ async function askAndReadScope(page: Page, panel: ReturnType<Page["getByRole"]>)
     const input = panel.getByRole("textbox", { name: "Ask a question" });
     await input.fill("Where is the effort going?");
     await input.press("Enter");
-    await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+    await expect(panel.getByTestId("answer-panel")).toBeVisible();
     const [sent] = await investigations(page);
     return sent?.request?.requested_scope;
 }

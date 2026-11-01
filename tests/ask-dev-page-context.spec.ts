@@ -122,7 +122,7 @@ test.describe("desktop (1280px)", () => {
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("Where is the team's effort going?");
         await input.press("Enter");
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(panel.getByTestId("answer-panel")).toBeVisible();
 
         const [sent] = await investigations(page);
         expect(sent!.request!.requested_scope).toEqual({
@@ -144,7 +144,12 @@ test.describe("desktop (1280px)", () => {
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("What is the status of this repository?");
         await input.press("Enter");
-        await expect(panel.getByTestId("ask-dev-clarification")).toBeVisible();
+        // CHAOS-12384: the render asks in a popup above the composer, one question per page.
+        await expect(panel.getByRole("article", { name: "Answer" })).toHaveAttribute(
+            "data-state",
+            "clarification_required",
+        );
+        await expect(panel.getByRole("dialog", { name: "Over what period?" })).toBeVisible();
         await panel.screenshot({ path: testInfo.outputPath("context-tampered-desktop.png") });
         const [sent] = await investigations(page);
         expect(sent!.request!.requested_scope).toEqual({

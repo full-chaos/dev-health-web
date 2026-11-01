@@ -84,7 +84,8 @@ const files = [
 describe("capture fixtures hold no scrubbed org value (CHAOS-12159)", () => {
     it("has a forbidden list and capture files to check", () => {
         expect(FORBIDDEN.size).toBeGreaterThan(300);
-        expect(files.length).toBeGreaterThan(40);
+        // 29 captures: the 19 of the deleted web render's oracle went with it (CHAOS-12384).
+        expect(files.length).toBeGreaterThan(25);
     });
 
     it.each(files.map((file) => [relative(join(__dirname, "../../../../.."), file), file]))(

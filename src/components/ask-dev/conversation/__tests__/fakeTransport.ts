@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import type { ACRErrorV1, ContextFabricSubmissionStatusV1 } from "@/lib/acr/generated";
 
-import type { TranscriptResult } from "../../answer/AskDevTurn";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import { TransportRefusal } from "../transport";
 import type {
     AskDevTransport,
