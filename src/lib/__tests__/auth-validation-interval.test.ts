@@ -123,6 +123,21 @@ describe("validation interval", () => {
         expect(token.access_token).toBeUndefined();
         expect(token.refresh_token).toBeUndefined();
     });
+
+    it("the callback at exactly 60 s validates and signs a refused token out", async () => {
+        answers(200, JSON.stringify({ valid: true }));
+        let token = await callbackAt(0, freshToken());
+        expect(token.error).toBeUndefined();
+
+        const fetchMock = answers(200, JSON.stringify({ valid: false }));
+        token = await callbackAt(59_999, token);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(token.error).toBeUndefined();
+        token = await callbackAt(60_000, token);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(token.error).toBe("user_invalid");
+        expect(token.access_token).toBeUndefined();
+    });
 });
 
 describe("terminal answers end the session", () => {
