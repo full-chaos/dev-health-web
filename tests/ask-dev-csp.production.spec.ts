@@ -77,6 +77,26 @@ function hostileStream(threadId: string, submissionId: string): string {
         .join("\n\n");
 }
 
+const EVIDENCE_PATH = "/api/v1/agent-context/evidence/";
+
+/** ACR's own example, with its served strings hostile. */
+function hostileEvidence(): unknown {
+    const example = JSON.parse(
+        readFileSync(
+            join(process.cwd(), "src/lib/acr/contracts/examples/expanded_evidence.v1.json"),
+            "utf8",
+        ),
+    ) as { evidence: Record<string, unknown> };
+    return {
+        ...example,
+        availability: "redacted",
+        evidence: { ...example.evidence, citation: HOSTILE },
+        excerpt: HOSTILE,
+        redaction_reason: HOSTILE,
+        structured_fields: { note: HOSTILE },
+    };
+}
+
 async function setScenario(request: APIRequestContext, scenario: string): Promise<void> {
     const response = await request.post(`${OPS_MOCK_ORIGIN}/__test/entitlements`, {
         data: { scenario },
@@ -122,6 +142,24 @@ async function connect(page: Page, baseURL: string | undefined): Promise<void> {
                     headers["x-acr-thread-id"] ?? "",
                     headers["x-acr-submission-id"] ?? "",
                 ),
+            });
+        },
+    );
+    // CHAOS-12105: an evidence read, with hostile text in every served string the drawer shows.
+    await page.context().route(
+        (url) => url.origin === ACR_E2E_ISSUER && url.pathname.startsWith(EVIDENCE_PATH),
+        async (route) => {
+            if (route.request().method() !== "GET") return route.fallback();
+            await route.fulfill({
+                status: 200,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Cache-Control": "no-store",
+                    "Access-Control-Allow-Origin": web,
+                    "Access-Control-Expose-Headers": ACR_CORS.exposeHeaders,
+                    Vary: "Origin",
+                },
+                body: JSON.stringify(hostileEvidence()),
             });
         },
     );
@@ -244,6 +282,29 @@ test.describe("desktop (1280px)", () => {
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const answer = await ask(page.getByRole("complementary", { name: "Ask Dev" }));
         await expectInert(page, answer);
+        expect(await violations()).toEqual([]);
+    });
+
+    test("an evidence reference opens in the drawer, and hostile text is inert", async ({
+        page,
+        baseURL,
+    }) => {
+        const violations = await watchViolations(page);
+        await connect(page, baseURL);
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const answer = await ask(page.getByRole("complementary", { name: "Ask Dev" }));
+        await answer.locator("button.evidence-ref--open:visible").last().click();
+        const body = page.getByTestId("ask-dev-evidence-body");
+        await expect(body).toHaveAttribute("data-state", "redacted");
+        await expect(body).toContainText("<img src=x onerror=");
+        expect(
+            await body.locator("img[onerror], script, iframe, object, embed, [onclick]").count(),
+        ).toBe(0);
+        const hrefs = await body
+            .locator("a[href]")
+            .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
+        for (const href of hrefs) expect(href.toLowerCase()).not.toContain("javascript:");
+        expect(await page.evaluate(() => "__askDevPwned" in window)).toBe(false);
         expect(await violations()).toEqual([]);
     });
 

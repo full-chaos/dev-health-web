@@ -320,6 +320,10 @@ function scriptedTransport(plays: readonly Play[]): AskDevTransport {
                 );
             }
         },
+        // Test mode has no evidence store: the neutral answer, as for a reference that is gone.
+        async readEvidence() {
+            return null;
+        },
         async readFeedback({ resultId }) {
             record({ kind: "feedback_read", result_id: resultId });
             const stored = read(TEST_MODE_FEEDBACK_KEY) as Record<string, unknown> | undefined;

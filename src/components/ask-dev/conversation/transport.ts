@@ -239,6 +239,22 @@ export type CancelAnswer =
     | { readonly kind: "final" }
     | { readonly kind: "not_leased"; readonly retryAfterSeconds?: number | undefined };
 
+/** One evidence reference as ACR expanded it for one result (`expanded_evidence.v1`). */
+export type EvidenceView = {
+    readonly refId: string;
+    /** Served text. */
+    readonly citation: string;
+    /** Served text. */
+    readonly excerpt?: string;
+    /** ISO timestamp. */
+    readonly observedAt: string;
+    /** An open vocabulary: it selects a state, and is never shown. */
+    readonly availability: string;
+    /** Served text. */
+    readonly redactionReason?: string;
+    readonly structuredFields: Readonly<Record<string, unknown>>;
+};
+
 export type AskDevTransport = {
     /**
      * Opens one investigation stream (`Accept: text/event-stream`). It yields the events in `seq`
@@ -291,6 +307,16 @@ export type AskDevTransport = {
         readonly threadId: string;
         readonly signal: AbortSignal;
     }) => Promise<void>;
+    /**
+     * `GET /api/v1/agent-context/evidence/{ref}?result_id=` (CHAOS-12105): one reference, as the
+     * result that cited it cites it. `null` for ACR's 404 (gone, or another principal's: the same
+     * answer). A body that fails `parseExpandedEvidence` throws `TransportFailure("invalid_upstream")`.
+     */
+    readonly readEvidence: (call: {
+        readonly refId: string;
+        readonly resultId: string;
+        readonly signal: AbortSignal;
+    }) => Promise<EvidenceView | null>;
     /**
      * `GET …/investigations/feedback/{result_id}` (CHAOS-11958): the caller's feedback on one of
      * its own results, or `null` for ACR's 404 (not the caller's Ask Dev result, or one ACR would

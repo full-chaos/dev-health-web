@@ -29,6 +29,12 @@ type SubjectBase = {
      * leaves the page then). A server page cannot pass it.
      */
     onClose?: () => void;
+    /**
+     * Called only when the user closes the drawer: not when another subject replaces this one, a
+     * peer drawer takes the edge, or a navigation drops the subject. So an opener can put back what
+     * the drawer took the edge from.
+     */
+    onDismiss?: () => void;
 };
 
 /** A subject the panel loads: an explain metric or a served `evidence_ref`. */
@@ -182,6 +188,7 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
         const previous = current.current.subject;
         current.current = { subject: null, id: current.current.id, path: null };
         previous?.onClose?.();
+        previous?.onDismiss?.();
         setState(null);
     }, []);
     const api = useMemo(() => ({ open, close }), [open, close]);
@@ -233,6 +240,11 @@ export function useEvidenceDrawer(): EvidenceDrawerApi {
         throw new Error("useEvidenceDrawer must be used inside EvidenceDrawerProvider");
     }
     return api;
+}
+
+/** The drawer, or `null` outside `EvidenceDrawerProvider`: for an opener that can do without it. */
+export function useEvidenceDrawerIfMounted(): EvidenceDrawerApi | null {
+    return useContext(EvidenceDrawerContext);
 }
 
 /**
