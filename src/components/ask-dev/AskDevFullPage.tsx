@@ -60,7 +60,7 @@ function ThreadUrlSync() {
         if (store === undefined || !ready || handled.current === urlThread) return;
         handled.current = urlThread;
         if (urlThread !== null) {
-            store.selectThread(urlThread, "incoming", urlThread === lostThread);
+            store.selectThread(urlThread, "incoming", lostThread);
         }
     }, [store, ready, urlThread, lostThread]);
 

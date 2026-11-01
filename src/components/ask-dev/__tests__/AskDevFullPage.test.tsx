@@ -409,6 +409,27 @@ describe("a reload loses the conversation, and says so (plan §2.5)", () => {
             expect(window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY)).toBe(TAG);
         });
 
+        it("does not take a later 404 of a restored thread for the lost one", async () => {
+            const transport = loadAt(
+                LOST,
+                threadView(LOST, [threadTurn("submission_1", "done", { resultId: "result_1" })]),
+            );
+            await within(page()).findByText("question of submission_1");
+            transport.threads.set(LOST, null);
+            act(() => nav.go("/dashboard"));
+            act(() => nav.go("/dev?thread=thread_another_one"));
+            await within(page()).findByTestId("ask-dev-conversation-unavailable");
+            act(() => nav.go("/dashboard"));
+            act(() => nav.go(`/dev?thread=${LOST}`));
+            await waitFor(() =>
+                expect(transport.threadCalls.filter((c) => c.threadId === LOST)).toHaveLength(2),
+            );
+            expect(
+                await within(page()).findByTestId("ask-dev-conversation-unavailable"),
+            ).toBeInTheDocument();
+            expect(within(page()).queryByTestId("ask-dev-not-saved")).toBeNull();
+        });
+
         it("forgets a thread it loads from ACR", async () => {
             const transport = loadAt(
                 LOST,
