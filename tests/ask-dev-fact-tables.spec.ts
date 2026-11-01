@@ -84,7 +84,9 @@ test.describe("desktop (1280px)", () => {
         });
         const tables = panel.getByRole("group", { name: "Facts" });
         await tables.first().scrollIntoViewIfNeeded();
-        await expect(tables).toHaveCount(3);
+        // The three cited tables, and the one table of facts with no rows of their own.
+        await expect(tables).toHaveCount(4);
+        await expect(panel.getByTestId("scalar-facts-panel").getByRole("table")).toBeVisible();
         await expect(tables.first()).toBeVisible();
         await expect(workload).toContainText("Synthetic Project Beta · 8 rows");
         await expect(readiness).toContainText("Synthetic Project Beta · 64 rows");
