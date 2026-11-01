@@ -179,8 +179,12 @@ describe("an answer that confirms the user", () => {
 });
 
 describe("a good refresh starts the validation count again", () => {
+    // An HS256-shaped compact access token: the server reads exp and sid from a refreshed token.
+    const NEXT_ACCESS = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from(
+        JSON.stringify({ sid: "ses_ValidationAAAAAAAAAAAAA", exp: 4102444800 }),
+    ).toString("base64url")}.${Buffer.from("sig").toString("base64url")}`;
     const REFRESHED = JSON.stringify({
-        access_token: "next-access",
+        access_token: NEXT_ACCESS,
         refresh_token: "next-refresh",
         expires_in: 3600,
     });
@@ -202,7 +206,7 @@ describe("a good refresh starts the validation count again", () => {
 
         const token = await validate(refreshDueToken());
 
-        expect(token.access_token).toBe("next-access");
+        expect(token.access_token).toBe(NEXT_ACCESS);
         expect(token.validation_failures).toBe(0);
     });
 
@@ -216,7 +220,7 @@ describe("a good refresh starts the validation count again", () => {
             last_validated: Date.now() - 6 * 60 * 1000,
         });
 
-        expect(later.access_token).toBe("next-access");
+        expect(later.access_token).toBe(NEXT_ACCESS);
         expect(later.validation_failures).toBe(1);
     });
 });

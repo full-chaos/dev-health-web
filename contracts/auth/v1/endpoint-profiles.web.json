@@ -695,7 +695,7 @@
                 "anchor": {
                     "path": "src/lib/auth.ts",
                     "line": 80,
-                    "line_end": 226
+                    "line_end": 227
                 }
             },
             "token_shape": null,

@@ -42,7 +42,11 @@ import { fileURLToPath } from "node:url";
 export const SERVER_ONLY_MODULES = [
     {
         file: "src/lib/auth.ts",
-        markers: ["/api/v1/auth/social-login", "/api/v1/auth/refresh"],
+        markers: ["/api/v1/auth/social-login"],
+    },
+    {
+        file: "src/lib/authServiceWire.ts",
+        markers: ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout"],
     },
     { file: "src/lib/authValidationMemo.ts", markers: ["authValidationMemo"] },
     { file: "src/lib/authBrowserSession.ts", markers: ["unsupported_session_update"] },

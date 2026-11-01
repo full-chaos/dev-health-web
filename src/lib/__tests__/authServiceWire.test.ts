@@ -4,6 +4,7 @@ import { logSessionBranch } from "@/lib/authSessionLog";
 import {
     callAuthService,
     passwordLogin,
+    refreshSession,
     resetKeySetCacheForTests,
     revokeSessionAtAuthService,
     type WireConfig,
@@ -665,5 +666,247 @@ describe("the clock is read again after the key read (eddsa)", () => {
         });
         now = NOW + 898;
         expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+    });
+});
+
+describe("refreshSession", () => {
+    const REFRESH_URL = `${BACKEND}/api/v1/auth/refresh`;
+    const refreshBody = (access: string, over: Record<string, unknown> = {}) => ({
+        access_token: access,
+        refresh_token: "ref-2",
+        token_type: "bearer",
+        expires_in: 3600,
+        user,
+        ...over,
+    });
+    const hs = () => hs256Token();
+    let now = NOW;
+    const c = () => ({ ...eddsaCfg(), nowSeconds: () => now });
+
+    beforeEach(() => {
+        now = NOW;
+    });
+
+    it("refresh sends only the refresh token to /api/v1/auth/refresh", async () => {
+        route({ [REFRESH_URL]: () => json(200, refreshBody(hs())) });
+        await refreshSession("ref-1", cfg());
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe(REFRESH_URL);
+        expect(init.method).toBe("POST");
+        expect(JSON.parse(String(init.body))).toEqual({ refresh_token: "ref-1" });
+    });
+
+    it("refresh 200 stores the rotated refresh token and reads exp and sid from the access token (hs256_compat)", async () => {
+        route({ [REFRESH_URL]: () => json(200, refreshBody(hs())) });
+        const got = await refreshSession("ref-1", cfg());
+        expect(got).toMatchObject({
+            kind: "rotated",
+            refreshToken: "ref-2",
+            accessExp: EXP,
+            sid: SID,
+            expiresIn: 3600,
+            user: { id: "u1" },
+        });
+    });
+
+    it("refresh 200 under eddsa verifies the access token against the key set and reads exp and sid", async () => {
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody(eddsaToken(privateKey, "kid-1", 1760003600))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
+        });
+        expect(await refreshSession("ref-1", c())).toMatchObject({
+            kind: "rotated",
+            accessExp: 1760003600,
+            sid: SID,
+            refreshToken: "ref-2",
+        });
+    });
+
+    it("refresh 401, 400, 403, 404, 410 and 422 are terminal", async () => {
+        for (const status of [401, 400, 403, 404, 410, 422]) {
+            route({ [REFRESH_URL]: () => json(status, { detail: { message: "x" } }) });
+            expect(await refreshSession(`ref-s${status}`, cfg()), String(status)).toEqual({
+                kind: "terminal",
+                reason: "status",
+                status,
+            });
+        }
+    });
+
+    it("refresh 429, 408, 425, 500, 502, 503, 504 and a thrown call are transient", async () => {
+        for (const status of [429, 408, 425, 500, 502, 503, 504]) {
+            route({ [REFRESH_URL]: () => json(status, {}) });
+            expect(await refreshSession(`ref-t${status}`, cfg()), String(status)).toEqual({
+                kind: "transient",
+                status,
+            });
+        }
+        fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+        expect(await refreshSession("ref-thrown", cfg())).toEqual({
+            kind: "transient",
+            errorName: "TypeError",
+        });
+    });
+
+    it("refresh 200 without a refresh token is terminal and never keeps the spent one", async () => {
+        route({
+            [REFRESH_URL]: () => json(200, refreshBody(hs(), { refresh_token: undefined })),
+        });
+        const got = await refreshSession("ref-1", cfg());
+        expect(got).toEqual({ kind: "terminal", reason: "invalid_response" });
+    });
+
+    it("refresh 200 without an access token is terminal", async () => {
+        route({ [REFRESH_URL]: () => json(200, refreshBody("", {})) });
+        expect(await refreshSession("ref-1", cfg())).toEqual({
+            kind: "terminal",
+            reason: "invalid_response",
+        });
+    });
+
+    it("refresh 200 whose access token is not HS256 under hs256_compat is terminal and logs token_shape_refused", async () => {
+        route({ [REFRESH_URL]: () => json(200, refreshBody("not-a-token")) });
+        expect(await refreshSession("ref-1", cfg())).toEqual({
+            kind: "terminal",
+            reason: "token_refused",
+        });
+        expect(vi.mocked(logSessionBranch).mock.calls.map(([f]) => f)).toEqual([
+            { operation: "refresh", branch: "token_shape_refused" },
+        ]);
+    });
+
+    it("refresh 200 whose access token fails verification under eddsa is terminal and logs refresh_invalid_response", async () => {
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody(eddsaToken(other.privateKey, "kid-1", 1760003600))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
+        });
+        expect(await refreshSession("ref-1", c())).toEqual({
+            kind: "terminal",
+            reason: "token_refused",
+        });
+        expect(vi.mocked(logSessionBranch).mock.calls.map(([f]) => f)).toEqual([
+            { operation: "refresh", branch: "refresh_invalid_response" },
+        ]);
+    });
+
+    it("refresh 200 with an unknown kid is terminal after one refresh of the key set", async () => {
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody(eddsaToken(other.privateKey, "kid-9", 1760003600))),
+            ...keyRoutes(() => new Response(jwksDoc(jwk("kid-1")))),
+        });
+        expect(await refreshSession("ref-1", c())).toEqual({
+            kind: "terminal",
+            reason: "token_refused",
+        });
+    });
+
+    it("refresh 200 under eddsa with the key set unavailable stores the ROTATED refresh token, drops the access token, and is transient", async () => {
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody(eddsaToken(privateKey, "kid-1", 1760003600))),
+            ...keyRoutes(() => new Response("x", { status: 503 })),
+        });
+        expect(await refreshSession("ref-1", c())).toEqual({
+            kind: "transient",
+            refreshToken: "ref-2",
+        });
+    });
+
+    it("an unknown token class or a missing issuer makes the refresh transient and calls no backend", async () => {
+        expect(await refreshSession("ref-1", cfg({ tokenClassRaw: "nope" }))).toEqual({
+            kind: "transient",
+        });
+        expect(await refreshSession("ref-1", cfg({ tokenClassRaw: "eddsa" }))).toEqual({
+            kind: "transient",
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(vi.mocked(logSessionBranch).mock.calls.map(([f]) => f)).toEqual([
+            { operation: "refresh", branch: "auth_config_invalid" },
+            { operation: "refresh", branch: "auth_config_invalid" },
+        ]);
+    });
+
+    it("the refresh judges the token at the time after the key read", async () => {
+        route({
+            [REFRESH_URL]: () => json(200, refreshBody(eddsaToken(privateKey, "kid-1", NOW + 1))),
+            ...keyRoutes(() => {
+                now = NOW + 2;
+                return new Response(jwksDoc(jwk("kid-1")));
+            }),
+        });
+        expect(await refreshSession("ref-1", c())).toEqual({
+            kind: "terminal",
+            reason: "token_refused",
+        });
+    });
+
+    it("parallel refreshes of one refresh token make one backend call and share the outcome", async () => {
+        let release: () => void = () => {};
+        const gate = new Promise<void>((resolve) => (release = resolve));
+        route({
+            [REFRESH_URL]: async () => {
+                await gate;
+                return json(200, refreshBody(hs()));
+            },
+        });
+        const first = refreshSession("ref-par", cfg());
+        const second = refreshSession("ref-par", cfg());
+        release();
+        const [a, b] = await Promise.all([first, second]);
+        expect(calls(REFRESH_URL)).toHaveLength(1);
+        expect(a).toEqual(b);
+        expect(a).toMatchObject({ kind: "rotated", refreshToken: "ref-2" });
+    });
+
+    it("different refresh tokens do not share a call", async () => {
+        route({ [REFRESH_URL]: () => json(200, refreshBody(hs())) });
+        await Promise.all([refreshSession("ref-x", cfg()), refreshSession("ref-y", cfg())]);
+        expect(calls(REFRESH_URL)).toHaveLength(2);
+    });
+
+    it("the single flight is released after the answer, success or failure", async () => {
+        route({ [REFRESH_URL]: () => json(200, refreshBody(hs())) });
+        await refreshSession("ref-rel", cfg());
+        await refreshSession("ref-rel", cfg());
+        expect(calls(REFRESH_URL)).toHaveLength(2);
+        route({ [REFRESH_URL]: () => json(503, {}) });
+        await refreshSession("ref-rel", cfg());
+        route({ [REFRESH_URL]: () => json(200, refreshBody(hs())) });
+        expect(await refreshSession("ref-rel", cfg())).toMatchObject({ kind: "rotated" });
+    });
+
+    it("refresh does not read or keep session_access_token", async () => {
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody(hs(), { session_access_token: "svc-token-value" })),
+        });
+        const got = await refreshSession("ref-1", cfg());
+        expect(JSON.stringify(got)).not.toContain("svc-token-value");
+    });
+
+    it("no refresh log line holds a token or a refresh credential", async () => {
+        route({ [REFRESH_URL]: () => json(200, refreshBody("tok-secret-value")) });
+        await refreshSession("ref-secret-value", cfg());
+        route({ [REFRESH_URL]: () => json(503, {}) });
+        await refreshSession("ref-secret-value-2", cfg());
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody("tok-secret-value", { refresh_token: undefined })),
+        });
+        await refreshSession("ref-secret-value-3", cfg());
+        expect(
+            vi
+                .mocked(logSessionBranch)
+                .mock.calls.some(
+                    ([f]) => (f as { branch?: string }).branch === "refresh_invalid_response",
+                ),
+        ).toBe(true);
+        const text = JSON.stringify(vi.mocked(logSessionBranch).mock.calls);
+        for (const secret of ["tok-secret-value", "ref-secret-value", "ref-2"]) {
+            expect(text).not.toContain(secret);
+        }
     });
 });

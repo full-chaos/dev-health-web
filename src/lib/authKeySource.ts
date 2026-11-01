@@ -18,6 +18,8 @@ const TTL_SECONDS = 300;
 const REFRESH_FLOOR_SECONDS = 30;
 const OUTAGE_GRACE_SECONDS = 600;
 
+type Operation = "login" | "refresh";
+
 export type KeyAnswer =
     { ok: true; keys: Jwk[] } | { ok: false; reason: "unavailable" | "unknown_kid" };
 
@@ -42,7 +44,7 @@ async function read(url: string): Promise<{ text: string } | Failure> {
     return { text: await res.text() };
 }
 
-async function refreshKeys(issuer: string, now: number): Promise<void> {
+async function refreshKeys(issuer: string, now: number, operation: Operation): Promise<void> {
     let failure: Failure = {};
     try {
         const discovery = await read(`${issuer}/.well-known/openid-configuration`);
@@ -67,16 +69,16 @@ async function refreshKeys(issuer: string, now: number): Promise<void> {
         failure = { errorName: thrownErrorName(error) };
     }
     logSessionBranch({
-        operation: "login",
+        operation,
         branch: "key_set_unusable",
         ...(failure.status === undefined ? {} : { status: failure.status }),
         ...(failure.errorName === undefined ? {} : { errorName: failure.errorName }),
     });
 }
 
-async function attempt(issuer: string, now: number): Promise<void> {
+async function attempt(issuer: string, now: number, operation: Operation): Promise<void> {
     lastAttemptAt = now;
-    inFlight ??= refreshKeys(issuer, now).finally(() => {
+    inFlight ??= refreshKeys(issuer, now, operation).finally(() => {
         inFlight = null;
     });
     await inFlight;
@@ -94,17 +96,18 @@ export async function publishedKeysFor(
     issuer: string,
     kid: string | undefined,
     nowSeconds: () => number,
+    operation: Operation = "login",
 ): Promise<KeyAnswer> {
     const now = nowSeconds();
     if ((store === null || now - store.fetchedAt > TTL_SECONDS) && canAttempt(now)) {
-        await attempt(issuer, now);
+        await attempt(issuer, now, operation);
     }
     // The refresh above can take time: the grace cutoff is judged at the time it ended.
     let keys = usableKeys(nowSeconds());
     if (keys === null) return { ok: false, reason: "unavailable" };
     if (kid !== undefined && !keys.some((key) => key.kid === kid)) {
         if (canAttempt(now)) {
-            await attempt(issuer, now);
+            await attempt(issuer, now, operation);
             keys = usableKeys(nowSeconds()) ?? keys;
         }
         if (!keys.some((key) => key.kid === kid)) return { ok: false, reason: "unknown_kid" };
