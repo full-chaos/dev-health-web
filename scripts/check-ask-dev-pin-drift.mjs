@@ -129,14 +129,15 @@ function measureOnce({ remote, branch, pin, webContract, paths }) {
         } catch {
             throw new ManifestError(`ask-dev ${ASK_DEV_MANIFEST} at ${pin} is not valid JSON`);
         }
-        if (manifest.source_commit !== webContract) {
-            return {
-                status: "contract_mismatch",
-                pin,
-                head,
-                pinContract: String(manifest.source_commit),
-                webContract,
-            };
+        // A manifest with no valid source_commit is a broken input, not a wrong pin: exit 2, no retry.
+        const pinContract = manifest?.source_commit;
+        if (typeof pinContract !== "string" || !SHA_RE.test(pinContract)) {
+            throw new ManifestError(
+                `ask-dev ${ASK_DEV_MANIFEST} at ${pin} has no 40-char source_commit: ${pinContract === undefined ? "missing" : JSON.stringify(pinContract)}`,
+            );
+        }
+        if (pinContract !== webContract) {
+            return { status: "contract_mismatch", pin, head, pinContract, webContract };
         }
         if (head === pin) return { status: "current", pin, head };
         // NUL-separated, so a path with unusual characters is listed raw and never quoted.

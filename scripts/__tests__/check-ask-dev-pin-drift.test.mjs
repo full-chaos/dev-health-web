@@ -630,6 +630,31 @@ describe("tool failures are not verdicts", () => {
             expect(sleeps).toHaveLength(0);
         }
     });
+    it.each([
+        ["has no source_commit", "{}"],
+        ["has a source_commit that is not a SHA", '{"source_commit":"main"}'],
+        ["has a source_commit that is not a string", '{"source_commit":5}'],
+        ["is null", "null"],
+        ["is an array", "[]"],
+    ])(
+        "a parseable ask-dev manifest that %s is a no-retry input error, not a wrong pin",
+        (_, text) => {
+            const { repo } = fakeAskDev();
+            const pin = commit(repo, { "src/contracts/manifest.json": text }, "malformed manifest");
+            const sleeps = [];
+            const r = run({ repo, pin }, { sleep: (ms) => sleeps.push(ms) });
+            expect(r.code).toBe(2);
+            expect(r.output).toContain("status=error");
+            expect(r.output).not.toMatch(/status=(contract_mismatch|current|drift)/);
+            expect(r.stderr).toContain(
+                "::error title=ask-dev pin drift: tool failure, not drift::",
+            );
+            expect(r.stderr).toContain("not retried");
+            expect(r.stderr).not.toContain("undefined");
+            expect(r.stderr).not.toContain("TypeError");
+            expect(sleeps).toHaveLength(0);
+        },
+    );
     it("the attempts text states the attempts really made", () => {
         const sleeps = [];
         const r = run(
@@ -772,8 +797,10 @@ describe("workflow contract", () => {
     it("a tool failure opens no drift issue and closes none", () => {
         const i = wf.indexOf("\n    drift-issue:");
         const issue = wf.slice(i, wf.indexOf("\n        runs-on", i));
-        expect(issue).toContain("needs.drift.outputs.status != 'error'");
-        expect(issue).toContain("needs.drift.outputs.status != ''");
+        const condition = /if: >-\n([\s\S]*)$/.exec(issue)[1].replace(/\s+/g, " ").trim();
+        expect(condition).toBe(
+            "always() && github.event_name != 'pull_request' && needs.drift.outputs.status != '' && needs.drift.outputs.status != 'error'",
+        );
     });
 });
 
