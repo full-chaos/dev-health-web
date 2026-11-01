@@ -221,13 +221,14 @@ export function createAcrBrowserTransport(
     async function another(token: string, operation: string): Promise<string | null> {
         dependencies.rejected(token);
         const next = await dependencies.token();
+        // CHAOS-12369: one line per 401, no token value. It says what the re-read gave, not that a
+        // resend followed: an abort or a spent budget can still stop it (codex r3 on #1681).
         if (next.kind === "token" && next.token !== token) {
-            // CHAOS-12369: one line per 401, no token value.
-            logger.info({ operation, resend: "new_token" }, "ask-dev acr call 401");
+            logger.info({ operation, reread: "new" }, "ask-dev acr call 401");
             return next.token;
         }
-        const resend = next.kind === "token" ? "same_token" : "no_token";
-        logger.warn({ operation, resend }, "ask-dev acr call 401");
+        const read = next.kind === "token" ? "same" : "none";
+        logger.warn({ operation, reread: read }, "ask-dev acr call 401");
         return null;
     }
 
@@ -289,9 +290,11 @@ export function createAcrBrowserTransport(
             void response.body?.cancel().catch(() => undefined);
             const next = await another(token, operation);
             if (next !== null) {
+                if (signal.aborted) throw signal.reason;
+                logger.info({ operation }, "ask-dev acr call 401 resent");
                 response = await sendJson(path, operation, signal, next, method, json);
                 if (response.status === 401) {
-                    logger.warn({ operation, resend: "second_401" }, "ask-dev acr call 401");
+                    logger.warn({ operation, second: true }, "ask-dev acr call 401");
                     dependencies.rejected(next);
                 }
             }
@@ -510,12 +513,13 @@ export function createAcrBrowserTransport(
                     if (spec.signal.aborted) throw spec.signal.reason;
                     spec.beforeResend?.();
                     token = next;
+                    logger.info({ operation: spec.operation }, "ask-dev acr call 401 resent");
                     timer = setTimeout(() => end("admission_timeout"), HEADER_WAIT_MAX_MS);
                     response = await send();
                     clearTimeout(timer);
                     if (response.status === 401) {
                         logger.warn(
-                            { operation: spec.operation, resend: "second_401" },
+                            { operation: spec.operation, second: true },
                             "ask-dev acr call 401",
                         );
                         dependencies.rejected(token);

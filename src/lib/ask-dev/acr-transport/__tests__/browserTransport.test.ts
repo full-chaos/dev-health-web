@@ -895,12 +895,14 @@ describe("submissionStatus and readResult", () => {
 });
 
 describe("logs: a 401 (CHAOS-12369)", () => {
+    const RESENT = "ask-dev acr call 401 resent";
     const resends = () =>
         [...log.info.mock.calls, ...log.warn.mock.calls].filter(
             ([, message]) => message === "ask-dev acr call 401",
         );
+    const resent = () => log.info.mock.calls.filter(([, message]) => message === RESENT);
 
-    it("a new token: one info line, resend new_token, then no second line when the resend works", async () => {
+    it("a new token: one info line reread new, one resent line, and no warn when the resend works", async () => {
         const body = sseBody();
         fetchMock
             .mockResolvedValueOnce(unauthorized())
@@ -909,32 +911,77 @@ describe("logs: a 401 (CHAOS-12369)", () => {
         const { t } = withStore(held(TOKEN), held(NEXT));
         await collect(t.investigate(call()));
         expect(log.info.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toEqual([
-            [{ operation: "investigate", resend: "new_token" }, "ask-dev acr call 401"],
+            [{ operation: "investigate", reread: "new" }, "ask-dev acr call 401"],
         ]);
+        expect(resent()).toEqual([[{ operation: "investigate" }, RESENT]]);
         expect(log.warn.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toEqual([]);
     });
 
-    it("a second 401 after the resend: new_token, then a warn second_401", async () => {
+    // Codex r3 on #1681: the re-read's result is not a resend. Only a sent request logs "resent".
+    it("a spent budget after the re-read: reread new, no resent line, 1 request", async () => {
+        fetchMock.mockImplementation(async () => unauthorized());
+        const { t } = withStore(held(TOKEN), () => {
+            now = T0 + 105_001;
+            return held(NEXT);
+        });
+        await expect(collect(t.investigate(call()))).rejects.toEqual(
+            new TransportFailure("budget_exhausted"),
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(resends()).toEqual([
+            [{ operation: "investigate", reread: "new" }, "ask-dev acr call 401"],
+        ]);
+        expect(resent()).toEqual([]);
+    });
+
+    it("an abort during the re-read: reread new, no resent line, 1 request (stream and JSON)", async () => {
+        fetchMock.mockImplementation(async () => unauthorized());
+        const reason = new DOMException("deadline", "AbortError");
+        const stream = new AbortController();
+        const streamStore = withStore(held(TOKEN), () => {
+            stream.abort(reason);
+            return held(NEXT);
+        });
+        await expect(collect(streamStore.t.investigate(call(stream.signal)))).rejects.toBe(reason);
+        const json = new AbortController();
+        const jsonStore = withStore(held(TOKEN), () => {
+            json.abort(reason);
+            return held(NEXT);
+        });
+        await expect(jsonStore.t.submissionStatus(SUBMISSION, json.signal)).rejects.toBe(reason);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(resends().map(([fields]) => fields)).toEqual([
+            { operation: "investigate", reread: "new" },
+            { operation: "status", reread: "new" },
+        ]);
+        expect(resent()).toEqual([]);
+    });
+
+    it("a second 401 after the resend: reread new, resent, then a warn second", async () => {
         fetchMock.mockImplementation(async () => unauthorized());
         const { t } = withStore(held(TOKEN), held(NEXT));
         await collect(t.investigate(call())).catch(() => undefined);
         expect(resends()).toEqual([
-            [{ operation: "investigate", resend: "new_token" }, "ask-dev acr call 401"],
-            [{ operation: "investigate", resend: "second_401" }, "ask-dev acr call 401"],
+            [{ operation: "investigate", reread: "new" }, "ask-dev acr call 401"],
+            [{ operation: "investigate", second: true }, "ask-dev acr call 401"],
         ]);
+        expect(resent()).toHaveLength(1);
         expect(log.warn.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toEqual([
-            [{ operation: "investigate", resend: "second_401" }, "ask-dev acr call 401"],
+            [{ operation: "investigate", second: true }, "ask-dev acr call 401"],
         ]);
     });
 
     it.each([
-        ["same_token", held(TOKEN)],
-        ["no_token", { kind: "authorization_required" } as AcrAccessToken],
-    ])("the store gives %s: one warn line, no resend", async (resend, again) => {
+        ["same", held(TOKEN)],
+        ["none", { kind: "authorization_required" } as AcrAccessToken],
+    ])("the re-read gives %s: one warn line, no resend", async (read, again) => {
         fetchMock.mockImplementation(async () => unauthorized());
         const { t } = withStore(held(TOKEN), again);
         await collect(t.investigate(call())).catch(() => undefined);
-        expect(resends()).toEqual([[{ operation: "investigate", resend }, "ask-dev acr call 401"]]);
+        expect(resends()).toEqual([
+            [{ operation: "investigate", reread: read }, "ask-dev acr call 401"],
+        ]);
+        expect(resent()).toEqual([]);
         expect(log.warn.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toHaveLength(1);
     });
 
@@ -949,10 +996,12 @@ describe("logs: a 401 (CHAOS-12369)", () => {
             .t.readResult(id, signal)
             .catch(() => undefined);
         expect(resends().map(([fields]) => fields)).toEqual([
-            { operation: "status", resend: "new_token" },
-            { operation: "status", resend: "second_401" },
-            { operation: "replay", resend: "same_token" },
+            { operation: "status", reread: "new" },
+            { operation: "status", second: true },
+            { operation: "replay", reread: "same" },
         ]);
+        // Only the status call sent a second request.
+        expect(resent().map(([fields]) => fields)).toEqual([{ operation: "status" }]);
     });
 
     it("a 401 line carries no token and no URL", async () => {
