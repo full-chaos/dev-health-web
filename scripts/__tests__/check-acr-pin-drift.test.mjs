@@ -164,14 +164,24 @@ describe("cli exit codes", () => {
             manifest,
             JSON.stringify({ source_commit: pin, files: [{ path: "openapi/a.json" }] }),
         );
-        return spawnSync("node", [SCRIPT], {
-            env: { ...process.env, ACR_REMOTE: remote, ACR_MANIFEST: manifest },
+        const output = path.join(dir, "github-output");
+        const result = spawnSync("node", [SCRIPT], {
+            env: {
+                ...process.env,
+                ACR_REMOTE: remote,
+                ACR_MANIFEST: manifest,
+                GITHUB_OUTPUT: output,
+            },
             encoding: "utf8",
         });
+        result.outputs = fs.existsSync(output) ? fs.readFileSync(output, "utf8") : "";
+        return result;
     };
     it("exits 0 on a clean pin", () => {
         const { repo, base } = fakeAcr();
-        expect(run(repo, base).status).toBe(0);
+        const r = run(repo, base);
+        expect(r.status).toBe(0);
+        expect(r.outputs).toBe(`status=current\npin=${base}\nhead=${base}\n`);
     });
     it("exits 1 on planted drift", () => {
         const { repo, base } = fakeAcr();
@@ -179,11 +189,14 @@ describe("cli exit codes", () => {
         const r = run(repo, base);
         expect(r.status).toBe(1);
         expect(r.stderr).toContain("DRIFT");
+        expect(r.outputs).toMatch(/^status=drift\npin=[0-9a-f]{40}\nhead=[0-9a-f]{40}\n$/);
+        expect(r.outputs).not.toContain(`head=${base}`);
     });
     it("exits 2 on fetch failure", () => {
         const r = run("/nonexistent/acr.git", "a".repeat(40));
         expect(r.status).toBe(2);
         expect(r.stderr).toContain("could NOT run");
+        expect(r.outputs).toBe("status=error\n");
     });
     it("exits 2 on a malformed pin", () => {
         const { repo } = fakeAcr();

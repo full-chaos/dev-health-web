@@ -79,6 +79,17 @@ export function checkDrift({ remote, branch = "main", pin, paths }) {
     }
 }
 
+// Machine-readable result for the workflow (GITHUB_OUTPUT): status current|drift|error, the pin, acr main.
+function writeOutputs(fields) {
+    if (!process.env.GITHUB_OUTPUT) return;
+    fs.appendFileSync(
+        process.env.GITHUB_OUTPUT,
+        Object.entries(fields)
+            .map(([key, value]) => `${key}=${value}\n`)
+            .join(""),
+    );
+}
+
 function main() {
     const remote = process.env.ACR_REMOTE ?? DEFAULT_REMOTE;
     const manifest =
@@ -86,6 +97,7 @@ function main() {
     try {
         const pin = readPin(manifest);
         const result = checkDrift({ remote, pin, paths: sourcePathsFromManifest(manifest) });
+        writeOutputs({ status: result.status, pin, head: result.head });
         if (result.status === "current") {
             process.stdout.write(
                 `ACR pin ${pin} matches acr main ${result.head} for contracts/.\n`,
@@ -97,6 +109,7 @@ function main() {
         );
         return 1;
     } catch (error) {
+        writeOutputs({ status: "error" });
         process.stderr.write(
             `ACR pin drift check could NOT run (remote=${remote}): ${error instanceof Error ? error.message : String(error)}\n`,
         );

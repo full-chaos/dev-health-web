@@ -59,7 +59,7 @@ describe("workflow job time limits (CHAOS-8530)", () => {
         "package.yml": ["package"],
         "mirror-ci-images.yml": ["mirror"],
         "check-ci-image-digests.yml": ["check"],
-        "acr-pin-drift.yml": ["drift"],
+        "acr-pin-drift.yml": ["drift", "drift-issue"],
     };
 
     it("knows exactly the jobs of every workflow (a new job needs a limit decision)", () => {

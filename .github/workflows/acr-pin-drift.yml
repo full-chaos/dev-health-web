@@ -1,5 +1,11 @@
-# Fail when the vendored ACR contract pin drifts from acr main (CHAOS-11907, INV-4).
-# Exit 1 = drift, exit 2 = the check could not fetch (also red; never read as current).
+# Compare the vendored ACR contract pin with acr main (CHAOS-11907, INV-4; CHAOS-12341, D6614).
+#
+# Main, schedule and manual runs are strict: drift turns the run red and keeps it red until the pin
+# is bumped. They also open (or update) one "ACR pin drift: <acr sha>" issue, and close it when the
+# drift clears.
+# A PR run is strict only when the PR changes the vendored contracts or the generator that writes
+# them (scripts/acr-pin-scope.mjs lists the paths). For any other PR, drift is a warning, so an acr
+# main move never turns unrelated PRs red. Exit 1 = drift, exit 2 = the check could not fetch (also red where strict).
 name: ACR pin drift
 
 on:
@@ -7,20 +13,118 @@ on:
         branches: [main]
     pull_request:
     schedule:
-        - cron: '17 6 * * *'
+        - cron: '17 * * * *'
     workflow_dispatch:
 
-permissions:
-    contents: read
+permissions: {}
 
 jobs:
     drift:
         runs-on: ubuntu-latest
         timeout-minutes: 5
+        permissions:
+            contents: read
+            pull-requests: read
+        outputs:
+            status: ${{ steps.check.outputs.status }}
+            pin: ${{ steps.check.outputs.pin }}
+            head: ${{ steps.check.outputs.head }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
             - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
               with:
                   node-version: 22
+            - name: List the files this PR changes
+              id: files
+              if: github.event_name == 'pull_request'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REPO: ${{ github.repository }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+              run: |
+                  set -euo pipefail
+                  gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
+                      --jq '.[] | .filename, (.previous_filename // empty)' > "$RUNNER_TEMP/pr-files.txt"
+            # The token is not set on this step: it runs a script from the PR checkout.
+            - name: Decide whether drift is enforced
+              id: scope
+              env:
+                  EVENT: ${{ github.event_name }}
+              run: |
+                  set -euo pipefail
+                  if [ "$EVENT" != "pull_request" ]; then
+                      echo "enforce=true" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
+                  node scripts/acr-pin-scope.mjs < "$RUNNER_TEMP/pr-files.txt" >> "$GITHUB_OUTPUT"
             - name: Compare the vendored pin with acr main
+              id: check
+              continue-on-error: true
               run: node scripts/check-acr-pin-drift.mjs
+            - name: Advisory drift (this PR does not touch the pin)
+              if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce != 'true'
+              run: |
+                  echo "::warning title=ACR pin drift (advisory)::The ACR pin differs from acr main or the check could not run. This PR does not touch the pin, so it is not blocked. See the check step log; main carries the drift issue."
+            - name: Fail on drift
+              if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce == 'true'
+              run: exit 1
+
+    drift-issue:
+        needs: drift
+        if: >-
+            always() && github.event_name != 'pull_request' &&
+            (needs.drift.outputs.status == 'drift' || needs.drift.outputs.status == 'current')
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            issues: write
+        concurrency:
+            group: acr-pin-drift-issue
+            cancel-in-progress: false
+        env:
+            GH_TOKEN: ${{ github.token }}
+            GH_REPO: ${{ github.repository }}
+            STATUS: ${{ needs.drift.outputs.status }}
+            PIN: ${{ needs.drift.outputs.pin }}
+            HEAD_SHA: ${{ needs.drift.outputs.head }}
+            RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        steps:
+            - name: Open, update or close the drift issue
+              run: |
+                  set -euo pipefail
+                  # The list API, not search: search is indexed late and would let a second issue open.
+                  open=$(gh issue list --state open --limit 200 --json number,title \
+                      --jq '[.[] | select(.title | startswith("ACR pin drift:")) | .number] | sort | .[]')
+                  if [ "$STATUS" = "current" ]; then
+                      for n in $open; do
+                          gh issue close "$n" --comment "Drift cleared: the pin $PIN matches acr main $HEAD_SHA. Run: $RUN_URL"
+                      done
+                      exit 0
+                  fi
+                  title="ACR pin drift: $HEAD_SHA"
+                  body=$(printf '%s\n' \
+                      "The vendored ACR contract pin differs from acr main in at least one vendored file." \
+                      "" \
+                      "- Pin: $PIN" \
+                      "- acr main: $HEAD_SHA" \
+                      "- Detected by: $RUN_URL" \
+                      "" \
+                      "Bump: run \`pnpm acr:contracts:generate\` with \`ACR_ROOT\` at the acr main checkout, update \`SOURCE_COMMIT\` in \`scripts/sync-acr-contracts.mjs\`, and open a PR. This issue closes by itself when the pin matches." )
+                  first=""
+                  for n in $open; do
+                      if [ -z "$first" ]; then
+                          first=$n
+                      else
+                          gh issue close "$n" --comment "Duplicate of #$first."
+                      fi
+                  done
+                  if [ -z "$first" ]; then
+                      gh issue create --title "$title" --body "$body"
+                  else
+                      current=$(gh issue view "$first" --json title --jq .title)
+                      if [ "$current" != "$title" ]; then
+                          gh issue edit "$first" --title "$title" --body "$body"
+                      fi
+                  fi
