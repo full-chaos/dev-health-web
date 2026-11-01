@@ -1559,6 +1559,65 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(refreshLog()).toEqual([]);
         });
     });
+
+    describe("codex r2 on #1676: a clear while a request is in flight wins", () => {
+        function codeExchanges() {
+            return tokenLog.filter((entry) => entry.form.grant_type === "authorization_code");
+        }
+
+        async function callback() {
+            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
+            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
+            return defaultTab.completeAcrAuthorization(redirect.headers.Location!);
+        }
+
+        it("a sign-out during the principal check after a refresh: no token, nothing held", async () => {
+            await signIn();
+            now += REFRESH_AT_MS;
+            let reads = 0;
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    reads += 1;
+                    // The second read is the check after the refresh: sign-out clears meanwhile.
+                    if (reads === 2) defaultTab.clearAcrTokensInAllTabs();
+                    return principal;
+                },
+            });
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(reads).toBe(2);
+            expect(refreshLog()).toHaveLength(1);
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(refreshLog()).toHaveLength(1);
+        });
+
+        it("a sign-out while the code exchange is in flight: nothing is stored or held", async () => {
+            fates.push({ during: async () => defaultTab.clearAcrTokensInAllTabs() });
+            expect(await callback()).toMatchObject({ kind: "failed", reason: "signed_out" });
+            expect(codeExchanges()).toHaveLength(1);
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(refreshLog()).toEqual([]);
+        });
+
+        it.each([
+            ["another user", { userId: "user-2", orgId: "org-1" }],
+            ["another org", { userId: "user-1", orgId: "org-2" }],
+            ["no session", null],
+        ])("%s by the end of the code exchange: nothing is stored or held", async (_, next) => {
+            fates.push({
+                during: async () => {
+                    principal = next;
+                },
+            });
+            expect(await callback()).toMatchObject({ kind: "failed", reason: "signed_out" });
+            expect(codeExchanges()).toHaveLength(1);
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            principal = USER;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+        });
+    });
 });
 
 describe("module load (P1-6, CHAOS-12305)", () => {

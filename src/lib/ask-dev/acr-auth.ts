@@ -764,6 +764,7 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     if (code === null || code === "") return fail("missing_code");
     // The family is bound to the web principal (CHAOS-12305). Read it before the one-exchange
     // claim: a signed-out callback spends nothing, sends no code and stores nothing.
+    const dropsBefore = drops;
     const principal = await dependencies.principal();
     if (principal === null) return fail("signed_out");
     const claim = await claimOnce(pending);
@@ -773,6 +774,12 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     if (answer.kind === "refused") return fail("token_refused");
     if (answer.kind === "unavailable") return fail("token_unavailable");
     if (answer.kind === "invalid") return fail("invalid_token_response");
+    // A sign-out, or another web user, while the exchange ran: hold and store nothing, so nothing
+    // outlives the sign-out that could not revoke it (codex r2 on #1676).
+    const after = await dependencies.principal();
+    if (drops !== dropsBefore || after === null || !samePrincipal(after, principal)) {
+        return fail("signed_out");
+    }
     hold(answer.access, answer.expiresIn, pending.issuer, pending.clientId, principal);
     if (answer.refresh === null) {
         storage.removeItem(ACR_TOKEN_FAMILY_KEY);
@@ -920,11 +927,14 @@ export async function getAcrAccessToken(): Promise<AcrAccessToken> {
     if (answer.kind !== "token") return answer;
     // The web session may have changed while the refresh ran (an org switch, a sign-out): the token
     // goes only to the principal it was refreshed for (codex r1 on #1676).
+    const dropsBefore = drops;
     const after = await dependencies.principal();
     if (after === null || !samePrincipal(after, principal)) {
         dropTokens(storage);
         return AUTHORIZATION_REQUIRED;
     }
+    // A clear while that check ran (sign-out, a clone) wins: the token is not given out (codex r2).
+    if (drops !== dropsBefore) return AUTHORIZATION_REQUIRED;
     return answer;
 }
 
