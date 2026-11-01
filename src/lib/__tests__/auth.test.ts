@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { VALIDATION_INTERVAL_MS } from "@/lib/authValidationMemo";
 
 interface RedirectError extends Error {
     digest: string;
@@ -724,7 +725,7 @@ describe("jwt callback — token lifecycle", () => {
     // CHAOS-2232 / CHAOS-2458: periodic /auth/validate backoff — a 429/5xx/network failure must
     // not invalidate the session AND must not retry on every subsequent request. Backoff is
     // jittered exponential (base 60s, cap 15min) so concurrent tabs/instances spread out.
-    const VALIDATION_INTERVAL = 5 * 60 * 1000;
+    const VALIDATION_INTERVAL = VALIDATION_INTERVAL_MS;
     const VALIDATION_BACKOFF_BASE = 60 * 1000;
     const VALIDATION_BACKOFF_CAP = 15 * 60 * 1000;
     let validationTokenCounter = 0;
