@@ -219,3 +219,65 @@ describe("sealed session handoff through the real Auth.js update", () => {
         await expect(auth.sealSessionHandoff("activeOrg", ACTIVE_ORG, "")).rejects.toThrow();
     });
 });
+
+describe("a handoff drops the service session token of the old pair (CHAOS-10876)", () => {
+    async function update(handoff: string) {
+        const now = Date.now();
+        const value = await encode({
+            secret: SECRET,
+            salt: COOKIE,
+            token: {
+                sub: "user-1",
+                id: "user-1",
+                org_id: "org-1",
+                role: "member",
+                access_token: "old-access",
+                refresh_token: "old-refresh",
+                session_access_token: "old-service-token",
+                session_expires_at: now + 3600_000,
+                act_sub: "prn_OLDOLDOLDOLDOLDOLDOLDO",
+                expires_at: now + 3600_000,
+                last_validated: now,
+            },
+        });
+        const cookie = `${COOKIE}=${value}`;
+        const csrfRes = await GET(
+            new NextRequest(`${ORIGIN}/api/auth/csrf`, { headers: { cookie } }),
+        );
+        const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
+        const csrfCookie = csrfRes.headers
+            .getSetCookie()
+            .map((c) => c.split(";")[0])
+            .find((c) => c.startsWith("authjs.csrf-token="));
+        const res = await POST(
+            new NextRequest(`${ORIGIN}/api/auth/session`, {
+                method: "POST",
+                headers: { cookie: `${cookie}; ${csrfCookie}`, "content-type": "application/json" },
+                body: JSON.stringify({ csrfToken, data: { sessionHandoff: handoff } }),
+            }),
+        );
+        const written = res.headers
+            .getSetCookie()
+            .filter((c) => c.startsWith(`${COOKIE}=`))
+            .map((c) => c.split(";")[0].slice(COOKIE.length + 1));
+        const token = await decode({ secret: SECRET, salt: COOKIE, token: written[0] });
+        return { token, text: await res.text() };
+    }
+
+    it.each([
+        ["activeOrg", ACTIVE_ORG],
+        ["onboardComplete", ONBOARDED],
+    ] as const)(
+        "%s: the new pair replaces the access token and the old service token, expiry and actor are gone",
+        async (kind, pair) => {
+            const { token, text } = await update(
+                await auth.sealSessionHandoff(kind, pair, "user-1"),
+            );
+            expect(token).toMatchObject({ access_token: "new-access" });
+            expect(token?.session_access_token).toBeUndefined();
+            expect(token?.session_expires_at).toBeUndefined();
+            expect(token?.act_sub).toBeUndefined();
+            expect(text).not.toContain("old-service-token");
+        },
+    );
+});

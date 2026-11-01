@@ -197,3 +197,39 @@ describe("browserSafeAuthHandler (CHAOS-12088)", () => {
         expect(await res.json()).toEqual(served);
     });
 });
+
+describe("browserSafeAuthHandler and the service session token (CHAOS-10876)", () => {
+    it("removes session_access_token from the answer and keeps the rest", async () => {
+        const handler = vi.fn(async () =>
+            json({ user: { id: "u" }, expires: "e", session_access_token: "SVC-1" }),
+        );
+        const res = await browserSafeAuthHandler(handler)(new NextRequest(URL_SESSION));
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ user: { id: "u" }, expires: "e" });
+    });
+
+    it("refuses (500) an answer that still holds a session token value under another key", async () => {
+        const handler = vi.fn(async () =>
+            json({ user: { id: "u", copy: "SVC-copied" }, session_access_token: "SVC-copied" }),
+        );
+        const res = await browserSafeAuthHandler(handler)(new NextRequest(URL_SESSION));
+        expect(res.status).toBe(500);
+        expect(await res.text()).not.toContain("SVC-copied");
+    });
+
+    it("serves no header that carries a session token: no Location, no cookie but the ones Auth.js set", async () => {
+        const headers = new Headers();
+        headers.append("set-cookie", "authjs.session-token=sealed; Path=/; HttpOnly");
+        headers.set("location", "/dashboard");
+        const handler = vi.fn(async () =>
+            json({ user: { id: "u" }, session_access_token: "SVC-1" }, { status: 200, headers }),
+        );
+        const res = await browserSafeAuthHandler(handler)(new NextRequest(URL_SESSION));
+        const all = [...res.headers.entries()].map(([k, v]) => `${k}: ${v}`).join("\n");
+        expect(all).not.toContain("SVC-1");
+        expect(res.headers.getSetCookie()).toEqual([
+            "authjs.session-token=sealed; Path=/; HttpOnly",
+        ]);
+        expect(res.headers.get("location")).toBe("/dashboard");
+    });
+});
