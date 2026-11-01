@@ -2864,7 +2864,7 @@
                     "state": "truncated",
                     "reason": "canonical fact result was truncated",
                     "label": "Canonical facts — health",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:investment",
@@ -2885,7 +2885,7 @@
                     "state": "truncated",
                     "reason": "canonical fact result was truncated",
                     "label": "Canonical facts — readiness",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:workload",
@@ -3816,6 +3816,30 @@
                     "declared": 0
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:partial": "Partial answer",
+            "driver_standing:contributing": "contributing",
+            "driver_standing:principal": "main driver",
+            "driver_window:current": "current period",
+            "fact_kind:health": "health",
+            "fact_kind:investment": "investment",
+            "fact_kind:workload": "workload",
+            "member_outcome:provisional": "provisional",
+            "ranking_signal:health.compounding_risk": "health risk",
+            "ranking_signal:investment_mix": "investment mix",
+            "ranking_signal:operational_deficiencies.severity": "operational deficiencies",
+            "ranking_signal:readiness.coverage_gap": "readiness gap",
+            "ranking_signal:workload.forecast_pressure": "workload pressure",
+            "requirement_outcome:narrowed": "narrowed",
+            "requirement_outcome:satisfied": "met",
+            "subject_kind:project": "project",
+            "subject_kind_plural:project": "projects",
+            "threshold_label:investment_mix.deliberate_share_low": "deliberate share is low",
+            "threshold_label:investment_mix.mix_concentrated": "work mix is concentrated",
+            "threshold_label:investment_mix.reactive_share_high": "reactive share is high",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
         }
     }
 }

@@ -235,6 +235,13 @@
                     "declared": 0
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:clarification_required": "Answer needs your confirmation",
+            "requirement_outcome:not_applicable": "not applicable",
+            "requirement_outcome:not_attempted": "not attempted",
+            "window_provenance:inferred_default": "default window",
+            "window_relative_id:trailing_90d": "last 90 days"
         }
     }
 }

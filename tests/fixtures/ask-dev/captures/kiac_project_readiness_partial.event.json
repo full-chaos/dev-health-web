@@ -1463,6 +1463,15 @@
                     "declared": 2
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:partial": "Partial answer",
+            "candidate_state:committed": "selected",
+            "fact_kind:actual_completion": "completion",
+            "requirement_outcome:satisfied": "met",
+            "requirement_outcome:unavailable": "unavailable",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
         }
     }
 }

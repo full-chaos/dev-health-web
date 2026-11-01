@@ -59,8 +59,7 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        // The status pill and the correction sentence wait for CHAOS-12417 (see the fixme tests below).
-        // What it must still hold: two answers, and never the words "Full answer".
+        // Two answers, and never the words "Full answer": neither has complete completeness.
         await expect(panel.getByRole("article", { name: "Answer" })).toHaveCount(2);
         await expect(panel.getByText("Full answer", { exact: true })).toHaveCount(0);
         await page.waitForLoadState("networkidle");
@@ -79,8 +78,7 @@ test.describe("desktop (1280px)", () => {
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
     });
 
-    // CHAOS-12417: the render draws no status pill per answer yet; it waits for served labels.
-    test.fixme("each answer carries its own status pill", async ({ page }) => {
+    test("each answer carries its own status pill", async ({ page }) => {
         await seedTurns(page, [KNOB_OFF, CORRECTED]);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
@@ -89,8 +87,7 @@ test.describe("desktop (1280px)", () => {
         await expect(panel.getByText("Partial answer", { exact: true })).toBeVisible();
     });
 
-    // CHAOS-12417: the render does not say that the service lowered an answer's status yet.
-    test.fixme("a corrected status is said in words", async ({ page }) => {
+    test("a corrected status is said in words", async ({ page }) => {
         await seedTurns(page, [KNOB_OFF, CORRECTED]);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
@@ -100,6 +97,21 @@ test.describe("desktop (1280px)", () => {
                 "The service lowered this answer from Answer, not fully covered to Partial answer: health was read only in part.",
             ),
         ).toBeVisible();
+    });
+});
+
+test.describe("desktop (1280px): the labels flag off", () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    // The flag is off by default, and a withheld ranking arrives the same way: no map at all.
+    test("no served words: a neutral pill, no note, and no raw status word", async ({ page }) => {
+        const { vocabulary_labels: _dropped, ...noWords } = CORRECTED;
+        await seedTurns(page, [noWords]);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await expect(panel.getByTestId("ask-dev-answer-status")).toHaveText("Answer");
+        await expect(panel.getByTestId("answer-status-correction")).toHaveCount(0);
     });
 });
 
@@ -118,8 +130,7 @@ test.describe("mobile (390px)", () => {
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 
-    // CHAOS-12417: the render draws no status pill and no correction sentence yet.
-    test.fixme("the corrected answer says so in the sheet", async ({ page }) => {
+    test("the corrected answer says so in the sheet", async ({ page }) => {
         await seedTurns(page, [CORRECTED]);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();

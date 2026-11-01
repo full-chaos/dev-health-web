@@ -168,6 +168,11 @@
                 }
             ]
         },
-        "refusal_basis": "member_kind_unservable"
+        "refusal_basis": "member_kind_unservable",
+        "vocabulary_labels": {
+            "answer_status:no_match": "No answer",
+            "requirement_outcome:not_applicable": "not applicable",
+            "requirement_outcome:not_attempted": "not attempted"
+        }
     }
 }

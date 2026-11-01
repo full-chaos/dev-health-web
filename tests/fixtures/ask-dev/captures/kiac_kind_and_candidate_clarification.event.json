@@ -183,6 +183,11 @@
             "claimed_facts_count": 0,
             "rows_count": 0,
             "state": "not_derived"
+        },
+        "vocabulary_labels": {
+            "answer_status:clarification_required": "Answer needs your confirmation",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
         }
     }
 }

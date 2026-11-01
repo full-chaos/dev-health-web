@@ -4216,14 +4216,14 @@
                     "state": "truncated",
                     "reason": "canonical fact rows were omitted (omitted 18)",
                     "label": "Canonical facts — flow",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:health",
                     "state": "truncated",
                     "reason": "canonical fact result was truncated",
                     "label": "Canonical facts — health",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:investment",
@@ -4242,7 +4242,7 @@
                     "state": "truncated",
                     "reason": "canonical fact result was truncated",
                     "label": "Canonical facts — readiness",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:workload",
@@ -5179,6 +5179,22 @@
                     ]
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:partial": "Partial answer",
+            "candidate_state:committed": "selected",
+            "driver_standing:contributing": "contributing",
+            "driver_standing:principal": "main driver",
+            "fact_kind:flow": "flow",
+            "fact_kind:health": "health",
+            "fact_kind:investment": "investment",
+            "fact_kind:landscape": "landscape",
+            "fact_kind:readiness": "readiness",
+            "fact_kind:workload": "workload",
+            "requirement_outcome:narrowed": "narrowed",
+            "requirement_outcome:satisfied": "met",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
         }
     }
 }
