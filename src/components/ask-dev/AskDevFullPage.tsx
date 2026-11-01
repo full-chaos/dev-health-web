@@ -81,6 +81,8 @@ function ThreadUrlSync() {
  * this element down. The top is measured, not assumed, because a banner, the mobile bar and a page
  * header that wraps all move it. `100dvh` then follows the viewport by itself. `AppShell` pads
  * `<main>` with `pb-20`, and the frame's `-mb-20` takes that back, so nothing scrolls the window.
+ * Its `-mx-*` take back `<main>`'s `px-4 sm:px-6 md:px-8`: the render hides its sources rail below a
+ * 1180px container, and the evidence window and each source's date show only in that rail.
  * The frame also clips: the `sr-only` text of a long answer is out of flow, and would otherwise
  * stretch the document below the transcript that scrolls.
  */
@@ -110,7 +112,7 @@ function AskDevConversationFrame() {
         <div
             ref={frame}
             data-testid="ask-dev-page-conversation"
-            className="-mb-20 flex min-h-0 min-w-0 overflow-hidden"
+            className="-mx-4 -mb-20 flex min-h-0 min-w-0 overflow-hidden sm:-mx-6 md:-mx-8"
         >
             <Suspense fallback={null}>
                 <ThreadUrlSync />

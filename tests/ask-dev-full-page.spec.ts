@@ -158,6 +158,12 @@ async function expectHeightLeft(page: Page): Promise<void> {
         });
 }
 
+/** Whether the page scrolls sideways at this viewport. */
+const scrollsSideways = (page: Page) =>
+    page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+
 test.beforeEach(async ({ request }) => {
     await setScenario(request, "provisioned");
 });
@@ -258,6 +264,35 @@ test.describe("desktop (1280px)", () => {
         await askOnFullPage(page);
         await expectHeightLeft(page);
         await page.screenshot({ path: testInfo.outputPath("full-page-height-desktop.png") });
+    });
+});
+
+test.describe("wide (1440px)", () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+
+    // CHAOS-12383: the evidence window and each source's "Observed" date show only in this rail,
+    // and the render hides it below a 1180px container. jsdom cannot see a container query.
+    test("the sources rail stands beside the answer, with its evidence window", async ({
+        page,
+    }, testInfo) => {
+        await seed(page, [quickRun]);
+        await askOnFullPage(page);
+        const rail = page.getByRole("complementary", { name: "Latest answer sources" });
+        await expect(rail).toBeVisible();
+        await expect(rail).toContainText("Evidence window");
+        expect(await scrollsSideways(page)).toBe(false);
+        await page.screenshot({ path: testInfo.outputPath("full-page-rail-desktop.png") });
+    });
+
+    test("no width scrolls the page sideways", async ({ page }) => {
+        await seed(page, [quickRun]);
+        await askOnFullPage(page);
+        for (const width of [1440, 1280, 1024, 768, 390]) {
+            await page.setViewportSize({ width, height: 900 });
+            await expect
+                .poll(() => scrollsSideways(page), { message: `at ${String(width)}px` })
+                .toBe(false);
+        }
     });
 });
 
