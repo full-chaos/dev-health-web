@@ -64,7 +64,7 @@ const SUB = "sub_00000000000000000000000000000001";
 const START = Date.parse("2026-10-31T12:00:00Z");
 const START_ISO = "2026-10-31T12:00:00.000Z";
 const QUESTION = "Which projects are at risk?";
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 
 let transport: FakeTransport;
 let clock: number;

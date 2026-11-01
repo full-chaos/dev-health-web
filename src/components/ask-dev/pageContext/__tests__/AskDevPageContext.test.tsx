@@ -54,7 +54,7 @@ import {
     FakeTransport,
     resultEvent,
 } from "../../conversation/__tests__/fakeTransport";
-import refusalScopeAnchor from "../../answer/__tests__/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
+import refusalScopeAnchor from "../../../../../tests/fixtures/ask-dev/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
 import { CONTEXT_CHIPS_COPY } from "../AskDevContextChips";
 import { AskDevPageContextProvider, useAskDevPageContext } from "../AskDevPageContext";
 

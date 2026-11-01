@@ -10,7 +10,7 @@ import { rawWordsInNode } from "../src/test/rawWords";
 // sentence that names the missing data. The panel's test-mode source reads the answer from session
 // storage; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 
 type Result = Record<string, unknown> & {

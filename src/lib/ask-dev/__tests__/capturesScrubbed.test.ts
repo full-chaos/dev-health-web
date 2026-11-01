@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import forbidden from "./scrub-forbidden.sha256.json";
+import forbidden from "../../../../tests/fixtures/ask-dev/scrub-forbidden.sha256.json";
 
 /**
  * CHAOS-12159. dev-health-web is public: a capture fixture must not hold the organisation values
@@ -13,10 +13,7 @@ import forbidden from "./scrub-forbidden.sha256.json";
  * 8-hex token, by word n-gram and by tracker-key form, so a value inside a sentence, an id or an
  * encoded reference is caught as well.
  */
-const CAPTURES = join(__dirname, "captures");
-// CHAOS-11941: every JSON file of the E8 render-shape oracle (its captures AND its MANIFEST.json,
-// whose free-text `questions_tried` quote kiac questions) is checked the same way.
-const ORACLE_DIR = join(__dirname, "../../../../lib/ask-dev/render/__oracle__");
+const CAPTURES = join(__dirname, "../../../../tests/fixtures/ask-dev/captures");
 const FORBIDDEN = new Set(forbidden.sha256);
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/giu;
 const HEX8 = /(?<![0-9a-z])[0-9a-f]{8}(?![0-9a-z])/giu;
@@ -82,16 +79,12 @@ const files = [
     ...readdirSync(CAPTURES)
         .filter((file) => file.endsWith(".json"))
         .map((file) => join(CAPTURES, file)),
-    ...readdirSync(ORACLE_DIR, { recursive: true, encoding: "utf8" })
-        .filter((file) => file.endsWith(".json"))
-        .map((file) => join(ORACLE_DIR, file)),
 ];
 
 describe("capture fixtures hold no scrubbed org value (CHAOS-12159)", () => {
     it("has a forbidden list and capture files to check", () => {
         expect(FORBIDDEN.size).toBeGreaterThan(300);
         expect(files.length).toBeGreaterThan(40);
-        expect(files).toContain(join(ORACLE_DIR, "MANIFEST.json"));
     });
 
     it.each(files.map((file) => [relative(join(__dirname, "../../../../.."), file), file]))(

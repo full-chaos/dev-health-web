@@ -29,6 +29,8 @@ type DrawerProps = {
     claimsRightEdge?: boolean;
     /** The `id` of the dialog, for a control that points at it with `aria-controls`. */
     panelId?: string;
+    /** The body has no padding and no scroll of its own: for content that scrolls inside itself. */
+    fillBody?: boolean;
     "data-testid"?: string;
     children: ReactNode;
 };
@@ -50,6 +52,7 @@ export function Drawer({
     returnFocusRef,
     claimsRightEdge = true,
     panelId,
+    fillBody = false,
     "data-testid": testId,
     children,
 }: DrawerProps) {
@@ -124,7 +127,15 @@ export function Drawer({
                             <X aria-hidden="true" className="h-4 w-4" />
                         </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6">{children}</div>
+                    <div
+                        className={
+                            fillBody
+                                ? "flex min-h-0 flex-1 overflow-hidden"
+                                : "flex-1 overflow-y-auto p-6"
+                        }
+                    >
+                        {children}
+                    </div>
                     {footer && (
                         <footer className="flex flex-wrap gap-2 border-t border-(--card-stroke) px-6 py-4.5">
                             {footer}

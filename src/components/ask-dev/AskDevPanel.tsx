@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { Maximize2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -9,10 +9,8 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { isAskDevPanelPath } from "@/lib/ask-dev/surface";
 
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
-import { AskDevComposerSlot, AskDevTranscript, useHasComposer } from "./AskDevConversationView";
+import { AskDevRender } from "./AskDevRender";
 import { useAskDevShell } from "./AskDevShellContext";
-import { useAskDevConversation } from "./conversation/AskDevConversationContext";
-import { AskDevHistory } from "./conversation/AskDevHistory";
 import { useAskDevAvailability } from "./useAskDevAvailability";
 
 /** The `md` breakpoint, as the shell uses it: from here up the panel is a right region. */
@@ -59,16 +57,7 @@ function ExpandButton({ withText = false }: { withText?: boolean }) {
     );
 }
 
-function DesktopPanel({
-    onClose,
-    children,
-    footer,
-}: {
-    onClose: () => void;
-    children: ReactNode;
-    /** The composer, pinned under the scrolling transcript. */
-    footer: ReactNode;
-}) {
+function DesktopPanel({ onClose, children }: { onClose: () => void; children: ReactNode }) {
     const titleId = useId();
     const panelRef = useRef<HTMLElement>(null);
     const closeRef = useRef(onClose);
@@ -114,50 +103,8 @@ function DesktopPanel({
                     <X aria-hidden="true" className="h-4 w-4" />
                 </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-5">{children}</div>
-            {footer ? <div className="border-t border-(--card-stroke) p-4">{footer}</div> : null}
+            <div className="flex min-h-0 flex-1">{children}</div>
         </aside>
-    );
-}
-
-const TOOLBAR_BUTTON =
-    "inline-flex items-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)";
-
-type PanelView = "conversation" | "history";
-
-/**
- * The panel's body (CHAOS-11956): the conversation, or the history list of past ones. Opening a
- * row selects it and returns to the conversation; only the store's own conversation is drawn.
- */
-function PanelBody({ view, setView }: { view: PanelView; setView: (next: PanelView) => void }) {
-    const live = useAskDevConversation();
-    if (!live) return <AskDevTranscript />;
-    return (
-        <div className="space-y-4">
-            <div className="flex justify-end">
-                <button
-                    type="button"
-                    data-testid="ask-dev-history-toggle"
-                    aria-pressed={view === "history"}
-                    onClick={() => setView(view === "history" ? "conversation" : "history")}
-                    className={TOOLBAR_BUTTON}
-                >
-                    {view === "history"
-                        ? CTA_LABELS.askDevBackToConversation
-                        : CTA_LABELS.askDevHistory}
-                </button>
-            </div>
-            {view === "history" ? (
-                <AskDevHistory
-                    onSelect={(threadId) => {
-                        live.store.selectThread(threadId, "local");
-                        setView("conversation");
-                    }}
-                />
-            ) : (
-                <AskDevTranscript />
-            )}
-        </div>
     );
 }
 
@@ -173,18 +120,12 @@ export function AskDevPanel() {
     const availability = useAskDevAvailability();
     const pathname = usePathname() ?? "";
     const desktop = useSyncExternalStore(subscribeDesktop, readDesktop, () => true);
-    const hasComposer = useHasComposer();
-    const [view, setView] = useState<PanelView>("conversation");
 
     if (!open || availability !== "on" || !isAskDevPanelPath(pathname)) return null;
-    // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent. The history
-    // view has no composer: a question goes to the conversation it is asked in.
-    const composer = hasComposer && view === "conversation" ? <AskDevComposerSlot /> : null;
-    const body = <PanelBody view={view} setView={setView} />;
     if (desktop) {
         return (
-            <DesktopPanel onClose={close} footer={composer}>
-                {body}
+            <DesktopPanel onClose={close}>
+                <AskDevRender />
             </DesktopPanel>
         );
     }
@@ -197,13 +138,11 @@ export function AskDevPanel() {
             panelId={ASK_DEV_PANEL_ID}
             // Ask Dev claims the right edge itself (`AskDevShellProvider`).
             claimsRightEdge={false}
+            fillBody
             // The sheet header has only Close: the full page link sits in its action row.
             footer={<ExpandButton withText />}
         >
-            <div className="space-y-6">
-                {body}
-                {composer}
-            </div>
+            <AskDevRender />
         </Drawer>
     );
 }

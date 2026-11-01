@@ -3,7 +3,7 @@ import {
     type InvestigationEvent,
     type InvestigationStage,
 } from "@/components/ask-dev/conversation/transport";
-import { asTranscriptResult } from "@/components/ask-dev/answer/testModeAnswer";
+import { asTranscriptResult } from "@/components/ask-dev/conversation/testModeAnswer";
 
 import { ACR_MAX_SILENCE_MS } from "./limits";
 import type { SseEvent } from "./sseParser";

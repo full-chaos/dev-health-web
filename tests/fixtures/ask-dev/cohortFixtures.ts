@@ -3,15 +3,15 @@
  * (4 ranked and scored repositories, both cohort shapes) and the public seed corpus (3 ranked
  * teams, 1 scored: the F13 coverage case). Edits made for a test are named where they are made.
  */
-import seed from "@/lib/ask-dev/render/__oracle__/captures/seed-cv-discovered-team-series-rep1-t2-a1.result.json";
-import attention from "@/lib/ask-dev/render/__oracle__/captures/kiac_repo_attention_ranking.event.json";
+import seed from "./captures/seed-cv-discovered-team-series-rep1-t2-a1.result.json";
+import attention from "./captures/kiac_repo_attention_ranking.event.json";
 import type {
+    ACRContextFabricInvestigationResultV1,
     CohortMember,
-    InvestigationResult,
     RenderShape,
-} from "@/lib/ask-dev/render/contracts";
+} from "@/lib/acr/generated";
 
-export type Result = InvestigationResult;
+export type Result = ACRContextFabricInvestigationResultV1;
 
 /** kiac: rs_1 attention bars (4 repositories), rs_2 driver stack (2 driver families). */
 export const kiacRanking = (): Result =>

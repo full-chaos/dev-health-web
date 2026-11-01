@@ -7,7 +7,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 // panel's test-mode answer source reads the answer from session storage.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const KEY = "ask-dev:test-mode-answer";
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const capture = (file: string) =>
     (JSON.parse(readFileSync(join(CAPTURES, file), "utf8")) as { result: unknown }).result;
 const PROJECTS = capture("kiac_projects_feature_investment_rollup.event.json");

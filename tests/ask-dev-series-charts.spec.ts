@@ -9,7 +9,7 @@ import {
     READINESS,
     withShapes,
     WORKLOAD,
-} from "../src/lib/ask-dev/render/__tests__/seriesFixtures";
+} from "./fixtures/ask-dev/seriesFixtures";
 
 // CHAOS-11942: the Ask Dev trend charts in the real panel, drawn by real ECharts in a browser,
 // from the scrubbed K1 capture (`kiac_project_status_partial`: two `dated_fact_trend` lines with

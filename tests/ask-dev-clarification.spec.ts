@@ -3,12 +3,12 @@ import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 // CHAOS-3440: clarification, non-answer and refusal turns in the real Ask Dev panel, from real ACR
-// output (`src/components/ask-dev/answer/__tests__/captures/`): results captured on the kiac stack,
+// output (`tests/fixtures/ask-dev/captures/`): results captured on the kiac stack,
 // and acr encoder frames for what kiac never produced (anchor offers, a 413 budget refusal). The
 // panel's test-mode source reads the turns from session storage and writes a sent choice or
 // re-ask back there; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const TURNS_KEY = "ask-dev:test-mode-answer";
 const CHOICE_KEY = "ask-dev:test-mode-choice";
 const REASK_KEY = "ask-dev:test-mode-reask";

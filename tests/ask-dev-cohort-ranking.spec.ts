@@ -8,7 +8,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // panel's test-mode source reads them from session storage; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const ORACLE = join(process.cwd(), "src/lib/ask-dev/render/__oracle__/captures");
-const ANSWERS = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const ANSWERS = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 
 const resultOf = (path: string) => {

@@ -18,7 +18,7 @@ import type {
     ThreadView,
 } from "../transport";
 
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 
 /** A real (scrubbed) ACR result from the capture set. */
 export function captureResult(file: string): TranscriptResult {

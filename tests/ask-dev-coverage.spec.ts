@@ -4,10 +4,10 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 // CHAOS-11932: how complete an answer is (coverage, completeness, limitations and evidence
 // references) in the real Ask Dev panel, from real ACR answers captured on the kiac stack
-// (`src/components/ask-dev/answer/__tests__/captures/`). The panel's test-mode source reads them
+// (`tests/fixtures/ask-dev/captures/`). The panel's test-mode source reads them
 // from session storage; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 
 const capture = (file: string) =>

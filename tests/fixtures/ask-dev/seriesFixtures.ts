@@ -3,18 +3,27 @@
  * output with uneven dates, `kiac_project_status_partial`). The live producer emits single-series
  * trends only (E8 AC-2 refinement), so the multi-series, gap, category and hostile shapes below are
  * made from that capture's own rows: every point cites a real row and its value is that row's
- * value, so the ported verifier admits them unchanged.
+ * value, so ask-dev's verifier admits them unchanged.
  */
-import capture from "@/components/ask-dev/answer/__tests__/captures/kiac_project_status_partial.event.json";
-import { cellValue } from "@/lib/ask-dev/facts/fact-rows";
+import capture from "./captures/kiac_project_status_partial.event.json";
 import type {
+    ACRContextFabricInvestigationResultV1,
     ClaimedFact,
-    InvestigationResult,
     RenderPoint,
     RenderShape,
-} from "@/lib/ask-dev/render/contracts";
+    ScalarValue,
+} from "@/lib/acr/generated";
 
-export type Result = InvestigationResult;
+export type Result = ACRContextFabricInvestigationResultV1;
+
+/** A closed-vocabulary `ScalarValue` as its JS primitive. */
+function cellValue(value: ScalarValue): string | number | boolean | null {
+    if (value.string !== undefined) return value.string;
+    if (value.integer !== undefined) return value.integer;
+    if (value.number !== undefined) return value.number;
+    if (value.boolean !== undefined) return value.boolean;
+    return null;
+}
 
 export const WORKLOAD = "claim-workload-backlog";
 export const READINESS = "claim-readiness-estimated";

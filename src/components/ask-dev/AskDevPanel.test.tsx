@@ -19,8 +19,8 @@ import {
 } from "@/lib/shell/rightDrawer";
 
 import type { TestModeTurns } from "./answer/testModeAnswer";
-import kindCandidate from "./answer/__tests__/captures/kiac_kind_and_candidate_clarification.event.json";
-import budgetRefusal from "./answer/__tests__/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
+import kindCandidate from "../../../tests/fixtures/ask-dev/captures/kiac_kind_and_candidate_clarification.event.json";
+import budgetRefusal from "../../../tests/fixtures/ask-dev/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
 
 const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
 

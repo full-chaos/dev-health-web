@@ -6,7 +6,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // (`conversation/testModeTransport.ts`) plays ACR's thread list, thread reads, result reads and
 // deletes from session storage and records every call there; no request leaves the browser for ACR.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const SHOTS = process.env.ASK_DEV_REATTACH_SHOTS ?? "";
 const KEYS = {
     stream: "ask-dev:test-mode-stream",

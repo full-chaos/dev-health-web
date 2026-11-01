@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
-import { kiacRanking, seedRanking } from "../src/lib/ask-dev/render/__tests__/cohortFixtures";
+import { kiacRanking, seedRanking } from "./fixtures/ask-dev/cohortFixtures";
 
 // CHAOS-11943: the cohort charts (attention bars, driver stack) in the ranking panel of the real
 // Ask Dev panel, drawn by real ECharts, from scrubbed captures (kiac repository ranking; public seed

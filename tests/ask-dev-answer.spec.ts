@@ -3,10 +3,10 @@ import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 // CHAOS-11930: the direct answer, drivers and findings in the real Ask Dev panel, from a real ACR
-// answer captured on the kiac stack (`src/components/ask-dev/answer/__tests__/captures/`). The
+// answer captured on the kiac stack (`tests/fixtures/ask-dev/captures/`). The
 // panel's test-mode answer source reads it from session storage; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 
 const capture = (file: string) =>

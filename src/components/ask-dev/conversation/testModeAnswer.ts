@@ -1,21 +1,17 @@
 "use client";
 
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { logger } from "@/lib/logger";
 
-import type { TranscriptResult, TranscriptTurn } from "./AskDevTurn";
-import type { ClarificationChoice } from "./clarificationModel";
-import type { NarrowerReask, RefusalTurn } from "./refusalModel";
+import type { RefusalTurn, TranscriptResult, TranscriptTurn } from "@/lib/ask-dev/transcript";
 
 /**
  * Test mode only: the panel shows the turns that a Playwright run put into session storage under
  * `TEST_MODE_ANSWER_KEY` (one turn, or an array of turns in order: an ACR result, or
  * `{ question, refusal }` for a stream that ended with an error event), so the e2e suite and the
- * screenshots render captured ACR output in the real panel (CHAOS-11930, CHAOS-3440). A choice
- * sent from the live turn is written under `TEST_MODE_CHOICE_KEY`, a narrower re-ask under
- * `TEST_MODE_REASK_KEY`, where the e2e suite reads them. The conversation store (CHAOS-11928)
- * becomes the turn source of the product.
+ * screenshots render captured ACR output in the real panel (CHAOS-11930, CHAOS-3440). These turns
+ * are read-only: a spec that sends a question uses the scripted transport (`testModeTransport.ts`).
  *
  * It never ships: a production build inlines `process.env.NODE_ENV` as "production", so `TEST_MODE`
  * is `false`, `useTestModeTurns` is `useNoTurns`, and the storage code is dead code the minifier
@@ -24,8 +20,6 @@ import type { NarrowerReask, RefusalTurn } from "./refusalModel";
  * `check:client-bundle` rule K6 fails the build if any of the keys reaches a client file.
  */
 export const TEST_MODE_ANSWER_KEY = "ask-dev:test-mode-answer";
-export const TEST_MODE_CHOICE_KEY = "ask-dev:test-mode-choice";
-export const TEST_MODE_REASK_KEY = "ask-dev:test-mode-reask";
 
 const TEST_MODE =
     process.env.NODE_ENV !== "production" &&
@@ -91,13 +85,7 @@ export function asTranscriptTurns(value: unknown): TranscriptTurn[] | null {
     return turns.every((turn): turn is TranscriptTurn => turn !== null) ? turns : null;
 }
 
-export type TestModeTurns = {
-    readonly turns: readonly TranscriptTurn[];
-    readonly onConfirm: ((choice: ClarificationChoice) => void) | undefined;
-    readonly onReask: ((reask: NarrowerReask) => void) | undefined;
-};
-
-const NO_TURNS: TestModeTurns = { turns: [], onConfirm: undefined, onReask: undefined };
+const NO_TURNS: readonly TranscriptTurn[] = [];
 const noSubscription = () => () => undefined;
 const noStoredTurns = () => null;
 
@@ -109,24 +97,8 @@ function readStoredTurns(): string | null {
     }
 }
 
-function storeOutput(key: string, value: unknown): void {
-    try {
-        window.sessionStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-        logger.warn({ err: error, key }, "test-mode turn output not stored");
-    }
-}
-
-function useStoredTurns(): TestModeTurns {
+function useStoredTurns(): readonly TranscriptTurn[] {
     const raw = useSyncExternalStore(noSubscription, readStoredTurns, noStoredTurns);
-    const onConfirm = useCallback(
-        (choice: ClarificationChoice) => storeOutput(TEST_MODE_CHOICE_KEY, choice),
-        [],
-    );
-    const onReask = useCallback(
-        (reask: NarrowerReask) => storeOutput(TEST_MODE_REASK_KEY, reask),
-        [],
-    );
     return useMemo(() => {
         if (raw === null) return NO_TURNS;
         let parsed: unknown;
@@ -141,13 +113,15 @@ function useStoredTurns(): TestModeTurns {
             logger.warn({ key: TEST_MODE_ANSWER_KEY }, "test-mode turns are not turns");
             return NO_TURNS;
         }
-        return { turns, onConfirm, onReask };
-    }, [raw, onConfirm, onReask]);
+        return turns;
+    }, [raw]);
 }
 
-function useNoTurns(): TestModeTurns {
+function useNoTurns(): readonly TranscriptTurn[] {
     return NO_TURNS;
 }
 
-/** The test-mode turns and their output sinks: always none outside test mode. */
-export const useTestModeTurns: () => TestModeTurns = TEST_MODE ? useStoredTurns : useNoTurns;
+/** The test-mode turns: always none outside test mode. */
+export const useTestModeTurns: () => readonly TranscriptTurn[] = TEST_MODE
+    ? useStoredTurns
+    : useNoTurns;

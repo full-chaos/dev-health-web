@@ -7,7 +7,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from "@
 // storage, stores each set as ACR does, and records every call there; no request leaves the browser
 // for ACR. The live proofs are CHAOS-12234.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = {
     stream: "ask-dev:test-mode-stream",
     results: "ask-dev:test-mode-results",

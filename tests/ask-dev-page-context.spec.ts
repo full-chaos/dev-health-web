@@ -8,7 +8,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // (CHAOS-11938); the test-mode transport plays a scripted ACR stream and records every call. No
 // request leaves the browser for ACR.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEYS = {
     stream: "ask-dev:test-mode-stream",
     calls: "ask-dev:test-mode-calls",
