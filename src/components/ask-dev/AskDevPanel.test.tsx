@@ -295,6 +295,18 @@ describe("Ask Dev panel — mobile (modal sheet)", () => {
         );
     });
 
+    it("gives the render the sheet's whole body: it scrolls inside itself", async () => {
+        const user = userEvent.setup();
+        renderShell();
+        await user.click(mobileLauncher());
+        const region = within(screen.getByTestId("ask-dev-sheet")).getByRole("region", {
+            name: "Ask Dev conversation",
+        });
+        const body = region.closest(".ask-frame")?.parentElement;
+        expect(body?.className).toContain("overflow-hidden");
+        expect(body?.className).not.toContain("overflow-y-auto");
+    });
+
     it("points the launcher at the sheet it opened", async () => {
         renderShell();
 
@@ -383,6 +395,25 @@ describe("one right drawer at a time", () => {
 
 describe("the surface is off", () => {
     beforeEach(() => setViewport(true));
+
+    it("draws no open panel once the entitlement is off", async () => {
+        const user = userEvent.setup();
+        const view = renderShell();
+        await user.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+        view.rerender(shellTree({ ...ON, ask_dev: false }));
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
+
+    it("draws no open panel on a route the panel does not serve", async () => {
+        const user = userEvent.setup();
+        const view = renderShell();
+        await user.click(launcher());
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
+        navigationMock.pathname = "/dev";
+        view.rerender(shellTree());
+        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+    });
 
     it("draws no panel with an entitlement off, even if the flag were set", () => {
         render(
