@@ -294,9 +294,7 @@ const nextAuth = NextAuth({
                     // Single-use rotation: only the credential this answer carries is kept.
                     token.access_token = refreshed.accessToken;
                     token.refresh_token = refreshed.refreshToken;
-                    token.expires_at = refreshed.accessExp
-                        ? refreshed.accessExp * 1000
-                        : now + (refreshed.expiresIn || 3600) * 1000;
+                    token.expires_at = refreshed.accessExp * 1000;
                     token.sid = refreshed.sid;
                     setServiceToken(token, {
                         token: refreshed.sessionAccessToken,

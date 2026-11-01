@@ -323,9 +323,8 @@ export type RefreshResult =
           kind: "rotated";
           accessToken: string;
           refreshToken: string;
-          accessExp?: number;
+          accessExp: number;
           sid?: string;
-          expiresIn?: number;
           user?: SessionUser;
           sessionAccessToken?: string;
           sessionExp?: number;
@@ -381,13 +380,18 @@ async function refreshOnce(
         }
         return { kind: "terminal", reason: "token_refused" };
     }
+    // Fail closed: a refreshed token whose exp web cannot read (absent, not a positive safe
+    // integer) is refused. The body expires_in never sets the lifetime of such a token.
+    if (tokens.accessExp === undefined) {
+        logSessionBranch({ operation: "refresh", branch: "token_shape_refused" });
+        return { kind: "terminal", reason: "token_refused" };
+    }
     return {
         kind: "rotated",
         accessToken: outcome.accessToken,
         refreshToken: outcome.refreshToken,
-        ...(tokens.accessExp === undefined ? {} : { accessExp: tokens.accessExp }),
+        accessExp: tokens.accessExp,
         ...(tokens.sid === undefined ? {} : { sid: tokens.sid }),
-        ...(outcome.expiresIn === undefined ? {} : { expiresIn: outcome.expiresIn }),
         ...(outcome.user === undefined ? {} : { user: outcome.user }),
         ...(tokens.session.kind === "ok"
             ? { sessionAccessToken: tokens.session.token, sessionExp: tokens.session.exp }
