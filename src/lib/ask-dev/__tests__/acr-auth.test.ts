@@ -93,8 +93,15 @@ const METADATA = {
     revocation_endpoint: `${ISSUER}/revoke`,
 };
 
-/** Every secret value a test of this file saw (CHAOS-12369): no log call may carry one. */
-const secrets = new Set<string>([ACCESS, REFRESH]);
+/** Every secret value a test of this file saw, by kind (CHAOS-12369): no log call may carry one. */
+const secretsByKind = {
+    access: new Set<string>([ACCESS]),
+    refresh: new Set<string>([REFRESH]),
+    code: new Set<string>(),
+    verifier: new Set<string>(),
+    state: new Set<string>(),
+    tab: new Set<string>(),
+};
 /** Every storage made in the running test, to read its tab id at the end. */
 let storages: MemoryStorage[] = [];
 
@@ -128,21 +135,22 @@ class MemoryStorage implements Storage {
 
 /** The secret fields of one token request and its answer (CHAOS-12369). */
 function harvestSecrets(form: Record<string, string>, answer: Record<string, unknown>) {
-    for (const value of [
-        form.code,
-        form.code_verifier,
-        form.refresh_token,
-        answer.access_token,
-        answer.refresh_token,
-    ]) {
-        if (typeof value === "string" && value !== "") secrets.add(value);
+    const found: [keyof typeof secretsByKind, unknown][] = [
+        ["code", form.code],
+        ["verifier", form.code_verifier],
+        ["refresh", form.refresh_token],
+        ["access", answer.access_token],
+        ["refresh", answer.refresh_token],
+    ];
+    for (const [kind, value] of found) {
+        if (typeof value === "string" && value !== "") secretsByKind[kind].add(value);
     }
 }
 
 /** The state of an authorize URL, a secret for the log guard (CHAOS-12369). */
 function harvestAuthorizeUrl(url: string) {
     const state = new URL(url).searchParams.get("state");
-    if (state !== null) secrets.add(state);
+    if (state !== null) secretsByKind.state.add(state);
 }
 
 type Call = { url: string; init: RequestInit | undefined };
@@ -224,7 +232,7 @@ beforeEach(() => {
 afterEach(() => {
     for (const tab of storages) {
         const id = tab.getItem(ACR_TAB_KEY);
-        if (id !== null) secrets.add(id);
+        if (id !== null) secretsByKind.tab.add(id);
     }
     setAcrAuthDependenciesForTest();
     vi.restoreAllMocks();
@@ -1911,6 +1919,37 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             ]);
         });
 
+        it.each([429, 403, 404])(
+            "a received %d is not lost: answered unexpected_status, retried as before (codex r1 on #1681)",
+            async (status) => {
+                await signIn();
+                const id = storedFamily()!.familyId;
+                now += REFRESH_AT_MS;
+                fates = [{ deliver: status }];
+                const mark = sink.length;
+                expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+                expect(since(mark).slice(0, 3)).toEqual([
+                    ["info", SENT, { family_id: id, attempt: 1 }],
+                    ["warn", ANSWERED, { family_id: id, outcome: "unexpected_status", status }],
+                    ["info", SENT, { family_id: id, attempt: 2 }],
+                ]);
+            },
+        );
+
+        it("a 5xx is lost, with its status", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ deliver: 503 }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+            expect(since(mark)[1]).toEqual([
+                "warn",
+                ANSWERED,
+                { family_id: id, outcome: "lost", status: 503 },
+            ]);
+        });
+
         it("a lost response, then a failed retry: attempt 2 is logged, cleared retry_failed", async () => {
             await signIn();
             const id = storedFamily()!.familyId;
@@ -2241,19 +2280,24 @@ describe("no secret in any log call (CHAOS-12369)", () => {
         ]) {
             expect(messages).toContain(message);
         }
-        // Tokens, codes, verifiers, states and tab ids: at least one of each kind was harvested.
-        const long = [...secrets].filter((value) => value.length >= 8);
-        expect(long.length).toBeGreaterThan(10);
-        expect(long.some((value) => value.startsWith("fcacr_"))).toBe(true);
-        expect(long.some((value) => value.startsWith("acrrt_"))).toBe(true);
+        // Every kind was harvested, with a value long enough for the guard below to look for it
+        // (codex r1 on #1681: a total count hid a kind that was never harvested).
+        for (const [kind, values] of Object.entries(secretsByKind)) {
+            expect(
+                [...values].some((value) => value.length >= 8),
+                `no ${kind} value was harvested`,
+            ).toBe(true);
+        }
     });
 
     it("no log argument holds a token, an authorization code, a verifier, a state or a tab id", () => {
         const text = JSON.stringify(sink.map(({ args }) => args));
         expect(text).not.toMatch(/fcacr_|acrrt_/u);
-        for (const value of secrets) {
-            if (value.length < 8) continue;
-            expect(text, "a log call carries a secret value").not.toContain(value);
+        for (const [kind, values] of Object.entries(secretsByKind)) {
+            for (const value of values) {
+                if (value.length < 8) continue;
+                expect(text, `a log call carries a ${kind} value`).not.toContain(value);
+            }
         }
     });
 });

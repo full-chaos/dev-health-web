@@ -939,7 +939,8 @@ function forClient(family: AcrHeldFamily, config: AcrBrowserClientConfig): boole
 
 /**
  * One refresh request and its two log lines: sent, then answered (CHAOS-12369). `overtaken` is a
- * clear that landed while the request ran; `lost` is no answer or a 5xx.
+ * clear that landed while the request ran; `lost` is no answer or a 5xx; `unexpected_status` is
+ * any other answer the store treats as unavailable (403, 404, 429), retried the same way.
  */
 async function refreshAttempt(
     family: AcrHeldFamily,
@@ -949,10 +950,12 @@ async function refreshAttempt(
     const familyId = family.familyId;
     logger.info({ family_id: familyId, attempt }, "ask-dev acr token store refresh sent");
     const answer = await refreshGrant(family);
-    let outcome: "ok" | "refused" | "lost" | "invalid" | "overtaken";
+    let outcome: "ok" | "refused" | "lost" | "unexpected_status" | "invalid" | "overtaken";
     if (drops !== dropsBefore) outcome = "overtaken";
     else if (answer.kind === "ok") outcome = answer.refresh === null ? "invalid" : "ok";
-    else outcome = answer.kind === "unavailable" ? "lost" : answer.kind;
+    else if (answer.kind !== "unavailable") outcome = answer.kind;
+    else if (answer.status === undefined || answer.status >= 500) outcome = "lost";
+    else outcome = "unexpected_status";
     const fields = {
         family_id: familyId,
         outcome,
