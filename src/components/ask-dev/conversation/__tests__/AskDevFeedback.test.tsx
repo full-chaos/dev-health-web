@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useLayoutEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const log = vi.hoisted(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
@@ -41,8 +42,12 @@ import { AskDevChat, FEEDBACK_COPY } from "@full-chaos/ask-dev/render";
 import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import { AskDevPanel } from "../../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../../AskDevShellContext";
-import { AskDevConversationProvider } from "../AskDevConversationContext";
-import { createChatSource, type HostChatSource } from "../chatSource";
+import {
+    AskDevConversationProvider,
+    useAskDevConversation,
+    useAskDevFeedbackStore,
+} from "../AskDevConversationContext";
+import { chatSourceOf, createChatSource, type HostChatSource } from "../chatSource";
 import { ConversationStore } from "../conversationStore";
 import { FeedbackStore } from "../feedbackStore";
 import { TransportFailure } from "../transport";
@@ -273,11 +278,24 @@ describe("feedback on an answer (CHAOS-11958)", () => {
     });
 
     // codex r1 on #1658: the old (org, principal)'s choice must not outlive the switch. The host
-    // rebinds in a layout effect now (`useAskDevChatSource`), so a sibling's layout effect cannot
-    // see the commit in between: what is held is the state the viewer is left with, with no wait.
+    // rebinds in a layout effect (`useAskDevChatSource`), so the source is already clean in the
+    // layout phase of the commit of the switch, before any paint. `Published` reads it there. The
+    // DOM catches up in the sync render that follows, so it is read after the commit.
     it("shows none of the old partition's controls once the org switches", async () => {
         const transport = new FakeTransport();
         transport.feedback.set(R1, { resultId: R1, correct: "yes", useful: "yes" });
+        const published: string[] = [];
+        /** After the render in tree order, so its layout effect runs after the host's. */
+        function Published() {
+            const live = useAskDevConversation();
+            const feedback = useAskDevFeedbackStore();
+            useLayoutEffect(() => {
+                if (live === null || feedback === null) return;
+                const { turns } = chatSourceOf(live.store, feedback).getSnapshot();
+                published.push(`${session.org}:${String(turns.length)}`);
+            });
+            return null;
+        }
         const tree = () => (
             <AdminTierProvider
                 tier="team"
@@ -287,6 +305,7 @@ describe("feedback on an answer (CHAOS-11958)", () => {
                     <AskDevConversationProvider transport={transport}>
                         <OpenClose />
                         <AskDevPanel />
+                        <Published />
                     </AskDevConversationProvider>
                 </AskDevShellProvider>
             </AdminTierProvider>
@@ -306,6 +325,10 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         transport.feedback.delete(R1);
         session.org = "org-2";
         view.rerender(tree());
+        // The layout phase of the switch's commit: org-1's turns are already gone from the source.
+        const atSwitch = published.filter((entry) => entry.startsWith("org-2:"));
+        expect(atSwitch.length).toBeGreaterThan(0);
+        expect(new Set(atSwitch)).toEqual(new Set(["org-2:0"]));
         // No wait: org-1's "yes", its answer and its controls are not in the DOM.
         expect(screen.queryByTestId("ask-dev-feedback-correct-yes")).toBeNull();
         expect(screen.queryByTestId("ask-dev-feedback")).toBeNull();
