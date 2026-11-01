@@ -570,3 +570,100 @@ describe("the published key source (eddsa)", () => {
         expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
     });
 });
+
+describe("the clock is read again after the key read (eddsa)", () => {
+    const LONG_EXP = 1760003600;
+    let now = NOW;
+    const c = () => ({ ...eddsaCfg(), nowSeconds: () => now });
+    const goodKeys = () => new Response(jwksDoc(jwk("kid-1")));
+    const token = (exp = LONG_EXP) => eddsaToken(privateKey, "kid-1", exp);
+
+    beforeEach(() => {
+        now = NOW;
+    });
+
+    it("refuses a token that expires while the keys are being read", async () => {
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(token(NOW + 1))),
+            ...keyRoutes(() => {
+                now = NOW + 2; // the key read took two seconds: the token is past its exp
+                return goodKeys();
+            }),
+        });
+        expect(await passwordLogin(creds, c())).toEqual({ kind: "invalid_credentials" });
+    });
+
+    it("accepts the same token when the key read ends before its exp", async () => {
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(token(NOW + 5))),
+            ...keyRoutes(() => {
+                now = NOW + 2;
+                return goodKeys();
+            }),
+        });
+        expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+    });
+
+    // The keys were read at NOW; they serve until NOW + 900 (300 s ttl + 600 s grace). The refresh at
+    // NOW + 900 starts inside that window and fails after crossing it (one second later).
+    const failing: Array<[string, boolean, () => Response]> = [
+        ["discovery answers 503", true, () => new Response("x", { status: 503 })],
+        ["discovery answers an invalid document", true, () => new Response("{}")],
+        [
+            "discovery throws",
+            true,
+            () => {
+                throw new TypeError("fetch failed");
+            },
+        ],
+        ["the key set answers 503", false, () => new Response("x", { status: 503 })],
+        ["the key set is invalid", false, () => new Response("{}")],
+        [
+            "the key set read throws",
+            false,
+            () => {
+                throw new TypeError("fetch failed");
+            },
+        ],
+    ];
+
+    it.each(failing)(
+        "uses the time at the failure for the grace cutoff when %s: no stale keys past it",
+        async (_label, atDiscovery, failure) => {
+            route({
+                [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(token())),
+                ...keyRoutes(goodKeys),
+            });
+            expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+            const advance = (make: () => Response) => () => {
+                now = NOW + 901;
+                return make();
+            };
+            route({
+                [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(token())),
+                ...(atDiscovery
+                    ? keyRoutes(goodKeys, advance(failure))
+                    : keyRoutes(advance(failure))),
+            });
+            now = NOW + 900;
+            expect(await passwordLogin(creds, c())).toEqual({ kind: "unavailable" });
+        },
+    );
+
+    it("still serves the last good keys when a failed refresh ends inside the grace window", async () => {
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(token())),
+            ...keyRoutes(goodKeys),
+        });
+        await passwordLogin(creds, c());
+        route({
+            [`${BACKEND}/api/v1/auth/login`]: () => json(200, loginBody(token())),
+            ...keyRoutes(() => {
+                now = NOW + 899;
+                return new Response("x", { status: 503 });
+            }),
+        });
+        now = NOW + 898;
+        expect(await passwordLogin(creds, c())).toMatchObject({ kind: "ok" });
+    });
+});
