@@ -67,7 +67,9 @@ test.describe("desktop (1280px)", () => {
         const rows = table.locator("tbody tr");
         await expect(rows).toHaveCount(3);
         // The window is a column of each row in the render: every ranked row states it.
-        await expect(table.getByRole("cell", { name: "current", exact: true })).toHaveCount(3);
+        await expect(table.getByRole("cell", { name: "current period", exact: true })).toHaveCount(
+            3,
+        );
         await expect(
             rows.first().getByRole("cell", { name: "provisional", exact: true }),
         ).toBeVisible();
@@ -79,7 +81,7 @@ test.describe("desktop (1280px)", () => {
         await expect(table.getByRole("listitem")).toHaveCount(2);
         // An unscored row shows a dash and says why, never a number.
         await expect(rows.nth(1).getByRole("cell", { name: "—", exact: true })).toHaveCount(1);
-        await expect(rows.nth(1)).toContainText("insufficient evidence");
+        await expect(rows.nth(1)).toContainText("not enough evidence");
         // The ranking comes before the drivers that explain it.
         const drivers = panel.getByRole("group", { name: "Drivers", exact: true });
         const rankingBox = await ranking.boundingBox();
