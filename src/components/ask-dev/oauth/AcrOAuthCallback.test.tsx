@@ -96,6 +96,23 @@ describe("AcrOAuthCallback (CHAOS-12303)", () => {
         expect(document.body.textContent).not.toMatch(/c-1|s-1/u);
     });
 
+    it("tells a signed-out user to sign in, not that the link is invalid (CHAOS-12305)", async () => {
+        complete.mockResolvedValue({ kind: "failed", reason: "signed_out", returnTo: "/dev" });
+        render(<AcrOAuthCallback />);
+        expect(
+            await screen.findByRole("heading", { name: "Sign in to connect Ask Dev" }),
+        ).toBeVisible();
+        expect(screen.getByTestId("ask-dev-acr-callback")).toHaveAttribute(
+            "data-state",
+            "signed_out",
+        );
+        expect(screen.getByRole("link", { name: "Return to Ask Dev" })).toHaveAttribute(
+            "href",
+            "/dev",
+        );
+        expect(screen.queryByText("This sign-in link is not valid here")).toBeNull();
+    });
+
     it("says it is connecting while the exchange runs", async () => {
         let resolve!: (value: unknown) => void;
         complete.mockReturnValue(new Promise((done) => (resolve = done)));

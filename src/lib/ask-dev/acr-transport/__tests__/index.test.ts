@@ -7,6 +7,18 @@ vi.mock("@/lib/acr/streamValidators", async (importOriginal) => {
     return importOriginal();
 });
 
+/** The token store, so the wiring of its two calls can be seen (CHAOS-12305). */
+const store = vi.hoisted(() => ({
+    getAcrAccessToken: vi.fn(async () => ({ kind: "authorization_required" as const })),
+    reportAcrTokenRejected: vi.fn(),
+}));
+vi.mock("@/lib/ask-dev/acr-auth", () => store);
+vi.mock("../browserTransport", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../browserTransport")>();
+    return { ...actual, createAcrBrowserTransport: vi.fn(actual.createAcrBrowserTransport) };
+});
+
+import { createAcrBrowserTransport } from "../browserTransport";
 import { acrBrowserTransport, loadStreamValidators } from "../index";
 
 /**
@@ -58,6 +70,16 @@ describe("acrBrowserTransport", () => {
         const first = acrBrowserTransport();
         expect(first).not.toBeNull();
         expect(acrBrowserTransport()).toBe(first);
+    });
+
+    it("reads the token from the store, and tells the store which token ACR refused (CHAOS-12305)", async () => {
+        runtime(SET, "https://www.fullchaos.dev");
+        expect(acrBrowserTransport()).not.toBeNull();
+        const dependencies = vi.mocked(createAcrBrowserTransport).mock.calls[0]![1];
+        await dependencies.token();
+        expect(store.getAcrAccessToken).toHaveBeenCalledTimes(1);
+        dependencies.rejected("fcacr_refused");
+        expect(store.reportAcrTokenRejected).toHaveBeenCalledExactlyOnceWith("fcacr_refused");
     });
 
     // Option (c): the provider makes the transport when the page loads; that loads nothing heavy.

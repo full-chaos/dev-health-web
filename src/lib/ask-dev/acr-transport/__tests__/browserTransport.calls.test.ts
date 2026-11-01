@@ -39,6 +39,8 @@ const TS = "2026-01-02T03:04:05Z";
 
 let token: AcrAccessToken;
 let fetchMock: ReturnType<typeof vi.fn>;
+/** What the transport told the token store ACR refused (CHAOS-12305). */
+let rejected: ReturnType<typeof vi.fn<(token: string) => void>>;
 const signal = new AbortController().signal;
 
 function transport(): AskDevTransport {
@@ -46,6 +48,7 @@ function transport(): AskDevTransport {
         fetch: fetchMock as unknown as typeof fetch,
         now: () => 1_800_000_000_000,
         token: () => token,
+        rejected: (refused: string) => rejected(refused),
         envelope: streamEnvelopeValidators,
         validators: async () => streamValidators,
     });
@@ -143,6 +146,7 @@ function expectAcrCall(n: number, method: string, url: string) {
 beforeEach(() => {
     token = { kind: "token", token: TOKEN, issuer: ISSUER };
     fetchMock = vi.fn();
+    rejected = vi.fn<(token: string) => void>();
     for (const level of Object.values(log)) level.mockReset();
 });
 
@@ -448,6 +452,7 @@ describe("attach", () => {
             fetch: fetchMock as unknown as typeof fetch,
             now: () => 1_800_000_000_000,
             token: () => token,
+            rejected: (refused: string) => rejected(refused),
             envelope: streamEnvelopeValidators,
             validators: async () => ({
                 ...streamValidators,
@@ -518,7 +523,7 @@ describe("every T14b call", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("401: authorization_required, never retried", async () => {
+    it("401, and the store gives the same token again: authorization_required, not resent", async () => {
         for (const [name, run] of calls) {
             fetchMock.mockResolvedValueOnce(jsonResponse(errorEnvelope("invalid_token", 401), 401));
             await expect(run(transport(), signal), name).rejects.toEqual(
@@ -526,6 +531,121 @@ describe("every T14b call", () => {
             );
         }
         expect(fetchMock).toHaveBeenCalledTimes(calls.length);
+        expect(rejected.mock.calls).toEqual(calls.map(() => [TOKEN]));
+    });
+
+    // CHAOS-12305 (c4's rule, the lead's ruling: T14b carries it to its 7 calls): a 401 tells the
+    // token store, reads the token once more, and resends once only with a different token.
+    const NEXT = "fcacr_next_token_00000000000000000000000000000000".slice(0, TOKEN.length);
+    const held = (value: string): AcrAccessToken => ({
+        kind: "token",
+        token: value,
+        issuer: ISSUER,
+    });
+    const unauthorized = () => jsonResponse(errorEnvelope("invalid_token", 401), 401);
+    /** What each call's route answers when it serves the call. */
+    const served: Record<string, () => Response> = {
+        listThreads: () => jsonResponse(listBody, 200),
+        readThread: () => jsonResponse(threadBody, 200),
+        deleteThread: () => empty(204),
+        readFeedback: () => jsonResponse(feedbackBody, 200),
+        setFeedback: () => jsonResponse(feedbackBody, 200),
+        cancel: () => empty(202),
+        attach: () => sseResponse(frames(CAPTURED.slice(3))),
+    };
+    /** A transport whose token store answers `reads` in order (then "authorization required"). */
+    function withStore(...reads: Array<AcrAccessToken | (() => AcrAccessToken)>) {
+        return createAcrBrowserTransport(CONFIG, {
+            fetch: fetchMock as unknown as typeof fetch,
+            now: () => 1_800_000_000_000,
+            token: () => {
+                const next = reads.shift();
+                if (next === undefined) return { kind: "authorization_required" };
+                return typeof next === "function" ? next() : next;
+            },
+            rejected: (refused: string) => rejected(refused),
+            envelope: streamEnvelopeValidators,
+            validators: async () => streamValidators,
+        });
+    }
+    const bearerOf = (n: number) =>
+        ((fetchMock.mock.calls[n] as [string, RequestInit])[1].headers as Record<string, string>)
+            .Authorization;
+
+    it("a 401, then a new token: reported, read once more, and sent once more with it", async () => {
+        for (const [name, run] of calls) {
+            fetchMock.mockReset();
+            rejected.mockReset();
+            fetchMock.mockResolvedValueOnce(unauthorized()).mockResolvedValueOnce(served[name]!());
+            await expect(
+                run(withStore(held(TOKEN), held(NEXT)), signal),
+                name,
+            ).resolves.not.toThrow();
+            expect(fetchMock, name).toHaveBeenCalledTimes(2);
+            expect([bearerOf(0), bearerOf(1)], name).toEqual([`Bearer ${TOKEN}`, `Bearer ${NEXT}`]);
+            expect(sent(1).url, name).toBe(sent(0).url);
+            expect(rejected.mock.calls, name).toEqual([[TOKEN]]);
+        }
+    });
+
+    it("a second 401: authorization_required, exactly 2 requests, both tokens reported", async () => {
+        for (const [name, run] of calls) {
+            fetchMock.mockReset();
+            rejected.mockReset();
+            fetchMock.mockResolvedValueOnce(unauthorized()).mockResolvedValueOnce(unauthorized());
+            await expect(run(withStore(held(TOKEN), held(NEXT)), signal), name).rejects.toEqual(
+                new TransportFailure("authorization_required"),
+            );
+            expect(fetchMock, name).toHaveBeenCalledTimes(2);
+            expect(rejected.mock.calls, name).toEqual([[TOKEN], [NEXT]]);
+        }
+    });
+
+    it("a 401 and no token to read: authorization_required, 1 request", async () => {
+        for (const [name, run] of calls) {
+            fetchMock.mockReset();
+            fetchMock.mockResolvedValueOnce(unauthorized());
+            await expect(run(withStore(held(TOKEN)), signal), name).rejects.toEqual(
+                new TransportFailure("authorization_required"),
+            );
+            expect(fetchMock, name).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it("the resend after a 401 has its own 15 s header wait (a stream)", async () => {
+        vi.useFakeTimers();
+        fetchMock
+            .mockResolvedValueOnce(unauthorized())
+            .mockImplementationOnce(
+                (_url: string, init: RequestInit) =>
+                    new Promise((_ok, fail) =>
+                        init.signal!.addEventListener("abort", () => fail(init.signal!.reason)),
+                    ),
+            );
+        const t = withStore(held(TOKEN), held(NEXT));
+        const outcome = collect(t.attach({ submissionId: RUN, lastEventId: 3, signal })).then(
+            () => "ended",
+            (error: unknown) => error,
+        );
+        await vi.advanceTimersByTimeAsync(14_999);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await outcome).toEqual(new TransportFailure("admission_timeout"));
+    });
+
+    it("an abort while the token is read again sends nothing more", async () => {
+        const reason = new DOMException("gone", "AbortError");
+        for (const [name, run] of calls) {
+            fetchMock.mockReset();
+            fetchMock.mockResolvedValueOnce(unauthorized());
+            const controller = new AbortController();
+            const t = withStore(held(TOKEN), () => {
+                controller.abort(reason);
+                return held(NEXT);
+            });
+            await expect(run(t, controller.signal), name).rejects.toBe(reason);
+            expect(fetchMock, name).toHaveBeenCalledTimes(1);
+        }
     });
 
     it("a non-2xx answer with no valid error.v1 body is a dropped call, as in T14a (codex r1)", async () => {
@@ -569,6 +689,7 @@ describe("every T14b call", () => {
             fetch: fetchMock as unknown as typeof fetch,
             now: () => 1_800_000_000_000,
             token: tokenRead,
+            rejected: (refused: string) => rejected(refused),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });

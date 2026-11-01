@@ -145,8 +145,11 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
             [PENDING_KEY, FAMILY_KEY] as const,
         );
         expect(stored.pending).toBeNull();
+        // CHAOS-12305: v2 binds the family to the web principal and names it for the refresh lock.
         expect(JSON.parse(stored.family!)).toMatchObject({
-            v: 1,
+            v: 2,
+            userId: expect.any(String),
+            familyId: expect.stringMatching(/^[A-Za-z0-9_-]{22}$/u),
             issuer: harness.origin,
             clientId: ACR_DEV_BROWSER_CLIENT_ID,
             refreshToken: expect.stringMatching(/^acrrt_[A-Za-z0-9_-]{43}$/u),
@@ -289,5 +292,52 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
         await page.getByRole("button", { name: "Try again" }).click();
         await page.waitForURL((url) => url.pathname === "/dashboard");
         expect(tokenCalls(harness)).toHaveLength(1);
+    });
+});
+
+test.describe("Ask Dev ACR browser authorization, signed out (CHAOS-12305)", () => {
+    test.use({
+        viewport: { width: 1280, height: 900 },
+        storageState: { cookies: [], origins: [] },
+    });
+
+    test("a callback with no web session sends no code and asks the user to sign in", async ({
+        page,
+    }) => {
+        const harness = await setUp(page);
+        const state = "s".repeat(43);
+        // This tab started an authorization (as the start page would), then the web session ended.
+        await page.addInitScript(
+            ([origin, pendingState]) => {
+                const tab = "t".repeat(22);
+                window.sessionStorage.setItem("ask-dev:acr-tab", tab);
+                window.sessionStorage.setItem(
+                    "ask-dev:acr-authorization",
+                    JSON.stringify({
+                        v: 1,
+                        state: pendingState,
+                        verifier: "v".repeat(43),
+                        tabId: tab,
+                        issuer: origin,
+                        clientId: "https://localhost/acr/dev-browser-client",
+                        redirectUri: `${origin}/ask-dev/oauth/callback`,
+                        tokenEndpoint: `${origin}/token`,
+                        revocationEndpoint: `${origin}/revoke`,
+                        returnTo: "/dev",
+                        expiresAt: Date.now() + 600_000,
+                    }),
+                );
+            },
+            [harness.origin, state] as const,
+        );
+        await page.goto(
+            `/ask-dev/oauth/callback?code=c-1&iss=${encodeURIComponent(harness.origin)}&state=${state}`,
+        );
+        await expect(
+            page.getByRole("heading", { name: "Sign in to connect Ask Dev" }),
+        ).toBeVisible();
+        expect(new URL(page.url()).search).toBe("");
+        expect(tokenCalls(harness)).toHaveLength(0);
+        await shot(page, "callback-signed-out");
     });
 });

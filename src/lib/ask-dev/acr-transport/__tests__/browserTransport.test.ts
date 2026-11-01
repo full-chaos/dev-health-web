@@ -56,6 +56,8 @@ const CAPTURED = CAPTURED_EVENTS.map((event, index) =>
 let now: number;
 let token: AcrAccessToken;
 let fetchMock: ReturnType<typeof vi.fn>;
+/** What the transport told the token store ACR refused (CHAOS-12305). */
+let rejected: ReturnType<typeof vi.fn<(token: string) => void>>;
 
 /** A controllable SSE body: push bytes, close, or leave it open. */
 function sseBody() {
@@ -91,6 +93,7 @@ function transport(): AskDevTransport {
         fetch: fetchMock as unknown as typeof fetch,
         now: () => now,
         token: () => token,
+        rejected: (refused: string) => rejected(refused),
         envelope: streamEnvelopeValidators,
         validators: async () => streamValidators,
     });
@@ -127,6 +130,7 @@ beforeEach(() => {
     now = T0;
     token = { kind: "token", token: TOKEN, issuer: ISSUER };
     fetchMock = vi.fn();
+    rejected = vi.fn<(token: string) => void>();
     for (const level of Object.values(log)) level.mockReset();
 });
 
@@ -179,6 +183,7 @@ describe("investigate: the request", () => {
             fetch: fetchMock as unknown as typeof fetch,
             now: () => now,
             token: read,
+            rejected: (refused: string) => rejected(refused),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });
@@ -207,6 +212,7 @@ describe("investigate: the request", () => {
             fetch: fetchMock as unknown as typeof fetch,
             now: () => now,
             token: async () => ({ kind: "token", token: TOKEN, issuer: ISSUER }),
+            rejected: (refused: string) => rejected(refused),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });
@@ -337,6 +343,7 @@ describe("investigate: the full checks load in parallel (option (c))", () => {
             fetch: fetchMock as unknown as typeof fetch,
             now: () => now,
             token: () => token,
+            rejected: (refused: string) => rejected(refused),
             envelope: streamEnvelopeValidators,
             validators,
         });
@@ -500,12 +507,13 @@ describe("investigate: timers", () => {
 });
 
 describe("investigate: refusals", () => {
-    it("401: authorization_required, never retried", async () => {
+    it("401, and the store gives the same token again: authorization_required, not resent", async () => {
         fetchMock.mockResolvedValue(jsonResponse(errorEnvelope("unauthorized", 401), 401));
         await expect(collect(transport().investigate(call()))).rejects.toEqual(
             new TransportFailure("authorization_required"),
         );
         expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(rejected.mock.calls).toEqual([[TOKEN]]);
     });
 
     it("an error.v1 body is a TransportRefusal with its status and Retry-After", async () => {
@@ -524,6 +532,141 @@ describe("investigate: refusals", () => {
         expect(error).not.toBeInstanceOf(TransportRefusal);
         expect(error).not.toBeInstanceOf(TransportFailure);
         expect(error).toBeInstanceOf(Error);
+    });
+
+    it("a refusal that is not 401 tells the token store nothing", async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse(errorEnvelope("submission_in_progress", 409), 409),
+        );
+        await expect(collect(transport().investigate(call()))).rejects.toBeInstanceOf(
+            TransportRefusal,
+        );
+        fetchMock.mockResolvedValueOnce(new Response("upstream down", { status: 503 }));
+        await expect(collect(transport().investigate(call()))).rejects.toBeInstanceOf(Error);
+        expect(rejected).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * CHAOS-12305 (c4): a 401 tells the token store the token was refused, and reads the token once
+ * more. A different token sends the call once more; anything else is "authorization required".
+ * At most 2 requests per call.
+ */
+const NEXT = "fcacr_next_token_00000000000000000000000000000000".slice(0, TOKEN.length);
+const held = (value: string): AcrAccessToken => ({ kind: "token", token: value, issuer: ISSUER });
+const unauthorized = () => jsonResponse(errorEnvelope("unauthorized", 401), 401);
+
+/** A transport whose token store answers `reads` in order (then "authorization required"). */
+function withStore(...reads: Array<AcrAccessToken | (() => AcrAccessToken)>) {
+    const read = vi.fn((): AcrAccessToken => {
+        const next = reads.shift();
+        if (next === undefined) return { kind: "authorization_required" };
+        return typeof next === "function" ? next() : next;
+    });
+    const t = createAcrBrowserTransport(CONFIG, {
+        fetch: fetchMock as unknown as typeof fetch,
+        now: () => now,
+        token: read,
+        rejected: (refused: string) => rejected(refused),
+        envelope: streamEnvelopeValidators,
+        validators: async () => streamValidators,
+    });
+    return { t, read };
+}
+
+const sent = () =>
+    fetchMock.mock.calls.map(([url, init]) => ({
+        url: url as string,
+        body: (init as RequestInit).body,
+        headers: (init as RequestInit).headers as Record<string, string>,
+    }));
+
+describe("investigate: a 401 is resent at most once, with a new token (CHAOS-12305)", () => {
+    it("reports the refused token, reads once more, and resends with the new token and the same submission", async () => {
+        const body = sseBody();
+        fetchMock
+            .mockResolvedValueOnce(unauthorized())
+            .mockResolvedValueOnce(sseResponse(body.stream));
+        body.push(stream(...CAPTURED));
+        const { t, read } = withStore(held(TOKEN), held(NEXT));
+        const events = await collect(t.investigate(call()));
+        expect(events.map((event) => event.seq)).toEqual(CAPTURED.map((event) => event.seq));
+        expect(read).toHaveBeenCalledTimes(2);
+        expect(rejected.mock.calls).toEqual([[TOKEN]]);
+        const [first, second] = sent();
+        expect(sent()).toHaveLength(2);
+        expect(first!.headers.Authorization).toBe(`Bearer ${TOKEN}`);
+        expect(second!.headers.Authorization).toBe(`Bearer ${NEXT}`);
+        expect(second!.url).toBe(first!.url);
+        expect(second!.headers["X-ACR-Submission-ID"]).toBe(SUBMISSION);
+        expect(second!.headers["X-ACR-Thread-ID"]).toBe(THREAD);
+        expect(second!.body).toBe(first!.body);
+    });
+
+    it("a second 401: authorization_required after exactly 2 requests, both tokens reported", async () => {
+        fetchMock.mockImplementation(async () => unauthorized());
+        const { t, read } = withStore(held(TOKEN), held(NEXT), held("never read"));
+        await expect(collect(t.investigate(call()))).rejects.toEqual(
+            new TransportFailure("authorization_required"),
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(read).toHaveBeenCalledTimes(2);
+        expect(rejected.mock.calls).toEqual([[TOKEN], [NEXT]]);
+    });
+
+    it("the same token, or none, read again: authorization_required after 1 request", async () => {
+        for (const again of [
+            held(TOKEN),
+            { kind: "authorization_required" },
+            { kind: "off" },
+        ] as AcrAccessToken[]) {
+            fetchMock.mockReset();
+            fetchMock.mockImplementation(async () => unauthorized());
+            const { t } = withStore(held(TOKEN), again);
+            await expect(collect(t.investigate(call()))).rejects.toEqual(
+                new TransportFailure("authorization_required"),
+            );
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it("the resend takes the budget left of D when it is sent; below ACR's minimum it is not sent", async () => {
+        const body = sseBody();
+        fetchMock
+            .mockResolvedValueOnce(unauthorized())
+            .mockResolvedValueOnce(sseResponse(body.stream));
+        body.close();
+        // The refresh behind the second read took 30 s.
+        const late = withStore(held(TOKEN), () => {
+            now = T0 + 30_000;
+            return held(NEXT);
+        });
+        await collect(late.t.investigate(call()));
+        expect(sent().map((s) => s.headers["X-ACR-Wait-Budget-Seconds"])).toEqual(["115", "85"]);
+
+        now = T0;
+        fetchMock.mockReset();
+        fetchMock.mockImplementation(async () => unauthorized());
+        const tooLate = withStore(held(TOKEN), () => {
+            now = T0 + 105_001;
+            return held(NEXT);
+        });
+        await expect(collect(tooLate.t.investigate(call()))).rejects.toEqual(
+            new TransportFailure("budget_exhausted"),
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("an abort while the token is read again sends nothing more", async () => {
+        fetchMock.mockImplementation(async () => unauthorized());
+        const controller = new AbortController();
+        const reason = new DOMException("deadline", "AbortError");
+        const { t } = withStore(held(TOKEN), () => {
+            controller.abort(reason);
+            return held(NEXT);
+        });
+        await expect(collect(t.investigate(call(controller.signal)))).rejects.toBe(reason);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -582,6 +725,7 @@ describe("submissionStatus and readResult", () => {
             fetch: fetchMock as unknown as typeof fetch,
             now: () => now,
             token: tokenRead,
+            rejected: (refused: string) => rejected(refused),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });
@@ -601,6 +745,7 @@ describe("submissionStatus and readResult", () => {
                     during.abort(reason);
                     return { kind: "token", token: TOKEN, issuer: ISSUER };
                 },
+                rejected: (refused: string) => rejected(refused),
                 envelope: streamEnvelopeValidators,
                 validators: async () => streamValidators,
             });
@@ -686,6 +831,48 @@ describe("submissionStatus and readResult", () => {
         await expect(transport().readResult(id, signal)).resolves.toEqual(result);
         const [url] = fetchMock.mock.calls[0] as [string];
         expect(url).toBe(`${ISSUER}/api/v1/context-fabric/investigations/${id}`);
+    });
+
+    it("status and replay: a 401 is resent once with a new token; never a second time, never with the same token (CHAOS-12305)", async () => {
+        const id = String((result as { result_id: string }).result_id);
+        const reads = [
+            (t: AskDevTransport) => t.submissionStatus(SUBMISSION, signal),
+            (t: AskDevTransport) => t.readResult(id, signal),
+        ];
+        const answers = [statusBody, result];
+        for (const [index, read] of reads.entries()) {
+            // A new token: resent once, and its answer is the call's.
+            fetchMock.mockReset();
+            rejected.mockReset();
+            fetchMock
+                .mockResolvedValueOnce(unauthorized())
+                .mockResolvedValueOnce(jsonResponse(answers[index], 200));
+            await expect(read(withStore(held(TOKEN), held(NEXT)).t)).resolves.toEqual(
+                answers[index],
+            );
+            expect(sent().map((s) => s.headers.Authorization)).toEqual([
+                `Bearer ${TOKEN}`,
+                `Bearer ${NEXT}`,
+            ]);
+            expect(sent()[1]!.url).toBe(sent()[0]!.url);
+            expect(rejected.mock.calls).toEqual([[TOKEN]]);
+            // A second 401: authorization_required after exactly 2 requests.
+            fetchMock.mockReset();
+            rejected.mockReset();
+            fetchMock.mockImplementation(async () => unauthorized());
+            await expect(read(withStore(held(TOKEN), held(NEXT)).t)).rejects.toEqual(
+                new TransportFailure("authorization_required"),
+            );
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(rejected.mock.calls).toEqual([[TOKEN], [NEXT]]);
+            // The same token read again: not resent.
+            fetchMock.mockReset();
+            fetchMock.mockImplementation(async () => unauthorized());
+            await expect(read(withStore(held(TOKEN), held(TOKEN)).t)).rejects.toEqual(
+                new TransportFailure("authorization_required"),
+            );
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        }
     });
 
     it("replay: 404 is a TransportRefusal 404; a broken body is invalid_upstream", async () => {
