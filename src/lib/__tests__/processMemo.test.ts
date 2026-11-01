@@ -144,17 +144,17 @@ describe("processMemo", () => {
         // Two different tokens: two calls.
         expect(fetchMock).toHaveBeenCalledTimes(2);
 
-        // The same token inside the 5 minute interval: served from the memo, no call.
+        // The same token inside the validation interval: served from the memo, no call.
         await copy.applyBackendValidationMemo(
             { id: "u1", access_token: "token-A" } as never,
-            now + 4 * 60 * 1000,
+            now + copy.VALIDATION_INTERVAL_MS - 1000,
         );
         expect(fetchMock).toHaveBeenCalledTimes(2);
 
         // The same token after the interval: the entry has expired, so the backend is asked again.
         await copy.applyBackendValidationMemo(
             { id: "u1", access_token: "token-A" } as never,
-            now + 5 * 60 * 1000 + 1,
+            now + copy.VALIDATION_INTERVAL_MS + 1,
         );
         expect(fetchMock).toHaveBeenCalledTimes(3);
     });
