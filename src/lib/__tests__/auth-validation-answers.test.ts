@@ -116,6 +116,22 @@ describe("answers that refuse the session end it", () => {
 
         expectSessionEnded(await validate());
     });
+
+    it("a refused session also drops the service session token, its expiry and the actor", async () => {
+        backendAnswers(200, JSON.stringify({ valid: false }));
+
+        const token = await validate({
+            ...validationDueToken(),
+            session_access_token: "service-token",
+            session_expires_at: Date.now() + 3600_000,
+            act_sub: "prn_ACTACTACTACTACTACTACTA",
+        });
+
+        expectSessionEnded(token);
+        expect(token.session_access_token).toBeUndefined();
+        expect(token.session_expires_at).toBeUndefined();
+        expect(token.act_sub).toBeUndefined();
+    });
 });
 
 describe("answers that say nothing about the user keep the session", () => {
