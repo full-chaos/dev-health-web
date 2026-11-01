@@ -36,6 +36,36 @@ per 30 s; when a refresh fails the last good keys are used until 10 minutes past
 then sign-in is `auth_unavailable`; a key id that is not in the keys gets one refresh, and a key id
 still unknown is refused. A key set with a repeated `kid` or an invalid key is refused whole.
 
+**Refresh** (`refreshSession` in `src/lib/authServiceWire.ts`; the jwt callback calls it when the access
+token is within 5 minutes of its `exp`): one backend call per refresh credential per process
+(parallel callbacks share it; the key is a hash). The answer maps by status: 408, 425, 429, 5xx and a
+failed call are transient (the access token is dropped, the refresh token is kept, jittered
+backoff); every other non-2xx status is terminal (both tokens are cleared, `refresh_failed`); a 200
+without both a non-empty access token and a non-empty rotated refresh token is terminal. The new
+access token is read by the token class (above); a token the class refuses is terminal. The
+credential is single use, so the rotated one is always stored, also when the key set cannot be read
+(then the access token is dropped and the refresh is retried). `expires_at` comes from the token
+`exp` (else `expires_in`) and `sid` is stored. An unknown class setting or a missing issuer never
+ends a session at refresh: it is transient.
+
+**Service session token** (`session_access_token`, aud `auth-service`; PR C1): under class `eddsa` the
+login and refresh answers carry a second token for the auth-service routes that refuse the access
+token's audience. `readAnswerTokens` (`src/lib/authServiceWire.ts`) reads it against the access token
+with the same keys and clock: it must verify for aud `auth-service`, carry the same `sid` and `sub`,
+and have exactly the access token's `exp`; any other answer refuses the sign-in (same answer as any
+refused sign-in) or ends the session at refresh, with one closed log branch per reason
+(`session_token_malformed`, `_unverified`, `_sid_mismatch`, `_sub_mismatch`, `_exp_mismatch`). Under
+`eddsa` an answer without one is accepted and counted (`session_token_missing`); a non-zero count
+after the flip is a report, since change-password then fails for that session. Under `hs256_compat`
+the field is ignored and counted (`session_token_ignored`), never stored. It lives only in the sealed
+session beside the verified actor (`act_sub`, read only from the verified access token claims; no ops
+mint sets an actor yet, so there is no producer today). It follows the access token: replaced on a
+refresh (cleared when the answer has none), dropped with it on a transient failure, cleared on a
+terminal one, and cleared by a handoff or a social exchange that sets a new access token. The session
+callback puts it on the in-process session only; `authBrowserSession` removes it from every HTTP
+answer. C1 alone is not ready for the `eddsa` flip: the switch-org and change-password answers (C2)
+and a proof on an `eddsa` leg come first.
+
 **Session Data**:
 
 - `access_token`: Backend API bearer token — **server only** (see below)

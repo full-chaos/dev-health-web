@@ -197,6 +197,29 @@ Every mint funnels through `signWebAssertion`: the private
 - `keyId` (JWT `kid`) is a separate env var (`ACR_WEB_ASSERTION_KID`),
   independently validated as `[A-Za-z0-9._-]{1,128}`.
 
+#### Rotating the web assertion key
+
+The assertion `iss` stays `dev-health-web`. The registry row (ops
+`workload_assertion_keys`) names the same signer by its https issuer URL; the
+pair is stated here, not mapped in code. acr accepts a kid while its public key
+is in the acr JWKS file (`ACR_WEB_ASSERTION_JWKS_FILE`). Do the steps in this
+order:
+
+1. Add the new public key (Ed25519, new kid) to the acr JWKS file next to the
+   old one. acr now accepts both kids.
+2. Record the row with the ops verb: `auth-migrate workload-assertion-key-set
+-workload <web workload> -issuer <https issuer of this signer> -kid <new kid>
+-status active -rotated-at <RFC 3339> -retire-previous-after <up to 24h>
+-confirm`. The old key becomes `retiring` with `retire_after` set.
+3. Move web in one config change and one roll: `ACR_WEB_ASSERTION_KID` and
+   `ACR_WEB_ASSERTION_KEY_FILE` together. Never change one without the other.
+4. At `retire_after`, drop the old public key from the acr JWKS file, then set
+   the old row `retired` with the same verb (`-status retired`, same
+   `-rotated-at`).
+
+No key goes into the registry, this repo or a log; names only. Until acr bounds a
+kid by time, step 4 is an operator action and is not enforced.
+
 ### `credential:issue` provenance and the impersonation refusal (CHAOS-12095)
 
 Every `credential:issue` call (`previewDeviceAuthorization`, `approveDeviceAuthorization`,
@@ -360,3 +383,6 @@ No row is added or removed. The `[...nextauth]` row's sign-in anchor and the `re
 now reach auth-service through `src/lib/authServiceWire.ts` (login, logout) and read the access
 token by the class `AUTH_ACCESS_TOKEN_CLASS` names; see `auth-system.md`. Their anchors were
 re-pinned in their own commit.
+
+The refresh in the `[...nextauth]` jwt callback also goes through `authServiceWire.ts`
+(`refreshSession`, CHAOS-10876); its anchors were re-pinned in their own commit.

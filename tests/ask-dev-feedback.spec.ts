@@ -203,7 +203,7 @@ test.describe("answer feedback (CHAOS-11958)", () => {
         test("ACR's 404 hides the controls", async ({ page }) => {
             await seed(page, { feedback: { [PARTIAL_ID]: null } });
             await page.goto(`/dev?thread=${THREAD_A}`);
-            await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+            await expect(page.getByTestId("answer-panel")).toBeVisible();
             await expect.poll(async () => (await feedbackCalls(page)).length).toBe(1);
             await expect(page.getByTestId("ask-dev-feedback")).toHaveCount(0);
         });
@@ -227,7 +227,7 @@ test.describe("answer feedback (CHAOS-11958)", () => {
                 },
             });
             await page.goto(`/dev?thread=${THREAD_A}`);
-            await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+            await expect(page.getByTestId("answer-panel")).toBeVisible();
             await page.goto("/dashboard");
             await page.getByRole("button", { name: "Open Ask Dev" }).click();
             const sheet = page.getByTestId("ask-dev-sheet");

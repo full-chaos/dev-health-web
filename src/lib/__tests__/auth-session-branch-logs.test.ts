@@ -54,6 +54,10 @@ const ACCESS_TOKEN = "access-token-must-not-be-logged";
 const REFRESH_TOKEN = "refresh-token-must-not-be-logged";
 const EMAIL = "person@example.test";
 const SERVED_TEXT = "served-error-text-must-not-be-logged";
+const hs256Access = () => {
+    const part = (value: string) => Buffer.from(value).toString("base64url");
+    return `${part('{"alg":"HS256","typ":"JWT"}')}.${part(JSON.stringify({ sid: "ses_LogsAAAAAAAAAAAAAAAAAA", exp: 4102444800 }))}.${part("sig")}`;
+};
 const ALLOWED_FIELDS = ["operation", "branch", "status", "errorName", "failures"];
 
 type Token = Record<string, unknown>;
@@ -138,7 +142,22 @@ describe("refresh branches name themselves in the log", () => {
         ]);
     });
 
-    it.each([429, 500, 503, 404])(
+    it.each([400, 403, 404, 410, 422])(
+        "refresh_failed: status %i ends the session, and the line names the status",
+        async (status) => {
+            backendAnswers(status);
+
+            const token = await run(refreshDueToken());
+
+            expect(token.error).toBe("refresh_failed");
+            expect(token.refresh_token).toBeUndefined();
+            expect(branchLines()).toEqual([
+                { operation: "refresh", branch: "refresh_failed", status },
+            ]);
+        },
+    );
+
+    it.each([429, 500, 503])(
         "refresh_unavailable: status %i drops the access token and keeps the refresh token",
         async (status) => {
             backendAnswers(status);
@@ -179,20 +198,44 @@ describe("refresh branches name themselves in the log", () => {
         ]);
     });
 
-    it("refresh_no_access_token: a 2xx answer with no access token is named", async () => {
+    it("refresh_invalid_response: a 2xx answer with no access token ends the session and is named", async () => {
         backendAnswers(200, { refresh_token: "next-refresh" });
 
         const token = await run(refreshDueToken());
 
         expect(token.access_token).toBeUndefined();
-        expect(token.error).toBeUndefined();
+        expect(token.refresh_token).toBeUndefined();
+        expect(token.error).toBe("refresh_failed");
         expect(branchLines()).toEqual([
-            { operation: "refresh", branch: "refresh_no_access_token", status: 200 },
+            { operation: "refresh", branch: "refresh_invalid_response" },
         ]);
     });
 
+    it("refresh_invalid_response: a 2xx answer with no refresh token ends the session and is named", async () => {
+        backendAnswers(200, { access_token: hs256Access() });
+
+        const token = await run(refreshDueToken());
+
+        expect(token.refresh_token).toBeUndefined();
+        expect(token.error).toBe("refresh_failed");
+        expect(branchLines()).toEqual([
+            { operation: "refresh", branch: "refresh_invalid_response" },
+        ]);
+    });
+
+    it("token_shape_refused: a refresh answer whose access token is not HS256-shaped ends the session", async () => {
+        backendAnswers(200, { access_token: "not-a-token", refresh_token: "next-refresh" });
+
+        const token = await run(refreshDueToken());
+
+        expect(token.access_token).toBeUndefined();
+        expect(token.refresh_token).toBeUndefined();
+        expect(token.error).toBe("refresh_failed");
+        expect(branchLines()).toEqual([{ operation: "refresh", branch: "token_shape_refused" }]);
+    });
+
     it("a refresh that succeeds writes no branch line", async () => {
-        backendAnswers(200, { access_token: "next-access", refresh_token: "next-refresh" });
+        backendAnswers(200, { access_token: hs256Access(), refresh_token: "next-refresh" });
 
         const token = await run(refreshDueToken());
 
@@ -383,7 +426,7 @@ describe("a logger that throws never changes what happens to the session", () =>
             "refresh 200 without an access token",
             refreshDueToken,
             () => backendAnswers(200, { refresh_token: "next-refresh" }),
-            undefined,
+            "refresh_failed",
         ],
         [
             "validate valid false",

@@ -327,8 +327,12 @@
         "log": 1,
         "sentry": 0
     },
-    "src/lib/ask-dev/acr-transport/browserTransport.ts": {
+    "src/lib/ask-dev/acr-auth.ts": {
         "log": 8,
+        "sentry": 0
+    },
+    "src/lib/ask-dev/acr-transport/browserTransport.ts": {
+        "log": 14,
         "sentry": 0
     },
     "src/components/ask-dev/conversation/feedbackStore.ts": {

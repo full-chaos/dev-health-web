@@ -28,6 +28,25 @@ import {
 import { acrBrowserClientConfig, type AcrBrowserClientConfig } from "../acr-browser-config";
 import { acrBrowserSignOut } from "../acr-sign-out";
 
+/**
+ * CHAOS-12369: the logger, mocked. `sink` keeps every call of the whole file (the per-test `log`
+ * counts are cleared; the sink is not), so the no-secret guard at the end sees them all.
+ */
+const sink = vi.hoisted(() => [] as { level: string; args: unknown[] }[]);
+const log = vi.hoisted(() => {
+    const level = (name: string) =>
+        vi.fn((...args: unknown[]) => {
+            sink.push({ level: name, args });
+        });
+    return {
+        debug: level("debug"),
+        info: level("info"),
+        warn: level("warn"),
+        error: level("error"),
+    };
+});
+vi.mock("@/lib/logger", () => ({ logger: log }));
+
 /** The NextAuth client read behind the browser's `principal` seam (CHAOS-12305). */
 const getSession = vi.hoisted(() => vi.fn());
 vi.mock("next-auth/react", () => ({ getSession }));
@@ -74,8 +93,23 @@ const METADATA = {
     revocation_endpoint: `${ISSUER}/revoke`,
 };
 
+/** Every secret value a test of this file saw, by kind (CHAOS-12369): no log call may carry one. */
+const secretsByKind = {
+    access: new Set<string>([ACCESS]),
+    refresh: new Set<string>([REFRESH]),
+    code: new Set<string>(),
+    verifier: new Set<string>(),
+    state: new Set<string>(),
+    tab: new Set<string>(),
+};
+/** Every storage made in the running test, to read its tab id at the end. */
+let storages: MemoryStorage[] = [];
+
 class MemoryStorage implements Storage {
     private readonly items = new Map<string, string>();
+    constructor() {
+        storages.push(this);
+    }
     get length() {
         return this.items.size;
     }
@@ -97,6 +131,26 @@ class MemoryStorage implements Storage {
     snapshot() {
         return Object.fromEntries(this.items);
     }
+}
+
+/** The secret fields of one token request and its answer (CHAOS-12369). */
+function harvestSecrets(form: Record<string, string>, answer: Record<string, unknown>) {
+    const found: [keyof typeof secretsByKind, unknown][] = [
+        ["code", form.code],
+        ["verifier", form.code_verifier],
+        ["refresh", form.refresh_token],
+        ["access", answer.access_token],
+        ["refresh", answer.refresh_token],
+    ];
+    for (const [kind, value] of found) {
+        if (typeof value === "string" && value !== "") secretsByKind[kind].add(value);
+    }
+}
+
+/** The state of an authorize URL, a secret for the log guard (CHAOS-12369). */
+function harvestAuthorizeUrl(url: string) {
+    const state = new URL(url).searchParams.get("state");
+    if (state !== null) secretsByKind.state.add(state);
 }
 
 type Call = { url: string; init: RequestInit | undefined };
@@ -131,7 +185,10 @@ function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | u
         principal: async () => principal,
         storage: () => tab,
         shared: () => shared,
-        navigate: (url) => navigated.push(url),
+        navigate: (url) => {
+            navigated.push(url);
+            harvestAuthorizeUrl(url);
+        },
         config: () => config ?? undefined,
         channel: () => null,
         fetch: async (input, init) => {
@@ -139,13 +196,21 @@ function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | u
             calls.push({ url, init });
             if (url === `${ISSUER}/.well-known/oauth-authorization-server`)
                 return json(200, metadata);
-            if (url === `${ISSUER}/token`) return tokenResponse();
+            if (url === `${ISSUER}/token`) {
+                harvestSecrets(
+                    Object.fromEntries(new URLSearchParams(String(init?.body ?? ""))),
+                    {},
+                );
+                return tokenResponse();
+            }
             return json(404, {});
         },
     });
 }
 
 beforeEach(() => {
+    storages = [];
+    for (const level of Object.values(log)) level.mockClear();
     storage = new MemoryStorage();
     shared = new MemoryStorage();
     calls = [];
@@ -165,6 +230,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    for (const tab of storages) {
+        const id = tab.getItem(ACR_TAB_KEY);
+        if (id !== null) secretsByKind.tab.add(id);
+    }
     setAcrAuthDependenciesForTest();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -994,10 +1063,12 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             const body = init?.body === undefined || init.body === null ? null : String(init.body);
             const answer = acr.handle({ method: init?.method ?? "GET", url, body });
             if (isToken) {
-                tokenLog.push({
+                const entry = {
                     form: Object.fromEntries(new URLSearchParams(body ?? "")),
                     answer: JSON.parse(answer.body) as Record<string, unknown>,
-                });
+                };
+                tokenLog.push(entry);
+                harvestSecrets(entry.form, entry.answer);
             }
             now += fate.elapse ?? 0;
             await fate.during?.();
@@ -1026,7 +1097,10 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             now: () => now,
             storage: () => tab,
             shared: () => shared,
-            navigate: (url: string) => navigated.push(url),
+            navigate: (url: string) => {
+                navigated.push(url);
+                harvestAuthorizeUrl(url);
+            },
             config: () => CONFIG,
             principal: async () => principal,
             lock: locks.lock,
@@ -1774,6 +1848,384 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
         });
     });
+
+    /**
+     * CHAOS-12369: the failure and refusal paths log at Info or Warn, once per event, with no secret
+     * value. Fields are family id, enums, booleans and an HTTP status only.
+     */
+    describe("logs (CHAOS-12369)", () => {
+        const SENT = "ask-dev acr token store refresh sent";
+        const ANSWERED = "ask-dev acr token store refresh answered";
+        const CLEARED = "ask-dev acr token store family cleared";
+        const PRINCIPAL = "ask-dev acr token store principal dropped";
+        const RACE = "ask-dev acr token store clear overtook";
+        const CLONE = "ask-dev acr token store clone dropped";
+        const RECEIVED = "ask-dev acr token store clear received";
+
+        /** What the store logged since `mark`: [level, message, fields], in order. */
+        function since(mark: number) {
+            return sink
+                .slice(mark)
+                .filter(({ args }) => String(args[1]).startsWith("ask-dev acr token store"))
+                .map(({ level, args }) => [level, args[1], args[0]] as const);
+        }
+
+        it("a refresh that works: sent and answered ok, both Info", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+            expect(since(mark)).toEqual([
+                ["info", SENT, { family_id: id, attempt: 1 }],
+                ["info", ANSWERED, { family_id: id, outcome: "ok", status: 200 }],
+            ]);
+        });
+
+        it("serving the held token logs nothing", async () => {
+            await signIn();
+            const mark = sink.length;
+            for (let i = 0; i < 3; i += 1) {
+                expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+            }
+            expect(sink.slice(mark)).toEqual([]);
+        });
+
+        it("a refused refresh: answered refused with its status, and the family cleared", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ deliver: 401 }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark)).toEqual([
+                ["info", SENT, { family_id: id, attempt: 1 }],
+                ["warn", ANSWERED, { family_id: id, outcome: "refused", status: 401 }],
+                ["warn", CLEARED, { family_id: id, reason: "refused" }],
+            ]);
+        });
+
+        it("a lost response 25 s after the attempt: lost, no retry, cleared past_grace", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ deliver: "network", elapse: 25_000 }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark)).toEqual([
+                ["info", SENT, { family_id: id, attempt: 1 }],
+                ["warn", ANSWERED, { family_id: id, outcome: "lost" }],
+                ["warn", CLEARED, { family_id: id, reason: "past_grace" }],
+            ]);
+        });
+
+        it.each([429, 403, 404])(
+            "a received %d is not lost: answered unexpected_status, retried as before (codex r1 on #1681)",
+            async (status) => {
+                await signIn();
+                const id = storedFamily()!.familyId;
+                now += REFRESH_AT_MS;
+                fates = [{ deliver: status }];
+                const mark = sink.length;
+                expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+                expect(since(mark).slice(0, 3)).toEqual([
+                    ["info", SENT, { family_id: id, attempt: 1 }],
+                    ["warn", ANSWERED, { family_id: id, outcome: "unexpected_status", status }],
+                    ["info", SENT, { family_id: id, attempt: 2 }],
+                ]);
+            },
+        );
+
+        it("a 5xx is lost, with its status", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ deliver: 503 }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+            expect(since(mark)[1]).toEqual([
+                "warn",
+                ANSWERED,
+                { family_id: id, outcome: "lost", status: 503 },
+            ]);
+        });
+
+        it("a lost response, then a failed retry: attempt 2 is logged, cleared retry_failed", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ deliver: "network" }, { deliver: 503 }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark)).toEqual([
+                ["info", SENT, { family_id: id, attempt: 1 }],
+                ["warn", ANSWERED, { family_id: id, outcome: "lost" }],
+                ["info", SENT, { family_id: id, attempt: 2 }],
+                ["warn", ANSWERED, { family_id: id, outcome: "lost", status: 503 }],
+                ["warn", CLEARED, { family_id: id, reason: "retry_failed" }],
+            ]);
+        });
+
+        it("a lost response, then a retry that works: two sends, no clear", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ deliver: "network" }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+            expect(since(mark)).toEqual([
+                ["info", SENT, { family_id: id, attempt: 1 }],
+                ["warn", ANSWERED, { family_id: id, outcome: "lost" }],
+                ["info", SENT, { family_id: id, attempt: 2 }],
+                ["info", ANSWERED, { family_id: id, outcome: "ok", status: 200 }],
+            ]);
+        });
+
+        it.each([
+            [
+                "a malformed token answer",
+                (body: Record<string, unknown>) => ({ ...body, access_token: "x" }),
+            ],
+            [
+                "an answer with no new refresh token",
+                (body: Record<string, unknown>) => ({ ...body, refresh_token: undefined }),
+            ],
+        ])("%s: answered invalid, cleared invalid", async (_, deliver) => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ deliver }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark)).toEqual([
+                ["info", SENT, { family_id: id, attempt: 1 }],
+                ["warn", ANSWERED, { family_id: id, outcome: "invalid", status: 200 }],
+                ["warn", CLEARED, { family_id: id, reason: "invalid" }],
+            ]);
+        });
+
+        it("a clear that lands while the refresh runs: answered overtaken, and the race logged", async () => {
+            await signIn();
+            const id = storedFamily()!.familyId;
+            now += REFRESH_AT_MS;
+            fates = [{ during: async () => defaultTab.clearAcrTokensInAllTabs() }];
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark)).toEqual([
+                ["info", SENT, { family_id: id, attempt: 1 }],
+                ["warn", ANSWERED, { family_id: id, outcome: "overtaken", status: 200 }],
+                ["warn", RACE, { where: "refresh" }],
+            ]);
+        });
+
+        it.each([
+            ["a user switch", { userId: "user-2", orgId: "org-1" }, "mismatch"],
+            ["an org switch", { userId: "user-1", orgId: "org-2" }, "mismatch"],
+            ["no session", null, "no_session"],
+            ["an impersonating session", IMPERSONATING, "impersonating"],
+        ] as const)(
+            "%s before the token is served: dropped, check before",
+            async (_, next, reason) => {
+                await signIn();
+                principal = next;
+                const mark = sink.length;
+                expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+                expect(since(mark)).toEqual([["warn", PRINCIPAL, { check: "before", reason }]]);
+            },
+        );
+
+        it("a stored family of another user: dropped as a mismatch, check before", async () => {
+            storage.setItem(
+                ACR_TOKEN_FAMILY_KEY,
+                JSON.stringify({ ...STORED_FAMILY, userId: "user-2" }),
+            );
+            const { auth } = await openTab(storage);
+            const mark = sink.length;
+            expect(await auth.getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark)).toEqual([
+                ["warn", PRINCIPAL, { check: "before", reason: "mismatch" }],
+            ]);
+        });
+
+        it("the family changes owner while the call waits for the lock: check lock", async () => {
+            await signIn();
+            now += REFRESH_AT_MS;
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                lock: (name, task) => {
+                    storage.setItem(
+                        ACR_TOKEN_FAMILY_KEY,
+                        JSON.stringify({ ...storedFamily(), userId: "user-2" }),
+                    );
+                    return locks.lock(name, task);
+                },
+            });
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark)).toEqual([
+                ["warn", PRINCIPAL, { check: "lock", reason: "mismatch" }],
+            ]);
+        });
+
+        it.each([
+            ["no session", null, "no_session"],
+            ["another org", { userId: "user-1", orgId: "org-2" }, "mismatch"],
+            ["an impersonating session", IMPERSONATING, "impersonating"],
+        ] as const)(
+            "%s after the refresh: dropped, check after_refresh",
+            async (_, next, reason) => {
+                await signIn();
+                now += REFRESH_AT_MS;
+                let reads = 0;
+                setAcrAuthDependenciesForTest({
+                    ...depsFor(storage),
+                    principal: async () => {
+                        reads += 1;
+                        return reads === 2 ? next : principal;
+                    },
+                });
+                const mark = sink.length;
+                expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+                expect(reads).toBe(2);
+                expect(since(mark).filter(([, message]) => message === PRINCIPAL)).toEqual([
+                    ["warn", PRINCIPAL, { check: "after_refresh", reason }],
+                ]);
+            },
+        );
+
+        it("a clear while the principal is read after a refresh: the race, where after_refresh_check", async () => {
+            await signIn();
+            now += REFRESH_AT_MS;
+            let reads = 0;
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    reads += 1;
+                    if (reads === 2) defaultTab.clearAcrTokensInAllTabs();
+                    return principal;
+                },
+            });
+            const mark = sink.length;
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark).filter(([, message]) => message === RACE)).toEqual([
+                ["warn", RACE, { where: "after_refresh_check" }],
+            ]);
+        });
+
+        it("begin while impersonating: dropped, check begin", async () => {
+            principal = IMPERSONATING;
+            const mark = sink.length;
+            expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "impersonating" });
+            expect(since(mark)).toEqual([
+                ["warn", PRINCIPAL, { check: "begin", reason: "impersonating" }],
+            ]);
+        });
+
+        it.each([
+            ["no session", null, "no_session"],
+            ["an impersonating session", IMPERSONATING, "impersonating"],
+        ] as const)("%s at the callback: check callback_before", async (_, next, reason) => {
+            await signIn();
+            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
+            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
+            principal = next;
+            const mark = sink.length;
+            expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
+                kind: "failed",
+            });
+            expect(since(mark)).toEqual([
+                ["warn", PRINCIPAL, { check: "callback_before", reason }],
+            ]);
+        });
+
+        it.each([
+            ["no session", null, "no_session"],
+            ["another user", { userId: "user-2", orgId: "org-1" }, "mismatch"],
+            ["an impersonating session", IMPERSONATING, "impersonating"],
+        ] as const)(
+            "%s by the end of the code exchange: check callback_after",
+            async (_, next, reason) => {
+                fates.push({
+                    during: async () => {
+                        principal = next;
+                    },
+                });
+                expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({
+                    kind: "redirected",
+                });
+                const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
+                const mark = sink.length;
+                expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
+                    kind: "failed",
+                });
+                expect(since(mark)).toEqual([
+                    ["warn", PRINCIPAL, { check: "callback_after", reason }],
+                ]);
+            },
+        );
+
+        it("a clear while the code exchange runs: the race, where callback", async () => {
+            fates.push({ during: async () => defaultTab.clearAcrTokensInAllTabs() });
+            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
+            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
+            const mark = sink.length;
+            expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
+                kind: "failed",
+                reason: "signed_out",
+            });
+            expect(since(mark)).toEqual([["warn", RACE, { where: "callback" }]]);
+        });
+
+        it("a clear before the code exchange starts is the same race: where callback (codex r2 on #1681)", async () => {
+            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
+            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
+            let reads = 0;
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    reads += 1;
+                    // The first read is before the exchange: the label must not name the exchange.
+                    if (reads === 1) defaultTab.clearAcrTokensInAllTabs();
+                    return principal;
+                },
+            });
+            const mark = sink.length;
+            expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
+                kind: "failed",
+                reason: "signed_out",
+            });
+            expect(since(mark)).toEqual([["warn", RACE, { where: "callback" }]]);
+        });
+
+        it.each([
+            ["with a copied family", true],
+            ["with no family to drop", false],
+        ])("a cloned tab %s: one line with dropped_family", async (_, withFamily) => {
+            const hub = channelHub();
+            const original = await openTab(storage, hub.join());
+            await signIn(original.auth);
+            const clone = duplicate(storage);
+            if (!withFamily) clone.removeItem(ACR_TOKEN_FAMILY_KEY);
+            const copy = await openTab(clone, hub.join());
+            const mark = sink.length;
+            expect(await copy.auth.getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(since(mark).filter(([, message]) => message === CLONE)).toEqual([
+                ["info", CLONE, { dropped_family: withFamily }],
+            ]);
+        });
+
+        it("a clear from another tab: one Info line on the tab that received it, none on the sender", async () => {
+            const hub = channelHub();
+            const here = await openTab(storage, hub.join());
+            await signIn(here.auth);
+            const there = await openTab(new MemoryStorage(), hub.join());
+            await signIn(there.auth);
+            const mark = sink.length;
+            await here.signOut.acrBrowserSignOut.clearAllTabs();
+            await turns(2);
+            expect(since(mark)).toEqual([["info", RECEIVED, { source: "other_tab" }]]);
+        });
+    });
 });
 
 describe("module load (P1-6, CHAOS-12305)", () => {
@@ -1827,5 +2279,46 @@ describe("module load (P1-6, CHAOS-12305)", () => {
         await turns(2);
         expect(tab.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
         expect(fetchSpy).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * CHAOS-12369: the guard. It reads every log call made by every test of this file, so a log line
+ * that leaks a token, a code, a verifier, a state or a tab id fails here, whichever test drove it.
+ * Run the whole file: a filtered run sees too few calls and fails the first test on purpose.
+ */
+describe("no secret in any log call (CHAOS-12369)", () => {
+    it("saw the store's events and the secrets (a guard that sees nothing must fail)", () => {
+        const messages = new Set(sink.map(({ args }) => String(args[1])));
+        for (const message of [
+            "ask-dev acr token store refresh sent",
+            "ask-dev acr token store refresh answered",
+            "ask-dev acr token store family cleared",
+            "ask-dev acr token store principal dropped",
+            "ask-dev acr token store clear overtook",
+            "ask-dev acr token store clone dropped",
+            "ask-dev acr token store clear received",
+        ]) {
+            expect(messages).toContain(message);
+        }
+        // Every kind was harvested, with a value long enough for the guard below to look for it
+        // (codex r1 on #1681: a total count hid a kind that was never harvested).
+        for (const [kind, values] of Object.entries(secretsByKind)) {
+            expect(
+                [...values].some((value) => value.length >= 8),
+                `no ${kind} value was harvested`,
+            ).toBe(true);
+        }
+    });
+
+    it("no log argument holds a token, an authorization code, a verifier, a state or a tab id", () => {
+        const text = JSON.stringify(sink.map(({ args }) => args));
+        expect(text).not.toMatch(/fcacr_|acrrt_/u);
+        for (const [kind, values] of Object.entries(secretsByKind)) {
+            for (const value of values) {
+                if (value.length < 8) continue;
+                expect(text, `a log call carries a ${kind} value`).not.toContain(value);
+            }
+        }
     });
 });

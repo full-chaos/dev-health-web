@@ -14,6 +14,8 @@ const nextConfig = {
     // dev compilers from racing on shared build artifacts. Unset in normal
     // builds, so production output is unaffected.
     ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
+    // ask-dev ships TypeScript source through its `exports`; web's Next compiles it (CHAOS-12393).
+    transpilePackages: ["@full-chaos/ask-dev"],
     ...(isDemoExportBuild
         ? {
               output: "export",

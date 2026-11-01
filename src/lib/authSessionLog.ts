@@ -10,8 +10,6 @@ const log = logger.child({ module: "auth-session" });
  * - `refresh_unavailable`   the refresh got another non-2xx answer: the access token goes,
  *                           the refresh token stays for a retry after backoff.
  * - `refresh_call_failed`   the refresh call threw (network, unreadable body): same as above.
- * - `refresh_no_access_token` the refresh answered 2xx with no access token in the body: the
- *                           access token goes and no error is set.
  * - `user_invalid`          backend validation refused the session (a 2xx with `valid: false`,
  *                           or 401 / 403): both tokens go.
  * - `validate_transient`    validation got an answer that says nothing about the user (404, 400,
@@ -30,13 +28,18 @@ const log = logger.child({ module: "auth-session" });
  * - `token_shape_refused`  the login answered 2xx with an access token of the wrong shape for the
  *                           token class (under hs256_compat: not a decodable HS256 token): no
  *                           session starts. A fixed message; the token text is never logged.
+ * - `refresh_invalid_response` the refresh answered 2xx without both tokens, or with an access token
+ *                           the class refuses (a failed verification): the session ends.
+ * - `session_token_*`        the service session token of an answer (aud auth-service): `missing` (class
+ *                           eddsa, none sent: accepted), `ignored` (class hs256_compat, one sent: never
+ *                           stored), and one branch per refusal reason (`malformed`, `unverified`,
+ *                           `sid_mismatch`, `sub_mismatch`, `exp_mismatch`): the answer is refused.
  * - `logout_failed`         the auth-service logout call did not answer 200.
  */
 export type SessionBranch =
     | "refresh_failed"
     | "refresh_unavailable"
     | "refresh_call_failed"
-    | "refresh_no_access_token"
     | "user_invalid"
     | "validate_transient"
     | "validate_call_failed"
@@ -45,6 +48,14 @@ export type SessionBranch =
     | "auth_config_invalid"
     | "key_set_unusable"
     | "token_shape_refused"
+    | "refresh_invalid_response"
+    | "session_token_missing"
+    | "session_token_ignored"
+    | "session_token_malformed"
+    | "session_token_unverified"
+    | "session_token_sid_mismatch"
+    | "session_token_sub_mismatch"
+    | "session_token_exp_mismatch"
     | "logout_failed";
 
 export interface SessionBranchFields {
@@ -63,7 +74,6 @@ const MESSAGES: Record<SessionBranch, string> = {
     refresh_unavailable:
         "access token dropped: the refresh got no usable answer; retry after backoff",
     refresh_call_failed: "access token dropped: the refresh call failed; retry after backoff",
-    refresh_no_access_token: "access token dropped: the refresh answer carried no access token",
     user_invalid: "session ended: backend validation refused the session",
     validate_transient:
         "session kept: backend validation got no usable answer; retry after backoff",
@@ -73,6 +83,14 @@ const MESSAGES: Record<SessionBranch, string> = {
     auth_config_invalid: "login refused: the access token class setting is unusable",
     key_set_unusable: "login refused: the published key set is unusable",
     token_shape_refused: "login refused: the access token has the wrong shape for the token class",
+    refresh_invalid_response: "session ended: the refresh answer or its access token was refused",
+    session_token_missing: "an eddsa answer carried no service session token; accepted",
+    session_token_ignored: "an hs256_compat answer carried a service session token; ignored",
+    session_token_malformed: "answer refused: the service session token is not a usable string",
+    session_token_unverified: "answer refused: the service session token did not verify",
+    session_token_sid_mismatch: "answer refused: the service session token names another session",
+    session_token_sub_mismatch: "answer refused: the service session token names another subject",
+    session_token_exp_mismatch: "answer refused: the service session token expiry differs",
     logout_failed: "sign-out: the backend logout did not answer 200",
 };
 

@@ -56,6 +56,10 @@ type JwtCallback = (params: { token: Token; user?: unknown; account?: unknown })
 const jwt = (): JwtCallback =>
     (nextAuthConfig.value as { callbacks: { jwt: JwtCallback } }).callbacks.jwt;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// An HS256-shaped compact access token: the server reads exp and sid from the token it receives.
+const NEW_ACCESS = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from(
+    JSON.stringify({ sid: "ses_DeadlineAAAAAAAAAAAAAA", exp: 4102444800 }),
+).toString("base64url")}.${Buffer.from("sig").toString("base64url")}`;
 const deadlineLines = () =>
     warn.mock.calls.filter(([, msg]) => msg === "server fetch deadline exceeded");
 
@@ -117,7 +121,7 @@ describe("auth jwt callback with a backend that never answers", () => {
                                 resolve(
                                     new Response(
                                         JSON.stringify({
-                                            access_token: "new-access",
+                                            access_token: NEW_ACCESS,
                                             refresh_token: "new-refresh",
                                         }),
                                         { status: 200 },
@@ -135,7 +139,7 @@ describe("auth jwt callback with a backend that never answers", () => {
             expires_at: Date.now() - 1_000,
         };
         const out = await jwt()({ token, account: null });
-        expect(out.access_token).toBe("new-access"); // answered at 150 ms, under the 400 ms deadline
+        expect(out.access_token).toBe(NEW_ACCESS); // answered at 150 ms, under the 400 ms deadline
         expect(
             deadlineLines().filter(([f]) => String((f as { op: string }).op).includes("refresh")),
         ).toHaveLength(0);

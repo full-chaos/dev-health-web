@@ -116,6 +116,22 @@ describe("answers that refuse the session end it", () => {
 
         expectSessionEnded(await validate());
     });
+
+    it("a refused session also drops the service session token, its expiry and the actor", async () => {
+        backendAnswers(200, JSON.stringify({ valid: false }));
+
+        const token = await validate({
+            ...validationDueToken(),
+            session_access_token: "service-token",
+            session_expires_at: Date.now() + 3600_000,
+            act_sub: "prn_ACTACTACTACTACTACTACTA",
+        });
+
+        expectSessionEnded(token);
+        expect(token.session_access_token).toBeUndefined();
+        expect(token.session_expires_at).toBeUndefined();
+        expect(token.act_sub).toBeUndefined();
+    });
 });
 
 describe("answers that say nothing about the user keep the session", () => {
@@ -179,8 +195,12 @@ describe("an answer that confirms the user", () => {
 });
 
 describe("a good refresh starts the validation count again", () => {
+    // An HS256-shaped compact access token: the server reads exp and sid from a refreshed token.
+    const NEXT_ACCESS = `${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString("base64url")}.${Buffer.from(
+        JSON.stringify({ sid: "ses_ValidationAAAAAAAAAAAAA", exp: 4102444800 }),
+    ).toString("base64url")}.${Buffer.from("sig").toString("base64url")}`;
     const REFRESHED = JSON.stringify({
-        access_token: "next-access",
+        access_token: NEXT_ACCESS,
         refresh_token: "next-refresh",
         expires_in: 3600,
     });
@@ -202,7 +222,7 @@ describe("a good refresh starts the validation count again", () => {
 
         const token = await validate(refreshDueToken());
 
-        expect(token.access_token).toBe("next-access");
+        expect(token.access_token).toBe(NEXT_ACCESS);
         expect(token.validation_failures).toBe(0);
     });
 
@@ -216,7 +236,7 @@ describe("a good refresh starts the validation count again", () => {
             last_validated: Date.now() - 6 * 60 * 1000,
         });
 
-        expect(later.access_token).toBe("next-access");
+        expect(later.access_token).toBe(NEXT_ACCESS);
         expect(later.validation_failures).toBe(1);
     });
 });
