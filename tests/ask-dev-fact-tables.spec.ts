@@ -82,11 +82,11 @@ test.describe("desktop (1280px)", () => {
             name: "flow · items completed latest day",
             exact: true,
         });
-        const tables = panel.getByRole("group", { name: "Facts" });
+        // Exact: "Facts in this answer" is the panel for the facts with no rows of their own.
+        const tables = panel.getByRole("group", { name: "Facts", exact: true });
         await tables.first().scrollIntoViewIfNeeded();
-        // The three cited tables, and the one table of facts with no rows of their own.
-        await expect(tables).toHaveCount(4);
-        await expect(panel.getByTestId("scalar-facts-panel").getByRole("table")).toBeVisible();
+        await expect(tables).toHaveCount(3);
+        await expect(panel.getByTestId("scalar-facts-panel")).toBeVisible();
         await expect(tables.first()).toBeVisible();
         await expect(workload).toContainText("Synthetic Project Beta · 8 rows");
         await expect(readiness).toContainText("Synthetic Project Beta · 64 rows");
