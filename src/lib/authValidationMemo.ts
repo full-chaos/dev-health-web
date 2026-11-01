@@ -6,7 +6,7 @@ import { processMemo } from "@/lib/processMemo";
 import { withDeadline } from "@/lib/serverDeadline";
 import { deadlineFetch } from "@/lib/serverDeadline";
 
-const VALIDATION_INTERVAL_MS = 5 * 60 * 1000;
+export const VALIDATION_INTERVAL_MS = 60 * 1000;
 const VALIDATION_BACKOFF_BASE_MS = 60 * 1000;
 const VALIDATION_BACKOFF_CAP_MS = 15 * 60 * 1000;
 const VALIDATION_BACKOFF_FLOOR_MS = 5 * 1000;

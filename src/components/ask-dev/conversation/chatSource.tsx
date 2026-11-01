@@ -379,6 +379,16 @@ const ENDS_BATCH = new Set<TurnOutcome["kind"]>([
     "thread_closed",
 ]);
 
+/** A refusal for the whole viewer: the next item gets the same answer. Any other is the item's own. */
+const ENDS_BATCH_NOT_RUN = new Set<string>(["access_denied", "no_repository", "not_entitled"]);
+
+function endsBatch(outcome: TurnOutcome): boolean {
+    return (
+        ENDS_BATCH.has(outcome.kind) ||
+        (outcome.kind === "not_run" && ENDS_BATCH_NOT_RUN.has(outcome.reason))
+    );
+}
+
 /** A queued item, as the render's pair: so a batch never stalls silently. */
 function queuedTurns(
     { item, position, userId, assistantId }: QueuedItem,
@@ -628,7 +638,7 @@ export function createChatSource({
         const running = current?.running;
         if (current === null || running === null || running === undefined) return;
         const turn = from.turns.find((candidate) => candidate.id === running.turnId);
-        if (turn === undefined || turn.stop !== undefined || ENDS_BATCH.has(turn.outcome.kind)) {
+        if (turn === undefined || turn.stop !== undefined || endsBatch(turn.outcome)) {
             dropBatch();
             return;
         }

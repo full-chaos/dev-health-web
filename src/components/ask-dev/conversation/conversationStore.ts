@@ -291,6 +291,21 @@ const authorizationOutcome = (reason: AuthorizationFailure): TurnOutcome => ({
 export const noRepositoryInScope = (error: unknown): boolean =>
     error instanceof TransportRefusal && error.error.error.code === "no_repository";
 
+/**
+ * ACR's 503 for an organization above its access limit, on every protected route. It is the only
+ * `upstream_unavailable` 503 that ACR marks `retryable: false` (acr `docs/authentication.md`), so
+ * that field alone tells it from an outage. No retry can clear it (CHAOS-12469).
+ */
+const aboveAccessLimit = (error: unknown): boolean =>
+    error instanceof TransportRefusal &&
+    error.status === 503 &&
+    error.error.error.code === "upstream_unavailable" &&
+    !error.error.error.retryable;
+
+/** ACR says that reading again cannot help, so nothing offers a retry. */
+export const readCannotHelp = (error: unknown): boolean =>
+    noRepositoryInScope(error) || aboveAccessLimit(error);
+
 const notRunReasonOf = (code: string): NotRunReason | undefined =>
     Object.hasOwn(NOT_RUN_REASON_OF, code) ? NOT_RUN_REASON_OF[code] : undefined;
 
@@ -381,11 +396,12 @@ export type SelectionSource = "initial" | "incoming" | "local";
 export type HistorySnapshot = {
     /**
      * `no_repository`: ACR's 409, no repository in scope (CHAOS-12439); there are no rows.
+     * `unavailable`: ACR says no retry can clear the read (`aboveAccessLimit`); no rows either.
      * `read_failed`: the list was not read, which says nothing of whether conversations exist. No
      * ACR token lands here, never in `ready` (CHAOS-12474): an empty `ready` reads "No conversations
      * yet", and with no token nothing is known.
      */
-    readonly status: "idle" | "loading" | "ready" | "read_failed" | "no_repository";
+    readonly status: "idle" | "loading" | "ready" | "read_failed" | "no_repository" | "unavailable";
     readonly threads: readonly ThreadSummaryView[];
     readonly nextCursor: string | null;
     readonly loadingMore: boolean;
@@ -1408,8 +1424,8 @@ export class ConversationStore {
                 { thread_id: threadId, stage: "read", status: failureStatus(error), selection },
                 "ask-dev thread restore failed",
             );
-            if (noRepositoryInScope(error)) {
-                // No repository in scope: reading again cannot help, on this load or the next.
+            if (readCannotHelp(error)) {
+                // Reading again cannot help, on this load or the next.
                 if (parseHint(this.hints.read())?.thread_id === threadId) this.hints.clear();
                 this.commit({ ...this.snapshot, threadId: null, thread: { kind: "unavailable" } });
                 return;
@@ -1479,8 +1495,8 @@ export class ConversationStore {
                 this.reread(threadId);
                 return;
             }
-            if (noRepositoryInScope(error)) {
-                // The scope has gone: "Try again" on the earlier page cannot help, nor can a reload.
+            if (readCannotHelp(error)) {
+                // "Try again" on the earlier page cannot help, nor can a reload.
                 if (parseHint(this.hints.read())?.thread_id === threadId) this.hints.clear();
                 this.dropSelectionWork("detach");
                 this.commit({
@@ -1625,7 +1641,7 @@ export class ConversationStore {
             if (onSettled !== undefined && !onSettled()) return;
             const unavailable =
                 (error instanceof TransportRefusal && error.status === 404) ||
-                noRepositoryInScope(error);
+                readCannotHelp(error);
             logger.warn(
                 {
                     submission_id: submissionId,
@@ -1761,8 +1777,8 @@ export class ConversationStore {
                     { err: error, submission_id: submissionId },
                     "ask-dev submission status read failed",
                 );
-                if (noRepositoryInScope(error)) {
-                    // Polling again cannot help (CHAOS-12439).
+                if (readCannotHelp(error)) {
+                    // Polling again cannot help.
                     this.settle(run, { kind: "unavailable" });
                     return;
                 }
@@ -1839,10 +1855,10 @@ export class ConversationStore {
                 this.loadHistory();
                 return;
             }
-            if (noRepositoryInScope(error)) {
-                // The scope has gone, on any page: no rows, nothing to retry (CHAOS-12439).
+            if (readCannotHelp(error)) {
+                // On any page: no rows, nothing to retry.
                 this.commitHistory({
-                    status: "no_repository",
+                    status: noRepositoryInScope(error) ? "no_repository" : "unavailable",
                     threads: [],
                     nextCursor: null,
                     loadingMore: false,
@@ -2435,7 +2451,8 @@ export class ConversationStore {
                 this.settle(run, { kind: "stream_unavailable" });
                 return;
             default: {
-                const reason = notRunReasonOf(code);
+                // ACR's words for an access limit are not a closed code, and this sentence is true.
+                const reason = aboveAccessLimit(refusal) ? "not_entitled" : notRunReasonOf(code);
                 if (reason !== undefined) {
                     logger.info(fields, "ask-dev investigation not run");
                     this.settle(run, { kind: "not_run", reason, retry: NOT_RUN_RETRY[reason] });
@@ -2542,8 +2559,8 @@ export class ConversationStore {
                     this.settle(run, authorizationOutcome(access));
                     return;
                 }
-                // No repository in scope: polling again cannot help (CHAOS-12439).
-                if (noRepositoryInScope(error)) {
+                // Polling again cannot help.
+                if (readCannotHelp(error)) {
                     this.settle(run, { kind: "unavailable" });
                     return;
                 }
@@ -2615,8 +2632,8 @@ export class ConversationStore {
                 { err: error, submission_id: submissionId, result_id: resultId },
                 "ask-dev result replay failed",
             );
-            if (noRepositoryInScope(error)) {
-                // Reading the stored result again cannot help (CHAOS-12439).
+            if (readCannotHelp(error)) {
+                // Reading the stored result again cannot help.
                 this.settle(run, { kind: "unavailable" });
                 return;
             }

@@ -11,7 +11,7 @@ import { getBackendUrl } from "@/lib/origin";
 import { logger } from "@/lib/logger";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
-import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
+import { applyBackendValidationMemo, VALIDATION_INTERVAL_MS } from "@/lib/authValidationMemo";
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import { deadlineFetch } from "@/lib/serverDeadline";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
@@ -457,13 +457,12 @@ const nextAuth = NextAuth({
 
             // Step 2: Periodic backend validation — confirm user still exists in DB.
             // Only runs when token is NOT expired (fresh or just-refreshed).
-            // Runs every 5 minutes, skips on initial login.
-            const VALIDATION_INTERVAL = 5 * 60 * 1000;
+            // Runs every VALIDATION_INTERVAL_MS, skips on initial login.
             if (
                 !user &&
                 token.access_token &&
                 !token.error &&
-                (!lastValidated || now - lastValidated > VALIDATION_INTERVAL)
+                (!lastValidated || now - lastValidated >= VALIDATION_INTERVAL_MS)
             ) {
                 await applyBackendValidationMemo(token, now);
             }

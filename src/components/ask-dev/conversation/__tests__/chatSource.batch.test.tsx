@@ -621,6 +621,38 @@ describe("what drops the queue", () => {
         await nothingMoreGoesOut(2);
     });
 
+    it.each([
+        ["an organization above its limit", 503, "upstream_unavailable"],
+        ["no repository in scope", 409, "no_repository"],
+        ["not entitled", 403, "feature_not_enabled"],
+        ["access denied", 403, "access_denied"],
+    ] as const)("an item refused for the whole viewer: %s", async (_name, status, code) => {
+        const made = makeSource();
+        const { source, store } = made;
+        await clarified(made);
+        transport.scripts.push(
+            [{ fail: new TransportRefusal(status, acrError(code, status, false)) }],
+            gated().script,
+        );
+        source.askBatch([subjectItem("subject-a"), subjectItem("subject-b")], QUESTION);
+        await vi.waitFor(() => expect(store.getSnapshot().inFlight).toBe(false));
+        expect(queued(source)).toEqual([]);
+        await nothingMoreGoesOut(2);
+    });
+
+    it("an item refused for itself: a forbidden repository does not stop the next", async () => {
+        const made = makeSource();
+        const { source, store } = made;
+        await clarified(made);
+        transport.scripts.push(
+            [{ fail: new TransportRefusal(403, acrError("repo_forbidden", 403, false)) }],
+            [accepted(), resultEvent(PARTIAL)],
+        );
+        source.askBatch([subjectItem("subject-a"), subjectItem("subject-b")], QUESTION);
+        await vi.waitFor(() => expect(transport.calls).toHaveLength(3));
+        await vi.waitFor(() => expect(store.getSnapshot().inFlight).toBe(false));
+    });
+
     it("the first item refused: nothing is published, and nothing recorded", async () => {
         const made = makeSource();
         const { source, store } = made;

@@ -523,12 +523,24 @@ export class AcrRuntimeClient {
         }
     }
 
-    /** Maps a non-2xx investigation response (status, error.v1 body) to a runtime error. */
+    /**
+     * Maps a non-2xx investigation response (status, error.v1 body) to a runtime error. An
+     * `upstream_unavailable` 503 is the one case the wire's `retryable` decides: ACR marks it false
+     * only for an organization above its access limit, which no retry can clear (CHAOS-12469).
+     */
     investigationFailure(
         status: number,
         wireErrorCode: string | undefined,
         retryAfterSeconds: number | undefined,
+        wireRetryable?: boolean,
     ): AcrRuntimeError {
+        if (status === 503 && wireErrorCode === "upstream_unavailable" && wireRetryable === false) {
+            return new AcrRuntimeError(
+                acrRuntimeErrorCodes.askDevNotEntitled,
+                "ACR answered 503 upstream_unavailable, not retryable.",
+                { retryable: false, status },
+            );
+        }
         const known =
             wireErrorCode !== undefined && Object.hasOwn(ASK_DEV_WIRE_CODES, wireErrorCode)
                 ? ASK_DEV_WIRE_CODES[wireErrorCode]

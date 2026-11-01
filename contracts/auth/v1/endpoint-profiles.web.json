@@ -10001,7 +10001,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/ask-dev/investigations/route.ts",
-                "line": 431
+                "line": 442
             },
             "classification": "protected",
             "public_rationale": null,
