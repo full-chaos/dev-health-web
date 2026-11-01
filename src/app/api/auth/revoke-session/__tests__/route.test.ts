@@ -144,6 +144,22 @@ describe("POST /api/auth/revoke-session", () => {
         expect(String(call?.init.body)).not.toContain("ses_StoredAtSignInAAAAAAAAAAAA");
     });
 
+    it("Given a service session token in the cookie, then the logout Bearer is still the access token and the body holds only the refresh token", async () => {
+        fetchMock.mockResolvedValue(Response.json({ message: "Logout successful" }));
+
+        const response = await POST(
+            revokeRequest({
+                cookie: await sessionCookie(undefined, { session_access_token: "svc-in-cookie" }),
+            }),
+        );
+
+        expect(response.status).toBe(204);
+        const call = opsLogoutCall();
+        expect(new Headers(call?.init.headers).get("authorization")).toBe(`Bearer ${ACCESS}`);
+        expect(JSON.parse(String(call?.init.body))).toEqual({ refresh_token: REFRESH });
+        expect(String(call?.init.body)).not.toContain("svc-in-cookie");
+    });
+
     it("Given another origin, then it refuses with 403 and calls nothing", async () => {
         const response = await POST(
             revokeRequest({ cookie: await sessionCookie(), origin: "https://evil.example.test" }),
