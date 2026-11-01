@@ -317,7 +317,7 @@
                     "state": "truncated",
                     "reason": "canonical fact result was truncated",
                     "label": "Canonical facts — health",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:investment",
@@ -338,7 +338,7 @@
                     "state": "truncated",
                     "reason": "1 subject(s) were not queried because this capability does not support their kind (skipped kinds: repositories; supported kinds: teams, projects)",
                     "label": "Canonical facts — readiness",
-                    "state_label": "partially included"
+                    "state_label": "partly included"
                 },
                 {
                     "source": "canonical_fact:workload",
@@ -504,6 +504,26 @@
                     ]
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:complete": "Answer, not fully covered",
+            "candidate_state:proposed": "suggested",
+            "driver_standing:contributing": "contributing",
+            "driver_standing:principal": "main driver",
+            "driver_window:current": "current period",
+            "fact_kind:health": "health",
+            "fact_kind:operational_deficiencies": "operational deficiency",
+            "fact_kind:readiness": "readiness",
+            "member_outcome:qualified": "qualified",
+            "ranking_signal:health.compounding_risk": "health risk",
+            "ranking_signal:investment_mix": "investment mix",
+            "ranking_signal:operational_deficiencies.severity": "operational deficiencies",
+            "ranking_signal:readiness.coverage_gap": "readiness gap",
+            "ranking_signal:workload.forecast_pressure": "workload pressure",
+            "requirement_outcome:narrowed": "narrowed",
+            "requirement_outcome:satisfied": "met",
+            "subject_kind:team": "team",
+            "subject_kind_plural:team": "teams"
         }
     }
 }

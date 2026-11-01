@@ -1595,6 +1595,16 @@
                     "declared": 1
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:partial": "Partial answer",
+            "candidate_state:committed": "selected",
+            "candidate_state:proposed": "suggested",
+            "driver_standing:principal": "main driver",
+            "fact_kind:investment": "investment",
+            "requirement_outcome:satisfied": "met",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
         }
     }
 }

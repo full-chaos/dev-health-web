@@ -137,8 +137,7 @@ test.describe("desktop (1280px)", () => {
         await expect(panel.getByTestId("completeness-missing-data")).toHaveCount(0);
     });
 
-    // CHAOS-12417: the render draws no plain "Answer" status pill yet; it waits for served labels.
-    test.fixme("a 'complete' status whose completeness was not derived shows a plain 'Answer' pill", async ({
+    test("a 'complete' status whose completeness was not derived shows a plain 'Answer' pill", async ({
         page,
     }) => {
         await seedAnswer(page, CI_COMPLETE);

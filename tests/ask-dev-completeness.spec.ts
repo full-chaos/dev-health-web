@@ -131,7 +131,6 @@ test.describe("desktop (1280px)", () => {
             page,
         }, testInfo) => {
             const panel = await openAnswer(page, answer, panelOf);
-            // The status pill waits for CHAOS-12417; the completeness words are checked here.
             const coverageLine = panel.getByTestId("completeness-missing-data");
             if (sentence === null) {
                 await expect(coverageLine).toHaveCount(0);
