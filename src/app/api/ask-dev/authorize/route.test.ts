@@ -345,6 +345,48 @@ describe("POST /api/ask-dev/authorize", () => {
     });
 });
 
+describe("a session that fails the 60 s validation during the attempt", () => {
+    /** What `auth()` gives once validation refuses the user: no token, with the user id kept. */
+    const REFUSED = { user: { id: "user-123", org_id: "org-123" }, error: "user_invalid" };
+
+    function validFor(reads: number) {
+        vi.mocked(auth).mockReset();
+        for (let read = 0; read < reads; read += 1) {
+            vi.mocked(auth).mockResolvedValueOnce({
+                access_token: opsToken({ sid: SID }),
+                expires: "2026-11-16T00:00:00.000Z",
+                user: { id: "user-123", org_id: "org-123", real_org_id: "org-123" },
+            } as never);
+        }
+        vi.mocked(auth).mockResolvedValue(REFUSED as never);
+    }
+
+    it("is refused at the first read: 401, with no ACR call", async () => {
+        validFor(0);
+        const response = await POST(post());
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({ error: { code: "signed_out" } });
+        expect(hits).toEqual([]);
+    });
+
+    it("after /authorize: 401, and ACR hears no consent", async () => {
+        validFor(1);
+        const response = await POST(post());
+        expect(response.status).toBe(401);
+        expect(await response.text()).not.toContain(CODE);
+        expect(authorizeHits()).toHaveLength(1);
+        expect(consentActions()).toEqual([]);
+    });
+
+    it("after the preview: 401, no approval, and no code", async () => {
+        validFor(2);
+        const response = await POST(post());
+        expect(response.status).toBe(401);
+        expect(await response.text()).not.toContain(CODE);
+        expect(consentActions()).toEqual(["preview"]);
+    });
+});
+
 describe("ACR's answer to /authorize", () => {
     it("never follows a refusal redirect: a 303 is a named failure", async () => {
         authorizeAnswer = () => ({

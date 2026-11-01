@@ -25,7 +25,7 @@ vi.mock("next-auth/react", () => ({
     getSession: auth.getSession,
 }));
 
-import { HISTORY_COPY, TRANSCRIPT_COPY } from "@full-chaos/ask-dev/render";
+import { HISTORY_COPY, NOT_RUN_COPY, TRANSCRIPT_COPY } from "@full-chaos/ask-dev/render";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { acrBrowserClientOff, acrBrowserClientOn } from "@/test/acrBrowserClient";
@@ -405,6 +405,35 @@ describe("the first question", () => {
         expect(status).toHaveAttribute("data-status", "not_run");
         expect(routeCalls()).toBe(1);
         expect(within(panel()).getByRole("button", { name: "Retry" })).toBeVisible();
+    });
+});
+
+// CHAOS-12469: ACR's OAuth routes run no access read, so the silent step cannot see this 503. It
+// comes on the first data call after it, and it stays that call's no-retry state.
+describe("an organization above its access limit, after the silent step", () => {
+    const OVER_LIMIT = () => json(503, errorBody("upstream_unavailable", 503));
+
+    it("a question: not available here, no Retry, and no second attempt", async () => {
+        investigationAnswer = OVER_LIMIT;
+        await openPanel();
+        await ask();
+        const status = await within(panel()).findByTestId("chat-status");
+        await settle();
+        expect(status).toHaveAttribute("data-status", "not_run");
+        expect(status).toHaveTextContent(NOT_RUN_COPY.not_entitled);
+        expect(within(panel()).queryByRole("button", { name: "Retry" })).toBeNull();
+        expect(routeCalls()).toBe(1);
+        expect(investigationCalls()).toHaveLength(1);
+    });
+
+    it("History: its own state, no Try again, and no second attempt", async () => {
+        listAnswer = OVER_LIMIT;
+        await openPanel();
+        await toggleHistory();
+        await within(panel()).findByTestId("ask-dev-history-unavailable");
+        expect(within(panel()).queryByTestId("ask-dev-history-retry")).toBeNull();
+        expect(panel().textContent).not.toContain(HISTORY_COPY.empty);
+        expect(routeCalls()).toBe(1);
     });
 });
 

@@ -102,6 +102,10 @@ The redirect URI stays registered, and the metadata document is unchanged: ACR r
 | Impersonating, or a race into it                                          | Ask Dev says it is not available. No code and no token.                                             |
 | No Agent Context Runtime                                                  | "Ask Dev is not available for this organization."                                                   |
 
+ACR's over-limit 503 (CHAOS-12469) cannot reach the silent step: ACR's `/authorize`, `/authorize/consent` and `/token` run no access read. It comes on the first data call after it, and that call keeps its own no-retry state.
+
+The 60 s session validation can end a session during an attempt. Then `auth()` holds no access token, so the proxy or the route refuses it, no code is given, and the browser goes to sign-in.
+
 History before a token is never `ready`, so it never reads "No conversations yet.": it reads "Loading conversations…" while the silent step runs, then the list, or "History could not be read." with Try again. Each Try again is one click and one attempt.
 
 **Limits.** ACR limits `/authorize` per source, at 10 a minute, and all users now share web's address. That stays as it is for now (the lead's ruling on CHAOS-12474). Web's route gives each user 6 attempts a minute, so one user cannot take all of ACR's bucket. An attempt is per tab, every act in a tab shares it, and a reload keeps the family, so a person meets this only with more than 6 new tabs in a minute, Try again clicks included.
