@@ -190,8 +190,8 @@ async function connectedWithNoRepository(page: Page): Promise<Harness> {
     return harness;
 }
 
-const threadReads = (harness: Harness) =>
-    harness.calls.filter((call) => call.url.includes("/context-fabric/threads"));
+const callsTo = (harness: Harness, path: string) =>
+    harness.calls.filter((call) => call.url.includes(`/context-fabric/${path}`));
 
 async function ask(page: Page, surface: ReturnType<Page["getByTestId"]>) {
     const input = surface.getByRole("textbox", { name: "Ask a question" });
@@ -420,7 +420,7 @@ for (const [name, viewport, surface] of [
             await expect(view.getByTestId("ask-dev-history-retry")).toHaveCount(0);
             await expect(view.getByTestId("ask-dev-history-connect")).toHaveCount(0);
             await expect(view.getByTestId("ask-dev-history-row")).toHaveCount(0);
-            expect(threadReads(harness)).toHaveLength(1);
+            expect(callsTo(harness, "threads?")).toHaveLength(1);
             await page.screenshot({
                 path: testInfo.outputPath(`no-repository-history-${name}.png`),
                 animations: "disabled",
@@ -438,7 +438,9 @@ for (const [name, viewport, surface] of [
             await expect(unavailable).not.toContainText("no_repository");
             await expect(page.getByTestId("ask-dev-conversation-retry")).toHaveCount(0);
             await expect(page.getByTestId("ask-dev-conversation-read-failed")).toHaveCount(0);
-            expect(threadReads(harness)).toHaveLength(1);
+            // One read of the thread. The list is another call: the render reads it once for
+            // each conversation shown, so this page's list runs for the thread and for none.
+            expect(callsTo(harness, `threads/${THREAD}`)).toHaveLength(1);
             await page.screenshot({
                 path: testInfo.outputPath(`no-repository-conversation-${name}.png`),
                 animations: "disabled",
