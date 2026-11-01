@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
 
-import { noRepositoryInScope } from "./conversationStore";
+import { readCannotHelp } from "./conversationStore";
 import {
     TransportFailure,
     TransportRefusal,
@@ -198,7 +198,7 @@ export class FeedbackStore {
                 }
             } catch (error) {
                 if (!this.owns(epoch, "feedback_read", 0)) return;
-                if (notFound(error) || noRepositoryInScope(error)) {
+                if (notFound(error) || readCannotHelp(error)) {
                     this.put(resultId, { ...LOADING, state: "unavailable" });
                     return;
                 }
