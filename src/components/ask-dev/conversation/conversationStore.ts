@@ -1168,8 +1168,10 @@ export class ConversationStore {
         } catch (error) {
             if (!this.owns(run)) return;
             if (error instanceof TransportRefusal && error.status === 404) {
-                // Not the caller's open submission any more: read what it became.
-                answer = { kind: "final" };
+                // ACR holds no lease on this run (its run lease may be off), so nothing here can
+                // stop it (CHAOS-12483). As for `not_leased`: a stream disconnects, which is the
+                // cancel, and "Canceling…" never shows for a run that nothing is canceling.
+                answer = { kind: "not_leased" };
             } else {
                 logger.warn(
                     { submission_id: run.submissionId, status: failureStatus(error) },
