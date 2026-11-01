@@ -95,16 +95,79 @@ jobs:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   persist-credentials: false
-            - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+            # The pnpm binary and store restore/save below follow ci's pnpm-registry-resilience contract
+            # (scripts/__tests__/pnpm-registry-resilience-workflow-contract.test.mjs).
+            - name: Resolve pnpm version
+              id: pnpm-version
+              run: echo "version=$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")" >> "$GITHUB_OUTPUT"
+
+            - name: Restore pnpm binary
+              id: pnpm-bin
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ~/setup-pnpm
+                  key: pnpm-bin-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
+
+            - name: Setup pnpm
+              if: steps.pnpm-bin.outputs.cache-hit != 'true'
+              uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+              timeout-minutes: 3
+
+            - name: Save pnpm binary
+              if: steps.pnpm-bin.outputs.cache-hit != 'true'
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ~/setup-pnpm
+                  key: pnpm-bin-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
+
+            - name: Use cached pnpm binary
+              if: steps.pnpm-bin.outputs.cache-hit == 'true'
+              timeout-minutes: 3
+              env:
+                  PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
+              run: |
+                  echo "$HOME/setup-pnpm/node_modules/.bin" >> "$GITHUB_PATH"
+                  echo "$HOME/setup-pnpm/node_modules/.bin/bin" >> "$GITHUB_PATH"
+                  echo "PNPM_HOME=$HOME/setup-pnpm/node_modules/.bin" >> "$GITHUB_ENV"
+                  PATH="$HOME/setup-pnpm/node_modules/.bin/bin:$HOME/setup-pnpm/node_modules/.bin:$PATH"
+                  test "$(pnpm --version)" = "$PNPM_VERSION"
             - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
               with:
                   node-version: 22
+            - name: Locate pnpm store
+              id: pnpm-store
+              run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+            - name: Restore pnpm store
+              id: pnpm-cache
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ${{ steps.pnpm-store.outputs.path }}
+                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+                  restore-keys: |
+                      pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-
+                      pnpm-store-${{ runner.os }}-
+
+            - run: pnpm install --frozen-lockfile --ignore-scripts
+              id: pnpm-install
+            - name: Save pnpm store
+              if: ${{ steps.pnpm-install.outcome == 'success' && steps.pnpm-cache.outputs.cache-hit != 'true' }}
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ${{ steps.pnpm-store.outputs.path }}
+                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+            - name: Save partial pnpm store
+              if: ${{ always() && (steps.pnpm-install.outcome == 'failure' || steps.pnpm-install.outcome == 'cancelled') }}
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ${{ steps.pnpm-store.outputs.path }}
+                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
             - name: Regenerate the vendored contracts at acr main
               run: |
                   set -euo pipefail
                   case "$NEW_PIN" in *[!0-9a-f]* | "") echo "bad acr sha"; exit 1 ;; esac
                   [ "${#NEW_PIN}" = 40 ]
-                  pnpm install --frozen-lockfile --ignore-scripts
                   acr="$RUNNER_TEMP/acr"
                   git init -q "$acr"
                   git -C "$acr" fetch -q --depth 1 https://github.com/full-chaos/dev-health-acr.git "$NEW_PIN"
