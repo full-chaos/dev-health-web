@@ -35,7 +35,11 @@ export type AcrCall = {
     readonly query: URLSearchParams;
     readonly bearer: string | null;
     readonly cookie: boolean;
+    readonly headers: Readonly<Record<string, string>>;
+    readonly body: string | null;
     status?: number;
+    /** The answer's body, once it has ended: a stream's whole text. */
+    text?: () => Promise<string>;
 };
 
 /** Every call this page makes to ACR's data routes. A bearer stays in memory; it is never logged. */
@@ -52,13 +56,17 @@ export function watchAcr(page: Page): AcrCall[] {
             query: url.searchParams,
             bearer: headers.authorization?.replace(/^Bearer /u, "") ?? null,
             cookie: headers.cookie !== undefined,
+            headers,
+            body: request.postData(),
         };
         calls.push(call);
         byRequest.set(request, call);
     });
     page.on("response", (response) => {
         const call = byRequest.get(response.request());
-        if (call !== undefined) call.status = response.status();
+        if (call === undefined) return;
+        call.status = response.status();
+        call.text = () => response.text();
     });
     return calls;
 }
@@ -104,6 +112,9 @@ export async function connect(page: Page): Promise<void> {
     });
     await hydrated(page);
 }
+
+/** `ASK_DEV_LIVE_ORACLE`: acr's `modeloracle`. A routed case sends nothing without it. */
+export const ORACLE = process.env.ASK_DEV_LIVE_ORACLE ?? "";
 
 export const references = (surface: ReturnType<Page["getByTestId"]>) =>
     surface.locator("button.evidence-ref--open:visible");
