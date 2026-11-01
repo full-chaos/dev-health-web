@@ -62,7 +62,19 @@ vi.mock("@/lib/origin", () => ({
     getBackendUrl: () => "http://localhost:8000",
 }));
 
+import { generateKeyPairSync, sign } from "node:crypto";
 import { requireSession } from "@/lib/auth";
+import { resetKeySetCacheForTests } from "@/lib/authServiceWire";
+
+const b64u = (value: string | Uint8Array) =>
+    Buffer.from(typeof value === "string" ? new TextEncoder().encode(value) : value).toString(
+        "base64url",
+    );
+const FUTURE_EXP = 4_102_444_800;
+/** An HS256-shaped compact access token, the shape the server reads under hs256_compat. */
+const hs256Access = (
+    payload: Record<string, unknown> = { sid: "ses_RefreshedAAAAAAAAAAAAAA", exp: FUTURE_EXP },
+) => `${b64u('{"alg":"HS256","typ":"JWT"}')}.${b64u(JSON.stringify(payload))}.${b64u("sig")}`;
 
 describe("requireSession", () => {
     beforeEach(() => {
@@ -376,7 +388,7 @@ describe("jwt callback — token lifecycle", () => {
     });
 
     it("(e) clears error on refresh success after prior transient failure", async () => {
-        const newAccessToken = "recovered-access-token";
+        const newAccessToken = hs256Access();
         const newRefreshToken = "recovered-refresh-token";
         vi.stubGlobal(
             "fetch",
@@ -442,12 +454,13 @@ describe("jwt callback — token lifecycle", () => {
     });
 
     it("(e2) refresh success resets refresh_failures after a transient backoff", async () => {
-        const newAccessToken = "recovered-access-token";
+        const newAccessToken = hs256Access();
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
             json: async () => ({
                 access_token: newAccessToken,
+                refresh_token: "rotated-refresh",
                 expires_in: 3600,
             }),
         } as unknown as Response);
@@ -465,7 +478,7 @@ describe("jwt callback — token lifecycle", () => {
         });
 
         expect(result.access_token).toBe(newAccessToken);
-        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.refresh_token).toBe("rotated-refresh");
         expect(result.refresh_failures).toBe(0);
         expect(result.error).toBeUndefined();
     });
@@ -487,6 +500,225 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.refresh_failures).toBe(1);
         expect(delay).toBeGreaterThanOrEqual(REFRESH_BACKOFF_FLOOR - 100);
         expect(delay).toBeLessThanOrEqual(REFRESH_BACKOFF_FLOOR + 100);
+    });
+
+    const answer = (status: number, body: unknown = {}) =>
+        ({
+            ok: status >= 200 && status < 300,
+            status,
+            json: async () => body,
+        }) as unknown as Response;
+    const rotatedAnswer = (over: Record<string, unknown> = {}) =>
+        answer(200, {
+            access_token: hs256Access(),
+            refresh_token: "rotated-refresh",
+            expires_in: 3600,
+            ...over,
+        });
+
+    it("(e4) 400, 403, 404, 410 and 422 on refresh clear both tokens and set refresh_failed", async () => {
+        const jwt = getJwtCallback();
+        for (const status of [400, 403, 404, 410, 422]) {
+            vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(answer(status)));
+            const result = await jwt({ token: refreshDueToken(), user: null, account: null });
+            expect(result.access_token, String(status)).toBeUndefined();
+            expect(result.refresh_token, String(status)).toBeUndefined();
+            expect(result.error, String(status)).toBe("refresh_failed");
+        }
+    });
+
+    it("(e5) a 2xx answer without a refresh token clears both tokens and sets refresh_failed", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(answer(200, { access_token: hs256Access() })),
+        );
+        const result = await getJwtCallback()({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBeUndefined();
+        expect(result.error).toBe("refresh_failed");
+    });
+
+    it("(e6) the rotated refresh token replaces the old one in the sealed token", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(rotatedAnswer()));
+        const result = await getJwtCallback()({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+        expect(result.refresh_token).toBe("rotated-refresh");
+    });
+
+    it("(e7) expires_at comes from the token exp, and from expires_in when the token has none", async () => {
+        const exp = Math.floor(Date.now() / 1000) + 7200;
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(rotatedAnswer({ access_token: hs256Access({ exp }) })),
+        );
+        const withExp = await getJwtCallback()({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+        expect(withExp.expires_at).toBe(exp * 1000);
+
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(
+                rotatedAnswer({
+                    access_token: hs256Access({ sid: "ses_NoExpAAAAAAAAAAAAAAAAA" }),
+                    expires_in: 1800,
+                }),
+            ),
+        );
+        const before = Date.now();
+        const noExp = await getJwtCallback()({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+        expect(noExp.expires_at as number).toBeGreaterThanOrEqual(before + 1800 * 1000);
+        expect(noExp.expires_at as number).toBeLessThanOrEqual(Date.now() + 1800 * 1000);
+    });
+
+    it("(e8) sid is stored on refresh and replaces the sign-in sid", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(
+                rotatedAnswer({
+                    access_token: hs256Access({
+                        sid: "ses_AfterRefreshAAAAAAAAAAA",
+                        exp: FUTURE_EXP,
+                    }),
+                }),
+            ),
+        );
+        const result = await getJwtCallback()({
+            token: refreshDueToken({ sid: "ses_AtSignInAAAAAAAAAAAAAAA" }),
+            user: null,
+            account: null,
+        });
+        expect(result.sid).toBe("ses_AfterRefreshAAAAAAAAAAA");
+    });
+
+    it("(e9) permissions and is_new_user of the token are untouched by a refresh, as before", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(rotatedAnswer()));
+        const result = await getJwtCallback()({
+            token: refreshDueToken({ permissions: ["read"], is_new_user: true }),
+            user: null,
+            account: null,
+        });
+        expect(result.permissions).toEqual(["read"]);
+        expect(result.is_new_user).toBe(true);
+    });
+
+    it("(e10) the user block of the refresh answer is copied, and an org-less answer leaves org_id falsy", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(
+                rotatedAnswer({
+                    user: {
+                        id: "user-9",
+                        email: "n@example.test",
+                        org_id: "",
+                        role: "member",
+                        is_superuser: true,
+                    },
+                }),
+            ),
+        );
+        const result = await getJwtCallback()({
+            token: refreshDueToken({ org_id: "org-old", role: "admin" }),
+            user: null,
+            account: null,
+        });
+        expect(result.id).toBe("user-9");
+        expect(result.email).toBe("n@example.test");
+        expect(result.role).toBe("member");
+        expect(result.is_superuser).toBe(true);
+        expect(result.org_id).toBeFalsy();
+    });
+
+    it("(e11) a rotation followed by an unusable key set (eddsa) keeps the ROTATED refresh token and drops the access token", async () => {
+        const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+        void publicKey;
+        const issuer = "https://auth.example.test";
+        const header = b64u(JSON.stringify({ alg: "EdDSA", typ: "at+jwt", kid: "kid-1" }));
+        const exp = Math.floor(Date.now() / 1000) + 3000;
+        const payload = b64u(
+            JSON.stringify({
+                iss: issuer,
+                aud: "dev-health-api",
+                sub: "prn_AAAAAAAAAAAAAAAAAAAAAA",
+                principal_type: "human",
+                sid: "ses_AAAAAAAAAAAAAAAAAAAAAQ",
+                jti: "000000000000000000000001",
+                iat: Math.floor(Date.now() / 1000) - 10,
+                nbf: Math.floor(Date.now() / 1000) - 10,
+                exp,
+                scope: "api:access",
+            }),
+        );
+        const input = `${header}.${payload}`;
+        const access = `${input}.${b64u(sign(null, Buffer.from(input), privateKey))}`;
+        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "eddsa");
+        vi.stubEnv("AUTH_ACCESS_TOKEN_ISSUER", issuer);
+        resetKeySetCacheForTests();
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: RequestInfo | URL) =>
+                String(input).endsWith("/api/v1/auth/refresh")
+                    ? rotatedAnswer({ access_token: access, refresh_token: "rotated-eddsa" })
+                    : new Response("down", { status: 503 }),
+            ),
+        );
+        const result = await getJwtCallback()({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+        vi.unstubAllEnvs();
+        expect(result.refresh_token).toBe("rotated-eddsa");
+        expect(result.access_token).toBeUndefined();
+        expect(result.error).toBe("refresh_unavailable");
+        expect(result.refresh_failures).toBe(1);
+    });
+
+    it("(e12) two parallel jwt callbacks on one expired token make one backend call", async () => {
+        let release: () => void = () => {};
+        const gate = new Promise<void>((resolve) => (release = resolve));
+        const fetchMock = vi.fn(async () => {
+            await gate;
+            return rotatedAnswer();
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        const jwt = getJwtCallback();
+        const first = jwt({ token: refreshDueToken(), user: null, account: null });
+        const second = jwt({ token: refreshDueToken(), user: null, account: null });
+        release();
+        const [a, b] = await Promise.all([first, second]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(a.refresh_token).toBe("rotated-refresh");
+        expect(b.refresh_token).toBe("rotated-refresh");
+    });
+
+    it("(e13) an unknown token class never ends the session at refresh: transient, refresh token kept, no call", async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        vi.stubEnv("AUTH_ACCESS_TOKEN_CLASS", "nope");
+        const result = await getJwtCallback()({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+        vi.unstubAllEnvs();
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.access_token).toBeUndefined();
+        expect(result.error).toBe("refresh_unavailable");
     });
 
     // CHAOS-2232 / CHAOS-2458: periodic /auth/validate backoff — a 429/5xx/network failure must
