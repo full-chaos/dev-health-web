@@ -167,7 +167,10 @@ describe("the change-password answer under eddsa", () => {
             error: "Password changed. Sign in again to continue.",
         });
         expect(sealSessionHandoff).not.toHaveBeenCalled();
-        const text = JSON.stringify(logs);
+        // An Error serialises to {}: read its message too.
+        const text = JSON.stringify(logs, (_key, value) =>
+            value instanceof Error ? `${value.name}: ${value.message}` : value,
+        );
         for (const secret of [
             service,
             access,
