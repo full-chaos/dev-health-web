@@ -17,6 +17,14 @@ const STATUS = capture("kiac_project_status_partial.event.json");
 // Breakdown tables and no evidence window: "Window not stated".
 const MERGED_PRS = capture("kiac_repo_merged_prs_degraded.event.json");
 
+/** The render's date, in the browser's time zone: the same zone as this process. */
+const day = (iso: string): string =>
+    new Date(iso).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+
 test.describe.configure({ mode: "serial" });
 
 async function setScenario(request: APIRequestContext, scenario: string): Promise<void> {
@@ -82,8 +90,11 @@ test.describe("desktop (1280px)", () => {
         await expect(readiness).toContainText("Synthetic Project Beta · 64 rows");
         await expect(flow).toContainText("Synthetic Project Beta · 1 row");
         // The window is stated for the answer, in its Coverage panel.
+        const window_ = STATUS.effective_evidence_window as { start: string; end: string };
         await expect(
-            panel.getByText(/^Evidence window: Sep 29, 2026 – Oct 29, 2026/u),
+            panel.getByText(`Evidence window: ${day(window_.start)} – ${day(window_.end)}`, {
+                exact: false,
+            }),
         ).toBeVisible();
         // The dual table declares its own columns, "day" among them.
         const dual = workload.getByRole("group", { name: "Facts" }).getByRole("table");
