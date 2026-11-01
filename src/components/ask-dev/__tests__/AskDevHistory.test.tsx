@@ -76,6 +76,7 @@ vi.mock("next-auth/react", () => ({
 import { StrictMode, useSyncExternalStore } from "react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { resetRightDrawerForTest } from "@/lib/shell/rightDrawer";
 
 import { AskDevFullPage } from "../AskDevFullPage";
@@ -184,7 +185,7 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         const transport = seeded();
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        expect(await within(page()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(page()).findByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.threadCalls.map((call) => call.threadId)).toEqual([THREAD_A]);
         expect(nav.writes).toEqual([]);
         expect(transport.calls).toHaveLength(0);
@@ -194,10 +195,8 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         const transport = seeded();
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        await within(page()).findByTestId("ask-dev-answer");
-        const rows = await within(screen.getByTestId("ask-dev-page-history")).findAllByTestId(
-            "ask-dev-history-open",
-        );
+        await within(page()).findByTestId("answer-panel");
+        const rows = await within(page()).findAllByTestId("ask-dev-history-open");
         await userEvent.click(rows[1]!);
         await waitFor(() => expect(nav.search).toBe(`?thread=${THREAD_B}`));
         expect(nav.writes).toEqual([{ kind: "push", href: `/dev?thread=${THREAD_B}` }]);
@@ -224,10 +223,9 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
         nav.go("/dev");
         renderShell(transport);
-        await userEvent.type(
-            within(page()).getByRole("textbox", { name: COMPOSER_COPY.label }),
-            "Which projects are at risk?{Enter}",
-        );
+        const field = within(page()).getByRole("textbox", { name: COMPOSER_COPY.label });
+        await waitFor(() => expect(field).toBeEnabled());
+        await userEvent.type(field, "Which projects are at risk?{Enter}");
         await waitFor(() => expect(nav.writes).toHaveLength(1));
         expect(nav.writes[0]).toEqual({
             kind: "replace",
@@ -281,7 +279,7 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         );
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        await within(page()).findByTestId("ask-dev-answer");
+        await within(page()).findByTestId("answer-panel");
         expect(transport.threadCalls.map((call) => call.threadId)).toEqual([THREAD_A]);
     });
 });
@@ -340,9 +338,7 @@ describe("the panel's history (design §4.3)", () => {
 
         // The fake keeps listing A: only the store's tombstone keeps it out on /dev.
         act(() => nav.go("/dev"));
-        const pageRows = await within(screen.getByTestId("ask-dev-page-history")).findAllByTestId(
-            "ask-dev-history-row",
-        );
+        const pageRows = await within(page()).findAllByTestId("ask-dev-history-row");
         expect(pageRows.map((row) => row.getAttribute("data-thread-id"))).toEqual([THREAD_B]);
     });
 
@@ -411,9 +407,13 @@ describe("restored turns in the transcript (design §3.2)", () => {
         transport.results.set(CLARIFICATION.result_id, CLARIFICATION);
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        const clarification = await within(page()).findByTestId("ask-dev-clarification");
-        expect(clarification).toHaveAttribute("data-live", "false");
-        expect(within(page()).queryByTestId("ask-dev-clarification-ask-again")).toBeNull();
+        expect(
+            await within(page()).findByTestId("ask-dev-turn-question-not-recorded"),
+        ).toHaveTextContent(TURN_STATUS_COPY.questionNotRecorded);
+        await within(page()).findByRole("article");
+        // Read-only: it offers no choice, and the question is never sent again.
+        expect(within(page()).queryByRole("dialog")).toBeNull();
+        expect(transport.calls).toHaveLength(0);
     });
 
     it("a recorded question keeps its clarification live", async () => {
@@ -427,8 +427,7 @@ describe("restored turns in the transcript (design §3.2)", () => {
         transport.results.set(CLARIFICATION.result_id, CLARIFICATION);
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        const clarification = await within(page()).findByTestId("ask-dev-clarification");
-        expect(clarification).toHaveAttribute("data-live", "true");
+        expect(await within(page()).findByRole("dialog")).toBeInTheDocument();
     });
 
     it("Load again on a failed answer read is a GET, never an investigation", async () => {
@@ -444,14 +443,16 @@ describe("restored turns in the transcript (design §3.2)", () => {
         transport.results.set(PARTIAL.result_id, PARTIAL);
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        const reload = await within(page()).findByTestId("ask-dev-turn-reload");
+        const reload = await within(page()).findByRole("button", {
+            name: CTA_LABELS.askDevLoadAgain,
+        });
         expect(within(page()).getByTestId("ask-dev-turn-question-not-recorded")).toHaveTextContent(
             TURN_STATUS_COPY.questionNotRecorded,
         );
-        expect(within(page()).queryByTestId("ask-dev-turn-retry")).toBeNull();
+        expect(within(page()).queryByRole("button", { name: "Retry" })).toBeNull();
         transport.readErrors.delete(PARTIAL.result_id);
         await userEvent.click(reload);
-        expect(await within(page()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(page()).findByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(0);
         expect(within(page()).getByText(TURN_STATUS_COPY.unsaved)).toBeInTheDocument();
     });
@@ -464,14 +465,12 @@ describe("the composer draft belongs to one conversation (codex r2 on #1648)", (
         const transport = seeded();
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        await within(page()).findByTestId("ask-dev-answer");
+        await within(page()).findByTestId("answer-panel");
         await userEvent.type(field(), "A draft for conversation A");
-        const rows = await within(screen.getByTestId("ask-dev-page-history")).findAllByTestId(
-            "ask-dev-history-open",
-        );
+        const rows = await within(page()).findAllByTestId("ask-dev-history-open");
         await userEvent.click(rows[1]!);
         await waitFor(() => expect(nav.search).toBe(`?thread=${THREAD_B}`));
-        await within(page()).findByTestId("ask-dev-answer");
+        await within(page()).findByTestId("answer-panel");
         expect(field()).toHaveValue("");
     });
 
@@ -479,6 +478,7 @@ describe("the composer draft belongs to one conversation (codex r2 on #1648)", (
         const transport = new FakeTransport();
         nav.go("/dev");
         const view = renderShell(transport);
+        await waitFor(() => expect(field()).toBeEnabled());
         await userEvent.type(field(), "org A confidential question");
         session.org = "org-2";
         view.rerender(
@@ -514,12 +514,12 @@ describe("Stop on a conversation restored while it runs (CHAOS-11957)", () => {
         ]);
         nav.go(`/dev?thread=${THREAD_A}`);
         renderShell(transport);
-        const stop = await within(page()).findByTestId("ask-dev-composer-stop");
+        const stop = await within(page()).findByRole("button", { name: CTA_LABELS.askDevStop });
         await userEvent.click(stop);
-        expect(await within(page()).findByTestId("ask-dev-turn-stop")).toHaveTextContent(
+        expect(await within(page()).findByTestId("chat-progress-stop")).toHaveTextContent(
             TURN_STATUS_COPY.stopNotLeased,
         );
-        expect(within(page()).queryByTestId("ask-dev-composer-stop")).toBeNull();
+        expect(within(page()).queryByRole("button", { name: CTA_LABELS.askDevStop })).toBeNull();
         expect(transport.cancelCalls).toEqual([SUB_A]);
         expect(transport.calls).toHaveLength(0);
     });

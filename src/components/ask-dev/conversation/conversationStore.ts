@@ -13,6 +13,7 @@ import { RUN_TIMEOUT_DEFAULT_MS } from "@/lib/ask-dev/deadline";
 import {
     buildInvestigationRequest,
     newRequestId,
+    type InvestigationRequestInput,
     type StructureReceipts,
 } from "@/lib/ask-dev/request-builder";
 import { logger } from "@/lib/logger";
@@ -408,13 +409,27 @@ export type ConversationSnapshot = {
 /** What a follow-up carries beyond the question (a clarification choice, CHAOS-3440). */
 export type TurnCarry = {
     readonly parentResultId?: string | undefined;
+    /** CHAOS-12383: the `subject_resolution.candidates` a re-ask picked. */
+    readonly priorSubjectReceipts?: InvestigationRequestInput["priorSubjectReceipts"];
     readonly structureReceipts?: StructureReceipts | undefined;
     /**
      * CHAOS-3584: the page context the user left in place, as subject hints. They go first, before
      * the subjects carried from the previous answer; a hint never binds a subject.
      */
     readonly pageHints?: readonly SubjectHint[] | undefined;
+    /**
+     * CHAOS-12383: builds the request as of this turn: `conversation`, the parent reference and the
+     * carried hints read the turns up to and including it, and no later one. A batch runs in
+     * sequence, and each item must send what a parallel fan-out would.
+     */
+    readonly asOfTurnId?: number | undefined;
 };
+
+/** The turns a request is built from, in the served order. */
+function turnsAsOf(turns: readonly StoreTurn[], asOfTurnId: number | undefined) {
+    if (asOfTurnId === undefined) return turns;
+    return turns.slice(0, turns.findIndex((turn) => turn.id === asOfTurnId) + 1);
+}
 
 /** Page hints first, then the carried ones, each (kind, id) once. */
 function mergeSubjectHints(
@@ -518,7 +533,12 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
     });
 }
 
-const IN_FLIGHT = new Set<TurnOutcome["kind"]>(["running", "recovering", "observing", "canceling"]);
+export const IN_FLIGHT = new Set<TurnOutcome["kind"]>([
+    "running",
+    "recovering",
+    "observing",
+    "canceling",
+]);
 
 /** The states Stop can end (the run is this tab's, submitted or observed). */
 const STOPPABLE = new Set<TurnOutcome["kind"]>(["running", "recovering", "observing"]);
@@ -864,7 +884,10 @@ export class ConversationStore {
         const minted = this.snapshot.threadId === null;
         const threadId = this.snapshot.threadId ?? newThreadId(this.uuid());
         // Only this thread's turns: a closed conversation's turns carry nothing forward.
-        const prior = this.snapshot.turns.filter((turn) => turn.threadId === threadId);
+        const prior = turnsAsOf(
+            this.snapshot.turns.filter((turn) => turn.threadId === threadId),
+            carry?.asOfTurnId,
+        );
         const parent = deriveParentReference(toSourceTurns(prior));
         const request = buildInvestigationRequest({
             question: trimmed,
@@ -872,6 +895,7 @@ export class ConversationStore {
             conversation: conversationOf(prior),
             parentResultId: carry?.parentResultId ?? parent.parentResultId,
             subjectHints: mergeSubjectHints(carry?.pageHints ?? [], parent.subjectHints),
+            priorSubjectReceipts: carry?.priorSubjectReceipts,
             structureReceipts: carry?.structureReceipts,
         });
         const turn: SubmittedTurn = {

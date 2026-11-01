@@ -1,5 +1,6 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order.
@@ -35,7 +36,12 @@ vi.mock("next/navigation", async () => {
         return () => nav.listeners.delete(listener);
     };
     return {
-        usePathname: () => useSyncExternalStore(subscribe, () => nav.pathname),
+        usePathname: () =>
+            useSyncExternalStore(
+                subscribe,
+                () => nav.pathname,
+                () => nav.pathname,
+            ),
         useSearchParams: () => new URLSearchParams(nav.search),
         useRouter: () => ({
             push: (href: string) => {
@@ -164,13 +170,13 @@ describe("Expand: the full page shows the same run, and nothing is sent again", 
         await userEvent.click(within(panel()).getByRole("button", { name: "Open full page" }));
         expect(nav.pushes).toEqual(["/dev"]);
         expect(screen.queryByRole("complementary", { name: "Ask Dev" })).toBeNull();
-        expect(within(page()).getByTestId("ask-dev-stages")).toBeInTheDocument();
+        expect(within(page()).getByTestId("chat-progress")).toBeInTheDocument();
         expect(within(page()).getByText("Which projects are at risk?")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(1);
         expect(transport.calls[0]!.signal.aborted).toBe(false);
 
         gate.resolve();
-        expect(await within(page()).findByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(await within(page()).findByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(1);
     });
 
@@ -195,8 +201,51 @@ describe("Expand: the full page shows the same run, and nothing is sent again", 
         expect(await within(panel()).findByTestId("ask-dev-answer")).toBeInTheDocument();
 
         await userEvent.click(within(panel()).getByRole("button", { name: "Open full page" }));
-        expect(within(page()).getByTestId("ask-dev-answer")).toBeInTheDocument();
+        expect(within(page()).getByTestId("answer-panel")).toBeInTheDocument();
         expect(transport.calls).toHaveLength(1);
+    });
+});
+
+describe("/dev is ask-dev's own render (CHAOS-12383)", () => {
+    it("renders the shell inside web's wrapper, with no second conversation", async () => {
+        nav.go("/dev");
+        renderShell(new FakeTransport());
+        const conversation = within(page()).getByTestId("ask-dev-page-conversation");
+        expect(conversation.querySelector(".ask-dev.ask-frame")).not.toBeNull();
+        // Ask-dev's log and composer, once each: web's own are gone from this page.
+        expect(within(conversation).getAllByRole("log", { name: "Conversation" })).toHaveLength(1);
+        expect(
+            within(conversation).getAllByRole("textbox", { name: "Ask a question" }),
+        ).toHaveLength(1);
+        expect(screen.queryByTestId("ask-dev-transcript")).toBeNull();
+        expect(screen.queryByTestId("ask-dev-composer")).toBeNull();
+    });
+
+    it("asks through web's store: the render's composer reaches the transport, once", async () => {
+        const transport = new FakeTransport();
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+        nav.go("/dev");
+        renderShell(transport);
+        const input = await within(page()).findByRole("textbox", { name: "Ask a question" });
+        await waitFor(() => expect(input).toBeEnabled());
+        await userEvent.type(input, "Which projects are at risk?{Enter}");
+        expect(await within(page()).findByTestId("answer-panel")).toBeInTheDocument();
+        expect(transport.calls).toHaveLength(1);
+        expect(transport.calls[0]!.request.question).toBe("Which projects are at risk?");
+    });
+
+    it("renders no conversation on the server: hydration shows the same empty frame", () => {
+        const html = renderToString(
+            <AdminTierProvider tier="team" features={ON}>
+                <AskDevShellProvider>
+                    <AskDevConversationProvider transport={new FakeTransport()}>
+                        <AskDevFullPage />
+                    </AskDevConversationProvider>
+                </AskDevShellProvider>
+            </AdminTierProvider>,
+        );
+        expect(html).toContain("ask-dev-page-conversation");
+        expect(html).not.toContain("ask-frame");
     });
 });
 
@@ -320,17 +369,23 @@ describe("the full page without Ask Dev", () => {
         expect(within(page()).getByTestId("ask-dev-page-not-available")).toHaveTextContent(
             FULL_PAGE_COPY.notAvailable,
         );
-        expect(screen.queryByTestId("ask-dev-transcript")).toBeNull();
+        expect(screen.queryByRole("log", { name: "Conversation" })).toBeNull();
         expect(screen.queryByRole("button", { name: "Minimize to panel" })).toBeNull();
     });
 
-    it("draws no composer without a transport (T14 not wired), and sends nothing", () => {
+    it("without a transport (T14 not wired) there is no composer, no words about one, and nothing is sent", async () => {
         const fetchSpy = vi.fn();
         vi.stubGlobal("fetch", fetchSpy);
         nav.go("/dev");
         renderShell(null);
+        expect(within(page()).getByRole("log", { name: "Conversation" })).toBeInTheDocument();
+        expect(within(page()).getByText(TRANSCRIPT_COPY.empty)).toBeInTheDocument();
+        // Hidden, not locked: "Sign in again" would send a signed-in viewer the wrong way.
+        expect(within(page()).queryByRole("textbox", { name: "Ask a question" })).toBeNull();
+        expect(within(page()).queryByRole("button", { name: "Send" })).toBeNull();
+        expect(page()).not.toHaveTextContent("Sign in again");
+        // The render with no source would run ask-dev's standalone route: it must never get here.
+        await act(async () => {});
         expect(fetchSpy).not.toHaveBeenCalled();
-        expect(within(page()).getByTestId("ask-dev-transcript")).toBeInTheDocument();
-        expect(screen.queryByTestId("ask-dev-composer")).toBeNull();
     });
 });
