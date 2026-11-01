@@ -343,7 +343,8 @@ describe("ACR's answer to /authorize", () => {
         ["another scheme", `https://localhost:3000/acr/authorize?handle=${HANDLE}`],
         ["another path", `${WEB}/acr/device?handle=${HANDLE}`],
         ["a longer path", `${WEB}/acr/authorize/x?handle=${HANDLE}`],
-        ["user info", `http://x:y@localhost:3000/acr/authorize?handle=${HANDLE}`],
+        ["a user", `http://x@localhost:3000/acr/authorize?handle=${HANDLE}`],
+        ["a password", `http://:y@localhost:3000/acr/authorize?handle=${HANDLE}`],
         ["a fragment", `${consentUrl()}#x`],
         ["a second parameter", `${consentUrl()}&state=${STATE}`],
         ["a repeated handle", `${consentUrl()}&handle=${HANDLE}`],
@@ -424,6 +425,8 @@ describe("the consent step", () => {
         ["a fourth parameter", `${WEB}${ACR_OAUTH_CALLBACK_PATH}?code=c&state=s&iss=i&x=1`],
         ["an empty code", `${WEB}${ACR_OAUTH_CALLBACK_PATH}?code=&state=s&iss=i`],
         ["a fragment", `${WEB}${ACR_OAUTH_CALLBACK_PATH}?code=c&state=s&iss=i#x`],
+        ["a user", `http://x@localhost:3000${ACR_OAUTH_CALLBACK_PATH}?code=c&state=s&iss=i`],
+        ["a password", `http://:y@localhost:3000${ACR_OAUTH_CALLBACK_PATH}?code=c&state=s&iss=i`],
     ])("refuses a redirect URL with %s, and returns no part of it", async (_, url) => {
         approveAnswer = () => ({ status: 200, body: { redirect_url: url } });
         const response = await POST(post());
