@@ -8,6 +8,7 @@ import {
 
 import {
     ACR,
+    CONNECT_WORDS,
     EVIDENCE_PATH,
     INVESTIGATIONS_PATH,
     authorize,
@@ -15,11 +16,14 @@ import {
     evidenceState,
     familyIdOf,
     investigations,
+    openHistory,
     openStoredAnswer,
+    panelChrome,
     references,
     secretsOf,
     signIn,
     watchAcr,
+    watchAuthorization,
 } from "./stack";
 
 /**
@@ -61,9 +65,9 @@ async function signedIn(page: Page) {
 
 /**
  * ACR allows one principal 60 requests a minute (`ACR_REQUESTS_PER_MINUTE`), and opening a stored
- * conversation is about 8 of them. Web allows one user 6 silent authorizations a minute, and each
- * case makes one, in its own tab. A 429 there is a real answer and the page shows it, so the suite
- * stays under both limits rather than treat that as a flake.
+ * conversation is about 8 of them. Web allows one user 6 silent authorizations a minute. Each case
+ * makes one, in its own tab, and the cloned tab case makes two. A 429 there is a real answer and the
+ * page shows it, so the suite stays under both limits rather than treat that as a flake.
  */
 const PACE_MS = 10_000;
 test.afterEach(async () => {
@@ -87,10 +91,18 @@ test("P1-6: opening the panel sends nothing", async ({ page }) => {
     });
     await page.waitForTimeout(1_500);
     calls.length = 0;
+    const flow = watchAuthorization(page);
     await page.getByRole("button", { name: "Open Ask Dev" }).click();
-    await expect(page.getByTestId("ask-dev-panel")).toBeVisible();
+    const panel = page.getByTestId("ask-dev-panel");
+    await expect(panel).toBeVisible();
     await page.waitForTimeout(2_000);
     expect(calls.map((call) => call.path)).toEqual([]);
+    expect(flow).toEqual([]);
+    // Control: the reload dropped the token, so the first act refreshes, and the watch sees it.
+    await panel.getByTestId("ask-dev-history-toggle").click();
+    await expect
+        .poll(() => flow.length, { message: "the watch saw no act", timeout: 20_000 })
+        .toBeGreaterThan(0);
 });
 
 test.describe("P1-9: evidence", () => {
@@ -199,7 +211,8 @@ test.describe("the amendment's new cases that need no question", () => {
     test("a create with no submission header is refused before admission", async ({ page }) => {
         const calls = await signedIn(page);
         await openStoredAnswer(page);
-        const bearer = secretsOf(calls.find((call) => call.hasBearer)!).bearer!;
+        // The token the tab holds now: each full load refreshes, and a rotated token may be 401.
+        const bearer = secretsOf(calls.findLast((call) => call.hasBearer)!).bearer!;
         const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
         const refused = await acr.post(`${ACR}${INVESTIGATIONS_PATH}`, {
             headers: {
@@ -234,37 +247,55 @@ test.describe("the amendment's new cases that need no question", () => {
             for (const [key, value] of Object.entries(entries)) {
                 window.sessionStorage.setItem(key, value);
             }
+            (window as unknown as { __copiedFamily: boolean }).__copiedFamily =
+                window.sessionStorage.getItem("ask-dev:acr-family") !== null;
         }, copied);
         await clone.goto("/dashboard", { waitUntil: "commit" });
-        await expect(clone.getByRole("button", { name: "Open Ask Dev" })).toBeVisible({
-            timeout: 30_000,
+        const panel = await openHistory(clone);
+        // Control: an empty clone would pass all that follows.
+        expect(
+            await clone.evaluate(
+                () => (window as unknown as { __copiedFamily?: boolean }).__copiedFamily,
+            ),
+            "the clone copied no family",
+        ).toBe(true);
+        await expect(panel.getByTestId("ask-dev-history-row").first()).toBeVisible({
+            timeout: 20_000,
         });
-        await clone.waitForTimeout(1_500);
-        await clone.getByRole("button", { name: "Open Ask Dev" }).click();
-        const panel = clone.getByTestId("ask-dev-panel");
-        await panel.getByTestId("ask-dev-history-toggle").click();
-        await expect
-            .poll(
-                () =>
-                    calls.filter((call) => call.path.endsWith("/threads") && call.status === 200)
-                        .length,
-                { message: "the cloned tab read no history", timeout: 20_000 },
-            )
-            .toBeGreaterThan(0);
+        expect(
+            calls.some((call) => call.path.endsWith("/threads") && call.status === 200),
+            "the cloned tab read no history",
+        ).toBe(true);
         await expect(panel.getByTestId("ask-dev-history-read-failed")).toHaveCount(0);
-        await expect(panel).not.toContainText(/\bconnect\b/iu);
+        expect(await panelChrome(panel)).not.toMatch(CONNECT_WORDS);
         // CHAOS-12305: two tabs on one family meet ACR's reuse rule, so the copy has its own.
         const own = await familyIdOf(clone);
         expect(own, "the cloned tab holds no family").not.toBeNull();
         expect(own).not.toBe(original);
-        expect(await familyIdOf(page)).toBe(original);
         await clone.close();
+
+        // The stored id alone cannot fail: sessionStorage is per tab, and a family ACR revoked
+        // leaves it the same. The reload drops the token, so this read must refresh at ACR, and a
+        // revoked family would get a new id through the silent step.
+        const after = watchAcr(page);
+        await page.reload();
+        await openHistory(page);
+        await expect
+            .poll(
+                () =>
+                    after.filter((call) => call.path.endsWith("/threads") && call.status === 200)
+                        .length,
+                { message: "the original tab read no history", timeout: 20_000 },
+            )
+            .toBeGreaterThan(0);
+        expect(await familyIdOf(page)).toBe(original);
     });
 
     test("sign-out: the token that tab held is refused on its next call", async ({ page }) => {
         const calls = await signedIn(page);
         await openStoredAnswer(page);
-        const bearer = secretsOf(calls.find((call) => call.hasBearer)!).bearer!;
+        // The token the tab holds now, not the History read's from before the full load of /dev.
+        const bearer = secretsOf(calls.findLast((call) => call.hasBearer)!).bearer!;
         const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
         const read = () =>
             acr.get(`${ACR}/api/v1/context-fabric/threads?limit=1`, {
