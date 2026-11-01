@@ -145,7 +145,7 @@ async function answered(transport: FakeTransport, result: TranscriptResult = PAR
     transport.scripts.push([accepted(), resultEvent(result)]);
     renderPanel(transport);
     await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-    const input = within(panel()).getByRole("textbox", { name: "Ask a question" });
+    const input = await within(panel()).findByRole("textbox", { name: "Ask a question" });
     await userEvent.type(input, `${QUESTION}{Enter}`);
     await within(panel()).findByTestId("answer-panel");
 }
@@ -218,7 +218,7 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         transport.scripts.push([accepted(), resultEvent(CLARIFICATION)]);
         renderPanel(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        const input = within(panel()).getByRole("textbox", { name: "Ask a question" });
+        const input = await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(input, `${QUESTION}{Enter}`);
         await screen.findByRole("dialog");
         expect(within(panel()).queryByTestId("ask-dev-feedback")).toBeNull();
@@ -313,6 +313,7 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
         const view = render(tree());
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(
             within(panel()).getByRole("textbox", { name: "Ask a question" }),
             `${QUESTION}{Enter}`,

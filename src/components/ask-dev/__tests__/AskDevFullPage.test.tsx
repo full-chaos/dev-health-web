@@ -127,6 +127,7 @@ const page = () => screen.getByTestId("ask-dev-page");
 
 async function askInPanel(question = "Which projects are at risk?") {
     await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+    await within(panel()).findByRole("textbox", { name: "Ask a question" });
     await userEvent.type(
         within(panel()).getByRole("textbox", { name: "Ask a question" }),
         `${question}{Enter}`,

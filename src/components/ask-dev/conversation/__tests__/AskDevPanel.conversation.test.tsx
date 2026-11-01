@@ -80,7 +80,7 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         expect(panel()).toBeInTheDocument();
         expect(
-            within(panel()).getByRole("region", { name: "Ask Dev conversation" }),
+            await within(panel()).findByRole("region", { name: "Ask Dev conversation" }),
         ).toBeInTheDocument();
         expect(within(panel()).queryByRole("textbox", { name: "Ask a question" })).toBeNull();
         expect(fetchSpy).not.toHaveBeenCalled();
@@ -92,6 +92,7 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
         renderPanel(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(input(), "Which projects are at risk?");
         await userEvent.dblClick(within(panel()).getByRole("button", { name: "Send" }));
 
@@ -110,6 +111,7 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
         renderPanel(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(input(), "Which projects are at risk?{Enter}");
         await userEvent.click(screen.getByRole("button", { name: "test-close" }));
         expect(screen.queryByRole("complementary", { name: "Ask Dev" })).toBeNull();
@@ -126,6 +128,7 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         transport.scripts.push([accepted(), { wait: deferred().promise }]);
         renderPanel(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(input(), "Which projects are at risk?{Enter}");
         await userEvent.click(await within(panel()).findByRole("button", { name: "Stop" }));
         expect(await within(panel()).findByTestId("chat-status")).toHaveTextContent(
@@ -155,6 +158,7 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         ]);
         renderPanel(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(input(), "Which projects are at risk?{Enter}");
 
         const steps = await within(panel()).findByRole("list", { name: CHAT_STAGE_COPY.steps });
@@ -177,6 +181,7 @@ describe("Ask Dev panel with the conversation store (CHAOS-11928)", () => {
         transport.statuses.push(null);
         renderPanel(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(input(), "Which projects are at risk?{Enter}");
         await userEvent.click(await within(panel()).findByRole("button", { name: "Retry" }));
         await waitFor(() => expect(transport.calls).toHaveLength(2));

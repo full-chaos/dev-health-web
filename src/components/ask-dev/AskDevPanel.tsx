@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { Maximize2, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 
 import { Drawer } from "@/components/ui/Drawer";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isAskDevPanelPath } from "@/lib/ask-dev/surface";
+import { logger } from "@/lib/logger";
 
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
-import { AskDevRender } from "./AskDevRender";
+import type { AskDevRenderProps } from "./AskDevRender";
 import { useAskDevShell } from "./AskDevShellContext";
 import { useAskDevAvailability } from "./useAskDevAvailability";
 
@@ -24,6 +26,51 @@ function subscribeDesktop(onChange: () => void): () => void {
 const readDesktop = (): boolean => window.matchMedia?.(DESKTOP_QUERY).matches ?? true;
 
 const TITLE = "Ask Dev";
+
+export const RENDER_LOAD_COPY = {
+    loading: "Loading Ask Dev…",
+    failed: "Ask Dev could not load. Reload the page to try again.",
+} as const;
+
+function RenderLoading() {
+    return (
+        <p
+            role="status"
+            data-testid="ask-dev-render-loading"
+            className="m-auto p-5 text-sm text-(--ink-muted)"
+        >
+            {RENDER_LOAD_COPY.loading}
+        </p>
+    );
+}
+
+function RenderFailed() {
+    return (
+        <p
+            role="alert"
+            data-testid="ask-dev-render-failed"
+            className="m-auto p-5 text-sm text-foreground"
+        >
+            {RENDER_LOAD_COPY.failed}
+        </p>
+    );
+}
+
+/**
+ * The render loads on the first open (CHAOS-12450), so a page that never opens the panel does not
+ * pay for it. A chunk that fails to load (a deploy, a dropped network) says so in the panel: thrown,
+ * it would reach the page's error boundary and take the page down with it.
+ */
+const AskDevRender = dynamic<AskDevRenderProps>(
+    () =>
+        import("./AskDevRender")
+            .then((module) => module.AskDevRender)
+            .catch((error: unknown) => {
+                logger.warn({ err: error }, "ask dev render did not load");
+                return RenderFailed;
+            }),
+    { ssr: false, loading: RenderLoading },
+);
 
 /**
  * The desktop panel: a non-modal region on the right. The page behind it stays usable, so there is
@@ -57,7 +104,7 @@ function ExpandButton({ withText = false }: { withText?: boolean }) {
     );
 }
 
-function DesktopPanel({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+function DesktopPanel({ onClose }: { onClose: () => void }) {
     const titleId = useId();
     const panelRef = useRef<HTMLElement>(null);
     const closeRef = useRef(onClose);
@@ -76,6 +123,12 @@ function DesktopPanel({ onClose, children }: { onClose: () => void; children: Re
         }
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
+    }, []);
+
+    // The render arrives after the panel on a first open, and its composer takes focus as it
+    // mounts. Its arrival must not move focus: from the panel, or from wherever the viewer went.
+    const holdFocus = useCallback((focusBefore: Element | null) => {
+        if (focusBefore instanceof HTMLElement) focusBefore.focus();
     }, []);
 
     return (
@@ -103,7 +156,9 @@ function DesktopPanel({ onClose, children }: { onClose: () => void; children: Re
                     <X aria-hidden="true" className="h-4 w-4" />
                 </button>
             </div>
-            <div className="flex min-h-0 flex-1">{children}</div>
+            <div className="flex min-h-0 flex-1">
+                <AskDevRender onMounted={holdFocus} />
+            </div>
         </aside>
     );
 }
@@ -122,13 +177,7 @@ export function AskDevPanel() {
     const desktop = useSyncExternalStore(subscribeDesktop, readDesktop, () => true);
 
     if (!open || availability !== "on" || !isAskDevPanelPath(pathname)) return null;
-    if (desktop) {
-        return (
-            <DesktopPanel onClose={close}>
-                <AskDevRender />
-            </DesktopPanel>
-        );
-    }
+    if (desktop) return <DesktopPanel onClose={close} />;
     return (
         <Drawer
             open
