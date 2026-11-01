@@ -1601,7 +1601,7 @@
                     "state": "pruned",
                     "reason": "no resolved subject has a kind this capability supports (resolved kinds: repositories; supported kinds: incidents, teams)",
                     "label": "Canonical facts — incident",
-                    "state_label": "not needed"
+                    "state_label": "not needed for this question"
                 },
                 {
                     "source": "context-fabric:graph",
@@ -1731,6 +1731,16 @@
                     "declared": 0
                 }
             ]
+        },
+        "vocabulary_labels": {
+            "answer_status:degraded": "Degraded answer",
+            "candidate_state:proposed": "suggested",
+            "requirement_outcome:satisfied": "met",
+            "requirement_outcome:unavailable": "unavailable",
+            "subject_kind:incident": "incident",
+            "subject_kind_plural:incident": "incidents",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
         }
     }
 }

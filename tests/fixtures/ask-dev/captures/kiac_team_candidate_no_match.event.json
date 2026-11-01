@@ -203,6 +203,12 @@
                 }
             ]
         },
-        "refusal_basis": "declared_kind_unmatched"
+        "refusal_basis": "declared_kind_unmatched",
+        "vocabulary_labels": {
+            "answer_status:no_match": "No answer",
+            "requirement_outcome:not_attempted": "not attempted",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
+        }
     }
 }

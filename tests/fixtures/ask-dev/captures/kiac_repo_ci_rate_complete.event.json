@@ -1315,6 +1315,14 @@
             "claimed_facts_count": 6,
             "rows_count": 0,
             "state": "not_derived"
+        },
+        "vocabulary_labels": {
+            "answer_status:complete": "Answer",
+            "candidate_state:committed": "selected",
+            "driver_standing:principal": "main driver",
+            "fact_kind:continuous_integration": "CI",
+            "window_provenance:question_stated": "stated in the question",
+            "window_relative_id:trailing_30d": "last 30 days"
         }
     }
 }

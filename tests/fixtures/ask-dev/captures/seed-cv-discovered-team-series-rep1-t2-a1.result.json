@@ -1172,7 +1172,7 @@
                 "state": "truncated",
                 "reason": "canonical fact result was truncated",
                 "label": "Canonical facts — readiness",
-                "state_label": "partially included"
+                "state_label": "partly included"
             },
             {
                 "source": "canonical_fact:workload",
@@ -1446,5 +1446,30 @@
                 ]
             }
         ]
+    },
+    "vocabulary_labels": {
+        "answer_status:partial": "Partial answer",
+        "candidate_state:ambiguous": "more than one match",
+        "driver_standing:contributing": "contributing",
+        "driver_standing:principal": "main driver",
+        "driver_window:current": "current period",
+        "fact_kind:health": "health",
+        "fact_kind:operational_deficiencies": "operational deficiency",
+        "fact_kind:readiness": "readiness",
+        "fact_kind:workload": "workload",
+        "member_outcome:insufficient_evidence": "not enough evidence",
+        "member_outcome:provisional": "provisional",
+        "ranking_signal:health.compounding_risk": "health risk",
+        "ranking_signal:investment_mix": "investment mix",
+        "ranking_signal:operational_deficiencies.severity": "operational deficiencies",
+        "ranking_signal:readiness.coverage_gap": "readiness gap",
+        "ranking_signal:workload.forecast_pressure": "workload pressure",
+        "requirement_outcome:narrowed": "narrowed",
+        "requirement_outcome:satisfied": "met",
+        "structure_disposition:applied": "used",
+        "subject_kind:team": "team",
+        "subject_kind_plural:team": "teams",
+        "window_provenance:clarification_confirmed": "confirmed by you",
+        "window_relative_id:trailing_90d": "last 90 days"
     }
 }

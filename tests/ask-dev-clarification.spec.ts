@@ -236,16 +236,15 @@ test.describe("desktop (1280px)", () => {
 test.describe("desktop (1280px): no-match status word", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 
-    // CHAOS-12417: the render draws no status word for a no-match answer yet; it waits for served labels.
-    test.fixme("a no-match says there was no matching subject", async ({ page }) => {
+    // CHAOS-12417: ACR serves "No answer" on purpose, because the stop of ruling B also ends in
+    // `no_match` (acr design, context-fabric-result-semantics.md section 5).
+    test("a no-match reads the served word", async ({ page }) => {
         await seedStream(page, [answers(BARE_NO_MATCH)]);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         await ask(panel, BARE_NO_MATCH.question);
-        await expect(
-            panel.getByText("No answer: no matching subject", { exact: true }),
-        ).toBeVisible();
+        await expect(panel.getByTestId("ask-dev-answer-status")).toHaveText("No answer");
     });
 });
 

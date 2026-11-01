@@ -65,7 +65,7 @@ test.describe("desktop (1280px)", () => {
 
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
         // CHAOS-12384: the render's own answer (ask-dev package): an article "Answer" holding the
-        // judgment, then the Drivers panel. The status pill waits for CHAOS-12417 (fixme below).
+        // judgment, then the Drivers panel. The status pill is its own test below.
         const answer = panel.getByRole("article", { name: "Answer" });
         await expect(answer).toBeVisible();
         const judgment = answer.getByRole("group", { name: "Answer", exact: true });
@@ -88,8 +88,8 @@ test.describe("desktop (1280px)", () => {
         expect(requests).toEqual([]);
     });
 
-    // CHAOS-12417: the render draws no status pill ("Partial answer") yet; it waits for served labels.
-    test.fixme("shows the answer's status pill", async ({ page }) => {
+    // CHAOS-12417: the pill is ACR's served word.
+    test("shows the answer's status pill", async ({ page }) => {
         await seedAnswer(page, PARTIAL);
         await page.goto("/dashboard");
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
@@ -122,7 +122,6 @@ test.describe("mobile (390px)", () => {
         const sheet = page.getByRole("dialog", { name: "Ask Dev" });
         const answer = sheet.getByRole("article", { name: "Answer" });
         await expect(answer).toBeVisible();
-        // The status pill waits for CHAOS-12417: see the fixme test in the desktop block.
         await expect(
             answer
                 .getByRole("group", { name: "Readiness gaps", exact: true })
