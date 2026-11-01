@@ -50,6 +50,9 @@ export default defineConfig({
                 test: {
                     name: "components",
                     environment: "jsdom",
+                    // ask-dev ships TypeScript source through its `exports`, as `next.config.js`'s
+                    // `transpilePackages` says: Node cannot load it, so Vite compiles it here too.
+                    server: { deps: { inline: ["@full-chaos/ask-dev"] } },
                     // Node 26 defines a global `localStorage` accessor that yields `undefined`
                     // without `--localstorage-file`; vitest's jsdom environment will not
                     // overwrite an existing global, so `window.localStorage.clear` threw

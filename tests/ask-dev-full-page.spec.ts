@@ -116,6 +116,48 @@ async function askInPanel(page: Page, path = "/dashboard"): Promise<Locator> {
     return panel;
 }
 
+/** Asks on `/dev` itself, and waits for the answer. */
+async function askOnFullPage(page: Page): Promise<void> {
+    await page.goto("/dev");
+    const input = page.getByRole("textbox", { name: "Ask a question" });
+    await expect(input).toBeEnabled();
+    await input.fill(QUESTION);
+    await input.press("Enter");
+    await expect(page.getByTestId("answer-panel")).toBeVisible();
+}
+
+/**
+ * CHAOS-12383: the render scrolls inside itself. An answer longer than the page must scroll the
+ * transcript, keep the composer on screen and leave the window where it is, at this viewport.
+ */
+async function expectHeightLeft(page: Page): Promise<void> {
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const root = document.documentElement;
+                const log = document.querySelector("[role=log]");
+                const composer = document.querySelector(".chat-composer");
+                const frame = document.querySelector("[data-testid=ask-dev-page-conversation]");
+                const shell = frame?.querySelector(".ask-frame");
+                if (!log || !composer || !frame || !shell) return "not rendered";
+                const bottom = composer.getBoundingClientRect().bottom;
+                return {
+                    windowScrolls: root.scrollHeight > root.clientHeight,
+                    transcriptScrolls: log.scrollHeight > log.clientHeight,
+                    composerOnScreen: bottom <= window.innerHeight,
+                    fillsTheViewport:
+                        Math.abs(shell.getBoundingClientRect().bottom - window.innerHeight) <= 1,
+                };
+            }),
+        )
+        .toEqual({
+            windowScrolls: false,
+            transcriptScrolls: true,
+            composerOnScreen: true,
+            fillsTheViewport: true,
+        });
+}
+
 test.beforeEach(async ({ request }) => {
     await setScenario(request, "provisioned");
 });
@@ -138,12 +180,12 @@ test.describe("desktop (1280px)", () => {
         await expect(page).toHaveURL(NAMED_FULL_PAGE);
         await expect(panel).toBeHidden();
         const conversation = page.getByTestId("ask-dev-page-conversation");
-        await expect(conversation.getByText(QUESTION)).toBeVisible();
-        await expect(conversation.getByTestId("ask-dev-stages")).toBeVisible();
+        await expect(conversation.getByText(QUESTION, { exact: true })).toBeVisible();
+        await expect(conversation.getByTestId("chat-progress")).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath("full-page-streaming-desktop.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-page]")).toEqual([]);
 
-        await expect(conversation.getByTestId("ask-dev-answer")).toBeVisible({ timeout: 15_000 });
+        await expect(conversation.getByTestId("answer-panel")).toBeVisible({ timeout: 15_000 });
         await page.screenshot({ path: testInfo.outputPath("full-page-answer-desktop.png") });
         expect(await investigations(page)).toHaveLength(1);
     });
@@ -158,7 +200,7 @@ test.describe("desktop (1280px)", () => {
         await panel.getByRole("button", { name: "Open full page" }).click();
         await expect(page).toHaveURL(NAMED_FULL_PAGE);
         await expect(
-            page.getByTestId("ask-dev-page-conversation").getByTestId("ask-dev-answer"),
+            page.getByTestId("ask-dev-page-conversation").getByTestId("answer-panel"),
         ).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath("full-page-light-desktop.png") });
 
@@ -196,7 +238,7 @@ test.describe("desktop (1280px)", () => {
             .getByTestId("ask-dev-page-conversation")
             .getByTestId("ask-dev-not-saved");
         await expect(notice).toContainText(NOT_SAVED);
-        await expect(page.getByTestId("ask-dev-answer")).toHaveCount(0);
+        await expect(page.getByTestId("answer-panel")).toHaveCount(0);
         await page.screenshot({ path: testInfo.outputPath("full-page-not-saved-desktop.png") });
         expect(await investigations(page)).toHaveLength(1);
         expect(await axeViolations(page, "[data-testid=ask-dev-page]")).toEqual([]);
@@ -207,6 +249,15 @@ test.describe("desktop (1280px)", () => {
         await page.goto("/dev");
         await expect(page.getByTestId("ask-dev-page")).toBeVisible();
         await expect(page.getByRole("button", { name: "Open Ask Dev" })).toHaveCount(0);
+    });
+
+    test("ask-dev's render takes the height under the header, and the window does not scroll", async ({
+        page,
+    }, testInfo) => {
+        await seed(page, [quickRun]);
+        await askOnFullPage(page);
+        await expectHeightLeft(page);
+        await page.screenshot({ path: testInfo.outputPath("full-page-height-desktop.png") });
     });
 });
 
@@ -229,7 +280,7 @@ test.describe("mobile (390px)", () => {
         await sheet.getByRole("button", { name: "Open full page" }).click();
         await expect(page).toHaveURL(NAMED_FULL_PAGE);
         const conversation = page.getByTestId("ask-dev-page-conversation");
-        await expect(conversation.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(conversation.getByTestId("answer-panel")).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath("full-page-mobile.png") });
         expect(
             await page.evaluate(
@@ -243,5 +294,14 @@ test.describe("mobile (390px)", () => {
         await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u);
         await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
         expect(await investigations(page)).toHaveLength(1);
+    });
+
+    test("ask-dev's render takes the height under the header, and the window does not scroll", async ({
+        page,
+    }, testInfo) => {
+        await seed(page, [quickRun]);
+        await askOnFullPage(page);
+        await expectHeightLeft(page);
+        await page.screenshot({ path: testInfo.outputPath("full-page-height-mobile.png") });
     });
 });

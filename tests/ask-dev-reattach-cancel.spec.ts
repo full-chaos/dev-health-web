@@ -412,8 +412,8 @@ test.describe("desktop (1280px)", () => {
         await expect(main.locator('[data-stage="interpreting"][data-state="active"]')).toBeVisible({
             timeout: 15_000,
         });
-        await stopOf(main).click();
-        await expect(turnIn(main, "canceling")).toBeVisible();
+        await main.getByRole("button", { name: "Stop" }).click();
+        await expect(main.getByTestId("chat-progress")).toContainText("Canceling…");
         await shot(page, "dev-canceling-dark");
     });
 });
