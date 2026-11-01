@@ -713,6 +713,21 @@ describe("the snapshot", () => {
         expect(source.getSnapshot().history?.hasMore).toBe(false);
     });
 
+    it("publishes ACR's 409 no_repository with no rows and nothing to load (CHAOS-12439)", async () => {
+        const { source } = makeSource();
+        transport.listPages.push({
+            fail: new TransportRefusal(409, acrError("no_repository", 409, false)),
+        });
+        source.history?.load();
+        await vi.waitFor(() => expect(source.getSnapshot().history?.status).toBe("no_repository"));
+        expect(source.getSnapshot().history).toMatchObject({
+            rows: [],
+            hasMore: false,
+            loadingMore: false,
+            moreFailed: false,
+        });
+    });
+
     describe("composerLocked, as the seam documents it", () => {
         it("a new conversation is locked only while signed out", () => {
             const store = makeStore({}, null);
