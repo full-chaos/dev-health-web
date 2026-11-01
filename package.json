@@ -46,6 +46,7 @@
         "test:e2e:context-fabric": "node scripts/context-fabric-qa.mjs",
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
+        "test:e2e:live:ask-dev": "LIVE_ASK_DEV=1 playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
         "ask-dev-oracle:check": "bash scripts/ask-dev-oracle/check.sh",
         "test:ci": "bash ci/run_tests.sh ci"
