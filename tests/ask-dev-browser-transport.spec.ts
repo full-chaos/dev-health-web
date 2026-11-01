@@ -25,6 +25,21 @@ const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 const QUESTION = "Which projects are at risk this quarter?";
 /** A well-formed thread id: its read goes to ACR (CHAOS-12336). */
 const THREAD = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+/**
+ * ACR's 409 on a read when the viewer's grant is empty: the example
+ * `contracts/examples/v1/error_context_fabric_no_repository.v1.json` at web's acr pin. Web vendors
+ * no copy of it.
+ */
+const NO_REPOSITORY = {
+    schema_version: "error.v1",
+    request_id: "req_00000000000000000000000000011912",
+    error: {
+        code: "no_repository",
+        message: "No repository is in scope for this credential",
+        http_status: 409,
+        retryable: false,
+    },
+};
 
 type AcrCall = {
     readonly method: string;
@@ -40,6 +55,8 @@ type Harness = {
     readonly calls: AcrCall[];
     /** The access tokens the mock's /token issued. */
     readonly tokens: string[];
+    /** CHAOS-12439: ACR's thread routes answer 409 `no_repository`. */
+    threadsRefused: boolean;
 };
 
 test.describe.configure({ mode: "serial" });
@@ -115,6 +132,17 @@ async function acrOn(context: BrowserContext, harness: Harness) {
                 });
                 return;
             }
+            if (
+                harness.threadsRefused &&
+                /^\/api\/v1\/context-fabric\/threads(\/|$)/u.test(new URL(request.url()).pathname)
+            ) {
+                await route.fulfill({
+                    status: 409,
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                    body: JSON.stringify(NO_REPOSITORY),
+                });
+                return;
+            }
             // T14b (CHAOS-12336): the answer's feedback control reads its feedback. A never-rated
             // result, as ACR answers it.
             const feedback = /^\/api\/v1\/context-fabric\/investigations\/feedback\/([^/]+)$/u.exec(
@@ -145,11 +173,25 @@ async function setUp(page: Page): Promise<Harness> {
         acr: new AcrOAuthMock({ issuer: origin, redirectUri: `${origin}/ask-dev/oauth/callback` }),
         calls: [],
         tokens: [],
+        threadsRefused: false,
     };
     await clientOn(page.context(), origin);
     await acrOn(page.context(), harness);
     return harness;
 }
+
+/** The OAuth flow, then every thread read refused: a viewer connected with no repository in scope. */
+async function connectedWithNoRepository(page: Page): Promise<Harness> {
+    const harness = await setUp(page);
+    harness.threadsRefused = true;
+    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
+    await page.waitForURL((url) => url.pathname === "/dashboard");
+    await expect.poll(() => harness.tokens.length).toBe(1);
+    return harness;
+}
+
+const threadReads = (harness: Harness) =>
+    harness.calls.filter((call) => call.url.includes("/context-fabric/threads"));
 
 async function ask(page: Page, surface: ReturnType<Page["getByTestId"]>) {
     const input = surface.getByRole("textbox", { name: "Ask a question" });
@@ -357,3 +399,57 @@ test.describe("mobile (390px)", () => {
         expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 });
+
+// CHAOS-12439: a connected viewer whose grant holds no repository. ACR answers every thread read
+// with 409 `no_repository`; reading again cannot help, so nothing offers it, and no code shows.
+for (const [name, viewport, surface] of [
+    ["desktop", { width: 1280, height: 900 }, "ask-dev-panel"],
+    ["mobile", { width: 390, height: 844 }, "ask-dev-sheet"],
+] as const) {
+    test.describe(`no repository in scope, ${name}`, () => {
+        test.use({ viewport });
+
+        test("History says so, once, with no Try again", async ({ page }, testInfo) => {
+            const harness = await connectedWithNoRepository(page);
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const view = page.getByTestId(surface);
+            await view.getByTestId("ask-dev-history-toggle").click();
+            const note = view.getByTestId("ask-dev-history-no-repository");
+            await expect(note).toBeVisible();
+            await expect(note).not.toContainText("no_repository");
+            await expect(view.getByTestId("ask-dev-history-retry")).toHaveCount(0);
+            await expect(view.getByTestId("ask-dev-history-connect")).toHaveCount(0);
+            await expect(view.getByTestId("ask-dev-history-row")).toHaveCount(0);
+            expect(threadReads(harness)).toHaveLength(1);
+            await page.screenshot({
+                path: testInfo.outputPath(`no-repository-history-${name}.png`),
+                animations: "disabled",
+            });
+            expect(await view.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+        });
+
+        test("a conversation opened by its link is unavailable, with no Try again", async ({
+            page,
+        }, testInfo) => {
+            const harness = await connectedWithNoRepository(page);
+            await page.goto(`/dev?thread=${THREAD}`);
+            const unavailable = page.getByTestId("ask-dev-conversation-unavailable");
+            await expect(unavailable).toBeVisible();
+            await expect(unavailable).not.toContainText("no_repository");
+            await expect(page.getByTestId("ask-dev-conversation-retry")).toHaveCount(0);
+            await expect(page.getByTestId("ask-dev-conversation-read-failed")).toHaveCount(0);
+            expect(threadReads(harness)).toHaveLength(1);
+            await page.screenshot({
+                path: testInfo.outputPath(`no-repository-conversation-${name}.png`),
+                animations: "disabled",
+            });
+            expect(
+                await page.evaluate(
+                    () =>
+                        document.documentElement.scrollWidth <=
+                        document.documentElement.clientWidth,
+                ),
+            ).toBe(true);
+        });
+    });
+}
