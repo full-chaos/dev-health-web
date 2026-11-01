@@ -264,10 +264,46 @@ describe("web assertion key material in logs", () => {
         for (const failure of failures) {
             const error = failure as AcrRuntimeError;
             expect(error.message).toBe(FIXED_CONFIGURATION_MESSAGE);
-            const surface = [String(error), safeJson(error), error.message].join("\n");
+            const surface = dump(error);
             for (const secret of forbidden) {
                 expect(surface.includes(secret), "error surface").toBe(false);
             }
+        }
+    });
+});
+
+describe("web assertion kid is taken after the config trim", () => {
+    it("a kid with edge whitespace signs as its trimmed value; an inner space or an empty kid is refused", () => {
+        const { keyFile } = writeKey();
+
+        configure(keyFile, " web-key\n");
+        expect(sign("web-key").header.kid).toBe("web-key");
+
+        for (const kid of ["web key", "  ", ""]) {
+            configure(keyFile, kid);
+            expect(() => loadAcrRuntimeConfig(), JSON.stringify(kid)).toThrow(AcrRuntimeError);
+        }
+    });
+});
+
+describe("web assertion key-read failure keeps no cause", () => {
+    it("a key-read failure error has no cause and no path anywhere in its cause chain", () => {
+        const directory = newDirectory();
+        const target = writeKey();
+        const link = join(directory, "link.key");
+        symlinkSync(target.keyFile, link);
+        const missing = join(directory, "absent.key");
+        for (const keyFile of [link, missing]) {
+            configure(keyFile);
+            let thrown: unknown;
+            try {
+                loadAcrRuntimeConfig();
+            } catch (error) {
+                thrown = error;
+            }
+            expect(thrown).toBeInstanceOf(AcrRuntimeError);
+            expect((thrown as AcrRuntimeError).cause).toBeUndefined();
+            expect(dump(thrown).includes(keyFile)).toBe(false);
         }
     });
 });
