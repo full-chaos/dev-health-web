@@ -92,7 +92,6 @@ function readPrivateKey(keyFile: string): KeyObject {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.configuration,
             "Agent Context Runtime is not configured.",
-            { cause: error },
         );
     }
 }
