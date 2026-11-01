@@ -13,7 +13,6 @@ import {
     stripInterfaceDeclaration,
     writeArtifacts,
 } from "../acr-contract-artifacts.mjs";
-import { ARTIFACT_SIBLINGS } from "../acr-contract-filesystem.mjs";
 import { isNotLockState, sourceBackedTest } from "./acr-fixture-copy.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -82,8 +81,12 @@ function createTemporaryProject() {
     const root = fs.mkdtempSync(path.join(ROOT, ".tmp-acr-contract-security-"));
     const artifactRoot = path.join(root, "src/lib/acr/contracts");
     const script = path.join(root, "scripts/sync-acr-contracts.mjs");
-    fs.mkdirSync(path.dirname(artifactRoot), { recursive: true });
-    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true, filter: isNotLockState });
+    // The whole directory: the artifacts include files beside `contracts/`, and a `check` reports
+    // any one that is missing as drift.
+    fs.cpSync(path.dirname(ARTIFACT_ROOT), path.dirname(artifactRoot), {
+        recursive: true,
+        filter: isNotLockState,
+    });
     fs.mkdirSync(path.dirname(script), { recursive: true });
     fs.copyFileSync(SCRIPT, script);
     fs.copyFileSync(
@@ -94,9 +97,6 @@ function createTemporaryProject() {
         path.join(ROOT, "scripts/acr-contract-filesystem.mjs"),
         path.join(root, "scripts/acr-contract-filesystem.mjs"),
     );
-    for (const sibling of ARTIFACT_SIBLINGS) {
-        fs.copyFileSync(path.resolve(ARTIFACT_ROOT, sibling), path.resolve(artifactRoot, sibling));
-    }
     TEMPORARY_PROJECTS.add(root);
     return { artifactRoot, root, script };
 }
@@ -387,23 +387,32 @@ describe("ACR contract artifact filesystem boundaries", () => {
                 commit,
             ];
 
-            const generates = Array.from({ length: 2 }, () => runAsync(project, generate));
-            const checks = Array.from({ length: 6 }, () => runAsync(project, ["check"]));
-            const outcomes = await Promise.all([...generates, ...checks]);
+            let generating = true;
+            const generations = Promise.all(
+                Array.from({ length: 2 }, () => runAsync(project, generate)),
+            ).finally(() => {
+                generating = false;
+            });
 
-            // Every process takes the lock in turn, so the wait can run out on a slow host. That
-            // refusal is the bounded wait working. Any other failure is a reader that saw a torn
-            // tree, the defect this test exists to find.
-            const unexpected = outcomes
+            // One reader at a time. Every process takes the lock in turn, so a crowd of readers
+            // keeps the generators out for the whole 30 s wait on a slow host (2 generates and 6
+            // checks did, on a hosted runner).
+            const reads = [];
+            while (generating) reads.push(await runAsync(project, ["check"]));
+            const generated = await generations;
+
+            // A refused lock is the bounded wait working. Any other failure is a reader that saw
+            // a torn tree, the defect this test exists to find.
+            const unexpected = [...generated, ...reads]
                 .filter(({ status }) => status !== 0)
                 .filter(({ stderr }) => !stderr.includes("artifact generation lock timed out"));
             expect(unexpected).toEqual([]);
-            expect((await Promise.all(generates)).some(({ status }) => status === 0)).toBe(true);
-            expect((await Promise.all(checks)).some(({ status }) => status === 0)).toBe(true);
+            expect(reads.length).toBeGreaterThan(0);
+            expect(generated.some(({ status }) => status === 0)).toBe(true);
             expect(run(project, ["check"]).status).toBe(0);
         },
-        // Above the 30 s lock wait: a process that runs it out still has to exit.
-        60_000,
+        // This only catches a hung process: a process that loses the lock exits after 30 s.
+        120_000,
     );
 });
 

@@ -6,7 +6,7 @@ import path from "node:path";
 
 // allow: SIZE_OK — atomic artifact transactions and their owner-verified lease protocol share one filesystem boundary.
 const ARTIFACT_DIRECTORIES = new Set(["examples", "openapi", "schemas"]);
-export const ARTIFACT_SIBLINGS = new Set([
+const ARTIFACT_SIBLINGS = new Set([
     "../contracts.ts",
     "../generated.ts",
     // CHAOS-11956: the eval-free browser validators (Ajv standalone) and their declarations.

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 import { sourceBackedTest } from "./acr-fixture-copy.mjs";
-import { job } from "./chaos-3017-ci-contract-helpers.mjs";
+import { job, step } from "./chaos-3017-ci-contract-helpers.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const WORKFLOW = fs.readFileSync(path.join(ROOT, ".github/workflows/tests.yml"), "utf8");
@@ -50,17 +50,15 @@ describe("sourceBackedTest", () => {
 describe("the CI unit step", () => {
     it("sets the marker and gives ACR_ROOT the acr checkout at the manifest's pin", () => {
         const unit = job(WORKFLOW, "unit");
-        const env = /^ {8}env:\n((?: {12}[A-Z_]+: .+\n)+)/mu.exec(unit);
-        expect(env?.[1]).toContain("ACR_CONTRACT_GATE: required");
-        expect(env?.[1]).toContain("ACR_ROOT: ${{ github.workspace }}/.acr-source");
+        expect(unit).toMatch(
+            /^ {8}env:\n {12}ACR_CONTRACT_GATE: required\n {12}ACR_ROOT: \$\{\{ github\.workspace \}\}\/\.acr-source\n {8}steps:$/mu,
+        );
 
         expect(unit).toContain("src/lib/acr/contracts/manifest.json').source_commit");
-        const checkout =
-            /repository: full-chaos\/dev-health-acr\n((?:\s+.+\n)+?)\s+- run: bash ci\/run_tests\.sh unit/u.exec(
-                unit,
-            );
-        expect(checkout?.[1]).toContain("ref: ${{ steps.acr-pin.outputs.sha }}");
-        expect(checkout?.[1]).toContain("path: .acr-source");
-        expect(checkout?.[1]).toContain("fetch-depth: 2");
+        const checkout = step(unit, "Check out acr at the pinned commit");
+        expect(checkout).toContain("repository: full-chaos/dev-health-acr");
+        expect(checkout).toContain("ref: ${{ steps.acr-pin.outputs.sha }}");
+        expect(checkout).toContain("path: .acr-source");
+        expect(checkout).toContain("fetch-depth: 2");
     });
 });
