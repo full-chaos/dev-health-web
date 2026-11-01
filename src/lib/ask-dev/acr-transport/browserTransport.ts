@@ -218,10 +218,17 @@ export function createAcrBrowserTransport(
      * ACR answered 401 for `token` (CHAOS-12305). Tells the store, then reads the token once more:
      * a different token is the one retry; anything else is null ("authorization required").
      */
-    async function another(token: string): Promise<string | null> {
+    async function another(token: string, operation: string): Promise<string | null> {
         dependencies.rejected(token);
         const next = await dependencies.token();
-        return next.kind === "token" && next.token !== token ? next.token : null;
+        if (next.kind === "token" && next.token !== token) {
+            // CHAOS-12369: one line per 401, no token value.
+            logger.info({ operation, resend: "new_token" }, "ask-dev acr call 401");
+            return next.token;
+        }
+        const resend = next.kind === "token" ? "same_token" : "no_token";
+        logger.warn({ operation, resend }, "ask-dev acr call 401");
+        return null;
     }
 
     const headers = (token: string, extra: Record<string, string>): Record<string, string> => ({
@@ -280,10 +287,13 @@ export function createAcrBrowserTransport(
         let response = await sendJson(path, operation, signal, token, method, json);
         if (response.status === 401) {
             void response.body?.cancel().catch(() => undefined);
-            const next = await another(token);
+            const next = await another(token, operation);
             if (next !== null) {
                 response = await sendJson(path, operation, signal, next, method, json);
-                if (response.status === 401) dependencies.rejected(next);
+                if (response.status === 401) {
+                    logger.warn({ operation, resend: "second_401" }, "ask-dev acr call 401");
+                    dependencies.rejected(next);
+                }
             }
         }
         if (!response.ok) return { response, body: undefined };
@@ -495,7 +505,7 @@ export function createAcrBrowserTransport(
                 // CHAOS-12305: one resend with a different token, the same submission id (a create
                 // is idempotent on it); its header wait (and a create's budget) is computed again.
                 void response.body?.cancel().catch(() => undefined);
-                const next = await another(token);
+                const next = await another(token, spec.operation);
                 if (next !== null) {
                     if (spec.signal.aborted) throw spec.signal.reason;
                     spec.beforeResend?.();
@@ -503,7 +513,13 @@ export function createAcrBrowserTransport(
                     timer = setTimeout(() => end("admission_timeout"), HEADER_WAIT_MAX_MS);
                     response = await send();
                     clearTimeout(timer);
-                    if (response.status === 401) dependencies.rejected(token);
+                    if (response.status === 401) {
+                        logger.warn(
+                            { operation: spec.operation, resend: "second_401" },
+                            "ask-dev acr call 401",
+                        );
+                        dependencies.rejected(token);
+                    }
                 }
             }
             if (!response.ok) await refuse(response, spec.operation, spec.signal);

@@ -894,6 +894,86 @@ describe("submissionStatus and readResult", () => {
     });
 });
 
+describe("logs: a 401 (CHAOS-12369)", () => {
+    const resends = () =>
+        [...log.info.mock.calls, ...log.warn.mock.calls].filter(
+            ([, message]) => message === "ask-dev acr call 401",
+        );
+
+    it("a new token: one info line, resend new_token, then no second line when the resend works", async () => {
+        const body = sseBody();
+        fetchMock
+            .mockResolvedValueOnce(unauthorized())
+            .mockResolvedValueOnce(sseResponse(body.stream));
+        body.push(stream(...CAPTURED));
+        const { t } = withStore(held(TOKEN), held(NEXT));
+        await collect(t.investigate(call()));
+        expect(log.info.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toEqual([
+            [{ operation: "investigate", resend: "new_token" }, "ask-dev acr call 401"],
+        ]);
+        expect(log.warn.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toEqual([]);
+    });
+
+    it("a second 401 after the resend: new_token, then a warn second_401", async () => {
+        fetchMock.mockImplementation(async () => unauthorized());
+        const { t } = withStore(held(TOKEN), held(NEXT));
+        await collect(t.investigate(call())).catch(() => undefined);
+        expect(resends()).toEqual([
+            [{ operation: "investigate", resend: "new_token" }, "ask-dev acr call 401"],
+            [{ operation: "investigate", resend: "second_401" }, "ask-dev acr call 401"],
+        ]);
+        expect(log.warn.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toEqual([
+            [{ operation: "investigate", resend: "second_401" }, "ask-dev acr call 401"],
+        ]);
+    });
+
+    it.each([
+        ["same_token", held(TOKEN)],
+        ["no_token", { kind: "authorization_required" } as AcrAccessToken],
+    ])("the store gives %s: one warn line, no resend", async (resend, again) => {
+        fetchMock.mockImplementation(async () => unauthorized());
+        const { t } = withStore(held(TOKEN), again);
+        await collect(t.investigate(call())).catch(() => undefined);
+        expect(resends()).toEqual([[{ operation: "investigate", resend }, "ask-dev acr call 401"]]);
+        expect(log.warn.mock.calls.filter(([, m]) => m === "ask-dev acr call 401")).toHaveLength(1);
+    });
+
+    it("the status and replay calls log their own operation name", async () => {
+        const id = "result_x";
+        const signal = new AbortController().signal;
+        fetchMock.mockImplementation(async () => unauthorized());
+        await withStore(held(TOKEN), held(NEXT))
+            .t.submissionStatus(SUBMISSION, signal)
+            .catch(() => undefined);
+        await withStore(held(TOKEN), held(TOKEN))
+            .t.readResult(id, signal)
+            .catch(() => undefined);
+        expect(resends().map(([fields]) => fields)).toEqual([
+            { operation: "status", resend: "new_token" },
+            { operation: "status", resend: "second_401" },
+            { operation: "replay", resend: "same_token" },
+        ]);
+    });
+
+    it("a 401 line carries no token and no URL", async () => {
+        fetchMock.mockImplementation(async () => unauthorized());
+        const { t } = withStore(held(TOKEN), held(NEXT));
+        await collect(t.investigate(call())).catch(() => undefined);
+        const text = JSON.stringify(resends());
+        expect(text).not.toContain(TOKEN);
+        expect(text).not.toContain(NEXT);
+        expect(text).not.toContain(ISSUER);
+    });
+
+    it("no 401 line when the call is not refused", async () => {
+        const body = sseBody();
+        fetchMock.mockResolvedValue(sseResponse(body.stream));
+        body.push(stream(...CAPTURED));
+        await collect(withStore(held(TOKEN)).t.investigate(call()));
+        expect(resends()).toEqual([]);
+    });
+});
+
 describe("logs", () => {
     it("never carry the token, the question or a URL", async () => {
         const body = sseBody();

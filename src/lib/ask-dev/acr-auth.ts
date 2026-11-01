@@ -42,9 +42,15 @@
  * started for that session. The conversation context also clears every tab's tokens when the
  * impersonation starts or ends; this module's check is the defence in depth (the OAuth pages
  * reached by URL, other tabs).
+ *
+ * Logs (CHAOS-12369): the failure and refusal paths log at Info or Warn, one line per event, all
+ * starting with "ask-dev acr token store". A line carries the family id (random, not a secret), an
+ * enum reason, a boolean or an HTTP status. It never carries a token, a code, a verifier, a state,
+ * a tab id, a user or org id, or a URL. A served held token logs nothing.
  */
 import { getSession } from "next-auth/react";
 
+import { logger } from "@/lib/logger";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
 
 import { type AcrBrowserClientConfig, browserAcrClientConfig } from "./acr-browser-config";
@@ -416,6 +422,29 @@ function isImpersonating(read: AcrPrincipalRead): read is AcrImpersonating {
     return read !== null && "impersonating" in read;
 }
 
+/** Where the principal was checked when a drop followed (CHAOS-12369). */
+type PrincipalCheck =
+    "begin" | "before" | "lock" | "after_refresh" | "callback_before" | "callback_after";
+
+/** One Warn line for a drop or refusal for a principal reason (CHAOS-12369). No id values. */
+function logPrincipal(
+    check: PrincipalCheck,
+    reason: "no_session" | "mismatch" | "impersonating",
+): void {
+    logger.warn({ check, reason }, "ask-dev acr token store principal dropped");
+}
+
+/** Why a principal read ended in a drop, for the log (CHAOS-12369). */
+function principalReason(read: AcrPrincipalRead): "no_session" | "mismatch" | "impersonating" {
+    if (read === null) return "no_session";
+    return isImpersonating(read) ? "impersonating" : "mismatch";
+}
+
+/** A clear overtook an operation that was about to store or serve something (CHAOS-12369). */
+function logClearRace(where: "refresh" | "after_refresh_check" | "code_exchange"): void {
+    logger.warn({ where }, "ask-dev acr token store clear overtook");
+}
+
 /** Drops this tab's access token and family (CHAOS-12305). */
 function dropTokens(storage: Storage | null): void {
     held = null;
@@ -433,6 +462,7 @@ function clearThisTab(): void {
 function onTabMessage(channel: AcrTabChannel, message: unknown): void {
     if (!isRecord(message)) return;
     if (message.type === "clear") {
+        logger.info({ source: "other_tab" }, "ask-dev acr token store clear received");
         clearThisTab();
         return;
     }
@@ -484,8 +514,10 @@ function checkClone(storage: Storage): Promise<void> {
             channel.post({ type: "hello", tabId: id });
         });
         if (!taken) return;
+        const droppedFamily = storage.getItem(ACR_TOKEN_FAMILY_KEY) !== null;
         storage.setItem(ACR_TAB_KEY, randomBase64Url(16));
         dropTokens(storage);
+        logger.info({ dropped_family: droppedFamily }, "ask-dev acr token store clone dropped");
     })();
     return cloneCheck;
 }
@@ -577,6 +609,7 @@ export async function beginAcrAuthorization(returnTo: string): Promise<AcrBeginO
     if (isImpersonating(await dependencies.principal())) {
         // A family stored before the impersonation started goes too (codex r1 on #1680).
         dropTokens(dependencies.storage());
+        logPrincipal("begin", "impersonating");
         return { kind: "impersonating" };
     }
     const server = await discoverAcrAuthorizationServer(config.issuer);
@@ -677,10 +710,11 @@ type TokenAnswer =
           readonly access: string;
           readonly expiresIn: number;
           readonly refresh: string | null;
+          readonly status: number;
       }
-    | { readonly kind: "refused" }
-    | { readonly kind: "unavailable" }
-    | { readonly kind: "invalid" };
+    | { readonly kind: "refused"; readonly status: number }
+    | { readonly kind: "unavailable"; readonly status?: number }
+    | { readonly kind: "invalid"; readonly status?: number };
 
 async function exchangeCode(pending: PendingAuthorization, code: string): Promise<TokenAnswer> {
     return postTokenForm(
@@ -728,32 +762,39 @@ async function postTokenForm(endpoint: string, form: URLSearchParams): Promise<T
         } catch {
             return { kind: "unavailable" };
         }
-        if (response.status === 400 || response.status === 401) return { kind: "refused" };
-        if (!response.ok) return { kind: "unavailable" };
+        const { status } = response;
+        if (status === 400 || status === 401) return { kind: "refused", status };
+        if (!response.ok) return { kind: "unavailable", status };
         try {
             body = await response.json();
         } catch {
-            return limit.signal.aborted ? { kind: "unavailable" } : { kind: "invalid" };
+            return limit.signal.aborted
+                ? { kind: "unavailable", status }
+                : { kind: "invalid", status };
         }
     } finally {
         limit.clear();
     }
-    if (!isRecord(body)) return { kind: "invalid" };
+    const status = response.status;
+    if (!isRecord(body)) return { kind: "invalid", status };
     const {
         access_token: access,
         token_type: type,
         expires_in: expiresIn,
         refresh_token: refresh,
     } = body;
-    if (typeof access !== "string" || !ACCESS_TOKEN.test(access)) return { kind: "invalid" };
-    if (typeof type !== "string" || type.toLowerCase() !== "bearer") return { kind: "invalid" };
+    if (typeof access !== "string" || !ACCESS_TOKEN.test(access))
+        return { kind: "invalid", status };
+    if (typeof type !== "string" || type.toLowerCase() !== "bearer") {
+        return { kind: "invalid", status };
+    }
     if (typeof expiresIn !== "number" || !Number.isInteger(expiresIn) || expiresIn <= 0) {
-        return { kind: "invalid" };
+        return { kind: "invalid", status };
     }
     if (refresh !== undefined && (typeof refresh !== "string" || !REFRESH_TOKEN.test(refresh))) {
-        return { kind: "invalid" };
+        return { kind: "invalid", status };
     }
-    return { kind: "ok", access, expiresIn, refresh: refresh ?? null };
+    return { kind: "ok", access, expiresIn, refresh: refresh ?? null, status };
 }
 
 /**
@@ -801,10 +842,14 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     // claim: a signed-out callback spends nothing, sends no code and stores nothing.
     const dropsBefore = drops;
     const principal = await dependencies.principal();
-    if (principal === null) return fail("signed_out");
+    if (principal === null) {
+        logPrincipal("callback_before", "no_session");
+        return fail("signed_out");
+    }
     // Impersonating (CHAOS-12306): as signed out, nothing is spent, sent or stored.
     if (isImpersonating(principal)) {
         dropTokens(storage);
+        logPrincipal("callback_before", "impersonating");
         return fail("impersonating");
     }
     const claim = await claimOnce(pending);
@@ -820,9 +865,15 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     // An impersonation that started while the exchange ran: hold and store nothing (CHAOS-12306).
     if (isImpersonating(after)) {
         dropTokens(storage);
+        logPrincipal("callback_after", "impersonating");
         return fail("impersonating");
     }
-    if (drops !== dropsBefore || after === null || !samePrincipal(after, principal)) {
+    if (drops !== dropsBefore) {
+        logClearRace("code_exchange");
+        return fail("signed_out");
+    }
+    if (after === null || !samePrincipal(after, principal)) {
+        logPrincipal("callback_after", principalReason(after));
         return fail("signed_out");
     }
     hold(answer.access, answer.expiresIn, pending.issuer, pending.clientId, principal);
@@ -887,6 +938,33 @@ function forClient(family: AcrHeldFamily, config: AcrBrowserClientConfig): boole
 }
 
 /**
+ * One refresh request and its two log lines: sent, then answered (CHAOS-12369). `overtaken` is a
+ * clear that landed while the request ran; `lost` is no answer or a 5xx.
+ */
+async function refreshAttempt(
+    family: AcrHeldFamily,
+    attempt: 1 | 2,
+    dropsBefore: number,
+): Promise<TokenAnswer> {
+    const familyId = family.familyId;
+    logger.info({ family_id: familyId, attempt }, "ask-dev acr token store refresh sent");
+    const answer = await refreshGrant(family);
+    let outcome: "ok" | "refused" | "lost" | "invalid" | "overtaken";
+    if (drops !== dropsBefore) outcome = "overtaken";
+    else if (answer.kind === "ok") outcome = answer.refresh === null ? "invalid" : "ok";
+    else outcome = answer.kind === "unavailable" ? "lost" : answer.kind;
+    const fields = {
+        family_id: familyId,
+        outcome,
+        ...(answer.status === undefined ? {} : { status: answer.status }),
+    };
+    const message = "ask-dev acr token store refresh answered";
+    if (outcome === "ok") logger.info(fields, message);
+    else logger.warn(fields, message);
+    return answer;
+}
+
+/**
  * Refreshes with the family, under its lock: one refresh at a time per family across the
  * origin's tabs (CHAOS-12305).
  */
@@ -907,11 +985,13 @@ function refresh(
         }
         if (!samePrincipal(family, principal)) {
             dropTokens(storage);
+            logPrincipal("lock", "mismatch");
             return AUTHORIZATION_REQUIRED;
         }
         const dropsBefore = drops;
         const startedAt = dependencies.now();
-        let answer = await refreshGrant(family);
+        let attempt: 1 | 2 = 1;
+        let answer = await refreshAttempt(family, attempt, dropsBefore);
         // A lost response: ACR may have rotated. Its 30 s grace gives the same successor to the
         // same token, so one retry inside 25 s is safe. After that the token is never sent again.
         if (
@@ -919,13 +999,26 @@ function refresh(
             drops === dropsBefore &&
             dependencies.now() - startedAt < ACR_REFRESH_RETRY_WINDOW_MS
         ) {
-            answer = await refreshGrant(family);
+            attempt = 2;
+            answer = await refreshAttempt(family, attempt, dropsBefore);
         }
         // Cleared while in flight (sign-out in another tab): store nothing.
-        if (drops !== dropsBefore) return AUTHORIZATION_REQUIRED;
+        if (drops !== dropsBefore) {
+            logClearRace("refresh");
+            return AUTHORIZATION_REQUIRED;
+        }
         // Refused (400/401: reuse, revoked, expired), lost twice, too late, or malformed: the
         // family cannot be used again. Fail closed.
         if (answer.kind !== "ok" || answer.refresh === null) {
+            const reason =
+                attempt === 2
+                    ? "retry_failed"
+                    : answer.kind === "unavailable"
+                      ? "past_grace"
+                      : answer.kind === "refused"
+                        ? "refused"
+                        : "invalid";
+            logger.warn({ family_id: familyId, reason }, "ask-dev acr token store family cleared");
             dropTokens(storage);
             return AUTHORIZATION_REQUIRED;
         }
@@ -963,6 +1056,7 @@ export async function getAcrAccessToken(): Promise<AcrAccessToken> {
         (family !== null && !samePrincipal(family, principal))
     ) {
         dropTokens(storage);
+        logPrincipal("before", principalReason(principal));
         return AUTHORIZATION_REQUIRED;
     }
     const current = servable(config);
@@ -978,10 +1072,14 @@ export async function getAcrAccessToken(): Promise<AcrAccessToken> {
     const after = await dependencies.principal();
     if (after === null || isImpersonating(after) || !samePrincipal(after, principal)) {
         dropTokens(storage);
+        logPrincipal("after_refresh", principalReason(after));
         return AUTHORIZATION_REQUIRED;
     }
     // A clear while that check ran (sign-out, a clone) wins: the token is not given out (codex r2).
-    if (drops !== dropsBefore) return AUTHORIZATION_REQUIRED;
+    if (drops !== dropsBefore) {
+        logClearRace("after_refresh_check");
+        return AUTHORIZATION_REQUIRED;
+    }
     return answer;
 }
 
