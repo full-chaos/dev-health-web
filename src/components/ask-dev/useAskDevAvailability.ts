@@ -12,15 +12,16 @@ import { isAskDevEnabled } from "@/lib/ask-dev/surface";
  * - `off`: an Ask Dev entitlement is off (the rule before CHAOS-12306);
  * - `impersonating`: the browser ACR client is on and the session is impersonating. The browser
  *   holds no ACR token for that session (`acr-auth.ts`), so Ask Dev is hidden;
- * - `loading`: the browser ACR client is on and no session is known yet. Hidden, so the launcher
- *   never flashes for an impersonating admin. A refetch keeps its last session: no flash either;
- * - `on`: otherwise.
+ * - `on`: otherwise. That includes a session still loading: a normal user's first session read
+ *   must not hide Ask Dev and bring it back (codex r2 on #1680). An impersonating admin may see
+ *   the launcher until the session is known; the token store gives that session no token, and
+ *   the context clears its tokens on the first bind.
  *
  * With the browser ACR client off (prod until the T13 roll) it is only `on` or `off`, as before.
  * The launcher, the panel, the shell's open state and shortcut, and the palette entry show only
  * on `on`. It reads only the session the provider already holds: it sends no request (P1-6).
  */
-export type AskDevAvailability = "on" | "off" | "impersonating" | "loading";
+export type AskDevAvailability = "on" | "off" | "impersonating";
 
 const noSubscription = () => () => undefined;
 const clientOn = () => browserAcrClientConfig() !== undefined;
@@ -31,11 +32,10 @@ const clientOffOnServer = () => false;
 export function useAskDevAvailability(): AskDevAvailability {
     const { features } = useAdminTier();
     const acrClient = useSyncExternalStore(noSubscription, clientOn, clientOffOnServer);
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
     if (!isAskDevEnabled(features)) return "off";
     if (!acrClient) return "on";
     const user = session?.user;
     if (user?.is_impersonating) return "impersonating";
-    if (status === "loading" && !user) return "loading";
     return "on";
 }

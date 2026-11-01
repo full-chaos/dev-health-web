@@ -118,7 +118,8 @@ describe("useAskDevAvailability", () => {
     MATRIX.push(
         ["on", true, "signed in", "on"],
         ["on", true, "impersonating", "impersonating"],
-        ["on", true, "loading (no session yet)", "loading"],
+        // Codex r2 on #1680: a normal user's first session read must not hide Ask Dev.
+        ["on", true, "loading (no session yet)", "on"],
         ["on", true, "refetching", "on"],
         ["on", true, "refetching, impersonating", "impersonating"],
     );
@@ -178,7 +179,7 @@ const open = () => screen.getByTestId("ask-dev-open").textContent;
 
 describe.each([
     ["the client on and impersonating: hidden", true, IMPERSONATING, false],
-    ["the client on and the session still loading: hidden", true, LOADING, false],
+    ["the client on and the session still loading: shown (codex r2 on #1680)", true, LOADING, true],
     ["the client off and impersonating: shown, as before", false, IMPERSONATING, true],
     ["the client on and not impersonating: shown", true, PLAIN, true],
 ])("the panel surfaces with %s", (_, client, session, shown) => {
@@ -250,11 +251,11 @@ describe("the full page /dev (CHAOS-12306)", () => {
         expect(screen.queryByTestId("ask-dev-page-impersonating")).toBeNull();
     });
 
-    it("with the client on and no session yet: neither the conversation nor a notice", () => {
+    it("with the client on and no session yet: the conversation, as before (codex r2 on #1680)", () => {
         acrBrowserClientOn();
         auth.session = LOADING;
         renderSurfaces();
-        expect(screen.queryByTestId("ask-dev-page-conversation")).toBeNull();
+        expect(within(page()).getByTestId("ask-dev-page-conversation")).toBeInTheDocument();
         expect(screen.queryByTestId("ask-dev-page-impersonating")).toBeNull();
         expect(screen.queryByTestId("ask-dev-page-not-available")).toBeNull();
     });

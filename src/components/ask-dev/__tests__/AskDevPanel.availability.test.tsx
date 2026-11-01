@@ -62,11 +62,11 @@ describe("the panel's own gate (CHAOS-12306)", () => {
         expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
     });
 
-    it("draws nothing while the first session read is pending, with the client on", () => {
+    it("draws the panel while the first session read is pending, with the client on (codex r2 on #1680)", () => {
         acrBrowserClientOn();
         auth.session = { data: null, status: "loading" };
         renderPanel();
-        expect(screen.queryByTestId("ask-dev-panel")).toBeNull();
+        expect(screen.getByTestId("ask-dev-panel")).toBeInTheDocument();
     });
 
     it("draws the panel while impersonating with the client off, as before", () => {
