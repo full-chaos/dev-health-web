@@ -19,7 +19,7 @@ export type Transport = (call: TransportCall) => Promise<TransportReply>;
 export interface AuthorizeDeps {
     transport: Transport;
     timeoutMs: number;
-    nowSeconds?: () => number;
+    nowMs?: () => number;
 }
 
 // A client-side failure. Separate from a wire reason_code, so a caller tells a PDP deny from a
@@ -68,8 +68,7 @@ async function exchange(deps: AuthorizeDeps, call: TransportCall): Promise<Excha
     }
 }
 
-const now = (deps: AuthorizeDeps): number =>
-    deps.nowSeconds ? deps.nowSeconds() : Math.floor(Date.now() / 1000);
+const now = (deps: AuthorizeDeps): number => (deps.nowMs ? deps.nowMs() : Date.now());
 
 export async function authorize(
     request: AuthorizeRequest,

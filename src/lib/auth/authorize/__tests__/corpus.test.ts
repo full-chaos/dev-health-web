@@ -17,7 +17,7 @@ const examples = path.join(v1, "examples");
 const goldenDir = path.join(v1, "golden/decision");
 
 // The fixtures' clock: the examples expire on 2026-09-03T05:00:30Z.
-const FIXTURE_NOW = Date.parse("2026-09-03T05:00:00Z") / 1000;
+const FIXTURE_NOW = Date.parse("2026-09-03T05:00:00Z");
 
 interface Row {
     file: string;

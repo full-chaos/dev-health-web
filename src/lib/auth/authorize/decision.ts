@@ -20,6 +20,7 @@ export type ParseFailure =
     | "service_error"
     | "bad_shape"
     | "unknown_reason"
+    | "reason_mismatch"
     | "expired"
     | "batch_count_mismatch"
     | "batch_index_mismatch";
@@ -51,6 +52,13 @@ export type BatchResult =
     { ok: true; decisions: readonly Decision[] } | { ok: false; reason: ParseFailure };
 
 const MAX_BATCH = 100;
+const ALLOW_REASON: WireReasonCode = "allowed_by_repository_grant";
+
+function isCalendarDay(year: number, month: number, day: number): boolean {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    const length = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+    return day >= 1 && day <= length;
+}
 const DECISION_ID = /^dec_[A-Za-z0-9_-]{26}$/;
 const PRINCIPAL_ID = /^prn_[A-Za-z0-9_-]+$/;
 const REPO_KEY = /^([a-z0-9][a-z0-9._-]{0,99}\/[a-z0-9][a-z0-9._-]{0,99}|\*)$/;
@@ -133,7 +141,7 @@ function parseObligations(v: unknown): Obligations {
     return out;
 }
 
-function decisionFrom(doc: unknown, nowSeconds: number): Decision {
+function decisionFrom(doc: unknown, nowMs: number): Decision {
     if (!isObj(doc)) return refuse("bad_shape");
     requireNotError(doc);
     onlyKeys(doc, [
@@ -157,18 +165,21 @@ function decisionFrom(doc: unknown, nowSeconds: number): Decision {
     if (!(org === null || (typeof org === "string" && org !== ""))) refuse("bad_shape");
     const rev = doc.policy_revision;
     if (typeof rev !== "number" || !Number.isSafeInteger(rev) || rev < 0) refuse("bad_shape");
-    if (typeof doc.expires_at !== "string" || !EXPIRES_AT.test(doc.expires_at)) refuse("bad_shape");
+    const stamp = typeof doc.expires_at === "string" ? EXPIRES_AT.exec(doc.expires_at) : null;
+    if (!stamp || !isCalendarDay(Number(stamp[1]), Number(stamp[2]), Number(stamp[3])))
+        refuse("bad_shape");
     const expiresAtMs = Date.parse(doc.expires_at as string);
     if (Number.isNaN(expiresAtMs)) refuse("bad_shape");
     if (typeof doc.reason_code !== "string") refuse("bad_shape");
     if (!(WIRE_REASON_CODES as readonly string[]).includes(doc.reason_code as string))
         refuse("unknown_reason");
+    if ((doc.allowed === true) !== (doc.reason_code === ALLOW_REASON)) refuse("reason_mismatch");
     let obligations: Obligations | undefined;
     if ("obligations" in doc) {
         if (doc.allowed === false) refuse("bad_shape");
         obligations = parseObligations(doc.obligations);
     }
-    if (expiresAtMs <= nowSeconds * 1000) refuse("expired");
+    if (expiresAtMs <= nowMs) refuse("expired");
     const decision: Decision = {
         decisionId: doc.decision_id as string,
         allowed: doc.allowed as boolean,
@@ -190,12 +201,12 @@ function guard<T>(run: () => T): { ok: true; value: T } | { ok: false; reason: P
     }
 }
 
-export function parseDecision(text: string, nowSeconds: number): DecisionResult {
-    const r = guard(() => decisionFrom(parseText(text), nowSeconds));
+export function parseDecision(text: string, nowMs: number): DecisionResult {
+    const r = guard(() => decisionFrom(parseText(text), nowMs));
     return r.ok ? { ok: true, decision: r.value } : r;
 }
 
-export function parseBatch(text: string, count: number, nowSeconds: number): BatchResult {
+export function parseBatch(text: string, count: number, nowMs: number): BatchResult {
     const r = guard(() => {
         const doc = parseText(text);
         if (!isObj(doc)) return refuse("bad_shape");
@@ -214,7 +225,7 @@ export function parseBatch(text: string, count: number, nowSeconds: number): Bat
             if (typeof it.index !== "number" || !Number.isSafeInteger(it.index))
                 refuse("bad_shape");
             if (it.index !== position) refuse("batch_index_mismatch");
-            out.push(decisionFrom(it.decision, nowSeconds));
+            out.push(decisionFrom(it.decision, nowMs));
         });
         return out;
     });

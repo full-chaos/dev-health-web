@@ -8,7 +8,7 @@ import {
 } from "../client";
 import type { AuthorizeRequest } from "../request";
 
-const NOW = 1_800_000_000;
+const NOW = 1_800_000_000_000;
 const FUTURE = "2027-06-01T00:00:00Z";
 const PAST = "2020-01-01T00:00:00Z";
 
@@ -50,7 +50,7 @@ const reply =
 const deps = (transport: Transport, over: Partial<AuthorizeDeps> = {}): AuthorizeDeps => ({
     transport,
     timeoutMs: 1000,
-    nowSeconds: () => NOW,
+    nowMs: () => NOW,
     ...over,
 });
 const denyAllDouble: Transport = async () => ({ status: 503, body: "" });
@@ -179,7 +179,7 @@ describe("authorize", () => {
         const o = await authorize(
             REQ,
             deps(reply(200, JSON.stringify(decision())), {
-                nowSeconds: () => {
+                nowMs: () => {
                     throw new Error("clock");
                 },
             }),
@@ -262,7 +262,7 @@ describe("authorizeBatch", () => {
         const out = await authorizeBatch(
             TWO,
             deps(reply(200, okBatch()), {
-                nowSeconds: () => {
+                nowMs: () => {
                     throw new Error("clock");
                 },
             }),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseBatch, parseDecision } from "../decision";
 
-const NOW = 1_800_000_000;
+const NOW = 1_800_000_000_000;
 const FUTURE = "2027-06-01T00:00:00Z";
 const PAST = "2020-01-01T00:00:00Z";
 

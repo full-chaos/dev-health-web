@@ -3,7 +3,7 @@ import { authorize, authorizeBatch, type Transport } from "../client";
 import { parseBatch, parseDecision } from "../decision";
 import type { AuthorizeRequest } from "../request";
 
-const NOW = 1_800_000_000;
+const NOW = 1_800_000_000_000;
 
 function decision(over: Record<string, unknown> = {}): Record<string, unknown> {
     return {
