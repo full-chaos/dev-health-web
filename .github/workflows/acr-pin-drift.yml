@@ -1,8 +1,12 @@
 # Compare the vendored ACR contract pin with acr main (CHAOS-11907, INV-4; CHAOS-12341, D6614).
 #
 # Main, schedule and manual runs are strict: drift turns the run red and keeps it red until the pin
-# is bumped. They also open (or update) one "ACR pin drift: <acr sha>" issue, and close it when the
-# drift clears.
+# is bumped. On drift they also open (or update) ONE pin-bump PR with the repo secret
+# ACR_PIN_BUMP_TOKEN, so the PR runs CI (a PR opened with the workflow token would not). Only if
+# the PR step fails do they open one "ACR pin drift: <acr sha>" issue instead; the issue closes when
+# the drift clears or the PR is up.
+# The PR targets the ref the run started on: main on schedule and push, any branch on dispatch (a
+# dispatch off the default branch opens a draft PR from bot/acr-pin-bump-test, for tests).
 # A PR run is strict only when the PR changes the vendored contracts or the generator that writes
 # them (scripts/acr-pin-scope.mjs lists the paths). For any other PR, drift is a warning, so an acr
 # main move never turns unrelated PRs red. Exit 1 = drift, exit 2 = the check could not fetch (also red where strict).
@@ -71,8 +75,159 @@ jobs:
               if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce == 'true'
               run: exit 1
 
-    drift-issue:
+    bump:
         needs: drift
+        if: always() && github.event_name != 'pull_request' && needs.drift.outputs.status == 'drift'
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        permissions:
+            contents: read
+        concurrency:
+            group: acr-pin-bump
+            cancel-in-progress: false
+        env:
+            GH_REPO: ${{ github.repository }}
+            BASE: ${{ github.ref_name }}
+            DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+            OLD_PIN: ${{ needs.drift.outputs.pin }}
+            NEW_PIN: ${{ needs.drift.outputs.head }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            # The pnpm binary and store restore/save below follow ci's pnpm-registry-resilience contract
+            # (scripts/__tests__/pnpm-registry-resilience-workflow-contract.test.mjs).
+            - name: Resolve pnpm version
+              id: pnpm-version
+              run: echo "version=$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")" >> "$GITHUB_OUTPUT"
+
+            - name: Restore pnpm binary
+              id: pnpm-bin
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ~/setup-pnpm
+                  key: pnpm-bin-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
+
+            - name: Setup pnpm
+              if: steps.pnpm-bin.outputs.cache-hit != 'true'
+              uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+              timeout-minutes: 3
+
+            - name: Save pnpm binary
+              if: steps.pnpm-bin.outputs.cache-hit != 'true'
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ~/setup-pnpm
+                  key: pnpm-bin-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}
+
+            - name: Use cached pnpm binary
+              if: steps.pnpm-bin.outputs.cache-hit == 'true'
+              timeout-minutes: 3
+              env:
+                  PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
+              run: |
+                  echo "$HOME/setup-pnpm/node_modules/.bin" >> "$GITHUB_PATH"
+                  echo "$HOME/setup-pnpm/node_modules/.bin/bin" >> "$GITHUB_PATH"
+                  echo "PNPM_HOME=$HOME/setup-pnpm/node_modules/.bin" >> "$GITHUB_ENV"
+                  PATH="$HOME/setup-pnpm/node_modules/.bin/bin:$HOME/setup-pnpm/node_modules/.bin:$PATH"
+                  test "$(pnpm --version)" = "$PNPM_VERSION"
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+              with:
+                  node-version: 22
+            - name: Locate pnpm store
+              id: pnpm-store
+              run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+            - name: Restore pnpm store
+              id: pnpm-cache
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ${{ steps.pnpm-store.outputs.path }}
+                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+                  restore-keys: |
+                      pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-
+                      pnpm-store-${{ runner.os }}-
+
+            - run: pnpm install --frozen-lockfile --ignore-scripts
+              id: pnpm-install
+            - name: Save pnpm store
+              if: ${{ steps.pnpm-install.outcome == 'success' && steps.pnpm-cache.outputs.cache-hit != 'true' }}
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ${{ steps.pnpm-store.outputs.path }}
+                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+            - name: Save partial pnpm store
+              if: ${{ always() && (steps.pnpm-install.outcome == 'failure' || steps.pnpm-install.outcome == 'cancelled') }}
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ${{ steps.pnpm-store.outputs.path }}
+                  key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+            - name: Regenerate the vendored contracts at acr main
+              run: |
+                  set -euo pipefail
+                  case "$NEW_PIN" in *[!0-9a-f]* | "") echo "bad acr sha"; exit 1 ;; esac
+                  [ "${#NEW_PIN}" = 40 ]
+                  acr="$RUNNER_TEMP/acr"
+                  git init -q "$acr"
+                  git -C "$acr" fetch -q --depth 1 https://github.com/full-chaos/dev-health-acr.git "$NEW_PIN"
+                  git -C "$acr" checkout -q FETCH_HEAD
+                  # The pin is written in the generator and asserted by the contracts test.
+                  sed -i "s/$OLD_PIN/$NEW_PIN/g" scripts/sync-acr-contracts.mjs src/lib/acr/__tests__/contracts.test.ts
+                  ACR_ROOT="$acr" pnpm acr:contracts:generate
+                  ACR_ROOT="$acr" pnpm acr:contracts:check
+                  node scripts/check-acr-pin-drift.mjs
+            # ACR_PIN_BUMP_TOKEN (repo secret) is set on this step only: install and generate run repo code and never see it.
+            - name: Open or update the pin-bump PR
+              env:
+                  GH_TOKEN: ${{ secrets.ACR_PIN_BUMP_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  test -n "$GH_TOKEN"
+                  short=${NEW_PIN:0:8}
+                  if [ "$BASE" = "$DEFAULT_BRANCH" ]; then
+                      branch=bot/acr-pin-bump
+                      draft=""
+                  else
+                      branch=bot/acr-pin-bump-test
+                      draft="--draft"
+                  fi
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git checkout -q -b "$branch"
+                  git add scripts/sync-acr-contracts.mjs src/lib/acr
+                  if git diff --cached --quiet; then
+                      echo "the regenerated files equal $BASE; nothing to bump"
+                      exit 1
+                  fi
+                  git commit -q -m "chore(acr-pin): bump ACR contract pin to $short"
+                  # One bot-owned branch; skip the push when it already carries these files, so an
+                  # hourly run does not restart CI on an unchanged PR.
+                  if git fetch -q origin "$branch" 2>/dev/null \
+                      && git diff --quiet FETCH_HEAD HEAD -- scripts/sync-acr-contracts.mjs src/lib/acr; then
+                      echo "branch $branch is already current"
+                  else
+                      git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git" "HEAD:refs/heads/$branch"
+                  fi
+                  title="chore(acr-pin): bump ACR contract pin to $short"
+                  body=$(printf '%s\n' \
+                      "## WHAT" \
+                      "Bump the vendored ACR contract pin from $OLD_PIN to acr main $NEW_PIN. Regenerated by the ACR pin drift workflow with \`pnpm acr:contracts:generate\`, then checked with \`pnpm acr:contracts:check\` and the drift script." \
+                      "" \
+                      "## WHY" \
+                      "A vendored contract file differs between the pin and acr main. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+                      "" \
+                      "## PROOF" \
+                      "The generate, check and drift steps passed in the run above. This branch is rewritten on each new acr main; do not push to it.")
+                  number=$(gh pr list --head "$branch" --base "$BASE" --state open --json number --jq '.[0].number // empty')
+                  if [ -z "$number" ]; then
+                      gh pr create --head "$branch" --base "$BASE" --title "$title" --body "$body" $draft
+                  else
+                      gh pr edit "$number" --title "$title" --body "$body"
+                  fi
+
+    drift-issue:
+        needs: [drift, bump]
         if: >-
             always() && github.event_name != 'pull_request' &&
             (needs.drift.outputs.status == 'drift' || needs.drift.outputs.status == 'current')
@@ -87,6 +242,7 @@ jobs:
             GH_TOKEN: ${{ github.token }}
             GH_REPO: ${{ github.repository }}
             STATUS: ${{ needs.drift.outputs.status }}
+            BUMP_RESULT: ${{ needs.bump.result }}
             PIN: ${{ needs.drift.outputs.pin }}
             HEAD_SHA: ${{ needs.drift.outputs.head }}
             RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -103,6 +259,13 @@ jobs:
                       done
                       exit 0
                   fi
+                  # The pin-bump PR is the report; the issue is only the fallback when that step failed.
+                  if [ "$BUMP_RESULT" = "success" ]; then
+                      for n in $open; do
+                          gh issue close "$n" --comment "The pin-bump PR is open for acr main $HEAD_SHA. Run: $RUN_URL"
+                      done
+                      exit 0
+                  fi
                   title="ACR pin drift: $HEAD_SHA"
                   body=$(printf '%s\n' \
                       "The vendored ACR contract pin differs from acr main in at least one vendored file." \
@@ -111,7 +274,7 @@ jobs:
                       "- acr main: $HEAD_SHA" \
                       "- Detected by: $RUN_URL" \
                       "" \
-                      "Bump: run \`pnpm acr:contracts:generate\` with \`ACR_ROOT\` at the acr main checkout, update \`SOURCE_COMMIT\` in \`scripts/sync-acr-contracts.mjs\`, and open a PR. This issue closes by itself when the pin matches." )
+                      "The automatic pin-bump PR failed in this run (see the bump job). Bump by hand: run \`pnpm acr:contracts:generate\` with \`ACR_ROOT\` at the acr main checkout, update \`SOURCE_COMMIT\` in \`scripts/sync-acr-contracts.mjs\`, and open a PR. This issue closes by itself when the pin matches or the bump PR is up." )
                   first=""
                   for n in $open; do
                       if [ -z "$first" ]; then
