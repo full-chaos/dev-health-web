@@ -441,7 +441,7 @@ function principalReason(read: AcrPrincipalRead): "no_session" | "mismatch" | "i
 }
 
 /** A clear overtook an operation that was about to store or serve something (CHAOS-12369). */
-function logClearRace(where: "refresh" | "after_refresh_check" | "code_exchange"): void {
+function logClearRace(where: "refresh" | "after_refresh_check" | "callback"): void {
     logger.warn({ where }, "ask-dev acr token store clear overtook");
 }
 
@@ -869,7 +869,8 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
         return fail("impersonating");
     }
     if (drops !== dropsBefore) {
-        logClearRace("code_exchange");
+        // Anywhere in the callback: the counter is read before its first await (codex r2 on #1681).
+        logClearRace("callback");
         return fail("signed_out");
     }
     if (after === null || !samePrincipal(after, principal)) {

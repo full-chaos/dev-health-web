@@ -2164,7 +2164,7 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             },
         );
 
-        it("a clear while the code exchange runs: the race, where code_exchange", async () => {
+        it("a clear while the code exchange runs: the race, where callback", async () => {
             fates.push({ during: async () => defaultTab.clearAcrTokensInAllTabs() });
             expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
             const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
@@ -2173,7 +2173,28 @@ describe("the token store across tabs (CHAOS-12305)", () => {
                 kind: "failed",
                 reason: "signed_out",
             });
-            expect(since(mark)).toEqual([["warn", RACE, { where: "code_exchange" }]]);
+            expect(since(mark)).toEqual([["warn", RACE, { where: "callback" }]]);
+        });
+
+        it("a clear before the code exchange starts is the same race: where callback (codex r2 on #1681)", async () => {
+            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
+            const redirect = acr.handle({ method: "GET", url: navigated.at(-1)! });
+            let reads = 0;
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    reads += 1;
+                    // The first read is before the exchange: the label must not name the exchange.
+                    if (reads === 1) defaultTab.clearAcrTokensInAllTabs();
+                    return principal;
+                },
+            });
+            const mark = sink.length;
+            expect(await completeAcrAuthorization(redirect.headers.Location!)).toMatchObject({
+                kind: "failed",
+                reason: "signed_out",
+            });
+            expect(since(mark)).toEqual([["warn", RACE, { where: "callback" }]]);
         });
 
         it.each([
