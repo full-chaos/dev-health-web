@@ -39,6 +39,17 @@ Production CSP has no `unsafe-eval` (`src/proxy.ts`). The runtime Ajv of `src/li
 
 Add a browser-read schema to a module of `STANDALONE_MODULES` in the generator. Never import `ajv` or `contracts.ts` into browser code.
 
+## Evidence (CHAOS-12105)
+
+`readEvidence` is the one call outside the Context Fabric API: `GET /api/v1/agent-context/evidence/{ref}?result_id=`. The ref is one encoded path segment, because it may hold a `/`. `result_id` scopes the read to the answer that cited the ref. The body is checked with `parseExpandedEvidence` (`expanded_evidence.v1`, Ajv standalone, as for the thread bodies).
+
+- **The seam:** ask-dev's `ChatSource.evidence.open(ref)` hands web the ref, the result id and the served label. `AskDevEvidence.tsx` reads, maps the answer to a `ChatEvidenceState`, and passes only that state to ask-dev's `ChatEvidenceBody`. The bearer stays in web. With no `EvidenceDrawerProvider` the source offers no `evidence`, so references stay plain text. The hook knows that during render, because a restored answer's first paint needs its buttons.
+- **The states:** ACR's 404 is `not_found`. 403 is `denied`. 409 `no_repository` is its own state. No access or ACR's 401 is `connect`. Any other refusal, a dropped call and a broken body are `unavailable`. `availability` selects `stale` or `redacted`, and a value with no state of its own shows what ACR served: it is an open vocabulary with no served label, so it never prints.
+- **Try again** follows ACR's own `retryable`. A dropped call offers it.
+- **The drawer's body is mounted by the open,** so a click is one read, and closing aborts the read.
+- **Org switch:** the body compares the store's `generation` with the one at the open. It renders nothing as soon as they differ, and closes the drawer.
+- **The right edge:** `onDismiss` on a subject runs only when the user closes the drawer, not when a peer drawer or another subject takes over. That is what brings the panel back, and only when the panel was open at the click.
+
 ## Selection: URL, storage and store
 
 1. **Nothing is selected before the partition is known.** The partition is (org, principal, impersonated user).

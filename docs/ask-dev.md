@@ -59,6 +59,15 @@ The browser calls ACR directly; there is no web route (CHAOS-12104). The design,
 - **Connect Ask Dev.** With no ACR access in this tab, or after ACR's 401, a turn says so and links to the ACR authorization. Nothing is retried; the user asks again after connecting. The history list and a conversation opened by its link show the same Connect state (CHAOS-12336); feedback and Stop keep their own states under a turn that already shows it.
 - **Nothing on panel open.** The token is read only when the user sends something or the history list comes on screen. At the panel's width the rail is hidden, so that means the History toggle.
 
+## Evidence
+
+Each reference under an answer is a button, with ACR's served label. It opens the app's one evidence drawer, and web reads that reference with its own ACR access, scoped to the answer that cited it (CHAOS-12105). Two answers that cite one reference each open their own citation. Ask-dev's render draws the body; it holds no token and reads nothing.
+
+- **One right drawer at a time.** The drawer takes the right edge from the panel. The conversation stays in the store, and closing the drawer brings the panel back. If another drawer takes the edge, the panel stays closed.
+- **Each state has its own words:** the evidence, out of date, partly withheld, not available (the same words for a reference that is gone and one the viewer may not see, with no id), no access, no repository in scope, could not be read, and Connect Ask Dev.
+- **Try again** shows only when ACR says another read can help, and it reads the same reference for the same answer.
+- **An org switch** closes the drawer, so one org's evidence never stays on screen in another.
+
 ## Answer completeness
 
 An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. The render never shows it (CHAOS-12245, chris 2026-10-31). The rules live in ask-dev's render (`src/lib/missing-data.ts`, `CompletenessPanel`, CHAOS-12429):

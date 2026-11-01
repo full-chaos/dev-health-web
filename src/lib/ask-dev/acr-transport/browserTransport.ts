@@ -8,6 +8,7 @@ import {
     WAIT_BUDGET_HEADROOM_MS,
 } from "@/lib/ask-dev/deadline";
 import { logger } from "@/lib/logger";
+import { parseExpandedEvidence } from "@/lib/acr/evidenceContract";
 import { parseResultFeedback } from "@/lib/acr/feedbackContract";
 import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
 import { asTranscriptResult } from "@/components/ask-dev/conversation/testModeAnswer";
@@ -48,7 +49,7 @@ import { SseEventTooLargeError, SseMalformedError, SseParser } from "./sseParser
  *   more; the store then refreshes. A different token sends the call once more (the same
  *   `X-ACR-Submission-ID`, so a retried `investigate` is idempotent). The same token, no token, or
  *   a second 401 is "authorization required". There is no loop: at most 2 requests per call. All
- *   10 calls keep the rule: the JSON calls in `callJson`, the two streams in `readStream`
+ *   11 calls keep the rule: the JSON calls in `callUrl`, the two streams in `readStream`
  *   (CHAOS-12336).
  * - **Deadline:** the store's absolute deadline D. The budget header is floor(D − now − 5 s) when
  *   the call is sent; below ACR's minimum the call is not sent (`budget_exhausted`). The response
@@ -95,6 +96,8 @@ export type BrowserTransportDependencies = {
 };
 
 const API = "/api/v1/context-fabric";
+/** The one route the browser reads outside `API` (CHAOS-12105). */
+const EVIDENCE_API = "/api/v1/agent-context/evidence";
 
 /** A query value as ACR reads it: `encodeURIComponent` (a space is `%20`, never `+`). */
 const query = (pairs: Record<string, string | undefined>): string => {
@@ -271,13 +274,22 @@ export function createAcrBrowserTransport(
         throw refusal(response, body, operation);
     }
 
+    /** One JSON call on ACR's Context Fabric API (`callUrl`). */
+    const callJson = (
+        path: string,
+        operation: string,
+        signal: AbortSignal,
+        method: "GET" | "POST" | "DELETE" = "GET",
+        json?: unknown,
+    ) => callUrl(`${base}${path}`, operation, signal, method, json);
+
     /**
      * One JSON call with the 15 s header bound: a GET by default, or `method` with an optional JSON
      * `body`. A 401 is sent once more with a different token (CHAOS-12305). The answer's body is
      * read only when it is 2xx; a non-2xx answer is for `refuse`.
      */
-    async function callJson(
-        path: string,
+    async function callUrl(
+        url: string,
         operation: string,
         signal: AbortSignal,
         method: "GET" | "POST" | "DELETE" = "GET",
@@ -285,14 +297,14 @@ export function createAcrBrowserTransport(
     ): Promise<{ readonly response: Response; readonly body: unknown }> {
         if (signal.aborted) throw signal.reason;
         const token = await bearer();
-        let response = await sendJson(path, operation, signal, token, method, json);
+        let response = await sendJson(url, operation, signal, token, method, json);
         if (response.status === 401) {
             void response.body?.cancel().catch(() => undefined);
             const next = await another(token, operation);
             if (next !== null) {
                 if (signal.aborted) throw signal.reason;
                 logger.info({ operation }, "ask-dev acr call 401 resent");
-                response = await sendJson(path, operation, signal, next, method, json);
+                response = await sendJson(url, operation, signal, next, method, json);
                 if (response.status === 401) {
                     logger.warn({ operation, second: true }, "ask-dev acr call 401");
                     dependencies.rejected(next);
@@ -305,7 +317,7 @@ export function createAcrBrowserTransport(
 
     /** One JSON request, to its response headers, with the 15 s bound. */
     async function sendJson(
-        path: string,
+        url: string,
         operation: string,
         signal: AbortSignal,
         token: string,
@@ -323,7 +335,7 @@ export function createAcrBrowserTransport(
             controller.abort();
         }, HEADER_WAIT_MAX_MS);
         try {
-            const response = await dependencies.fetch(`${base}${path}`, {
+            const response = await dependencies.fetch(url, {
                 method,
                 headers: headers(
                     token,
@@ -710,6 +722,17 @@ export function createAcrBrowserTransport(
             }
             if (!response.ok) return refuse(response, "cancel", signal);
             throw new TransportFailure("invalid_upstream");
+        },
+        async readEvidence({ refId, resultId, signal }) {
+            const ref = encodeURIComponent(refId);
+            const url = `${config.issuer}${EVIDENCE_API}/${ref}${query({ result_id: resultId })}`;
+            const { response, body } = await callUrl(url, "evidence_read", signal);
+            // Gone, or another principal's: the same answer.
+            if (response.status === 404) return null;
+            if (!response.ok) return refuse(response, "evidence_read", signal);
+            const view = body === undefined ? null : parseExpandedEvidence(body);
+            if (view === null) throw new TransportFailure("invalid_upstream");
+            return view;
         },
         async readFeedback({ resultId, signal }) {
             const path = `/investigations/feedback/${encodeURIComponent(resultId)}`;

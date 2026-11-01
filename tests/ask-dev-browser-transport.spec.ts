@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import {
     expect,
     test,
@@ -41,6 +44,15 @@ const NO_REPOSITORY = {
     },
 };
 
+/** ACR's own example at web's pin. */
+const EVIDENCE = JSON.parse(
+    readFileSync(
+        join(process.cwd(), "src/lib/acr/contracts/examples/expanded_evidence.v1.json"),
+        "utf8",
+    ),
+) as { evidence: { citation: string } };
+const EVIDENCE_PATH = "/api/v1/agent-context/evidence/";
+
 type AcrCall = {
     readonly method: string;
     readonly url: string;
@@ -57,6 +69,8 @@ type Harness = {
     readonly tokens: string[];
     /** CHAOS-12439: ACR's thread routes answer 409 `no_repository`. */
     threadsRefused: boolean;
+    /** CHAOS-12105: what ACR's evidence route answers. */
+    evidenceAnswer: { readonly status: number; readonly body: unknown };
 };
 
 test.describe.configure({ mode: "serial" });
@@ -108,7 +122,9 @@ async function acrOn(context: BrowserContext, harness: Harness) {
     );
     await context.route(
         (url) =>
-            url.origin === harness.origin && url.pathname.startsWith("/api/v1/context-fabric/"),
+            url.origin === harness.origin &&
+            (url.pathname.startsWith("/api/v1/context-fabric/") ||
+                url.pathname.startsWith(EVIDENCE_PATH)),
         async (route) => {
             const request = route.request();
             const headers = await request.allHeaders();
@@ -129,6 +145,14 @@ async function acrOn(context: BrowserContext, harness: Harness) {
                         headers["x-acr-thread-id"] ?? "",
                         headers["x-acr-submission-id"] ?? "",
                     ),
+                });
+                return;
+            }
+            if (new URL(request.url()).pathname.startsWith(EVIDENCE_PATH)) {
+                await route.fulfill({
+                    status: harness.evidenceAnswer.status,
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                    body: JSON.stringify(harness.evidenceAnswer.body),
                 });
                 return;
             }
@@ -174,6 +198,7 @@ async function setUp(page: Page): Promise<Harness> {
         calls: [],
         tokens: [],
         threadsRefused: false,
+        evidenceAnswer: { status: 200, body: EVIDENCE },
     };
     await clientOn(page.context(), origin);
     await acrOn(page.context(), harness);
@@ -452,6 +477,111 @@ for (const [name, viewport, surface] of [
                         document.documentElement.clientWidth,
                 ),
             ).toBe(true);
+        });
+    });
+}
+
+const refused = (code: string, status: number, retryable: boolean) => ({
+    status,
+    body: {
+        schema_version: "error.v1",
+        request_id: "req_00000000000000000000000000012105",
+        error: { code, message: "Refused", http_status: status, retryable },
+    },
+});
+
+// CHAOS-12105: an evidence reference, read from the browser and drawn by ask-dev's body in the app's
+// one drawer. The drawer takes the right edge from the panel, and closing it brings the panel back.
+for (const [name, viewport, surface] of [
+    ["desktop", { width: 1280, height: 900 }, "ask-dev-panel"],
+    ["mobile", { width: 390, height: 844 }, "ask-dev-sheet"],
+] as const) {
+    test.describe(`evidence, ${name}`, () => {
+        test.use({ viewport });
+
+        async function answered(page: Page) {
+            const harness = await setUp(page);
+            await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
+            await page.waitForURL((url) => url.pathname === "/dashboard");
+            await expect.poll(() => harness.tokens.length).toBe(1);
+            await page.getByRole("button", { name: "Open Ask Dev" }).click();
+            const view = page.getByTestId(surface);
+            await ask(page, view);
+            await expect(view.getByTestId("answer-panel")).toBeVisible();
+            return { harness, view };
+        }
+        const openRef = (view: ReturnType<Page["getByTestId"]>) =>
+            view.locator("button.evidence-ref--open:visible").last().click();
+        const evidenceCalls = (harness: Harness) =>
+            harness.calls.filter((call) => call.url.includes(EVIDENCE_PATH));
+
+        test("a reference opens from the browser, and closing brings the panel back", async ({
+            page,
+        }, testInfo) => {
+            const { harness, view } = await answered(page);
+            await openRef(view);
+            const body = page.getByTestId("ask-dev-evidence-body");
+            await expect(body).toContainText(EVIDENCE.evidence.citation);
+            await expect(body).toHaveAttribute("data-state", "ready");
+            await expect(view).toHaveCount(0);
+
+            const [call] = evidenceCalls(harness);
+            expect(evidenceCalls(harness)).toHaveLength(1);
+            expect(new URL(call!.url).searchParams.get("result_id")).toBeTruthy();
+            expect(call!.url).not.toContain(harness.tokens[0]!);
+            expect(call!.headers).toMatchObject({
+                authorization: `Bearer ${harness.tokens[0]}`,
+                "x-acr-resource": harness.origin,
+            });
+            expect(call!.headers.cookie).toBeUndefined();
+            await page.screenshot({
+                path: testInfo.outputPath(`evidence-ready-${name}.png`),
+                animations: "disabled",
+            });
+            expect(
+                await page
+                    .getByRole("dialog", { name: "Evidence & Context" })
+                    .evaluate((node) => node.scrollWidth <= node.clientWidth),
+            ).toBe(true);
+
+            await page.getByRole("button", { name: "Close" }).first().click();
+            await expect(body).toHaveCount(0);
+            await expect(view.getByTestId("answer-panel")).toBeVisible();
+        });
+
+        test("each refused or partial answer has its own state", async ({ page }, testInfo) => {
+            const { harness, view } = await answered(page);
+            const expanded = EVIDENCE as unknown as Record<string, unknown>;
+            for (const [state, answer] of [
+                [
+                    "redacted",
+                    {
+                        status: 200,
+                        body: {
+                            ...expanded,
+                            availability: "redacted",
+                            redaction_reason: "Removed at the source.",
+                        },
+                    },
+                ],
+                ["stale", { status: 200, body: { ...expanded, availability: "stale" } }],
+                ["not_found", refused("not_found", 404, false)],
+                ["denied", refused("access_denied", 403, false)],
+                ["no_repository", refused("no_repository", 409, false)],
+                ["unavailable", refused("upstream_unavailable", 503, true)],
+            ] as const) {
+                harness.evidenceAnswer = answer;
+                await openRef(view);
+                const body = page.getByTestId("ask-dev-evidence-body");
+                await expect(body).toHaveAttribute("data-state", state);
+                await expect(body).not.toContainText(/no_repository|access_denied|\b40[39]\b/u);
+                await page.screenshot({
+                    path: testInfo.outputPath(`evidence-${state}-${name}.png`),
+                    animations: "disabled",
+                });
+                await page.getByRole("button", { name: "Close" }).first().click();
+                await expect(view.getByTestId("answer-panel")).toBeVisible();
+            }
         });
     });
 }
