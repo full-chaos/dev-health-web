@@ -30,3 +30,9 @@ directory by DIGEST (`__tests__/testdata/decision-golden.digest`). Go runs the p
 2. An allow that carries Audit (owner exempt) is never served from cache. The wire has no audit member today, so a cache cannot
    honour that rule until it does.
 3. Stale-revision rows join the golden corpus with that reader.
+
+## Server-only guard
+
+Each module starts with `import "server-only"`; `__tests__/serverOnly.test.ts` holds that. The module rows of
+`SERVER_ONLY_MODULES` (client-bundle scan) are not added yet: the scan needs each marker in the server output, and no route
+imports this client yet. The first consumer adds the rows in its PR.

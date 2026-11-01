@@ -493,9 +493,6 @@ describe("the registry of server-only modules", () => {
             "src/lib/acr/config.ts",
             "src/lib/acr/client.ts",
             "src/lib/acr/ops.ts",
-            "src/lib/auth/authorize/client.ts",
-            "src/lib/auth/authorize/decision.ts",
-            "src/lib/auth/authorize/request.ts",
             "src/lib/acr/service.ts",
             "src/lib/ask-dev/investigation.server.ts",
         ]);
