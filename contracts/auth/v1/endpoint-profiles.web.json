@@ -593,7 +593,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/revoke-session/route.ts",
-                "line": 53
+                "line": 54
             },
             "classification": "protected",
             "public_rationale": null,
@@ -602,8 +602,8 @@
                 "description": "Origin must equal the AUTH_URL/NEXTAUTH_URL origin (403), then readSessionCredentialsForSignOut reads the Ops access and refresh tokens from the sealed Auth.js session cookie only (an Authorization header is never read, no refresh runs); `if (!session?.access_token) return 401` when the cookie is missing, foreign or lacks either token. Forwards {refresh_token} + Bearer to ops POST /api/v1/auth/logout, which revokes the session that credential belongs to (CHAOS-12096, sign-out step 1).",
                 "anchor": {
                     "path": "src/app/api/auth/revoke-session/route.ts",
-                    "line": 54,
-                    "line_end": 67
+                    "line": 55,
+                    "line_end": 68
                 }
             },
             "token_shape": {
@@ -616,7 +616,7 @@
             "action": "auth.logout",
             "resource_resolver": "none: the session to revoke is the caller's own, named by the refresh token in the caller's sealed session cookie; no id comes from the request.",
             "tenant_requirement": "none",
-            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:50 and :97).",
+            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:51 and :86).",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "204 with no body on success; refusals and Ops failures answer a fixed {error} code (forbidden, no_session, revoke_failed) with no Ops body and no token.",
@@ -695,7 +695,7 @@
                 "anchor": {
                     "path": "src/lib/auth.ts",
                     "line": 80,
-                    "line_end": 237
+                    "line_end": 226
                 }
             },
             "token_shape": null,

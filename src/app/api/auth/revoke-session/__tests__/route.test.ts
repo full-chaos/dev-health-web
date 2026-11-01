@@ -112,6 +112,38 @@ describe("POST /api/auth/revoke-session", () => {
         },
     );
 
+    it("Given Ops answers 2xx other than 200, then it answers 502: only a 200 is a revoke", async () => {
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+        const response = await POST(revokeRequest({ cookie: await sessionCookie() }));
+
+        expect(response.status).toBe(502);
+    });
+
+    it("Given a session whose tokens were rotated by a refresh after sign-in, then the revoke names the current refresh token and Bearer, not the sign-in session id", async () => {
+        const rotatedAccess = "ops-access-token-after-refresh";
+        const rotatedRefresh = "ops-refresh-token-after-refresh";
+        fetchMock.mockResolvedValue(Response.json({ message: "Logout successful" }));
+
+        const response = await POST(
+            revokeRequest({
+                cookie: await sessionCookie(undefined, {
+                    access_token: rotatedAccess,
+                    refresh_token: rotatedRefresh,
+                    sid: "ses_StoredAtSignInAAAAAAAAAAAA",
+                }),
+            }),
+        );
+
+        expect(response.status).toBe(204);
+        const call = opsLogoutCall();
+        expect(JSON.parse(String(call?.init.body))).toEqual({ refresh_token: rotatedRefresh });
+        expect(new Headers(call?.init.headers).get("authorization")).toBe(
+            `Bearer ${rotatedAccess}`,
+        );
+        expect(String(call?.init.body)).not.toContain("ses_StoredAtSignInAAAAAAAAAAAA");
+    });
+
     it("Given another origin, then it refuses with 403 and calls nothing", async () => {
         const response = await POST(
             revokeRequest({ cookie: await sessionCookie(), origin: "https://evil.example.test" }),

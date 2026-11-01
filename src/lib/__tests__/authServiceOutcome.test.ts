@@ -55,6 +55,21 @@ describe("classifyLogin", () => {
         expect(got).toMatchObject({ kind: "ok", sessionAccessToken: "svc-1" });
     });
 
+    it("login 200 keeps the permissions of the answer's user as they came, and none when absent", () => {
+        const withPerms = classifyLogin({
+            status: 200,
+            body: { ...loginBody, user: { ...user, permissions: ["read", "write"] } },
+        });
+        expect(withPerms).toMatchObject({ kind: "ok", user: { permissions: ["read", "write"] } });
+        const empty = classifyLogin({
+            status: 200,
+            body: { ...loginBody, user: { ...user, permissions: [] } },
+        });
+        expect(empty).toMatchObject({ kind: "ok", user: { permissions: [] } });
+        const absent = classifyLogin({ status: 200, body: loginBody });
+        expect(absent.kind === "ok" && "permissions" in absent.user).toBe(false);
+    });
+
     it("login 401 is invalid credentials", () => {
         expect(
             classifyLogin({ status: 401, body: { detail: { message: "Invalid credentials" } } }),

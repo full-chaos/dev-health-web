@@ -15,6 +15,7 @@ import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
 import { forgetImpersonationStatus, readImpersonationStatus } from "@/lib/impersonationStatusMemo";
 import { deadlineFetch } from "@/lib/serverDeadline";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
+import { passwordLogin } from "@/lib/authServiceWire";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -33,6 +34,10 @@ class AccountLocked extends CredentialsSignin {
 
 class RateLimited extends CredentialsSignin {
     code = "rate_limited";
+}
+
+class AuthUnavailable extends CredentialsSignin {
+    code = "auth_unavailable";
 }
 
 // Lazy secret: outside development and test, pass undefined so Auth.js validates
@@ -71,64 +76,47 @@ const nextAuth = NextAuth({
                     return null;
                 }
 
-                const backendUrl = getBackendUrl();
-                try {
-                    const res = await deadlineFetch("auth")(`${backendUrl}/api/v1/auth/login`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            email: credentials.email,
-                            password: credentials.password,
-                            org_id: credentials.org_id,
-                        }),
-                    });
-
-                    if (res.status === 429) {
-                        const contentType = res.headers.get("content-type") || "";
-                        if (contentType.includes("application/json")) {
-                            try {
-                                const data = await res.json();
-                                if (data?.detail?.retry_after_seconds) {
-                                    throw new AccountLocked();
-                                }
-                            } catch (e) {
-                                if (e instanceof AccountLocked) throw e;
-                            }
-                        }
-                        throw new RateLimited();
-                    }
-
-                    const data = await res.json();
-
-                    if (data?.status === "email_verification_required") {
+                const env = getServerEnv();
+                const login = await passwordLogin(
+                    {
+                        email: String(credentials.email),
+                        password: String(credentials.password),
+                        org_id:
+                            typeof credentials.org_id === "string" ? credentials.org_id : undefined,
+                    },
+                    {
+                        tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
+                        issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
+                        backendUrl: getBackendUrl(),
+                    },
+                );
+                switch (login.kind) {
+                    case "email_verification_required":
                         throw new EmailVerificationRequired();
-                    }
-
-                    if (res.ok && data?.user) {
+                    case "account_locked":
+                        throw new AccountLocked();
+                    case "rate_limited":
+                        throw new RateLimited();
+                    case "unavailable":
+                        throw new AuthUnavailable();
+                    case "invalid_credentials":
+                        return null;
+                    case "ok":
                         return {
-                            id: data.user.id,
-                            email: data.user.email,
-                            org_id: data.user.org_id,
-                            role: data.user.role,
-                            is_superuser: data.user.is_superuser ?? false,
-                            permissions: data.user.permissions,
-                            needs_onboarding: data.needs_onboarding ?? false,
-                            access_token: data.access_token,
-                            refresh_token: data.refresh_token,
-                            expires_in: data.expires_in,
+                            id: login.user.id,
+                            email: login.user.email,
+                            org_id: login.user.orgId,
+                            role: login.user.role,
+                            is_superuser: login.user.isSuperuser,
+                            permissions: login.user.permissions as string[] | undefined,
+                            needs_onboarding: login.needsOnboarding,
+                            access_token: login.accessToken,
+                            refresh_token: login.refreshToken,
+                            expires_in: login.expiresIn,
+                            access_exp: login.accessExp,
+                            sid: login.sid,
                         };
-                    }
-                } catch (error) {
-                    if (
-                        error instanceof EmailVerificationRequired ||
-                        error instanceof AccountLocked ||
-                        error instanceof RateLimited
-                    )
-                        throw error;
-                    authLogger.error({ err: error }, "credentials authorize failed");
                 }
-
-                return null;
             },
         }),
         ...(authEnv.AUTH_GITHUB_ID
@@ -167,7 +155,10 @@ const nextAuth = NextAuth({
                 token.needs_onboarding = user.needs_onboarding;
                 token.access_token = user.access_token;
                 token.refresh_token = user.refresh_token;
-                token.expires_at = Date.now() + (user.expires_in || 3600) * 1000;
+                token.expires_at = user.access_exp
+                    ? user.access_exp * 1000
+                    : Date.now() + (user.expires_in || 3600) * 1000;
+                token.sid = user.sid;
                 token.last_validated = Date.now();
                 token.error = undefined;
             }

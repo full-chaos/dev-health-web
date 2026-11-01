@@ -894,24 +894,6 @@ describe("submissionStatus and readResult", () => {
     });
 });
 
-describe("the members T14b serves (CHAOS-12336)", () => {
-    it("refuse locally and send nothing", async () => {
-        const t = transport();
-        const signal = new AbortController().signal;
-        const calls: (() => unknown)[] = [
-            () => t.listThreads({ limit: 20, signal }),
-            () => t.readThread({ threadId: THREAD, signal }),
-            () => t.deleteThread({ threadId: THREAD, signal }),
-            () => t.attach({ submissionId: SUBMISSION, signal }),
-            () => t.cancel({ submissionId: SUBMISSION, signal }),
-            () => t.readFeedback({ resultId: "result_x", signal }),
-            () => t.setFeedback({ resultId: "result_x", correct: "yes", useful: "unset", signal }),
-        ];
-        for (const member of calls) expect(member).toThrow(/CHAOS-12336/u);
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
-});
-
 describe("logs", () => {
     it("never carry the token, the question or a URL", async () => {
         const body = sseBody();

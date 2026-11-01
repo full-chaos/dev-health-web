@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 
 import { CTA_LABELS } from "@/lib/design/cta";
 
+import { ConnectAskDev } from "./AskDevConnect";
 import { useAskDevConversation, type AskDevConversation } from "./AskDevConversationContext";
 import type { ThreadSummaryView } from "./transport";
 
@@ -21,6 +22,9 @@ export const HISTORY_COPY = {
     loading: "Loading conversations…",
     empty: "No conversations yet.",
     readFailed: "History could not be read.",
+    /** CHAOS-12336: no ACR access token, or ACR's 401, on the list. */
+    connect:
+        "Ask Dev needs your permission to show your conversations. Connect Ask Dev to see them.",
     moreFailed: "More conversations could not be loaded.",
     current: "Current",
     confirm: "Delete this conversation? This cannot be undone.",
@@ -202,6 +206,12 @@ export function AskDevHistory({ onSelect }: { onSelect: (threadId: string) => vo
                     {CTA_LABELS.askDevNewConversation}
                 </button>
             </div>
+            {history.status === "connect" ? (
+                <div className="space-y-2" data-testid="ask-dev-history-connect">
+                    <p>{HISTORY_COPY.connect}</p>
+                    <ConnectAskDev testId="ask-dev-history-connect-link" />
+                </div>
+            ) : null}
             {history.status === "read_failed" ? (
                 <div className="space-y-2" data-testid="ask-dev-history-read-failed">
                     <p>{HISTORY_COPY.readFailed}</p>

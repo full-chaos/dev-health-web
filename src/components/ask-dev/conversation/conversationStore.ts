@@ -331,6 +331,8 @@ export type StoreTurn = SubmittedTurn | RestoredTurn;
  * - `unavailable`: a malformed id, or ACR's 404 (the same for every cause): read-only.
  * - `read_failed`: the read failed (a 5xx, the network, a body that broke the contract):
  *   read-only, with "Try again" (a GET).
+ * - `connect`: the tab holds no ACR access token, or ACR answered 401 (CHAOS-12336, the lead's
+ *   ruling 2 = A): read-only, with "Connect Ask Dev". Nothing is retried.
  */
 export type ThreadAccess =
     | { readonly kind: "new" }
@@ -340,14 +342,16 @@ export type ThreadAccess =
           readonly earlier: "none" | "available" | "loading" | "failed";
       }
     | { readonly kind: "unavailable" }
-    | { readonly kind: "read_failed" };
+    | { readonly kind: "read_failed" }
+    | { readonly kind: "connect" };
 
 /** Who selected the current conversation: only a `local` selection writes the `/dev` URL. */
 export type SelectionSource = "initial" | "incoming" | "local";
 
 /** The history list of the bound partition (E6 design v5 §4.3), shared by both surfaces. */
 export type HistorySnapshot = {
-    readonly status: "idle" | "loading" | "ready" | "read_failed";
+    /** `connect`: no ACR access token, or ACR's 401, on the first page (CHAOS-12336). */
+    readonly status: "idle" | "loading" | "ready" | "read_failed" | "connect";
     readonly threads: readonly ThreadSummaryView[];
     readonly nextCursor: string | null;
     readonly loadingMore: boolean;
@@ -1346,7 +1350,10 @@ export class ConversationStore {
                 { thread_id: threadId, stage: "read", status: failureStatus(error), selection },
                 "ask-dev thread restore failed",
             );
-            this.commit({ ...this.snapshot, thread: { kind: "read_failed" } });
+            this.commit({
+                ...this.snapshot,
+                thread: needsConnect(error) ? { kind: "connect" } : { kind: "read_failed" },
+            });
             return;
         }
         if (!this.ownsSelection(selection, "thread_read")) return;
@@ -1747,7 +1754,10 @@ export class ConversationStore {
             }
             this.commitHistory(
                 cursor === undefined
-                    ? { status: "read_failed", loadingMore: false }
+                    ? {
+                          status: needsConnect(error) ? "connect" : "read_failed",
+                          loadingMore: false,
+                      }
                     : { loadingMore: false, moreFailed: true },
             );
             return;

@@ -228,7 +228,7 @@ describe("auth jwt callback with a backend that never answers", () => {
         expect(lines[0][0]).toMatchObject({ outcome: "deadline", layer: "inner" });
     });
 
-    it("a login that never answers settles at the deadline and logs the line (CHAOS-9112)", async () => {
+    it("a login that never answers settles at the deadline as auth_unavailable and logs the line (CHAOS-9112)", async () => {
         vi.stubGlobal("fetch", stallingFetch());
         const configs = vi
             .mocked(Credentials)
@@ -240,7 +240,7 @@ describe("auth jwt callback with a backend that never answers", () => {
         const state = track(authorize({ email: "a@b.test", password: "x" }));
         await sleep(400);
         expect(state.settled).toBe(true);
-        expect(state.value).toBeNull();
+        expect(state.error).toMatchObject({ code: "auth_unavailable" });
         expect(deadlineLines()).toHaveLength(1);
         expect(deadlineLines()[0][0]).toMatchObject({ op: "POST /api/v1/auth/login" });
     });

@@ -289,6 +289,27 @@ describe("LoginForm", () => {
         expect(locationAssign).not.toHaveBeenCalled();
     });
 
+    test('shows a retry message, not "Invalid email or password", when result.code is "auth_unavailable"', async () => {
+        mockSignIn.mockResolvedValue({
+            error: "CredentialsSignin",
+            code: "auth_unavailable",
+            status: 401,
+            ok: false,
+            url: null,
+        });
+        renderWithToaster(<LoginForm />);
+
+        await userEvent.type(screen.getByLabelText(/email/i), "tester@example.com");
+        await userEvent.type(screen.getByLabelText(/password/i), "password");
+        await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+        await waitFor(() => {
+            expect(screen.getByText(/temporarily unavailable/i)).toBeInTheDocument();
+        });
+        expect(screen.queryByText(/Invalid email or password/i)).not.toBeInTheDocument();
+        expect(locationAssign).not.toHaveBeenCalled();
+    });
+
     test('shows rate limit message when result.code is "rate_limited"', async () => {
         mockSignIn.mockResolvedValue({
             error: "CredentialsSignin",

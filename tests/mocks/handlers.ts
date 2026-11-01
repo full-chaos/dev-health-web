@@ -10,6 +10,11 @@
 import { http, HttpResponse } from "msw";
 import { getEntitlementScenario } from "./entitlementScenario";
 import {
+    MOCK_ACCESS_TOKEN,
+    MOCK_MEMBER_ACCESS_TOKEN,
+    MOCK_REFRESHED_ACCESS_TOKEN,
+} from "./mockTokens";
+import {
     getPagerDutySyncConfig,
     pagerDutyHandlers,
     updatePagerDutySyncConfig,
@@ -2676,7 +2681,7 @@ export const handlers = [
                     is_superuser: false,
                     permissions: ["read", "write"],
                 },
-                access_token: "mock-access-token-e2e",
+                access_token: MOCK_ACCESS_TOKEN,
                 refresh_token: "mock-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2698,7 +2703,7 @@ export const handlers = [
                     is_superuser: false,
                     permissions: ["read", "write"],
                 },
-                access_token: "mock-access-token-e2e",
+                access_token: MOCK_ACCESS_TOKEN,
                 refresh_token: "mock-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2715,7 +2720,7 @@ export const handlers = [
                     is_superuser: false,
                     permissions: ["read"],
                 },
-                access_token: "mock-member-access-token-e2e",
+                access_token: MOCK_MEMBER_ACCESS_TOKEN,
                 refresh_token: "mock-member-refresh-token-e2e",
                 token_type: "bearer",
                 expires_in: 86400,
@@ -2738,7 +2743,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: "mock-access-token-e2e",
+            access_token: MOCK_ACCESS_TOKEN,
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2752,7 +2757,7 @@ export const handlers = [
 
     http.post("*/api/v1/auth/refresh", () =>
         HttpResponse.json<TokenRefreshResponseBody>({
-            access_token: "mock-refreshed-token-e2e",
+            access_token: MOCK_REFRESHED_ACCESS_TOKEN,
             refresh_token: "mock-refreshed-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2814,7 +2819,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: "mock-access-token-e2e",
+            access_token: MOCK_ACCESS_TOKEN,
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,
@@ -2832,7 +2837,7 @@ export const handlers = [
                 is_superuser: true,
                 permissions: ["read", "write"],
             },
-            access_token: "mock-access-token-e2e",
+            access_token: MOCK_ACCESS_TOKEN,
             refresh_token: "mock-refresh-token-e2e",
             token_type: "bearer",
             expires_in: 86400,

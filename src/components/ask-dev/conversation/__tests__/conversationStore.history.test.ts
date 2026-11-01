@@ -491,6 +491,37 @@ describe("history and delete (AC-12, design §4.3)", () => {
         ]);
     });
 
+    // CHAOS-12336 (T14b, the lead's ruling 2 = A): no ACR token, or ACR's 401, on the list or the
+    // thread read is the Connect state, not a failed read.
+    it("a list read with no ACR token is connect, not read_failed; a later page keeps moreFailed", async () => {
+        transport.listPages.push({ fail: new TransportFailure("authorization_required") });
+        const store = makeStore();
+        store.loadHistory();
+        await vi.waitFor(() => expect(snap(store).history.status).toBe("connect"));
+        transport.listPages.splice(0, 1, {
+            threads: [summary(THREAD_A)],
+            nextCursor: "next",
+        });
+        store.loadHistory();
+        await vi.waitFor(() => expect(snap(store).history.status).toBe("ready"));
+        transport.listPages.splice(0, transport.listPages.length, {
+            fail: new TransportFailure("authorization_required"),
+        });
+        store.loadMoreHistory();
+        await vi.waitFor(() => expect(snap(store).history.moreFailed).toBe(true));
+        expect(snap(store).history.status).toBe("ready");
+    });
+
+    it("a thread read with no ACR token is connect, read-only, and offers no Try again", async () => {
+        transport.threads.set(THREAD_A, { fail: new TransportFailure("authorization_required") });
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("connect"));
+        expect(store.retryThreadRead()).toBe(false);
+        expect(store.submit("Anything?")).toBe(false);
+        expect(investigations()).toBe(0);
+    });
+
     it("a list read that failed keeps the rows and offers Try again", async () => {
         transport.listPages.push({ threads: [summary(THREAD_A)], nextCursor: null });
         const store = makeStore();
