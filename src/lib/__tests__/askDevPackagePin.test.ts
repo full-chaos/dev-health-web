@@ -62,7 +62,7 @@ describe("the ask-dev git dependency (CHAOS-12393)", () => {
         },
     );
 
-    it("web's Next compiles the package's source", () => {
+    it("next.config lists the package in transpilePackages (part C proves the compile)", () => {
         const config = readFileSync(join(ROOT, "next.config.js"), "utf8");
         expect(config).toMatch(/transpilePackages: \["@full-chaos\/ask-dev"\]/u);
     });

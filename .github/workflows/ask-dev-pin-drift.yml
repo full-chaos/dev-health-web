@@ -130,8 +130,6 @@ jobs:
                   if [ -z "$first" ]; then
                       gh issue create --title "$title" --body "$body"
                   else
-                      current=$(gh issue view "$first" --json title --jq .title)
-                      if [ "$current" != "$title" ]; then
-                          gh issue edit "$first" --title "$title" --body "$body"
-                      fi
+                      # Always: the pin or the status can change while main's SHA, and so the title, does not.
+                      gh issue edit "$first" --title "$title" --body "$body"
                   fi
