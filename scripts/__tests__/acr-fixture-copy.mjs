@@ -22,3 +22,22 @@ import path from "node:path";
 export function isNotLockState(source) {
     return !path.basename(source).startsWith(".acr-contract-sync.lock");
 }
+
+/**
+ * The `it` for a test that needs an acr checkout at the manifest's `source_commit` (CHAOS-12219).
+ *
+ * With `ACR_ROOT` set, the test runs. Without it, the test skips on a developer machine. In the
+ * one CI step that sets `ACR_CONTRACT_GATE=required`, it fails and names the missing input: a skip
+ * reads as part of a passing run. The marker is not `CI`, because other CI jobs run vitest too and
+ * have no acr checkout. acr uses the same marker.
+ */
+export function sourceBackedTest(test, environment = process.env) {
+    if (environment.ACR_ROOT !== undefined) return test;
+    if (environment.ACR_CONTRACT_GATE !== "required") return test.skip;
+    return (name) =>
+        test(name, () => {
+            throw new Error(
+                "ACR_CONTRACT_GATE=required needs ACR_ROOT: an acr checkout at the manifest's source_commit",
+            );
+        });
+}

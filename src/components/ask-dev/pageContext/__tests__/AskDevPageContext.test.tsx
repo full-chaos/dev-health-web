@@ -3,11 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order.
-vi.mock(
-    "@/lib/echartsInit",
-    async () => (await import("../../render/__tests__/echartsStub")).echartsStubModule,
-);
 const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
 
@@ -41,21 +36,21 @@ vi.mock("next-auth/react", () => ({
     }),
 }));
 
+import { CONTEXT_CHIPS_COPY } from "@full-chaos/ask-dev/render";
+
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import type { PageEntityInput } from "@/lib/ask-dev/page-context";
 
 import { AskDevPanel } from "../../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../../AskDevShellContext";
 import { AskDevConversationProvider } from "../../conversation/AskDevConversationContext";
-import { COMPOSER_COPY } from "../../conversation/AskDevComposer";
 import {
     accepted,
     captureResult,
     FakeTransport,
     resultEvent,
 } from "../../conversation/__tests__/fakeTransport";
-import refusalScopeAnchor from "../../answer/__tests__/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
-import { CONTEXT_CHIPS_COPY } from "../AskDevContextChips";
+import refusalScopeAnchor from "../../../../../tests/fixtures/ask-dev/captures/acr_encoder_budget_refusal_scope_anchor.event.json";
 import { AskDevPageContextProvider, useAskDevPageContext } from "../AskDevPageContext";
 
 const PARTIAL = captureResult("kiac_project_status_partial.event.json");
@@ -119,7 +114,7 @@ const chipText = () => chips().map((chip) => chip.textContent);
 
 async function ask(question = "Which teams are overloaded?") {
     await userEvent.type(
-        within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label }),
+        within(panel()).getByRole("textbox", { name: "Ask a question" }),
         `${question}{Enter}`,
     );
 }
@@ -152,7 +147,9 @@ describe("the proposal: chips before submit, and nothing sent by opening", () =>
         const transport = new FakeTransport();
         renderShell(transport, { "/investment": [ORG, REPO, TEAM] });
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        const group = within(panel()).getByRole("group", { name: CONTEXT_CHIPS_COPY.title });
+        const group = await within(panel()).findByRole("group", {
+            name: CONTEXT_CHIPS_COPY.title,
+        });
         expect(group).toBeInTheDocument();
         expect(chipText()).toEqual([
             "Organization:E2E Organization",
@@ -272,7 +269,7 @@ describe("sending: the chips left in place go as subject hints", () => {
         renderShell(transport, { "/bottleneck": [ORG, sameProject] });
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await ask();
-        await within(panel()).findByTestId("ask-dev-answer");
+        await within(panel()).findByTestId("answer-panel");
         await ask("Why?");
         await waitFor(() => expect(transport.calls).toHaveLength(2));
         expect(sentHints(transport, 1)).toEqual([
@@ -298,7 +295,7 @@ describe("sending: the chips left in place go as subject hints", () => {
         renderShell(transport, { "/investment": [ORG] });
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await ask();
-        await within(panel()).findByTestId("ask-dev-answer");
+        await within(panel()).findByTestId("answer-panel");
         await ask("Why?");
         await waitFor(() => expect(transport.calls).toHaveLength(2));
         expect(sentHints(transport, 1)?.map((hint) => [hint.kind, hint.id])).toEqual([
@@ -324,9 +321,11 @@ describe("every next question carries the page context", () => {
         renderShell(transport, { "/investment": [ORG] });
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
         await ask("What is the status of the project?");
-        await within(panel()).findByTestId("ask-dev-clarification");
-        await userEvent.click(within(panel()).getAllByTestId("ask-dev-clarification-chip")[0]!);
-        await userEvent.click(within(panel()).getByTestId("ask-dev-clarification-ask-again"));
+        const dialog = await screen.findByRole("dialog");
+        const option = within(dialog)
+            .getAllByRole("button")
+            .find((button) => button.className.includes("clarification-popup__option"));
+        await userEvent.click(option!);
         await waitFor(() => expect(transport.calls).toHaveLength(2));
         expect(sentHints(transport, 1)?.[0]).toEqual(pageHint);
     });
@@ -423,7 +422,8 @@ describe("a tampered id is a hint, never a scope (plan §2.4)", () => {
             ],
         });
         expect(Object.keys(request.requested_scope ?? {})).toEqual(["subject_hints"]);
-        expect(await within(panel()).findByTestId("ask-dev-clarification")).toBeInTheDocument();
+        // The answer asks for a choice: ask-dev's popup is open over the panel.
+        expect(await screen.findByRole("dialog")).toBeInTheDocument();
     });
 });
 

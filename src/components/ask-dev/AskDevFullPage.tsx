@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { Minimize2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -9,15 +9,13 @@ import { Notice } from "@/components/ui/Notice";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-import { AskDevComposerSlot, AskDevTranscript, useHasComposer } from "./AskDevConversationView";
+import { AskDevRender } from "./AskDevRender";
 import { useAskDevShell } from "./AskDevShellContext";
 import { useAskDevConversation } from "./conversation/AskDevConversationContext";
-import { AskDevHistory } from "./conversation/AskDevHistory";
 import { useAskDevAvailability } from "./useAskDevAvailability";
 
 export const FULL_PAGE_COPY = {
     title: "Ask Dev",
-    conversation: "Conversation",
     subtitle: "The same conversation as the panel, with room for wide answers.",
     notAvailable: "Ask Dev is not available for this organization.",
     impersonatingTitle: "Ask Dev is not available while impersonating",
@@ -77,55 +75,61 @@ function ThreadUrlSync() {
 }
 
 /**
- * The history on the full page: a side column from `lg` up, a disclosure below it (E6 design v5
- * §4.3). A row selects its conversation locally, so the URL names it.
+ * The render scrolls inside itself, so it needs a definite height: all the viewport has left from
+ * this element down. The top is measured, not assumed, because a banner, the mobile bar and a page
+ * header that wraps all move it. `100dvh` then follows the viewport by itself. `AppShell` pads
+ * `<main>` with `pb-20`, and the frame's `-mb-20` takes that back, so nothing scrolls the window.
+ * Its `-mx-*` take back `<main>`'s `px-4 sm:px-6 md:px-8`: the render hides its sources rail below a
+ * 1180px container, and the evidence window and each source's date show only in that rail.
+ * The frame also clips: the `sr-only` text of a long answer is out of flow, and would otherwise
+ * stretch the document below the transcript that scrolls.
  */
-function FullPageHistory() {
-    const live = useAskDevConversation();
-    const wide = useSyncExternalStore(subscribeWide, readWide, () => true);
-    if (!live) return null;
-    const select = (threadId: string) => live.store.selectThread(threadId, "local");
-    // One list at a time: two would each read the first page.
-    return wide ? (
-        <aside data-testid="ask-dev-page-history">
-            <AskDevHistory onSelect={select} />
-        </aside>
-    ) : (
-        <details data-testid="ask-dev-page-history-disclosure">
-            <summary className="cursor-pointer text-sm font-semibold text-foreground">
-                {CTA_LABELS.askDevHistory}
-            </summary>
-            <div className="pt-3">
-                <AskDevHistory onSelect={select} />
-            </div>
-        </details>
+function useHeightLeft() {
+    const frame = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        const element = frame.current;
+        if (element === null) return;
+        const measure = () => {
+            const top = element.getBoundingClientRect().top + window.scrollY;
+            element.style.height = `calc(100dvh - ${String(top)}px)`;
+        };
+        measure();
+        if (typeof ResizeObserver === "undefined") return;
+        const observer = new ResizeObserver(measure);
+        observer.observe(document.body);
+        return () => observer.disconnect();
+    }, []);
+    return frame;
+}
+
+/** The full page's frame around the render, with the URL's thread in step. */
+function AskDevConversationFrame() {
+    const frame = useHeightLeft();
+    return (
+        <div
+            ref={frame}
+            data-testid="ask-dev-page-conversation"
+            className="-mx-4 -mb-20 flex min-h-0 min-w-0 overflow-hidden sm:-mx-6 md:-mx-8"
+        >
+            <Suspense fallback={null}>
+                <ThreadUrlSync />
+            </Suspense>
+            <AskDevRender />
+        </div>
     );
 }
 
-/** The `lg` breakpoint: from here up the history is a side column. */
-const WIDE_QUERY = "(min-width: 1024px)";
-
-function subscribeWide(onChange: () => void): () => void {
-    const query = window.matchMedia?.(WIDE_QUERY);
-    query?.addEventListener("change", onChange);
-    return () => query?.removeEventListener("change", onChange);
-}
-const readWide = (): boolean => window.matchMedia?.(WIDE_QUERY).matches ?? true;
-
 /**
- * The full page `/dev` (CHAOS-11934). The transcript and the composer are the panel's own (one
- * store above both), so Expand and Minimize move the view, never the run: no request is sent again.
- * Without both Ask Dev entitlements it says so and draws no conversation. While impersonating
- * with the browser ACR client on (CHAOS-12306) it draws a notice instead, and while that client
- * waits for the first session read it draws neither.
+ * The full page `/dev` (CHAOS-11934): web's frame around ask-dev's own render (CHAOS-12383). One
+ * store sits above it and the panel, so Expand and Minimize move the view, never the run: no
+ * request is sent again. Without both Ask Dev entitlements it says so and draws no conversation.
+ * While impersonating with the browser ACR client on (CHAOS-12306) it draws a notice instead, and
+ * while that client waits for the first session read it draws neither.
  */
 export function AskDevFullPage() {
     const availability = useAskDevAvailability();
     const { minimize } = useAskDevShell();
     const enabled = availability === "on";
-    // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent.
-    const hasComposer = useHasComposer();
-    const conversationId = useId();
 
     return (
         <div
@@ -150,38 +154,7 @@ export function AskDevFullPage() {
                 }
             />
             {enabled ? (
-                <section
-                    aria-labelledby={conversationId}
-                    data-testid="ask-dev-page-conversation"
-                    className={`mx-auto flex w-full flex-1 flex-col gap-6 ${hasComposer ? "max-w-4xl lg:max-w-6xl" : "max-w-4xl"}`}
-                >
-                    {/* The panel's title is the h2 its answers' h3 parts sit under; here this is. */}
-                    <h2 id={conversationId} className="sr-only">
-                        {FULL_PAGE_COPY.conversation}
-                    </h2>
-                    {hasComposer ? (
-                        <Suspense fallback={null}>
-                            <ThreadUrlSync />
-                        </Suspense>
-                    ) : null}
-                    <div
-                        className={
-                            hasComposer
-                                ? "flex flex-1 flex-col gap-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]"
-                                : "flex flex-1 flex-col gap-6"
-                        }
-                    >
-                        {hasComposer ? <FullPageHistory /> : null}
-                        <div className="flex min-w-0 flex-1 flex-col gap-6">
-                            <AskDevTranscript />
-                            {hasComposer ? (
-                                <div className="sticky bottom-0 border-t border-(--card-stroke) bg-(--surface) py-4">
-                                    <AskDevComposerSlot />
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-                </section>
+                <AskDevConversationFrame />
             ) : availability === "impersonating" ? (
                 <Notice
                     title={FULL_PAGE_COPY.impersonatingTitle}

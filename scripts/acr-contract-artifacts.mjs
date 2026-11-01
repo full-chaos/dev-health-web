@@ -345,6 +345,8 @@ const STANDALONE_MODULES = Object.freeze({
         validateThreadList: "context_fabric_thread_list.v1.schema.json",
         // CHAOS-11958: the feedback body (GET and POST …/investigations/feedback/{result_id}).
         validateResultFeedback: "context_fabric_result_feedback.v1.schema.json",
+        // CHAOS-12105: the expanded evidence body (GET …/agent-context/evidence/{ref}).
+        validateExpandedEvidence: "expanded_evidence.v1.schema.json",
     }),
     // CHAOS-12104 (T14a), the lead's option (c): the browser transport's small checks, imported
     // with the transport. Every progress event is checked here at once, never waiting on the full

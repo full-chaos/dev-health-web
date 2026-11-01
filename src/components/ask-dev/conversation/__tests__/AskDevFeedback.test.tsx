@@ -1,16 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { useLayoutEffect } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useLayoutEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// No canvas in jsdom: the Ask Dev charts draw through a stub that keeps ECharts' event order.
-vi.mock(
-    "@/lib/echartsInit",
-    async () => (await import("../../render/__tests__/echartsStub")).echartsStubModule,
-);
 const log = vi.hoisted(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
 /** Every product telemetry event enters by `trackTelemetryEvent`: recorded, then passed on. */
@@ -42,18 +37,34 @@ vi.mock("next-auth/react", () => ({
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 
-import type { TranscriptResult } from "../../answer/AskDevTurn";
+import { AskDevChat, FEEDBACK_COPY } from "@full-chaos/ask-dev/render";
+
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import { AskDevPanel } from "../../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../../AskDevShellContext";
-import { AskDevConversationProvider } from "../AskDevConversationContext";
-import { AskDevFeedback, FEEDBACK_COPY } from "../AskDevFeedback";
-import { COMPOSER_COPY } from "../AskDevComposer";
+import {
+    AskDevConversationProvider,
+    useAskDevConversation,
+    useAskDevFeedbackStore,
+} from "../AskDevConversationContext";
+import { chatSourceOf, createChatSource, type HostChatSource } from "../chatSource";
+import { ConversationStore } from "../conversationStore";
+import { FeedbackStore } from "../feedbackStore";
 import { TransportFailure } from "../transport";
-import { accepted, captureResult, deferred, FakeTransport, resultEvent } from "./fakeTransport";
+import {
+    accepted,
+    captureResult,
+    deferred,
+    FakeTransport,
+    resultEvent,
+    threadTurn,
+    threadView,
+} from "./fakeTransport";
 
 /**
  * CHAOS-11958 (I-32b), E6 web design v5 §6: the feedback controls on an answer, in the panel and
- * beside each other (a reused answer, or the panel and `/dev`). The live proofs are CHAOS-12234.
+ * beside each other (a reused answer, or the panel and `/dev`), drawn by ask-dev's own render
+ * (CHAOS-12384) over web's stores. The live proofs are CHAOS-12234.
  */
 
 const PARTIAL = captureResult("kiac_project_status_partial.event.json");
@@ -83,17 +94,47 @@ function renderPanel(transport: FakeTransport) {
     );
 }
 
-/** Two controls of one result, as a reused answer (or the panel beside `/dev`) shows it. */
+const ORG_A = "org-1\u0000user-1\u0000";
+const THREAD = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const SUB = "sub_00000000000000000000000000000001";
+
+function makeSource(transport: FakeTransport): HostChatSource {
+    const store = new ConversationStore({
+        transport,
+        hints: { read: () => null, write: () => undefined, clear: () => undefined },
+        sleep: async () => undefined,
+    });
+    store.setPartition(ORG_A);
+    const feedback = new FeedbackStore({ transport });
+    feedback.setPartition(ORG_A);
+    const source = createChatSource({ store, feedback });
+    source.setHostInputs({
+        notSaved: false,
+        partition: ORG_A,
+        pageRefs: [],
+        removePageRef: () => undefined,
+    });
+    store.selectThread(THREAD, "local");
+    return source;
+}
+
+/**
+ * Two renders of one conversation over one source, as a reused answer (or the panel beside `/dev`)
+ * shows it: one result, two sets of controls.
+ */
 function renderTwice(transport: FakeTransport) {
-    return render(
-        <AskDevConversationProvider transport={transport}>
+    transport.results.set(R1, PARTIAL);
+    transport.threads.set(THREAD, threadView(THREAD, [threadTurn(SUB, "done", { resultId: R1 })]));
+    const source = makeSource(transport);
+    render(
+        <>
             <div data-testid="first">
-                <AskDevFeedback resultId={R1} />
+                <AskDevChat source={source} />
             </div>
             <div data-testid="second">
-                <AskDevFeedback resultId={R1} />
+                <AskDevChat source={source} />
             </div>
-        </AskDevConversationProvider>,
+        </>,
     );
 }
 
@@ -104,9 +145,9 @@ async function answered(transport: FakeTransport, result: TranscriptResult = PAR
     transport.scripts.push([accepted(), resultEvent(result)]);
     renderPanel(transport);
     await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-    const input = within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label });
+    const input = await within(panel()).findByRole("textbox", { name: "Ask a question" });
     await userEvent.type(input, `${QUESTION}{Enter}`);
-    await within(panel()).findByTestId("ask-dev-answer");
+    await within(panel()).findByTestId("answer-panel");
 }
 
 const choice = (scope: HTMLElement, question: "correct" | "useful", value: "Yes" | "No") =>
@@ -177,9 +218,9 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         transport.scripts.push([accepted(), resultEvent(CLARIFICATION)]);
         renderPanel(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        const input = within(panel()).getByRole("textbox", { name: COMPOSER_COPY.label });
+        const input = await within(panel()).findByRole("textbox", { name: "Ask a question" });
         await userEvent.type(input, `${QUESTION}{Enter}`);
-        await within(panel()).findByTestId("ask-dev-clarification");
+        await screen.findByRole("dialog");
         expect(within(panel()).queryByTestId("ask-dev-feedback")).toBeNull();
         expect(transport.feedbackReads).toEqual([]);
     });
@@ -189,7 +230,7 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         const gate = deferred();
         transport.feedbackReadGate = gate.promise;
         renderTwice(transport);
-        const region = within(screen.getByTestId("first")).getByTestId("ask-dev-feedback");
+        const region = await within(screen.getByTestId("first")).findByTestId("ask-dev-feedback");
         expect(region).toHaveAttribute("data-state", "loading");
         expect(choice(region, "correct", "Yes")).toBeDisabled();
         gate.resolve();
@@ -199,7 +240,7 @@ describe("feedback on an answer (CHAOS-11958)", () => {
     it("one state per result: two controls of a reused answer read once and show one choice", async () => {
         const transport = new FakeTransport();
         renderTwice(transport);
-        const first = within(screen.getByTestId("first")).getByTestId("ask-dev-feedback");
+        const first = await within(screen.getByTestId("first")).findByTestId("ask-dev-feedback");
         const second = within(screen.getByTestId("second")).getByTestId("ask-dev-feedback");
         await waitFor(() => expect(choice(first, "useful", "Yes")).toBeEnabled());
         await userEvent.click(choice(first, "useful", "Yes"));
@@ -212,6 +253,8 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         const transport = new FakeTransport();
         transport.feedback.set(R1, null);
         renderTwice(transport);
+        // The answers are drawn, and the controls are not.
+        expect(await screen.findAllByTestId("answer-panel")).toHaveLength(2);
         await waitFor(() => expect(transport.feedbackReads).toEqual([R1]));
         await waitFor(() => expect(screen.queryByTestId("ask-dev-feedback")).toBeNull());
         expect(screen.queryByText(FEEDBACK_COPY.readFailed)).toBeNull();
@@ -221,7 +264,7 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         const transport = new FakeTransport();
         transport.feedback.set(R1, { fail: new TransportFailure("invalid_upstream") });
         renderTwice(transport);
-        const region = within(screen.getByTestId("first")).getByTestId("ask-dev-feedback");
+        const region = await within(screen.getByTestId("first")).findByTestId("ask-dev-feedback");
         expect(
             await within(region).findByText(FEEDBACK_COPY.readFailed, { exact: false }),
         ).toBeInTheDocument();
@@ -234,53 +277,47 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         expect(transport.feedbackSetCalls).toEqual([]);
     });
 
-    it("an org switch drops the shown choice and reads the new partition's feedback", async () => {
+    // codex r1 on #1658: the old (org, principal)'s choice must not outlive the switch. The host
+    // rebinds in a layout effect (`useAskDevChatSource`), so the source is already clean in the
+    // layout phase of the commit of the switch, before any paint. `Published` reads it there. The
+    // DOM catches up in the sync render that follows, so it is read after the commit.
+    it("shows none of the old partition's controls once the org switches", async () => {
         const transport = new FakeTransport();
         transport.feedback.set(R1, { resultId: R1, correct: "yes", useful: "yes" });
-        const view = renderTwice(transport);
-        const region = () => within(screen.getByTestId("first")).getByTestId("ask-dev-feedback");
-        await waitFor(() =>
-            expect(choice(region(), "correct", "Yes")).toHaveAttribute("aria-pressed", "true"),
-        );
-        transport.feedback.delete(R1);
-        session.org = "org-2";
-        view.rerender(
-            <AskDevConversationProvider transport={transport}>
-                <div data-testid="first">
-                    <AskDevFeedback resultId={R1} />
-                </div>
-                <div data-testid="second">
-                    <AskDevFeedback resultId={R1} />
-                </div>
-            </AskDevConversationProvider>,
-        );
-        await waitFor(() => expect(transport.feedbackReads).toEqual([R1, R1]));
-        await waitFor(() =>
-            expect(choice(region(), "correct", "Yes")).toHaveAttribute("aria-pressed", "false"),
-        );
-    });
-
-    // codex r1 on #1658: the provider binds the store to a new key in a passive effect, so the commit
-    // of the switch itself painted the old (org, principal)'s choice once.
-    it("never paints the old partition's choice in the commit of an org switch", async () => {
-        const transport = new FakeTransport();
-        transport.feedback.set(R1, { resultId: R1, correct: "yes", useful: "yes" });
-        const painted: string[] = [];
-        /** Reads the DOM after each commit, before any passive effect of that commit runs. */
-        function Paint() {
+        const published: string[] = [];
+        /** After the render in tree order, so its layout effect runs after the host's. */
+        function Published() {
+            const live = useAskDevConversation();
+            const feedback = useAskDevFeedbackStore();
             useLayoutEffect(() => {
-                const button = document.querySelector("[data-testid=ask-dev-feedback-correct-yes]");
-                painted.push(`${session.org}:${button?.getAttribute("aria-pressed") ?? "none"}`);
+                if (live === null || feedback === null) return;
+                const { turns } = chatSourceOf(live.store, feedback).getSnapshot();
+                published.push(`${session.org}:${String(turns.length)}`);
             });
             return null;
         }
         const tree = () => (
-            <AskDevConversationProvider transport={transport}>
-                <AskDevFeedback resultId={R1} />
-                <Paint />
-            </AskDevConversationProvider>
+            <AdminTierProvider
+                tier="team"
+                features={{ ask_dev: true, agent_context_runtime: true }}
+            >
+                <AskDevShellProvider>
+                    <AskDevConversationProvider transport={transport}>
+                        <OpenClose />
+                        <AskDevPanel />
+                        <Published />
+                    </AskDevConversationProvider>
+                </AskDevShellProvider>
+            </AdminTierProvider>
         );
+        transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
         const view = render(tree());
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await within(panel()).findByRole("textbox", { name: "Ask a question" });
+        await userEvent.type(
+            within(panel()).getByRole("textbox", { name: "Ask a question" }),
+            `${QUESTION}{Enter}`,
+        );
         await waitFor(() =>
             expect(
                 screen.getByTestId("ask-dev-feedback-correct-yes").getAttribute("aria-pressed"),
@@ -289,22 +326,22 @@ describe("feedback on an answer (CHAOS-11958)", () => {
         transport.feedback.delete(R1);
         session.org = "org-2";
         view.rerender(tree());
-        // The commit of the switch: org-1's "yes" must not be in the DOM.
-        expect(painted.filter((entry) => entry.startsWith("org-2:"))).toEqual(["org-2:none"]);
-        await waitFor(() =>
-            expect(screen.getByTestId("ask-dev-feedback-correct-yes")).toHaveAttribute(
-                "aria-pressed",
-                "false",
-            ),
-        );
-        expect(transport.feedbackReads).toEqual([R1, R1]);
+        // The layout phase of the switch's commit: org-1's turns are already gone from the source.
+        const atSwitch = published.filter((entry) => entry.startsWith("org-2:"));
+        expect(atSwitch.length).toBeGreaterThan(0);
+        expect(new Set(atSwitch)).toEqual(new Set(["org-2:0"]));
+        // No wait: org-1's "yes", its answer and its controls are not in the DOM.
+        expect(screen.queryByTestId("ask-dev-feedback-correct-yes")).toBeNull();
+        expect(screen.queryByTestId("ask-dev-feedback")).toBeNull();
+        expect(screen.queryByTestId("answer-panel")).toBeNull();
+        expect(transport.feedbackReads).toEqual([R1]);
     });
 
     it("a failed write rolls the choice back and says it was not saved; the next choice clears that", async () => {
         const transport = new FakeTransport();
         transport.feedbackSets.push({ fail: new Error("network") });
         renderTwice(transport);
-        const region = within(screen.getByTestId("first")).getByTestId("ask-dev-feedback");
+        const region = await within(screen.getByTestId("first")).findByTestId("ask-dev-feedback");
         await waitFor(() => expect(choice(region, "correct", "No")).toBeEnabled());
         await userEvent.click(choice(region, "correct", "No"));
         expect(await within(region).findByText(FEEDBACK_COPY.notSaved)).toBeInTheDocument();
@@ -369,7 +406,7 @@ describe("no free text in telemetry (CHAOS-11958 AC)", () => {
         const root = join(process.cwd(), "src");
         for (const file of [
             "components/ask-dev/conversation/feedbackStore.ts",
-            "components/ask-dev/conversation/AskDevFeedback.tsx",
+            "components/ask-dev/conversation/chatSource.tsx",
             "lib/acr/feedbackContract.ts",
         ]) {
             const source = readFileSync(join(root, file), "utf8");

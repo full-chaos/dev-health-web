@@ -1393,7 +1393,7 @@ test.describe("ACR browser tokens on the c2 flow (CHAOS-12304)", () => {
             await expect(input).toBeEnabled();
             await input.fill("Which projects are at risk this quarter?");
             await input.press("Enter");
-            await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+            await expect(panel.getByTestId("answer-panel")).toBeVisible();
         };
         const run = await browserTokenScenario(page, baseURL, askInPanel);
         expect(run.violations).toEqual([]);

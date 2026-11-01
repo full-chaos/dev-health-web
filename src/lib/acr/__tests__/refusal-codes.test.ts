@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { AcrRuntimeClient } from "../client";
-import {
-    NOT_RUN_COPY,
-    STOPPED_COPY,
-    TURN_STATUS_COPY,
-} from "@/components/ask-dev/conversation/AskDevConversationTurn";
+import { CHAT_STATUS_COPY, NOT_RUN_COPY, STOPPED_COPY } from "@full-chaos/ask-dev/render";
 
 import type { NotRunReason } from "@/components/ask-dev/conversation/conversationStore";
 
@@ -74,18 +70,18 @@ describe("investigationFailure: refusals keep their own code", () => {
     });
 
     // The codes the panel shows with its own states (CHAOS-11929): the client says the same words.
-    it("says the same words as the panel's own states for the shared codes", () => {
+    it("says the same words as the render's status copy for the shared codes", () => {
         expect(safeAcrRuntimeMessage("concurrency_limited")).toBe(
-            TURN_STATUS_COPY.limited.concurrency,
+            CHAT_STATUS_COPY.limited.concurrency,
         );
         expect(safeAcrRuntimeMessage("allowance_exhausted")).toBe(
-            TURN_STATUS_COPY.limited.allowance,
+            CHAT_STATUS_COPY.limited.allowance,
         );
         expect(safeAcrRuntimeMessage("stream_unavailable")).toBe(
-            TURN_STATUS_COPY.streamUnavailable,
+            CHAT_STATUS_COPY.stream_unavailable,
         );
         expect(safeAcrRuntimeMessage("budget_exhausted")).toBe(
-            TURN_STATUS_COPY.deadline.budget_exhausted,
+            CHAT_STATUS_COPY.deadline.budget_exhausted,
         );
     });
 });
@@ -133,7 +129,7 @@ describe("investigationFailure: the whole create-investigation vocabulary", () =
     });
 
     // codex r3 on #1639: a run stopped by a rejected step reads the same in the route and the panel.
-    it("says the same words as the panel for a rejected step", () => {
+    it("says the same words as the render for a rejected step", () => {
         expect(safeAcrRuntimeMessage("interpretation_rejected")).toBe(
             STOPPED_COPY.interpretation_rejected,
         );

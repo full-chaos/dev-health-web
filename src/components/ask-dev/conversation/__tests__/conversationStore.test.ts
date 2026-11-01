@@ -1,11 +1,12 @@
+import { createHash } from "node:crypto";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
 
-import type { TranscriptResult } from "../../answer/AskDevTurn";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
 import {
-    carryOfChoice,
     ConversationStore,
     STATUS_POLL_INTERVAL_MS,
     type ConversationStoreOptions,
@@ -21,6 +22,8 @@ import {
     FakeTransport,
     resultEvent,
     status,
+    threadTurn,
+    threadView,
 } from "./fakeTransport";
 
 const PARTIAL = captureResult("kiac_project_status_partial.event.json");
@@ -162,18 +165,195 @@ describe("thread and submission keys (plan §2.5, INV-2)", () => {
         store.submit("What is the status of the project?");
         await settled(store);
         const receipt = { result_id: CLARIFICATION.result_id, receipt_id: "receipt_0001" };
-        store.submit(
-            "What is the status of the project?",
-            carryOfChoice({
-                parentResultId: CLARIFICATION.result_id,
-                receipts: { prior_anchor_receipts: [receipt] },
-            }),
-        );
+        store.submit("What is the status of the project?", {
+            parentResultId: CLARIFICATION.result_id,
+            structureReceipts: { priorAnchorReceipts: [receipt] },
+        });
         await settled(store);
         const request = transport.calls[1]!.request;
         expect(request.parent_result_id).toBe(CLARIFICATION.result_id);
         expect(request.prior_anchor_receipts).toEqual([receipt]);
         expect(request.prior_kind_receipts).toBeUndefined();
+    });
+
+    // CHAOS-12383: ask-dev's render offers `subject_resolution.candidates`; a pick is a subject
+    // receipt, which the builder always took and the store never passed on.
+    it("sends a carry's subject receipts as prior_subject_receipts", async () => {
+        const store = makeStore();
+        transport.scripts.push([resultEvent(CLARIFICATION)], [resultEvent(PARTIAL)]);
+        store.submit("What is the status of the project?");
+        await settled(store);
+        const receipt = { result_id: CLARIFICATION.result_id, receipt_id: "receipt_0001" };
+        store.submit("What is the status of the project?", { priorSubjectReceipts: [receipt] });
+        await settled(store);
+        expect(transport.calls[1]!.request.prior_subject_receipts).toEqual([receipt]);
+        expect(transport.calls[0]!.request.prior_subject_receipts).toEqual([]);
+    });
+});
+
+describe("a normal submit, with no as-of turn (CHAOS-12383)", () => {
+    // Taken from the store before `asOfTurnId` existed. A change of the request builder or of a
+    // capture changes it: then take it again, on purpose. Three turns: a first question, a plain
+    // follow-up, and a follow-up with page hints and a receipt.
+    const BYTES = "78a21c2910e51970c2fcf904d8c22013ae70b49e2d07aacef2a0a2e75684402b";
+
+    it("sends the same bytes as before the as-of turn existed", async () => {
+        const store = makeStore();
+        transport.scripts.push(
+            [resultEvent(CLARIFICATION)],
+            [resultEvent(PARTIAL)],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("What is the status of the project?");
+        await settled(store);
+        store.submit("Why?");
+        await settled(store);
+        store.submit("And the risks?", {
+            pageHints: [{ kind: "team", id: "team-1", label: "Platform", source: "e2e" }],
+            structureReceipts: {
+                priorWindowReceipts: [{ result_id: PARTIAL.result_id, receipt_id: "receipt_w" }],
+            },
+        });
+        await settled(store);
+        const bytes = JSON.stringify(transport.calls.map((call) => call.request));
+        expect(createHash("sha256").update(bytes).digest("hex")).toBe(BYTES);
+    });
+});
+
+// CHAOS-12383: a batch runs in sequence, and each item must send what a parallel fan-out would.
+describe("a carry's as-of turn", () => {
+    /** Two answered turns of one thread, and the request a third sends as of the first. */
+    async function asOfFirst() {
+        const store = makeStore();
+        transport.scripts.push(
+            [resultEvent(CLARIFICATION)],
+            [resultEvent(PARTIAL)],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("What is the status of the project?");
+        await settled(store);
+        const asOfTurnId = last(store).id;
+        store.submit("Why?");
+        await settled(store);
+        store.submit("And the risks?", { asOfTurnId });
+        await settled(store);
+        return { store, request: transport.calls[2]!.request, asOfTurnId };
+    }
+
+    it("the conversation holds the turns up to and including that turn, and no later one", async () => {
+        const { request } = await asOfFirst();
+        expect(request.conversation?.map((turn) => [turn.role, turn.content])).toEqual([
+            ["user", "What is the status of the project?"],
+            ["assistant", CLARIFICATION.deterministic_answer],
+        ]);
+        expect(JSON.stringify(request)).not.toContain("Why?");
+    });
+
+    it("the parent is that turn's result, not the newest one", async () => {
+        const { request } = await asOfFirst();
+        expect(request.parent_result_id).toBe(CLARIFICATION.result_id);
+    });
+
+    it("the carried hints are that turn's subjects, not the newest turn's", async () => {
+        const store = makeStore();
+        const later = {
+            ...PARTIAL,
+            subject_resolution: {
+                ...PARTIAL.subject_resolution,
+                committed: PARTIAL.subject_resolution.committed.map((subject) => ({
+                    ...subject,
+                    canonical_id: "project:later",
+                })),
+            },
+        };
+        transport.scripts.push(
+            [resultEvent(PARTIAL)],
+            [resultEvent(later)],
+            [resultEvent(PARTIAL)],
+        );
+        store.submit("What is the status of the project?");
+        await settled(store);
+        const asOfTurnId = last(store).id;
+        store.submit("Why?");
+        await settled(store);
+        store.submit("And the risks?", { asOfTurnId });
+        await settled(store);
+        const ids = transport.calls[2]!.request.requested_scope?.subject_hints?.map(
+            (hint) => hint.id,
+        );
+        expect(ids).toEqual(
+            PARTIAL.subject_resolution.committed.map((subject) => subject.canonical_id),
+        );
+        expect(ids).not.toContain("project:later");
+    });
+
+    it("a carry's own parent still wins", async () => {
+        const store = makeStore();
+        transport.scripts.push([resultEvent(CLARIFICATION)], [resultEvent(PARTIAL)]);
+        store.submit("What is the status of the project?");
+        await settled(store);
+        store.submit("Why?", { asOfTurnId: last(store).id, parentResultId: "result_named_0001" });
+        await settled(store);
+        expect(transport.calls[1]!.request.parent_result_id).toBe("result_named_0001");
+    });
+
+    it("changes what is sent, never the thread: the new turn is still the newest", async () => {
+        const { store, asOfTurnId } = await asOfFirst();
+        expect(store.getSnapshot().turns).toHaveLength(3);
+        expect(new Set(transport.calls.map((call) => call.threadId)).size).toBe(1);
+        expect(last(store).id).toBeGreaterThan(asOfTurnId);
+    });
+
+    it("reads the served order: an earlier page holds newer ids and older turns", async () => {
+        const store = makeStore();
+        const earlier = "sub_00000000000000000000000000000002";
+        const later = "sub_00000000000000000000000000000003";
+        const THREAD = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        transport.results.set(PARTIAL.result_id, PARTIAL);
+        transport.results.set(CLARIFICATION.result_id, CLARIFICATION);
+        transport.threads.set(
+            THREAD,
+            threadView(
+                THREAD,
+                [threadTurn(later, "done", { resultId: PARTIAL.result_id, question: "Later" })],
+                "older",
+            ),
+        );
+        transport.threads.set(
+            `${THREAD}|older`,
+            threadView(THREAD, [
+                threadTurn(earlier, "done", {
+                    resultId: CLARIFICATION.result_id,
+                    question: "Earlier",
+                }),
+            ]),
+        );
+        store.selectThread(THREAD, "local");
+        await vi.waitFor(() =>
+            expect(store.getSnapshot().thread).toEqual({ kind: "loaded", earlier: "available" }),
+        );
+        store.loadEarlierTurns();
+        await vi.waitFor(() => expect(store.getSnapshot().turns).toHaveLength(2));
+        await vi.waitFor(() =>
+            expect(store.getSnapshot().turns.map((turn) => turn.outcome.kind)).toEqual([
+                "answered",
+                "answered",
+            ]),
+        );
+        await vi.waitFor(() => expect(store.getSnapshot().replaying).toBe(false));
+        const [older, newer] = store.getSnapshot().turns;
+        // The earlier page was read last, so its turn has the larger id.
+        expect(older!.id).toBeGreaterThan(newer!.id);
+
+        transport.scripts.push([resultEvent(PARTIAL)]);
+        expect(store.submit("Next", { asOfTurnId: newer!.id })).toBe(true);
+        await settled(store);
+        expect(transport.calls[0]!.request.conversation?.map((turn) => turn.content)).toEqual([
+            "Earlier",
+            CLARIFICATION.deterministic_answer,
+            "Later",
+            PARTIAL.deterministic_answer,
+        ]);
     });
 });
 

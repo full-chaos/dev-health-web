@@ -427,6 +427,13 @@ const schema32 = {
             description:
                 "CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.",
         },
+        vocabulary_labels: {
+            type: "object",
+            additionalProperties: { type: "string", minLength: 1, maxLength: 160 },
+            maxProperties: 8192,
+            description:
+                "CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.",
+        },
         refusal_basis: {
             type: "string",
             description:
@@ -21458,7 +21465,7 @@ const schema91 = {
         code: {
             type: "string",
             description:
-                "Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld. A client must tolerate values it does not know.",
+                "Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, graph_answer_pull_requests_on_explicit_text_links, graph_answer_pull_requests_on_heuristic_links, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, graph_hop_walk_truncated, graph_team_narrowing_undecided_paths, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld, project_scope_withheld. A client must tolerate values it does not know.",
             "x-documented-values": [
                 "fact_unconfigured",
                 "fact_no_declaring_producer",
@@ -21475,6 +21482,8 @@ const schema91 = {
                 "graph_cohort_denied_by_authorization",
                 "graph_unknown_relationship_type",
                 "graph_validity_unbounded",
+                "graph_answer_pull_requests_on_explicit_text_links",
+                "graph_answer_pull_requests_on_heuristic_links",
                 "reuse_auxiliary_refs_stripped",
                 "answer_terminated_before_attempt",
                 "population_truncated",
@@ -21486,10 +21495,13 @@ const schema91 = {
                 "computed_population_absent",
                 "requirement_not_evaluable",
                 "graph_no_member_found",
+                "graph_hop_walk_truncated",
+                "graph_team_narrowing_undecided_paths",
                 "synthesis_input_bounded",
                 "synthesis_model_failed",
                 "synthesis_not_run",
                 "fact_score_withheld",
+                "project_scope_withheld",
             ],
         },
         degrading: { type: "boolean" },
@@ -37167,69 +37179,75 @@ function validate21(
                 errors++;
             }
         }
-        if (data.refusal_basis !== undefined) {
-            if (typeof data.refusal_basis !== "string") {
-                const err198 = {
-                    instancePath: instancePath + "/refusal_basis",
-                    schemaPath: "#/properties/refusal_basis/type",
-                    keyword: "type",
-                    params: { type: "string" },
-                    message: "must be string",
-                };
-                if (vErrors === null) {
-                    vErrors = [err198];
-                } else {
-                    vErrors.push(err198);
-                }
-                errors++;
-            }
-        }
-        if (data.status_correction !== undefined) {
-            let data87 = data.status_correction;
-            if (data87 && typeof data87 == "object" && !Array.isArray(data87)) {
-                if (data87.replaced_status === undefined) {
-                    const err199 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "replaced_status" },
-                        message: "must have required property '" + "replaced_status" + "'",
+        if (data.vocabulary_labels !== undefined) {
+            let data86 = data.vocabulary_labels;
+            if (data86 && typeof data86 == "object" && !Array.isArray(data86)) {
+                if (Object.keys(data86).length > 8192) {
+                    const err198 = {
+                        instancePath: instancePath + "/vocabulary_labels",
+                        schemaPath: "#/properties/vocabulary_labels/maxProperties",
+                        keyword: "maxProperties",
+                        params: { limit: 8192 },
+                        message: "must NOT have more than 8192 properties",
                     };
                     if (vErrors === null) {
-                        vErrors = [err199];
+                        vErrors = [err198];
                     } else {
-                        vErrors.push(err199);
+                        vErrors.push(err198);
                     }
                     errors++;
                 }
-                if (data87.direction === undefined) {
-                    const err200 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "direction" },
-                        message: "must have required property '" + "direction" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err200];
+                for (const key4 in data86) {
+                    let data87 = data86[key4];
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 160) {
+                            const err199 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 160 },
+                                message: "must NOT have more than 160 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err199];
+                            } else {
+                                vErrors.push(err199);
+                            }
+                            errors++;
+                        }
+                        if (func2(data87) < 1) {
+                            const err200 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
                     } else {
-                        vErrors.push(err200);
-                    }
-                    errors++;
-                }
-                for (const key4 in data87) {
-                    if (!(
-                        key4 === "replaced_status" ||
-                        key4 === "direction" ||
-                        key4 === "deciding_requirement" ||
-                        key4 === "deciding_outcome"
-                    )) {
                         const err201 = {
-                            instancePath: instancePath + "/status_correction",
-                            schemaPath: "#/properties/status_correction/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key4 },
-                            message: "must NOT have additional properties",
+                            instancePath:
+                                instancePath +
+                                "/vocabulary_labels/" +
+                                key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                            schemaPath: "#/properties/vocabulary_labels/additionalProperties/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err201];
@@ -37239,10 +37257,98 @@ function validate21(
                         errors++;
                     }
                 }
-                if (data87.replaced_status !== undefined) {
-                    let data88 = data87.replaced_status;
-                    if (typeof data88 !== "string") {
-                        const err202 = {
+            } else {
+                const err202 = {
+                    instancePath: instancePath + "/vocabulary_labels",
+                    schemaPath: "#/properties/vocabulary_labels/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err202];
+                } else {
+                    vErrors.push(err202);
+                }
+                errors++;
+            }
+        }
+        if (data.refusal_basis !== undefined) {
+            if (typeof data.refusal_basis !== "string") {
+                const err203 = {
+                    instancePath: instancePath + "/refusal_basis",
+                    schemaPath: "#/properties/refusal_basis/type",
+                    keyword: "type",
+                    params: { type: "string" },
+                    message: "must be string",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.status_correction !== undefined) {
+            let data89 = data.status_correction;
+            if (data89 && typeof data89 == "object" && !Array.isArray(data89)) {
+                if (data89.replaced_status === undefined) {
+                    const err204 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "replaced_status" },
+                        message: "must have required property '" + "replaced_status" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err204];
+                    } else {
+                        vErrors.push(err204);
+                    }
+                    errors++;
+                }
+                if (data89.direction === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "direction" },
+                        message: "must have required property '" + "direction" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                for (const key5 in data89) {
+                    if (!(
+                        key5 === "replaced_status" ||
+                        key5 === "direction" ||
+                        key5 === "deciding_requirement" ||
+                        key5 === "deciding_outcome"
+                    )) {
+                        const err206 = {
+                            instancePath: instancePath + "/status_correction",
+                            schemaPath: "#/properties/status_correction/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key5 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err206];
+                        } else {
+                            vErrors.push(err206);
+                        }
+                        errors++;
+                    }
+                }
+                if (data89.replaced_status !== undefined) {
+                    let data90 = data89.replaced_status;
+                    if (typeof data90 !== "string") {
+                        const err207 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/type",
@@ -37251,14 +37357,14 @@ function validate21(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err202];
+                            vErrors = [err207];
                         } else {
-                            vErrors.push(err202);
+                            vErrors.push(err207);
                         }
                         errors++;
                     }
-                    if (!(data88 === "complete" || data88 === "partial" || data88 === "degraded")) {
-                        const err203 = {
+                    if (!(data90 === "complete" || data90 === "partial" || data90 === "degraded")) {
+                        const err208 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/enum",
@@ -37271,17 +37377,17 @@ function validate21(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err203];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err203);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
                 }
-                if (data87.direction !== undefined) {
-                    let data89 = data87.direction;
-                    if (typeof data89 !== "string") {
-                        const err204 = {
+                if (data89.direction !== undefined) {
+                    let data91 = data89.direction;
+                    if (typeof data91 !== "string") {
+                        const err209 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/type",
                             keyword: "type",
@@ -37289,19 +37395,19 @@ function validate21(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                     if (!(
-                        data89 === "complete_to_partial" ||
-                        data89 === "complete_to_degraded" ||
-                        data89 === "partial_to_degraded" ||
-                        data89 === "degraded_to_partial"
+                        data91 === "complete_to_partial" ||
+                        data91 === "complete_to_degraded" ||
+                        data91 === "partial_to_degraded" ||
+                        data91 === "degraded_to_partial"
                     )) {
-                        const err205 = {
+                        const err210 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/enum",
                             keyword: "enum",
@@ -37312,16 +37418,16 @@ function validate21(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err205];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err205);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_requirement !== undefined) {
-                    if (typeof data87.deciding_requirement !== "string") {
-                        const err206 = {
+                if (data89.deciding_requirement !== undefined) {
+                    if (typeof data89.deciding_requirement !== "string") {
+                        const err211 = {
                             instancePath: instancePath + "/status_correction/deciding_requirement",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_requirement/type",
@@ -37330,17 +37436,17 @@ function validate21(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err211];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err211);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_outcome !== undefined) {
-                    let data91 = data87.deciding_outcome;
-                    if (typeof data91 !== "string") {
-                        const err207 = {
+                if (data89.deciding_outcome !== undefined) {
+                    let data93 = data89.deciding_outcome;
+                    if (typeof data93 !== "string") {
+                        const err212 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/type",
@@ -37349,20 +37455,20 @@ function validate21(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err207];
+                            vErrors = [err212];
                         } else {
-                            vErrors.push(err207);
+                            vErrors.push(err212);
                         }
                         errors++;
                     }
                     if (!(
-                        data91 === "satisfied" ||
-                        data91 === "narrowed" ||
-                        data91 === "unavailable" ||
-                        data91 === "not_applicable" ||
-                        data91 === "not_attempted"
+                        data93 === "satisfied" ||
+                        data93 === "narrowed" ||
+                        data93 === "unavailable" ||
+                        data93 === "not_applicable" ||
+                        data93 === "not_attempted"
                     )) {
-                        const err208 = {
+                        const err213 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/enum",
@@ -37375,15 +37481,15 @@ function validate21(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err213];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err213);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err209 = {
+                const err214 = {
                     instancePath: instancePath + "/status_correction",
                     schemaPath: "#/properties/status_correction/type",
                     keyword: "type",
@@ -37391,18 +37497,18 @@ function validate21(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err209];
+                    vErrors = [err214];
                 } else {
-                    vErrors.push(err209);
+                    vErrors.push(err214);
                 }
                 errors++;
             }
         }
         if (data.semantic_reading !== undefined) {
-            let data92 = data.semantic_reading;
-            if (data92 && typeof data92 == "object" && !Array.isArray(data92)) {
-                if (data92.status === undefined) {
-                    const err210 = {
+            let data94 = data.semantic_reading;
+            if (data94 && typeof data94 == "object" && !Array.isArray(data94)) {
+                if (data94.status === undefined) {
+                    const err215 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -37410,14 +37516,14 @@ function validate21(
                         message: "must have required property '" + "status" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err210];
+                        vErrors = [err215];
                     } else {
-                        vErrors.push(err210);
+                        vErrors.push(err215);
                     }
                     errors++;
                 }
-                if (data92.reason === undefined) {
-                    const err211 = {
+                if (data94.reason === undefined) {
+                    const err216 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -37425,33 +37531,33 @@ function validate21(
                         message: "must have required property '" + "reason" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err211];
+                        vErrors = [err216];
                     } else {
-                        vErrors.push(err211);
+                        vErrors.push(err216);
                     }
                     errors++;
                 }
-                for (const key5 in data92) {
-                    if (!(key5 === "status" || key5 === "reason")) {
-                        const err212 = {
+                for (const key6 in data94) {
+                    if (!(key6 === "status" || key6 === "reason")) {
+                        const err217 = {
                             instancePath: instancePath + "/semantic_reading",
                             schemaPath: "#/properties/semantic_reading/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key5 },
+                            params: { additionalProperty: key6 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err212];
+                            vErrors = [err217];
                         } else {
-                            vErrors.push(err212);
+                            vErrors.push(err217);
                         }
                         errors++;
                     }
                 }
-                if (data92.status !== undefined) {
-                    let data93 = data92.status;
-                    if (typeof data93 !== "string") {
-                        const err213 = {
+                if (data94.status !== undefined) {
+                    let data95 = data94.status;
+                    if (typeof data95 !== "string") {
+                        const err218 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/type",
                             keyword: "type",
@@ -37459,14 +37565,14 @@ function validate21(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err213];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err213);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
-                    if (!(data93 === "unavailable")) {
-                        const err214 = {
+                    if (!(data95 === "unavailable")) {
+                        const err219 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/enum",
                             keyword: "enum",
@@ -37477,16 +37583,16 @@ function validate21(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err219];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err219);
                         }
                         errors++;
                     }
                 }
-                if (data92.reason !== undefined) {
-                    if (typeof data92.reason !== "string") {
-                        const err215 = {
+                if (data94.reason !== undefined) {
+                    if (typeof data94.reason !== "string") {
+                        const err220 = {
                             instancePath: instancePath + "/semantic_reading/reason",
                             schemaPath: "#/properties/semantic_reading/properties/reason/type",
                             keyword: "type",
@@ -37494,15 +37600,15 @@ function validate21(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err216 = {
+                const err221 = {
                     instancePath: instancePath + "/semantic_reading",
                     schemaPath: "#/properties/semantic_reading/type",
                     keyword: "type",
@@ -37510,18 +37616,18 @@ function validate21(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err216];
+                    vErrors = [err221];
                 } else {
-                    vErrors.push(err216);
+                    vErrors.push(err221);
                 }
                 errors++;
             }
         }
         if (data.synthesis_input !== undefined) {
-            let data95 = data.synthesis_input;
-            if (data95 && typeof data95 == "object" && !Array.isArray(data95)) {
-                if (data95.contract === undefined) {
-                    const err217 = {
+            let data97 = data.synthesis_input;
+            if (data97 && typeof data97 == "object" && !Array.isArray(data97)) {
+                if (data97.contract === undefined) {
+                    const err222 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -37529,14 +37635,14 @@ function validate21(
                         message: "must have required property '" + "contract" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err217];
+                        vErrors = [err222];
                     } else {
-                        vErrors.push(err217);
+                        vErrors.push(err222);
                     }
                     errors++;
                 }
-                if (data95.input === undefined) {
-                    const err218 = {
+                if (data97.input === undefined) {
+                    const err223 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -37544,14 +37650,14 @@ function validate21(
                         message: "must have required property '" + "input" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err218];
+                        vErrors = [err223];
                     } else {
-                        vErrors.push(err218);
+                        vErrors.push(err223);
                     }
                     errors++;
                 }
-                if (data95.input_sha256 === undefined) {
-                    const err219 = {
+                if (data97.input_sha256 === undefined) {
+                    const err224 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -37559,14 +37665,14 @@ function validate21(
                         message: "must have required property '" + "input_sha256" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err219];
+                        vErrors = [err224];
                     } else {
-                        vErrors.push(err219);
+                        vErrors.push(err224);
                     }
                     errors++;
                 }
-                if (data95.bounded === undefined) {
-                    const err220 = {
+                if (data97.bounded === undefined) {
+                    const err225 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -37574,14 +37680,14 @@ function validate21(
                         message: "must have required property '" + "bounded" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err220];
+                        vErrors = [err225];
                     } else {
-                        vErrors.push(err220);
+                        vErrors.push(err225);
                     }
                     errors++;
                 }
-                if (data95.rules === undefined) {
-                    const err221 = {
+                if (data97.rules === undefined) {
+                    const err226 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -37589,40 +37695,40 @@ function validate21(
                         message: "must have required property '" + "rules" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err221];
+                        vErrors = [err226];
                     } else {
-                        vErrors.push(err221);
+                        vErrors.push(err226);
                     }
                     errors++;
                 }
-                for (const key6 in data95) {
+                for (const key7 in data97) {
                     if (!(
-                        key6 === "contract" ||
-                        key6 === "input" ||
-                        key6 === "input_sha256" ||
-                        key6 === "bounded" ||
-                        key6 === "rules"
+                        key7 === "contract" ||
+                        key7 === "input" ||
+                        key7 === "input_sha256" ||
+                        key7 === "bounded" ||
+                        key7 === "rules"
                     )) {
-                        const err222 = {
+                        const err227 = {
                             instancePath: instancePath + "/synthesis_input",
                             schemaPath: "#/properties/synthesis_input/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key6 },
+                            params: { additionalProperty: key7 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err222];
+                            vErrors = [err227];
                         } else {
-                            vErrors.push(err222);
+                            vErrors.push(err227);
                         }
                         errors++;
                     }
                 }
-                if (data95.contract !== undefined) {
-                    let data96 = data95.contract;
-                    if (data96 && typeof data96 == "object" && !Array.isArray(data96)) {
-                        if (data96.model_output_version === undefined) {
-                            const err223 = {
+                if (data97.contract !== undefined) {
+                    let data98 = data97.contract;
+                    if (data98 && typeof data98 == "object" && !Array.isArray(data98)) {
+                        if (data98.model_output_version === undefined) {
+                            const err228 = {
                                 instancePath: instancePath + "/synthesis_input/contract",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/contract/required",
@@ -37632,14 +37738,14 @@ function validate21(
                                     "must have required property '" + "model_output_version" + "'",
                             };
                             if (vErrors === null) {
-                                vErrors = [err223];
+                                vErrors = [err228];
                             } else {
-                                vErrors.push(err223);
+                                vErrors.push(err228);
                             }
                             errors++;
                         }
-                        if (data96.prompt_version === undefined) {
-                            const err224 = {
+                        if (data98.prompt_version === undefined) {
+                            const err229 = {
                                 instancePath: instancePath + "/synthesis_input/contract",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/contract/required",
@@ -37648,14 +37754,14 @@ function validate21(
                                 message: "must have required property '" + "prompt_version" + "'",
                             };
                             if (vErrors === null) {
-                                vErrors = [err224];
+                                vErrors = [err229];
                             } else {
-                                vErrors.push(err224);
+                                vErrors.push(err229);
                             }
                             errors++;
                         }
-                        if (data96.system_sha256 === undefined) {
-                            const err225 = {
+                        if (data98.system_sha256 === undefined) {
+                            const err230 = {
                                 instancePath: instancePath + "/synthesis_input/contract",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/contract/required",
@@ -37664,39 +37770,39 @@ function validate21(
                                 message: "must have required property '" + "system_sha256" + "'",
                             };
                             if (vErrors === null) {
-                                vErrors = [err225];
+                                vErrors = [err230];
                             } else {
-                                vErrors.push(err225);
+                                vErrors.push(err230);
                             }
                             errors++;
                         }
-                        for (const key7 in data96) {
+                        for (const key8 in data98) {
                             if (!(
-                                key7 === "model_output_version" ||
-                                key7 === "prompt_version" ||
-                                key7 === "system_sha256"
+                                key8 === "model_output_version" ||
+                                key8 === "prompt_version" ||
+                                key8 === "system_sha256"
                             )) {
-                                const err226 = {
+                                const err231 = {
                                     instancePath: instancePath + "/synthesis_input/contract",
                                     schemaPath:
                                         "#/properties/synthesis_input/properties/contract/additionalProperties",
                                     keyword: "additionalProperties",
-                                    params: { additionalProperty: key7 },
+                                    params: { additionalProperty: key8 },
                                     message: "must NOT have additional properties",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err226];
+                                    vErrors = [err231];
                                 } else {
-                                    vErrors.push(err226);
+                                    vErrors.push(err231);
                                 }
                                 errors++;
                             }
                         }
-                        if (data96.model_output_version !== undefined) {
-                            let data97 = data96.model_output_version;
-                            if (typeof data97 === "string") {
-                                if (func2(data97) > 256) {
-                                    const err227 = {
+                        if (data98.model_output_version !== undefined) {
+                            let data99 = data98.model_output_version;
+                            if (typeof data99 === "string") {
+                                if (func2(data99) > 256) {
+                                    const err232 = {
                                         instancePath:
                                             instancePath +
                                             "/synthesis_input/contract/model_output_version",
@@ -37707,14 +37813,14 @@ function validate21(
                                         message: "must NOT have more than 256 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err227];
+                                        vErrors = [err232];
                                     } else {
-                                        vErrors.push(err227);
+                                        vErrors.push(err232);
                                     }
                                     errors++;
                                 }
-                                if (func2(data97) < 1) {
-                                    const err228 = {
+                                if (func2(data99) < 1) {
+                                    const err233 = {
                                         instancePath:
                                             instancePath +
                                             "/synthesis_input/contract/model_output_version",
@@ -37723,103 +37829,6 @@ function validate21(
                                         keyword: "minLength",
                                         params: { limit: 1 },
                                         message: "must NOT have fewer than 1 characters",
-                                    };
-                                    if (vErrors === null) {
-                                        vErrors = [err228];
-                                    } else {
-                                        vErrors.push(err228);
-                                    }
-                                    errors++;
-                                }
-                            } else {
-                                const err229 = {
-                                    instancePath:
-                                        instancePath +
-                                        "/synthesis_input/contract/model_output_version",
-                                    schemaPath:
-                                        "#/properties/synthesis_input/properties/contract/properties/model_output_version/type",
-                                    keyword: "type",
-                                    params: { type: "string" },
-                                    message: "must be string",
-                                };
-                                if (vErrors === null) {
-                                    vErrors = [err229];
-                                } else {
-                                    vErrors.push(err229);
-                                }
-                                errors++;
-                            }
-                        }
-                        if (data96.prompt_version !== undefined) {
-                            let data98 = data96.prompt_version;
-                            if (typeof data98 === "string") {
-                                if (func2(data98) > 256) {
-                                    const err230 = {
-                                        instancePath:
-                                            instancePath +
-                                            "/synthesis_input/contract/prompt_version",
-                                        schemaPath:
-                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/maxLength",
-                                        keyword: "maxLength",
-                                        params: { limit: 256 },
-                                        message: "must NOT have more than 256 characters",
-                                    };
-                                    if (vErrors === null) {
-                                        vErrors = [err230];
-                                    } else {
-                                        vErrors.push(err230);
-                                    }
-                                    errors++;
-                                }
-                                if (func2(data98) < 1) {
-                                    const err231 = {
-                                        instancePath:
-                                            instancePath +
-                                            "/synthesis_input/contract/prompt_version",
-                                        schemaPath:
-                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/minLength",
-                                        keyword: "minLength",
-                                        params: { limit: 1 },
-                                        message: "must NOT have fewer than 1 characters",
-                                    };
-                                    if (vErrors === null) {
-                                        vErrors = [err231];
-                                    } else {
-                                        vErrors.push(err231);
-                                    }
-                                    errors++;
-                                }
-                            } else {
-                                const err232 = {
-                                    instancePath:
-                                        instancePath + "/synthesis_input/contract/prompt_version",
-                                    schemaPath:
-                                        "#/properties/synthesis_input/properties/contract/properties/prompt_version/type",
-                                    keyword: "type",
-                                    params: { type: "string" },
-                                    message: "must be string",
-                                };
-                                if (vErrors === null) {
-                                    vErrors = [err232];
-                                } else {
-                                    vErrors.push(err232);
-                                }
-                                errors++;
-                            }
-                        }
-                        if (data96.system_sha256 !== undefined) {
-                            let data99 = data96.system_sha256;
-                            if (typeof data99 === "string") {
-                                if (!pattern20.test(data99)) {
-                                    const err233 = {
-                                        instancePath:
-                                            instancePath +
-                                            "/synthesis_input/contract/system_sha256",
-                                        schemaPath:
-                                            "#/properties/synthesis_input/properties/contract/properties/system_sha256/pattern",
-                                        keyword: "pattern",
-                                        params: { pattern: "^[0-9a-f]{64}$" },
-                                        message: 'must match pattern "' + "^[0-9a-f]{64}$" + '"',
                                     };
                                     if (vErrors === null) {
                                         vErrors = [err233];
@@ -37831,9 +37840,10 @@ function validate21(
                             } else {
                                 const err234 = {
                                     instancePath:
-                                        instancePath + "/synthesis_input/contract/system_sha256",
+                                        instancePath +
+                                        "/synthesis_input/contract/model_output_version",
                                     schemaPath:
-                                        "#/properties/synthesis_input/properties/contract/properties/system_sha256/type",
+                                        "#/properties/synthesis_input/properties/contract/properties/model_output_version/type",
                                     keyword: "type",
                                     params: { type: "string" },
                                     message: "must be string",
@@ -37846,8 +37856,104 @@ function validate21(
                                 errors++;
                             }
                         }
+                        if (data98.prompt_version !== undefined) {
+                            let data100 = data98.prompt_version;
+                            if (typeof data100 === "string") {
+                                if (func2(data100) > 256) {
+                                    const err235 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/synthesis_input/contract/prompt_version",
+                                        schemaPath:
+                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 256 },
+                                        message: "must NOT have more than 256 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err235];
+                                    } else {
+                                        vErrors.push(err235);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data100) < 1) {
+                                    const err236 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/synthesis_input/contract/prompt_version",
+                                        schemaPath:
+                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err236];
+                                    } else {
+                                        vErrors.push(err236);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err237 = {
+                                    instancePath:
+                                        instancePath + "/synthesis_input/contract/prompt_version",
+                                    schemaPath:
+                                        "#/properties/synthesis_input/properties/contract/properties/prompt_version/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err237];
+                                } else {
+                                    vErrors.push(err237);
+                                }
+                                errors++;
+                            }
+                        }
+                        if (data98.system_sha256 !== undefined) {
+                            let data101 = data98.system_sha256;
+                            if (typeof data101 === "string") {
+                                if (!pattern20.test(data101)) {
+                                    const err238 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/synthesis_input/contract/system_sha256",
+                                        schemaPath:
+                                            "#/properties/synthesis_input/properties/contract/properties/system_sha256/pattern",
+                                        keyword: "pattern",
+                                        params: { pattern: "^[0-9a-f]{64}$" },
+                                        message: 'must match pattern "' + "^[0-9a-f]{64}$" + '"',
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err238];
+                                    } else {
+                                        vErrors.push(err238);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err239 = {
+                                    instancePath:
+                                        instancePath + "/synthesis_input/contract/system_sha256",
+                                    schemaPath:
+                                        "#/properties/synthesis_input/properties/contract/properties/system_sha256/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err239];
+                                } else {
+                                    vErrors.push(err239);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        const err235 = {
+                        const err240 = {
                             instancePath: instancePath + "/synthesis_input/contract",
                             schemaPath: "#/properties/synthesis_input/properties/contract/type",
                             keyword: "type",
@@ -37855,17 +37961,17 @@ function validate21(
                             message: "must be object",
                         };
                         if (vErrors === null) {
-                            vErrors = [err235];
+                            vErrors = [err240];
                         } else {
-                            vErrors.push(err235);
+                            vErrors.push(err240);
                         }
                         errors++;
                     }
                 }
-                if (data95.input !== undefined) {
-                    let data100 = data95.input;
-                    if (!(data100 && typeof data100 == "object" && !Array.isArray(data100))) {
-                        const err236 = {
+                if (data97.input !== undefined) {
+                    let data102 = data97.input;
+                    if (!(data102 && typeof data102 == "object" && !Array.isArray(data102))) {
+                        const err241 = {
                             instancePath: instancePath + "/synthesis_input/input",
                             schemaPath: "#/properties/synthesis_input/properties/input/type",
                             keyword: "type",
@@ -37873,18 +37979,18 @@ function validate21(
                             message: "must be object",
                         };
                         if (vErrors === null) {
-                            vErrors = [err236];
+                            vErrors = [err241];
                         } else {
-                            vErrors.push(err236);
+                            vErrors.push(err241);
                         }
                         errors++;
                     }
                 }
-                if (data95.input_sha256 !== undefined) {
-                    let data101 = data95.input_sha256;
-                    if (typeof data101 === "string") {
-                        if (!pattern20.test(data101)) {
-                            const err237 = {
+                if (data97.input_sha256 !== undefined) {
+                    let data103 = data97.input_sha256;
+                    if (typeof data103 === "string") {
+                        if (!pattern20.test(data103)) {
+                            const err242 = {
                                 instancePath: instancePath + "/synthesis_input/input_sha256",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/input_sha256/pattern",
@@ -37893,14 +37999,14 @@ function validate21(
                                 message: 'must match pattern "' + "^[0-9a-f]{64}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err237];
+                                vErrors = [err242];
                             } else {
-                                vErrors.push(err237);
+                                vErrors.push(err242);
                             }
                             errors++;
                         }
                     } else {
-                        const err238 = {
+                        const err243 = {
                             instancePath: instancePath + "/synthesis_input/input_sha256",
                             schemaPath: "#/properties/synthesis_input/properties/input_sha256/type",
                             keyword: "type",
@@ -37908,16 +38014,16 @@ function validate21(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err238];
+                            vErrors = [err243];
                         } else {
-                            vErrors.push(err238);
+                            vErrors.push(err243);
                         }
                         errors++;
                     }
                 }
-                if (data95.bounded !== undefined) {
-                    if (typeof data95.bounded !== "boolean") {
-                        const err239 = {
+                if (data97.bounded !== undefined) {
+                    if (typeof data97.bounded !== "boolean") {
+                        const err244 = {
                             instancePath: instancePath + "/synthesis_input/bounded",
                             schemaPath: "#/properties/synthesis_input/properties/bounded/type",
                             keyword: "type",
@@ -37925,18 +38031,18 @@ function validate21(
                             message: "must be boolean",
                         };
                         if (vErrors === null) {
-                            vErrors = [err239];
+                            vErrors = [err244];
                         } else {
-                            vErrors.push(err239);
+                            vErrors.push(err244);
                         }
                         errors++;
                     }
                 }
-                if (data95.rules !== undefined) {
-                    let data103 = data95.rules;
-                    if (Array.isArray(data103)) {
-                        if (data103.length > 16) {
-                            const err240 = {
+                if (data97.rules !== undefined) {
+                    let data105 = data97.rules;
+                    if (Array.isArray(data105)) {
+                        if (data105.length > 16) {
+                            const err245 = {
                                 instancePath: instancePath + "/synthesis_input/rules",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/rules/maxItems",
@@ -37945,14 +38051,14 @@ function validate21(
                                 message: "must NOT have more than 16 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err240];
+                                vErrors = [err245];
                             } else {
-                                vErrors.push(err240);
+                                vErrors.push(err245);
                             }
                             errors++;
                         }
-                        if (data103.length < 1) {
-                            const err241 = {
+                        if (data105.length < 1) {
+                            const err246 = {
                                 instancePath: instancePath + "/synthesis_input/rules",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/rules/minItems",
@@ -37961,18 +38067,18 @@ function validate21(
                                 message: "must NOT have fewer than 1 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err241];
+                                vErrors = [err246];
                             } else {
-                                vErrors.push(err241);
+                                vErrors.push(err246);
                             }
                             errors++;
                         }
-                        const len14 = data103.length;
+                        const len14 = data105.length;
                         for (let i15 = 0; i15 < len14; i15++) {
-                            let data104 = data103[i15];
-                            if (typeof data104 === "string") {
-                                if (func2(data104) > 512) {
-                                    const err242 = {
+                            let data106 = data105[i15];
+                            if (typeof data106 === "string") {
+                                if (func2(data106) > 512) {
+                                    const err247 = {
                                         instancePath:
                                             instancePath + "/synthesis_input/rules/" + i15,
                                         schemaPath:
@@ -37982,14 +38088,14 @@ function validate21(
                                         message: "must NOT have more than 512 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err242];
+                                        vErrors = [err247];
                                     } else {
-                                        vErrors.push(err242);
+                                        vErrors.push(err247);
                                     }
                                     errors++;
                                 }
-                                if (func2(data104) < 1) {
-                                    const err243 = {
+                                if (func2(data106) < 1) {
+                                    const err248 = {
                                         instancePath:
                                             instancePath + "/synthesis_input/rules/" + i15,
                                         schemaPath:
@@ -37999,14 +38105,14 @@ function validate21(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err243];
+                                        vErrors = [err248];
                                     } else {
-                                        vErrors.push(err243);
+                                        vErrors.push(err248);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err244 = {
+                                const err249 = {
                                     instancePath: instancePath + "/synthesis_input/rules/" + i15,
                                     schemaPath:
                                         "#/properties/synthesis_input/properties/rules/items/type",
@@ -38015,15 +38121,15 @@ function validate21(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err244];
+                                    vErrors = [err249];
                                 } else {
-                                    vErrors.push(err244);
+                                    vErrors.push(err249);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err245 = {
+                        const err250 = {
                             instancePath: instancePath + "/synthesis_input/rules",
                             schemaPath: "#/properties/synthesis_input/properties/rules/type",
                             keyword: "type",
@@ -38031,15 +38137,15 @@ function validate21(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err245];
+                            vErrors = [err250];
                         } else {
-                            vErrors.push(err245);
+                            vErrors.push(err250);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err246 = {
+                const err251 = {
                     instancePath: instancePath + "/synthesis_input",
                     schemaPath: "#/properties/synthesis_input/type",
                     keyword: "type",
@@ -38047,15 +38153,15 @@ function validate21(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err246];
+                    vErrors = [err251];
                 } else {
-                    vErrors.push(err246);
+                    vErrors.push(err251);
                 }
                 errors++;
             }
         }
     } else {
-        const err247 = {
+        const err252 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -38063,9 +38169,9 @@ function validate21(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err247];
+            vErrors = [err252];
         } else {
-            vErrors.push(err247);
+            vErrors.push(err252);
         }
         errors++;
     }
@@ -38213,6 +38319,13 @@ const schema140 = {
             maxProperties: 8192,
             description:
                 "CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.",
+        },
+        vocabulary_labels: {
+            type: "object",
+            additionalProperties: { type: "string", minLength: 1, maxLength: 160 },
+            maxProperties: 8192,
+            description:
+                "CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.",
         },
         refusal_basis: {
             type: "string",
@@ -57019,69 +57132,75 @@ function validate114(
                 errors++;
             }
         }
-        if (data.refusal_basis !== undefined) {
-            if (typeof data.refusal_basis !== "string") {
-                const err199 = {
-                    instancePath: instancePath + "/refusal_basis",
-                    schemaPath: "#/properties/refusal_basis/type",
-                    keyword: "type",
-                    params: { type: "string" },
-                    message: "must be string",
-                };
-                if (vErrors === null) {
-                    vErrors = [err199];
-                } else {
-                    vErrors.push(err199);
-                }
-                errors++;
-            }
-        }
-        if (data.status_correction !== undefined) {
-            let data87 = data.status_correction;
-            if (data87 && typeof data87 == "object" && !Array.isArray(data87)) {
-                if (data87.replaced_status === undefined) {
-                    const err200 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "replaced_status" },
-                        message: "must have required property '" + "replaced_status" + "'",
+        if (data.vocabulary_labels !== undefined) {
+            let data86 = data.vocabulary_labels;
+            if (data86 && typeof data86 == "object" && !Array.isArray(data86)) {
+                if (Object.keys(data86).length > 8192) {
+                    const err199 = {
+                        instancePath: instancePath + "/vocabulary_labels",
+                        schemaPath: "#/properties/vocabulary_labels/maxProperties",
+                        keyword: "maxProperties",
+                        params: { limit: 8192 },
+                        message: "must NOT have more than 8192 properties",
                     };
                     if (vErrors === null) {
-                        vErrors = [err200];
+                        vErrors = [err199];
                     } else {
-                        vErrors.push(err200);
+                        vErrors.push(err199);
                     }
                     errors++;
                 }
-                if (data87.direction === undefined) {
-                    const err201 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "direction" },
-                        message: "must have required property '" + "direction" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err201];
+                for (const key4 in data86) {
+                    let data87 = data86[key4];
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 160) {
+                            const err200 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 160 },
+                                message: "must NOT have more than 160 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
+                        if (func2(data87) < 1) {
+                            const err201 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err201];
+                            } else {
+                                vErrors.push(err201);
+                            }
+                            errors++;
+                        }
                     } else {
-                        vErrors.push(err201);
-                    }
-                    errors++;
-                }
-                for (const key4 in data87) {
-                    if (!(
-                        key4 === "replaced_status" ||
-                        key4 === "direction" ||
-                        key4 === "deciding_requirement" ||
-                        key4 === "deciding_outcome"
-                    )) {
                         const err202 = {
-                            instancePath: instancePath + "/status_correction",
-                            schemaPath: "#/properties/status_correction/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key4 },
-                            message: "must NOT have additional properties",
+                            instancePath:
+                                instancePath +
+                                "/vocabulary_labels/" +
+                                key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                            schemaPath: "#/properties/vocabulary_labels/additionalProperties/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err202];
@@ -57091,10 +57210,98 @@ function validate114(
                         errors++;
                     }
                 }
-                if (data87.replaced_status !== undefined) {
-                    let data88 = data87.replaced_status;
-                    if (typeof data88 !== "string") {
-                        const err203 = {
+            } else {
+                const err203 = {
+                    instancePath: instancePath + "/vocabulary_labels",
+                    schemaPath: "#/properties/vocabulary_labels/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.refusal_basis !== undefined) {
+            if (typeof data.refusal_basis !== "string") {
+                const err204 = {
+                    instancePath: instancePath + "/refusal_basis",
+                    schemaPath: "#/properties/refusal_basis/type",
+                    keyword: "type",
+                    params: { type: "string" },
+                    message: "must be string",
+                };
+                if (vErrors === null) {
+                    vErrors = [err204];
+                } else {
+                    vErrors.push(err204);
+                }
+                errors++;
+            }
+        }
+        if (data.status_correction !== undefined) {
+            let data89 = data.status_correction;
+            if (data89 && typeof data89 == "object" && !Array.isArray(data89)) {
+                if (data89.replaced_status === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "replaced_status" },
+                        message: "must have required property '" + "replaced_status" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                if (data89.direction === undefined) {
+                    const err206 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "direction" },
+                        message: "must have required property '" + "direction" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err206];
+                    } else {
+                        vErrors.push(err206);
+                    }
+                    errors++;
+                }
+                for (const key5 in data89) {
+                    if (!(
+                        key5 === "replaced_status" ||
+                        key5 === "direction" ||
+                        key5 === "deciding_requirement" ||
+                        key5 === "deciding_outcome"
+                    )) {
+                        const err207 = {
+                            instancePath: instancePath + "/status_correction",
+                            schemaPath: "#/properties/status_correction/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key5 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err207];
+                        } else {
+                            vErrors.push(err207);
+                        }
+                        errors++;
+                    }
+                }
+                if (data89.replaced_status !== undefined) {
+                    let data90 = data89.replaced_status;
+                    if (typeof data90 !== "string") {
+                        const err208 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/type",
@@ -57103,14 +57310,14 @@ function validate114(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err203];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err203);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
-                    if (!(data88 === "complete" || data88 === "partial" || data88 === "degraded")) {
-                        const err204 = {
+                    if (!(data90 === "complete" || data90 === "partial" || data90 === "degraded")) {
+                        const err209 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/enum",
@@ -57123,17 +57330,17 @@ function validate114(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                 }
-                if (data87.direction !== undefined) {
-                    let data89 = data87.direction;
-                    if (typeof data89 !== "string") {
-                        const err205 = {
+                if (data89.direction !== undefined) {
+                    let data91 = data89.direction;
+                    if (typeof data91 !== "string") {
+                        const err210 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/type",
                             keyword: "type",
@@ -57141,19 +57348,19 @@ function validate114(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err205];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err205);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                     if (!(
-                        data89 === "complete_to_partial" ||
-                        data89 === "complete_to_degraded" ||
-                        data89 === "partial_to_degraded" ||
-                        data89 === "degraded_to_partial"
+                        data91 === "complete_to_partial" ||
+                        data91 === "complete_to_degraded" ||
+                        data91 === "partial_to_degraded" ||
+                        data91 === "degraded_to_partial"
                     )) {
-                        const err206 = {
+                        const err211 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/enum",
                             keyword: "enum",
@@ -57165,16 +57372,16 @@ function validate114(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err211];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err211);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_requirement !== undefined) {
-                    if (typeof data87.deciding_requirement !== "string") {
-                        const err207 = {
+                if (data89.deciding_requirement !== undefined) {
+                    if (typeof data89.deciding_requirement !== "string") {
+                        const err212 = {
                             instancePath: instancePath + "/status_correction/deciding_requirement",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_requirement/type",
@@ -57183,17 +57390,17 @@ function validate114(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err207];
+                            vErrors = [err212];
                         } else {
-                            vErrors.push(err207);
+                            vErrors.push(err212);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_outcome !== undefined) {
-                    let data91 = data87.deciding_outcome;
-                    if (typeof data91 !== "string") {
-                        const err208 = {
+                if (data89.deciding_outcome !== undefined) {
+                    let data93 = data89.deciding_outcome;
+                    if (typeof data93 !== "string") {
+                        const err213 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/type",
@@ -57202,20 +57409,20 @@ function validate114(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err213];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err213);
                         }
                         errors++;
                     }
                     if (!(
-                        data91 === "satisfied" ||
-                        data91 === "narrowed" ||
-                        data91 === "unavailable" ||
-                        data91 === "not_applicable" ||
-                        data91 === "not_attempted"
+                        data93 === "satisfied" ||
+                        data93 === "narrowed" ||
+                        data93 === "unavailable" ||
+                        data93 === "not_applicable" ||
+                        data93 === "not_attempted"
                     )) {
-                        const err209 = {
+                        const err214 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/enum",
@@ -57228,15 +57435,15 @@ function validate114(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err209];
+                            vErrors = [err214];
                         } else {
-                            vErrors.push(err209);
+                            vErrors.push(err214);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err210 = {
+                const err215 = {
                     instancePath: instancePath + "/status_correction",
                     schemaPath: "#/properties/status_correction/type",
                     keyword: "type",
@@ -57244,18 +57451,18 @@ function validate114(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err210];
+                    vErrors = [err215];
                 } else {
-                    vErrors.push(err210);
+                    vErrors.push(err215);
                 }
                 errors++;
             }
         }
         if (data.semantic_reading !== undefined) {
-            let data92 = data.semantic_reading;
-            if (data92 && typeof data92 == "object" && !Array.isArray(data92)) {
-                if (data92.status === undefined) {
-                    const err211 = {
+            let data94 = data.semantic_reading;
+            if (data94 && typeof data94 == "object" && !Array.isArray(data94)) {
+                if (data94.status === undefined) {
+                    const err216 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -57263,14 +57470,14 @@ function validate114(
                         message: "must have required property '" + "status" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err211];
+                        vErrors = [err216];
                     } else {
-                        vErrors.push(err211);
+                        vErrors.push(err216);
                     }
                     errors++;
                 }
-                if (data92.reason === undefined) {
-                    const err212 = {
+                if (data94.reason === undefined) {
+                    const err217 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -57278,33 +57485,33 @@ function validate114(
                         message: "must have required property '" + "reason" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err212];
+                        vErrors = [err217];
                     } else {
-                        vErrors.push(err212);
+                        vErrors.push(err217);
                     }
                     errors++;
                 }
-                for (const key5 in data92) {
-                    if (!(key5 === "status" || key5 === "reason")) {
-                        const err213 = {
+                for (const key6 in data94) {
+                    if (!(key6 === "status" || key6 === "reason")) {
+                        const err218 = {
                             instancePath: instancePath + "/semantic_reading",
                             schemaPath: "#/properties/semantic_reading/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key5 },
+                            params: { additionalProperty: key6 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err213];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err213);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
                 }
-                if (data92.status !== undefined) {
-                    let data93 = data92.status;
-                    if (typeof data93 !== "string") {
-                        const err214 = {
+                if (data94.status !== undefined) {
+                    let data95 = data94.status;
+                    if (typeof data95 !== "string") {
+                        const err219 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/type",
                             keyword: "type",
@@ -57312,14 +57519,14 @@ function validate114(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err219];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err219);
                         }
                         errors++;
                     }
-                    if (!(data93 === "unavailable")) {
-                        const err215 = {
+                    if (!(data95 === "unavailable")) {
+                        const err220 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/enum",
                             keyword: "enum",
@@ -57330,16 +57537,16 @@ function validate114(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
-                if (data92.reason !== undefined) {
-                    if (typeof data92.reason !== "string") {
-                        const err216 = {
+                if (data94.reason !== undefined) {
+                    if (typeof data94.reason !== "string") {
+                        const err221 = {
                             instancePath: instancePath + "/semantic_reading/reason",
                             schemaPath: "#/properties/semantic_reading/properties/reason/type",
                             keyword: "type",
@@ -57347,15 +57554,15 @@ function validate114(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err216];
+                            vErrors = [err221];
                         } else {
-                            vErrors.push(err216);
+                            vErrors.push(err221);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err217 = {
+                const err222 = {
                     instancePath: instancePath + "/semantic_reading",
                     schemaPath: "#/properties/semantic_reading/type",
                     keyword: "type",
@@ -57363,18 +57570,18 @@ function validate114(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err217];
+                    vErrors = [err222];
                 } else {
-                    vErrors.push(err217);
+                    vErrors.push(err222);
                 }
                 errors++;
             }
         }
         if (data.synthesis_input !== undefined) {
-            let data95 = data.synthesis_input;
-            if (data95 && typeof data95 == "object" && !Array.isArray(data95)) {
-                if (data95.contract === undefined) {
-                    const err218 = {
+            let data97 = data.synthesis_input;
+            if (data97 && typeof data97 == "object" && !Array.isArray(data97)) {
+                if (data97.contract === undefined) {
+                    const err223 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -57382,14 +57589,14 @@ function validate114(
                         message: "must have required property '" + "contract" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err218];
+                        vErrors = [err223];
                     } else {
-                        vErrors.push(err218);
+                        vErrors.push(err223);
                     }
                     errors++;
                 }
-                if (data95.input === undefined) {
-                    const err219 = {
+                if (data97.input === undefined) {
+                    const err224 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -57397,14 +57604,14 @@ function validate114(
                         message: "must have required property '" + "input" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err219];
+                        vErrors = [err224];
                     } else {
-                        vErrors.push(err219);
+                        vErrors.push(err224);
                     }
                     errors++;
                 }
-                if (data95.input_sha256 === undefined) {
-                    const err220 = {
+                if (data97.input_sha256 === undefined) {
+                    const err225 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -57412,14 +57619,14 @@ function validate114(
                         message: "must have required property '" + "input_sha256" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err220];
+                        vErrors = [err225];
                     } else {
-                        vErrors.push(err220);
+                        vErrors.push(err225);
                     }
                     errors++;
                 }
-                if (data95.bounded === undefined) {
-                    const err221 = {
+                if (data97.bounded === undefined) {
+                    const err226 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -57427,14 +57634,14 @@ function validate114(
                         message: "must have required property '" + "bounded" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err221];
+                        vErrors = [err226];
                     } else {
-                        vErrors.push(err221);
+                        vErrors.push(err226);
                     }
                     errors++;
                 }
-                if (data95.rules === undefined) {
-                    const err222 = {
+                if (data97.rules === undefined) {
+                    const err227 = {
                         instancePath: instancePath + "/synthesis_input",
                         schemaPath: "#/properties/synthesis_input/required",
                         keyword: "required",
@@ -57442,40 +57649,40 @@ function validate114(
                         message: "must have required property '" + "rules" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err222];
+                        vErrors = [err227];
                     } else {
-                        vErrors.push(err222);
+                        vErrors.push(err227);
                     }
                     errors++;
                 }
-                for (const key6 in data95) {
+                for (const key7 in data97) {
                     if (!(
-                        key6 === "contract" ||
-                        key6 === "input" ||
-                        key6 === "input_sha256" ||
-                        key6 === "bounded" ||
-                        key6 === "rules"
+                        key7 === "contract" ||
+                        key7 === "input" ||
+                        key7 === "input_sha256" ||
+                        key7 === "bounded" ||
+                        key7 === "rules"
                     )) {
-                        const err223 = {
+                        const err228 = {
                             instancePath: instancePath + "/synthesis_input",
                             schemaPath: "#/properties/synthesis_input/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key6 },
+                            params: { additionalProperty: key7 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err223];
+                            vErrors = [err228];
                         } else {
-                            vErrors.push(err223);
+                            vErrors.push(err228);
                         }
                         errors++;
                     }
                 }
-                if (data95.contract !== undefined) {
-                    let data96 = data95.contract;
-                    if (data96 && typeof data96 == "object" && !Array.isArray(data96)) {
-                        if (data96.model_output_version === undefined) {
-                            const err224 = {
+                if (data97.contract !== undefined) {
+                    let data98 = data97.contract;
+                    if (data98 && typeof data98 == "object" && !Array.isArray(data98)) {
+                        if (data98.model_output_version === undefined) {
+                            const err229 = {
                                 instancePath: instancePath + "/synthesis_input/contract",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/contract/required",
@@ -57485,14 +57692,14 @@ function validate114(
                                     "must have required property '" + "model_output_version" + "'",
                             };
                             if (vErrors === null) {
-                                vErrors = [err224];
+                                vErrors = [err229];
                             } else {
-                                vErrors.push(err224);
+                                vErrors.push(err229);
                             }
                             errors++;
                         }
-                        if (data96.prompt_version === undefined) {
-                            const err225 = {
+                        if (data98.prompt_version === undefined) {
+                            const err230 = {
                                 instancePath: instancePath + "/synthesis_input/contract",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/contract/required",
@@ -57501,14 +57708,14 @@ function validate114(
                                 message: "must have required property '" + "prompt_version" + "'",
                             };
                             if (vErrors === null) {
-                                vErrors = [err225];
+                                vErrors = [err230];
                             } else {
-                                vErrors.push(err225);
+                                vErrors.push(err230);
                             }
                             errors++;
                         }
-                        if (data96.system_sha256 === undefined) {
-                            const err226 = {
+                        if (data98.system_sha256 === undefined) {
+                            const err231 = {
                                 instancePath: instancePath + "/synthesis_input/contract",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/contract/required",
@@ -57517,39 +57724,39 @@ function validate114(
                                 message: "must have required property '" + "system_sha256" + "'",
                             };
                             if (vErrors === null) {
-                                vErrors = [err226];
+                                vErrors = [err231];
                             } else {
-                                vErrors.push(err226);
+                                vErrors.push(err231);
                             }
                             errors++;
                         }
-                        for (const key7 in data96) {
+                        for (const key8 in data98) {
                             if (!(
-                                key7 === "model_output_version" ||
-                                key7 === "prompt_version" ||
-                                key7 === "system_sha256"
+                                key8 === "model_output_version" ||
+                                key8 === "prompt_version" ||
+                                key8 === "system_sha256"
                             )) {
-                                const err227 = {
+                                const err232 = {
                                     instancePath: instancePath + "/synthesis_input/contract",
                                     schemaPath:
                                         "#/properties/synthesis_input/properties/contract/additionalProperties",
                                     keyword: "additionalProperties",
-                                    params: { additionalProperty: key7 },
+                                    params: { additionalProperty: key8 },
                                     message: "must NOT have additional properties",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err227];
+                                    vErrors = [err232];
                                 } else {
-                                    vErrors.push(err227);
+                                    vErrors.push(err232);
                                 }
                                 errors++;
                             }
                         }
-                        if (data96.model_output_version !== undefined) {
-                            let data97 = data96.model_output_version;
-                            if (typeof data97 === "string") {
-                                if (func2(data97) > 256) {
-                                    const err228 = {
+                        if (data98.model_output_version !== undefined) {
+                            let data99 = data98.model_output_version;
+                            if (typeof data99 === "string") {
+                                if (func2(data99) > 256) {
+                                    const err233 = {
                                         instancePath:
                                             instancePath +
                                             "/synthesis_input/contract/model_output_version",
@@ -57560,14 +57767,14 @@ function validate114(
                                         message: "must NOT have more than 256 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err228];
+                                        vErrors = [err233];
                                     } else {
-                                        vErrors.push(err228);
+                                        vErrors.push(err233);
                                     }
                                     errors++;
                                 }
-                                if (func2(data97) < 1) {
-                                    const err229 = {
+                                if (func2(data99) < 1) {
+                                    const err234 = {
                                         instancePath:
                                             instancePath +
                                             "/synthesis_input/contract/model_output_version",
@@ -57576,103 +57783,6 @@ function validate114(
                                         keyword: "minLength",
                                         params: { limit: 1 },
                                         message: "must NOT have fewer than 1 characters",
-                                    };
-                                    if (vErrors === null) {
-                                        vErrors = [err229];
-                                    } else {
-                                        vErrors.push(err229);
-                                    }
-                                    errors++;
-                                }
-                            } else {
-                                const err230 = {
-                                    instancePath:
-                                        instancePath +
-                                        "/synthesis_input/contract/model_output_version",
-                                    schemaPath:
-                                        "#/properties/synthesis_input/properties/contract/properties/model_output_version/type",
-                                    keyword: "type",
-                                    params: { type: "string" },
-                                    message: "must be string",
-                                };
-                                if (vErrors === null) {
-                                    vErrors = [err230];
-                                } else {
-                                    vErrors.push(err230);
-                                }
-                                errors++;
-                            }
-                        }
-                        if (data96.prompt_version !== undefined) {
-                            let data98 = data96.prompt_version;
-                            if (typeof data98 === "string") {
-                                if (func2(data98) > 256) {
-                                    const err231 = {
-                                        instancePath:
-                                            instancePath +
-                                            "/synthesis_input/contract/prompt_version",
-                                        schemaPath:
-                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/maxLength",
-                                        keyword: "maxLength",
-                                        params: { limit: 256 },
-                                        message: "must NOT have more than 256 characters",
-                                    };
-                                    if (vErrors === null) {
-                                        vErrors = [err231];
-                                    } else {
-                                        vErrors.push(err231);
-                                    }
-                                    errors++;
-                                }
-                                if (func2(data98) < 1) {
-                                    const err232 = {
-                                        instancePath:
-                                            instancePath +
-                                            "/synthesis_input/contract/prompt_version",
-                                        schemaPath:
-                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/minLength",
-                                        keyword: "minLength",
-                                        params: { limit: 1 },
-                                        message: "must NOT have fewer than 1 characters",
-                                    };
-                                    if (vErrors === null) {
-                                        vErrors = [err232];
-                                    } else {
-                                        vErrors.push(err232);
-                                    }
-                                    errors++;
-                                }
-                            } else {
-                                const err233 = {
-                                    instancePath:
-                                        instancePath + "/synthesis_input/contract/prompt_version",
-                                    schemaPath:
-                                        "#/properties/synthesis_input/properties/contract/properties/prompt_version/type",
-                                    keyword: "type",
-                                    params: { type: "string" },
-                                    message: "must be string",
-                                };
-                                if (vErrors === null) {
-                                    vErrors = [err233];
-                                } else {
-                                    vErrors.push(err233);
-                                }
-                                errors++;
-                            }
-                        }
-                        if (data96.system_sha256 !== undefined) {
-                            let data99 = data96.system_sha256;
-                            if (typeof data99 === "string") {
-                                if (!pattern20.test(data99)) {
-                                    const err234 = {
-                                        instancePath:
-                                            instancePath +
-                                            "/synthesis_input/contract/system_sha256",
-                                        schemaPath:
-                                            "#/properties/synthesis_input/properties/contract/properties/system_sha256/pattern",
-                                        keyword: "pattern",
-                                        params: { pattern: "^[0-9a-f]{64}$" },
-                                        message: 'must match pattern "' + "^[0-9a-f]{64}$" + '"',
                                     };
                                     if (vErrors === null) {
                                         vErrors = [err234];
@@ -57684,9 +57794,10 @@ function validate114(
                             } else {
                                 const err235 = {
                                     instancePath:
-                                        instancePath + "/synthesis_input/contract/system_sha256",
+                                        instancePath +
+                                        "/synthesis_input/contract/model_output_version",
                                     schemaPath:
-                                        "#/properties/synthesis_input/properties/contract/properties/system_sha256/type",
+                                        "#/properties/synthesis_input/properties/contract/properties/model_output_version/type",
                                     keyword: "type",
                                     params: { type: "string" },
                                     message: "must be string",
@@ -57699,8 +57810,104 @@ function validate114(
                                 errors++;
                             }
                         }
+                        if (data98.prompt_version !== undefined) {
+                            let data100 = data98.prompt_version;
+                            if (typeof data100 === "string") {
+                                if (func2(data100) > 256) {
+                                    const err236 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/synthesis_input/contract/prompt_version",
+                                        schemaPath:
+                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/maxLength",
+                                        keyword: "maxLength",
+                                        params: { limit: 256 },
+                                        message: "must NOT have more than 256 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err236];
+                                    } else {
+                                        vErrors.push(err236);
+                                    }
+                                    errors++;
+                                }
+                                if (func2(data100) < 1) {
+                                    const err237 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/synthesis_input/contract/prompt_version",
+                                        schemaPath:
+                                            "#/properties/synthesis_input/properties/contract/properties/prompt_version/minLength",
+                                        keyword: "minLength",
+                                        params: { limit: 1 },
+                                        message: "must NOT have fewer than 1 characters",
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err237];
+                                    } else {
+                                        vErrors.push(err237);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err238 = {
+                                    instancePath:
+                                        instancePath + "/synthesis_input/contract/prompt_version",
+                                    schemaPath:
+                                        "#/properties/synthesis_input/properties/contract/properties/prompt_version/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err238];
+                                } else {
+                                    vErrors.push(err238);
+                                }
+                                errors++;
+                            }
+                        }
+                        if (data98.system_sha256 !== undefined) {
+                            let data101 = data98.system_sha256;
+                            if (typeof data101 === "string") {
+                                if (!pattern20.test(data101)) {
+                                    const err239 = {
+                                        instancePath:
+                                            instancePath +
+                                            "/synthesis_input/contract/system_sha256",
+                                        schemaPath:
+                                            "#/properties/synthesis_input/properties/contract/properties/system_sha256/pattern",
+                                        keyword: "pattern",
+                                        params: { pattern: "^[0-9a-f]{64}$" },
+                                        message: 'must match pattern "' + "^[0-9a-f]{64}$" + '"',
+                                    };
+                                    if (vErrors === null) {
+                                        vErrors = [err239];
+                                    } else {
+                                        vErrors.push(err239);
+                                    }
+                                    errors++;
+                                }
+                            } else {
+                                const err240 = {
+                                    instancePath:
+                                        instancePath + "/synthesis_input/contract/system_sha256",
+                                    schemaPath:
+                                        "#/properties/synthesis_input/properties/contract/properties/system_sha256/type",
+                                    keyword: "type",
+                                    params: { type: "string" },
+                                    message: "must be string",
+                                };
+                                if (vErrors === null) {
+                                    vErrors = [err240];
+                                } else {
+                                    vErrors.push(err240);
+                                }
+                                errors++;
+                            }
+                        }
                     } else {
-                        const err236 = {
+                        const err241 = {
                             instancePath: instancePath + "/synthesis_input/contract",
                             schemaPath: "#/properties/synthesis_input/properties/contract/type",
                             keyword: "type",
@@ -57708,17 +57915,17 @@ function validate114(
                             message: "must be object",
                         };
                         if (vErrors === null) {
-                            vErrors = [err236];
+                            vErrors = [err241];
                         } else {
-                            vErrors.push(err236);
+                            vErrors.push(err241);
                         }
                         errors++;
                     }
                 }
-                if (data95.input !== undefined) {
-                    let data100 = data95.input;
-                    if (!(data100 && typeof data100 == "object" && !Array.isArray(data100))) {
-                        const err237 = {
+                if (data97.input !== undefined) {
+                    let data102 = data97.input;
+                    if (!(data102 && typeof data102 == "object" && !Array.isArray(data102))) {
+                        const err242 = {
                             instancePath: instancePath + "/synthesis_input/input",
                             schemaPath: "#/properties/synthesis_input/properties/input/type",
                             keyword: "type",
@@ -57726,18 +57933,18 @@ function validate114(
                             message: "must be object",
                         };
                         if (vErrors === null) {
-                            vErrors = [err237];
+                            vErrors = [err242];
                         } else {
-                            vErrors.push(err237);
+                            vErrors.push(err242);
                         }
                         errors++;
                     }
                 }
-                if (data95.input_sha256 !== undefined) {
-                    let data101 = data95.input_sha256;
-                    if (typeof data101 === "string") {
-                        if (!pattern20.test(data101)) {
-                            const err238 = {
+                if (data97.input_sha256 !== undefined) {
+                    let data103 = data97.input_sha256;
+                    if (typeof data103 === "string") {
+                        if (!pattern20.test(data103)) {
+                            const err243 = {
                                 instancePath: instancePath + "/synthesis_input/input_sha256",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/input_sha256/pattern",
@@ -57746,14 +57953,14 @@ function validate114(
                                 message: 'must match pattern "' + "^[0-9a-f]{64}$" + '"',
                             };
                             if (vErrors === null) {
-                                vErrors = [err238];
+                                vErrors = [err243];
                             } else {
-                                vErrors.push(err238);
+                                vErrors.push(err243);
                             }
                             errors++;
                         }
                     } else {
-                        const err239 = {
+                        const err244 = {
                             instancePath: instancePath + "/synthesis_input/input_sha256",
                             schemaPath: "#/properties/synthesis_input/properties/input_sha256/type",
                             keyword: "type",
@@ -57761,16 +57968,16 @@ function validate114(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err239];
+                            vErrors = [err244];
                         } else {
-                            vErrors.push(err239);
+                            vErrors.push(err244);
                         }
                         errors++;
                     }
                 }
-                if (data95.bounded !== undefined) {
-                    if (typeof data95.bounded !== "boolean") {
-                        const err240 = {
+                if (data97.bounded !== undefined) {
+                    if (typeof data97.bounded !== "boolean") {
+                        const err245 = {
                             instancePath: instancePath + "/synthesis_input/bounded",
                             schemaPath: "#/properties/synthesis_input/properties/bounded/type",
                             keyword: "type",
@@ -57778,18 +57985,18 @@ function validate114(
                             message: "must be boolean",
                         };
                         if (vErrors === null) {
-                            vErrors = [err240];
+                            vErrors = [err245];
                         } else {
-                            vErrors.push(err240);
+                            vErrors.push(err245);
                         }
                         errors++;
                     }
                 }
-                if (data95.rules !== undefined) {
-                    let data103 = data95.rules;
-                    if (Array.isArray(data103)) {
-                        if (data103.length > 16) {
-                            const err241 = {
+                if (data97.rules !== undefined) {
+                    let data105 = data97.rules;
+                    if (Array.isArray(data105)) {
+                        if (data105.length > 16) {
+                            const err246 = {
                                 instancePath: instancePath + "/synthesis_input/rules",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/rules/maxItems",
@@ -57798,14 +58005,14 @@ function validate114(
                                 message: "must NOT have more than 16 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err241];
+                                vErrors = [err246];
                             } else {
-                                vErrors.push(err241);
+                                vErrors.push(err246);
                             }
                             errors++;
                         }
-                        if (data103.length < 1) {
-                            const err242 = {
+                        if (data105.length < 1) {
+                            const err247 = {
                                 instancePath: instancePath + "/synthesis_input/rules",
                                 schemaPath:
                                     "#/properties/synthesis_input/properties/rules/minItems",
@@ -57814,18 +58021,18 @@ function validate114(
                                 message: "must NOT have fewer than 1 items",
                             };
                             if (vErrors === null) {
-                                vErrors = [err242];
+                                vErrors = [err247];
                             } else {
-                                vErrors.push(err242);
+                                vErrors.push(err247);
                             }
                             errors++;
                         }
-                        const len14 = data103.length;
+                        const len14 = data105.length;
                         for (let i15 = 0; i15 < len14; i15++) {
-                            let data104 = data103[i15];
-                            if (typeof data104 === "string") {
-                                if (func2(data104) > 512) {
-                                    const err243 = {
+                            let data106 = data105[i15];
+                            if (typeof data106 === "string") {
+                                if (func2(data106) > 512) {
+                                    const err248 = {
                                         instancePath:
                                             instancePath + "/synthesis_input/rules/" + i15,
                                         schemaPath:
@@ -57835,14 +58042,14 @@ function validate114(
                                         message: "must NOT have more than 512 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err243];
+                                        vErrors = [err248];
                                     } else {
-                                        vErrors.push(err243);
+                                        vErrors.push(err248);
                                     }
                                     errors++;
                                 }
-                                if (func2(data104) < 1) {
-                                    const err244 = {
+                                if (func2(data106) < 1) {
+                                    const err249 = {
                                         instancePath:
                                             instancePath + "/synthesis_input/rules/" + i15,
                                         schemaPath:
@@ -57852,14 +58059,14 @@ function validate114(
                                         message: "must NOT have fewer than 1 characters",
                                     };
                                     if (vErrors === null) {
-                                        vErrors = [err244];
+                                        vErrors = [err249];
                                     } else {
-                                        vErrors.push(err244);
+                                        vErrors.push(err249);
                                     }
                                     errors++;
                                 }
                             } else {
-                                const err245 = {
+                                const err250 = {
                                     instancePath: instancePath + "/synthesis_input/rules/" + i15,
                                     schemaPath:
                                         "#/properties/synthesis_input/properties/rules/items/type",
@@ -57868,15 +58075,15 @@ function validate114(
                                     message: "must be string",
                                 };
                                 if (vErrors === null) {
-                                    vErrors = [err245];
+                                    vErrors = [err250];
                                 } else {
-                                    vErrors.push(err245);
+                                    vErrors.push(err250);
                                 }
                                 errors++;
                             }
                         }
                     } else {
-                        const err246 = {
+                        const err251 = {
                             instancePath: instancePath + "/synthesis_input/rules",
                             schemaPath: "#/properties/synthesis_input/properties/rules/type",
                             keyword: "type",
@@ -57884,15 +58091,15 @@ function validate114(
                             message: "must be array",
                         };
                         if (vErrors === null) {
-                            vErrors = [err246];
+                            vErrors = [err251];
                         } else {
-                            vErrors.push(err246);
+                            vErrors.push(err251);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err247 = {
+                const err252 = {
                     instancePath: instancePath + "/synthesis_input",
                     schemaPath: "#/properties/synthesis_input/type",
                     keyword: "type",
@@ -57900,15 +58107,15 @@ function validate114(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err247];
+                    vErrors = [err252];
                 } else {
-                    vErrors.push(err247);
+                    vErrors.push(err252);
                 }
                 errors++;
             }
         }
     } else {
-        const err248 = {
+        const err253 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -57916,9 +58123,9 @@ function validate114(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err248];
+            vErrors = [err253];
         } else {
-            vErrors.push(err248);
+            vErrors.push(err253);
         }
         errors++;
     }
@@ -58076,6 +58283,13 @@ const schema192 = {
             maxProperties: 8192,
             description:
                 "CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.",
+        },
+        vocabulary_labels: {
+            type: "object",
+            additionalProperties: { type: "string", minLength: 1, maxLength: 160 },
+            maxProperties: 8192,
+            description:
+                "CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.",
         },
     },
     required: [
@@ -59549,7 +59763,7 @@ const schema192 = {
                 code: {
                     type: "string",
                     description:
-                        "Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld. A client must tolerate values it does not know.",
+                        "Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, graph_answer_pull_requests_on_explicit_text_links, graph_answer_pull_requests_on_heuristic_links, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, graph_hop_walk_truncated, graph_team_narrowing_undecided_paths, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld, project_scope_withheld. A client must tolerate values it does not know.",
                     "x-documented-values": [
                         "fact_unconfigured",
                         "fact_no_declaring_producer",
@@ -59566,6 +59780,8 @@ const schema192 = {
                         "graph_cohort_denied_by_authorization",
                         "graph_unknown_relationship_type",
                         "graph_validity_unbounded",
+                        "graph_answer_pull_requests_on_explicit_text_links",
+                        "graph_answer_pull_requests_on_heuristic_links",
                         "reuse_auxiliary_refs_stripped",
                         "answer_terminated_before_attempt",
                         "population_truncated",
@@ -59577,10 +59793,13 @@ const schema192 = {
                         "computed_population_absent",
                         "requirement_not_evaluable",
                         "graph_no_member_found",
+                        "graph_hop_walk_truncated",
+                        "graph_team_narrowing_undecided_paths",
                         "synthesis_input_bounded",
                         "synthesis_model_failed",
                         "synthesis_not_run",
                         "fact_score_withheld",
+                        "project_scope_withheld",
                     ],
                 },
                 degrading: { type: "boolean" },
@@ -59955,7 +60174,7 @@ const schema266 = {
         code: {
             type: "string",
             description:
-                "Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld. A client must tolerate values it does not know.",
+                "Open vocabulary; documented values: fact_unconfigured, fact_no_declaring_producer, fact_table_shape_undeclared, fact_scope_unexpanded, fact_read_failed, fact_provider_reported, fact_pruned, fact_narrowed, graph_endpoint_lookup_failed, graph_exact_name_candidates_truncated, graph_project_deployments_unlinked, work_item_repository_unlinked, graph_cohort_denied_by_authorization, graph_unknown_relationship_type, graph_validity_unbounded, graph_answer_pull_requests_on_explicit_text_links, graph_answer_pull_requests_on_heuristic_links, reuse_auxiliary_refs_stripped, answer_terminated_before_attempt, population_truncated, requirement_read_not_planned, read_population_unverified, fact_read_origin_state, kind_census_truncated, graph_walk_cut_before_member, computed_population_absent, requirement_not_evaluable, graph_no_member_found, graph_hop_walk_truncated, graph_team_narrowing_undecided_paths, synthesis_input_bounded, synthesis_model_failed, synthesis_not_run, fact_score_withheld, project_scope_withheld. A client must tolerate values it does not know.",
             "x-documented-values": [
                 "fact_unconfigured",
                 "fact_no_declaring_producer",
@@ -59972,6 +60191,8 @@ const schema266 = {
                 "graph_cohort_denied_by_authorization",
                 "graph_unknown_relationship_type",
                 "graph_validity_unbounded",
+                "graph_answer_pull_requests_on_explicit_text_links",
+                "graph_answer_pull_requests_on_heuristic_links",
                 "reuse_auxiliary_refs_stripped",
                 "answer_terminated_before_attempt",
                 "population_truncated",
@@ -59983,10 +60204,13 @@ const schema266 = {
                 "computed_population_absent",
                 "requirement_not_evaluable",
                 "graph_no_member_found",
+                "graph_hop_walk_truncated",
+                "graph_team_narrowing_undecided_paths",
                 "synthesis_input_bounded",
                 "synthesis_model_failed",
                 "synthesis_not_run",
                 "fact_score_withheld",
+                "project_scope_withheld",
             ],
         },
         degrading: { type: "boolean" },
@@ -84957,8 +85181,102 @@ function validate180(
                 errors++;
             }
         }
+        if (data.vocabulary_labels !== undefined) {
+            let data133 = data.vocabulary_labels;
+            if (data133 && typeof data133 == "object" && !Array.isArray(data133)) {
+                if (Object.keys(data133).length > 8192) {
+                    const err312 = {
+                        instancePath: instancePath + "/vocabulary_labels",
+                        schemaPath: "#/properties/vocabulary_labels/maxProperties",
+                        keyword: "maxProperties",
+                        params: { limit: 8192 },
+                        message: "must NOT have more than 8192 properties",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err312];
+                    } else {
+                        vErrors.push(err312);
+                    }
+                    errors++;
+                }
+                for (const key10 in data133) {
+                    let data134 = data133[key10];
+                    if (typeof data134 === "string") {
+                        if (func2(data134) > 160) {
+                            const err313 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 160 },
+                                message: "must NOT have more than 160 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err313];
+                            } else {
+                                vErrors.push(err313);
+                            }
+                            errors++;
+                        }
+                        if (func2(data134) < 1) {
+                            const err314 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err314];
+                            } else {
+                                vErrors.push(err314);
+                            }
+                            errors++;
+                        }
+                    } else {
+                        const err315 = {
+                            instancePath:
+                                instancePath +
+                                "/vocabulary_labels/" +
+                                key10.replace(/~/g, "~0").replace(/\//g, "~1"),
+                            schemaPath: "#/properties/vocabulary_labels/additionalProperties/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err315];
+                        } else {
+                            vErrors.push(err315);
+                        }
+                        errors++;
+                    }
+                }
+            } else {
+                const err316 = {
+                    instancePath: instancePath + "/vocabulary_labels",
+                    schemaPath: "#/properties/vocabulary_labels/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err316];
+                } else {
+                    vErrors.push(err316);
+                }
+                errors++;
+            }
+        }
     } else {
-        const err312 = {
+        const err317 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -84966,9 +85284,9 @@ function validate180(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err312];
+            vErrors = [err317];
         } else {
-            vErrors.push(err312);
+            vErrors.push(err317);
         }
         errors++;
     }
@@ -87672,6 +87990,13 @@ const schema269 = {
             maxProperties: 8192,
             description:
                 "CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.",
+        },
+        vocabulary_labels: {
+            type: "object",
+            additionalProperties: { type: "string", minLength: 1, maxLength: 160 },
+            maxProperties: 8192,
+            description:
+                "CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.",
         },
         refusal_basis: {
             type: "string",
@@ -105680,69 +106005,75 @@ function validate244(
                 errors++;
             }
         }
-        if (data.refusal_basis !== undefined) {
-            if (typeof data.refusal_basis !== "string") {
-                const err198 = {
-                    instancePath: instancePath + "/refusal_basis",
-                    schemaPath: "#/properties/refusal_basis/type",
-                    keyword: "type",
-                    params: { type: "string" },
-                    message: "must be string",
-                };
-                if (vErrors === null) {
-                    vErrors = [err198];
-                } else {
-                    vErrors.push(err198);
-                }
-                errors++;
-            }
-        }
-        if (data.status_correction !== undefined) {
-            let data87 = data.status_correction;
-            if (data87 && typeof data87 == "object" && !Array.isArray(data87)) {
-                if (data87.replaced_status === undefined) {
-                    const err199 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "replaced_status" },
-                        message: "must have required property '" + "replaced_status" + "'",
+        if (data.vocabulary_labels !== undefined) {
+            let data86 = data.vocabulary_labels;
+            if (data86 && typeof data86 == "object" && !Array.isArray(data86)) {
+                if (Object.keys(data86).length > 8192) {
+                    const err198 = {
+                        instancePath: instancePath + "/vocabulary_labels",
+                        schemaPath: "#/properties/vocabulary_labels/maxProperties",
+                        keyword: "maxProperties",
+                        params: { limit: 8192 },
+                        message: "must NOT have more than 8192 properties",
                     };
                     if (vErrors === null) {
-                        vErrors = [err199];
+                        vErrors = [err198];
                     } else {
-                        vErrors.push(err199);
+                        vErrors.push(err198);
                     }
                     errors++;
                 }
-                if (data87.direction === undefined) {
-                    const err200 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "direction" },
-                        message: "must have required property '" + "direction" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err200];
+                for (const key4 in data86) {
+                    let data87 = data86[key4];
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 160) {
+                            const err199 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 160 },
+                                message: "must NOT have more than 160 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err199];
+                            } else {
+                                vErrors.push(err199);
+                            }
+                            errors++;
+                        }
+                        if (func2(data87) < 1) {
+                            const err200 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
                     } else {
-                        vErrors.push(err200);
-                    }
-                    errors++;
-                }
-                for (const key4 in data87) {
-                    if (!(
-                        key4 === "replaced_status" ||
-                        key4 === "direction" ||
-                        key4 === "deciding_requirement" ||
-                        key4 === "deciding_outcome"
-                    )) {
                         const err201 = {
-                            instancePath: instancePath + "/status_correction",
-                            schemaPath: "#/properties/status_correction/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key4 },
-                            message: "must NOT have additional properties",
+                            instancePath:
+                                instancePath +
+                                "/vocabulary_labels/" +
+                                key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                            schemaPath: "#/properties/vocabulary_labels/additionalProperties/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err201];
@@ -105752,10 +106083,98 @@ function validate244(
                         errors++;
                     }
                 }
-                if (data87.replaced_status !== undefined) {
-                    let data88 = data87.replaced_status;
-                    if (typeof data88 !== "string") {
-                        const err202 = {
+            } else {
+                const err202 = {
+                    instancePath: instancePath + "/vocabulary_labels",
+                    schemaPath: "#/properties/vocabulary_labels/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err202];
+                } else {
+                    vErrors.push(err202);
+                }
+                errors++;
+            }
+        }
+        if (data.refusal_basis !== undefined) {
+            if (typeof data.refusal_basis !== "string") {
+                const err203 = {
+                    instancePath: instancePath + "/refusal_basis",
+                    schemaPath: "#/properties/refusal_basis/type",
+                    keyword: "type",
+                    params: { type: "string" },
+                    message: "must be string",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.status_correction !== undefined) {
+            let data89 = data.status_correction;
+            if (data89 && typeof data89 == "object" && !Array.isArray(data89)) {
+                if (data89.replaced_status === undefined) {
+                    const err204 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "replaced_status" },
+                        message: "must have required property '" + "replaced_status" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err204];
+                    } else {
+                        vErrors.push(err204);
+                    }
+                    errors++;
+                }
+                if (data89.direction === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "direction" },
+                        message: "must have required property '" + "direction" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                for (const key5 in data89) {
+                    if (!(
+                        key5 === "replaced_status" ||
+                        key5 === "direction" ||
+                        key5 === "deciding_requirement" ||
+                        key5 === "deciding_outcome"
+                    )) {
+                        const err206 = {
+                            instancePath: instancePath + "/status_correction",
+                            schemaPath: "#/properties/status_correction/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key5 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err206];
+                        } else {
+                            vErrors.push(err206);
+                        }
+                        errors++;
+                    }
+                }
+                if (data89.replaced_status !== undefined) {
+                    let data90 = data89.replaced_status;
+                    if (typeof data90 !== "string") {
+                        const err207 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/type",
@@ -105764,14 +106183,14 @@ function validate244(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err202];
+                            vErrors = [err207];
                         } else {
-                            vErrors.push(err202);
+                            vErrors.push(err207);
                         }
                         errors++;
                     }
-                    if (!(data88 === "complete" || data88 === "partial" || data88 === "degraded")) {
-                        const err203 = {
+                    if (!(data90 === "complete" || data90 === "partial" || data90 === "degraded")) {
+                        const err208 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/enum",
@@ -105784,17 +106203,17 @@ function validate244(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err203];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err203);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
                 }
-                if (data87.direction !== undefined) {
-                    let data89 = data87.direction;
-                    if (typeof data89 !== "string") {
-                        const err204 = {
+                if (data89.direction !== undefined) {
+                    let data91 = data89.direction;
+                    if (typeof data91 !== "string") {
+                        const err209 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/type",
                             keyword: "type",
@@ -105802,19 +106221,19 @@ function validate244(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                     if (!(
-                        data89 === "complete_to_partial" ||
-                        data89 === "complete_to_degraded" ||
-                        data89 === "partial_to_degraded" ||
-                        data89 === "degraded_to_partial"
+                        data91 === "complete_to_partial" ||
+                        data91 === "complete_to_degraded" ||
+                        data91 === "partial_to_degraded" ||
+                        data91 === "degraded_to_partial"
                     )) {
-                        const err205 = {
+                        const err210 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/enum",
                             keyword: "enum",
@@ -105826,16 +106245,16 @@ function validate244(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err205];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err205);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_requirement !== undefined) {
-                    if (typeof data87.deciding_requirement !== "string") {
-                        const err206 = {
+                if (data89.deciding_requirement !== undefined) {
+                    if (typeof data89.deciding_requirement !== "string") {
+                        const err211 = {
                             instancePath: instancePath + "/status_correction/deciding_requirement",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_requirement/type",
@@ -105844,17 +106263,17 @@ function validate244(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err211];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err211);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_outcome !== undefined) {
-                    let data91 = data87.deciding_outcome;
-                    if (typeof data91 !== "string") {
-                        const err207 = {
+                if (data89.deciding_outcome !== undefined) {
+                    let data93 = data89.deciding_outcome;
+                    if (typeof data93 !== "string") {
+                        const err212 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/type",
@@ -105863,20 +106282,20 @@ function validate244(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err207];
+                            vErrors = [err212];
                         } else {
-                            vErrors.push(err207);
+                            vErrors.push(err212);
                         }
                         errors++;
                     }
                     if (!(
-                        data91 === "satisfied" ||
-                        data91 === "narrowed" ||
-                        data91 === "unavailable" ||
-                        data91 === "not_applicable" ||
-                        data91 === "not_attempted"
+                        data93 === "satisfied" ||
+                        data93 === "narrowed" ||
+                        data93 === "unavailable" ||
+                        data93 === "not_applicable" ||
+                        data93 === "not_attempted"
                     )) {
-                        const err208 = {
+                        const err213 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/enum",
@@ -105889,15 +106308,15 @@ function validate244(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err213];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err213);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err209 = {
+                const err214 = {
                     instancePath: instancePath + "/status_correction",
                     schemaPath: "#/properties/status_correction/type",
                     keyword: "type",
@@ -105905,18 +106324,18 @@ function validate244(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err209];
+                    vErrors = [err214];
                 } else {
-                    vErrors.push(err209);
+                    vErrors.push(err214);
                 }
                 errors++;
             }
         }
         if (data.semantic_reading !== undefined) {
-            let data92 = data.semantic_reading;
-            if (data92 && typeof data92 == "object" && !Array.isArray(data92)) {
-                if (data92.status === undefined) {
-                    const err210 = {
+            let data94 = data.semantic_reading;
+            if (data94 && typeof data94 == "object" && !Array.isArray(data94)) {
+                if (data94.status === undefined) {
+                    const err215 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -105924,14 +106343,14 @@ function validate244(
                         message: "must have required property '" + "status" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err210];
+                        vErrors = [err215];
                     } else {
-                        vErrors.push(err210);
+                        vErrors.push(err215);
                     }
                     errors++;
                 }
-                if (data92.reason === undefined) {
-                    const err211 = {
+                if (data94.reason === undefined) {
+                    const err216 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -105939,33 +106358,33 @@ function validate244(
                         message: "must have required property '" + "reason" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err211];
+                        vErrors = [err216];
                     } else {
-                        vErrors.push(err211);
+                        vErrors.push(err216);
                     }
                     errors++;
                 }
-                for (const key5 in data92) {
-                    if (!(key5 === "status" || key5 === "reason")) {
-                        const err212 = {
+                for (const key6 in data94) {
+                    if (!(key6 === "status" || key6 === "reason")) {
+                        const err217 = {
                             instancePath: instancePath + "/semantic_reading",
                             schemaPath: "#/properties/semantic_reading/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key5 },
+                            params: { additionalProperty: key6 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err212];
+                            vErrors = [err217];
                         } else {
-                            vErrors.push(err212);
+                            vErrors.push(err217);
                         }
                         errors++;
                     }
                 }
-                if (data92.status !== undefined) {
-                    let data93 = data92.status;
-                    if (typeof data93 !== "string") {
-                        const err213 = {
+                if (data94.status !== undefined) {
+                    let data95 = data94.status;
+                    if (typeof data95 !== "string") {
+                        const err218 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/type",
                             keyword: "type",
@@ -105973,14 +106392,14 @@ function validate244(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err213];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err213);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
-                    if (!(data93 === "unavailable")) {
-                        const err214 = {
+                    if (!(data95 === "unavailable")) {
+                        const err219 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/enum",
                             keyword: "enum",
@@ -105991,16 +106410,16 @@ function validate244(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err219];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err219);
                         }
                         errors++;
                     }
                 }
-                if (data92.reason !== undefined) {
-                    if (typeof data92.reason !== "string") {
-                        const err215 = {
+                if (data94.reason !== undefined) {
+                    if (typeof data94.reason !== "string") {
+                        const err220 = {
                             instancePath: instancePath + "/semantic_reading/reason",
                             schemaPath: "#/properties/semantic_reading/properties/reason/type",
                             keyword: "type",
@@ -106008,15 +106427,15 @@ function validate244(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err216 = {
+                const err221 = {
                     instancePath: instancePath + "/semantic_reading",
                     schemaPath: "#/properties/semantic_reading/type",
                     keyword: "type",
@@ -106024,15 +106443,15 @@ function validate244(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err216];
+                    vErrors = [err221];
                 } else {
-                    vErrors.push(err216);
+                    vErrors.push(err221);
                 }
                 errors++;
             }
         }
     } else {
-        const err217 = {
+        const err222 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -106040,9 +106459,9 @@ function validate244(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err217];
+            vErrors = [err222];
         } else {
-            vErrors.push(err217);
+            vErrors.push(err222);
         }
         errors++;
     }
@@ -106191,6 +106610,13 @@ const schema318 = {
             maxProperties: 8192,
             description:
                 "CHAOS-4690: display label per evidence ref id reachable on this result; on a fresh write the key set equals the result's own evidence-ref closure exactly.",
+        },
+        vocabulary_labels: {
+            type: "object",
+            additionalProperties: { type: "string", minLength: 1, maxLength: 160 },
+            maxProperties: 8192,
+            description:
+                "CHAOS-12413: display label per value of a closed vocabulary shown in this result, keyed <vocabulary>:<value>. A consumer looks a word up and needs no table; a value with no entry takes its generic path. Additive: absent on every result written before this field existed, and nothing emits it until the pin train that carries it has landed.",
         },
         refusal_basis: {
             type: "string",
@@ -124245,69 +124671,75 @@ function validate308(
                 errors++;
             }
         }
-        if (data.refusal_basis !== undefined) {
-            if (typeof data.refusal_basis !== "string") {
-                const err199 = {
-                    instancePath: instancePath + "/refusal_basis",
-                    schemaPath: "#/properties/refusal_basis/type",
-                    keyword: "type",
-                    params: { type: "string" },
-                    message: "must be string",
-                };
-                if (vErrors === null) {
-                    vErrors = [err199];
-                } else {
-                    vErrors.push(err199);
-                }
-                errors++;
-            }
-        }
-        if (data.status_correction !== undefined) {
-            let data87 = data.status_correction;
-            if (data87 && typeof data87 == "object" && !Array.isArray(data87)) {
-                if (data87.replaced_status === undefined) {
-                    const err200 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "replaced_status" },
-                        message: "must have required property '" + "replaced_status" + "'",
+        if (data.vocabulary_labels !== undefined) {
+            let data86 = data.vocabulary_labels;
+            if (data86 && typeof data86 == "object" && !Array.isArray(data86)) {
+                if (Object.keys(data86).length > 8192) {
+                    const err199 = {
+                        instancePath: instancePath + "/vocabulary_labels",
+                        schemaPath: "#/properties/vocabulary_labels/maxProperties",
+                        keyword: "maxProperties",
+                        params: { limit: 8192 },
+                        message: "must NOT have more than 8192 properties",
                     };
                     if (vErrors === null) {
-                        vErrors = [err200];
+                        vErrors = [err199];
                     } else {
-                        vErrors.push(err200);
+                        vErrors.push(err199);
                     }
                     errors++;
                 }
-                if (data87.direction === undefined) {
-                    const err201 = {
-                        instancePath: instancePath + "/status_correction",
-                        schemaPath: "#/properties/status_correction/required",
-                        keyword: "required",
-                        params: { missingProperty: "direction" },
-                        message: "must have required property '" + "direction" + "'",
-                    };
-                    if (vErrors === null) {
-                        vErrors = [err201];
+                for (const key4 in data86) {
+                    let data87 = data86[key4];
+                    if (typeof data87 === "string") {
+                        if (func2(data87) > 160) {
+                            const err200 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/maxLength",
+                                keyword: "maxLength",
+                                params: { limit: 160 },
+                                message: "must NOT have more than 160 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err200];
+                            } else {
+                                vErrors.push(err200);
+                            }
+                            errors++;
+                        }
+                        if (func2(data87) < 1) {
+                            const err201 = {
+                                instancePath:
+                                    instancePath +
+                                    "/vocabulary_labels/" +
+                                    key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                                schemaPath:
+                                    "#/properties/vocabulary_labels/additionalProperties/minLength",
+                                keyword: "minLength",
+                                params: { limit: 1 },
+                                message: "must NOT have fewer than 1 characters",
+                            };
+                            if (vErrors === null) {
+                                vErrors = [err201];
+                            } else {
+                                vErrors.push(err201);
+                            }
+                            errors++;
+                        }
                     } else {
-                        vErrors.push(err201);
-                    }
-                    errors++;
-                }
-                for (const key4 in data87) {
-                    if (!(
-                        key4 === "replaced_status" ||
-                        key4 === "direction" ||
-                        key4 === "deciding_requirement" ||
-                        key4 === "deciding_outcome"
-                    )) {
                         const err202 = {
-                            instancePath: instancePath + "/status_correction",
-                            schemaPath: "#/properties/status_correction/additionalProperties",
-                            keyword: "additionalProperties",
-                            params: { additionalProperty: key4 },
-                            message: "must NOT have additional properties",
+                            instancePath:
+                                instancePath +
+                                "/vocabulary_labels/" +
+                                key4.replace(/~/g, "~0").replace(/\//g, "~1"),
+                            schemaPath: "#/properties/vocabulary_labels/additionalProperties/type",
+                            keyword: "type",
+                            params: { type: "string" },
+                            message: "must be string",
                         };
                         if (vErrors === null) {
                             vErrors = [err202];
@@ -124317,10 +124749,98 @@ function validate308(
                         errors++;
                     }
                 }
-                if (data87.replaced_status !== undefined) {
-                    let data88 = data87.replaced_status;
-                    if (typeof data88 !== "string") {
-                        const err203 = {
+            } else {
+                const err203 = {
+                    instancePath: instancePath + "/vocabulary_labels",
+                    schemaPath: "#/properties/vocabulary_labels/type",
+                    keyword: "type",
+                    params: { type: "object" },
+                    message: "must be object",
+                };
+                if (vErrors === null) {
+                    vErrors = [err203];
+                } else {
+                    vErrors.push(err203);
+                }
+                errors++;
+            }
+        }
+        if (data.refusal_basis !== undefined) {
+            if (typeof data.refusal_basis !== "string") {
+                const err204 = {
+                    instancePath: instancePath + "/refusal_basis",
+                    schemaPath: "#/properties/refusal_basis/type",
+                    keyword: "type",
+                    params: { type: "string" },
+                    message: "must be string",
+                };
+                if (vErrors === null) {
+                    vErrors = [err204];
+                } else {
+                    vErrors.push(err204);
+                }
+                errors++;
+            }
+        }
+        if (data.status_correction !== undefined) {
+            let data89 = data.status_correction;
+            if (data89 && typeof data89 == "object" && !Array.isArray(data89)) {
+                if (data89.replaced_status === undefined) {
+                    const err205 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "replaced_status" },
+                        message: "must have required property '" + "replaced_status" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err205];
+                    } else {
+                        vErrors.push(err205);
+                    }
+                    errors++;
+                }
+                if (data89.direction === undefined) {
+                    const err206 = {
+                        instancePath: instancePath + "/status_correction",
+                        schemaPath: "#/properties/status_correction/required",
+                        keyword: "required",
+                        params: { missingProperty: "direction" },
+                        message: "must have required property '" + "direction" + "'",
+                    };
+                    if (vErrors === null) {
+                        vErrors = [err206];
+                    } else {
+                        vErrors.push(err206);
+                    }
+                    errors++;
+                }
+                for (const key5 in data89) {
+                    if (!(
+                        key5 === "replaced_status" ||
+                        key5 === "direction" ||
+                        key5 === "deciding_requirement" ||
+                        key5 === "deciding_outcome"
+                    )) {
+                        const err207 = {
+                            instancePath: instancePath + "/status_correction",
+                            schemaPath: "#/properties/status_correction/additionalProperties",
+                            keyword: "additionalProperties",
+                            params: { additionalProperty: key5 },
+                            message: "must NOT have additional properties",
+                        };
+                        if (vErrors === null) {
+                            vErrors = [err207];
+                        } else {
+                            vErrors.push(err207);
+                        }
+                        errors++;
+                    }
+                }
+                if (data89.replaced_status !== undefined) {
+                    let data90 = data89.replaced_status;
+                    if (typeof data90 !== "string") {
+                        const err208 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/type",
@@ -124329,14 +124849,14 @@ function validate308(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err203];
+                            vErrors = [err208];
                         } else {
-                            vErrors.push(err203);
+                            vErrors.push(err208);
                         }
                         errors++;
                     }
-                    if (!(data88 === "complete" || data88 === "partial" || data88 === "degraded")) {
-                        const err204 = {
+                    if (!(data90 === "complete" || data90 === "partial" || data90 === "degraded")) {
+                        const err209 = {
                             instancePath: instancePath + "/status_correction/replaced_status",
                             schemaPath:
                                 "#/properties/status_correction/properties/replaced_status/enum",
@@ -124349,17 +124869,17 @@ function validate308(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err204];
+                            vErrors = [err209];
                         } else {
-                            vErrors.push(err204);
+                            vErrors.push(err209);
                         }
                         errors++;
                     }
                 }
-                if (data87.direction !== undefined) {
-                    let data89 = data87.direction;
-                    if (typeof data89 !== "string") {
-                        const err205 = {
+                if (data89.direction !== undefined) {
+                    let data91 = data89.direction;
+                    if (typeof data91 !== "string") {
+                        const err210 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/type",
                             keyword: "type",
@@ -124367,19 +124887,19 @@ function validate308(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err205];
+                            vErrors = [err210];
                         } else {
-                            vErrors.push(err205);
+                            vErrors.push(err210);
                         }
                         errors++;
                     }
                     if (!(
-                        data89 === "complete_to_partial" ||
-                        data89 === "complete_to_degraded" ||
-                        data89 === "partial_to_degraded" ||
-                        data89 === "degraded_to_partial"
+                        data91 === "complete_to_partial" ||
+                        data91 === "complete_to_degraded" ||
+                        data91 === "partial_to_degraded" ||
+                        data91 === "degraded_to_partial"
                     )) {
-                        const err206 = {
+                        const err211 = {
                             instancePath: instancePath + "/status_correction/direction",
                             schemaPath: "#/properties/status_correction/properties/direction/enum",
                             keyword: "enum",
@@ -124391,16 +124911,16 @@ function validate308(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err206];
+                            vErrors = [err211];
                         } else {
-                            vErrors.push(err206);
+                            vErrors.push(err211);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_requirement !== undefined) {
-                    if (typeof data87.deciding_requirement !== "string") {
-                        const err207 = {
+                if (data89.deciding_requirement !== undefined) {
+                    if (typeof data89.deciding_requirement !== "string") {
+                        const err212 = {
                             instancePath: instancePath + "/status_correction/deciding_requirement",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_requirement/type",
@@ -124409,17 +124929,17 @@ function validate308(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err207];
+                            vErrors = [err212];
                         } else {
-                            vErrors.push(err207);
+                            vErrors.push(err212);
                         }
                         errors++;
                     }
                 }
-                if (data87.deciding_outcome !== undefined) {
-                    let data91 = data87.deciding_outcome;
-                    if (typeof data91 !== "string") {
-                        const err208 = {
+                if (data89.deciding_outcome !== undefined) {
+                    let data93 = data89.deciding_outcome;
+                    if (typeof data93 !== "string") {
+                        const err213 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/type",
@@ -124428,20 +124948,20 @@ function validate308(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err208];
+                            vErrors = [err213];
                         } else {
-                            vErrors.push(err208);
+                            vErrors.push(err213);
                         }
                         errors++;
                     }
                     if (!(
-                        data91 === "satisfied" ||
-                        data91 === "narrowed" ||
-                        data91 === "unavailable" ||
-                        data91 === "not_applicable" ||
-                        data91 === "not_attempted"
+                        data93 === "satisfied" ||
+                        data93 === "narrowed" ||
+                        data93 === "unavailable" ||
+                        data93 === "not_applicable" ||
+                        data93 === "not_attempted"
                     )) {
-                        const err209 = {
+                        const err214 = {
                             instancePath: instancePath + "/status_correction/deciding_outcome",
                             schemaPath:
                                 "#/properties/status_correction/properties/deciding_outcome/enum",
@@ -124454,15 +124974,15 @@ function validate308(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err209];
+                            vErrors = [err214];
                         } else {
-                            vErrors.push(err209);
+                            vErrors.push(err214);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err210 = {
+                const err215 = {
                     instancePath: instancePath + "/status_correction",
                     schemaPath: "#/properties/status_correction/type",
                     keyword: "type",
@@ -124470,18 +124990,18 @@ function validate308(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err210];
+                    vErrors = [err215];
                 } else {
-                    vErrors.push(err210);
+                    vErrors.push(err215);
                 }
                 errors++;
             }
         }
         if (data.semantic_reading !== undefined) {
-            let data92 = data.semantic_reading;
-            if (data92 && typeof data92 == "object" && !Array.isArray(data92)) {
-                if (data92.status === undefined) {
-                    const err211 = {
+            let data94 = data.semantic_reading;
+            if (data94 && typeof data94 == "object" && !Array.isArray(data94)) {
+                if (data94.status === undefined) {
+                    const err216 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -124489,14 +125009,14 @@ function validate308(
                         message: "must have required property '" + "status" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err211];
+                        vErrors = [err216];
                     } else {
-                        vErrors.push(err211);
+                        vErrors.push(err216);
                     }
                     errors++;
                 }
-                if (data92.reason === undefined) {
-                    const err212 = {
+                if (data94.reason === undefined) {
+                    const err217 = {
                         instancePath: instancePath + "/semantic_reading",
                         schemaPath: "#/properties/semantic_reading/required",
                         keyword: "required",
@@ -124504,33 +125024,33 @@ function validate308(
                         message: "must have required property '" + "reason" + "'",
                     };
                     if (vErrors === null) {
-                        vErrors = [err212];
+                        vErrors = [err217];
                     } else {
-                        vErrors.push(err212);
+                        vErrors.push(err217);
                     }
                     errors++;
                 }
-                for (const key5 in data92) {
-                    if (!(key5 === "status" || key5 === "reason")) {
-                        const err213 = {
+                for (const key6 in data94) {
+                    if (!(key6 === "status" || key6 === "reason")) {
+                        const err218 = {
                             instancePath: instancePath + "/semantic_reading",
                             schemaPath: "#/properties/semantic_reading/additionalProperties",
                             keyword: "additionalProperties",
-                            params: { additionalProperty: key5 },
+                            params: { additionalProperty: key6 },
                             message: "must NOT have additional properties",
                         };
                         if (vErrors === null) {
-                            vErrors = [err213];
+                            vErrors = [err218];
                         } else {
-                            vErrors.push(err213);
+                            vErrors.push(err218);
                         }
                         errors++;
                     }
                 }
-                if (data92.status !== undefined) {
-                    let data93 = data92.status;
-                    if (typeof data93 !== "string") {
-                        const err214 = {
+                if (data94.status !== undefined) {
+                    let data95 = data94.status;
+                    if (typeof data95 !== "string") {
+                        const err219 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/type",
                             keyword: "type",
@@ -124538,14 +125058,14 @@ function validate308(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err214];
+                            vErrors = [err219];
                         } else {
-                            vErrors.push(err214);
+                            vErrors.push(err219);
                         }
                         errors++;
                     }
-                    if (!(data93 === "unavailable")) {
-                        const err215 = {
+                    if (!(data95 === "unavailable")) {
+                        const err220 = {
                             instancePath: instancePath + "/semantic_reading/status",
                             schemaPath: "#/properties/semantic_reading/properties/status/enum",
                             keyword: "enum",
@@ -124556,16 +125076,16 @@ function validate308(
                             message: "must be equal to one of the allowed values",
                         };
                         if (vErrors === null) {
-                            vErrors = [err215];
+                            vErrors = [err220];
                         } else {
-                            vErrors.push(err215);
+                            vErrors.push(err220);
                         }
                         errors++;
                     }
                 }
-                if (data92.reason !== undefined) {
-                    if (typeof data92.reason !== "string") {
-                        const err216 = {
+                if (data94.reason !== undefined) {
+                    if (typeof data94.reason !== "string") {
+                        const err221 = {
                             instancePath: instancePath + "/semantic_reading/reason",
                             schemaPath: "#/properties/semantic_reading/properties/reason/type",
                             keyword: "type",
@@ -124573,15 +125093,15 @@ function validate308(
                             message: "must be string",
                         };
                         if (vErrors === null) {
-                            vErrors = [err216];
+                            vErrors = [err221];
                         } else {
-                            vErrors.push(err216);
+                            vErrors.push(err221);
                         }
                         errors++;
                     }
                 }
             } else {
-                const err217 = {
+                const err222 = {
                     instancePath: instancePath + "/semantic_reading",
                     schemaPath: "#/properties/semantic_reading/type",
                     keyword: "type",
@@ -124589,15 +125109,15 @@ function validate308(
                     message: "must be object",
                 };
                 if (vErrors === null) {
-                    vErrors = [err217];
+                    vErrors = [err222];
                 } else {
-                    vErrors.push(err217);
+                    vErrors.push(err222);
                 }
                 errors++;
             }
         }
     } else {
-        const err218 = {
+        const err223 = {
             instancePath,
             schemaPath: "#/type",
             keyword: "type",
@@ -124605,9 +125125,9 @@ function validate308(
             message: "must be object",
         };
         if (vErrors === null) {
-            vErrors = [err218];
+            vErrors = [err223];
         } else {
-            vErrors.push(err218);
+            vErrors.push(err223);
         }
         errors++;
     }

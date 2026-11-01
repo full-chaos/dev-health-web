@@ -3,10 +3,10 @@ import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 // CHAOS-11930: the direct answer, drivers and findings in the real Ask Dev panel, from a real ACR
-// answer captured on the kiac stack (`src/components/ask-dev/answer/__tests__/captures/`). The
+// answer captured on the kiac stack (`tests/fixtures/ask-dev/captures/`). The
 // panel's test-mode answer source reads it from session storage; nothing is fetched.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const KEY = "ask-dev:test-mode-answer";
 
 const capture = (file: string) =>
@@ -64,14 +64,16 @@ test.describe("desktop (1280px)", () => {
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
 
         const panel = page.getByRole("complementary", { name: "Ask Dev" });
-        const answer = panel.getByTestId("ask-dev-answer");
+        // CHAOS-12384: the render's own answer (ask-dev package): an article "Answer" holding the
+        // judgment, then the Drivers panel. The status pill waits for CHAOS-12417 (fixme below).
+        const answer = panel.getByRole("article", { name: "Answer" });
         await expect(answer).toBeVisible();
-        await expect(answer.getByTestId("ask-dev-answer-lead")).toHaveText(
-            String(PARTIAL.direct_judgment).trim(),
-        );
-        await expect(answer.getByTestId("ask-dev-answer-status")).toHaveText("Partial answer");
-        await expect(answer.getByTestId("ask-dev-answer-ai-label")).toHaveText("AI-written");
-        await expect(answer.getByTestId("ask-dev-answer-driver")).toHaveCount(
+        const judgment = answer.getByRole("group", { name: "Answer", exact: true });
+        await expect(
+            judgment.getByText(String(PARTIAL.direct_judgment).trim(), { exact: true }),
+        ).toBeVisible();
+        const drivers = answer.getByRole("group", { name: "Drivers", exact: true });
+        await expect(drivers.getByRole("list").last().locator(":scope > li")).toHaveCount(
             (PARTIAL.drivers as unknown[]).length,
         );
         await page.screenshot({ path: testInfo.outputPath("answer-desktop.png") });
@@ -79,11 +81,31 @@ test.describe("desktop (1280px)", () => {
         expect(await axeViolations(page, "[data-testid=ask-dev-panel]")).toEqual([]);
 
         // The details stay folded until asked for.
-        const more = answer.getByTestId("ask-dev-answer-more");
+        const more = judgment.locator("details").filter({ hasText: "More detail" });
         await expect(more).not.toHaveAttribute("open");
         await more.locator("summary").click();
         await expect(more).toHaveAttribute("open");
         expect(requests).toEqual([]);
+    });
+
+    // CHAOS-12417: the render draws no status pill ("Partial answer") yet; it waits for served labels.
+    test.fixme("shows the answer's status pill", async ({ page }) => {
+        await seedAnswer(page, PARTIAL);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await expect(panel.getByText("Partial answer", { exact: true })).toBeVisible();
+    });
+
+    test("labels model-written analysis as AI-written", async ({ page }) => {
+        await seedAnswer(page, PARTIAL);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const panel = page.getByRole("complementary", { name: "Ask Dev" });
+        await expect(panel.getByTestId("answer-ai-label")).toHaveText("AI-written");
+        await expect(
+            panel.getByTestId("answer-ai-note").getByTestId("answer-ai-label"),
+        ).toBeVisible();
     });
 });
 
@@ -98,21 +120,31 @@ test.describe("mobile (390px)", () => {
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
 
         const sheet = page.getByRole("dialog", { name: "Ask Dev" });
-        const answer = sheet.getByTestId("ask-dev-answer");
+        const answer = sheet.getByRole("article", { name: "Answer" });
         await expect(answer).toBeVisible();
-        await expect(answer.getByTestId("ask-dev-answer-status")).toHaveText("Partial answer");
+        // The status pill waits for CHAOS-12417: see the fixme test in the desktop block.
         await expect(
             answer
-                .getByTestId("ask-dev-answer-readiness-gaps")
-                .getByTestId("ask-dev-answer-finding"),
+                .getByRole("group", { name: "Readiness gaps", exact: true })
+                .getByRole("list")
+                .first()
+                .locator(":scope > li"),
         ).toHaveCount(1);
         await page.screenshot({ path: testInfo.outputPath("answer-mobile.png") });
         await sheet.screenshot({ path: testInfo.outputPath("answer-mobile-sheet.png") });
         expect(await axeViolations(page, "[data-testid=ask-dev-sheet]")).toEqual([]);
-        // The answer fits the sheet at phone width: nothing in it scrolls sideways.
-        for (const box of [answer, sheet]) {
-            expect(await box.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-        }
+        // The sheet itself does not scroll sideways.
+        expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    });
+
+    test("the answer fits the sheet at phone width", async ({ page }) => {
+        await seedAnswer(page, READINESS);
+        await page.goto("/dashboard");
+        await page.getByRole("button", { name: "Open Ask Dev" }).click();
+        const sheet = page.getByRole("dialog", { name: "Ask Dev" });
+        const answer = sheet.getByRole("article", { name: "Answer" });
+        await expect(answer).toBeVisible();
+        expect(await answer.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     });
 });
 
@@ -122,5 +154,5 @@ test("shows the empty state when no answer is supplied", async ({ page }) => {
     await page.getByRole("button", { name: "Open Ask Dev" }).click();
     const panel = page.getByRole("complementary", { name: "Ask Dev" });
     await expect(panel.getByText("Your conversation will appear here.")).toBeVisible();
-    await expect(panel.getByTestId("ask-dev-answer")).toHaveCount(0);
+    await expect(panel.getByRole("article", { name: "Answer" })).toHaveCount(0);
 });

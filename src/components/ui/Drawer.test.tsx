@@ -192,4 +192,31 @@ describe("Drawer", () => {
         fireEvent.keyDown(document, { key: "Escape" });
         expect(screen.getByRole("button", { name: "Target" })).toHaveFocus();
     });
+
+    describe("the body", () => {
+        const bodyOf = (child: HTMLElement) => child.parentElement as HTMLElement;
+
+        it("with fillBody has no padding and no scroll of its own", () => {
+            render(
+                <Drawer open onCloseAction={() => {}} title="T" fillBody>
+                    <p data-testid="content">x</p>
+                </Drawer>,
+            );
+            const body = bodyOf(screen.getByTestId("content"));
+            expect(body).toHaveClass("flex", "min-h-0", "flex-1", "overflow-hidden");
+            expect(body.className).not.toMatch(/(^|\s)p-6(\s|$)/u);
+            expect(body.className).not.toMatch(/overflow-y-auto/u);
+        });
+
+        it("without fillBody keeps the padded, scrolling body", () => {
+            render(
+                <Drawer open onCloseAction={() => {}} title="T">
+                    <p data-testid="content">x</p>
+                </Drawer>,
+            );
+            const body = bodyOf(screen.getByTestId("content"));
+            expect(body).toHaveClass("flex-1", "overflow-y-auto", "p-6");
+            expect(body.className).not.toMatch(/overflow-hidden/u);
+        });
+    });
 });

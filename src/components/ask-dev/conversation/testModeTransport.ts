@@ -5,8 +5,9 @@ import { parseResultFeedback } from "@/lib/acr/feedbackContract";
 import { parseThread, parseThreadList } from "@/lib/acr/threadContract";
 import { logger } from "@/lib/logger";
 
-import type { TranscriptResult } from "../answer/AskDevTurn";
-import { asTranscriptResult } from "../answer/testModeAnswer";
+import type { TranscriptResult } from "@/lib/ask-dev/transcript";
+
+import { asTranscriptResult } from "./testModeAnswer";
 import {
     isTransportFailureReason,
     TransportFailure,
@@ -318,6 +319,10 @@ function scriptedTransport(plays: readonly Play[]): AskDevTransport {
                     "test-mode delete not stored",
                 );
             }
+        },
+        // Test mode has no evidence store: the neutral answer, as for a reference that is gone.
+        async readEvidence() {
+            return null;
         },
         async readFeedback({ resultId }) {
             record({ kind: "feedback_read", result_id: resultId });

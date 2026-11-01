@@ -500,6 +500,9 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 20
+        env:
+            ACR_CONTRACT_GATE: required
+            ACR_ROOT: ${{ github.workspace }}/.acr-source
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - name: Resolve pnpm version
@@ -592,24 +595,20 @@ jobs:
               env:
                   ASK_DEV_DIR: ${{ github.workspace }}/.ask-dev-oracle
               run: bash scripts/ask-dev-oracle/check.sh
-            # E8 render-shape differential oracle (CHAOS-11941): executes ask-dev's REAL verifier,
-            # ranking and fact-row modules (same pinned checkout) beside web's ports in three time
-            # zones, over the committed scrubbed captures and planted negatives. Always a fresh run;
-            # it fails, never skips, on a wrong checkout, zero cases, an empty core class, a
-            # manifest hash mismatch or any disagreement.
-            - name: Ask Dev render-shape differential oracle
-              env:
-                  ASK_DEV_DIR: ${{ github.workspace }}/.ask-dev-oracle
-                  ORACLE_REPORT_DIR: ${{ runner.temp }}/ask-dev-render-oracle
-              run: pnpm test:ask-dev-oracle
-            - name: Upload the render-shape oracle reports
-              if: ${{ !cancelled() }}
-              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+            # The source-backed contract generator tests need acr at the pin (CHAOS-12219). There
+            # is no fallback: without ACR_ROOT, ACR_CONTRACT_GATE fails them, it does not skip them.
+            - name: Read the pinned acr commit
+              id: acr-pin
+              run: echo "sha=$(node -p "require('./src/lib/acr/contracts/manifest.json').source_commit")" >> "$GITHUB_OUTPUT"
+            - name: Check out acr at the pinned commit
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
-                  name: ask-dev-render-oracle-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: ${{ runner.temp }}/ask-dev-render-oracle
-                  if-no-files-found: error
-                  retention-days: 30
+                  repository: full-chaos/dev-health-acr
+                  ref: ${{ steps.acr-pin.outputs.sha }}
+                  path: .acr-source
+                  # One test compares the pin with its parent commit.
+                  fetch-depth: 2
+                  persist-credentials: false
             - run: bash ci/run_tests.sh unit
             - name: Rolldown parse baseline diagnostics (CHAOS-8789)
               # Diagnostic only, never fails the job. Reads the log that

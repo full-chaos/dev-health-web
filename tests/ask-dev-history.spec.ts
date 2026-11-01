@@ -6,7 +6,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // (`conversation/testModeTransport.ts`) plays ACR's thread list, thread reads, result reads and
 // deletes from session storage and records every call there; no request leaves the browser for ACR.
 const MOCK = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
-const CAPTURES = join(process.cwd(), "src/components/ask-dev/answer/__tests__/captures");
+const CAPTURES = join(process.cwd(), "tests/fixtures/ask-dev/captures");
 const SHOTS = process.env.ASK_DEV_HISTORY_SHOTS ?? "";
 const KEYS = {
     stream: "ask-dev:test-mode-stream",
@@ -172,12 +172,19 @@ const openPanel = async (page: Page, path = "/dashboard") => {
     return panel;
 };
 
-/** The data-status of each turn card in the transcript, in served order (an answer has its own). */
+/** The render's transcript on `/dev`. */
+const transcriptOf = (page: Page) => page.getByRole("log", { name: "Conversation" });
+
+/** Each turn's state in the transcript, in served order: an answer's status, or a turn's. */
 const turnOrder = (page: Page) =>
-    page
-        .getByTestId("ask-dev-transcript")
-        .locator("[data-testid=ask-dev-turn]")
-        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-status") ?? "?"));
+    transcriptOf(page)
+        .locator("article[data-state], [data-testid=chat-status]")
+        .evaluateAll((nodes) =>
+            nodes.map(
+                (node) =>
+                    node.getAttribute("data-state") ?? node.getAttribute("data-status") ?? "?",
+            ),
+        );
 
 const historyRow = (page: Page, threadId: string) =>
     page.locator(`[data-testid=ask-dev-history-row][data-thread-id="${threadId}"]`);
@@ -211,13 +218,13 @@ test.describe("desktop (1280px)", () => {
             list: [listPage(THREAD_A)],
         });
         await page.goto(`/dev?thread=${THREAD_A}`);
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
         await expect.poll(() => turnOrder(page)).toEqual(["partial", "unavailable", "unsaved"]);
         await expect(page.getByText("This answer is not available to you now.")).toBeVisible();
         await shot(page, "dev-wide-restored-light");
 
         await page.reload();
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
         await expect.poll(() => turnOrder(page)).toEqual(["partial", "unavailable", "unsaved"]);
         await expect(historyRow(page, THREAD_A)).toHaveAttribute("data-current", "true");
         expect(await investigations(page)).toEqual([]);
@@ -242,8 +249,8 @@ test.describe("desktop (1280px)", () => {
             "dark",
         );
         await page.goto(`/dev?thread=${THREAD_A}`);
-        await expect(page.getByTestId("ask-dev-page-history")).toBeVisible();
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(page.getByTestId("ask-dev-history")).toBeVisible();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
         await expect(page.getByTestId("ask-dev-history-row")).toHaveCount(2);
         await shot(page, "dev-wide-restored-dark");
     });
@@ -258,16 +265,16 @@ test.describe("desktop (1280px)", () => {
             list: [listPage(THREAD_A, THREAD_B)],
         });
         await page.goto("/dev");
-        const transcript = page.getByTestId("ask-dev-transcript");
+        const transcript = transcriptOf(page);
         const showsA = async () => {
             await expect(page).toHaveURL(new RegExp(`thread=${THREAD_A}$`, "u"));
             await expect(historyRow(page, THREAD_A)).toHaveAttribute("data-current", "true");
-            await expect(transcript).toContainText(String(PARTIAL.question));
+            await expect(transcript.getByText("Qa", { exact: true })).toBeVisible();
         };
         const showsB = async () => {
             await expect(page).toHaveURL(new RegExp(`thread=${THREAD_B}$`, "u"));
             await expect(historyRow(page, THREAD_B)).toHaveAttribute("data-current", "true");
-            await expect(transcript).toContainText(String(READINESS.question));
+            await expect(transcript.getByText("Qb", { exact: true })).toBeVisible();
         };
 
         await historyRow(page, THREAD_A).getByTestId("ask-dev-history-open").click();
@@ -294,7 +301,7 @@ test.describe("desktop (1280px)", () => {
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("Which projects are at risk?");
         await input.press("Enter");
-        await expect(panel.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(panel.getByTestId("answer-panel")).toBeVisible();
         const [sent] = await investigations(page);
         expect(sent?.thread_id).toBeTruthy();
         const threadId = String(sent!.thread_id);
@@ -311,7 +318,7 @@ test.describe("desktop (1280px)", () => {
         const before = (await investigations(page)).length;
         await page.reload();
         const reopened = await openPanel(page, "/dashboard");
-        await expect(reopened.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(reopened.getByTestId("answer-panel")).toBeVisible();
         expect((await investigations(page)).length).toBe(before);
         expect(
             (await calls(page)).filter((c) => c.kind === "thread" && c.thread_id === threadId)
@@ -334,11 +341,12 @@ test.describe("desktop (1280px)", () => {
             list: [listPage(THREAD_A)],
         });
         await page.goto(`/dev?thread=${THREAD_A}`);
-        const observing = page.locator("[data-testid=ask-dev-turn][data-status=observing]");
-        await expect(observing).toBeVisible();
-        await expect(observing).toHaveAttribute("data-origin", "restored");
+        const observing = page.getByTestId("chat-progress");
+        await expect(observing).toContainText(
+            "This question was still running when the conversation was loaded.",
+        );
         await shot(page, "turn-observing-light", observing);
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByTestId("answer-panel")).toBeVisible({ timeout: 20_000 });
         expect(await investigations(page)).toEqual([]);
     });
 
@@ -375,12 +383,12 @@ test.describe("desktop (1280px)", () => {
         // Delete the current conversation on /dev: a fresh one, bare /dev.
         await historyRow(page, THREAD_A).getByTestId("ask-dev-history-open").click();
         await expect(page).toHaveURL(new RegExp(`thread=${THREAD_A}$`, "u"));
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
         await historyRow(page, THREAD_A).getByTestId("ask-dev-history-delete").click();
         await page.getByTestId("ask-dev-history-confirm-delete").click();
         await expect(page).toHaveURL(/\/dev$/u);
         await expect(historyRow(page, THREAD_A)).toHaveCount(0);
-        await expect(page.getByTestId("ask-dev-answer")).toHaveCount(0);
+        await expect(page.getByTestId("answer-panel")).toHaveCount(0);
         await expect(page.getByText("Your conversation will appear here.")).toBeVisible();
 
         // And in the panel, in the same tab.
@@ -402,7 +410,7 @@ test.describe("desktop (1280px)", () => {
         const input = panel.getByRole("textbox", { name: "Ask a question" });
         await input.fill("Which projects are at risk?");
         await input.press("Enter");
-        await expect(panel.getByTestId("ask-dev-turn-status")).toBeVisible();
+        await expect(panel.getByTestId("chat-progress")).toBeVisible();
         const [sent] = await investigations(page);
         const threadId = String(sent!.thread_id);
         await rescript(page, "list", [listPage(threadId)]);
@@ -471,7 +479,7 @@ test.describe("desktop (1280px)", () => {
             foreign: [THREAD_B],
         });
         await page.goto(`/dev?thread=${THREAD_A}`);
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
         await historyRow(page, THREAD_B).getByTestId("ask-dev-history-delete").click();
         await page.getByTestId("ask-dev-history-confirm-delete").click();
         await expect(historyRow(page, THREAD_B)).toHaveCount(0);
@@ -484,7 +492,7 @@ test.describe("desktop (1280px)", () => {
         ).toBeNull();
         await expect(page).toHaveURL(new RegExp(`thread=${THREAD_A}$`, "u"));
         await expect(historyRow(page, THREAD_A)).toHaveAttribute("data-current", "true");
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
     });
 
     test("9. a thread body that breaks the contract is read_failed, and Try again restores it", async ({
@@ -504,7 +512,7 @@ test.describe("desktop (1280px)", () => {
         await shot(page, "dev-read-failed-light");
         await rescript(page, "threads", { [THREAD_A]: good });
         await page.getByTestId("ask-dev-conversation-retry").click();
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
         await expect(page.getByTestId("ask-dev-conversation-read-failed")).toHaveCount(0);
         expect(await investigations(page)).toEqual([]);
     });
@@ -522,12 +530,12 @@ test.describe("desktop (1280px)", () => {
             list: [listPage(THREAD_A)],
         });
         await page.goto(`/dev?thread=${THREAD_A}`);
-        const failed = page.locator("[data-testid=ask-dev-turn][data-status=restore_failed]");
+        const failed = page.locator("[data-testid=chat-status][data-status=restore_failed]");
         await expect(failed).toBeVisible();
         await shot(page, "turn-restore-failed-light", failed);
         await rescript(page, "results", { [PARTIAL_ID]: PARTIAL });
-        await page.getByTestId("ask-dev-turn-reload").click();
-        await expect(page.getByTestId("ask-dev-answer")).toBeVisible();
+        await failed.getByRole("button", { name: "Load again" }).click();
+        await expect(page.getByTestId("answer-panel")).toBeVisible();
         await expect(failed).toHaveCount(0);
         expect(await investigations(page)).toEqual([]);
     });
@@ -543,11 +551,7 @@ test.describe("desktop (1280px)", () => {
         const note = page.getByTestId("ask-dev-turn-question-not-recorded");
         await expect(note).toBeVisible();
         await expect(note).toHaveText("Question not recorded");
-        await shot(
-            page,
-            "turn-question-not-recorded-light",
-            page.getByTestId("ask-dev-transcript"),
-        );
+        await shot(page, "turn-question-not-recorded-light", transcriptOf(page));
     });
 
     test("12. the history list has no axe violations", async ({ page }) => {
@@ -570,7 +574,8 @@ test.describe("desktop (1280px)", () => {
 test.describe("narrow (700px)", () => {
     test.use({ viewport: { width: 700, height: 900 } });
 
-    test("the history is a disclosure below 1024px", async ({ page }) => {
+    // CHAOS-12383: ask-dev's render follows its container's width (860px), not the viewport's.
+    test("the history is behind a toggle at the render's narrow width", async ({ page }) => {
         await seed(page, {
             threads: {
                 [THREAD_A]: thread(THREAD_A, [doneTurn("sub_e2e_a_0001", PARTIAL_ID, "Qa")]),
@@ -579,11 +584,12 @@ test.describe("narrow (700px)", () => {
             list: [listPage(THREAD_A, THREAD_B)],
         });
         await page.goto(`/dev?thread=${THREAD_A}`);
-        const disclosure = page.getByTestId("ask-dev-page-history-disclosure");
-        await expect(disclosure).toBeVisible();
-        await expect(page.getByTestId("ask-dev-page-history")).toHaveCount(0);
-        await disclosure.locator("summary").click();
+        const toggle = page.getByTestId("ask-dev-history-toggle");
+        await expect(toggle).toBeVisible();
+        await expect(page.getByTestId("ask-dev-history-row").first()).toBeHidden();
+        await toggle.click();
         await expect(page.getByTestId("ask-dev-history-row")).toHaveCount(2);
+        await expect(page.getByTestId("ask-dev-history-row").first()).toBeVisible();
         await shot(page, "dev-narrow-disclosure-light");
     });
 });
@@ -600,7 +606,7 @@ test.describe("mobile (390px)", () => {
         await expect(input).toBeEnabled();
         await input.fill("Which projects are at risk?");
         await input.press("Enter");
-        await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(sheet.getByTestId("answer-panel")).toBeVisible();
         const [sent] = await investigations(page);
         const threadId = String(sent!.thread_id);
         await rescript(page, "threads", {
@@ -613,7 +619,7 @@ test.describe("mobile (390px)", () => {
 
         await page.reload();
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
-        await expect(sheet.getByTestId("ask-dev-answer")).toBeVisible();
+        await expect(sheet.getByTestId("answer-panel")).toBeVisible();
         await shot(page, "sheet-mobile-restored-light");
         expect((await investigations(page)).length).toBe(before);
 

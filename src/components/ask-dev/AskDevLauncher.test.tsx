@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderToString } from "react-dom/server";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -171,5 +172,26 @@ describe("one launcher per bar, one visible", () => {
         );
 
         expect(launchers()).toHaveLength(0);
+    });
+});
+
+/** CHAOS-12422: a click before hydration has no handler, so it would be lost with no sign. */
+describe("AskDevLauncher before and after hydration", () => {
+    const tree = withFeatures(
+        ON,
+        <AskDevShellProvider>
+            <AskDevLauncher placement="top-bar" />
+        </AskDevShellProvider>,
+    );
+
+    it("is disabled in the server's HTML: it cannot take a click that nothing would handle", () => {
+        const host = document.createElement("div");
+        host.innerHTML = renderToString(tree);
+        expect(host.querySelector("button")).toBeDisabled();
+    });
+
+    it("is enabled once the client has it", () => {
+        render(tree);
+        expect(screen.getByRole("button", { name: "Open Ask Dev" })).toBeEnabled();
     });
 });

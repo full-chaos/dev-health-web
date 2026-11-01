@@ -45,7 +45,8 @@ without both a non-empty access token and a non-empty rotated refresh token is t
 access token is read by the token class (above); a token the class refuses is terminal. The
 credential is single use, so the rotated one is always stored, also when the key set cannot be read
 (then the access token is dropped and the refresh is retried). `expires_at` comes from the token
-`exp` (else `expires_in`) and `sid` is stored. An unknown class setting or a missing issuer never
+`exp` and `sid` is stored. A refreshed token whose `exp` is absent, not a number or not positive is
+terminal (fail closed); the body `expires_in` never sets a lifetime on refresh. An unknown class setting or a missing issuer never
 ends a session at refresh: it is transient.
 
 **Service session token** (`session_access_token`, aud `auth-service`; PR C1): under class `eddsa` the
