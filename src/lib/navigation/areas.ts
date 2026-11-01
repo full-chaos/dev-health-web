@@ -677,7 +677,9 @@ export const navAreas: readonly NavArea[] = [
     {
         // CHAOS-12210, chris's ruling (2026-10-31): "For now put Ask Dev after AI". It replaces the
         // CHAOS-3524 ruling that removed Ask Dev as a left-nav destination. The row opens the full
-        // page; the panel launcher stays. Listed only where the launcher is (`isAskDevEnabled`).
+        // page; the panel launcher stays. Listed only where the launcher is (`isAskDevEnabled`). The
+        // shell (sidebar, palette) also hides it while impersonating with the browser ACR client
+        // on (CHAOS-12306).
         id: "ask-dev",
         label: "Ask Dev",
         href: "/dev",

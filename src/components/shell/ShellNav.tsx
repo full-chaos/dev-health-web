@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 
 import { useAdminNav } from "@/components/admin/AdminTabs";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
+import { useAskDevAvailability } from "@/components/ask-dev/useAskDevAvailability";
 import {
     isNavAreaVisible,
     isNavChildVisible,
@@ -80,10 +81,16 @@ export function ShellNav({ areas = navAreas, part = "all" }: ShellNavProps) {
     const { features } = useAdminTier();
     // The platform admin rows (CHAOS-7967) are listed only for a platform admin.
     const { isPlatformAdmin } = useAdminNav();
+    const askDevImpersonating = useAskDevAvailability() === "impersonating";
     const selectedAreaId = selectedAreaIdForPathname(areas, pathname);
 
-    // A row whose features the organization lacks is not listed (CHAOS-12210: Ask Dev).
-    const listed = areas.filter((area) => isNavAreaVisible(area, features));
+    // A row whose features the organization lacks is not listed (CHAOS-12210: Ask Dev). Ask Dev
+    // is hidden while impersonating with the browser ACR client on (CHAOS-12306); only then, so
+    // the row does not flicker while the session loads.
+    const listed = areas.filter(
+        (area) =>
+            isNavAreaVisible(area, features) && !(area.id === "ask-dev" && askDevImpersonating),
+    );
     const mainAreas = listed.filter((area) => area.placement === "main");
     const utilityAreas = listed.filter((area) => area.placement === "utility");
 

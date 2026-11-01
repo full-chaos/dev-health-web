@@ -11,7 +11,7 @@ import { safeReturnTo } from "@/lib/onboarding/returnTo";
 
 const log = logger.child({ component: "ask-dev-acr-start" });
 
-type View = "working" | "off" | "unavailable";
+type View = "working" | "off" | "unavailable" | "impersonating";
 
 const COPY: Record<View, { readonly title: string; readonly description: string }> = {
     working: { title: "Connecting Ask Dev", description: "Opening sign-in to Ask Dev…" },
@@ -22,6 +22,11 @@ const COPY: Record<View, { readonly title: string; readonly description: string 
     unavailable: {
         title: "Ask Dev could not be reached",
         description: "Sign-in to Ask Dev did not start. Try again.",
+    },
+    // No ACR token for an impersonating session (CHAOS-12306): nothing was sent.
+    impersonating: {
+        title: "Ask Dev is not available while impersonating",
+        description: "Stop impersonating to connect Ask Dev.",
     },
 };
 

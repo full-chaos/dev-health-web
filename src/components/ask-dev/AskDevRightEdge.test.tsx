@@ -17,6 +17,10 @@ vi.mock("next/navigation", () => ({
     // CHAOS-11934: the shell provider holds Expand and Minimize, which move between routes.
     useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
+// The Ask Dev availability hook reads the session (CHAOS-12306); the browser ACR client is off here.
+vi.mock("next-auth/react", () => ({
+    useSession: () => ({ data: null, status: "unauthenticated", update: vi.fn() }),
+}));
 
 const ON = { ask_dev: true, agent_context_runtime: true };
 

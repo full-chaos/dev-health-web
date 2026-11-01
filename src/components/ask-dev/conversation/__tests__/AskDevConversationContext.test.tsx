@@ -3,7 +3,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import type { Session } from "next-auth";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logger: log }));
@@ -14,6 +14,17 @@ type SessionState = {
 };
 const sessionState = vi.hoisted(() => ({ current: null as unknown as SessionState }));
 vi.mock("next-auth/react", () => ({ useSession: () => sessionState.current }));
+
+/** The real clear, counted (CHAOS-12306): the context must call it only with the client on. */
+const clearTokens = vi.hoisted(() => ({ spy: null as unknown as ReturnType<typeof vi.fn> }));
+vi.mock("@/lib/ask-dev/acr-auth", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/ask-dev/acr-auth")>();
+    clearTokens.spy = vi.fn(actual.clearAcrTokensInAllTabs);
+    return { ...actual, clearAcrTokensInAllTabs: clearTokens.spy };
+});
+
+import { ACR_TOKEN_FAMILY_KEY } from "@/lib/ask-dev/acr-auth";
+import { acrBrowserClientOff, acrBrowserClientOn } from "@/test/acrBrowserClient";
 
 import {
     AskDevConversationProvider,
@@ -161,6 +172,92 @@ describe("AskDevConversationProvider", () => {
         });
         view.unmount();
         expect(transport.calls[0]!.signal.aborted).toBe(true);
+    });
+});
+
+// CHAOS-12306 (c5): a partition change (an org switch, an impersonation start or end, a sign-out)
+// clears the browser's ACR tokens, only while the browser ACR client is on. Off (prod until the T13
+// roll), nothing changes.
+describe("the ACR tokens follow the partition (CHAOS-12306)", () => {
+    /** A family entry as c4 stores it; only its presence matters here. */
+    const FAMILY = JSON.stringify({ v: 2, familyId: "F".repeat(22) });
+
+    function tree(transport: FakeTransport) {
+        return (
+            <AskDevConversationProvider transport={transport}>
+                <Probe />
+            </AskDevConversationProvider>
+        );
+    }
+
+    beforeEach(() => {
+        clearTokens.spy.mockClear();
+        // No BroadcastChannel: the clear then reaches this tab only (no real channel in jsdom).
+        vi.stubGlobal("BroadcastChannel", undefined);
+    });
+
+    afterEach(() => {
+        acrBrowserClientOff();
+        vi.unstubAllGlobals();
+    });
+
+    it.each([
+        ["an org switch", signedIn({ org_id: "org-b" })],
+        [
+            "an impersonation start",
+            signedIn({ is_impersonating: true, impersonated_user_id: "u9" }),
+        ],
+        ["a sign-out", { data: null, status: "unauthenticated" } as SessionState],
+    ])("with the client on, clears this tab's ACR tokens on %s", async (_, next) => {
+        acrBrowserClientOn();
+        const transport = new FakeTransport();
+        const view = render(tree(transport));
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        window.sessionStorage.setItem(ACR_TOKEN_FAMILY_KEY, FAMILY);
+        // The first bind and a session refetch clear nothing.
+        sessionState.current = { ...signedIn({}), status: "loading" };
+        view.rerender(tree(transport));
+        expect(clearTokens.spy).not.toHaveBeenCalled();
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBe(FAMILY);
+
+        sessionState.current = next;
+        view.rerender(tree(transport));
+        await waitFor(() => expect(clearTokens.spy).toHaveBeenCalledTimes(1));
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("with the client on, clears again on an impersonation end", async () => {
+        acrBrowserClientOn();
+        sessionState.current = signedIn({ is_impersonating: true, impersonated_user_id: "u9" });
+        const transport = new FakeTransport();
+        const view = render(tree(transport));
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        window.sessionStorage.setItem(ACR_TOKEN_FAMILY_KEY, FAMILY);
+        sessionState.current = signedIn({});
+        view.rerender(tree(transport));
+        await waitFor(() => expect(clearTokens.spy).toHaveBeenCalledTimes(1));
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("with the client off, clears nothing on an org switch or an impersonation start", async () => {
+        const transport = new FakeTransport();
+        const view = render(tree(transport));
+        await waitFor(() => expect(probe.current?.snapshot.ready).toBe(true));
+        window.sessionStorage.setItem(ACR_TOKEN_FAMILY_KEY, FAMILY);
+        for (const next of [
+            signedIn({ org_id: "org-b" }),
+            signedIn({ org_id: "org-b", is_impersonating: true, impersonated_user_id: "u9" }),
+        ]) {
+            sessionState.current = next;
+            view.rerender(tree(transport));
+            await waitFor(() =>
+                expect(probe.current?.snapshot.partition).toBe(
+                    partitionKey(next.data, next.status),
+                ),
+            );
+        }
+        expect(clearTokens.spy).not.toHaveBeenCalled();
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBe(FAMILY);
     });
 });
 

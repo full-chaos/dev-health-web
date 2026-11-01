@@ -11,6 +11,8 @@ import {
 import type { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 
+import { clearAcrTokensInAllTabs } from "@/lib/ask-dev/acr-auth";
+import { browserAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 
 import { ConversationStore, THREAD_HINT_KEY, type ConversationSnapshot } from "./conversationStore";
@@ -123,10 +125,17 @@ export function AskDevConversationProvider({
     const [{ store, feedback }] = useState(() => {
         const chosen =
             transport === undefined ? (acrBrowserTransport() ?? testModeTransport()) : transport;
+        // CHAOS-12306: an org switch, an impersonation start or end, or a sign-out clears every
+        // tab's ACR tokens. c4's binding (user id, org id) does not see an impersonation of a
+        // user of the same org. Only with the browser ACR client on: off, nothing changes.
+        const acrClient = browserAcrClientConfig() !== undefined;
         return chosen === null
             ? { store: null, feedback: null }
             : {
-                  store: new ConversationStore({ transport: chosen }),
+                  store: new ConversationStore({
+                      transport: chosen,
+                      ...(acrClient ? { onPartitionChanged: () => clearAcrTokensInAllTabs() } : {}),
+                  }),
                   feedback: new FeedbackStore({ transport: chosen }),
               };
     });

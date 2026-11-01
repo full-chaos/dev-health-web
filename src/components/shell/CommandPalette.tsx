@@ -18,7 +18,8 @@ import { useAdminNav } from "@/components/admin/AdminTabs";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { Dialog } from "@/components/ui/Dialog";
 import { useAskDevShell } from "@/components/ask-dev/AskDevShellContext";
-import { isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
+import { useAskDevAvailability } from "@/components/ask-dev/useAskDevAvailability";
+import { isAskDevPanelPath } from "@/lib/ask-dev/surface";
 import { navAreas } from "@/lib/navigation/areas";
 
 import {
@@ -53,11 +54,18 @@ function Palette({ onClose }: { onClose: () => void }) {
     const [active, setActive] = useState(0);
 
     const { setOpen: setAskDevOpen } = useAskDevShell();
-    const askDev = isAskDevEnabled(features) && isAskDevPanelPath(pathname);
+    const availability = useAskDevAvailability();
+    // The panel's own gate: hidden while impersonating with the browser ACR client on (CHAOS-12306).
+    const askDev = availability === "on" && isAskDevPanelPath(pathname);
     const entries = useMemo(() => {
-        const list = paletteEntries(navAreas, features, undefined, { isPlatformAdmin });
+        // The sidebar hides the Ask Dev row while impersonating (CHAOS-12306): so does the palette.
+        const areas =
+            availability === "impersonating"
+                ? navAreas.filter((area) => area.id !== "ask-dev")
+                : navAreas;
+        const list = paletteEntries(areas, features, undefined, { isPlatformAdmin });
         return askDev ? [ASK_DEV_PALETTE_ENTRY, ...list] : list;
-    }, [features, isPlatformAdmin, askDev]);
+    }, [features, isPlatformAdmin, askDev, availability]);
     const results = useMemo(() => filterPaletteEntries(entries, query), [entries, query]);
     const current = results[Math.min(active, results.length - 1)];
 
