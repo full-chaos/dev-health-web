@@ -1692,6 +1692,21 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             return defaultTab.completeAcrAuthorization(redirect.headers.Location!);
         }
 
+        it("a clear while the principal is read (an observed impersonation start or org switch): the held token is not served (codex r3 on #1680)", async () => {
+            await signIn();
+            expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    // The tab observes the change while this read is in flight: c5 clears.
+                    defaultTab.clearAcrTokensInAllTabs();
+                    return principal;
+                },
+            });
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(refreshLog()).toEqual([]);
+        });
+
         it("a sign-out during the principal check after a refresh: no token, nothing held", async () => {
             await signIn();
             now += REFRESH_AT_MS;
