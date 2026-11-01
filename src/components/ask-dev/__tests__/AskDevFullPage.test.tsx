@@ -12,6 +12,8 @@ const nav = vi.hoisted(() => {
         pathname: "/dashboard",
         search: "",
         pushes: [] as string[],
+        /** `replace` records the route and stays put: Expand's URL write would change these tests. */
+        replaces: [] as string[],
         /** A navigation that has not finished yet: `push` records the route and stays put. */
         hold: false,
         listeners,
@@ -43,7 +45,9 @@ vi.mock("next/navigation", async () => {
                 nav.pushes.push(href);
                 if (!nav.hold) nav.go(href);
             },
-            replace: vi.fn(),
+            replace: (href: string) => {
+                nav.replaces.push(href);
+            },
             refresh: vi.fn(),
         }),
     };
@@ -70,15 +74,19 @@ import {
     AskDevConversationProvider,
     partitionTag,
     UNSAVED_CONVERSATION_KEY,
+    UNSAVED_THREAD_KEY,
     useAskDevNotSaved,
 } from "../conversation/AskDevConversationContext";
-import type { AskDevTransport } from "../conversation/transport";
+import { THREAD_HINT_KEY } from "../conversation/conversationStore";
+import type { AskDevTransport, ThreadView } from "../conversation/transport";
 import {
     accepted,
     captureResult,
     deferred,
     FakeTransport,
     resultEvent,
+    threadTurn,
+    threadView,
 } from "../conversation/__tests__/fakeTransport";
 
 const PARTIAL = captureResult("kiac_project_status_partial.event.json");
@@ -137,6 +145,7 @@ async function askInPanel(question = "Which projects are at risk?") {
 beforeEach(() => {
     nav.hold = false;
     nav.pushes.length = 0;
+    nav.replaces.length = 0;
     nav.go("/dashboard?f=team");
     window.sessionStorage.clear();
     vi.stubGlobal(
@@ -323,6 +332,76 @@ describe("a reload loses the conversation, and says so (plan §2.5)", () => {
         window.sessionStorage.clear();
         renderShell(new FakeTransport());
         expect(screen.queryByTestId("ask-dev-not-saved")).toBeNull();
+    });
+
+    describe("a reload at /dev?thread= of the conversation this tab lost (CHAOS-12503)", () => {
+        const LOST = "thread_lost_in_this_tab";
+
+        /** A tab that held `LOST`, and ACR's answer for it now. */
+        function loadAt(thread: string, answer: ThreadView | null, marker = TAG, lost = LOST) {
+            window.sessionStorage.setItem(UNSAVED_CONVERSATION_KEY, marker);
+            window.sessionStorage.setItem(UNSAVED_THREAD_KEY, lost);
+            const transport = new FakeTransport();
+            transport.threads.set(thread, answer);
+            nav.go(`/dev?thread=${thread}`);
+            renderShell(transport);
+            return transport;
+        }
+
+        it("says not saved, opens the composer, and leaves the dead id out of the URL", async () => {
+            const transport = loadAt(LOST, null);
+            expect(await within(page()).findByTestId("ask-dev-not-saved")).toHaveTextContent(
+                TRANSCRIPT_COPY.notSaved,
+            );
+            expect(within(page()).queryByTestId("ask-dev-conversation-unavailable")).toBeNull();
+            expect(within(page()).getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
+            await waitFor(() => expect(nav.replaces).toContain("/dev"));
+            expect(transport.calls).toHaveLength(0);
+        });
+
+        it("still shows the thread when ACR did admit it", async () => {
+            loadAt(
+                LOST,
+                threadView(LOST, [threadTurn("submission_1", "done", { resultId: "result_1" })]),
+            );
+            await within(page()).findByText("question of submission_1");
+            expect(within(page()).queryByTestId("ask-dev-not-saved")).toBeNull();
+        });
+
+        it("says not available for a thread this tab did not lose", async () => {
+            loadAt("thread_of_someone_else", null);
+            expect(
+                await within(page()).findByTestId("ask-dev-conversation-unavailable"),
+            ).toBeInTheDocument();
+            expect(within(page()).queryByTestId("ask-dev-not-saved")).toBeNull();
+        });
+
+        it("says not available when the lost thread is another (org, principal)'s", async () => {
+            loadAt(LOST, null, partitionTag("org-2\u0000user-1\u0000"));
+            expect(
+                await within(page()).findByTestId("ask-dev-conversation-unavailable"),
+            ).toBeInTheDocument();
+        });
+
+        it("says not available for a saved conversation that ACR no longer holds", async () => {
+            window.sessionStorage.setItem(
+                THREAD_HINT_KEY,
+                JSON.stringify({ thread_id: LOST, expires_at: null, partition: TAG }),
+            );
+            loadAt(LOST, null);
+            expect(
+                await within(page()).findByTestId("ask-dev-conversation-unavailable"),
+            ).toBeInTheDocument();
+        });
+
+        it("remembers the thread of a turn, so the next reload can tell", async () => {
+            const transport = new FakeTransport();
+            transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+            renderShell(transport);
+            await askInPanel();
+            await within(panel()).findByTestId("answer-panel");
+            expect(window.sessionStorage.getItem(UNSAVED_THREAD_KEY)).toMatch(/^thread_/u);
+        });
     });
 
     it("drops the notice once a new question is asked", async () => {
