@@ -1362,7 +1362,8 @@ export class ConversationStore {
                 "ask-dev thread restore failed",
             );
             if (noRepositoryInScope(error)) {
-                // No repository in scope: reading again cannot help. The hint stays.
+                // No repository in scope: reading again cannot help, on this load or the next.
+                this.hints.clear();
                 this.commit({ ...this.snapshot, threadId: null, thread: { kind: "unavailable" } });
                 return;
             }
@@ -1429,7 +1430,8 @@ export class ConversationStore {
                 return;
             }
             if (noRepositoryInScope(error)) {
-                // The scope has gone: "Try again" on the earlier page cannot help.
+                // The scope has gone: "Try again" on the earlier page cannot help, nor can a reload.
+                this.hints.clear();
                 this.dropSelectionWork("detach");
                 this.commit({
                     ...this.snapshot,

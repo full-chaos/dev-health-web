@@ -205,6 +205,59 @@ describe("readThread", () => {
         expect(transport.attachCalls[0]!.signal.aborted).toBe(true);
     });
 
+    it("a reload refused: the hint goes, so the next load reads nothing", async () => {
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "done_unsaved")]));
+        const first = makeStore();
+        first.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(snap(first).thread.kind).toBe("loaded"));
+        expect(stored).not.toBeNull();
+
+        transport.threads.set(THREAD_A, { fail: noRepository() });
+        const reloaded = makeStore();
+        expect(reloaded.restoreFromHint()).toBe(true);
+        await vi.waitFor(() => expect(snap(reloaded).thread.kind).toBe("unavailable"));
+        expect(stored).toBeNull();
+
+        const reads = transport.threadCalls.length;
+        expect(makeStore().restoreFromHint()).toBe(false);
+        expect(transport.threadCalls).toHaveLength(reads);
+    });
+
+    it("an earlier page refused: the hint goes, so the next load reads nothing", async () => {
+        transport.threads.set(
+            THREAD_A,
+            threadView(THREAD_A, [threadTurn(SUB, "done_unsaved")], "cursor-1"),
+        );
+        transport.threads.set(`${THREAD_A}|cursor-1`, { fail: noRepository() });
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("loaded"));
+        expect(stored).not.toBeNull();
+        store.loadEarlierTurns();
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("unavailable"));
+        expect(stored).toBeNull();
+
+        const reads = transport.threadCalls.length;
+        expect(makeStore().restoreFromHint()).toBe(false);
+        expect(transport.threadCalls).toHaveLength(reads);
+    });
+
+    it("another 409 on an earlier page keeps the hint: a reload may read it", async () => {
+        transport.threads.set(
+            THREAD_A,
+            threadView(THREAD_A, [threadTurn(SUB, "done_unsaved")], "cursor-1"),
+        );
+        transport.threads.set(`${THREAD_A}|cursor-1`, { fail: inProgress() });
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("loaded"));
+        store.loadEarlierTurns();
+        await vi.waitFor(() =>
+            expect(snap(store).thread).toEqual({ kind: "loaded", earlier: "failed" }),
+        );
+        expect(stored).not.toBeNull();
+    });
+
     it("another 409 keeps today's path: read_failed, and earlier: failed", async () => {
         transport.threads.set(THREAD_A, { fail: inProgress() });
         const store = makeStore();
