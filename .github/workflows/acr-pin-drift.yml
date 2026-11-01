@@ -1,8 +1,8 @@
 # Compare the vendored ACR contract pin with acr main (CHAOS-11907, INV-4; CHAOS-12341, D6614).
 #
 # Main, schedule and manual runs are strict: drift turns the run red and keeps it red until the pin
-# is bumped. On drift they also open (or update) ONE pin-bump PR with the org secret
-# DEV_HEALTH_REPO_TOKEN, so the PR runs CI (a PR opened with the workflow token would not). Only if
+# is bumped. On drift they also open (or update) ONE pin-bump PR with the repo secret
+# ACR_PIN_BUMP_TOKEN, so the PR runs CI (a PR opened with the workflow token would not). Only if
 # the PR step fails do they open one "ACR pin drift: <acr sha>" issue instead; the issue closes when
 # the drift clears or the PR is up.
 # The PR targets the ref the run started on: main on schedule and push, any branch on dispatch (a
@@ -114,10 +114,10 @@ jobs:
                   ACR_ROOT="$acr" pnpm acr:contracts:generate
                   ACR_ROOT="$acr" pnpm acr:contracts:check
                   node scripts/check-acr-pin-drift.mjs
-            # DEV_HEALTH_REPO_TOKEN (org secret) is set on this step only: install and generate run repo code and never see it.
+            # ACR_PIN_BUMP_TOKEN (repo secret) is set on this step only: install and generate run repo code and never see it.
             - name: Open or update the pin-bump PR
               env:
-                  GH_TOKEN: ${{ secrets.DEV_HEALTH_REPO_TOKEN }}
+                  GH_TOKEN: ${{ secrets.ACR_PIN_BUMP_TOKEN }}
               run: |
                   set -euo pipefail
                   test -n "$GH_TOKEN"
