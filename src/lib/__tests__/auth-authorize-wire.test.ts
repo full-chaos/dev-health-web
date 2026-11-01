@@ -195,3 +195,50 @@ describe("jwt callback on login", () => {
         expect(out.sid).toBeUndefined();
     });
 });
+
+describe("permissions pass through from the sign-in answer to the session", () => {
+    type Session = (p: {
+        session: { user: Record<string, unknown> };
+        token: Record<string, unknown>;
+    }) => Promise<{ user: Record<string, unknown> }>;
+    const sessionCb = (): Session =>
+        (nextAuthConfig.value as { callbacks: { session: Session } }).callbacks.session;
+
+    const futureToken = () => hs256({ sid: SID, exp: Math.floor(Date.now() / 1000) + 3600 });
+
+    // The value is read from the base 3348b611 code: authorize passed `data.user.permissions` as it
+    // came, jwt copied `user.permissions` to the token, session copied it to `session.user`.
+    async function signIn(userPermissions: { present: boolean; value?: unknown }) {
+        const answerUser: Record<string, unknown> = { ...user };
+        if (userPermissions.present) answerUser.permissions = userPermissions.value;
+        fetchMock.mockResolvedValue(json(200, { ...body(futureToken()), user: answerUser }));
+        const authorized = await authorize()(creds);
+        const token = await jwt()({ token: {}, user: authorized as Record<string, unknown> });
+        const session = await sessionCb()({ session: { user: {} }, token });
+        return { authorized, token, session };
+    }
+
+    it("carries a non-empty permissions array from the answer to authorize, the token and the session", async () => {
+        const { authorized, token, session } = await signIn({
+            present: true,
+            value: ["read", "write"],
+        });
+        expect(authorized?.permissions).toEqual(["read", "write"]);
+        expect(token.permissions).toEqual(["read", "write"]);
+        expect(session.user.permissions).toEqual(["read", "write"]);
+    });
+
+    it("carries an empty permissions array as an empty array", async () => {
+        const { authorized, token, session } = await signIn({ present: true, value: [] });
+        expect(authorized?.permissions).toEqual([]);
+        expect(token.permissions).toEqual([]);
+        expect(session.user.permissions).toEqual([]);
+    });
+
+    it("leaves permissions undefined at every step when the answer has none, as the base did", async () => {
+        const { authorized, token, session } = await signIn({ present: false });
+        expect(authorized?.permissions).toBeUndefined();
+        expect(token.permissions).toBeUndefined();
+        expect(session.user.permissions).toBeUndefined();
+    });
+});
