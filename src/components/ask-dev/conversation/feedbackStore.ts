@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
 
+import { noRepositoryInScope } from "./conversationStore";
 import {
     TransportFailure,
     TransportRefusal,
@@ -38,8 +39,8 @@ export type FeedbackFlags = Readonly<Record<FeedbackQuestion, FeedbackFlag>>;
 
 export type FeedbackEntry = {
     /**
-     * `loading`: the first read is out. `ready`: the controls work. `unavailable`: ACR's 404, the
-     * controls are hidden. `read_failed`: the read failed; "Try again" reads again.
+     * `loading`: the first read is out. `ready`: the controls work. `unavailable`: ACR's 404 or its 409
+     * `no_repository`, the controls are hidden. `read_failed`: the read failed; "Try again" reads again.
      */
     readonly state: "loading" | "ready" | "unavailable" | "read_failed";
     /** What ACR last answered it stores. */
@@ -197,7 +198,7 @@ export class FeedbackStore {
                 }
             } catch (error) {
                 if (!this.owns(epoch, "feedback_read", 0)) return;
-                if (notFound(error)) {
+                if (notFound(error) || noRepositoryInScope(error)) {
                     this.put(resultId, { ...LOADING, state: "unavailable" });
                     return;
                 }

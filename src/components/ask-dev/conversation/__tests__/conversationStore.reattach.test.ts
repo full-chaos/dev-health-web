@@ -412,17 +412,87 @@ describe("Stop through the cancel endpoint (design §5.4)", () => {
         await vi.waitFor(() => expect(kind(store)).toBe(expected));
     });
 
-    it("404 (not the caller's open submission any more) reads the status like a 204", async () => {
+    // CHAOS-12483: "Canceling…" for a whole run, then an answer, was the run lease's 404 on a live
+    // stack. ACR answers 404 with the lease off, and the disconnect is the cancel there.
+    it("404 on a streaming run: the stream aborts at once, with no status poll", async () => {
         const store = makeStore();
         transport.cancelAnswers.push({
             fail: new TransportRefusal(404, acrError("not_found", 404, false)),
         });
-        transport.statuses.push(status("done", "result_000000000009"));
-        transport.results.set("result_000000000009", answer(9));
+        transport.statuses.push(status("running"));
         await running(store, [{ wait: new Promise(() => undefined) }]);
+        const { signal } = transport.calls[0]!;
         store.cancel();
-        await vi.waitFor(() => expect(kind(store)).toBe("answered"));
-        expect(transport.statusCalls.length).toBeGreaterThan(0);
+        await vi.waitFor(() => expect(kind(store)).toBe("canceled"));
+        expect(signal.aborted).toBe(true);
+        expect(transport.statusCalls).toEqual([]);
+        expect(snap(store).inFlight).toBe(false);
+        expect(lastTurn(store).stop).toBeUndefined();
+        expect(infoEvents("ask-dev run canceled")).toHaveLength(1);
+    });
+
+    it("404 on a restored run: it cannot be stopped, and the store keeps observing", async () => {
+        const store = makeStore();
+        transport.threads.set(THREAD_A, threadView(THREAD_A, [threadTurn(SUB, "running")]));
+        transport.attachScripts.push([accepted0(), { wait: new Promise(() => undefined) }]);
+        transport.cancelAnswers.push({
+            fail: new TransportRefusal(404, acrError("not_found", 404, false)),
+        });
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(kind(store)).toBe("running"));
+        store.cancel();
+        await vi.waitFor(() => expect(lastTurn(store).stop).toBe("not_leased"));
+        expect(kind(store)).toBe("running");
+        expect(snap(store).stoppable).toBe(false);
+    });
+
+    it("404 when this tab's stream already ended: it cannot be stopped, and recovery goes on", async () => {
+        // The status poll waits (it never ends here), so the run stays in recovery.
+        const store = makeStore({ sleep: () => new Promise(() => undefined) });
+        transport.scripts.push([accepted0()]);
+        transport.statuses.push(status("running"));
+        transport.cancelAnswers.push({
+            fail: new TransportRefusal(404, acrError("not_found", 404, false)),
+        });
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(kind(store)).toBe("recovering"));
+        const { signal } = transport.calls[0]!;
+        store.cancel();
+        await vi.waitFor(() => expect(lastTurn(store).stop).toBe("not_leased"));
+        expect(kind(store)).toBe("recovering");
+        expect(signal.aborted).toBe(false);
+        expect(infoEvents("ask-dev run canceled")).toEqual([]);
+    });
+
+    it("404 never shows Canceling", async () => {
+        const store = makeStore();
+        transport.cancelGate = Promise.resolve();
+        transport.cancelAnswers.push({
+            fail: new TransportRefusal(404, acrError("not_found", 404, false)),
+        });
+        await running(store, [{ wait: new Promise(() => undefined) }]);
+        const seen = new Set<string>();
+        const stop = store.subscribe(() => seen.add(kind(store)));
+        store.cancel();
+        await vi.waitFor(() => expect(kind(store)).toBe("canceled"));
+        stop();
+        expect(seen.has("canceling")).toBe(false);
+    });
+
+    it("another refusal on cancel keeps today's path: Stop stays, the run goes on", async () => {
+        const store = makeStore();
+        transport.cancelAnswers.push({
+            fail: new TransportRefusal(503, acrError("upstream_unavailable", 503, true)),
+        });
+        await running(store, [{ wait: new Promise(() => undefined) }]);
+        const { signal } = transport.calls[0]!;
+        store.cancel();
+        await vi.waitFor(() =>
+            expect(log.warn).toHaveBeenCalledWith(expect.anything(), "ask-dev cancel not sent"),
+        );
+        expect(kind(store)).toBe("running");
+        expect(signal.aborted).toBe(false);
+        expect(snap(store).stoppable).toBe(true);
     });
 
     it("409 not_leased on a restored run: it cannot be stopped, the store keeps observing, no second cancel", async () => {

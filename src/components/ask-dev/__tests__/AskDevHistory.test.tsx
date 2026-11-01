@@ -77,6 +77,7 @@ import {
     HISTORY_COPY,
     historyRowLabel,
     historyRowMeta,
+    NOT_RUN_COPY,
     TRANSCRIPT_COPY,
 } from "@full-chaos/ask-dev/render";
 
@@ -90,9 +91,14 @@ import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
 import { AskDevConversationProvider } from "../conversation/AskDevConversationContext";
 import { THREAD_HINT_KEY } from "../conversation/conversationStore";
 import { partitionTag } from "../conversation/keys";
-import { TransportFailure, type AskDevTransport } from "../conversation/transport";
+import {
+    TransportFailure,
+    TransportRefusal,
+    type AskDevTransport,
+} from "../conversation/transport";
 import {
     accepted,
+    acrError,
     captureResult,
     deferred,
     FakeTransport,
@@ -258,6 +264,25 @@ describe("/dev?thread= and the store's selection (design §4.1)", () => {
         expect(connect.textContent).not.toMatch(/authorization_required|read_failed/u);
     });
 
+    // CHAOS-12439: ACR's 409 no_repository on a conversation read. Reading again cannot help.
+    it("a conversation read with no repository in scope is the neutral state, with no Try again", async () => {
+        const transport = seeded();
+        transport.threads.set(THREAD_A, {
+            fail: new TransportRefusal(409, acrError("no_repository", 409, false)),
+        });
+        nav.go(`/dev?thread=${THREAD_A}`);
+        renderShell(transport);
+        const unavailable = await within(page()).findByTestId("ask-dev-conversation-unavailable");
+        expect(unavailable).toHaveTextContent(TRANSCRIPT_COPY.unavailable);
+        expect(unavailable.textContent).not.toMatch(/no_repository|409/u);
+        expect(within(page()).queryByTestId("ask-dev-conversation-retry")).toBeNull();
+        expect(within(page()).queryByTestId("ask-dev-conversation-read-failed")).toBeNull();
+        expect(within(page()).getByTestId("ask-dev-composer-locked")).toHaveTextContent(
+            TRANSCRIPT_COPY.lockedReadOnly,
+        );
+        expect(transport.threadCalls).toHaveLength(1);
+    });
+
     it("a malformed id shows the neutral state; New conversation names no thread", async () => {
         const transport = seeded();
         nav.go("/dev?thread=not%20a%20thread");
@@ -314,7 +339,7 @@ describe("the panel's history (design §4.3)", () => {
         const transport = seeded();
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const list = await within(panel()).findByTestId("ask-dev-history-list");
         expect(within(panel()).queryByRole("textbox", { name: "Ask a question" })).toBeNull();
         expect(within(list).getAllByTestId("ask-dev-history-open")[0]).toHaveTextContent(
@@ -334,7 +359,7 @@ describe("the panel's history (design §4.3)", () => {
         const transport = seeded();
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const rows = await within(panel()).findAllByTestId("ask-dev-history-row");
         await userEvent.click(within(rows[0]!).getByTestId("ask-dev-history-delete"));
         expect(within(rows[0]!).getByTestId("ask-dev-history-confirm")).toHaveTextContent(
@@ -358,14 +383,14 @@ describe("the panel's history (design §4.3)", () => {
         transport.scripts.push([accepted(), { wait: deferred().promise }]);
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         await userEvent.click((await within(panel()).findAllByTestId("ask-dev-history-open"))[0]!);
         await within(panel()).findByTestId("answer-panel");
         await userEvent.type(
             within(panel()).getByRole("textbox", { name: "Ask a question" }),
             "And next?{Enter}",
         );
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const current = (await within(panel()).findAllByTestId("ask-dev-history-row")).find(
             (row) => row.getAttribute("data-current") === "true",
         )!;
@@ -381,7 +406,7 @@ describe("the panel's history (design §4.3)", () => {
         transport.listPages.splice(0, 1, { fail: new TransportFailure("authorization_required") });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const connect = await within(panel()).findByTestId("ask-dev-history-connect");
         expect(connect).toHaveTextContent(HISTORY_COPY.connect);
         const link = within(connect).getByRole("link", { name: "Connect Ask Dev" });
@@ -391,12 +416,32 @@ describe("the panel's history (design §4.3)", () => {
         expect(connect.textContent).not.toMatch(/authorization_required|read_failed/u);
     });
 
+    // CHAOS-12439: ACR's 409 no_repository on the list. Reading again cannot help.
+    it("a list with no repository in scope says so, with no rows and no Try again", async () => {
+        const transport = seeded();
+        transport.listPages.splice(0, 1, {
+            fail: new TransportRefusal(409, acrError("no_repository", 409, false)),
+        });
+        renderShell(transport);
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
+        const note = await within(panel()).findByTestId("ask-dev-history-no-repository");
+        expect(note).toHaveTextContent(NOT_RUN_COPY.no_repository);
+        expect(note.textContent).not.toMatch(/no_repository|409/u);
+        expect(within(panel()).queryByTestId("ask-dev-history-retry")).toBeNull();
+        expect(within(panel()).queryByTestId("ask-dev-history-read-failed")).toBeNull();
+        expect(within(panel()).queryByTestId("ask-dev-history-connect")).toBeNull();
+        expect(within(panel()).queryByTestId("ask-dev-history-empty")).toBeNull();
+        expect(within(panel()).queryAllByTestId("ask-dev-history-row")).toEqual([]);
+        expect(transport.listCalls).toEqual([undefined]);
+    });
+
     it("a list that could not be read says so and reads again on Try again", async () => {
         const transport = seeded();
         transport.listPages.splice(0, 1, { fail: new Error("network") });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         expect(await within(panel()).findByTestId("ask-dev-history-read-failed")).toHaveTextContent(
             HISTORY_COPY.readFailed,
         );
@@ -594,7 +639,7 @@ describe("the first question as the row title (CHAOS-12238)", () => {
         });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const list = await within(panel()).findByTestId("ask-dev-history-list");
         return within(list).getAllByTestId("ask-dev-history-open");
     }

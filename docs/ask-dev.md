@@ -59,6 +59,25 @@ The browser calls ACR directly; there is no web route (CHAOS-12104). The design,
 - **Connect Ask Dev.** With no ACR access in this tab, or after ACR's 401, a turn says so and links to the ACR authorization. Nothing is retried; the user asks again after connecting. The history list and a conversation opened by its link show the same Connect state (CHAOS-12336); feedback and Stop keep their own states under a turn that already shows it.
 - **Nothing on panel open.** The token is read only when the user sends something or the history list comes on screen. At the panel's width the rail is hidden, so that means the History toggle.
 
+## Evidence
+
+Each reference under an answer is a button, with ACR's served label. It opens the app's one evidence drawer, and web reads that reference with its own ACR access, scoped to the answer that cited it (CHAOS-12105). Two answers that cite one reference each open their own citation. Ask-dev's render draws the body; it holds no token and reads nothing.
+
+- **One right drawer at a time.** The drawer takes the right edge from the panel. The conversation stays in the store, and closing the drawer brings the panel back. If another drawer takes the edge, the panel stays closed.
+- **Each state has its own words:** the evidence, out of date, partly withheld, not available (the same words for a reference that is gone and one the viewer may not see, with no id), no access, no repository in scope, could not be read, and Connect Ask Dev.
+- **Try again** shows only when ACR says another read can help, and it reads the same reference for the same answer.
+- **An org switch** closes the drawer, so one org's evidence never stays on screen in another.
+
+## The live acceptance suite
+
+`tests/live/ask-dev` holds Phase 1's live cases (CHAOS-11933). It runs against a deployed stack, not in CI: `pnpm test:e2e:live:ask-dev`. It has no skips: with no ACR, no stream, no data or no oracle it goes red, and `ci/live-e2e-skip-gate.mjs` reads its report.
+
+- **`phase1.spec.ts`** sends no question.
+- **`routed.spec.ts`** sends real questions, so a run needs acr's `modeloracle` (acr `docs/fullstack-acceptance.md` §6.2), never a real model. Write each run's plan with `npx tsx tests/live/ask-dev/make-plan.ts <acr plan> <output> <nonce>`: ACR reuses a stored answer, so a run needs fresh questions.
+- **The stack needs** the oracle env of §6.2, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED=true`, and the egress block as a second guard. Check ACR's model receipts after a run.
+- **Env:** `ASK_DEV_LIVE_WEB`, `ASK_DEV_LIVE_ACR`, `ASK_DEV_LIVE_EMAIL`, `ASK_DEV_LIVE_PASSWORD_FILE` (a 0600 file), `ASK_DEV_LIVE_THREAD` (a stored conversation with one ref cited by two answers), `ASK_DEV_LIVE_ORACLE` and `ASK_DEV_LIVE_NONCE`.
+- **Limits:** the auth service allows 20 logins in 15 minutes per IP, so each spec file signs in once. ACR allows one principal 60 requests a minute, so the suite waits between cases.
+
 ## Answer completeness
 
 An ACR answer's `completeness.state` (`complete`, `partial`, `degraded`, `not_derived`) is a machine field for programs. The render never shows it (CHAOS-12245, chris 2026-10-31). The rules live in ask-dev's render (`src/lib/missing-data.ts`, `CompletenessPanel`, CHAOS-12429):

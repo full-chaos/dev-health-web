@@ -2,3 +2,4 @@
 export declare function validateThread(value: unknown): boolean;
 export declare function validateThreadList(value: unknown): boolean;
 export declare function validateResultFeedback(value: unknown): boolean;
+export declare function validateExpandedEvidence(value: unknown): boolean;

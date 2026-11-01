@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isNotLockState } from "./acr-fixture-copy.mjs";
+import { isNotLockState, sourceBackedTest } from "./acr-fixture-copy.mjs";
 
 // Every test here spawns the sync script, which formats the whole generated
 // module (CHAOS-7125 made it much larger); the source-backed tests generate it
@@ -90,7 +90,7 @@ afterEach(() => {
 });
 
 describe("sync-acr-contracts", () => {
-    const sourceTest = SOURCE === undefined ? it.skip : it;
+    const sourceTest = sourceBackedTest(it);
 
     sourceTest("valid pinned ACR source generates byte-identical isolated artifacts twice", () => {
         const project = createTemporaryProject();

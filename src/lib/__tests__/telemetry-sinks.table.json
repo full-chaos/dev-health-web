@@ -120,7 +120,7 @@
         "sentry": 0
     },
     "src/app/api/auth/switch-org/route.ts": {
-        "log": 5,
+        "log": 6,
         "sentry": 0
     },
     "src/app/error.tsx": {
@@ -333,6 +333,10 @@
     },
     "src/components/ask-dev/conversation/testModeAnswer.ts": {
         "log": 2,
+        "sentry": 0
+    },
+    "src/components/ask-dev/AskDevPanel.tsx": {
+        "log": 1,
         "sentry": 0
     }
 }

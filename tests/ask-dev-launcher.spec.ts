@@ -82,3 +82,20 @@ for (const viewport of [
         });
     });
 }
+
+// CHAOS-12422: a click before hydration used to do nothing. On a slow machine the launcher is on
+// screen long before its handler is, so this is the state a real early click meets.
+test("a click on a slow machine opens the panel: the launcher waits for hydration", async ({
+    page,
+    request,
+}) => {
+    test.setTimeout(60_000);
+    await setScenario(request, "provisioned");
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 12 });
+    await page.goto("/investment");
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
+    await expect(page.getByRole("complementary", { name: "Ask Dev" })).toBeVisible();
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    await setScenario(request, "unprovisioned");
+});

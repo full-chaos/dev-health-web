@@ -29,10 +29,11 @@ export default defineConfig({
     // `impersonation-status-shared-read` (CHAOS-9218) counts the status reads of requests that
     // arrive together. `server-session-token` (CHAOS-9229) reads which variant of a module the
     // production bundler put in the server graphs. `session-token-boundary` (CHAOS-12088) reads the
-    // bytes a production build serves to the page. The order of these files has no effect on a
+    // bytes a production build serves to the page. `ask-dev-csp` (CHAOS-11939) reads the policy a
+    // production build serves. The order of these files has no effect on a
     // result.
     testMatch:
-        /(?:acr-context-fabric|ask-dev-route|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|server-session-token|session-token-boundary|product-telemetry-flush)\.production\.spec\.ts/,
+        /(?:acr-context-fabric|ask-dev-csp|ask-dev-route|admin-row-links|code-hotspot-links|impersonation-status-shared-read|investment-duplicate-requests|server-session-token|session-token-boundary|product-telemetry-flush)\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
     outputDir: RESULTS_DIRECTORY,

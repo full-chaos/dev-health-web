@@ -509,6 +509,9 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 20
+        env:
+            ACR_CONTRACT_GATE: required
+            ACR_ROOT: ${{ github.workspace }}/.acr-source
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - name: Resolve pnpm version
@@ -601,6 +604,20 @@ jobs:
               env:
                   ASK_DEV_DIR: ${{ github.workspace }}/.ask-dev-oracle
               run: bash scripts/ask-dev-oracle/check.sh
+            # The source-backed contract generator tests need acr at the pin (CHAOS-12219). There
+            # is no fallback: without ACR_ROOT, ACR_CONTRACT_GATE fails them, it does not skip them.
+            - name: Read the pinned acr commit
+              id: acr-pin
+              run: echo "sha=$(node -p "require('./src/lib/acr/contracts/manifest.json').source_commit")" >> "$GITHUB_OUTPUT"
+            - name: Check out acr at the pinned commit
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-acr
+                  ref: ${{ steps.acr-pin.outputs.sha }}
+                  path: .acr-source
+                  # One test compares the pin with its parent commit.
+                  fetch-depth: 2
+                  persist-credentials: false
             - run: bash ci/run_tests.sh unit
             - name: Rolldown parse baseline diagnostics (CHAOS-8789)
               # Diagnostic only, never fails the job. Reads the log that

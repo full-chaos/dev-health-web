@@ -20,12 +20,16 @@ import {
     type SessionUser,
 } from "@/lib/authServiceOutcome";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
+import { getServerEnv } from "@/lib/config";
+import { getBackendUrl } from "@/lib/origin";
 import { deadlineFetch } from "@/lib/serverDeadline";
 
 // The credentials login and the logout, spoken to auth-service on the go-api compat wire
 // (CHAOS-10876). Outcomes are the closed tables of authServiceOutcome; this module adds the call,
 // the access-token class rules and the key set. A log line holds an operation, a branch, a status
 // and an error name, never a token, an address or a password.
+
+export type WireOperation = "login" | "refresh" | "switch_org" | "change_password" | "social_login";
 
 export interface WireConfig {
     /** AUTH_ACCESS_TOKEN_CLASS as set; unset = hs256_compat. */
@@ -83,7 +87,7 @@ function tokenKid(token: string): string | undefined {
 
 type Config = { ok: true; tokenClass: TokenClass } | { ok: false };
 
-function checkConfig(cfg: WireConfig, operation: "login" | "refresh"): Config {
+function checkConfig(cfg: WireConfig, operation: WireOperation): Config {
     const tokenClass = resolveTokenClass(cfg.tokenClassRaw);
     if (tokenClass === null || (tokenClass === "eddsa" && !cfg.issuer)) {
         logSessionBranch({ operation, branch: "auth_config_invalid" });
@@ -101,7 +105,7 @@ async function readIssuedAccessToken(
     token: string,
     tokenClass: TokenClass,
     cfg: WireConfig,
-    operation: "login" | "refresh",
+    operation: WireOperation,
 ): Promise<Issued> {
     let ctx: VerifyContext = {
         issuer: cfg.issuer ?? "",
@@ -161,7 +165,7 @@ export type AnswerTokens =
 export async function readAnswerTokens(
     answer: { readonly accessToken: string; readonly sessionAccessToken?: unknown },
     cfg: WireConfig,
-    operation: "login" | "refresh",
+    operation: WireOperation,
 ): Promise<AnswerTokens> {
     const tokenClass = resolveTokenClass(cfg.tokenClassRaw);
     if (tokenClass === null) return { ok: false, reason: "unavailable" };
@@ -323,9 +327,8 @@ export type RefreshResult =
           kind: "rotated";
           accessToken: string;
           refreshToken: string;
-          accessExp?: number;
+          accessExp: number;
           sid?: string;
-          expiresIn?: number;
           user?: SessionUser;
           sessionAccessToken?: string;
           sessionExp?: number;
@@ -381,13 +384,18 @@ async function refreshOnce(
         }
         return { kind: "terminal", reason: "token_refused" };
     }
+    // Fail closed: a refreshed token whose exp web cannot read (absent, not a positive safe
+    // integer) is refused. The body expires_in never sets the lifetime of such a token.
+    if (tokens.accessExp === undefined) {
+        logSessionBranch({ operation: "refresh", branch: "token_shape_refused" });
+        return { kind: "terminal", reason: "token_refused" };
+    }
     return {
         kind: "rotated",
         accessToken: outcome.accessToken,
         refreshToken: outcome.refreshToken,
-        ...(tokens.accessExp === undefined ? {} : { accessExp: tokens.accessExp }),
+        accessExp: tokens.accessExp,
         ...(tokens.sid === undefined ? {} : { sid: tokens.sid }),
-        ...(outcome.expiresIn === undefined ? {} : { expiresIn: outcome.expiresIn }),
         ...(outcome.user === undefined ? {} : { user: outcome.user }),
         ...(tokens.session.kind === "ok"
             ? { sessionAccessToken: tokens.session.token, sessionExp: tokens.session.exp }
@@ -406,4 +414,60 @@ export async function refreshSession(
     return singleFlightRefresh(refreshToken, () =>
         refreshOnce(refreshToken, checked.tokenClass, cfg),
     );
+}
+
+// The wire settings of this process: the class setting, the pinned issuer and the backend URL.
+export function wireConfigFromEnv(): WireConfig {
+    const env = getServerEnv();
+    return {
+        tokenClassRaw: env.AUTH_ACCESS_TOKEN_CLASS,
+        issuer: env.AUTH_ACCESS_TOKEN_ISSUER,
+        backendUrl: getBackendUrl(),
+    };
+}
+
+// Whether the class setting can be used at all: an unknown value, or eddsa without an issuer, is a
+// configuration fault (counted as auth_config_invalid under the operation); the caller refuses.
+export function wireConfigUsable(cfg: WireConfig, operation: WireOperation): boolean {
+    return checkConfig(cfg, operation).ok;
+}
+
+export type ExchangeRead =
+    | { kind: "legacy" }
+    | { kind: "refused" }
+    | { kind: "unavailable" }
+    | {
+          kind: "read";
+          accessExp?: number;
+          sid?: string;
+          actor?: string | null;
+          session: Extract<AnswerTokens, { ok: true }>["session"];
+      };
+
+// The answer of switch-org, change-password or the social exchange. Under hs256_compat nothing is
+// read (the answer is used as before; a present service token is ignored and counted). Under eddsa
+// it is read like a login answer. A wrong class setting, a refused answer and an unreadable key set
+// are different faults; the caller refuses all three the same way.
+export async function readExchangeAnswer(
+    answer: { readonly accessToken: string; readonly sessionAccessToken?: unknown },
+    cfg: WireConfig,
+    operation: "switch_org" | "change_password" | "social_login",
+): Promise<ExchangeRead> {
+    const checked = checkConfig(cfg, operation);
+    if (!checked.ok) return { kind: "refused" };
+    if (checked.tokenClass === "hs256_compat") {
+        if (answer.sessionAccessToken !== undefined) {
+            logSessionBranch({ operation, branch: "session_token_ignored" });
+        }
+        return { kind: "legacy" };
+    }
+    const tokens = await readAnswerTokens(answer, cfg, operation);
+    if (!tokens.ok) return { kind: tokens.reason === "unavailable" ? "unavailable" : "refused" };
+    return {
+        kind: "read",
+        ...(tokens.accessExp === undefined ? {} : { accessExp: tokens.accessExp }),
+        ...(tokens.sid === undefined ? {} : { sid: tokens.sid }),
+        ...(tokens.actor === undefined ? {} : { actor: tokens.actor }),
+        session: tokens.session,
+    };
 }
