@@ -88,11 +88,21 @@ async function readBoundedErrorBody(response: Response, abort: AbortSignal): Pro
     }
 }
 
-function wireError(value: unknown): { code?: string; upstreamRequestId?: string } {
+function wireError(value: unknown): {
+    code?: string;
+    retryable?: boolean;
+    upstreamRequestId?: string;
+} {
     if (!validateAcrContract("error.v1.schema.json", value).valid) return {};
-    const record = value as { error?: { code?: unknown }; request_id?: unknown };
+    const record = value as {
+        error?: { code?: unknown; retryable?: unknown };
+        request_id?: unknown;
+    };
     return {
         ...(typeof record.error?.code === "string" ? { code: record.error.code } : {}),
+        ...(typeof record.error?.retryable === "boolean"
+            ? { retryable: record.error.retryable }
+            : {}),
         ...(typeof record.request_id === "string" ? { upstreamRequestId: record.request_id } : {}),
     };
 }
@@ -240,6 +250,7 @@ function relay(
                                   response.status,
                                   upstream.code,
                                   retryAfter(response),
+                                  upstream.retryable,
                               ),
                     );
                     return;

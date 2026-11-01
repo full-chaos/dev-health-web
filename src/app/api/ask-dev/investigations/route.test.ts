@@ -82,9 +82,9 @@ function installOps(
 
 const ENTITLED = { agent_context_runtime: true, ask_dev: true };
 
-function errorV1(code: string, status: number): object {
+function errorV1(code: string, status: number, retryable = status >= 500): object {
     return {
-        error: { code, http_status: status, message: "redacted", retryable: status >= 500 },
+        error: { code, http_status: status, message: "redacted", retryable },
         request_id: "acr_req_0001",
         schema_version: "error.v1",
     };
@@ -419,6 +419,49 @@ describe("POST /api/ask-dev/investigations — the stream", () => {
             retryable: true,
             source: "web",
         });
+    });
+
+    it("an organization above its limit: not temporary, and no retry", async () => {
+        installOps(ENTITLED);
+        server.use(
+            http.post(`${ACR}/api/v1/context-fabric/investigations`, () =>
+                HttpResponse.json(errorV1("upstream_unavailable", 503, false), { status: 503 }),
+            ),
+        );
+
+        const text = await readAll(await post());
+
+        expect(text).toContain('"code":"ask_dev_not_entitled"');
+        expect(text).toContain('"retryable":false');
+        expect(text).not.toContain("temporarily");
+    });
+
+    it.each([
+        ["a 504 with the same code", "upstream_unavailable", 504],
+        ["a 503 with another code", "internal_error", 503],
+    ])("%s, not retryable, is not the limit", async (_name, code, status) => {
+        installOps(ENTITLED);
+        server.use(
+            http.post(`${ACR}/api/v1/context-fabric/investigations`, () =>
+                HttpResponse.json(errorV1(code, status, false), { status }),
+            ),
+        );
+
+        expect(await readAll(await post())).not.toContain("ask_dev_not_entitled");
+    });
+
+    it("a true outage: the same 503 keeps its retry", async () => {
+        installOps(ENTITLED);
+        server.use(
+            http.post(`${ACR}/api/v1/context-fabric/investigations`, () =>
+                HttpResponse.json(errorV1("upstream_unavailable", 503, true), { status: 503 }),
+            ),
+        );
+
+        const text = await readAll(await post());
+
+        expect(text).toContain('"code":"upstream"');
+        expect(text).toContain('"retryable":true');
     });
 
     it("passes Retry-After on a 503 too, not only on a 429", async () => {

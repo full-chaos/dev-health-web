@@ -436,6 +436,24 @@ describe("the panel's history (design §4.3)", () => {
         expect(transport.listCalls).toEqual([undefined]);
     });
 
+    it("a list ACR says no retry can clear says so, with no rows and no Try again", async () => {
+        const transport = seeded();
+        transport.listPages.splice(0, 1, {
+            fail: new TransportRefusal(503, acrError("upstream_unavailable", 503, false)),
+        });
+        renderShell(transport);
+        await userEvent.click(screen.getByRole("button", { name: "test-open" }));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
+        const note = await within(panel()).findByTestId("ask-dev-history-unavailable");
+        expect(note).toHaveTextContent(NOT_RUN_COPY.not_entitled);
+        expect(note.textContent).not.toMatch(/upstream_unavailable|503|temporar/iu);
+        expect(within(panel()).queryByTestId("ask-dev-history-retry")).toBeNull();
+        expect(within(panel()).queryByTestId("ask-dev-history-read-failed")).toBeNull();
+        expect(within(panel()).queryByTestId("ask-dev-history-no-repository")).toBeNull();
+        expect(within(panel()).queryAllByTestId("ask-dev-history-row")).toEqual([]);
+        expect(transport.listCalls).toEqual([undefined]);
+    });
+
     it("a list that could not be read says so and reads again on Try again", async () => {
         const transport = seeded();
         transport.listPages.splice(0, 1, { fail: new Error("network") });
