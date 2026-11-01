@@ -99,12 +99,13 @@ export async function publishedKeysFor(
     if ((store === null || now - store.fetchedAt > TTL_SECONDS) && canAttempt(now)) {
         await attempt(issuer, now);
     }
-    let keys = usableKeys(now);
+    // The refresh above can take time: the grace cutoff is judged at the time it ended.
+    let keys = usableKeys(nowSeconds());
     if (keys === null) return { ok: false, reason: "unavailable" };
     if (kid !== undefined && !keys.some((key) => key.kid === kid)) {
         if (canAttempt(now)) {
             await attempt(issuer, now);
-            keys = usableKeys(now) ?? keys;
+            keys = usableKeys(nowSeconds()) ?? keys;
         }
         if (!keys.some((key) => key.kid === kid)) return { ok: false, reason: "unknown_kid" };
     }

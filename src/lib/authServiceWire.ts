@@ -107,7 +107,8 @@ async function readIssuedAccessToken(
                 ? { ok: false, reason: "unavailable" }
                 : { ok: false, reason: "refused", cause: "verify" };
         }
-        ctx = { ...ctx, publishedKeys: answer.keys };
+        // The key read can take time: the token is judged at the time it ended.
+        ctx = { ...ctx, nowSeconds: nowOf(cfg), publishedKeys: answer.keys };
     }
     const read = readAccessToken(token, tokenClass, ctx);
     if (!read.ok) return { ok: false, reason: "refused", cause: read.reason };
