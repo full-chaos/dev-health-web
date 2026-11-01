@@ -484,6 +484,7 @@ describe("the registry of server-only modules", () => {
     it("names the auth, key, signing and session-memo modules", () => {
         expect(SERVER_ONLY_MODULES.map((entry) => entry.file)).toEqual([
             "src/lib/auth.ts",
+            "src/lib/authServiceWire.ts",
             "src/lib/authValidationMemo.ts",
             "src/lib/authBrowserSession.ts",
             "src/lib/impersonationStatusMemo.ts",
