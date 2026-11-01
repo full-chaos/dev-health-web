@@ -394,13 +394,31 @@ describe("a reload loses the conversation, and says so (plan §2.5)", () => {
             ).toBeInTheDocument();
         });
 
-        it("remembers the thread of a turn, so the next reload can tell", async () => {
+        it("holds the thread only until ACR admits it", async () => {
+            const gate = deferred();
             const transport = new FakeTransport();
-            transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+            transport.scripts.push([{ wait: gate.promise }, accepted(), resultEvent(PARTIAL)]);
             renderShell(transport);
             await askInPanel();
+            await waitFor(() =>
+                expect(window.sessionStorage.getItem(UNSAVED_THREAD_KEY)).toMatch(/^thread_/u),
+            );
+            gate.resolve();
             await within(panel()).findByTestId("answer-panel");
-            expect(window.sessionStorage.getItem(UNSAVED_THREAD_KEY)).toMatch(/^thread_/u);
+            expect(window.sessionStorage.getItem(UNSAVED_THREAD_KEY)).toBeNull();
+            expect(window.sessionStorage.getItem(UNSAVED_CONVERSATION_KEY)).toBe(TAG);
+        });
+
+        it("forgets a thread it loads from ACR", async () => {
+            const transport = loadAt(
+                LOST,
+                threadView(LOST, [threadTurn("submission_1", "done", { resultId: "result_1" })]),
+            );
+            await within(page()).findByText("question of submission_1");
+            expect(transport.calls).toHaveLength(0);
+            await waitFor(() =>
+                expect(window.sessionStorage.getItem(UNSAVED_THREAD_KEY)).toBeNull(),
+            );
         });
     });
 

@@ -273,6 +273,15 @@ const aboveAccessLimit = (error: unknown): boolean =>
     error.error.error.code === "upstream_unavailable" &&
     !error.error.error.retryable;
 
+/**
+ * True once ACR holds the current thread: it admitted a turn (`accepted`), or the turns came from
+ * it. Only a thread ACR does not hold can be "not saved" (CHAOS-12503).
+ */
+export const threadAdmitted = (snapshot: ConversationSnapshot): boolean =>
+    snapshot.turns.some(
+        (turn) => turn.origin === "restored" || turn.reservedResultId !== undefined,
+    );
+
 /** ACR says that reading again cannot help, so nothing offers a retry. */
 export const readCannotHelp = (error: unknown): boolean =>
     noRepositoryInScope(error) || aboveAccessLimit(error);

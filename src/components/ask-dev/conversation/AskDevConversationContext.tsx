@@ -16,7 +16,12 @@ import { clearAcrTokensInAllTabs } from "@/lib/ask-dev/acr-auth";
 import { browserAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 
-import { ConversationStore, THREAD_HINT_KEY, type ConversationSnapshot } from "./conversationStore";
+import {
+    ConversationStore,
+    THREAD_HINT_KEY,
+    threadAdmitted,
+    type ConversationSnapshot,
+} from "./conversationStore";
 import { FeedbackStore } from "./feedbackStore";
 import { partitionTag } from "./keys";
 import { testModeTransport } from "./testModeTransport";
@@ -54,9 +59,9 @@ const SessionPartitionContext = createContext<string | null | undefined>(undefin
 export const UNSAVED_CONVERSATION_KEY = "ask-dev:unsaved-conversation";
 
 /**
- * The browser-minted thread id of that conversation (CHAOS-12503), and nothing else: the id the URL
- * already shows. A 404 for this id is this tab's own unsaved conversation. A 404 for any other id
- * stays "not available".
+ * The browser-minted thread id of that conversation while ACR does not hold it (CHAOS-12503), and
+ * nothing else: the id the URL already shows. Admission removes it. A 404 for this id is this tab's
+ * own unsaved conversation. A 404 for any other id stays "not available".
  */
 export const UNSAVED_THREAD_KEY = "ask-dev:unsaved-thread";
 
@@ -106,7 +111,8 @@ function urlNamesThread(): boolean {
 function writeMarker(tag: string, threadId: string | null): void {
     try {
         window.sessionStorage.setItem(UNSAVED_CONVERSATION_KEY, tag);
-        if (threadId !== null) window.sessionStorage.setItem(UNSAVED_THREAD_KEY, threadId);
+        if (threadId === null) window.sessionStorage.removeItem(UNSAVED_THREAD_KEY);
+        else window.sessionStorage.setItem(UNSAVED_THREAD_KEY, threadId);
     } catch {
         // No storage (a private window, blocked site data): a reload then shows no notice.
     }
@@ -209,10 +215,11 @@ export function AskDevConversationProvider({
     // already the new one while the store still holds the old one's turns (codex r1 on #1642).
     const owner = snapshot?.partition ?? null;
     const ownerTag = owner === null ? null : partitionTag(owner);
-    const threadId = snapshot?.threadId ?? null;
+    // Only a thread ACR does not hold: a saved one that later 404s stays "not available".
+    const unsavedThread = snapshot === null || threadAdmitted(snapshot) ? null : snapshot.threadId;
     useEffect(() => {
-        if (ownerTag !== null && turns > 0) writeMarker(ownerTag, threadId);
-    }, [ownerTag, turns, threadId]);
+        if (ownerTag !== null && turns > 0) writeMarker(ownerTag, unsavedThread);
+    }, [ownerTag, turns, unsavedThread]);
     // The notice is for the signed-in (org, principal): its marker, and no conversation now.
     const tag = typeof partition === "string" ? partitionTag(partition) : null;
     const lostHere = store !== null && tag !== null && loadedMarker === tag && !hintAtLoad;
