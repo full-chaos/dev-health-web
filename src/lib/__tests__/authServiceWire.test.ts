@@ -892,6 +892,18 @@ describe("refreshSession", () => {
         await refreshSession("ref-secret-value", cfg());
         route({ [REFRESH_URL]: () => json(503, {}) });
         await refreshSession("ref-secret-value-2", cfg());
+        route({
+            [REFRESH_URL]: () =>
+                json(200, refreshBody("tok-secret-value", { refresh_token: undefined })),
+        });
+        await refreshSession("ref-secret-value-3", cfg());
+        expect(
+            vi
+                .mocked(logSessionBranch)
+                .mock.calls.some(
+                    ([f]) => (f as { branch?: string }).branch === "refresh_invalid_response",
+                ),
+        ).toBe(true);
         const text = JSON.stringify(vi.mocked(logSessionBranch).mock.calls);
         for (const secret of ["tok-secret-value", "ref-secret-value", "ref-2"]) {
             expect(text).not.toContain(secret);
