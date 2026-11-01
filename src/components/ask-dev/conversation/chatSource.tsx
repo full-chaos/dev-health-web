@@ -372,7 +372,8 @@ function queuedTurns(
 function historyOf(snapshot: ConversationSnapshot): ChatHistorySnapshot {
     const { history } = snapshot;
     return {
-        status: history.status,
+        // The cast goes when the ask-dev pin reaches ceadd6bc, whose union has "no_repository".
+        status: history.status as ChatHistorySnapshot["status"],
         rows: history.threads.map((thread) => ({
             id: thread.threadId,
             firstQuestion: thread.firstQuestion,
