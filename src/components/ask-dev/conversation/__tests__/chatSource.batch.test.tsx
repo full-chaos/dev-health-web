@@ -567,6 +567,31 @@ describe("what drops the queue", () => {
         await nothingMoreGoesOut(2, () => first.gate.resolve());
     });
 
+    const hostAt = (partition: string | null | undefined) => ({
+        notSaved: false,
+        partition,
+        pageRefs: [],
+        removePageRef: () => undefined,
+    });
+
+    it("the session moving, before the store rebinds: no next item under the old partition", async () => {
+        const { source, first } = await running();
+
+        source.setHostInputs(hostAt(ORG_B));
+
+        expect(queued(source)).toEqual([]);
+        await nothingMoreGoesOut(2, () => first.gate.resolve());
+    });
+
+    it("a session that reports its own partition, or is loading, keeps the queue", async () => {
+        const { source } = await running();
+
+        source.setHostInputs(hostAt(ORG_A));
+        source.setHostInputs(hostAt(undefined));
+
+        expect(queued(source)).toHaveLength(2);
+    });
+
     it("an item that ends in connect", async () => {
         const made = makeSource();
         const { source, store } = made;

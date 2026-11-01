@@ -689,7 +689,14 @@ export function createChatSource({
         }
         host = next;
         emit();
-        if (partitionChanged) for (const listener of [...feedbackListeners]) listener();
+        if (partitionChanged) {
+            // The session left this store's partition: no further item goes out under the old one,
+            // though the provider has not rebound the store yet.
+            if (next.partition !== undefined && next.partition !== store.getSnapshot().partition) {
+                dropBatch();
+            }
+            for (const listener of [...feedbackListeners]) listener();
+        }
     }
 
     /** Built once per entry, so `entryFor` gives the same object until the entry changes. */
