@@ -412,6 +412,47 @@ test.describe("desktop (1280px)", () => {
         expect((await investigations(page)).length).toBe(1);
     });
 
+    // CHAOS-12483: ACR answers 404 with its run lease off. Nothing shows "Canceling…" for a run
+    // that nothing is canceling, and no answer arrives after Stop.
+    test("7b. Stop, and ACR answers 404: the stream disconnects at once", async ({ page }) => {
+        await seed(page, {
+            stream: [
+                { events: [accepted, stage(2, "interpreting", "started", 100)], then: "hold" },
+            ],
+            cancel: [
+                {
+                    refuse: {
+                        status: 404,
+                        error: {
+                            schema_version: "error.v1",
+                            request_id: "req_cancel_404",
+                            error: {
+                                code: "not_found",
+                                message: "Context Fabric investigation submission was not found",
+                                http_status: 404,
+                                retryable: false,
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        const panel = await openPanel(page);
+        await ask(panel);
+        await expect(panel.locator('[data-stage="interpreting"][data-state="active"]')).toBeVisible(
+            {
+                timeout: 15_000,
+            },
+        );
+        await stopOf(panel).click();
+        await expect(turnIn(panel, "canceled")).toBeVisible();
+        await expect(panel.getByTestId("chat-progress")).toHaveCount(0);
+        await shot(page, "panel-cancel-404-light", panel);
+        expect(await kinds(page, "cancel")).toHaveLength(1);
+        expect(await kinds(page, "status")).toHaveLength(0);
+        expect((await investigations(page)).length).toBe(1);
+    });
+
     test("8. /dev, dark: Canceling…", async ({ page }) => {
         await seed(page, { stream: [slowRun(canceled(3), 4000)], cancel: ["running"] }, "dark");
         await page.goto("/dev");
