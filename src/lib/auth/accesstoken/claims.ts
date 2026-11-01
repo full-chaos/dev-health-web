@@ -4,6 +4,10 @@
 export const AUDIENCE_SCOPES: Readonly<Record<string, string>> = {
     "dev-health-api": "api:access",
     "auth-service": "auth:session",
+    // Names only, so a token for them fails as `audience`, not as `contract`. Which audience
+    // this server accepts is decided by the callers of the verifier.
+    "acr-api": "acr:api",
+    "acr-mcp": "acr:mcp",
 };
 
 export interface AccessTokenHeader {
