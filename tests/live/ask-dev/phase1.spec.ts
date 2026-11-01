@@ -10,9 +10,10 @@ import {
     ACR,
     EVIDENCE_PATH,
     INVESTIGATIONS_PATH,
+    authorize,
     closeEvidence,
-    connect,
     evidenceState,
+    familyIdOf,
     investigations,
     openStoredAnswer,
     references,
@@ -32,7 +33,7 @@ test.describe.configure({ mode: "serial" });
 /**
  * One sign-in for the run: the auth service limits logins, so a sign-in per test locks the user out.
  * The session stays in memory, never in a file. Each case has its own context, and so its own tab
- * storage and its own ACR tokens, through the real OAuth flow.
+ * storage and its own ACR tokens, through the real silent authorization.
  */
 type Session = Awaited<ReturnType<BrowserContext["storageState"]>>;
 let session: Session;
@@ -54,16 +55,17 @@ test.use({
 
 async function signedIn(page: Page) {
     const calls = watchAcr(page);
-    await connect(page);
+    await authorize(page);
     return calls;
 }
 
 /**
  * ACR allows one principal 60 requests a minute (`ACR_REQUESTS_PER_MINUTE`), and opening a stored
- * conversation is about 8 of them. A 429 there is ACR's real answer and the page shows it, so the
- * suite stays under the limit rather than treat that as a flake.
+ * conversation is about 8 of them. Web allows one user 6 silent authorizations a minute, and each
+ * case makes one, in its own tab. A 429 there is a real answer and the page shows it, so the suite
+ * stays under both limits rather than treat that as a flake.
  */
-const PACE_MS = 6_000;
+const PACE_MS = 10_000;
 test.afterEach(async () => {
     await new Promise((resolve) => setTimeout(resolve, PACE_MS));
 });
@@ -214,11 +216,13 @@ test.describe("the amendment's new cases that need no question", () => {
         await acr.dispose();
     });
 
-    test("a cloned tab holds no token: it asks to connect, and reads nothing", async ({
+    test("a cloned tab drops what it copied, and authorizes for itself", async ({
         page,
         context,
     }) => {
         await signedIn(page);
+        const original = await familyIdOf(page);
+        expect(original, "the original tab holds no family").not.toBeNull();
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const copied = await page.evaluate(() =>
             Object.fromEntries(Object.entries(window.sessionStorage)),
@@ -239,8 +243,21 @@ test.describe("the amendment's new cases that need no question", () => {
         await clone.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = clone.getByTestId("ask-dev-panel");
         await panel.getByTestId("ask-dev-history-toggle").click();
-        await expect(panel.getByTestId("ask-dev-history-connect")).toBeVisible({ timeout: 20_000 });
-        expect(calls).toEqual([]);
+        await expect
+            .poll(
+                () =>
+                    calls.filter((call) => call.path.endsWith("/threads") && call.status === 200)
+                        .length,
+                { message: "the cloned tab read no history", timeout: 20_000 },
+            )
+            .toBeGreaterThan(0);
+        await expect(panel.getByTestId("ask-dev-history-read-failed")).toHaveCount(0);
+        await expect(panel).not.toContainText(/\bconnect\b/iu);
+        // CHAOS-12305: two tabs on one family meet ACR's reuse rule, so the copy has its own.
+        const own = await familyIdOf(clone);
+        expect(own, "the cloned tab holds no family").not.toBeNull();
+        expect(own).not.toBe(original);
+        expect(await familyIdOf(page)).toBe(original);
         await clone.close();
     });
 

@@ -117,17 +117,35 @@ export async function signIn(page: Page): Promise<void> {
     }
 }
 
-/** The real OAuth flow from the browser: ACR's authorize, the consent page, the callback, /token. */
-export async function connect(page: Page): Promise<void> {
-    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard", { waitUntil: "commit" });
-    await page.waitForURL((url) => url.pathname === "/dashboard", {
-        timeout: 60_000,
-        waitUntil: "commit",
+/** This tab's ACR token family. It holds a refresh token, so only its random id leaves the page. */
+export const familyIdOf = (page: Page): Promise<string | null> =>
+    page.evaluate(() => {
+        const family = window.sessionStorage.getItem("ask-dev:acr-family");
+        return family === null ? null : (JSON.parse(family) as { familyId: string }).familyId;
     });
-    await expect(page.getByRole("button", { name: "Open Ask Dev" })).toBeVisible({
-        timeout: 30_000,
-    });
+
+/**
+ * The real silent authorization from the browser (CHAOS-12474). There is no page to visit and no
+ * step to click: opening History is a user's act, so it runs web's route, ACR's `/authorize` and its
+ * consent, then `/token`. No token at the end of it is red. It leaves this tab on /dashboard with
+ * its family held and the panel closed. The panel's History read is one more ACR call.
+ */
+export async function authorize(page: Page): Promise<void> {
+    await page.goto("/dashboard", { waitUntil: "commit" });
+    const launcher = page.getByRole("button", { name: "Open Ask Dev" });
+    await expect(launcher).toBeVisible({ timeout: 30_000 });
     await hydrated(page);
+    await launcher.click();
+    const panel = page.getByTestId("ask-dev-panel");
+    await panel.getByTestId("ask-dev-history-toggle").click();
+    await expect
+        .poll(() => familyIdOf(page), {
+            message: "this tab holds no ACR family: the silent authorization gave no token",
+            timeout: 30_000,
+        })
+        .not.toBeNull();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
 }
 
 /** `ASK_DEV_LIVE_ORACLE`: acr's `modeloracle`. A routed case sends nothing without it. */
