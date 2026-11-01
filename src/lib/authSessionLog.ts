@@ -30,6 +30,10 @@ const log = logger.child({ module: "auth-session" });
  *                           session starts. A fixed message; the token text is never logged.
  * - `refresh_invalid_response` the refresh answered 2xx without both tokens, or with an access token
  *                           the class refuses (a failed verification): the session ends.
+ * - `session_token_*`        the service session token of an answer (aud auth-service): `missing` (class
+ *                           eddsa, none sent: accepted), `ignored` (class hs256_compat, one sent: never
+ *                           stored), and one branch per refusal reason (`malformed`, `unverified`,
+ *                           `sid_mismatch`, `sub_mismatch`, `exp_mismatch`): the answer is refused.
  * - `logout_failed`         the auth-service logout call did not answer 200.
  */
 export type SessionBranch =
@@ -45,6 +49,13 @@ export type SessionBranch =
     | "key_set_unusable"
     | "token_shape_refused"
     | "refresh_invalid_response"
+    | "session_token_missing"
+    | "session_token_ignored"
+    | "session_token_malformed"
+    | "session_token_unverified"
+    | "session_token_sid_mismatch"
+    | "session_token_sub_mismatch"
+    | "session_token_exp_mismatch"
     | "logout_failed";
 
 export interface SessionBranchFields {
@@ -73,6 +84,13 @@ const MESSAGES: Record<SessionBranch, string> = {
     key_set_unusable: "login refused: the published key set is unusable",
     token_shape_refused: "login refused: the access token has the wrong shape for the token class",
     refresh_invalid_response: "session ended: the refresh answer or its access token was refused",
+    session_token_missing: "an eddsa answer carried no service session token; accepted",
+    session_token_ignored: "an hs256_compat answer carried a service session token; ignored",
+    session_token_malformed: "answer refused: the service session token is not a usable string",
+    session_token_unverified: "answer refused: the service session token did not verify",
+    session_token_sid_mismatch: "answer refused: the service session token names another session",
+    session_token_sub_mismatch: "answer refused: the service session token names another subject",
+    session_token_exp_mismatch: "answer refused: the service session token expiry differs",
     logout_failed: "sign-out: the backend logout did not answer 200",
 };
 

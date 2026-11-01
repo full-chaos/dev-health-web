@@ -191,6 +191,9 @@ function applyValidationOutcome(token: JWT, outcome: ValidationOutcome): void {
 
     token.access_token = undefined;
     token.refresh_token = undefined;
+    token.session_access_token = undefined;
+    token.session_expires_at = undefined;
+    token.act_sub = undefined;
     token.error = "user_invalid";
 }
 

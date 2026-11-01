@@ -176,7 +176,9 @@ describe("readAnswerTokens, class eddsa", () => {
 
     it("class eddsa: a session token whose exp is later than the access token's is refused (must equal)", async () => {
         route();
-        expect(await read(access(), service({ exp: EXP + 1 }))).toEqual(refusedSession);
+        expect(await read(access({ exp: EXP - 100 }), service({ exp: EXP - 99 }))).toEqual(
+            refusedSession,
+        );
         expect(logged()).toEqual([{ operation: "login", branch: "session_token_exp_mismatch" }]);
     });
 
@@ -372,7 +374,9 @@ describe("refreshSession with a session token", () => {
     it("a refused session token on refresh is terminal", async () => {
         route({
             [refreshUrl]: () =>
-                rotated(access(), { session_access_token: service({ exp: EXP + 5 }) }),
+                rotated(access({ exp: EXP - 100 }), {
+                    session_access_token: service({ exp: EXP - 95 }),
+                }),
         });
         expect(await refreshSession("ref-1", cfg())).toEqual({
             kind: "terminal",

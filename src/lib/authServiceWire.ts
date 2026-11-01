@@ -2,7 +2,14 @@ import "server-only";
 import { parseStrictJson } from "@/lib/auth/accesstoken/strictjson";
 import type { VerifyContext } from "@/lib/auth/accesstoken/verify";
 import { publishedKeysFor } from "@/lib/authKeySource";
-import { readAccessToken, resolveTokenClass, type TokenClass } from "@/lib/authServiceClient";
+import {
+    readAccessToken,
+    readSessionAccessToken,
+    resolveTokenClass,
+    type AccessTokenOk,
+    type SessionAccessTokenRead,
+    type TokenClass,
+} from "@/lib/authServiceClient";
 import {
     classifyLogin,
     classifyLogout,
@@ -86,7 +93,7 @@ function checkConfig(cfg: WireConfig, operation: "login" | "refresh"): Config {
 }
 
 type Issued =
-    | { ok: true; exp?: number; sid?: string; sub?: string }
+    | { ok: true; read: AccessTokenOk; ctx: VerifyContext }
     | { ok: false; reason: "refused"; cause: "shape" | "verify" }
     | { ok: false; reason: "unavailable" };
 
@@ -120,11 +127,70 @@ async function readIssuedAccessToken(
     }
     const read = readAccessToken(token, tokenClass, ctx);
     if (!read.ok) return { ok: false, reason: "refused", cause: read.reason };
+    return { ok: true, read, ctx };
+}
+
+const SESSION_REFUSAL_BRANCH = {
+    malformed: "session_token_malformed",
+    verify: "session_token_unverified",
+    sid_mismatch: "session_token_sid_mismatch",
+    sub_mismatch: "session_token_sub_mismatch",
+    exp_mismatch: "session_token_exp_mismatch",
+} as const;
+
+export type AnswerTokens =
+    | {
+          ok: true;
+          accessExp?: number;
+          sid?: string;
+          sub?: string;
+          orgId?: string;
+          actor?: string | null;
+          session:
+              | { kind: "absent" }
+              | { kind: "ignored" }
+              | { kind: "ok"; token: string; exp: number; sid: string };
+      }
+    | { ok: false; reason: "refused"; cause: "shape" | "verify" | "session" }
+    | { ok: false; reason: "unavailable" };
+
+// The tokens of one auth-service answer, read by the class setting: the access token as before, then
+// session_access_token (aud auth-service) against it with the same keys and the same clock. Under
+// hs256_compat the field is ignored and counted; under eddsa it is checked, kept apart from the
+// access token, and an absent one is accepted and counted. The log lines are closed branches.
+export async function readAnswerTokens(
+    answer: { readonly accessToken: string; readonly sessionAccessToken?: unknown },
+    cfg: WireConfig,
+    operation: "login" | "refresh",
+): Promise<AnswerTokens> {
+    const tokenClass = resolveTokenClass(cfg.tokenClassRaw);
+    if (tokenClass === null) return { ok: false, reason: "unavailable" };
+    const issued = await readIssuedAccessToken(answer.accessToken, tokenClass, cfg, operation);
+    if (!issued.ok) return issued;
+    const session: SessionAccessTokenRead = readSessionAccessToken(
+        answer.sessionAccessToken,
+        issued.read,
+        tokenClass,
+        issued.ctx,
+    );
+    if (session.kind === "refused") {
+        logSessionBranch({ operation, branch: SESSION_REFUSAL_BRANCH[session.reason] });
+        return { ok: false, reason: "refused", cause: "session" };
+    }
+    if (session.kind === "ignored")
+        logSessionBranch({ operation, branch: "session_token_ignored" });
+    if (session.kind === "absent" && tokenClass === "eddsa") {
+        logSessionBranch({ operation, branch: "session_token_missing" });
+    }
+    const { read } = issued;
     return {
         ok: true,
-        ...(read.exp === undefined ? {} : { exp: read.exp }),
+        ...(read.exp === undefined ? {} : { accessExp: read.exp }),
         ...(read.sid === undefined ? {} : { sid: read.sid }),
         ...(read.sub === undefined ? {} : { sub: read.sub }),
+        ...(read.orgId === undefined ? {} : { orgId: read.orgId }),
+        ...(read.actor === undefined ? {} : { actor: read.actor }),
+        session,
     };
 }
 
@@ -145,6 +211,9 @@ export type PasswordLoginResult =
           accessExp?: number;
           sid?: string;
           sub?: string;
+          sessionAccessToken?: string;
+          sessionExp?: number;
+          actorSub?: string;
       }
     | { kind: "email_verification_required" }
     | { kind: "account_locked" }
@@ -187,16 +256,21 @@ export async function passwordLogin(
         case "invalid_response":
             return refusedLogin("login_invalid_response");
         case "ok": {
-            const issued = await readIssuedAccessToken(
-                outcome.accessToken,
-                checked.tokenClass,
+            const tokens = await readAnswerTokens(
+                {
+                    accessToken: outcome.accessToken,
+                    sessionAccessToken: outcome.sessionAccessToken,
+                },
                 cfg,
                 "login",
             );
-            if (!issued.ok) {
-                if (issued.reason === "unavailable") return { kind: "unavailable" };
+            if (!tokens.ok) {
+                if (tokens.reason === "unavailable") return { kind: "unavailable" };
+                // A refused session token gives the same answer as any refused sign-in; its
+                // branch is in the log.
+                if (tokens.cause === "session") return { kind: "invalid_credentials" };
                 return refusedLogin(
-                    issued.cause === "shape" ? "token_shape_refused" : "login_invalid_response",
+                    tokens.cause === "shape" ? "token_shape_refused" : "login_invalid_response",
                 );
             }
             return {
@@ -206,9 +280,13 @@ export async function passwordLogin(
                 ...(outcome.expiresIn === undefined ? {} : { expiresIn: outcome.expiresIn }),
                 needsOnboarding: outcome.needsOnboarding,
                 user: outcome.user,
-                ...(issued.exp === undefined ? {} : { accessExp: issued.exp }),
-                ...(issued.sid === undefined ? {} : { sid: issued.sid }),
-                ...(issued.sub === undefined ? {} : { sub: issued.sub }),
+                ...(tokens.accessExp === undefined ? {} : { accessExp: tokens.accessExp }),
+                ...(tokens.sid === undefined ? {} : { sid: tokens.sid }),
+                ...(tokens.sub === undefined ? {} : { sub: tokens.sub }),
+                ...(tokens.session.kind === "ok"
+                    ? { sessionAccessToken: tokens.session.token, sessionExp: tokens.session.exp }
+                    : {}),
+                ...(typeof tokens.actor === "string" ? { actorSub: tokens.actor } : {}),
             };
         }
         default:
@@ -249,6 +327,9 @@ export type RefreshResult =
           sid?: string;
           expiresIn?: number;
           user?: SessionUser;
+          sessionAccessToken?: string;
+          sessionExp?: number;
+          actorSub?: string;
       }
     | { kind: "terminal"; reason: "status"; status: number }
     | { kind: "terminal"; reason: "invalid_response" }
@@ -281,25 +362,37 @@ async function refreshOnce(
         }
         return outcome;
     }
-    const issued = await readIssuedAccessToken(outcome.accessToken, tokenClass, cfg, "refresh");
-    if (!issued.ok) {
-        if (issued.reason === "unavailable") {
+    const tokens = await readAnswerTokens(
+        { accessToken: outcome.accessToken, sessionAccessToken: outcome.sessionAccessToken },
+        cfg,
+        "refresh",
+    );
+    if (!tokens.ok) {
+        if (tokens.reason === "unavailable") {
             return { kind: "transient", refreshToken: outcome.refreshToken };
         }
-        logSessionBranch({
-            operation: "refresh",
-            branch: issued.cause === "shape" ? "token_shape_refused" : "refresh_invalid_response",
-        });
+        // A refused session token was logged by its own branch.
+        if (tokens.cause !== "session") {
+            logSessionBranch({
+                operation: "refresh",
+                branch:
+                    tokens.cause === "shape" ? "token_shape_refused" : "refresh_invalid_response",
+            });
+        }
         return { kind: "terminal", reason: "token_refused" };
     }
     return {
         kind: "rotated",
         accessToken: outcome.accessToken,
         refreshToken: outcome.refreshToken,
-        ...(issued.exp === undefined ? {} : { accessExp: issued.exp }),
-        ...(issued.sid === undefined ? {} : { sid: issued.sid }),
+        ...(tokens.accessExp === undefined ? {} : { accessExp: tokens.accessExp }),
+        ...(tokens.sid === undefined ? {} : { sid: tokens.sid }),
         ...(outcome.expiresIn === undefined ? {} : { expiresIn: outcome.expiresIn }),
         ...(outcome.user === undefined ? {} : { user: outcome.user }),
+        ...(tokens.session.kind === "ok"
+            ? { sessionAccessToken: tokens.session.token, sessionExp: tokens.session.exp }
+            : {}),
+        ...(typeof tokens.actor === "string" ? { actorSub: tokens.actor } : {}),
     };
 }
 

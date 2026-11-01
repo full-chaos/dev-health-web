@@ -20,7 +20,11 @@ import { logger } from "@/lib/logger";
 const log = logger.child({ module: "auth-browser-session" });
 
 /** Session keys that hold an Ops credential. Server code reads them; the browser never gets them. */
-export const SERVER_ONLY_SESSION_KEYS = ["access_token", "refresh_token"] as const;
+export const SERVER_ONLY_SESSION_KEYS = [
+    "access_token",
+    "refresh_token",
+    "session_access_token",
+] as const;
 
 /** `update()` payload keys that carry an Ops token pair in clear. Never accepted from a browser. */
 export const SERVER_ONLY_UPDATE_KEYS = ["activeOrg", "onboardComplete"] as const;

@@ -1,6 +1,6 @@
 import "server-only";
 import NextAuth, { CredentialsSignin } from "next-auth";
-import { decode, encode, getToken } from "next-auth/jwt";
+import { decode, encode, getToken, type JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
@@ -49,6 +49,17 @@ const authSecret =
     (authEnv.NODE_ENV === "development" || authEnv.NODE_ENV === "test"
         ? "dev-secret-change-in-production"
         : undefined);
+
+// The service session token, its expiry and the verified actor belong to the access token they
+// were read with: every place that sets, replaces or drops the access token sets or drops them.
+function setServiceToken(
+    token: JWT,
+    value: { token?: string; exp?: number; actor?: string },
+): void {
+    token.session_access_token = value.token;
+    token.session_expires_at = value.exp === undefined ? undefined : value.exp * 1000;
+    token.act_sub = value.actor;
+}
 
 const nextAuth = NextAuth({
     trustHost: true,
@@ -115,6 +126,9 @@ const nextAuth = NextAuth({
                             expires_in: login.expiresIn,
                             access_exp: login.accessExp,
                             sid: login.sid,
+                            session_access_token: login.sessionAccessToken,
+                            session_exp: login.sessionExp,
+                            act_sub: login.actorSub,
                         };
                 }
             },
@@ -159,6 +173,11 @@ const nextAuth = NextAuth({
                     ? user.access_exp * 1000
                     : Date.now() + (user.expires_in || 3600) * 1000;
                 token.sid = user.sid;
+                setServiceToken(token, {
+                    token: user.session_access_token,
+                    exp: user.session_exp,
+                    actor: user.act_sub,
+                });
                 token.last_validated = Date.now();
                 token.error = undefined;
             }
@@ -191,6 +210,8 @@ const nextAuth = NextAuth({
                         token.is_new_user = data.is_new_user === true;
                         token.access_token = data.access_token;
                         token.refresh_token = data.refresh_token;
+                        // The exchange sets a new access token: the old service token is not its pair.
+                        setServiceToken(token, {});
                         token.expires_at = Date.now() + (data.expires_in || 3600) * 1000;
                         token.last_validated = Date.now();
                     } else {
@@ -227,6 +248,8 @@ const nextAuth = NextAuth({
                 const pair = handoff.pair as OnboardPair;
                 token.access_token = pair.access_token;
                 token.refresh_token = pair.refresh_token;
+                // A pair of this kind holds no service token: the old one is not its pair.
+                setServiceToken(token, {});
                 token.org_id = pair.org_id;
                 token.role = pair.role;
                 token.needs_onboarding = false;
@@ -237,6 +260,8 @@ const nextAuth = NextAuth({
                 const pair = handoff.pair as ActiveOrgPair;
                 token.access_token = pair.access_token;
                 token.refresh_token = pair.refresh_token;
+                // A pair of this kind holds no service token: the old one is not its pair.
+                setServiceToken(token, {});
                 token.org_id = pair.user.org_id;
                 token.role = pair.user.role;
                 token.is_superuser = pair.user.is_superuser ?? false;
@@ -273,6 +298,11 @@ const nextAuth = NextAuth({
                         ? refreshed.accessExp * 1000
                         : now + (refreshed.expiresIn || 3600) * 1000;
                     token.sid = refreshed.sid;
+                    setServiceToken(token, {
+                        token: refreshed.sessionAccessToken,
+                        exp: refreshed.sessionExp,
+                        actor: refreshed.actorSub,
+                    });
                     token.last_validated = now;
                     token.refresh_failures = 0;
                     // A new access token starts with a clean validation count:
@@ -299,6 +329,7 @@ const nextAuth = NextAuth({
                     }
                     token.access_token = undefined;
                     token.refresh_token = undefined;
+                    setServiceToken(token, {});
                     token.error = "refresh_failed";
                     return token;
                 } else {
@@ -307,6 +338,7 @@ const nextAuth = NextAuth({
                     // callback retries after full jittered exponential backoff (self-healing). A
                     // credential the answer already rotated replaces the spent one.
                     token.access_token = undefined;
+                    setServiceToken(token, {});
                     if (refreshed.refreshToken) token.refresh_token = refreshed.refreshToken;
                     const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
                     token.refresh_failures = failures;
@@ -404,6 +436,9 @@ const nextAuth = NextAuth({
                 session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
                 session.user.is_new_user = token.is_new_user === true;
                 session.access_token = token.access_token as string;
+                // In-process only: the HTTP session answer drops it (authBrowserSession). The
+                // actor is never put on the session.
+                session.session_access_token = token.session_access_token as string | undefined;
                 if (token.error) {
                     session.error = token.error as string;
                 }
