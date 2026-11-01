@@ -11,7 +11,10 @@ import { CTA_LABELS } from "@/lib/design/cta";
 
 import { AskDevRender } from "./AskDevRender";
 import { useAskDevShell } from "./AskDevShellContext";
-import { useAskDevConversation } from "./conversation/AskDevConversationContext";
+import {
+    useAskDevConversation,
+    useAskDevLostThread,
+} from "./conversation/AskDevConversationContext";
 import { useAskDevAvailability } from "./useAskDevAvailability";
 
 export const FULL_PAGE_COPY = {
@@ -37,11 +40,14 @@ export function fullPageThreadPath(threadId: string | null): string {
  * - Only a local selection (a history row, a new conversation, the first submit, a delete) writes
  *   the URL: an incoming selection never writes it, so back and forward are not undone.
  * - Bare `/dev` (Expand pushes it) keeps the store's conversation and names it in the URL.
+ * - Those two name a thread before ACR admits it, so a reload can name one ACR never held. The
+ *   store is told which one this tab lost, so that reads as "not saved" (CHAOS-12503).
  */
 function ThreadUrlSync() {
     const live = useAskDevConversation();
     const router = useRouter();
     const urlThread = useSearchParams().get("thread");
+    const lostThread = useAskDevLostThread();
     // The URL value already handled: only a CHANGE of it is an incoming selection.
     const handled = useRef<string | null | undefined>(undefined);
     const store = live?.store;
@@ -53,8 +59,10 @@ function ThreadUrlSync() {
     useEffect(() => {
         if (store === undefined || !ready || handled.current === urlThread) return;
         handled.current = urlThread;
-        if (urlThread !== null) store.selectThread(urlThread, "incoming");
-    }, [store, ready, urlThread]);
+        if (urlThread !== null) {
+            store.selectThread(urlThread, "incoming", lostThread);
+        }
+    }, [store, ready, urlThread, lostThread]);
 
     useEffect(() => {
         if (store === undefined || !ready) return;

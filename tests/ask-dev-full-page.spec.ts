@@ -237,13 +237,18 @@ test.describe("desktop (1280px)", () => {
         const panel = await askInPanel(page);
         await expect(panel.getByTestId("chat-status")).toHaveAttribute("data-status", "not_run");
         await panel.getByRole("button", { name: "Open full page" }).click();
-        await expect(page).toHaveURL(/\/dev$/u);
+        // The page names the conversation in its URL before ACR admits it. Waiting for that move is
+        // what a reader who pauses gets; a reload that beat it read green by luck (CHAOS-12503).
+        await expect(page).toHaveURL(/\/dev\?thread=/u);
 
         await page.reload();
         const notice = page
             .getByTestId("ask-dev-page-conversation")
             .getByTestId("ask-dev-not-saved");
         await expect(notice).toContainText(NOT_SAVED);
+        await expect(page.getByTestId("ask-dev-conversation-unavailable")).toHaveCount(0);
+        await expect(page.getByRole("textbox", { name: "Ask a question" })).toBeEnabled();
+        await expect(page).toHaveURL(/\/dev$/u);
         await expect(page.getByTestId("answer-panel")).toHaveCount(0);
         await page.screenshot({ path: testInfo.outputPath("full-page-not-saved-desktop.png") });
         expect(await investigations(page)).toHaveLength(1);
