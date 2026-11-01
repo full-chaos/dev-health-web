@@ -108,6 +108,7 @@ const nextAuth = NextAuth({
                             org_id: login.user.orgId,
                             role: login.user.role,
                             is_superuser: login.user.isSuperuser,
+                            permissions: login.user.permissions as string[] | undefined,
                             needs_onboarding: login.needsOnboarding,
                             access_token: login.accessToken,
                             refresh_token: login.refreshToken,
