@@ -18,6 +18,10 @@ vi.mock("next/navigation", () => ({
     usePathname: () => navigationMock.pathname,
     useSearchParams: () => new URLSearchParams(navigationMock.search),
 }));
+// The Ask Dev availability hook reads the session (CHAOS-12306); the browser ACR client is off here.
+vi.mock("next-auth/react", () => ({
+    useSession: () => ({ data: null, status: "unauthenticated", update: vi.fn() }),
+}));
 
 beforeEach(() => {
     navigationMock.pathname = "/dashboard";

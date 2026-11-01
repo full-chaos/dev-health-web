@@ -113,6 +113,33 @@ describe("AcrOAuthCallback (CHAOS-12303)", () => {
         expect(screen.queryByText("This sign-in link is not valid here")).toBeNull();
     });
 
+    it("tells an impersonating admin that Ask Dev is not available, with a way back (CHAOS-12306)", async () => {
+        complete.mockResolvedValue({
+            kind: "failed",
+            reason: "impersonating",
+            returnTo: "/dev?thread=t1",
+        });
+        render(<AcrOAuthCallback />);
+        expect(
+            await screen.findByRole("heading", {
+                name: "Ask Dev is not available while impersonating",
+            }),
+        ).toBeVisible();
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "Stop impersonating to connect Ask Dev.",
+        );
+        expect(screen.getByTestId("ask-dev-acr-callback")).toHaveAttribute(
+            "data-state",
+            "impersonating",
+        );
+        expect(screen.getByRole("link", { name: "Return to Ask Dev" })).toHaveAttribute(
+            "href",
+            "/dev?thread=t1",
+        );
+        expect(screen.queryByText("This sign-in link is not valid here")).toBeNull();
+        expect(replace).not.toHaveBeenCalled();
+    });
+
     it("says it is connecting while the exchange runs", async () => {
         let resolve!: (value: unknown) => void;
         complete.mockReturnValue(new Promise((done) => (resolve = done)));

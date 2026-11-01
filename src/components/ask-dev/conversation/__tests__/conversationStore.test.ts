@@ -32,7 +32,10 @@ let transport: FakeTransport;
 let clock: number;
 let sleeps: number[];
 
-function makeStore(options: Partial<ConversationStoreOptions> = {}): ConversationStore {
+function makeStore(
+    options: Partial<ConversationStoreOptions> = {},
+    partition: string | null = ORG_A,
+): ConversationStore {
     let n = 0;
     const store = new ConversationStore({
         transport,
@@ -44,7 +47,7 @@ function makeStore(options: Partial<ConversationStoreOptions> = {}): Conversatio
         uuid: () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`,
         ...options,
     });
-    store.setPartition(ORG_A);
+    store.setPartition(partition);
     return store;
 }
 
@@ -253,6 +256,84 @@ describe("partition, abort, clear and generation (D-20)", () => {
         const store = new ConversationStore({ transport });
         expect(store.submit("Which projects are at risk?")).toBe(false);
         expect(transport.calls).toHaveLength(0);
+    });
+});
+
+/**
+ * CHAOS-12306 (c5): the context clears the browser's ACR tokens through `onPartitionChanged`. The
+ * web principal of c4 (user id, org id) does not change when an admin impersonates a user of the
+ * same org, so the partition change is the signal.
+ */
+describe("onPartitionChanged (CHAOS-12306)", () => {
+    const IMPERSONATING_A = "org-a\u0000user-1\u0000user-9";
+
+    /** A store bound first to `from`; the hook records the store's state at each call. */
+    function bound(from: string) {
+        const seen: { generation: number; turns: number; partition: string | null }[] = [];
+        const store: ConversationStore = makeStore(
+            {
+                onPartitionChanged: () => {
+                    const snapshot = store.getSnapshot();
+                    seen.push({
+                        generation: snapshot.generation,
+                        turns: snapshot.turns.length,
+                        partition: snapshot.partition,
+                    });
+                },
+            },
+            from,
+        );
+        return { store, seen };
+    }
+
+    it.each([
+        ["an org switch", ORG_A, ORG_B],
+        ["an impersonation start", ORG_A, IMPERSONATING_A],
+        ["an impersonation end", IMPERSONATING_A, ORG_A],
+        ["a sign-out", ORG_A, null],
+    ])("is called once, after the clear, on %s", async (_, from, to) => {
+        const { store, seen } = bound(from);
+        transport.scripts.push([resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        const generation = store.getSnapshot().generation;
+        // Not on the first bind, nor on the same key again.
+        store.setPartition(from);
+        expect(seen).toEqual([]);
+
+        store.setPartition(to);
+        expect(seen).toEqual([{ generation: generation + 1, turns: 0, partition: to }]);
+        store.setPartition(to);
+        expect(seen).toHaveLength(1);
+    });
+
+    it("is not called on the first bind, a first bind to null, or an unmount clear", () => {
+        const changed = vi.fn();
+        const store = new ConversationStore({ transport, onPartitionChanged: changed });
+        store.setPartition(ORG_A);
+        store.setPartition(ORG_A);
+        store.clear("unmounted");
+        expect(changed).not.toHaveBeenCalled();
+
+        const signedOut = new ConversationStore({ transport, onPartitionChanged: changed });
+        signedOut.setPartition(null);
+        expect(changed).not.toHaveBeenCalled();
+    });
+
+    it("runs after the active run's transport signal is aborted", async () => {
+        const aborted: boolean[] = [];
+        const store = makeStore({
+            onPartitionChanged: () => aborted.push(transport.calls[0]!.signal.aborted),
+        });
+        const gate = deferred();
+        transport.scripts.push([accepted(), { wait: gate.promise }, resultEvent(PARTIAL)]);
+        store.submit("Which projects are at risk?");
+        await vi.waitFor(() => expect(last(store).reservedResultId).toBeDefined());
+        expect(transport.calls[0]!.signal.aborted).toBe(false);
+
+        store.setPartition(IMPERSONATING_A);
+        expect(aborted).toEqual([true]);
+        gate.resolve();
     });
 });
 

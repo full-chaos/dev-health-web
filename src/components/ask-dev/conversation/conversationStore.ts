@@ -493,6 +493,11 @@ export type ConversationStoreOptions = {
     /** Waits `ms`, or rejects when `signal` aborts. Injected so a test can drive the polling. */
     readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
     readonly uuid?: () => string;
+    /**
+     * Called once each time the bound key changes, after the clear; never on the first bind or
+     * the same key again. The context clears the browser's ACR tokens here (CHAOS-12306).
+     */
+    readonly onPartitionChanged?: () => void;
 };
 
 function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -724,6 +729,7 @@ export class ConversationStore {
     private readonly sleep: (ms: number, signal: AbortSignal) => Promise<void>;
     private readonly uuid: () => string;
     private readonly hints: HintStorage;
+    private readonly onPartitionChanged: (() => void) | undefined;
     private readonly listeners = new Set<() => void>();
     private partition: string | null | undefined = undefined;
     private active: ActiveRun | null = null;
@@ -779,6 +785,7 @@ export class ConversationStore {
         this.sleep = options.sleep ?? abortableSleep;
         this.uuid = options.uuid ?? (() => crypto.randomUUID());
         this.hints = options.hints ?? sessionHintStorage;
+        this.onPartitionChanged = options.onPartitionChanged;
     }
 
     readonly subscribe = (listener: () => void): (() => void) => {
@@ -794,12 +801,15 @@ export class ConversationStore {
      * bind clears nothing.
      */
     setPartition(key: string | null): void {
-        if (this.partition !== undefined && key !== this.partition) {
+        const changed = this.partition !== undefined && key !== this.partition;
+        if (changed) {
             this.clear("partition_changed");
             this.hints.clear();
         }
         this.partition = key;
         this.commit({ ...this.snapshot, ready: key !== null, partition: key });
+        // After the clear: the run of the old key is already aborted (CHAOS-12306).
+        if (changed) this.onPartitionChanged?.();
     }
 
     /**

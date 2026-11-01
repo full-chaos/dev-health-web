@@ -4,16 +4,16 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNod
 import { Maximize2, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { Drawer } from "@/components/ui/Drawer";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
+import { isAskDevPanelPath } from "@/lib/ask-dev/surface";
 
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { AskDevComposerSlot, AskDevTranscript, useHasComposer } from "./AskDevConversationView";
 import { useAskDevShell } from "./AskDevShellContext";
 import { useAskDevConversation } from "./conversation/AskDevConversationContext";
 import { AskDevHistory } from "./conversation/AskDevHistory";
+import { useAskDevAvailability } from "./useAskDevAvailability";
 
 /** The `md` breakpoint, as the shell uses it: from here up the panel is a right region. */
 const DESKTOP_QUERY = "(min-width: 768px)";
@@ -165,17 +165,18 @@ function PanelBody({ view, setView }: { view: PanelView; setView: (next: PanelVi
  * The Ask Dev surface. From `md` up it is the right region (`DesktopPanel`); below `md` it is a
  * full-height modal sheet: the shared `Drawer` gives it the focus trap, Escape, the backdrop, the
  * scroll lock and the focus return. It draws nothing when closed, when the organization has no
- * Ask Dev entitlement or on an excluded route. Mounting it sends no request.
+ * Ask Dev entitlement, while impersonating with the browser ACR client on (CHAOS-12306) or on an
+ * excluded route. Mounting it sends no request.
  */
 export function AskDevPanel() {
     const { open, close } = useAskDevShell();
-    const { features } = useAdminTier();
+    const availability = useAskDevAvailability();
     const pathname = usePathname() ?? "";
     const desktop = useSyncExternalStore(subscribeDesktop, readDesktop, () => true);
     const hasComposer = useHasComposer();
     const [view, setView] = useState<PanelView>("conversation");
 
-    if (!open || !isAskDevEnabled(features) || !isAskDevPanelPath(pathname)) return null;
+    if (!open || availability !== "on" || !isAskDevPanelPath(pathname)) return null;
     // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent. The history
     // view has no composer: a question goes to the conversation it is asked in.
     const composer = hasComposer && view === "conversation" ? <AskDevComposerSlot /> : null;

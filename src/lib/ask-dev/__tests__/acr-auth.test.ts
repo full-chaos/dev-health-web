@@ -13,6 +13,7 @@ import {
     ACR_TABS_CHANNEL,
     ACR_TOKEN_FAMILY_KEY,
     type AcrPrincipal,
+    type AcrPrincipalRead,
     type AcrTabChannel,
     type AcrTabMessage,
     beginAcrAuthorization,
@@ -108,8 +109,13 @@ let tokenResponse: () => Response;
 let metadata: unknown;
 /** The origin's localStorage, shared by every tab (a clone shares it too). */
 let shared: MemoryStorage;
-/** What the fake `principal` seam answers: the current web session, or null (signed out). */
-let principal: AcrPrincipal | null;
+/**
+ * What the fake `principal` seam answers: the current web session, null (signed out) or an
+ * impersonating session (CHAOS-12306).
+ */
+let principal: AcrPrincipalRead;
+/** An impersonating web session: the seam's answer while an admin impersonates (CHAOS-12306). */
+const IMPERSONATING: AcrPrincipalRead = { impersonating: true };
 
 function json(status: number, body: unknown) {
     return new Response(JSON.stringify(body), {
@@ -264,6 +270,43 @@ describe("beginAcrAuthorization", () => {
         expect(navigated).toEqual([]);
         expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
     });
+
+    it("does not start while impersonating: no metadata read, no navigation, nothing stored (CHAOS-12306)", async () => {
+        principal = IMPERSONATING;
+        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "impersonating" });
+        expect(calls).toEqual([]);
+        expect(navigated).toEqual([]);
+        expect(storage.getItem(ACR_PENDING_AUTHORIZATION_KEY)).toBeNull();
+    });
+
+    it("drops a family stored before the impersonation started (codex r1 on #1680)", async () => {
+        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
+        principal = IMPERSONATING;
+        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "impersonating" });
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+        expect(calls).toEqual([]);
+    });
+
+    it("still starts with no web session: begin has no signed-out refusal (CHAOS-12306)", async () => {
+        principal = null;
+        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "redirected" });
+    });
+
+    it("reads no session while the client is off (prod until the T13 roll)", async () => {
+        const reads = vi.fn(async () => IMPERSONATING);
+        setAcrAuthDependenciesForTest({
+            principal: reads,
+            config: () => undefined,
+            fetch: async (input, init) => {
+                calls.push({ url: String(input), init });
+                return json(404, {});
+            },
+        });
+        expect(await beginAcrAuthorization("/dev")).toEqual({ kind: "off" });
+        expect(await getAcrAccessToken()).toEqual({ kind: "off" });
+        expect(reads).not.toHaveBeenCalled();
+        expect(calls).toEqual([]);
+    });
 });
 
 describe("discoverAcrAuthorizationServer", () => {
@@ -366,6 +409,31 @@ describe("completeAcrAuthorization", () => {
         expect(shared.getItem(ACR_SPENT_KEY)).toBeNull();
         principal = USER;
         expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("while impersonating, sends no code, spends nothing and stores nothing (CHAOS-12306)", async () => {
+        const state = await started();
+        principal = IMPERSONATING;
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toEqual({ kind: "failed", reason: "impersonating", returnTo: "/dev?thread=t1" });
+        expect(tokenCalls()).toEqual([]);
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+        expect(shared.getItem(ACR_SPENT_KEY)).toBeNull();
+        principal = USER;
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+        expect(tokenCalls()).toEqual([]);
+    });
+
+    it("while impersonating, also drops a family stored before (codex r1 on #1680)", async () => {
+        const state = await started();
+        storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
+        principal = IMPERSONATING;
+        expect(
+            await completeAcrAuthorization(callback({ code: "c-1", state, iss: ISSUER })),
+        ).toMatchObject({ kind: "failed", reason: "impersonating" });
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
         expect(tokenCalls()).toEqual([]);
     });
 
@@ -820,6 +888,24 @@ describe("getAcrAccessToken", () => {
         configure(storage, acrBrowserClientConfig("https://acr2.fullchaos.dev", WEB));
         expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
     });
+
+    it("while impersonating, drops the family and the held token and sends no request (CHAOS-12306)", async () => {
+        await authorized();
+        expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+        expect(readAcrHeldFamily()).not.toBeNull();
+        const sent = calls.length;
+        // A refresh is due: impersonating still sends nothing.
+        now += 480_000;
+        principal = IMPERSONATING;
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+        expect(calls).toHaveLength(sent);
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+        // Both are gone: after the impersonation ends nothing is served and nothing is sent.
+        principal = USER;
+        now -= 480_000;
+        expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+        expect(calls).toHaveLength(sent);
+    });
 });
 
 /**
@@ -1089,6 +1175,41 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(
                 await completeAcrAuthorization(callback({ code: "c-9", state, iss: ISSUER })),
             ).toMatchObject({ kind: "failed", reason: "signed_out" });
+        });
+
+        it("reads is_impersonating from the NextAuth session: user.id stays the admin's (CHAOS-12306)", async () => {
+            const { principal: _fake, ...browserPrincipal } = depsFor(storage);
+            setAcrAuthDependenciesForTest(browserPrincipal);
+            const admin = { id: "user-1", org_id: "org-1" };
+            const impersonating = {
+                user: { ...admin, is_impersonating: true, impersonated_user_id: "user-9" },
+                expires: "",
+            };
+            getSession.mockResolvedValue({ user: admin, expires: "" });
+            await signIn();
+            expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+
+            // Same user id, same org: c4's binding alone would serve the token.
+            getSession.mockResolvedValue(impersonating);
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            const sent = calls.length;
+            expect(await defaultTab.beginAcrAuthorization("/dev")).toEqual({
+                kind: "impersonating",
+            });
+            expect(calls).toHaveLength(sent);
+            expect(getSession).toHaveBeenLastCalledWith({ broadcast: false });
+
+            getSession.mockResolvedValue({ user: admin, expires: "" });
+            const state = (await begin()).searchParams.get("state")!;
+            setAcrAuthDependenciesForTest(browserPrincipal);
+            getSession.mockResolvedValue(impersonating);
+            const tokenRequests = tokenCalls().length;
+            expect(
+                await completeAcrAuthorization(callback({ code: "c-9", state, iss: ISSUER })),
+            ).toMatchObject({ kind: "failed", reason: "impersonating" });
+            expect(tokenCalls()).toHaveLength(tokenRequests);
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
         });
     });
 
@@ -1571,6 +1692,21 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             return defaultTab.completeAcrAuthorization(redirect.headers.Location!);
         }
 
+        it("a clear while the principal is read (an observed impersonation start or org switch): the held token is not served (codex r3 on #1680)", async () => {
+            await signIn();
+            expect(await getAcrAccessToken()).toMatchObject({ kind: "token" });
+            setAcrAuthDependenciesForTest({
+                ...depsFor(storage),
+                principal: async () => {
+                    // The tab observes the change while this read is in flight: c5 clears.
+                    defaultTab.clearAcrTokensInAllTabs();
+                    return principal;
+                },
+            });
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(refreshLog()).toEqual([]);
+        });
+
         it("a sign-out during the principal check after a refresh: no token, nothing held", async () => {
             await signIn();
             now += REFRESH_AT_MS;
@@ -1597,6 +1733,26 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(await callback()).toMatchObject({ kind: "failed", reason: "signed_out" });
             expect(codeExchanges()).toHaveLength(1);
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
+            expect(refreshLog()).toEqual([]);
+        });
+
+        it("an impersonation started while the code exchange ran: nothing is stored or held (CHAOS-12306)", async () => {
+            // A family this tab held from before goes too (codex r1 on #1680).
+            storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(STORED_FAMILY));
+            fates.push({
+                during: async () => {
+                    principal = IMPERSONATING;
+                },
+            });
+            expect(await callback()).toEqual({
+                kind: "failed",
+                reason: "impersonating",
+                returnTo: "/dev",
+            });
+            expect(codeExchanges()).toHaveLength(1);
+            expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+            principal = USER;
             expect(await getAcrAccessToken()).toEqual({ kind: "authorization_required" });
             expect(refreshLog()).toEqual([]);
         });

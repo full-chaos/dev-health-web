@@ -35,6 +35,13 @@
  *   fails closed (T16's live proof).
  * - Nothing here sends a request at module load. A request happens only inside
  *   `getAcrAccessToken()` and the authorization flow.
+ *
+ * Impersonation (CHAOS-12306, c5): while an admin impersonates, `user.id` stays the admin's and
+ * `org_id` is the target's org, so the binding above does not change when the target is in the
+ * same org. The principal read therefore says "impersonating", and no token is held, served or
+ * started for that session. The conversation context also clears every tab's tokens when the
+ * impersonation starts or ends; this module's check is the defence in depth (the OAuth pages
+ * reached by URL, other tabs).
  */
 import { getSession } from "next-auth/react";
 
@@ -132,6 +139,12 @@ type PendingAuthorization = {
 /** The web session the family and the access token are bound to (CHAOS-12305). */
 export type AcrPrincipal = { readonly userId: string; readonly orgId: string | null };
 
+/** An impersonating web session: it gets no ACR token (CHAOS-12306). */
+export type AcrImpersonating = { readonly impersonating: true };
+
+/** What the principal seam reads: the principal, an impersonating session, or null (no session). */
+export type AcrPrincipalRead = AcrPrincipal | AcrImpersonating | null;
+
 /**
  * What the family entry in `sessionStorage` holds. The sign-out hook reads it. v2 (CHAOS-12305)
  * adds the family id and the principal; a v1 entry names no principal and is ignored.
@@ -183,7 +196,9 @@ export type AcrCallbackFailure =
     | "already_used"
     | "claim_unavailable"
     /** No web session at the callback: no code is sent (CHAOS-12305). */
-    | "signed_out";
+    | "signed_out"
+    /** An impersonating session at the callback, or by the end of the exchange (CHAOS-12306). */
+    | "impersonating";
 
 export type AcrCallbackOutcome =
     | { readonly kind: "authorized"; readonly returnTo: string }
@@ -191,7 +206,11 @@ export type AcrCallbackOutcome =
     | { readonly kind: "failed"; readonly reason: AcrCallbackFailure; readonly returnTo: string };
 
 export type AcrBeginOutcome =
-    { readonly kind: "redirected" } | { readonly kind: "off" } | { readonly kind: "unavailable" };
+    | { readonly kind: "redirected" }
+    | { readonly kind: "off" }
+    | { readonly kind: "unavailable" }
+    /** The session is impersonating: nothing is sent and the tab stays (CHAOS-12306). */
+    | { readonly kind: "impersonating" };
 
 type Held = AcrPrincipal & {
     readonly token: string;
@@ -224,8 +243,11 @@ type Dependencies = {
     readonly lock: <T>(name: string, task: () => Promise<T>) => Promise<T>;
     readonly navigate: (url: string) => void;
     readonly config: () => AcrBrowserClientConfig | undefined;
-    /** The web session's principal; null with no session or on error (CHAOS-12305). */
-    readonly principal: () => Promise<AcrPrincipal | null>;
+    /**
+     * The web session's principal; null with no session or on error (CHAOS-12305); an
+     * impersonating session reads as such (CHAOS-12306).
+     */
+    readonly principal: () => Promise<AcrPrincipalRead>;
     /** The origin's tab channel; null without BroadcastChannel, which skips the clone check. */
     readonly channel: () => AcrTabChannel | null;
 };
@@ -285,6 +307,8 @@ const browserDependencies: Dependencies = {
             const session = await getSession({ broadcast: false });
             const userId = session?.user?.id;
             if (typeof userId !== "string" || userId === "") return null;
+            // The admin's user id stays while impersonating: only this flag shows it (CHAOS-12306).
+            if (session?.user?.is_impersonating) return { impersonating: true };
             const orgId = session?.user?.org_id;
             return { userId, orgId: typeof orgId === "string" && orgId !== "" ? orgId : null };
         } catch {
@@ -386,6 +410,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function samePrincipal(a: AcrPrincipal, b: AcrPrincipal): boolean {
     return a.userId === b.userId && a.orgId === b.orgId;
+}
+
+function isImpersonating(read: AcrPrincipalRead): read is AcrImpersonating {
+    return read !== null && "impersonating" in read;
 }
 
 /** Drops this tab's access token and family (CHAOS-12305). */
@@ -544,6 +572,13 @@ export async function beginAcrAuthorization(returnTo: string): Promise<AcrBeginO
     const storage = dependencies.storage();
     if (config === undefined || storage === null) return { kind: "off" };
     listenForAcrTabs();
+    // No ACR token for an impersonating session (CHAOS-12306): no metadata read, no navigation.
+    // A signed-out start goes on: the callback refuses it before it sends the code.
+    if (isImpersonating(await dependencies.principal())) {
+        // A family stored before the impersonation started goes too (codex r1 on #1680).
+        dropTokens(dependencies.storage());
+        return { kind: "impersonating" };
+    }
     const server = await discoverAcrAuthorizationServer(config.issuer);
     if (server === null) return { kind: "unavailable" };
     const verifier = randomBase64Url(32);
@@ -767,6 +802,11 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     const dropsBefore = drops;
     const principal = await dependencies.principal();
     if (principal === null) return fail("signed_out");
+    // Impersonating (CHAOS-12306): as signed out, nothing is spent, sent or stored.
+    if (isImpersonating(principal)) {
+        dropTokens(storage);
+        return fail("impersonating");
+    }
     const claim = await claimOnce(pending);
     if (claim === "spent") return fail("already_used");
     if (claim === "unavailable") return fail("claim_unavailable");
@@ -777,6 +817,11 @@ export async function completeAcrAuthorization(callbackUrl: string): Promise<Acr
     // A sign-out, or another web user, while the exchange ran: hold and store nothing, so nothing
     // outlives the sign-out that could not revoke it (codex r2 on #1676).
     const after = await dependencies.principal();
+    // An impersonation that started while the exchange ran: hold and store nothing (CHAOS-12306).
+    if (isImpersonating(after)) {
+        dropTokens(storage);
+        return fail("impersonating");
+    }
     if (drops !== dropsBefore || after === null || !samePrincipal(after, principal)) {
         return fail("signed_out");
     }
@@ -897,7 +942,8 @@ function refresh(
  * principal. In order (CHAOS-12305):
  * 1. off without a configured client;
  * 2. once per page load, the clone check;
- * 3. the principal: a mismatch, or no session, drops the family and the token;
+ * 3. the principal: a mismatch, no session or an impersonating session (CHAOS-12306) drops the
+ *    family and the token, and sends nothing;
  * 4. the held token, before 80 % of its life;
  * 5. else a refresh with the family, when one is held;
  * 6. else "authorization required".
@@ -912,6 +958,7 @@ export async function getAcrAccessToken(): Promise<AcrAccessToken> {
     const family = readAcrHeldFamily();
     if (
         principal === null ||
+        isImpersonating(principal) ||
         (held !== null && !samePrincipal(held, principal)) ||
         (family !== null && !samePrincipal(family, principal))
     ) {
@@ -929,7 +976,7 @@ export async function getAcrAccessToken(): Promise<AcrAccessToken> {
     // goes only to the principal it was refreshed for (codex r1 on #1676).
     const dropsBefore = drops;
     const after = await dependencies.principal();
-    if (after === null || !samePrincipal(after, principal)) {
+    if (after === null || isImpersonating(after) || !samePrincipal(after, principal)) {
         dropTokens(storage);
         return AUTHORIZATION_REQUIRED;
     }

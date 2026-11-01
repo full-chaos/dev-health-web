@@ -4,21 +4,24 @@ import { Suspense, useEffect, useId, useRef, useSyncExternalStore } from "react"
 import { Minimize2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { ASK_DEV_FULL_PAGE_PATH, isAskDevEnabled } from "@/lib/ask-dev/surface";
+import { Notice } from "@/components/ui/Notice";
+import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { AskDevComposerSlot, AskDevTranscript, useHasComposer } from "./AskDevConversationView";
 import { useAskDevShell } from "./AskDevShellContext";
 import { useAskDevConversation } from "./conversation/AskDevConversationContext";
 import { AskDevHistory } from "./conversation/AskDevHistory";
+import { useAskDevAvailability } from "./useAskDevAvailability";
 
 export const FULL_PAGE_COPY = {
     title: "Ask Dev",
     conversation: "Conversation",
     subtitle: "The same conversation as the panel, with room for wide answers.",
     notAvailable: "Ask Dev is not available for this organization.",
+    impersonatingTitle: "Ask Dev is not available while impersonating",
+    impersonatingText: "Stop impersonating to use Ask Dev.",
 } as const;
 
 /** `/dev?thread=<id>`: the conversation the full page names (E6 design v5 §4.1). */
@@ -112,12 +115,14 @@ const readWide = (): boolean => window.matchMedia?.(WIDE_QUERY).matches ?? true;
 /**
  * The full page `/dev` (CHAOS-11934). The transcript and the composer are the panel's own (one
  * store above both), so Expand and Minimize move the view, never the run: no request is sent again.
- * Without both Ask Dev entitlements it says so and draws no conversation.
+ * Without both Ask Dev entitlements it says so and draws no conversation. While impersonating
+ * with the browser ACR client on (CHAOS-12306) it draws a notice instead, and while that client
+ * waits for the first session read it draws neither.
  */
 export function AskDevFullPage() {
-    const { features } = useAdminTier();
+    const availability = useAskDevAvailability();
     const { minimize } = useAskDevShell();
-    const enabled = isAskDevEnabled(features);
+    const enabled = availability === "on";
     // No transport (T14, CHAOS-12104, not wired): no composer, and nothing is sent.
     const hasComposer = useHasComposer();
     const conversationId = useId();
@@ -177,11 +182,19 @@ export function AskDevFullPage() {
                         </div>
                     </div>
                 </section>
-            ) : (
+            ) : availability === "impersonating" ? (
+                <Notice
+                    title={FULL_PAGE_COPY.impersonatingTitle}
+                    titleAs="h2"
+                    data-testid="ask-dev-page-impersonating"
+                >
+                    {FULL_PAGE_COPY.impersonatingText}
+                </Notice>
+            ) : availability === "off" ? (
                 <p className="text-sm text-(--ink-muted)" data-testid="ask-dev-page-not-available">
                     {FULL_PAGE_COPY.notAvailable}
                 </p>
-            )}
+            ) : null}
         </div>
     );
 }

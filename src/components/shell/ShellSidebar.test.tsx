@@ -1,5 +1,5 @@
 import { type ComponentProps, useRef, useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -10,6 +10,7 @@ import { encodeSecurityFilter } from "@/lib/filters/security";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
 import type { NavArea } from "@/lib/navigation/areas";
+import { acrBrowserClientOff, acrBrowserClientOn } from "@/test/acrBrowserClient";
 
 import { ShellNav } from "./ShellNav";
 import { ShellSidebar } from "./ShellSidebar";
@@ -22,12 +23,14 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
 }));
 
+const SIGNED_IN = {
+    data: { user: { org_id: "org-1", email: "admin@devhealth.example" } },
+    status: "authenticated",
+};
+/** The session `useSession` gives; a test may change it (CHAOS-12306: impersonation). */
+const sessionMock = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock("next-auth/react", () => ({
-    useSession: () => ({
-        data: { user: { org_id: "org-1", email: "admin@devhealth.example" } },
-        status: "authenticated",
-        update: vi.fn(),
-    }),
+    useSession: () => ({ ...(sessionMock.current as object), update: vi.fn() }),
     signOut: vi.fn(),
 }));
 
@@ -58,6 +61,7 @@ function linkParams(name: RegExp) {
 }
 
 beforeEach(() => {
+    sessionMock.current = SIGNED_IN;
     navigationMock.pathname = "/dashboard";
     navigationMock.search = "";
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
@@ -98,6 +102,49 @@ describe("ShellSidebar — the Ask Dev row", () => {
         navigationMock.pathname = "/dev";
         renderSidebar(ON);
         expect(currentPageLinks().map((link) => link.textContent?.trim())).toEqual(["Ask Dev"]);
+    });
+
+    // CHAOS-12306: Ask Dev is hidden while impersonating with the browser ACR client on. Only
+    // "impersonating" hides the row: a session still loading keeps it, so it never flickers.
+    describe("while impersonating (CHAOS-12306)", () => {
+        const user = { id: "admin-1", org_id: "org-1" };
+        const IMPERSONATING = {
+            data: { user: { ...user, is_impersonating: true }, expires: "2099-01-01" },
+            status: "authenticated",
+        };
+
+        afterEach(() => {
+            acrBrowserClientOff();
+        });
+
+        it("lists no Ask Dev row with the browser ACR client on", () => {
+            acrBrowserClientOn();
+            sessionMock.current = IMPERSONATING;
+            renderSidebar(ON);
+            expect(screen.queryByRole("link", { name: "Ask Dev" })).toBeNull();
+            // Only that row: AI is still listed.
+            expect(rows()).toContain("AI");
+        });
+
+        it.each([
+            ["impersonating with the client off", false, IMPERSONATING],
+            [
+                "not impersonating with the client on",
+                true,
+                { data: { user, expires: "2099-01-01" }, status: "authenticated" },
+            ],
+            [
+                "the session still loading with the client on",
+                true,
+                { data: null, status: "loading" },
+            ],
+        ])("lists the Ask Dev row %s", (_, client, next) => {
+            if (client) acrBrowserClientOn();
+            sessionMock.current = next;
+            renderSidebar(ON);
+            const labels = rows();
+            expect(labels[labels.indexOf("AI") + 1]).toBe("Ask Dev");
+        });
     });
 });
 

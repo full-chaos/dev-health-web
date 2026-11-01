@@ -14,6 +14,7 @@ type View =
     | { readonly kind: "working" }
     | { readonly kind: "denied"; readonly returnTo: string }
     | { readonly kind: "signed_out"; readonly returnTo: string }
+    | { readonly kind: "impersonating"; readonly returnTo: string }
     | { readonly kind: "failed"; readonly retry: boolean; readonly returnTo: string };
 
 /** The failures where starting again may help; the others ask the user to start from Ask Dev. */
@@ -23,6 +24,10 @@ function viewOf(outcome: Exclude<AcrCallbackOutcome, { kind: "authorized" }>): V
     if (outcome.kind === "denied") return { kind: "denied", returnTo: outcome.returnTo };
     // No web session: no code was sent (CHAOS-12305). Signing in again is the way on.
     if (outcome.reason === "signed_out") return { kind: "signed_out", returnTo: outcome.returnTo };
+    // No ACR token for an impersonating session (CHAOS-12306): nothing was stored.
+    if (outcome.reason === "impersonating") {
+        return { kind: "impersonating", returnTo: outcome.returnTo };
+    }
     return { kind: "failed", retry: RETRYABLE.has(outcome.reason), returnTo: outcome.returnTo };
 }
 
@@ -40,6 +45,11 @@ function copyOf(view: View): { readonly title: string; readonly description: str
                 title: "Sign in to connect Ask Dev",
                 description:
                     "Your Dev Health session ended before Ask Dev was connected. Sign in, then connect Ask Dev again.",
+            };
+        case "impersonating":
+            return {
+                title: "Ask Dev is not available while impersonating",
+                description: "Stop impersonating to connect Ask Dev.",
             };
         case "failed":
             return view.retry

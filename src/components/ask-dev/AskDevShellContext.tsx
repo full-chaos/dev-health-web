@@ -12,9 +12,9 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
-import { ASK_DEV_FULL_PAGE_PATH, isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
+import { useAskDevAvailability } from "./useAskDevAvailability";
+import { ASK_DEV_FULL_PAGE_PATH, isAskDevPanelPath } from "@/lib/ask-dev/surface";
 import { useRightDrawerClaim } from "@/lib/shell/useRightDrawerClaim";
 
 type AskDevShellValue = {
@@ -73,12 +73,13 @@ function visibleLauncher(): HTMLElement | null {
 export function AskDevShellProvider({ children }: { children: ReactNode }) {
     const [open, setOpenState] = useState(false);
     const pathname = usePathname() ?? "";
-    const { features } = useAdminTier();
+    const availability = useAskDevAvailability();
 
-    // The panel is open only where Ask Dev is allowed. A client navigation to an excluded route, or
-    // an entitlement that turns off, closes it for good: coming back does not reopen it by itself.
+    // The panel is open only where Ask Dev is allowed. A client navigation to an excluded route, an
+    // entitlement that turns off, or an impersonation with the browser ACR client on (CHAOS-12306)
+    // closes it for good: coming back does not reopen it by itself.
     // (Set during render, as the evidence drawer does: no effect, no extra paint.)
-    const eligible = isAskDevEnabled(features) && isAskDevPanelPath(pathname);
+    const eligible = availability === "on" && isAskDevPanelPath(pathname);
     if (open && !eligible) setOpenState(false);
 
     // Another right drawer took the edge: close without moving focus (that drawer has it).

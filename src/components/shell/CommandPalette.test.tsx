@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -6,6 +6,7 @@ import { AdminNavProvider } from "@/components/admin/AdminTabs";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
+import { acrBrowserClientOff, acrBrowserClientOn } from "@/test/acrBrowserClient";
 
 import { AskDevShellProvider, useAskDevShell } from "@/components/ask-dev/AskDevShellContext";
 
@@ -17,6 +18,11 @@ vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(nav.search),
     useRouter: () => ({ push: nav.push, refresh: vi.fn(), replace: vi.fn() }),
 }));
+// The Ask Dev availability hook reads the session (CHAOS-12306). The browser ACR client is off
+// unless a test turns it on.
+const SIGNED_OUT = { data: null, status: "unauthenticated" };
+const session = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock("next-auth/react", () => ({ useSession: () => session.current }));
 
 const F = encodeFilterParam({
     ...defaultMetricFilter,
@@ -41,6 +47,7 @@ const press = (init: KeyboardEventInit) =>
     });
 
 beforeEach(() => {
+    session.current = SIGNED_OUT;
     nav.push.mockClear();
     nav.search = `f=${F}&role=em&lens=pm`;
     nav.pathname = "/dashboard";
@@ -282,5 +289,50 @@ describe("CommandPalette", () => {
                 within(palette()).queryByRole("option", { name: /Open the Ask Dev panel/ }),
             ).toBeNull();
         });
+    });
+});
+
+// CHAOS-12306: while impersonating with the browser ACR client on, the palette offers no Ask Dev
+// entry at all: neither the panel action nor the full page. Only "impersonating" hides them: a
+// session still loading keeps the full page entry, so a normal user's list does not change.
+describe("Ask Dev entries while impersonating (CHAOS-12306)", () => {
+    const ON = { ask_dev: true, agent_context_runtime: true };
+    const user = { id: "admin-1", org_id: "org-1" };
+    const PLAIN = { data: { user, expires: "2099-01-01" }, status: "authenticated" };
+    const IMPERSONATING = {
+        data: { user: { ...user, is_impersonating: true }, expires: "2099-01-01" },
+        status: "authenticated",
+    };
+    const LOADING = { data: null, status: "loading" };
+
+    afterEach(() => {
+        acrBrowserClientOff();
+    });
+
+    const fullPage = () => within(palette()).queryByRole("option", { name: /Ask Dev full page/ });
+
+    it("offers no Ask Dev full page while impersonating with the client on", () => {
+        acrBrowserClientOn();
+        session.current = IMPERSONATING;
+        setup(ON);
+        press({ key: "k", metaKey: true });
+        expect(fullPage()).toBeNull();
+        expect(
+            within(palette()).queryByRole("option", { name: /Open the Ask Dev panel/ }),
+        ).toBeNull();
+        // The other destinations stay.
+        expect(within(palette()).getByRole("option", { name: /^Reports/ })).toBeInTheDocument();
+    });
+
+    it.each([
+        ["impersonating with the client off", false, IMPERSONATING],
+        ["not impersonating with the client on", true, PLAIN],
+        ["the session still loading with the client on", true, LOADING],
+    ])("offers the Ask Dev full page %s", (_, client, next) => {
+        if (client) acrBrowserClientOn();
+        session.current = next;
+        setup(ON);
+        press({ key: "k", metaKey: true });
+        expect(fullPage()).toHaveAttribute("href", expect.stringMatching(/^\/dev(\?|$)/u));
     });
 });

@@ -4,12 +4,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 import fcLogo from "@/assets/fc-logo.svg";
-import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { isAskDevEnabled, isAskDevPanelPath } from "@/lib/ask-dev/surface";
+import { isAskDevPanelPath } from "@/lib/ask-dev/surface";
 
 import { ASK_DEV_PANEL_ID } from "./askDevPanelId";
 import { useAskDevShell } from "./AskDevShellContext";
+import { useAskDevAvailability } from "./useAskDevAvailability";
 
 type AskDevLauncherProps = {
     /** Which bar draws it. Each bar is shown at one breakpoint, so one launcher is visible. */
@@ -18,14 +18,15 @@ type AskDevLauncherProps = {
 
 /**
  * The one Ask Dev launcher of a bar: the Full Chaos logo, named "Open Ask Dev" (CHAOS-3247: no
- * sparkle or other AI glyph). It draws nothing when the organization has no Ask Dev entitlement or
- * the route is excluded. A click only flips the shared open flag; it sends no request.
+ * sparkle or other AI glyph). It draws nothing when the organization has no Ask Dev entitlement,
+ * while impersonating with the browser ACR client on (CHAOS-12306), or on an excluded route. A
+ * click only flips the shared open flag; it sends no request.
  */
 export function AskDevLauncher({ placement }: AskDevLauncherProps) {
     const pathname = usePathname() ?? "";
-    const { features } = useAdminTier();
+    const availability = useAskDevAvailability();
     const { open, setOpen } = useAskDevShell();
-    if (!isAskDevEnabled(features) || !isAskDevPanelPath(pathname)) return null;
+    if (availability !== "on" || !isAskDevPanelPath(pathname)) return null;
     return (
         <button
             type="button"
