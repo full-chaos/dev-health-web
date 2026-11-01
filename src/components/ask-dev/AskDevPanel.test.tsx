@@ -193,11 +193,20 @@ describe("Ask Dev panel — desktop (non-modal right region)", () => {
         dialog.remove();
     });
 
+    it("keeps focus on the panel after the render mounts, as on every later open", async () => {
+        renderShell();
+        await userEvent.click(launcher());
+
+        await screen.findByRole("region", { name: "Ask Dev conversation" });
+
+        expect(screen.getByTestId("ask-dev-panel")).toHaveFocus();
+    });
+
     it("announces the transcript as a polite log", async () => {
         renderShell();
         await userEvent.click(launcher());
 
-        const log = within(screen.getByTestId("ask-dev-panel")).getByRole("log", {
+        const log = await within(screen.getByTestId("ask-dev-panel")).findByRole("log", {
             name: "Conversation",
         });
         expect(log).toHaveAttribute("aria-live", "polite");
@@ -206,6 +215,7 @@ describe("Ask Dev panel — desktop (non-modal right region)", () => {
     it("has no axe violations", async () => {
         renderShell();
         await userEvent.click(launcher());
+        await screen.findByRole("region", { name: "Ask Dev conversation" });
 
         expect(await axeViolations(screen.getByTestId("ask-dev-panel"))).toEqual([]);
     });
@@ -215,7 +225,7 @@ describe("Ask Dev panel — desktop (non-modal right region)", () => {
         await userEvent.click(launcher());
 
         const panel = screen.getByTestId("ask-dev-panel");
-        const region = within(panel).getByRole("region", { name: "Ask Dev conversation" });
+        const region = await within(panel).findByRole("region", { name: "Ask Dev conversation" });
         expect(region).toHaveClass("chat");
         // The render sits in ask-dev's scope class, which carries its stylesheet.
         expect(region.closest(".ask-dev")).not.toBeNull();
@@ -287,7 +297,7 @@ describe("Ask Dev panel — mobile (modal sheet)", () => {
         await userEvent.click(mobileLauncher());
 
         const sheet = screen.getByRole("dialog", { name: "Ask Dev" });
-        const region = within(sheet).getByRole("region", { name: "Ask Dev conversation" });
+        const region = await within(sheet).findByRole("region", { name: "Ask Dev conversation" });
         expect(region).toHaveClass("chat");
         expect(region.closest(".ask-dev")).not.toBeNull();
         expect(within(sheet).getAllByRole("region", { name: "Ask Dev conversation" })).toHaveLength(
@@ -299,7 +309,7 @@ describe("Ask Dev panel — mobile (modal sheet)", () => {
         const user = userEvent.setup();
         renderShell();
         await user.click(mobileLauncher());
-        const region = within(screen.getByTestId("ask-dev-sheet")).getByRole("region", {
+        const region = await within(screen.getByTestId("ask-dev-sheet")).findByRole("region", {
             name: "Ask Dev conversation",
         });
         const body = region.closest(".ask-frame")?.parentElement;
@@ -352,6 +362,7 @@ describe("Ask Dev panel — mobile (modal sheet)", () => {
     it("has no axe violations", async () => {
         renderShell();
         await userEvent.click(mobileLauncher());
+        await screen.findByRole("region", { name: "Ask Dev conversation" });
 
         expect(await axeViolations(screen.getByRole("dialog", { name: "Ask Dev" }))).toEqual([]);
     });

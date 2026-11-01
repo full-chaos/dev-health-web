@@ -273,6 +273,26 @@ test("this is a production build: a valid test-mode turn draws nothing", async (
     await expect(panel.getByRole("article", { name: "Answer" })).toHaveCount(0);
 });
 
+test("the render's code loads on the panel's first open, not with the page", async ({ page }) => {
+    // Text the render's own chunk holds, and web's code does not.
+    const renderMarker = "Ask Dev conversation";
+    const scripts: Promise<boolean>[] = [];
+    page.on("response", (response) => {
+        if (!response.url().includes("/_next/static/") || !response.url().endsWith(".js")) return;
+        scripts.push(response.text().then((text) => text.includes(renderMarker)));
+    });
+    const renderLoaded = async () => (await Promise.all(scripts)).some(Boolean);
+
+    await page.goto("/dashboard");
+    await page.waitForLoadState("networkidle");
+    expect(scripts.length).toBeGreaterThan(0);
+    expect(await renderLoaded()).toBe(false);
+
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
+    await expect(page.getByRole("region", { name: renderMarker })).toBeVisible();
+    expect(await renderLoaded()).toBe(true);
+});
+
 test.describe("desktop (1280px)", () => {
     test.use({ viewport: { width: 1280, height: 900 } });
 

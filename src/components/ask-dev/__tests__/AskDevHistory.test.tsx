@@ -339,7 +339,7 @@ describe("the panel's history (design §4.3)", () => {
         const transport = seeded();
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const list = await within(panel()).findByTestId("ask-dev-history-list");
         expect(within(panel()).queryByRole("textbox", { name: "Ask a question" })).toBeNull();
         expect(within(list).getAllByTestId("ask-dev-history-open")[0]).toHaveTextContent(
@@ -359,7 +359,7 @@ describe("the panel's history (design §4.3)", () => {
         const transport = seeded();
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const rows = await within(panel()).findAllByTestId("ask-dev-history-row");
         await userEvent.click(within(rows[0]!).getByTestId("ask-dev-history-delete"));
         expect(within(rows[0]!).getByTestId("ask-dev-history-confirm")).toHaveTextContent(
@@ -383,14 +383,14 @@ describe("the panel's history (design §4.3)", () => {
         transport.scripts.push([accepted(), { wait: deferred().promise }]);
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         await userEvent.click((await within(panel()).findAllByTestId("ask-dev-history-open"))[0]!);
         await within(panel()).findByTestId("answer-panel");
         await userEvent.type(
             within(panel()).getByRole("textbox", { name: "Ask a question" }),
             "And next?{Enter}",
         );
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const current = (await within(panel()).findAllByTestId("ask-dev-history-row")).find(
             (row) => row.getAttribute("data-current") === "true",
         )!;
@@ -406,7 +406,7 @@ describe("the panel's history (design §4.3)", () => {
         transport.listPages.splice(0, 1, { fail: new TransportFailure("authorization_required") });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const connect = await within(panel()).findByTestId("ask-dev-history-connect");
         expect(connect).toHaveTextContent(HISTORY_COPY.connect);
         const link = within(connect).getByRole("link", { name: "Connect Ask Dev" });
@@ -424,7 +424,7 @@ describe("the panel's history (design §4.3)", () => {
         });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const note = await within(panel()).findByTestId("ask-dev-history-no-repository");
         expect(note).toHaveTextContent(NOT_RUN_COPY.no_repository);
         expect(note.textContent).not.toMatch(/no_repository|409/u);
@@ -441,7 +441,7 @@ describe("the panel's history (design §4.3)", () => {
         transport.listPages.splice(0, 1, { fail: new Error("network") });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         expect(await within(panel()).findByTestId("ask-dev-history-read-failed")).toHaveTextContent(
             HISTORY_COPY.readFailed,
         );
@@ -639,7 +639,7 @@ describe("the first question as the row title (CHAOS-12238)", () => {
         });
         renderShell(transport);
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        await userEvent.click(within(panel()).getByTestId("ask-dev-history-toggle"));
+        await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
         const list = await within(panel()).findByTestId("ask-dev-history-list");
         return within(list).getAllByTestId("ask-dev-history-open");
     }

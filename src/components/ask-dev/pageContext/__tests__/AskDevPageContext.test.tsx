@@ -147,7 +147,9 @@ describe("the proposal: chips before submit, and nothing sent by opening", () =>
         const transport = new FakeTransport();
         renderShell(transport, { "/investment": [ORG, REPO, TEAM] });
         await userEvent.click(screen.getByRole("button", { name: "test-open" }));
-        const group = within(panel()).getByRole("group", { name: CONTEXT_CHIPS_COPY.title });
+        const group = await within(panel()).findByRole("group", {
+            name: CONTEXT_CHIPS_COPY.title,
+        });
         expect(group).toBeInTheDocument();
         expect(chipText()).toEqual([
             "Organization:E2E Organization",
