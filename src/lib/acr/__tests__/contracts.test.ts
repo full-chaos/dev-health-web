@@ -93,7 +93,7 @@ describe("ACR REST contract boundary", () => {
             "schemas/token_exchange_response.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("1b9313540242fc1da3a322e74ff742d5443ccfae");
+        expect(manifest.source_commit).toBe("e53b67e8782b73e9a4c68cc4900a3b75cda72c04");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {
