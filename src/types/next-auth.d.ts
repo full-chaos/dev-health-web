@@ -23,6 +23,8 @@ declare module "next-auth" {
             impersonated_org_id?: string;
         } & DefaultSession["user"];
         access_token?: string;
+        /** The service session token (aud auth-service). In-process only; never served to a browser. */
+        session_access_token?: string;
         error?: string;
     }
 
@@ -40,6 +42,11 @@ declare module "next-auth" {
         access_exp?: number;
         /** `sid` of the access token. */
         sid?: string;
+        session_access_token?: string;
+        /** `exp` of the service session token (seconds). */
+        session_exp?: number;
+        /** The verified actor of the access token. */
+        act_sub?: string;
     }
 }
 
@@ -56,6 +63,9 @@ declare module "next-auth/jwt" {
         refresh_token?: string;
         expires_at?: number;
         sid?: string;
+        session_access_token?: string;
+        session_expires_at?: number;
+        act_sub?: string;
         error?: string;
         is_impersonating?: boolean;
         impersonated_user_id?: string;
