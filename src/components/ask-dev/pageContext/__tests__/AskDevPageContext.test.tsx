@@ -41,6 +41,7 @@ import { CONTEXT_CHIPS_COPY } from "@full-chaos/ask-dev/render";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import type { PageEntityInput } from "@/lib/ask-dev/page-context";
 
+import { preloadAskDevRender } from "@/test/askDevRender";
 import { AskDevPanel } from "../../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../../AskDevShellContext";
 import { AskDevConversationProvider } from "../../conversation/AskDevConversationContext";
@@ -121,6 +122,8 @@ async function ask(question = "Which teams are overloaded?") {
 
 const sentHints = (transport: FakeTransport, index = 0) =>
     transport.calls[index]?.request.requested_scope?.subject_hints;
+
+preloadAskDevRender();
 
 beforeEach(() => {
     // CHAOS-11956: a run's `accepted` writes the restore hint; each test starts with none.

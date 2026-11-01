@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock("next/navigation", () => ({
@@ -23,6 +23,7 @@ import { ChatEvidenceBody } from "@full-chaos/ask-dev/render";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { resetRightDrawerForTest } from "@/lib/shell/rightDrawer";
+import { preloadAskDevRender } from "@/test/askDevRender";
 
 import { AskDevPanel } from "../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../AskDevShellContext";
@@ -83,11 +84,7 @@ function expectNoConnect() {
     expect(document.querySelector('a[href*="/ask-dev/oauth/"]')).toBeNull();
 }
 
-// The panel loads its render on the first open: load it here, so a slow runner does not spend a
-// test's wait on the compile.
-beforeAll(async () => {
-    await import("../AskDevRender");
-}, 60_000);
+preloadAskDevRender();
 
 beforeEach(() => {
     window.sessionStorage.clear();

@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Session } from "next-auth";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({
     logger: {
@@ -206,12 +206,6 @@ async function ask() {
 async function toggleHistory() {
     await userEvent.click(await within(panel()).findByTestId("ask-dev-history-toggle"));
 }
-
-// The panel loads its render on the first open: load it here, so a slow runner does not spend a
-// test's wait on the compile.
-beforeAll(async () => {
-    await import("../AskDevRender");
-}, 60_000);
 
 beforeEach(() => {
     calls = [];

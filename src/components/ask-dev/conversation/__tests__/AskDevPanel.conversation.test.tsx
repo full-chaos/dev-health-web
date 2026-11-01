@@ -21,6 +21,7 @@ import { CHAT_PROGRESS_COPY, CHAT_STAGE_COPY, CHAT_STATUS_COPY } from "@full-cha
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 
+import { preloadAskDevRender } from "@/test/askDevRender";
 import { AskDevPanel } from "../../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../../AskDevShellContext";
 import { AskDevConversationProvider } from "../AskDevConversationContext";
@@ -53,6 +54,8 @@ function renderPanel(transport: AskDevTransport | null) {
 
 const panel = () => screen.getByRole("complementary", { name: "Ask Dev" });
 const input = () => within(panel()).getByRole("textbox", { name: "Ask a question" });
+
+preloadAskDevRender();
 
 beforeEach(() => {
     // CHAOS-11956: a run's `accepted` writes the restore hint; each test starts with none.
