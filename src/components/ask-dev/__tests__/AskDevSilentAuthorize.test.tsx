@@ -379,8 +379,11 @@ describe("the first question", () => {
         expect(routeCalls()).toBe(2);
     });
 
-    it("ACR's limit is a named failure with Retry: nothing tries again by itself", async () => {
-        routeAnswer = () => json(429, { error: { code: "rate_limited" } });
+    it.each([
+        ["ACR's limit", "rate_limited"],
+        ["web's budget for one user", "user_rate_limited"],
+    ])("%s is a named failure with Retry: nothing tries again by itself", async (_, code) => {
+        routeAnswer = () => json(429, { error: { code } });
         await openPanel();
         await ask();
         const status = await within(panel()).findByTestId("chat-status");

@@ -413,6 +413,11 @@ describe("authorizeAcrSilently: what the route answers", () => {
         ["401", () => json(401, { error: { code: "signed_out" } }), { kind: "session_ended" }],
         ["429", () => json(429, { error: { code: "rate_limited" } }), { kind: "rate_limited" }],
         [
+            "429 from web's budget",
+            () => json(429, { error: { code: "user_rate_limited" } }),
+            { kind: "rate_limited" },
+        ],
+        [
             "403 impersonating",
             () => json(403, { error: { code: "impersonating" } }),
             { kind: "impersonating" },

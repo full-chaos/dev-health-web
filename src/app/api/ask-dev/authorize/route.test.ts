@@ -30,6 +30,32 @@ vi.mock("@/lib/logger", () => {
     return { logger };
 });
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@sentry/nextjs", () => ({
+    withScope: vi.fn(),
+    captureException: vi.fn(),
+    captureMessage: vi.fn(),
+}));
+
+/**
+ * Redis, behind the real limiter: a counter per key. The real `checkRateLimit` builds the key and
+ * decides, so "a second user" and "a shared key" are observed on the keys it really uses.
+ */
+const redis = vi.hoisted(() => {
+    const counts = new Map<string, number>();
+    return {
+        counts,
+        up: true,
+        client: {
+            eval: async (_script: string, _keys: number, key: string) => {
+                const next = (counts.get(key) ?? 0) + 1;
+                counts.set(key, next);
+                return next;
+            },
+            ttl: async () => 42,
+        },
+    };
+});
+vi.mock("@/lib/redis", () => ({ getRedis: async () => (redis.up ? redis.client : null) }));
 
 import { auth } from "@/lib/auth";
 import { ACR_BROWSER_SCOPE, ACR_OAUTH_CALLBACK_PATH } from "@/lib/ask-dev/acr-browser-config";
@@ -155,6 +181,8 @@ afterAll(async () => {
 
 beforeEach(() => {
     hits = [];
+    redis.counts.clear();
+    redis.up = true;
     vi.stubEnv("ACR_API_ORIGIN", origin);
     vi.stubEnv("ACR_OAUTH_ISSUER", ISSUER);
     vi.stubEnv("ACR_REQUEST_TIMEOUT_MS", "5000");
@@ -477,6 +505,83 @@ describe("the consent step", () => {
         expect(response.status).toBe(502);
         expect(await response.json()).toEqual({ error: { code: "acr_refused" } });
         expect(consentActions()).toEqual(["preview"]);
+    });
+});
+
+describe("the budget of one user", () => {
+    const BUDGET = 6;
+
+    async function spendIt() {
+        for (let attempt = 0; attempt < BUDGET; attempt += 1) {
+            expect((await POST(post())).status, `attempt ${String(attempt)}`).toBe(200);
+        }
+    }
+
+    it("over the budget is a named 429 with its wait, no-store, and no ACR call", async () => {
+        await spendIt();
+        hits = [];
+        const response = await POST(post());
+        expect(response.status).toBe(429);
+        expect(response.headers.get("cache-control")).toBe("no-store");
+        expect(response.headers.get("retry-after")).toBe("42");
+        expect(await response.json()).toEqual({ error: { code: "user_rate_limited" } });
+        expect(authorizeHits()).toEqual([]);
+        expect(consentActions()).toEqual([]);
+    });
+
+    it("leaves a second user alone", async () => {
+        await spendIt();
+        expect((await POST(post())).status).toBe(429);
+        signIn({ id: "user-456" });
+        expect((await POST(post())).status).toBe(200);
+    });
+
+    it("is one budget for one user, in every tab and session", async () => {
+        await spendIt();
+        vi.mocked(auth).mockResolvedValue({
+            access_token: opsToken({ sid: "ses_ANOTHERSESSIONOFTHEUSER" }),
+            expires: "2026-11-16T00:00:00.000Z",
+            user: { id: "user-123", org_id: "org-123", real_org_id: "org-123" },
+        } as never);
+        expect((await POST(post())).status).toBe(429);
+    });
+
+    it.each([
+        ["no session", () => vi.mocked(auth).mockResolvedValue(null as never)],
+        [
+            "a session with the user's id and no token",
+            () =>
+                vi.mocked(auth).mockResolvedValue({
+                    user: { id: "user-123", org_id: "org-123" },
+                } as never),
+        ],
+        ["the user, impersonating", () => signIn({ is_impersonating: true })],
+    ])("%s spends none of it", async (_, session) => {
+        session();
+        for (let attempt = 0; attempt < BUDGET + 1; attempt += 1) {
+            expect((await POST(post())).status).not.toBe(200);
+        }
+        expect(redis.counts.size).toBe(0);
+        signIn();
+        await spendIt();
+    });
+
+    it("a refused origin or body spends none of it", async () => {
+        for (let attempt = 0; attempt < BUDGET + 1; attempt += 1) {
+            await POST(post(undefined, "https://evil.example"));
+            await POST(post({ state: STATE }));
+        }
+        expect(redis.counts.size).toBe(0);
+        await spendIt();
+    });
+
+    it("fails closed with no Redis, as its neighbour does: no ACR call", async () => {
+        redis.up = false;
+        const response = await POST(post());
+        expect(response.status).toBe(429);
+        expect(await response.json()).toEqual({ error: { code: "user_rate_limited" } });
+        expect(response.headers.get("retry-after")).toBe("60");
+        expect(authorizeHits()).toEqual([]);
     });
 });
 

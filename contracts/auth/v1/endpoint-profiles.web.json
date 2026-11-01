@@ -9933,11 +9933,11 @@
             "public_rationale": null,
             "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
-                "description": "Route: isSameOriginRequest (403) and a strict {code_challenge, state} body (400). authorizeAskDevBrowser() then calls readIssuanceContext() -> auth()+sessionOrError (401 if absent) and a fresh Ops impersonation read, and refuses an impersonating session (403) before any ACR call. openOAuthConsent() re-runs both for each credential:issue call and requires the agent_context_runtime entitlement.",
+                "description": "Route: isSameOriginRequest (403) and a strict {code_challenge, state} body (400). authorizeAskDevBrowser() then calls readIssuanceContext() -> auth()+sessionOrError (401 if absent) and a fresh Ops impersonation read, and refuses an impersonating session (403) before any ACR call, and then checks the user's budget of 6 a minute (429). openOAuthConsent() re-runs both for each credential:issue call and requires the agent_context_runtime entitlement.",
                 "anchor": {
                     "path": "src/lib/acr/service.ts",
-                    "line": 512,
-                    "line_end": 548
+                    "line": 532,
+                    "line_end": 566
                 }
             },
             "token_shape": {
@@ -9969,7 +9969,8 @@
                 "Origin/CSRF: the route refuses a POST whose Origin is not this site, before any session or ops read (src/lib/ask-dev/origin.ts).",
                 "ISSUER SURFACE: mints no token. It causes acr_web_assertion (credential:issue) mints through openOAuthConsent(), and it hands the browser an authorization code, which is useless without the verifier only the browser holds.",
                 "REDIRECT SURFACE: ACR's GET /authorize is called with redirect: manual and no web credential. Its Location must be web's own consent page with one handle; a 303 refusal is never followed.",
-                "impersonation_policy: subject_to_impersonation_override is the closest closed value. The route does not resolve the impersonated org: it refuses, with no ACR call, like approveDeviceAuthorization()."
+                "impersonation_policy: subject_to_impersonation_override is the closest closed value. The route does not resolve the impersonated org: it refuses, with no ACR call, like approveDeviceAuthorization().",
+                "RATE LIMIT: checkRateLimit keyed by the session's user id (namespace ask-dev-authorize-user, 6 a minute, failClosed), after the session and impersonation checks and before any ACR call. ACR's own limit on /authorize is per source, and web is one source."
             ],
             "issued_credential": [
                 {

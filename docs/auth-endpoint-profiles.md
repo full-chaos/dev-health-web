@@ -254,8 +254,10 @@ comes to `openOAuthConsent()` only from `POST /api/ask-dev/authorize`, never by 
 assertions are the `credential:issue` ones above. The browser stays the OAuth public client: the
 verifier and the `/token` exchange are the browser's, so no token reaches this route. It refuses a
 POST whose `Origin` is not this site, a body that is not exactly `{code_challenge, state}`, no
-session (401) and an impersonating session (403), each before any ACR call. The call to ACR's
-`GET /authorize` carries no web credential and follows no redirect. See
+session (401) and an impersonating session (403), each before any ACR call. After those checks it
+spends one attempt of the user's budget, 6 a minute (429 `user_rate_limited`, `failClosed`), so a
+caller with no session cannot spend it. The call to ACR's `GET /authorize` carries no web credential
+and follows no redirect. See
 [`ask-dev.md`](ask-dev.md) "Authorizing silently".
 
 ### Ask Dev route (CHAOS-11921)

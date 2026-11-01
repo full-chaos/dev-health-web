@@ -2,6 +2,7 @@ import "server-only";
 
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { IssuanceProvenance } from "./assertion";
 import { ACR_BROWSER_SCOPE, type AcrBrowserClientConfig } from "@/lib/ask-dev/acr-browser-config";
 import { AcrRuntimeClient, type OAuthAuthorizeAnswer, type OAuthConsentPreview } from "./client";
@@ -27,6 +28,22 @@ const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
 const oauthHandlePattern = /^[A-Za-z0-9_-]{43}$/u;
 // Web's consent page: ACR's 302 from /authorize names it (`ACR_OAUTH_CONSENT_URL`).
 const OAUTH_CONSENT_PATH = "/acr/authorize";
+/**
+ * One user's silent authorizations (CHAOS-12474), on the limiter `/api/acr/authorize` uses. ACR
+ * allows `/authorize` 10 a minute per source, and web is one source for all its users, so one user
+ * must not take all of them: this leaves 4 for everyone else. A person needs far fewer. One attempt
+ * runs per tab, every act in the tab shares it, and a reload keeps the family, so only a new tab
+ * spends one: 5 new tabs and a Try again fit in a minute.
+ *
+ * Redis counts it, so every web replica shares one budget. It fails closed: with Redis unreachable
+ * each attempt is refused, and a tab that already holds a token is not affected.
+ */
+const ASK_DEV_AUTHORIZE_LIMIT = {
+    failClosed: true,
+    maxRequests: 6,
+    namespace: "ask-dev-authorize-user",
+    windowMs: 60_000,
+};
 
 export type WebSession = {
     readonly accessToken: string;
@@ -376,6 +393,8 @@ export type AskDevAuthorizeFailure =
     | "not_entitled"
     /** ACR's limit on `/authorize` or on its consent route. */
     | "rate_limited"
+    /** This user's budget on this route: no ACR call was made. */
+    | "user_rate_limited"
     /** ACR refused the request: a 303, a 400, or a handle it would not approve. */
     | "acr_refused"
     /** ACR answered 5xx, or nothing, or a dependency of the session read failed. */
@@ -503,9 +522,10 @@ function authorizeFailure(error: unknown): Extract<AskDevAuthorization, { kind: 
  * this server's config, and gives back the code.
  *
  * In order: the session and a fresh impersonation read, so an impersonating session makes no ACR
- * call and gets no code (T13 c5); then ACR's `GET /authorize`, on the server's own ACR origin as
- * every server call is, which gives a handle; then T4c's `openOAuthConsent`, which approves the
- * first-party client with no click. A first-party client that reaches review is a loud failure.
+ * call and gets no code (T13 c5); then this user's budget, which nobody else can spend; then ACR's
+ * `GET /authorize`, on the server's own ACR origin as every server call is, which gives a handle;
+ * then T4c's `openOAuthConsent`, which approves the first-party client with no click. A first-party
+ * client that reaches review is a loud failure.
  *
  * Throws only `unauthenticated`: the route's 401.
  */
@@ -517,8 +537,10 @@ export async function authorizeAskDevBrowser(input: {
     const client = serverAcrClientConfig();
     if (client === undefined) return refused("client_off");
     try {
-        const { provenance } = await readIssuanceContext(input.signal);
+        const { provenance, session } = await readIssuanceContext(input.signal);
         if (provenance.impersonating) return refused("impersonating");
+        const budget = await checkRateLimit(session.subject, ASK_DEV_AUTHORIZE_LIMIT);
+        if (budget.limited) return refused("user_rate_limited", budget.retryAfter);
         const answer = await new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthAuthorize({
             query: {
                 response_type: "code",

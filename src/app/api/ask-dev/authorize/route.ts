@@ -24,6 +24,7 @@ const FAILURES: Readonly<
     impersonating: { status: 403 },
     not_entitled: { status: 403 },
     rate_limited: { status: 429 },
+    user_rate_limited: { status: 429 },
     acr_refused: { status: 502 },
     acr_unavailable: { status: 503 },
     bad_location: { status: 502, loud: true },

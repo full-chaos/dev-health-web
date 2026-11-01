@@ -102,7 +102,11 @@ The redirect URI stays registered, and the metadata document is unchanged: ACR r
 
 History before a token is never `ready`, so it never reads "No conversations yet.": it reads "Loading conversations…" while the silent step runs, then the list, or "History could not be read." with Try again. Each Try again is one click and one attempt.
 
-ACR limits `/authorize` per source, and all users now share web's address. That stays as it is for now (the lead's ruling on CHAOS-12474).
+**Limits.** ACR limits `/authorize` per source, at 10 a minute, and all users now share web's address. That stays as it is for now (the lead's ruling on CHAOS-12474). Web's route gives each user 6 attempts a minute, so one user cannot take all of ACR's bucket. An attempt is per tab, every act in a tab shares it, and a reload keeps the family, so a person meets this only with more than 6 new tabs in a minute, Try again clicks included.
+
+- The check runs after the session and impersonation checks, and before any ACR call. A caller with no session, or an impersonating one, spends nothing.
+- A refused call is 429 `user_rate_limited`, with `Retry-After` and `no-store`. The browser shows the same words and Try again as for ACR's limit, and tries nothing by itself.
+- The limiter is the one `/api/acr/authorize` uses: a fixed window in Redis, keyed by user id, so every web replica counts in one budget. It has no in-memory fallback, and it fails closed: while Redis is unreachable, each attempt is refused, and a tab that holds a token or a family is not affected. A production boot needs `REDIS_URL`. A local `next dev` with no Redis refuses every attempt.
 
 ## Evidence
 
@@ -121,7 +125,7 @@ Each reference under an answer is a button, with ACR's served label. It opens th
 - **`routed.spec.ts`** sends real questions, so a run needs acr's `modeloracle` (acr `docs/fullstack-acceptance.md` §6.2), never a real model. Write each run's plan with `npx tsx tests/live/ask-dev/make-plan.ts <acr plan> <output> <nonce>`: ACR reuses a stored answer, so a run needs fresh questions.
 - **The stack needs** the oracle env of §6.2, `ACR_CONTEXT_FABRIC_RUN_LEASE_ENABLED=true`, and the egress block as a second guard. Check ACR's model receipts after a run.
 - **Env:** `ASK_DEV_LIVE_WEB`, `ASK_DEV_LIVE_ACR`, `ASK_DEV_LIVE_EMAIL`, `ASK_DEV_LIVE_PASSWORD_FILE` (a 0600 file), `ASK_DEV_LIVE_THREAD` (a stored conversation with one ref cited by two answers), `ASK_DEV_LIVE_ORACLE` and `ASK_DEV_LIVE_NONCE`.
-- **Limits:** the auth service allows 20 logins in 15 minutes per IP, so each spec file signs in once. ACR allows one principal 60 requests a minute, so the suite waits between cases.
+- **Limits:** the auth service allows 20 logins in 15 minutes per IP, so each spec file signs in once. ACR allows one principal 60 requests a minute, and web allows one user 6 silent authorizations a minute, so the suite waits 10 s between cases.
 
 ## Answer completeness
 
