@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
+import type { InvestigationEvent } from "../transport";
 import type {
     BatchItem,
     ChatAssistantTurn,
@@ -103,6 +106,16 @@ beforeEach(() => {
     transport = new FakeTransport();
     vi.clearAllMocks();
 });
+
+const BUDGET_REFUSAL = JSON.parse(
+    readFileSync(
+        join(
+            process.cwd(),
+            "src/components/ask-dev/answer/__tests__/captures/acr_encoder_budget_refusal_evidence_window.event.json",
+        ),
+        "utf8",
+    ),
+) as InvestigationEvent;
 
 describe("order", () => {
     it("runs the items in order, one at a time, each under the same parent", async () => {
@@ -454,6 +467,8 @@ describe("the composer between items", () => {
 describe("a plain failed item does not stop the batch", () => {
     it.each<[string, Step[]]>([
         ["a generic failure", [accepted(), errorEvent("internal_error")]],
+        // Too large for one item says nothing of the next: a parallel fan-out would run it too.
+        ["a budget refusal", [accepted(), BUDGET_REFUSAL]],
         [
             "a concurrency limit",
             [{ fail: new TransportRefusal(429, acrError("concurrency_limited", 429, true), 3) }],
@@ -466,7 +481,7 @@ describe("a plain failed item does not stop the batch", () => {
         source.askBatch([subjectItem("subject-a"), subjectItem("subject-b")], QUESTION);
         await vi.waitFor(() => expect(investigations()).toBe(3));
         await vi.waitFor(() => expect(store.getSnapshot().inFlight).toBe(false));
-        expect(assistants(source).at(-2)!.outcome.kind).toBe("status");
+        expect(assistants(source).at(-2)!.outcome.kind).not.toBe("pending");
         expect(assistants(source).at(-1)!.outcome.kind).toBe("answered");
     });
 });

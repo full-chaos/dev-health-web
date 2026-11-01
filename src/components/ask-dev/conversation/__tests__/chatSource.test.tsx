@@ -823,6 +823,63 @@ describe("the snapshot", () => {
         expect(remove).toHaveBeenCalledWith(ref);
     });
 
+    describe("an org switch: the session moved, and the store still holds the old turns", () => {
+        async function answeredInOrgA() {
+            const made = makeSource();
+            transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+            made.source.setHostInputs(host());
+            made.store.submit(QUESTION);
+            await settled(made.store);
+            expect(made.source.getSnapshot().turns).toHaveLength(2);
+            return made;
+        }
+
+        it("shows none of the old partition's turns, and sends nothing", async () => {
+            const { source } = await answeredInOrgA();
+
+            source.setHostInputs(host({ partition: ORG_B }));
+
+            expect(source.getSnapshot()).toMatchObject({
+                turns: [],
+                stoppable: false,
+                composerLocked: true,
+                notSaved: false,
+            });
+            expect(source.getSnapshot().history).toBeUndefined();
+        });
+
+        it("shows the store again once it holds the session's partition", async () => {
+            const { source, store } = await answeredInOrgA();
+            source.setHostInputs(host({ partition: ORG_B }));
+
+            store.setPartition(ORG_B);
+            transport.scripts.push([accepted(), resultEvent(PARTIAL)]);
+            store.submit(QUESTION);
+            await settled(store);
+
+            expect(source.getSnapshot().turns).toHaveLength(2);
+            expect(source.getSnapshot().composerLocked).toBe(false);
+        });
+
+        it("a session that moves back before the store rebinds shows its turns again", async () => {
+            const { source } = await answeredInOrgA();
+            source.setHostInputs(host({ partition: ORG_B }));
+            expect(source.getSnapshot().turns).toEqual([]);
+
+            source.setHostInputs(host());
+
+            expect(source.getSnapshot().turns).toHaveLength(2);
+        });
+
+        it("a session still loading changes nothing: a refetch is not a sign-out", async () => {
+            const { source } = await answeredInOrgA();
+
+            source.setHostInputs(host({ partition: undefined }));
+
+            expect(source.getSnapshot().turns).toHaveLength(2);
+        });
+    });
+
     describe("stays the same object until an input changes", () => {
         it("two reads, with nothing between", async () => {
             const { store, source } = makeSource();

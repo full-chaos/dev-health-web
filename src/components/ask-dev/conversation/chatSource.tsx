@@ -449,6 +449,8 @@ export function createChatSource({
               readonly host: Omit<HostInputs, "removePageRef">;
               readonly turnRevision: number;
               readonly snapshot: ChatSnapshot;
+              /** The turns held another partition's: nothing may be reused from this build. */
+              readonly foreign: boolean;
           }
         | undefined;
 
@@ -501,8 +503,26 @@ export function createChatSource({
         ) {
             return built.snapshot;
         }
+        // On an org switch the session moves in this commit, and the provider rebinds the store
+        // in an effect after paint. Until then these turns are another (org, principal)'s: the
+        // render gets none of them, and a composer that cannot send. A session still loading
+        // (`undefined`) is not a switch.
+        const foreign = host.partition !== undefined && host.partition !== from.partition;
+        if (foreign) {
+            const snapshot: ChatSnapshot = {
+                turns: [],
+                stoppable: false,
+                conversationKey: from.selection,
+                composerLocked: true,
+                notSaved: false,
+                pageContext: NO_REFS,
+            };
+            built = { from, host, turnRevision, snapshot, foreign };
+            return snapshot;
+        }
         const sameTurns =
             built !== undefined &&
+            !built.foreign &&
             built.from.turns === from.turns &&
             built.turnRevision === turnRevision;
         const snapshot: ChatSnapshot = {
@@ -517,7 +537,7 @@ export function createChatSource({
             pageContext: host.pageRefs,
             ...(from.ready ? { history: historyOf(from) } : {}),
         };
-        built = { from, host, turnRevision, snapshot };
+        built = { from, host, turnRevision, snapshot, foreign };
         return snapshot;
     }
 
