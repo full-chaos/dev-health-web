@@ -35,15 +35,30 @@ export type AcrCall = {
     readonly method: string;
     readonly path: string;
     readonly query: URLSearchParams;
-    readonly bearer: string | null;
+    readonly hasBearer: boolean;
     readonly cookie: boolean;
-    readonly headers: Readonly<Record<string, string>>;
-    readonly body: string | null;
     status?: number;
 };
 
+/** What a case needs to repeat a call. It holds a live bearer, so it is never in `AcrCall`. */
+export type AcrCallSecrets = {
+    readonly bearer: string | null;
+    readonly headers: Readonly<Record<string, string>>;
+    readonly body: string | null;
+};
+
+// Not on the call: a failed `expect(calls)` prints its value into the error, and Playwright copies
+// the error into `error-context.md` and the report.
+const secrets = new WeakMap<AcrCall, AcrCallSecrets>();
+
+export function secretsOf(call: AcrCall): AcrCallSecrets {
+    const held = secrets.get(call);
+    if (held === undefined) throw new Error("this call was not recorded by watchAcr");
+    return held;
+}
+
 /** Every call this page makes to ACR's data routes. A bearer stays in memory; it is never logged. */
-export function watchAcr(page: Page): AcrCall[] {
+export function watchAcr(page: Pick<Page, "on">): AcrCall[] {
     const calls: AcrCall[] = [];
     const byRequest = new Map<Request, AcrCall>();
     page.on("request", (request) => {
@@ -54,11 +69,14 @@ export function watchAcr(page: Page): AcrCall[] {
             method: request.method(),
             path: url.pathname,
             query: url.searchParams,
-            bearer: headers.authorization?.replace(/^Bearer /u, "") ?? null,
+            hasBearer: headers.authorization !== undefined,
             cookie: headers.cookie !== undefined,
+        };
+        secrets.set(call, {
+            bearer: headers.authorization?.replace(/^Bearer /u, "") ?? null,
             headers,
             body: request.postData(),
-        };
+        });
         calls.push(call);
         byRequest.set(request, call);
     });

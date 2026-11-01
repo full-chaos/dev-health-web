@@ -16,6 +16,7 @@ import {
     investigations,
     openStoredAnswer,
     references,
+    secretsOf,
     signIn,
     watchAcr,
 } from "./stack";
@@ -104,7 +105,7 @@ test.describe("P1-9: evidence", () => {
         expect(reads).toHaveLength(1);
         expect(reads[0]!.status).toBe(200);
         expect(reads[0]!.query.get("result_id")).toMatch(/^result_/u);
-        expect(reads[0]!.bearer).not.toBeNull();
+        expect(reads[0]!.hasBearer).toBe(true);
         expect(reads[0]!.cookie).toBe(false);
         expect(investigations(calls)).toEqual([]);
     });
@@ -182,7 +183,7 @@ test.describe("P1-12, as amended: no web route", () => {
         const reads = calls.filter((call) => call.path.startsWith("/api/v1/context-fabric/"));
         expect(reads.length).toBeGreaterThan(0);
         for (const call of reads) {
-            expect(call.bearer).not.toBeNull();
+            expect(call.hasBearer).toBe(true);
             expect(call.cookie).toBe(false);
         }
     });
@@ -196,7 +197,7 @@ test.describe("the amendment's new cases that need no question", () => {
     test("a create with no submission header is refused before admission", async ({ page }) => {
         const calls = await signedIn(page);
         await openStoredAnswer(page);
-        const bearer = calls.find((call) => call.bearer !== null)!.bearer!;
+        const bearer = secretsOf(calls.find((call) => call.hasBearer)!).bearer!;
         const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
         const refused = await acr.post(`${ACR}${INVESTIGATIONS_PATH}`, {
             headers: {
@@ -246,7 +247,7 @@ test.describe("the amendment's new cases that need no question", () => {
     test("sign-out: the token that tab held is refused on its next call", async ({ page }) => {
         const calls = await signedIn(page);
         await openStoredAnswer(page);
-        const bearer = calls.find((call) => call.bearer !== null)!.bearer!;
+        const bearer = secretsOf(calls.find((call) => call.hasBearer)!).bearer!;
         const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
         const read = () =>
             acr.get(`${ACR}/api/v1/context-fabric/threads?limit=1`, {

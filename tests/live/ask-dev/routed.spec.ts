@@ -18,6 +18,7 @@ import {
     connect,
     investigations,
     references,
+    secretsOf,
     signIn,
     watchAcr,
     type AcrCall,
@@ -211,8 +212,9 @@ test("P1-3: a lost response and a same-key retry give one result and one executi
         timeout: 60_000,
     });
     const before = await oracleCalls();
-    const create = investigations(calls)[0]!;
-    expect(create.status).toBe(200);
+    const created = investigations(calls)[0]!;
+    expect(created.status).toBe(200);
+    const create = secretsOf(created);
     const headers = {
         Authorization: `Bearer ${create.bearer}`,
         "X-ACR-Resource": ACR,
@@ -329,7 +331,7 @@ test("P1-10: a principal's third concurrent run is refused, naming the principal
     await expect(surface.locator('li.chat__stage[data-state="active"]')).toBeVisible({
         timeout: 10_000,
     });
-    const create = investigations(calls)[0]!;
+    const create = secretsOf(investigations(calls)[0]!);
     const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
     const another = (submission: string, thread: string) =>
         acr.post(`${ACR}${INVESTIGATIONS_PATH}`, {
