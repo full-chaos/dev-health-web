@@ -1363,7 +1363,7 @@ export class ConversationStore {
             );
             if (noRepositoryInScope(error)) {
                 // No repository in scope: reading again cannot help, on this load or the next.
-                this.hints.clear();
+                if (parseHint(this.hints.read())?.thread_id === threadId) this.hints.clear();
                 this.commit({ ...this.snapshot, threadId: null, thread: { kind: "unavailable" } });
                 return;
             }
@@ -1431,7 +1431,7 @@ export class ConversationStore {
             }
             if (noRepositoryInScope(error)) {
                 // The scope has gone: "Try again" on the earlier page cannot help, nor can a reload.
-                this.hints.clear();
+                if (parseHint(this.hints.read())?.thread_id === threadId) this.hints.clear();
                 this.dropSelectionWork("detach");
                 this.commit({
                     ...this.snapshot,

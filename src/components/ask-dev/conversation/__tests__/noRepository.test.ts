@@ -29,6 +29,7 @@ import {
 const PARTIAL = captureResult("kiac_project_status_partial.event.json");
 const ORG_A = "org-a\u0000user-1\u0000";
 const THREAD_A = "thread_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const THREAD_B = "thread_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const SUB = "sub_00000000000000000000000000000001";
 const RESERVED = "result_reserved_0001";
 const R1 = "result_000000000001";
@@ -240,6 +241,42 @@ describe("readThread", () => {
         const reads = transport.threadCalls.length;
         expect(makeStore().restoreFromHint()).toBe(false);
         expect(transport.threadCalls).toHaveLength(reads);
+    });
+
+    it("a refused read keeps a hint that names another thread", async () => {
+        transport.threads.set(THREAD_B, threadView(THREAD_B, [threadTurn(SUB, "done_unsaved")]));
+        const other = makeStore();
+        other.selectThread(THREAD_B, "incoming");
+        await vi.waitFor(() => expect(snap(other).thread.kind).toBe("loaded"));
+        const hintOfB = stored;
+        expect(hintOfB).toContain(THREAD_B);
+
+        transport.threads.set(THREAD_A, { fail: noRepository() });
+        const refused = makeStore();
+        refused.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(snap(refused).thread.kind).toBe("unavailable"));
+        expect(stored).toBe(hintOfB);
+    });
+
+    it("a refused earlier page keeps a hint that names another thread", async () => {
+        transport.threads.set(THREAD_B, threadView(THREAD_B, [threadTurn(SUB, "done_unsaved")]));
+        const other = makeStore();
+        other.selectThread(THREAD_B, "incoming");
+        await vi.waitFor(() => expect(snap(other).thread.kind).toBe("loaded"));
+        const hintOfB = stored;
+
+        transport.threads.set(
+            THREAD_A,
+            threadView(THREAD_A, [threadTurn(SUB, "done_unsaved")], "cursor-1"),
+        );
+        transport.threads.set(`${THREAD_A}|cursor-1`, { fail: noRepository() });
+        const store = makeStore();
+        store.selectThread(THREAD_A, "incoming");
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("loaded"));
+        stored = hintOfB;
+        store.loadEarlierTurns();
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("unavailable"));
+        expect(stored).toBe(hintOfB);
     });
 
     it("another 409 on an earlier page keeps the hint: a reload may read it", async () => {
