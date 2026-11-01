@@ -32,6 +32,10 @@ const ISSUERS = [
     "http://acr.fullchaos.dev",
     "https://acr.localhost",
     "http://localhost:8800",
+    "http://127.0.0.1:8800",
+    "http://[::1]:8800",
+    "https://acr.fullchaos.dev:8443",
+    "https://acr_internal.fullchaos.dev",
     "https://*.fullchaos.dev",
     "https://user@acr.fullchaos.dev",
     "https://user:secret@acr.fullchaos.dev",
@@ -54,6 +58,8 @@ const WEB: ReadonlyArray<readonly [string | undefined, string | undefined]> = [
     ["not a url", "https://www.fullchaos.dev"],
     ["ftp://www.fullchaos.dev", undefined],
     ["https://*.fullchaos.dev", undefined],
+    ["https://web_internal.fullchaos.dev", undefined],
+    ["http://[::1]:3000", undefined],
 ];
 
 type Env = { ACR_OAUTH_ISSUER?: string; AUTH_URL?: string; NEXTAUTH_URL?: string };
@@ -97,6 +103,16 @@ describe("the ACR browser client: server, T4c and browser agree", () => {
         // a path or a query from a mistyped setting).
         const copied = publicEnv[ACR_ISSUER_PUBLIC_KEY];
         if (copied !== undefined) expect(new URL(copied).origin).toBe(copied);
+        // CHAOS-12316: the file holds what the browser uses, or nothing. A value the browser
+        // refuses never reaches it.
+        expect(publicEnv).toEqual(
+            browser === undefined
+                ? {}
+                : {
+                      [ACR_ISSUER_PUBLIC_KEY]: browser.issuer,
+                      [ACR_WEB_ORIGIN_PUBLIC_KEY]: browser.webOrigin,
+                  },
+        );
     });
 
     it("the generator writes the keys the browser reads", () => {
