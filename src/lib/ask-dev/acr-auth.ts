@@ -13,9 +13,11 @@
  * The browser stays the OAuth public client: it holds the PKCE verifier and runs the `/token`
  * exchange. Web's server only runs `/authorize` from the signed-in session, so this is no data
  * proxy, and the ruling against a server hop in front of ACR (CHAOS-3743) still holds.
- * 1. `authorizeAcrSilently` makes the verifier and the state, in this call's memory only. It reads
- *    ACR's metadata for the token and revocation endpoints, then POSTs `{code_challenge, state}`
- *    to `/api/ask-dev/authorize`, which takes everything else from its own config.
+ * 1. `authorizeAcrSilently` reads the web principal. If it cannot, it makes no attempt: a code is
+ *    bound to the session that asked (codex r1 on #1714). Then it makes the verifier and the state,
+ *    in this call's memory only, reads ACR's metadata for the token and revocation endpoints, and
+ *    POSTs `{code_challenge, state}` to `/api/ask-dev/authorize`, which takes everything else from
+ *    its own config.
  * 2. Web's server calls ACR's `GET /authorize` with no cookie and follows no redirect. It takes the
  *    handle from the consent URL in ACR's 302, and T4c's `openOAuthConsent` approves it with no
  *    click. It answers `{code, state, iss}` as JSON, `no-store`. It never answers ACR's URL.
@@ -127,8 +129,8 @@ type AuthorizationRequest = {
     readonly tokenEndpoint: string;
     readonly revocationEndpoint: string | null;
     readonly expiresAt: number;
-    /** Who asked, when the session read worked: the code is for this session (see `askForCode`). */
-    readonly askedBy: AcrPrincipal | null;
+    /** Who asked: the code is for this session. Never unknown: then no attempt starts. */
+    readonly askedBy: AcrPrincipal;
     /** The drop counter when this started: a clear after it wins, wherever it lands. */
     readonly dropsAtStart: number;
 };
@@ -184,6 +186,8 @@ export type AcrAuthorizationFailure =
     | "unavailable"
     /** Web's route refused for a reason the browser cannot act on; its own log names it. */
     | "refused"
+    /** The session read gave nothing at the start, and no answer says it ended: no attempt. */
+    | "principal_unknown"
     /** The route answered 200 with no `{code, state, iss}`. */
     | "invalid_answer"
     | "expired"
@@ -201,7 +205,7 @@ export type AcrSilentOutcome =
     | { readonly kind: "token"; readonly token: string; readonly issuer: string }
     /** No configured client: nothing was sent. */
     | { readonly kind: "off" }
-    /** Web's server says the session has ended: the way on is the normal sign-in. */
+    /** The server says the session has ended: the way on is the normal sign-in. */
     | { readonly kind: "session_ended" }
     /** No ACR token for an impersonating session (CHAOS-12306): no code, no token. */
     | { readonly kind: "impersonating" }
@@ -711,7 +715,7 @@ async function completeAuthorization(
         return { kind: "impersonating" };
     }
     // The route ran for the session of the ask: a code is never bound to a later one.
-    if (request.askedBy !== null && !samePrincipal(request.askedBy, principal)) {
+    if (!samePrincipal(request.askedBy, principal)) {
         logPrincipal("exchange_before", "mismatch");
         return failed("signed_out");
     }
@@ -828,7 +832,7 @@ async function askForCode(
 async function attemptAuthorization(
     storage: Storage,
     config: AcrBrowserClientConfig,
-    askedBy: AcrPrincipal | null,
+    askedBy: AcrPrincipal,
     dropsAtStart: number,
 ): Promise<AcrSilentOutcome> {
     const server = await discoverAcrAuthorizationServer(config.issuer);
@@ -861,6 +865,29 @@ function logAttempt(outcome: AcrSilentOutcome): void {
     logger.warn({ outcome: outcome.kind, reason }, message);
 }
 
+/**
+ * Whether the session has ended, by the endpoint's own answer. A session read gives null for no
+ * session and for a failed read alike (`UserMenu` asks the same way), and only the first goes to
+ * sign-in: anything but a clear "no session" is unknown, and a person can try again.
+ */
+async function sessionHasEnded(): Promise<boolean> {
+    const limit = deadline();
+    try {
+        const response = await dependencies.fetch("/api/auth/session", {
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: limit.signal,
+        });
+        if (!response.ok) return false;
+        const body: unknown = await response.json();
+        return !isRecord(body) || body.user === undefined || body.user === null;
+    } catch {
+        return false;
+    } finally {
+        limit.clear();
+    }
+}
+
 async function runAuthorization(): Promise<AcrSilentOutcome> {
     const config = dependencies.config();
     const storage = dependencies.storage();
@@ -878,13 +905,20 @@ async function runAuthorization(): Promise<AcrSilentOutcome> {
         logAttempt(outcome);
         return outcome;
     }
+    // Fail closed (codex r1 on #1714): a code is bound to the session that asked. With no known
+    // asker, the exchange could not compare, and another user could get this user's code.
+    if (principal === null) {
+        const outcome: AcrSilentOutcome = (await sessionHasEnded())
+            ? { kind: "session_ended" }
+            : failed("principal_unknown");
+        logAttempt(outcome);
+        return outcome;
+    }
     // A caller that read "no token" before an attempt ended: that attempt's token, no request.
-    if (principal !== null && held !== null && samePrincipal(held, principal)) {
+    if (held !== null && samePrincipal(held, principal)) {
         const current = servable(config);
         if (current?.kind === "token") return current;
     }
-    // No session read is no reason to stop here: the read may have failed, and the route is the
-    // authority on the session. A session that ended gets its 401 there, and no code.
     const outcome = await attemptAuthorization(storage, config, principal, dropsAtStart);
     logAttempt(outcome);
     return outcome;

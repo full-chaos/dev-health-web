@@ -121,6 +121,7 @@ function acrFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Res
             }),
         );
     }
+    if (url === "/api/auth/session") return Promise.resolve(json(200, auth.session));
     if (url === ACR_AUTHORIZE_ROUTE) {
         return Promise.resolve(
             routeAnswer(JSON.parse(String(init.body)) as Parameters<typeof routeAnswer>[0]),
@@ -347,6 +348,25 @@ describe("the first question", () => {
         await waitFor(() => expect(urls().some((url) => url.includes("/threads"))).toBe(true));
         expect(routeCalls()).toBe(1);
         expect(tokenCalls()).toBe(1);
+    });
+
+    // Codex r1 P2 on #1714: with no known asker, no code can be asked for.
+    it("a session read that gives nothing makes no attempt, and Retry tries again", async () => {
+        auth.getSession.mockResolvedValue(null);
+        await openPanel();
+        await ask();
+        const status = await within(panel()).findByTestId("chat-status");
+        await settle();
+        expect(status).toHaveAttribute("data-status", "failed");
+        expect(routeCalls()).toBe(0);
+        expect(tokenCalls()).toBe(0);
+        expect(investigationCalls()).toEqual([]);
+        expect(window.sessionStorage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+
+        auth.getSession.mockImplementation(async () => auth.session);
+        await userEvent.click(within(panel()).getByRole("button", { name: "Retry" }));
+        await waitFor(() => expect(investigationCalls()).toHaveLength(1));
+        expect(routeCalls()).toBe(1);
     });
 
     it("a 401 authorizes once more, resends once, and then stops: never a loop", async () => {

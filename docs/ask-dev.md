@@ -65,12 +65,13 @@ This amends the direct browser design (Linear "Ask Dev: browser calls ACR direct
 
 The browser stays the OAuth public client. It holds the PKCE verifier and runs the `/token` exchange. So this is not a data proxy, and the ruling against a server hop in front of ACR (CHAOS-3743) still holds: data calls go from the browser to ACR, with no web route between them.
 
-1. The browser makes the verifier and the state, in the memory of one call, and reads ACR's metadata. It needs that for the token endpoint, and for the revocation endpoint the family keeps for sign-out.
-2. It POSTs `{code_challenge, state}`. The shape is strict. The route takes the client, the redirect, the resource and the scope from its own config.
-3. The route checks `Origin` and the session, reads Ops for impersonation, and refuses an impersonating session before any ACR call. It answers `no-store`, and logs one line: an enum and a status.
-4. The route calls ACR's existing `GET /authorize` with the same parameters the browser sent before, on `ACR_API_ORIGIN`, like every server call. There is no cookie, and `redirect: "manual"`. A 302 to `{web origin}/acr/authorize?handle=<43 characters>`, with nothing else in it, is a success. Anything else is a named failure, and a 303 refusal is never followed.
-5. `openOAuthConsent` approves the first-party client with no click. A client that reaches review is a loud failure. The route checks that the redirect URL is web's own callback, and answers `{code, state, iss}`. It never returns or logs the URL.
-6. The browser checks `state`, the tab, the expiry and `iss` against the configured issuer, exchanges the code at `/token` with a form POST, and stores the tokens by the same rules as before.
+1. The browser reads the web principal. If it cannot, it makes no attempt: no POST and no code. A code is bound to the session that asked, and the exchange compares the two, so another user can never get it.
+2. The browser makes the verifier and the state, in the memory of one call, and reads ACR's metadata. It needs that for the token endpoint, and for the revocation endpoint the family keeps for sign-out.
+3. It POSTs `{code_challenge, state}`. The shape is strict. The route takes the client, the redirect, the resource and the scope from its own config.
+4. The route checks `Origin` and the session, reads Ops for impersonation, and refuses an impersonating session before any ACR call. It answers `no-store`, and logs one line: an enum and a status.
+5. The route calls ACR's existing `GET /authorize` with the same parameters the browser sent before, on `ACR_API_ORIGIN`, like every server call. There is no cookie, and `redirect: "manual"`. A 302 to `{web origin}/acr/authorize?handle=<43 characters>`, with nothing else in it, is a success. Anything else is a named failure, and a 303 refusal is never followed.
+6. `openOAuthConsent` approves the first-party client with no click. A client that reaches review is a loud failure. The route checks that the redirect URL is web's own callback, and answers `{code, state, iss}`. It never returns or logs the URL.
+7. The browser checks `state`, the tab, the expiry and `iss` against the configured issuer, exchanges the code at `/token` with a form POST, and stores the tokens by the same rules as before.
 
 The redirect URI stays registered, and the metadata document is unchanged: ACR requires both. ACR puts the code on that URL and web's server reads it there, so no browser lands on it and no page serves it. The proxy keeps the path public and `no-referrer`, so a stale URL with a code in it gets a 404 and never a sign-in redirect that copies the code.
 
@@ -92,13 +93,14 @@ The redirect URI stays registered, and the metadata document is unchanged: ACR r
 
 **When it fails.**
 
-| What happened                            | What the user sees                                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| ACR, web or the network failed           | "The question could not be sent. Try again." with Retry. History and evidence keep their Try again. |
-| ACR's limit, or this user's budget (429) | "Too many questions in a short time." with Retry. Nothing retries or waits by itself.               |
-| The web session has ended                | The normal sign-in, then back to this page                                                          |
-| Impersonating, or a race into it         | Ask Dev says it is not available. No code and no token.                                             |
-| No Agent Context Runtime                 | "Ask Dev is not available for this organization."                                                   |
+| What happened                                                             | What the user sees                                                                                  |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| ACR, web or the network failed                                            | "The question could not be sent. Try again." with Retry. History and evidence keep their Try again. |
+| ACR's limit, or this user's budget (429)                                  | "Too many questions in a short time." with Retry. Nothing retries or waits by itself.               |
+| The web session has ended                                                 | The normal sign-in, then back to this page                                                          |
+| The session cannot be read, and `/api/auth/session` does not say it ended | "The question could not be sent. Try again." with Retry, and no attempt.                            |
+| Impersonating, or a race into it                                          | Ask Dev says it is not available. No code and no token.                                             |
+| No Agent Context Runtime                                                  | "Ask Dev is not available for this organization."                                                   |
 
 History before a token is never `ready`, so it never reads "No conversations yet.": it reads "Loading conversations…" while the silent step runs, then the list, or "History could not be read." with Try again. Each Try again is one click and one attempt.
 

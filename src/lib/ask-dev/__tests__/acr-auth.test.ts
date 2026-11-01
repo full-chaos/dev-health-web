@@ -167,12 +167,16 @@ let calls: Call[];
 let tokenResponse: () => Response;
 /** What web's route answers: by default the code for the state it was sent. */
 let routeResponse: (body: RouteBody) => Response;
+/** What `/api/auth/session` answers when the session read gave nothing: by default a live session. */
+let sessionAnswer: () => Response;
 let metadata: unknown;
 /**
  * What the fake `principal` seam answers: the current web session, null (signed out) or an
  * impersonating session (CHAOS-12306).
  */
 let principal: AcrPrincipalRead;
+/** Session reads to answer first, in order, before `principal`. */
+let scriptedReads: AcrPrincipalRead[] = [];
 /** An impersonating web session: the seam's answer while an admin impersonates (CHAOS-12306). */
 const IMPERSONATING: AcrPrincipalRead = { impersonating: true };
 
@@ -187,7 +191,7 @@ function json(status: number, body: unknown) {
 function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | undefined = CONFIG) {
     setAcrAuthDependenciesForTest({
         now: () => now,
-        principal: async () => principal,
+        principal: async () => (scriptedReads.length > 0 ? scriptedReads.shift()! : principal),
         storage: () => tab,
         config: () => config ?? undefined,
         channel: () => null,
@@ -197,6 +201,7 @@ function configure(tab: MemoryStorage, config: AcrBrowserClientConfig | null | u
             if (url === `${ISSUER}/.well-known/oauth-authorization-server`)
                 return json(200, metadata);
             if (url === ACR_AUTHORIZE_ROUTE) return routeResponse(routeBodyOf(init));
+            if (url === "/api/auth/session") return sessionAnswer();
             if (url === `${ISSUER}/token`) {
                 harvestSecrets(
                     Object.fromEntries(new URLSearchParams(String(init?.body ?? ""))),
@@ -226,6 +231,8 @@ beforeEach(() => {
             refresh_token: REFRESH,
         });
     routeResponse = ({ state }) => json(200, { code: CODE, state, iss: ISSUER });
+    sessionAnswer = () => json(200, { user: { id: "user-1" } });
+    scriptedReads = [];
     configure(storage);
 });
 
@@ -362,12 +369,75 @@ describe("authorizeAcrSilently: the ask", () => {
         expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
     });
 
-    it("lets the route, not a failed session read, say a session has ended", async () => {
-        principal = null;
-        routeResponse = () => json(401, { error: { code: "signed_out" } });
-        expect(await authorizeAcrSilently()).toEqual({ kind: "session_ended" });
+    // Codex r1 P2 on #1714: a code the route issued for user A was stored as user B's family.
+    it("makes no attempt when the first session read gives nothing: no code can reach another user", async () => {
+        scriptedReads = [null];
+        principal = { userId: "user-b", orgId: "org-1" };
+        expect(await authorizeAcrSilently()).toEqual({
+            kind: "failed",
+            reason: "principal_unknown",
+        });
+        expect(routeCalls()).toEqual([]);
+        expect(tokenCalls()).toEqual([]);
+        expect(readAcrHeldFamily()).toBeNull();
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    it("refuses a code when the session changed from A to B: no /token call and no family", async () => {
+        scriptedReads = [USER];
+        principal = { userId: "user-b", orgId: "org-1" };
+        expect(await authorizeAcrSilently()).toEqual({ kind: "failed", reason: "signed_out" });
         expect(routeCalls()).toHaveLength(1);
         expect(tokenCalls()).toEqual([]);
+        expect(readAcrHeldFamily()).toBeNull();
+        expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
+    });
+
+    // The read gives null both for no session and for a failed read. The endpoint can say which,
+    // as `UserMenu` asks it. A session that ended still goes to the normal sign-in.
+    it.each([
+        ["null", () => json(200, null)],
+        ["an empty object", () => json(200, {})],
+    ])(
+        "with no session read and %s from the endpoint, the session has ended",
+        async (_, answer) => {
+            principal = null;
+            sessionAnswer = answer;
+            expect(await authorizeAcrSilently()).toEqual({ kind: "session_ended" });
+            expect(routeCalls()).toEqual([]);
+            expect(calls.map((call) => call.url)).toEqual(["/api/auth/session"]);
+            expect(calls[0]!.init).toMatchObject({ credentials: "same-origin", cache: "no-store" });
+        },
+    );
+
+    it.each([
+        ["a live session", () => json(200, { user: { id: "user-1" } })],
+        ["a 503", () => json(503, {})],
+        ["no JSON", () => new Response("<html>", { status: 200 })],
+        [
+            "no answer",
+            () => {
+                throw new TypeError("Failed to fetch");
+            },
+        ],
+    ])(
+        "with no session read and %s from the endpoint, it is a named failure",
+        async (_, answer) => {
+            principal = null;
+            sessionAnswer = answer;
+            expect(await authorizeAcrSilently()).toEqual({
+                kind: "failed",
+                reason: "principal_unknown",
+            });
+            expect(routeCalls()).toEqual([]);
+        },
+    );
+
+    it("the next act tries again when the session reads", async () => {
+        scriptedReads = [null];
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "failed" });
+        expect(await authorizeAcrSilently()).toMatchObject({ kind: "token" });
+        expect(routeCalls()).toHaveLength(1);
     });
 
     it("reads no session while the client is off (prod until the T13 roll)", async () => {
@@ -1164,9 +1234,9 @@ describe("the token store across tabs (CHAOS-12305)", () => {
             expect(storage.getItem(ACR_TOKEN_FAMILY_KEY)).toBeNull();
 
             getSession.mockResolvedValue(null);
-            expect(await defaultTab.authorizeAcrSilently()).toMatchObject({
+            expect(await defaultTab.authorizeAcrSilently()).toEqual({
                 kind: "failed",
-                reason: "signed_out",
+                reason: "principal_unknown",
             });
         });
 
