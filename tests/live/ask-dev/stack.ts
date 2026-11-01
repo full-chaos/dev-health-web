@@ -11,10 +11,12 @@ import { expect, type Page, type Request } from "@playwright/test";
  * - `ASK_DEV_LIVE_WEB`: web's origin, default `http://localhost:3000`.
  * - `ASK_DEV_LIVE_ACR`: ACR's issuer origin, default `https://acr.localhost:8443`.
  * - `ASK_DEV_LIVE_EMAIL`: the signed-in user, default `admin@test.com`.
+ * - `ASK_DEV_LIVE_THREAD`: a stored conversation of that user: two answers, one ref cited by both.
  * - `ASK_DEV_LIVE_PASSWORD_FILE`: a 0600 file with that user's password. Never an env value, never
  *   an argument, never a log line.
  */
 export const ACR = process.env.ASK_DEV_LIVE_ACR ?? "https://acr.localhost:8443";
+export const THREAD = process.env.ASK_DEV_LIVE_THREAD ?? "";
 export const EMAIL = process.env.ASK_DEV_LIVE_EMAIL ?? "admin@test.com";
 export const EVIDENCE_PATH = "/api/v1/agent-context/evidence/";
 export const INVESTIGATIONS_PATH = "/api/v1/context-fabric/investigations";
@@ -38,8 +40,6 @@ export type AcrCall = {
     readonly headers: Readonly<Record<string, string>>;
     readonly body: string | null;
     status?: number;
-    /** The answer's body, once it has ended: a stream's whole text. */
-    text?: () => Promise<string>;
 };
 
 /** Every call this page makes to ACR's data routes. A bearer stays in memory; it is never logged. */
@@ -66,7 +66,6 @@ export function watchAcr(page: Page): AcrCall[] {
         const call = byRequest.get(response.request());
         if (call === undefined) return;
         call.status = response.status();
-        call.text = () => response.text();
     });
     return calls;
 }
@@ -119,16 +118,15 @@ export const ORACLE = process.env.ASK_DEV_LIVE_ORACLE ?? "";
 export const references = (surface: ReturnType<Page["getByTestId"]>) =>
     surface.locator("button.evidence-ref--open:visible");
 
-/** A stored conversation with an evidence reference, from History. None is a red "no data". */
-export async function openStoredAnswer(
-    surface: ReturnType<Page["getByTestId"]>,
-    page: Page,
-): Promise<void> {
-    const rows = surface.getByTestId("ask-dev-history-row");
-    await expect(rows.first(), "History lists no conversation: the stack has no data").toBeVisible({
-        timeout: 20_000,
-    });
-    await rows.first().locator("button, a").first().click();
+/**
+ * The stored conversation with two answers that cite one ref, on the full page. By its id: a run's
+ * own conversations are newer, and they push it off History's first page. None is a red "no data".
+ */
+export async function openStoredAnswer(page: Page): Promise<ReturnType<Page["getByTestId"]>> {
+    if (THREAD === "")
+        throw new Error("ASK_DEV_LIVE_THREAD is not set: the suite has no stored data");
+    await page.goto(`/dev?thread=${THREAD}`, { waitUntil: "commit" });
+    const surface = page.getByTestId("ask-dev-page");
     await expect
         .poll(() => references(surface).count(), {
             message: "the stored conversation shows no evidence reference: the stack has no data",
@@ -136,6 +134,7 @@ export async function openStoredAnswer(
         })
         .toBeGreaterThan(0);
     await page.waitForTimeout(500);
+    return surface;
 }
 
 export async function evidenceState(page: Page): Promise<string> {

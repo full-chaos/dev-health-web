@@ -95,9 +95,7 @@ test.describe("P1-9: evidence", () => {
         page,
     }) => {
         const calls = await signedIn(page);
-        await page.goto("/dev", { waitUntil: "commit" });
-        const surface = page.getByTestId("ask-dev-page");
-        await openStoredAnswer(surface, page);
+        const surface = await openStoredAnswer(page);
         await references(surface).first().click();
         expect(await evidenceState(page)).toBe("ready");
         await closeEvidence(page);
@@ -113,9 +111,7 @@ test.describe("P1-9: evidence", () => {
 
     test("two answers that cite one ref each ask with their own result_id", async ({ page }) => {
         const calls = await signedIn(page);
-        await page.goto("/dev", { waitUntil: "commit" });
-        const surface = page.getByTestId("ask-dev-page");
-        await openStoredAnswer(surface, page);
+        const surface = await openStoredAnswer(page);
         const total = await references(surface).count();
         expect(total, "the stored conversation has no ref cited twice").toBeGreaterThan(1);
         for (let index = 0; index < total; index += 1) {
@@ -131,9 +127,7 @@ test.describe("P1-9: evidence", () => {
 
     test("an unknown ref is ACR's 404, shown as one neutral state with no id", async ({ page }) => {
         const calls = await signedIn(page);
-        await page.goto("/dev", { waitUntil: "commit" });
-        const surface = page.getByTestId("ask-dev-page");
-        await openStoredAnswer(surface, page);
+        const surface = await openStoredAnswer(page);
         const unknown = "acr%3Av1%3Ateam%3Alinear%3Ano-such-team-11933";
         await page.route(`${ACR}${EVIDENCE_PATH}**`, (route) => {
             const url = new URL(route.request().url());
@@ -153,10 +147,16 @@ test.describe("P1-9: evidence", () => {
 
     test("the panel gives up the edge, and closing the drawer brings it back", async ({ page }) => {
         await signedIn(page);
+        await openStoredAnswer(page);
+        // The same tab: the panel restores the conversation from its hint.
+        await page.goto("/dashboard", { waitUntil: "commit" });
+        await expect(page.getByRole("button", { name: "Open Ask Dev" })).toBeVisible({
+            timeout: 30_000,
+        });
+        await page.waitForTimeout(1_500);
         await page.getByRole("button", { name: "Open Ask Dev" }).click();
         const panel = page.getByTestId("ask-dev-panel");
-        await panel.getByTestId("ask-dev-history-toggle").click();
-        await openStoredAnswer(panel, page);
+        await expect.poll(() => references(panel).count(), { timeout: 20_000 }).toBeGreaterThan(0);
         const shown = await references(panel).count();
         await references(panel).first().click();
         expect(await evidenceState(page)).toBe("ready");
@@ -178,7 +178,7 @@ test.describe("P1-12, as amended: no web route", () => {
         expect(connectSrc?.split(/\s+/u), "the CSP does not name ACR").toContain(ACR);
         expect(csp).not.toContain("'unsafe-eval'");
 
-        await openStoredAnswer(page.getByTestId("ask-dev-page"), page);
+        await openStoredAnswer(page);
         const reads = calls.filter((call) => call.path.startsWith("/api/v1/context-fabric/"));
         expect(reads.length).toBeGreaterThan(0);
         for (const call of reads) {
@@ -195,8 +195,7 @@ test.describe("P1-12, as amended: no web route", () => {
 test.describe("the amendment's new cases that need no question", () => {
     test("a create with no submission header is refused before admission", async ({ page }) => {
         const calls = await signedIn(page);
-        await page.goto("/dev", { waitUntil: "commit" });
-        await openStoredAnswer(page.getByTestId("ask-dev-page"), page);
+        await openStoredAnswer(page);
         const bearer = calls.find((call) => call.bearer !== null)!.bearer!;
         const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
         const refused = await acr.post(`${ACR}${INVESTIGATIONS_PATH}`, {
@@ -246,8 +245,7 @@ test.describe("the amendment's new cases that need no question", () => {
 
     test("sign-out: the token that tab held is refused on its next call", async ({ page }) => {
         const calls = await signedIn(page);
-        await page.goto("/dev", { waitUntil: "commit" });
-        await openStoredAnswer(page.getByTestId("ask-dev-page"), page);
+        await openStoredAnswer(page);
         const bearer = calls.find((call) => call.bearer !== null)!.bearer!;
         const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
         const read = () =>

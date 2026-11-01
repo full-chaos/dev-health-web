@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
     expect,
     request as requestContext,
@@ -8,6 +10,7 @@ import {
     type Page,
 } from "@playwright/test";
 
+import { questionFor, type QuestionCase } from "./questions";
 import {
     ACR,
     INVESTIGATIONS_PATH,
@@ -29,13 +32,8 @@ import {
  * guards (the org source off, the egress block) are the slot's, and its receipts tally is the proof.
  */
 
-const QUESTION = {
-    answered: "What is the status of full-chaos/dev-health-web?",
-    hold: "Hold: what is the status of full-chaos/dev-health-web?",
-    long: "Long: what is the status of full-chaos/dev-health-web?",
-    again: "Again: what is the status of full-chaos/dev-health-web?",
-    late: "Late: what is the status of full-chaos/dev-health-web?",
-} as const;
+const NONCE = process.env.ASK_DEV_LIVE_NONCE ?? "";
+const question = (name: QuestionCase): string => questionFor(name, NONCE);
 
 test.describe.configure({ mode: "serial" });
 
@@ -45,6 +43,7 @@ let oracle: APIRequestContext;
 
 test.beforeAll(async ({ browser, baseURL }) => {
     expect(ORACLE, "ASK_DEV_LIVE_ORACLE is not set: no question may be sent").not.toBe("");
+    expect(NONCE, "ASK_DEV_LIVE_NONCE is not set: run make-plan.ts for this run").not.toBe("");
     oracle = await requestContext.newContext();
     expect((await oracle.get(`${ORACLE}/health`)).status(), "the oracle is not up").toBe(204);
     const context = await browser.newContext({ baseURL: baseURL!, ignoreHTTPSErrors: true });
@@ -116,7 +115,7 @@ test("P1-1: a real question shows its stages, then a whole answer", async ({ pag
     const { calls, surface } = await panel(page);
     const before = await oracleCalls();
     const sent = Date.now();
-    await ask(surface, QUESTION.answered);
+    await ask(surface, question("stages"));
 
     await expect(stages(surface).first()).toBeVisible({ timeout: 5_000 });
     const seen = new Set<string>();
@@ -156,13 +155,13 @@ test("P1-1: a real question shows its stages, then a whole answer", async ({ pag
     expect(after.started, "the question did not reach the oracle: stop").toBeGreaterThan(
         before.started,
     );
-    expect(after.by_question[QUESTION.answered], "the oracle saw another question").toBeDefined();
+    expect(after.by_question[question("stages")], "the oracle saw another question").toBeDefined();
 });
 
 test("P1-6: a double submit is one question", async ({ page }) => {
     const { calls, surface } = await panel(page);
     const input = surface.getByRole("textbox", { name: "Ask a question" });
-    await input.fill(QUESTION.answered);
+    await input.fill(question("doubleSubmit"));
     await input.dblclick();
     await input.press("Enter");
     await input.press("Enter").catch(() => undefined);
@@ -174,7 +173,7 @@ test("P1-6: a double submit is one question", async ({ page }) => {
 
 test("P1-2: Stop mid-stream ends the run within 10 s, and saves nothing", async ({ page }) => {
     const { calls, surface } = await panel(page);
-    await ask(surface, QUESTION.hold);
+    await ask(surface, question("stop"));
     await expect(surface.locator('li.chat__stage[data-state="active"]')).toBeVisible({
         timeout: 10_000,
     });
@@ -191,7 +190,7 @@ test("P1-2: Stop mid-stream ends the run within 10 s, and saves nothing", async 
 
 test("reload mid-stream: the run goes on, and its answer comes back", async ({ page }) => {
     const { calls, surface } = await panel(page);
-    await ask(surface, QUESTION.answered);
+    await ask(surface, question("reload"));
     await expect(surface.locator('li.chat__stage[data-state="active"]')).toBeVisible({
         timeout: 10_000,
     });
@@ -207,7 +206,7 @@ test("P1-3: a lost response and a same-key retry give one result and one executi
     page,
 }) => {
     const { calls, surface } = await panel(page);
-    await ask(surface, QUESTION.again);
+    await ask(surface, question("retry"));
     await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
         timeout: 60_000,
     });
@@ -231,14 +230,20 @@ test("P1-3: a lost response and a same-key retry give one result and one executi
         data: create.body,
     });
     expect(again.status()).toBe(200);
-    expect(resultId(await again.text())).toBe(resultId(await create.text!()));
+    // The browser keeps no stream body, so the first result comes from ACR's status route.
+    const submission = headers["X-ACR-Submission-ID"];
+    const status = await acr.get(`${ACR}${INVESTIGATIONS_PATH}/submissions/${submission}`, {
+        headers: { ...headers, Accept: "application/json" },
+    });
+    expect(status.status()).toBe(200);
+    expect(resultId(await again.text())).toBe(resultId(await status.text()));
     expect(
-        (await oracleCalls()).by_question[QUESTION.again],
+        (await oracleCalls()).by_question[question("retry")],
         "the retry ran the model again",
-    ).toEqual(before.by_question[QUESTION.again]);
+    ).toEqual(before.by_question[question("retry")]);
 
     const changed = JSON.parse(create.body!) as { question: string };
-    changed.question = QUESTION.answered;
+    changed.question = question("stages");
     const mismatch = await acr.post(`${ACR}${INVESTIGATIONS_PATH}`, { headers, data: changed });
     expect(mismatch.status()).toBe(409);
     expect(((await mismatch.json()) as { error: { code: string } }).error.code).toBe(
@@ -247,23 +252,117 @@ test("P1-3: a lost response and a same-key retry give one result and one executi
     await acr.dispose();
 });
 
+test("P1-5: a reused answer whose terminal is lost is recovered by status and replay", async ({
+    page,
+}) => {
+    const { calls, surface } = await panel(page);
+    await ask(surface, question("reuse"));
+    await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
+        timeout: 60_000,
+    });
+    const asked = (await oracleCalls()).by_question[question("reuse")];
+    expect(asked?.interpret?.answered, "the first ask did not reach the oracle").toBe(1);
+
+    // The same owner in a new conversation: a turn in the same one is a follow-up, and ACR does
+    // not reuse those. The stream loses its terminal on the way to the browser.
+    await page.route(`${ACR}${INVESTIGATIONS_PATH}`, async (route) => {
+        if (route.request().method() !== "POST") return route.fallback();
+        const response = await route.fetch();
+        const whole = await response.text();
+        const end = whole.indexOf("event: result");
+        expect(end, "the stream carried no result to lose").toBeGreaterThan(0);
+        return route.fulfill({ response, body: whole.slice(0, end) });
+    });
+    await surface.getByTestId("ask-dev-history-toggle").click();
+    await surface.getByRole("button", { name: "New conversation" }).click();
+    calls.length = 0;
+    await ask(surface, question("reuse"));
+    await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
+        timeout: 60_000,
+    });
+
+    const paths = calls.map((call) => call.path);
+    expect(investigations(calls)).toHaveLength(1);
+    // With the run lease on, the recovery is an attach to the run's events; with it off, the
+    // status route and a replay of the final id.
+    expect(
+        paths.some((path) => /\/submissions\/[^/]+\/events$|\/investigations\/result_/u.test(path)),
+        "the answer came back by no recovery path",
+    ).toBe(true);
+    expect((await oracleCalls()).by_question[question("reuse")], "a model ran again").toEqual(
+        asked,
+    );
+});
+
 test("P1-11: a run over 60 s reaches its answer, through the ingress", async ({ page }) => {
     test.setTimeout(150_000);
     const { surface } = await panel(page);
     const sent = Date.now();
-    await ask(surface, QUESTION.long);
+    await ask(surface, question("long"));
     await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
         timeout: 110_000,
     });
     expect(Date.now() - sent).toBeGreaterThan(60_000);
 });
 
-test("a model that runs out of time shows the deadline state", async ({ page }) => {
-    test.setTimeout(150_000);
+test("a synthesis that runs out of time gives a degraded answer, not an error", async ({
+    page,
+}) => {
+    test.setTimeout(170_000);
     const { surface } = await panel(page);
-    await ask(surface, QUESTION.late);
-    await expect(surface.getByText("A model step ran out of time")).toBeVisible({
-        timeout: 120_000,
+    await ask(surface, question("late"));
+    await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
+        timeout: 140_000,
     });
-    await expect(surface.getByRole("article", { name: "Answer" })).toHaveCount(0);
+    await expect(surface.getByTestId("answer-panel")).not.toBeEmpty();
+    const late = (await oracleCalls()).by_question[question("late")];
+    expect(late?.interpret?.answered).toBe(1);
+    expect(late?.synthesize?.answered, "the oracle answered the synthesis").toBe(0);
+    expect(late?.synthesize?.cancelled).toBeGreaterThan(0);
+});
+
+test("P1-10: a principal's third concurrent run is refused, naming the principal limit", async ({
+    page,
+}) => {
+    const { calls, surface } = await panel(page);
+    await ask(surface, question("ceiling"));
+    await expect(surface.locator('li.chat__stage[data-state="active"]')).toBeVisible({
+        timeout: 10_000,
+    });
+    const create = investigations(calls)[0]!;
+    const acr = await requestContext.newContext({ ignoreHTTPSErrors: true });
+    const another = (submission: string, thread: string) =>
+        acr.post(`${ACR}${INVESTIGATIONS_PATH}`, {
+            headers: {
+                Authorization: `Bearer ${create.bearer}`,
+                "X-ACR-Resource": ACR,
+                "X-ACR-Client-Version": "0.1.0",
+                "X-ACR-Submission-ID": submission,
+                "X-ACR-Thread-ID": thread,
+                Accept: "text/event-stream",
+                "Content-Type": "application/json",
+            },
+            data: {
+                ...(JSON.parse(create.body!) as Record<string, unknown>),
+                request_id: `request_${randomUUID().replaceAll("-", "").slice(0, 24)}`,
+            },
+            timeout: 60_000,
+        });
+    const id = (prefix: string) => `${prefix}_${randomUUID().replaceAll("-", "")}`;
+    // The second run holds its slot until the test ends; only the third answers at once.
+    const second = another(id("sub"), id("thread"));
+    second.catch(() => undefined);
+    await page.waitForTimeout(2_000);
+    const third = await another(id("sub"), id("thread"));
+    expect(third.status()).toBe(429);
+    const refused = (await third.json()) as {
+        error: { code: string; details?: { limit?: string } };
+    };
+    expect(refused.error.code).toBe("concurrency_limited");
+    expect(refused.error.details?.limit).toBe("principal");
+    expect(third.headers()["retry-after"]).toMatch(/^\d+$/u);
+
+    await surface.getByRole("button", { name: "Stop" }).click();
+    await expect(surface.getByTestId("chat-progress")).toHaveCount(0, { timeout: 15_000 });
+    await acr.dispose();
 });
