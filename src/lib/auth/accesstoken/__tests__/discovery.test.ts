@@ -93,7 +93,8 @@ describe("parseDiscovery", () => {
 // (ci/ops-contract.pin). WEB_REQUIRE_ACCESS_TOKEN_CORPUS=1 turns a missing checkout into a failure.
 const contractRoot = process.env.WEB_OPS_CONTRACT_ROOT ?? "";
 const required = process.env.WEB_REQUIRE_ACCESS_TOKEN_CORPUS === "1";
-const suite = contractRoot !== "" || required ? describe : describe.skip;
+const present = contractRoot !== "";
+const suite = present || required ? describe : describe.skip;
 const dir = path.join(contractRoot, "contracts/auth/v1/examples/discovery");
 const read = (file: string) => readFileSync(path.join(dir, file), "utf8");
 
@@ -104,6 +105,12 @@ interface Manifest {
 }
 
 suite("parseDiscovery against the pinned discovery corpus", () => {
+    it("is present when the gate requires it", () => {
+        expect(present).toBe(true);
+    });
+
+    // A skipped suite still runs this callback: read nothing without a corpus.
+    if (!present) return;
     const manifest = JSON.parse(read("manifest.json")) as Manifest;
 
     it("accepts every accept fixture when its own issuer is the pinned issuer", () => {
