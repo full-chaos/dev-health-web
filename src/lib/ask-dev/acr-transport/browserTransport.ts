@@ -33,9 +33,13 @@ import { SseEventTooLargeError, SseMalformedError, SseParser } from "./sseParser
  *   URL. The threads, attach, cancel and feedback calls are T14b (CHAOS-12336). Until then they
  *   refuse locally and send nothing.
  * - **Token:** read right before each call, from the token store's memory only
- *   (`getAcrAccessToken`). The `sessionStorage` family is never read here. No token, or ACR's 401,
- *   is `TransportFailure("authorization_required")`: the panel's "Connect Ask Dev" state. There is
- *   no retry and no refresh here; refresh is c4 (CHAOS-12305).
+ *   (`getAcrAccessToken`). The `sessionStorage` family is never read here. No token is
+ *   `TransportFailure("authorization_required")`: the panel's "Connect Ask Dev" state.
+ * - **401 (CHAOS-12305):** ACR refused the token. The transport tells the store
+ *   (`reportAcrTokenRejected`), which drops it if it is still held, and reads the token once
+ *   more; the store then refreshes. A different token sends the call once more (the same
+ *   `X-ACR-Submission-ID`, so a retried `investigate` is idempotent). The same token, no token, or
+ *   a second 401 is "authorization required". There is no loop: at most 2 requests per call.
  * - **Deadline:** the store's absolute deadline D. The budget header is floor(D − now − 5 s) when
  *   the call is sent; below ACR's minimum the call is not sent (`budget_exhausted`). The response
  *   headers have min(15 s, D − now) (`admission_timeout`). Once they arrive, 30 s with no byte is
@@ -71,8 +75,10 @@ export type StreamValidators = {
 export type BrowserTransportDependencies = {
     readonly fetch: typeof fetch;
     readonly now: () => number;
-    /** The token store's in-memory access token (sync today; c4 makes it async). */
+    /** The token store's access token, read right before each call (`getAcrAccessToken`). */
     readonly token: () => AcrAccessToken | Promise<AcrAccessToken>;
+    /** ACR answered 401 for `token`: the store drops it if it is still held (CHAOS-12305). */
+    readonly rejected: (token: string) => void;
     readonly envelope: StreamEnvelopeValidators;
     /** Starts (or joins) the load of the full checks. */
     readonly validators: () => Promise<StreamValidators>;
@@ -176,6 +182,16 @@ export function createAcrBrowserTransport(
         return held.token;
     }
 
+    /**
+     * ACR answered 401 for `token` (CHAOS-12305). Tells the store, then reads the token once more:
+     * a different token is the one retry; anything else is null ("authorization required").
+     */
+    async function another(token: string): Promise<string | null> {
+        dependencies.rejected(token);
+        const next = await dependencies.token();
+        return next.kind === "token" && next.token !== token ? next.token : null;
+    }
+
     const headers = (token: string, extra: Record<string, string>): Record<string, string> => ({
         Authorization: `Bearer ${token}`,
         "X-ACR-Resource": config.issuer,
@@ -204,7 +220,10 @@ export function createAcrBrowserTransport(
         throw new Error(`ask-dev acr ${operation}: ${String(response.status)} with no error body`);
     }
 
-    /** One JSON GET with the 15 s header bound. */
+    /**
+     * One JSON GET with the 15 s header bound. A 401 is retried once with a different token
+     * (CHAOS-12305).
+     */
     async function getJson(
         path: string,
         operation: string,
@@ -212,6 +231,26 @@ export function createAcrBrowserTransport(
     ): Promise<{ readonly response: Response; readonly body: unknown }> {
         if (signal.aborted) throw signal.reason;
         const token = await bearer();
+        let response = await get(path, operation, signal, token);
+        if (response.status === 401) {
+            void response.body?.cancel().catch(() => undefined);
+            const next = await another(token);
+            if (next !== null) {
+                response = await get(path, operation, signal, next);
+                if (response.status === 401) dependencies.rejected(next);
+            }
+        }
+        if (response.status === 404 || !response.ok) return { response, body: undefined };
+        return { response, body: await boundedJson(response, signal) };
+    }
+
+    /** One GET, to its response headers, with the 15 s bound. */
+    async function get(
+        path: string,
+        operation: string,
+        signal: AbortSignal,
+        token: string,
+    ): Promise<Response> {
         // The signal may end while the token store answers: then nothing is sent.
         if (signal.aborted) throw signal.reason;
         const controller = new AbortController();
@@ -232,8 +271,7 @@ export function createAcrBrowserTransport(
                 signal: controller.signal,
             });
             clearTimeout(timer);
-            if (response.status === 404 || !response.ok) return { response, body: undefined };
-            return { response, body: await boundedJson(response, signal) };
+            return response;
         } catch (error) {
             if (timedOut) throw new Error(`ask-dev acr ${operation}: no answer in time`);
             throw error;
@@ -249,12 +287,12 @@ export function createAcrBrowserTransport(
         if (budgetNow() < ACR_MIN_WAIT_BUDGET_SECONDS) {
             throw new TransportFailure("budget_exhausted");
         }
-        const token = await bearer();
+        let token = await bearer();
         // Option (c): the full checks start loading now, in parallel with the call; only the
         // `result` terminal waits for them.
         const full = startFullChecks();
         // The header is computed when the call is sent, from what is left of D (plan §2.7.6).
-        const budget = budgetNow();
+        let budget = budgetNow();
         if (budget < ACR_MIN_WAIT_BUDGET_SECONDS) throw new TransportFailure("budget_exhausted");
 
         const controller = new AbortController();
@@ -287,27 +325,47 @@ export function createAcrBrowserTransport(
             HEADER_WAIT_MAX_MS,
         );
         try {
-            let response: Response;
-            try {
-                response = await dependencies.fetch(`${base}/investigations`, {
-                    method: "POST",
-                    headers: headers(token, {
-                        Accept: "text/event-stream",
-                        "Content-Type": "application/json",
-                        "X-ACR-Submission-ID": call.submissionId,
-                        "X-ACR-Thread-ID": call.threadId,
-                        "X-ACR-Wait-Budget-Seconds": String(budget),
-                    }),
-                    body: JSON.stringify(call.request),
-                    credentials: "omit",
-                    redirect: "error",
-                    cache: "no-store",
-                    signal: controller.signal,
-                });
-            } catch (error) {
-                throw halted() ?? error;
-            }
+            const send = async (): Promise<Response> => {
+                try {
+                    return await dependencies.fetch(`${base}/investigations`, {
+                        method: "POST",
+                        headers: headers(token, {
+                            Accept: "text/event-stream",
+                            "Content-Type": "application/json",
+                            "X-ACR-Submission-ID": call.submissionId,
+                            "X-ACR-Thread-ID": call.threadId,
+                            "X-ACR-Wait-Budget-Seconds": String(budget),
+                        }),
+                        body: JSON.stringify(call.request),
+                        credentials: "omit",
+                        redirect: "error",
+                        cache: "no-store",
+                        signal: controller.signal,
+                    });
+                } catch (error) {
+                    throw halted() ?? error;
+                }
+            };
+            let response = await send();
             clearTimeout(timer);
+            if (response.status === 401) {
+                // CHAOS-12305: one retry with a different token, the same submission id (idempotent);
+                // its budget and header wait are computed again at the resend.
+                void response.body?.cancel().catch(() => undefined);
+                const next = await another(token);
+                if (next !== null) {
+                    if (call.signal.aborted) throw call.signal.reason;
+                    budget = budgetNow();
+                    if (budget < ACR_MIN_WAIT_BUDGET_SECONDS) {
+                        throw new TransportFailure("budget_exhausted");
+                    }
+                    token = next;
+                    timer = setTimeout(() => end("admission_timeout"), HEADER_WAIT_MAX_MS);
+                    response = await send();
+                    clearTimeout(timer);
+                    if (response.status === 401) dependencies.rejected(token);
+                }
+            }
             if (!response.ok) await refuse(response, "investigate", call.signal);
             const type = response.headers.get("Content-Type") ?? "";
             if (!/^text\/event-stream\b/iu.test(type) || response.body === null) {

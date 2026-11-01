@@ -1,5 +1,5 @@
 import type { AskDevTransport } from "@/components/ask-dev/conversation/transport";
-import { getAcrAccessToken } from "@/lib/ask-dev/acr-auth";
+import { getAcrAccessToken, reportAcrTokenRejected } from "@/lib/ask-dev/acr-auth";
 import { browserAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
 
 import * as envelope from "@/lib/acr/streamEnvelopeValidators";
@@ -21,6 +21,7 @@ export function acrBrowserTransport(): AskDevTransport | null {
         fetch: (input, init) => globalThis.fetch(input, init),
         now: () => Date.now(),
         token: () => getAcrAccessToken(),
+        rejected: (token) => reportAcrTokenRejected(token),
         envelope,
         validators: loadStreamValidators,
     });

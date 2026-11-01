@@ -3,15 +3,20 @@
  * item T4). Sign-out (`signOutEverywhere`) asks this hook for the ACR token family the browser
  * holds, revokes that family at ACR's revocation endpoint, then asks the hook to clear every tab.
  *
- * The store itself is item T13 (CHAOS-12103, `src/lib/ask-dev/acr-auth.ts`). Until it lands, the
- * browser holds no ACR token: `heldFamily` returns null (step 2 sends nothing) and there is nothing
- * to clear. T13 replaces `acrBrowserSignOut` with its store, and must keep both members working on
- * every page, not only after the Ask Dev panel has loaded: `heldFamily` reads the stored family
- * directly (sessionStorage), and `clearAllTabs` clears this tab and tells the other tabs of the
- * origin to clear theirs (BroadcastChannel).
+ * The store is T13's `src/lib/ask-dev/acr-auth.ts` (CHAOS-12305, c4). Both members work on every
+ * page, not only after the Ask Dev panel has loaded:
+ * - `heldFamily` is sync and reads the stored family directly (sessionStorage), whoever is signed
+ *   in. It is null when no family is held, or when ACR advertised no revocation endpoint.
+ * - `clearAllTabs` clears this tab (the family, a pending authorization, the token in memory) and
+ *   tells the origin's other tabs to clear theirs (BroadcastChannel `ask-dev:acr-tabs`).
+ *
+ * Every page imports this module (through `signOutEverywhere`), so its load starts the tab
+ * listener: a tab that never used the store still clears on sign-out and still answers a cloned
+ * tab. That sends no request (P1-6).
  *
  * Client code. No value here is logged; the refresh token leaves the browser only to ACR.
  */
+import { clearAcrTokensInAllTabs, listenForAcrTabs, readAcrHeldFamily } from "./acr-auth";
 
 /** The ACR token family this browser holds: what RFC 7009 revocation of it needs. */
 export type AcrTokenFamily = {
@@ -30,8 +35,20 @@ export type AcrSignOutHook = {
     readonly clearAllTabs: () => void | Promise<void>;
 };
 
-/** No ACR token store yet (T13): no family is held and there is no token state to clear. */
+/** The browser's ACR token store, for sign-out (CHAOS-12305). */
 export const acrBrowserSignOut: AcrSignOutHook = {
-    clearAllTabs: () => undefined,
-    heldFamily: () => null,
+    clearAllTabs: () => clearAcrTokensInAllTabs(),
+    heldFamily: () => {
+        const family = readAcrHeldFamily();
+        if (family === null || family.revocationEndpoint === null) return null;
+        return {
+            clientId: family.clientId,
+            refreshToken: family.refreshToken,
+            revocationEndpoint: family.revocationEndpoint,
+        };
+    },
 };
+
+// Every page loads this module: listen from here, so the tab clears on sign-out and answers a
+// clone even when it never used the store (CHAOS-12305). A channel, not a request.
+if (typeof window !== "undefined") listenForAcrTabs();
