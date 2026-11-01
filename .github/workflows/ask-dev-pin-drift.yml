@@ -1,0 +1,135 @@
+# Compare web's ask-dev render pin with ask-dev main (CHAOS-12393, CHAOS-12378 part C0). Modelled on
+# acr-pin-drift.yml.
+#
+# Main, schedule and manual runs are strict: a pin that drifted, is not on ask-dev main, or carries
+# another ACR contract than web turns the run red and keeps it red until the pin is bumped. They
+# also open (or update) one "ask-dev pin drift: <ask-dev sha>" issue, and close it when it clears.
+# A PR run is strict only when the PR moves the pin (scripts/ask-dev-pin-scope.mjs), and it then
+# names both SHAs on the run, so a pin never moves unseen. For any other PR, drift is a warning, so
+# an ask-dev main move never turns unrelated PRs red. Exit 1 = the pin is wrong, exit 2 = the check
+# could not fetch (also red where strict).
+name: ask-dev pin drift
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+    schedule:
+        - cron: '47 * * * *'
+    workflow_dispatch:
+
+permissions: {}
+
+jobs:
+    drift:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            status: ${{ steps.check.outputs.status }}
+            pin: ${{ steps.check.outputs.pin }}
+            head: ${{ steps.check.outputs.head }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+              with:
+                  node-version: 22
+            - name: Read the base branch's package.json
+              if: github.event_name == 'pull_request'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REPO: ${{ github.repository }}
+                  BASE_SHA: ${{ github.event.pull_request.base.sha }}
+              run: |
+                  set -euo pipefail
+                  gh api "repos/$REPO/contents/package.json?ref=$BASE_SHA" \
+                      -H "Accept: application/vnd.github.raw+json" > "$RUNNER_TEMP/base-package.json"
+            # The token is not set on this step: it runs a script from the PR checkout.
+            - name: Decide whether the pin check is enforced
+              id: scope
+              env:
+                  EVENT: ${{ github.event_name }}
+              run: |
+                  set -euo pipefail
+                  if [ "$EVENT" != "pull_request" ]; then
+                      echo "enforce=true" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
+                  node scripts/ask-dev-pin-scope.mjs "$RUNNER_TEMP/base-package.json" >> "$GITHUB_OUTPUT"
+            - name: Name the moved pin
+              if: github.event_name == 'pull_request' && steps.scope.outputs.enforce == 'true'
+              env:
+                  BASE_PIN: ${{ steps.scope.outputs.base_pin }}
+                  PR_PIN: ${{ steps.scope.outputs.pr_pin }}
+              run: |
+                  echo "::notice title=ask-dev pin moved::$BASE_PIN -> $PR_PIN"
+            - name: Compare the pin with ask-dev main
+              id: check
+              continue-on-error: true
+              run: node scripts/check-ask-dev-pin-drift.mjs
+            - name: Advisory drift (this PR does not move the pin)
+              if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce != 'true'
+              run: |
+                  echo "::warning title=ask-dev pin drift (advisory)::The ask-dev pin differs from ask-dev main or the check could not run. This PR does not move the pin, so it is not blocked. See the check step log; main carries the drift issue."
+            - name: Fail on a wrong pin
+              if: steps.check.outcome == 'failure' && steps.scope.outputs.enforce == 'true'
+              run: exit 1
+
+    drift-issue:
+        needs: drift
+        if: >-
+            always() && github.event_name != 'pull_request' &&
+            needs.drift.outputs.status != '' && needs.drift.outputs.status != 'error'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            issues: write
+        concurrency:
+            group: ask-dev-pin-drift-issue
+            cancel-in-progress: false
+        env:
+            GH_TOKEN: ${{ github.token }}
+            GH_REPO: ${{ github.repository }}
+            STATUS: ${{ needs.drift.outputs.status }}
+            PIN: ${{ needs.drift.outputs.pin }}
+            HEAD_SHA: ${{ needs.drift.outputs.head }}
+            RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        steps:
+            - name: Open, update or close the drift issue
+              run: |
+                  set -euo pipefail
+                  # The list API, not search: search is indexed late and would let a second issue open.
+                  open=$(gh issue list --state open --limit 200 --json number,title \
+                      --jq '[.[] | select(.title | startswith("ask-dev pin drift:")) | .number] | sort | .[]')
+                  if [ "$STATUS" = "current" ]; then
+                      for n in $open; do
+                          gh issue close "$n" --comment "Drift cleared: the pin $PIN matches ask-dev main $HEAD_SHA. Run: $RUN_URL"
+                      done
+                      exit 0
+                  fi
+                  title="ask-dev pin drift: $HEAD_SHA"
+                  body=$(printf '%s\n' \
+                      "Web's ask-dev render pin needs a bump ($STATUS)." \
+                      "" \
+                      "- Pin: $PIN" \
+                      "- ask-dev main: $HEAD_SHA" \
+                      "- Detected by: $RUN_URL" \
+                      "" \
+                      "Bump, in its own PR: \`pnpm add @full-chaos/ask-dev@github:full-chaos/ask-dev#<ask-dev main sha>\`. This issue closes by itself when the pin matches." )
+                  first=""
+                  for n in $open; do
+                      if [ -z "$first" ]; then
+                          first=$n
+                      else
+                          gh issue close "$n" --comment "Duplicate of #$first."
+                      fi
+                  done
+                  if [ -z "$first" ]; then
+                      gh issue create --title "$title" --body "$body"
+                  else
+                      # Always: the pin or the status can change while main's SHA, and so the title, does not.
+                      gh issue edit "$first" --title "$title" --body "$body"
+                  fi
