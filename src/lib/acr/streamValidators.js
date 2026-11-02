@@ -30723,6 +30723,7 @@ const schema131 = {
         "investment_theme_share",
         "comparison_side_by_side",
         "investment_subcategory_share",
+        "investment_repository_flow",
     ],
 };
 const schema132 = {
@@ -31864,7 +31865,8 @@ function validate103(
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
-                data3 === "investment_subcategory_share"
+                data3 === "investment_subcategory_share" ||
+                data3 === "investment_repository_flow"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -53399,7 +53401,8 @@ function validate173(
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
-                data3 === "investment_subcategory_share"
+                data3 === "investment_subcategory_share" ||
+                data3 === "investment_repository_flow"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -60635,6 +60638,7 @@ const schema194 = {
                 "investment_theme_share",
                 "comparison_side_by_side",
                 "investment_subcategory_share",
+                "investment_repository_flow",
             ],
         },
         RenderValueUnit: {
@@ -77879,6 +77883,7 @@ const schema260 = {
         "investment_theme_share",
         "comparison_side_by_side",
         "investment_subcategory_share",
+        "investment_repository_flow",
     ],
 };
 const schema261 = {
@@ -79020,7 +79025,8 @@ function validate233(
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
-                data3 === "investment_subcategory_share"
+                data3 === "investment_subcategory_share" ||
+                data3 === "investment_repository_flow"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -103508,7 +103514,8 @@ function validate302(
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
-                data3 === "investment_subcategory_share"
+                data3 === "investment_subcategory_share" ||
+                data3 === "investment_repository_flow"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -122722,7 +122729,8 @@ function validate366(
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
                 data3 === "comparison_side_by_side" ||
-                data3 === "investment_subcategory_share"
+                data3 === "investment_subcategory_share" ||
+                data3 === "investment_repository_flow"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
