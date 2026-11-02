@@ -751,3 +751,11 @@ If you see this error during sign-in or sign-up, Auth.js cannot match the reques
 AUTH_URL=https://app.example.com  # production
 AUTH_URL=http://localhost:3000     # local dev (usually auto-detected)
 ```
+
+**Social sign-in** (CHAOS-10877): GitHub, Google and GitLab are built with `checks: ["pkce", "state"]`
+in `src/lib/auth.ts`, so the authorization redirect carries a PKCE `code_challenge` with method `S256`
+(D6131) and a `state` that the callback checks. The jwt callback sends the provider access token once
+to `POST /api/v1/auth/social-login` (go-api proxy to auth-service) as `{provider, provider_access_token}`
+and keeps nothing of it. A first sign-in creates the user and no org: the session has no `org_id` and
+`needs_onboarding` is true until `create_org` in onboarding creates the org and the owner membership
+(D6145 correction). Cells: `auth-social-exchange.test.ts`, `auth-social-pkce.test.ts`.
