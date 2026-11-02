@@ -108,6 +108,38 @@ export function watchAuthorization(page: Pick<Page, "on">): string[] {
     return seen;
 }
 
+/**
+ * What a page was waiting for, if it never drew. The live config keeps traces off, because bearers
+ * are on these pages, so a blank `/dev` after sign-in (4 of 44 sign-ins, all before this helper)
+ * leaves this instead: each open request by method and path, the failed ones, and whether the page
+ * hydrated. No header, no query, no body.
+ */
+export function watchPageLoad(page: Page): () => Promise<string> {
+    const open = new Map<Request, string>();
+    const failed: string[] = [];
+    const named = (request: Request) => {
+        const url = new URL(request.url());
+        return `${request.method()} ${url.host}${url.pathname}`;
+    };
+    page.on("request", (request) => open.set(request, named(request)));
+    page.on("requestfinished", (request) => open.delete(request));
+    page.on("requestfailed", (request) => {
+        open.delete(request);
+        failed.push(named(request));
+    });
+    return async () => {
+        const hydrated = await page
+            .evaluate(() =>
+                Object.keys(document.querySelector("button") ?? {}).some((key) =>
+                    key.startsWith("__react"),
+                ),
+            )
+            // A closed page cannot say: that is a finding too, not a reason to drop the rest.
+            .catch((error: unknown) => `unknown: ${String(error).slice(0, 80)}`);
+        return JSON.stringify({ hydrated, open: [...open.values()].slice(0, 20), failed });
+    };
+}
+
 /** A question to ACR. The suite counts these: only a routed case may send one. */
 export const investigations = (calls: readonly AcrCall[]): readonly AcrCall[] =>
     calls.filter((call) => call.method === "POST" && call.path === INVESTIGATIONS_PATH);

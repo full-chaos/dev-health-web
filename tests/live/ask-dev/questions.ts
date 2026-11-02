@@ -19,9 +19,23 @@ export const CASES = {
     reuse: "Again: what is the status of full-chaos/dev-health-web?",
     long: "Long: what is the status of full-chaos/dev-health-web?",
     late: "Late: what is the status of full-chaos/dev-health-web?",
+    expand: "Hold: what is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
 
 export const questionFor = (name: QuestionCase, nonce: string): string =>
     `Case ${name} ${nonce}: ${BASE}`;
+
+/**
+ * The page-context cases (CHAOS-11940). The question names no subject, so the only subject is the
+ * page's hint. Each case has its own text, so a run never reuses another case's answer.
+ */
+const PAGE_BASE = "where is engineering effort going in this repository over the last 30 days?";
+
+export const PAGE_CASES = ["pageHint", "chipRemoved", "forgedId"] as const;
+
+export type PageCase = (typeof PAGE_CASES)[number];
+
+export const pageQuestionFor = (name: PageCase, nonce: string): string =>
+    `Case ${name} ${nonce}: ${PAGE_BASE}`;
