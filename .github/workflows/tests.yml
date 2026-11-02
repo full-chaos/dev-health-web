@@ -636,7 +636,7 @@ jobs:
                   retention-days: 90
 
     e2e-default:
-        name: E2E tests (default, shard ${{ matrix.shard }}/3)
+        name: E2E tests (default, shard ${{ matrix.shard }}/5)
         needs: [changes]
         if: needs.changes.outputs.e2e == 'true'
         runs-on: ubuntu-latest
@@ -644,7 +644,10 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                shard: [1, 2, 3]
+                # CHAOS-12583: five shards. With three, shard 1 ran 14m18s against the
+                # 15-minute limit and a slower runner cancelled it. The shard check in
+                # ci/run_tests.sh proves the split holds each test once.
+                shard: [1, 2, 3, 4, 5]
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - name: Resolve pnpm version
@@ -713,7 +716,7 @@ jobs:
               with:
                   path: ${{ steps.pnpm-store.outputs.path }}
                   key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
-            - run: bash ci/run_tests.sh e2e-default ${{ matrix.shard }}/3
+            - run: bash ci/run_tests.sh e2e-default ${{ matrix.shard }}/5
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
