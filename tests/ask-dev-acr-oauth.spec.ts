@@ -151,6 +151,10 @@ test.describe("Ask Dev ACR browser authorization (offline)", () => {
         // The page never left, and nothing of the flow reached a URL.
         expect(pages.filter((url) => /oauth|authorize|code=|state=/u.test(url))).toEqual([]);
         expect(page.url()).not.toMatch(/code=|state=|iss=/u);
+        // The family lands one session read after /token: the sign-out guard reads it first.
+        await expect
+            .poll(() => page.evaluate((key) => window.sessionStorage.getItem(key), FAMILY_KEY))
+            .not.toBeNull();
         const stored = await page.evaluate(
             ([family]) => ({
                 family: window.sessionStorage.getItem(family),
