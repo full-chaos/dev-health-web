@@ -72,6 +72,7 @@ describe("ACR REST contract boundary", () => {
             "schemas/context_fabric_thread_list.v1.schema.json",
             "schemas/credential_ack_request.v1.schema.json",
             "schemas/credential_ack_response.v1.schema.json",
+            "schemas/credential_lifecycle_list.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
             "schemas/credential_revoke_response.v1.schema.json",
             "schemas/credential_rotate_request.v1.schema.json",

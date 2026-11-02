@@ -60,6 +60,7 @@ const DEPENDENCY_CLOSURE_PATHS = [
     "contracts/jsonschema/v1/context_fabric_thread_list.v1.schema.json",
     "contracts/jsonschema/v1/credential_ack_request.v1.schema.json",
     "contracts/jsonschema/v1/credential_ack_response.v1.schema.json",
+    "contracts/jsonschema/v1/credential_lifecycle_list.v1.schema.json",
     "contracts/jsonschema/v1/credential_revoke_request.v1.schema.json",
     "contracts/jsonschema/v1/credential_revoke_response.v1.schema.json",
     "contracts/jsonschema/v1/credential_rotate_request.v1.schema.json",

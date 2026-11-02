@@ -122,6 +122,10 @@
       "sha256": "4f0e60e9a4a5a277426268edd1f9a067c5b24df57721332df2ed77fdd51fcdea"
     },
     {
+      "path": "schemas/credential_lifecycle_list.v1.schema.json",
+      "sha256": "d4642dbd6cfb1faf5f18167717779e616b404ac62a1fcde2d501b0fef2587ea6"
+    },
+    {
       "path": "schemas/credential_revoke_request.v1.schema.json",
       "sha256": "1d1402ac3c271b543e807e3f958d03fd927c361db5fdb5afe75687f689e02614"
     },

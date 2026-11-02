@@ -5075,6 +5075,22 @@ export interface SelfCredentialAcknowledgementResponseV1 {
     acknowledged_at: string;
 }
 
+/**
+ * One page of the read-only credential listing for reconciliation (GET /internal/v1/credentials/lifecycle). Ordered by credential_id; the caller's organization only. status is read from the credential's latest lifecycle event: an unrevoked credential past its expiry reads active until the expiry tick writes its expired event.
+ */
+export interface CredentialLifecycleListV1 {
+    schema_version: "credential_lifecycle_list.v1";
+    /**
+     * @maxItems 500
+     */
+    items: {
+        credential_id: string;
+        revision: number;
+        status: "active" | "revoked" | "expired";
+    }[];
+    next_after: string | null;
+}
+
 export interface SelfCredentialRevocationRequestV1 {
     schema_version: "credential_revoke_request.v1";
     rollback_receipt?: {
