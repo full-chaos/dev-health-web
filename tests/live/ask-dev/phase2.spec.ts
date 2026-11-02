@@ -295,7 +295,18 @@ for (const [name, surface, replicate] of [
             // is about the organization. The text above can name the repository in an answer about
             // the whole organization (CHAOS-12637).
             await expect.poll(() => results.length, { timeout: 30_000 }).toBe(1);
-            expect(repositoryScopeFailures(results[0], REPOSITORY)).toEqual([]);
+            // The page's repository by id, from the chip's own hint in the request it sent: a
+            // label alone does not name one repository (two can share a handle).
+            const sentBody = JSON.parse(secretsOf(investigations(calls)[0]!).body ?? "{}") as {
+                requested_scope?: { subject_hints?: { id?: string; label?: string }[] };
+            };
+            const hint = sentBody.requested_scope?.subject_hints?.find(
+                (candidate) => candidate.label === REPOSITORY,
+            );
+            expect(hint?.id).toMatch(/^repository:/u);
+            expect(
+                repositoryScopeFailures(results[0], { label: REPOSITORY, canonicalId: hint!.id! }),
+            ).toEqual([]);
         } else {
             // (c) A clarification or not-found, never an answer at organization scope.
             await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);

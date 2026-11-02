@@ -21,15 +21,20 @@ export type ScopedResult = {
 
 const NOT_ANSWERED = new Set(["clarification_required", "no_match"]);
 
+/** The page's repository: its served label, and the id the page's chip sends as its hint. */
+export type PageRepository = { readonly label: string; readonly canonicalId: string };
+
 /**
  * Why an answer is not an answer about ONE repository, or `[]` when it is: it answered; it committed
- * exactly that repository; at least one claim is about it; and no claim is about the organization.
- * A claim about another subject (the team that owns the repository, say) is allowed: a repository's
- * answer can cite its owner. No result at all is a failure: a check that did not happen fails.
+ * exactly that repository, by kind, id AND label (a label is not unique: two repositories can share
+ * a handle, two teams can differ only in case); at least one claim is about it; and no claim is about
+ * the organization. A claim about another subject (the team that owns the repository, say) is
+ * allowed: a repository's answer can cite its owner. No result at all is a failure: a check that
+ * did not happen fails.
  */
 export function repositoryScopeFailures(
     result: ScopedResult | undefined,
-    repository: string,
+    repository: PageRepository,
 ): string[] {
     if (result === undefined) return ["no terminal result was captured for this question"];
     if (NOT_ANSWERED.has(result.status)) return [`the answer did not answer: ${result.status}`];
@@ -40,9 +45,13 @@ export function repositoryScopeFailures(
         failures.push(
             `the answer committed ${String(committed.length)} subjects, not the one repository`,
         );
-    } else if (subject.kind !== "repository" || subject.label !== repository) {
+    } else if (
+        subject.kind !== "repository" ||
+        subject.canonical_id !== repository.canonicalId ||
+        subject.label !== repository.label
+    ) {
         failures.push(
-            `the answer committed ${subject.kind} "${subject.label ?? ""}", not repository "${repository}"`,
+            `the answer committed ${subject.kind} "${subject.label ?? ""}" (${subject.canonical_id}), not repository "${repository.label}" (${repository.canonicalId})`,
         );
     }
     const claims = result.claimed_facts ?? [];

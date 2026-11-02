@@ -29,6 +29,11 @@ const askDev = (path: string) =>
     ) as ScopedResult;
 
 const repositoryAnswer = askDev("served-shapes/investment-treemap.json");
+/** The page's repository: its served label and the id the page's chip sends as its hint. */
+const PAGE_REPOSITORY = {
+    label: REPOSITORY,
+    canonicalId: repositoryAnswer.subject_resolution.committed[0]!.canonical_id,
+};
 const ORGANIZATION = {
     kind: "organization",
     canonical_id: "organization:70d529e0-0000-4000-8000-000000000000",
@@ -63,7 +68,7 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
     });
 
     it("passes a served answer about the repository", () => {
-        expect(repositoryScopeFailures(repositoryAnswer, REPOSITORY)).toEqual([]);
+        expect(repositoryScopeFailures(repositoryAnswer, PAGE_REPOSITORY)).toEqual([]);
     });
 
     it.each<[string, ScopedResult | undefined, string]>([
@@ -77,7 +82,7 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
         [
             "another repository",
             askDev("cohort-members/pull-requests.json"),
-            'the answer committed repository "full-chaos/dev-health-ops", not repository "full-chaos/dev-health-web"',
+            'the answer committed repository "full-chaos/dev-health-ops" (',
         ],
         [
             "two repositories",
@@ -87,12 +92,12 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
         [
             "a project",
             askDev("served-words/full-answer.json"),
-            'the answer committed project "Ask Dev", not repository "full-chaos/dev-health-web"',
+            'the answer committed project "Ask Dev" (',
         ],
         [
             "the organization",
             aboutTheOrganization(false),
-            'the answer committed organization "Full Chaos", not repository "full-chaos/dev-health-web"',
+            'the answer committed organization "Full Chaos" (',
         ],
         [
             "the organization, with one claim about the repository (Codex r1v's answer)",
@@ -100,7 +105,30 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
             "a claim is about the organization",
         ],
     ])("refuses %s", (_, result, failure) => {
-        expect(repositoryScopeFailures(result, REPOSITORY)).toContain(failure);
+        expect(repositoryScopeFailures(result, PAGE_REPOSITORY).join("; ")).toContain(failure);
+    });
+
+    it("refuses another repository that carries this repository's label (same label, other id)", () => {
+        const result = structuredClone(repositoryAnswer) as unknown as {
+            subject_resolution: { committed: Array<{ canonical_id: string }> };
+            claimed_facts: Array<{ subject: { canonical_id: string } }>;
+        };
+        const other = "repository:00000000-0000-4000-8000-0000000000aa";
+        result.subject_resolution.committed[0]!.canonical_id = other;
+        for (const claim of result.claimed_facts) claim.subject.canonical_id = other;
+        expect(
+            repositoryScopeFailures(result as unknown as ScopedResult, PAGE_REPOSITORY).join("; "),
+        ).toContain(`(${other})`);
+    });
+
+    it("refuses the page's repository id under another label: the served words must name it too", () => {
+        const result = structuredClone(repositoryAnswer) as unknown as {
+            subject_resolution: { committed: Array<{ label: string }> };
+        };
+        result.subject_resolution.committed[0]!.label = "full-chaos/dev-health-ops";
+        expect(
+            repositoryScopeFailures(result as unknown as ScopedResult, PAGE_REPOSITORY).join("; "),
+        ).toContain('the answer committed repository "full-chaos/dev-health-ops" (');
     });
 
     it("refuses a subject of another kind that carries the repository's name", () => {
@@ -108,9 +136,9 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
             subject_resolution: { committed: Array<{ kind: string }> };
         };
         result.subject_resolution.committed[0]!.kind = "project";
-        expect(repositoryScopeFailures(result as unknown as ScopedResult, REPOSITORY)).toContain(
-            'the answer committed project "full-chaos/dev-health-web", not repository "full-chaos/dev-health-web"',
-        );
+        expect(
+            repositoryScopeFailures(result as unknown as ScopedResult, PAGE_REPOSITORY).join("; "),
+        ).toContain('the answer committed project "full-chaos/dev-health-web" (');
     });
 
     it("refuses a repository answer that holds no claim about the repository", () => {
@@ -118,9 +146,9 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
             claimed_facts: unknown[];
         };
         result.claimed_facts = [];
-        expect(repositoryScopeFailures(result as unknown as ScopedResult, REPOSITORY)).toEqual([
-            "no claim is about the repository",
-        ]);
+        expect(repositoryScopeFailures(result as unknown as ScopedResult, PAGE_REPOSITORY)).toEqual(
+            ["no claim is about the repository"],
+        );
     });
 
     it("refuses a claim of another kind that shares the repository's canonical id (Codex r1)", () => {
@@ -135,9 +163,9 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
             ...claim,
             subject: { kind: "team", canonical_id: id, label: "CHAOS" },
         }));
-        expect(repositoryScopeFailures(result as unknown as ScopedResult, REPOSITORY)).toEqual([
-            "no claim is about the repository",
-        ]);
+        expect(repositoryScopeFailures(result as unknown as ScopedResult, PAGE_REPOSITORY)).toEqual(
+            ["no claim is about the repository"],
+        );
     });
 
     it("refuses a repository answer with a claim about the organization", () => {
@@ -145,9 +173,9 @@ describe("an answer about the page's repository (CHAOS-12637)", () => {
             claimed_facts: Array<{ subject: unknown }>;
         };
         result.claimed_facts.push({ ...result.claimed_facts[0]!, subject: ORGANIZATION });
-        expect(repositoryScopeFailures(result as unknown as ScopedResult, REPOSITORY)).toEqual([
-            "a claim is about the organization",
-        ]);
+        expect(repositoryScopeFailures(result as unknown as ScopedResult, PAGE_REPOSITORY)).toEqual(
+            ["a claim is about the organization"],
+        );
     });
 });
 
@@ -167,8 +195,8 @@ describe("the terminal result of a captured event stream (CHAOS-12637)", () => {
             expect.objectContaining({ kind: "project", label: "Ask Dev" }),
         ]);
         // A project answer is not about the repository: the check reads it so.
-        expect(repositoryScopeFailures(result, REPOSITORY)).toContain(
-            'the answer committed project "Ask Dev", not repository "full-chaos/dev-health-web"',
+        expect(repositoryScopeFailures(result, PAGE_REPOSITORY).join("; ")).toContain(
+            'the answer committed project "Ask Dev" (',
         );
     });
 
@@ -349,7 +377,7 @@ describe("the live suite's result record (CHAOS-12637)", () => {
                 ),
             );
             expect(results).toEqual([]);
-            expect(repositoryScopeFailures(results[0], REPOSITORY)).toEqual([
+            expect(repositoryScopeFailures(results[0], PAGE_REPOSITORY)).toEqual([
                 "no terminal result was captured for this question",
             ]);
         } finally {
