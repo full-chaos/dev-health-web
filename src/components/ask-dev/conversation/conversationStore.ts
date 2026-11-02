@@ -33,6 +33,7 @@ import {
     type ThreadView,
     type TransportFailureReason,
 } from "./transport";
+import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
 
 /**
  * The Ask Dev conversation store (plan §2.5 D-20, §2.7.4, §2.7.5; CHAOS-11928). One per tab.
@@ -87,7 +88,7 @@ export const REPLAY_CONCURRENCY = 4;
 export const HISTORY_PAGE_SIZE = 20;
 
 /** Session storage: the hint of this tab's current conversation (E6 design v5 §4.4). */
-export const THREAD_HINT_KEY = "ask-dev:thread";
+export { THREAD_HINT_KEY };
 
 /** What the stream said about one stage: started, then (usually) completed. */
 export type StageState = "started" | "completed";
