@@ -9,7 +9,7 @@ import {
     nonBlank,
     type ConversationSourceTurn,
 } from "@/lib/ask-dev/conversation";
-import { RUN_TIMEOUT_DEFAULT_MS } from "@/lib/ask-dev/deadline";
+import { RUN_TIMEOUT_DEFAULT_MS } from "@full-chaos/ask-dev/acr-client";
 import {
     buildInvestigationRequest,
     newRequestId,

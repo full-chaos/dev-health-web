@@ -1,3 +1,11 @@
+import {
+    ACR_BROWSER_SCOPE,
+    ACR_DEV_BROWSER_CLIENT_ID,
+    acrBrowserClientConfig as clientConfig,
+    acrIssuerOriginForCsp,
+    type AcrBrowserClientConfig,
+} from "@full-chaos/ask-dev/acr-client/config";
+
 /**
  * Which OAuth client of ACR this web app is (CHAOS-12302, c1 of the T13 split; Ask Dev direct
  * browser design §2.1). The browser is a first-party public client of acr-api: authorization code
@@ -26,12 +34,6 @@ export const ACR_CLIENT_METADATA_PATH = "/oauth/acr-client.json";
  */
 export const ACR_OAUTH_CALLBACK_PATH = "/ask-dev/oauth/callback";
 
-/** The scopes the Ask Dev routes need: context:read; evidence:read for evidence. Never data:read. */
-export const ACR_BROWSER_SCOPE = "context:read evidence:read";
-
-/** ACR's development-only static browser client (acr `internal/auth/oauth.go`), never fetched. */
-export const ACR_DEV_BROWSER_CLIENT_ID = "https://localhost/acr/dev-browser-client";
-
 /**
  * The runtime config keys the browser reads. `scripts/runtime-config-acr.mjs` writes them and keeps
  * its own copy; the parity test holds the two equal.
@@ -39,89 +41,22 @@ export const ACR_DEV_BROWSER_CLIENT_ID = "https://localhost/acr/dev-browser-clie
 export const ACR_ISSUER_PUBLIC_KEY = "NEXT_PUBLIC_ACR_OAUTH_ISSUER";
 export const ACR_WEB_ORIGIN_PUBLIC_KEY = "NEXT_PUBLIC_ACR_WEB_ORIGIN";
 
-export type AcrBrowserClientConfig = {
-    /** ACR's OAuth issuer, an exact origin: also the only resource the browser class may bind. */
-    readonly issuer: string;
-    /** This web app's origin: the redirect URI's origin. */
-    readonly webOrigin: string;
-    /** The OAuth `client_id`. */
-    readonly clientId: string;
-    /** The exact `redirect_uri`. */
-    readonly redirectUri: string;
-    /** Whether the client is web's metadata document (https) or ACR's development client. */
-    readonly usesMetadataDocument: boolean;
+export {
+    ACR_BROWSER_SCOPE,
+    ACR_DEV_BROWSER_CLIENT_ID,
+    acrIssuerOriginForCsp,
+    type AcrBrowserClientConfig,
 };
 
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-/**
- * A plain host: DNS labels or an IPv6 literal. The URL parser keeps characters such as `*` in a
- * host, and a CSP source must never become a wildcard (CHAOS-12302).
- */
-const PLAIN_HOST =
-    /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|\[[0-9a-f:.]+\])$/u;
-
-function parse(raw: string): URL | undefined {
-    try {
-        const url = new URL(raw);
-        return PLAIN_HOST.test(url.hostname) ? url : undefined;
-    } catch {
-        return undefined;
-    }
-}
-
-/**
- * ACR's issuer rule: an https origin (http only on a loopback host), with no path, query,
- * fragment, user info or trailing slash. The value must be exactly that origin.
- */
-function issuerOrigin(raw: string | undefined): string | undefined {
-    const value = raw?.trim();
-    if (!value) return undefined;
-    const url = parse(value);
-    if (url === undefined || url.username !== "" || url.password !== "") return undefined;
-    const allowed =
-        url.protocol === "https:" || (url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname));
-    if (!allowed || url.origin !== value) return undefined;
-    return url.origin;
-}
-
-/** The web origin of AUTH_URL (which may carry a path), https or http loopback. */
-function webOriginOf(
-    raw: string | undefined,
-): { origin: string; loopbackHttp: boolean } | undefined {
-    const value = raw?.trim();
-    if (!value) return undefined;
-    const url = parse(value);
-    if (url === undefined || url.username !== "" || url.password !== "") return undefined;
-    if (url.protocol === "https:") return { origin: url.origin, loopbackHttp: false };
-    if (url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname)) {
-        return { origin: url.origin, loopbackHttp: true };
-    }
-    return undefined;
-}
-
-/** The client for an issuer and a web origin, or `undefined` (off). */
+/** Web's client for an issuer and a web origin, or `undefined` (off). */
 export function acrBrowserClientConfig(
     issuerRaw: string | undefined,
     webOriginRaw: string | undefined,
 ): AcrBrowserClientConfig | undefined {
-    const issuer = issuerOrigin(issuerRaw);
-    const web = webOriginOf(webOriginRaw);
-    if (issuer === undefined || web === undefined) return undefined;
-    return {
-        issuer,
-        webOrigin: web.origin,
-        clientId: web.loopbackHttp
-            ? ACR_DEV_BROWSER_CLIENT_ID
-            : `${web.origin}${ACR_CLIENT_METADATA_PATH}`,
-        redirectUri: `${web.origin}${ACR_OAUTH_CALLBACK_PATH}`,
-        usesMetadataDocument: !web.loopbackHttp,
-    };
-}
-
-/** The issuer origin the CSP may add to `connect-src`, or `undefined` (adds nothing). */
-export function acrIssuerOriginForCsp(raw: string | undefined): string | undefined {
-    return issuerOrigin(raw);
+    return clientConfig(issuerRaw, webOriginRaw, {
+        callback: ACR_OAUTH_CALLBACK_PATH,
+        metadata: ACR_CLIENT_METADATA_PATH,
+    });
 }
 
 type RuntimeWindow = {

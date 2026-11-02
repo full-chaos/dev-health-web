@@ -16,7 +16,7 @@ import {
 } from "@/components/ask-dev/conversation/transport";
 
 import { createAcrBrowserTransport } from "../browserTransport";
-import { MAX_EVENT_BYTES, MAX_STREAM_BYTES } from "../limits";
+import { MAX_EVENT_BYTES, MAX_STREAM_BYTES } from "@full-chaos/ask-dev/acr-client";
 import {
     acceptedEvent,
     acrFrame,
@@ -448,6 +448,18 @@ describe("investigate: the full checks load in parallel (option (c))", () => {
         answer(jsonResponse(result, 200));
         checks.resolve(streamValidators);
         await expect(replay).resolves.toEqual(result);
+    });
+
+    it("a result that passes the checks but that web's views cannot read is refused", async () => {
+        const open = {
+            ...streamValidators,
+            validateInvestigationResultV1: () => true,
+            validateInvestigationResultV2: () => true,
+        };
+        fetchMock.mockResolvedValue(jsonResponse({ status: "unread" }, 200));
+        await expect(
+            transportWith(async () => open).readResult("result_x", new AbortController().signal),
+        ).rejects.toMatchObject({ reason: "invalid_upstream" });
     });
 });
 
