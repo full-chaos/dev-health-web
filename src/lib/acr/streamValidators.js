@@ -30722,6 +30722,7 @@ const schema131 = {
         "dated_fact_trend",
         "investment_theme_share",
         "comparison_side_by_side",
+        "investment_subcategory_share",
     ],
 };
 const schema132 = {
@@ -31862,7 +31863,8 @@ function validate103(
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
-                data3 === "comparison_side_by_side"
+                data3 === "comparison_side_by_side" ||
+                data3 === "investment_subcategory_share"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -53396,7 +53398,8 @@ function validate173(
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
-                data3 === "comparison_side_by_side"
+                data3 === "comparison_side_by_side" ||
+                data3 === "investment_subcategory_share"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -60631,6 +60634,7 @@ const schema194 = {
                 "dated_fact_trend",
                 "investment_theme_share",
                 "comparison_side_by_side",
+                "investment_subcategory_share",
             ],
         },
         RenderValueUnit: {
@@ -77874,6 +77878,7 @@ const schema260 = {
         "dated_fact_trend",
         "investment_theme_share",
         "comparison_side_by_side",
+        "investment_subcategory_share",
     ],
 };
 const schema261 = {
@@ -79014,7 +79019,8 @@ function validate233(
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
-                data3 === "comparison_side_by_side"
+                data3 === "comparison_side_by_side" ||
+                data3 === "investment_subcategory_share"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -103501,7 +103507,8 @@ function validate302(
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
-                data3 === "comparison_side_by_side"
+                data3 === "comparison_side_by_side" ||
+                data3 === "investment_subcategory_share"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
@@ -122714,7 +122721,8 @@ function validate366(
                 data3 === "cohort_driver_contribution" ||
                 data3 === "dated_fact_trend" ||
                 data3 === "investment_theme_share" ||
-                data3 === "comparison_side_by_side"
+                data3 === "comparison_side_by_side" ||
+                data3 === "investment_subcategory_share"
             )) {
                 const err17 = {
                     instancePath: instancePath + "/selected_by",
