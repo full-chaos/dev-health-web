@@ -83,7 +83,11 @@ describe("shadow compare", () => {
         };
         expect(body.requests).toHaveLength(1);
         expect(body.requests[0].action).toBe("integrations.read");
-        expect(body.requests[0].resource).toEqual({ type: "organization", key: "org-1" });
+        expect(body.requests[0].resource).toEqual({
+            type: "organization",
+            key: "org-1",
+            organization_id: "org-1",
+        });
     });
 
     it("skips an unknown surface id", async () => {

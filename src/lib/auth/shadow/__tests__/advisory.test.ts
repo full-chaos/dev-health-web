@@ -45,7 +45,6 @@ describe("shadow is advisory", () => {
 
     it.each([
         ["impersonating", { impersonating: true }],
-        ["no_scope", { orgId: undefined }],
         ["no_scope", { principalReference: undefined }],
     ])("makes no call when the reason is %s", async (reason, over) => {
         const { transport, calls } = recordingTransport([ALLOW]);

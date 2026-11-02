@@ -13,7 +13,7 @@ export interface ShadowViewer {
 
 export interface ShadowRequestSpec {
     action: string;
-    resource: "organization";
+    resource: "organization" | "platform";
 }
 
 export interface Surface {

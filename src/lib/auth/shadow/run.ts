@@ -5,7 +5,7 @@ import { processMemo } from "@/lib/processMemo";
 import { authorizeBatch, type AuthzOutcome, type Transport } from "../authorize/client";
 import type { AuthorizeRequest } from "../authorize/request";
 import { SAMPLE_WINDOW_MS, SHADOW_TIMEOUT_MS } from "./config";
-import { surfaceById, type ShadowViewer, type Surface } from "./catalog";
+import { surfaceById, type ShadowRequestSpec, type ShadowViewer, type Surface } from "./catalog";
 import { logRun, type MismatchRecord, type RunRecord, type ShadowLogger } from "./log";
 
 // Advisory shadow of the policy decision point. It compares the verdicts the UI already acts on
@@ -79,12 +79,32 @@ function classify(
     return outcome.allowed === clientAllowed ? "match" : "mismatch";
 }
 
+export function buildShadowRequest(
+    spec: ShadowRequestSpec,
+    scope: { orgId: string | undefined; principalReference: string; requestId: string },
+): AuthorizeRequest | null {
+    const base = { principalReference: scope.principalReference, action: spec.action };
+    if (spec.resource === "platform") {
+        return {
+            ...base,
+            resource: { type: "platform", key: "platform" },
+            requestId: scope.requestId,
+        };
+    }
+    if (!scope.orgId) return null;
+    return {
+        ...base,
+        resource: { type: "organization", key: scope.orgId, organizationId: scope.orgId },
+        requestId: scope.requestId,
+    };
+}
+
 export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promise<ShadowResult> {
     try {
         const { transport } = deps;
         if (!transport) return { status: "skipped", reason: "no_transport" };
         if (input.impersonating) return { status: "skipped", reason: "impersonating" };
-        if (!input.orgId || !input.principalReference) {
+        if (!input.principalReference) {
             return { status: "skipped", reason: "no_scope" };
         }
         if (sampled(input.sampleKey, (deps.nowMs ?? Date.now)())) {
@@ -102,16 +122,16 @@ export async function shadowDecide(input: ShadowInput, deps: ShadowDeps): Promis
                 counts.no_action += 1;
                 continue;
             }
-            asked.push({
-                surface,
-                clientAllowed: surface.clientAllowed(input.viewer),
-                request: {
-                    principalReference: input.principalReference,
-                    action: surface.request.action,
-                    resource: { type: surface.request.resource, key: input.orgId },
-                    requestId: newRequestId(),
-                },
+            const request = buildShadowRequest(surface.request, {
+                orgId: input.orgId,
+                principalReference: input.principalReference,
+                requestId: newRequestId(),
             });
+            if (!request) {
+                counts.no_action += 1;
+                continue;
+            }
+            asked.push({ surface, clientAllowed: surface.clientAllowed(input.viewer), request });
         }
 
         const mismatches: MismatchRecord[] = [];
