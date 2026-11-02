@@ -39,3 +39,22 @@ export type PageCase = (typeof PAGE_CASES)[number];
 
 export const pageQuestionFor = (name: PageCase, nonce: string): string =>
     `Case ${name} ${nonce}: ${PAGE_BASE}`;
+
+/**
+ * CHAOS-3598, exit P2-4: the question chris saw answered at organization scope, asked from a
+ * repository page (its hint) and from `/dev` (no hint), twice each.
+ */
+const LATENCY_BASE =
+    "what is driving the review latency regression in this repository over the last 30 days?";
+
+export const LATENCY_CASES = [
+    "latencyPage1",
+    "latencyPage2",
+    "latencyDev1",
+    "latencyDev2",
+] as const;
+
+export type LatencyCase = (typeof LATENCY_CASES)[number];
+
+export const latencyQuestionFor = (name: LatencyCase, nonce: string): string =>
+    `Case ${name} ${nonce}: ${LATENCY_BASE}`;
