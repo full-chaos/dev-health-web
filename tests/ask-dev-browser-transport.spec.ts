@@ -182,6 +182,21 @@ async function acrOn(context: BrowserContext, harness: Harness) {
                 });
                 return;
             }
+            // ACR's list has no 404 (`NO_404_OPERATIONS`): a viewer with no conversations.
+            if (
+                request.method() === "GET" &&
+                new URL(request.url()).pathname === "/api/v1/context-fabric/threads"
+            ) {
+                await route.fulfill({
+                    status: 200,
+                    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                    body: JSON.stringify({
+                        schema_version: "context_fabric_thread_list.v1",
+                        threads: [],
+                    }),
+                });
+                return;
+            }
             // T14b (CHAOS-12336): the answer's feedback control reads its feedback. A never-rated
             // result, as ACR answers it.
             const feedback = /^\/api\/v1\/context-fabric\/investigations\/feedback\/([^/]+)$/u.exec(
@@ -353,8 +368,14 @@ test.describe("desktop (1280px), T14b", () => {
         const panel = page.getByTestId("ask-dev-panel");
         await panel.getByTestId("ask-dev-history-toggle").click();
         await expect.poll(() => harness.tokens.length).toBe(1);
+        // The read's end, not the moment after the token: a failed read lands later than that.
+        await expect(panel.getByTestId("ask-dev-history-empty")).toBeVisible();
         await expect(panel.getByTestId("ask-dev-history-read-failed")).toHaveCount(0);
         await expect(panel).not.toContainText(/\bconnect\b/iu);
+        expect(callsTo(harness, "threads?")).toHaveLength(1);
+        expect(callsTo(harness, "threads?")[0]?.headers).toMatchObject({
+            authorization: `Bearer ${harness.tokens[0]}`,
+        });
         await page.screenshot({
             path: testInfo.outputPath("browser-calls-history-desktop.png"),
             animations: "disabled",
