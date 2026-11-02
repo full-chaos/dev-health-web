@@ -344,6 +344,22 @@ const CASES: Record<TurnOutcome["kind"], Case> = {
         drive: refusedWith(new TransportFailure("stalled"), "stalled"),
         expected: { kind: "status", status: { kind: "stalled" }, retry: false },
     },
+    // CHAOS-12594: a finished answer the page's pinned contract refused (CHAOS-12590).
+    unreadable: {
+        drive: async (s) => {
+            transport.scripts.push([
+                accepted(),
+                { fail: new TransportFailure("invalid_upstream", "schema", true) },
+            ]);
+            s.submit(QUESTION);
+            await reaches(s, "unreadable");
+        },
+        expected: {
+            kind: "status",
+            status: { kind: "unreadable", reference: expect.any(String) as string },
+            retry: false,
+        },
+    },
     canceled: {
         drive: terminal("canceled", "canceled"),
         expected: { kind: "status", status: { kind: "canceled" }, retry: false },
@@ -417,8 +433,8 @@ const CASES: Record<TurnOutcome["kind"], Case> = {
 };
 
 describe("every TurnOutcome kind maps onto the seam (the real store reaches each one)", () => {
-    it("names 25 kinds", () => {
-        expect(Object.keys(CASES)).toHaveLength(25);
+    it("names 26 kinds", () => {
+        expect(Object.keys(CASES)).toHaveLength(26);
     });
 
     it.each(Object.entries(CASES))("%s", async (_, { drive, expected }) => {

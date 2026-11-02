@@ -8,7 +8,11 @@ import {
     type TestInfo,
 } from "@playwright/test";
 
-import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
+import {
+    THREAD_HINT_KEY,
+    UNSAVED_CONVERSATION_KEY,
+    UNSAVED_THREAD_KEY,
+} from "@/lib/ask-dev/conversationHint";
 
 import { startFaultProxy, type FaultMode, type FaultProxy } from "./fault-proxy";
 import { questionFor, type QuestionCase } from "./questions";
@@ -222,6 +226,9 @@ async function withProxy(
  * 2026-11-02). Sign-out forgets the tab's restore hint, so the new session can ask at once
  * (CHAOS-12575: left in place, it restored a conversation it could not read, composer disabled).
  */
+/** The panel's notice for a conversation a reload lost (CHAOS-11934). */
+const NOT_SAVED_NOTICE = "This conversation was not saved yet.";
+
 async function signOutCase(
     page: Page,
     testInfo: TestInfo,
@@ -249,6 +256,11 @@ async function signOutCase(
         (key) => window.sessionStorage.getItem(key) !== null,
         THREAD_HINT_KEY,
     );
+    // CHAOS-12605: whether the tab still holds its unsaved-conversation marker (only that it is there).
+    const markerAfterSignOut = await page.evaluate(
+        (keys) => keys.some((key) => window.sessionStorage.getItem(key) !== null),
+        [UNSAVED_CONVERSATION_KEY, UNSAVED_THREAD_KEY],
+    );
 
     // The same user again: the same principal, so ACR serves that submission's record. History's
     // read during the authorization is the new session's call with a bearer.
@@ -260,6 +272,8 @@ async function signOutCase(
     await expect(again).toBeVisible();
     await page.waitForTimeout(3_000);
     const oldTurnShown = await again.getByText(question(name)).count();
+    // The user signed out and in; no reload lost a conversation of this session.
+    const notSavedShown = await again.getByText(NOT_SAVED_NOTICE).count();
     const composer = again.getByRole("textbox", { name: "Ask a question" });
     const composerDisabled = await composer.isDisabled();
     // What the new session's panel shows (local evidence; no token is on the page).
@@ -286,11 +300,15 @@ async function signOutCase(
     const composerDisabledAfterEnd = await composer.isDisabled();
     // Sampled again once the old run ended: a restore that came late would show its turn now.
     const oldTurnShownAfterEnd = await again.getByText(question(name)).count();
+    const notSavedShownAfterEnd = await again.getByText(NOT_SAVED_NOTICE).count();
     await report(testInfo, "sign-out-evidence", {
         request_id: requestId,
         submission_id: submission,
         signed_out_at: signedOutAt,
         hint_after_sign_out: hintAfterSignOut,
+        unsaved_marker_after_sign_out: markerAfterSignOut,
+        not_saved_notice_after_sign_in: notSavedShown,
+        not_saved_notice_after_the_run_ended: notSavedShownAfterEnd,
         old_turn_shown_after_sign_in: oldTurnShown,
         old_turn_shown_after_the_run_ended: oldTurnShownAfterEnd,
         composer_disabled_after_sign_in: composerDisabled,
@@ -304,6 +322,11 @@ async function signOutCase(
         "the new session shows the signed-out session's turn",
     ).toEqual([0, 0]);
     expect(hintAfterSignOut, "sign-out left the tab's restore hint").toBe(false);
+    expect(markerAfterSignOut, "sign-out left the tab's unsaved-conversation marker").toBe(false);
+    expect(
+        [notSavedShown, notSavedShownAfterEnd],
+        "the new session says a reload lost a conversation",
+    ).toEqual([0, 0]);
     expect(composerDisabledAfterEnd, "the new session cannot ask: its composer is disabled").toBe(
         false,
     );

@@ -33,7 +33,7 @@ import {
     type ThreadView,
     type TransportFailureReason,
 } from "./transport";
-import { THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
+import { tabConversationForgotten, THREAD_HINT_KEY } from "@/lib/ask-dev/conversationHint";
 
 /**
  * The Ask Dev conversation store (plan §2.5 D-20, §2.7.4, §2.7.5; CHAOS-11928). One per tab.
@@ -152,6 +152,12 @@ export type TurnOutcome =
     | { readonly kind: "stream_unavailable" }
     /** `409 submission_mismatch`: the key was reused for another request (a defect). */
     | { readonly kind: "mismatch"; readonly reference?: string | undefined }
+    /**
+     * CHAOS-12594: ACR finished, and this page's pinned contract refused the answer
+     * (`TransportFailure.unreadableAnswer`, CHAOS-12593; for example a field newer than the pin,
+     * CHAOS-12590). Asking again gives the same result: never retried.
+     */
+    | { readonly kind: "unreadable"; readonly reference?: string | undefined }
     /** `done_unsaved`: the answer was served but not stored; there is nothing to replay. */
     | { readonly kind: "unsaved" }
     /** `409 submission_abandoned`: this key's run ended without an answer. */
@@ -526,6 +532,8 @@ const sessionHintStorage: HintStorage = {
         }
     },
     write: (value) => {
+        // Sign-out forgot it: a late event must not write it back (codex r2 on #1751).
+        if (tabConversationForgotten()) return;
         try {
             window.sessionStorage.setItem(THREAD_HINT_KEY, value);
         } catch {
@@ -1715,6 +1723,8 @@ export class ConversationStore {
             const unavailable =
                 (error instanceof TransportRefusal && error.status === 404) ||
                 readCannotHelp(error);
+            // CHAOS-12594: a stored answer this page's contract refuses reads the same way again.
+            const unreadable = error instanceof TransportFailure && error.unreadableAnswer;
             logger.warn(
                 {
                     submission_id: submissionId,
@@ -1725,9 +1735,18 @@ export class ConversationStore {
             );
             this.updateRestored(
                 submissionId,
-                unavailable ? { kind: "unavailable" } : { kind: "restore_failed" },
+                unreadable
+                    ? { kind: "unreadable" }
+                    : unavailable
+                      ? { kind: "unavailable" }
+                      : { kind: "restore_failed" },
             );
-            if (counted) this.restoreCounted(selection, unavailable ? "unavailable" : "failed");
+            if (counted) {
+                this.restoreCounted(
+                    selection,
+                    unavailable || unreadable ? "unavailable" : "failed",
+                );
+            }
             return;
         }
         if (!this.ownsSelection(selection, "replay")) return;
@@ -2186,7 +2205,7 @@ export class ConversationStore {
                     await this.recover(run, deadline, true, { kind: "stalled" });
                     return;
                 }
-                this.transportFailed(run, error.reason);
+                this.transportFailed(run, error.reason, error.unreadableAnswer);
                 return;
             }
             logger.warn(
@@ -2552,7 +2571,11 @@ export class ConversationStore {
      * which ends ACR's run (plan §2.7.4), so there is nothing to poll for: the turn ends with the
      * reason's own state.
      */
-    private transportFailed(run: ActiveRun, reason: TransportFailureReason): void {
+    private transportFailed(
+        run: ActiveRun,
+        reason: TransportFailureReason,
+        unreadableAnswer = false,
+    ): void {
         const turn = this.turn(run.turnId);
         logger.warn(
             { submission_id: turn?.submissionId, request_id: turn?.request?.request_id, reason },
@@ -2569,7 +2592,14 @@ export class ConversationStore {
                 this.settle(run, { kind: "deadline", deadline: "budget_exhausted" });
                 return;
             case "invalid_upstream":
-                this.settle(run, { kind: "failed", retry: false, reference: this.reference(run) });
+                // CHAOS-12594: a finished answer the pinned contract refused is unreadable, not a
+                // run that did not finish.
+                this.settle(
+                    run,
+                    unreadableAnswer
+                        ? { kind: "unreadable", reference: this.reference(run) }
+                        : { kind: "failed", retry: false, reference: this.reference(run) },
+                );
                 return;
             case "authorization_required":
             case "authorization_failed":
@@ -2708,6 +2738,12 @@ export class ConversationStore {
             if (readCannotHelp(error)) {
                 // Reading the stored result again cannot help.
                 this.settle(run, { kind: "unavailable" });
+                return;
+            }
+            if (error instanceof TransportFailure && error.unreadableAnswer) {
+                // CHAOS-12594: the stored answer is one this page's contract refuses: reading it
+                // again gives the same result.
+                this.settle(run, { kind: "unreadable", reference: this.reference(run) });
                 return;
             }
             // The submission is done: the same key replays the stored result, it never runs again.

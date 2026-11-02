@@ -1,0 +1,2263 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CompletionRange — render pin (CHAOS-12622) > a distribution with no days 1`] = `
+{
+  "chart": null,
+  "markup": "<div data-testid="completion-range" data-reported="false" class="flex h-80 flex-col items-center justify-center gap-1 text-sm text-(--text-muted)"><p>Not reported</p><p class="text-xs">The forecast has no simulation distribution, so no chance curve is drawn.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > a horizon of 400 makes day 365 a normal day 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "18": "Jun 19",
+      "19": "Jun 20",
+      "24": "Jun 25",
+      "27": "Jun 28",
+      "365": "Jun 1, 2027",
+      "383": "Jun 19, 2027",
+      "7": "Jun 8",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              18,
+              0.25,
+            ],
+            [
+              365,
+              1,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markArea": {
+            "data": [
+              [
+                {
+                  "name": "planning range",
+                  "xAxis": 19,
+                },
+                {
+                  "xAxis": 27,
+                },
+              ],
+            ],
+            "itemStyle": {
+              "color": "#0b8fb0",
+              "opacity": 0.07,
+            },
+            "label": {
+              "color": "#333333",
+              "fontSize": 10,
+              "position": "insideTopLeft",
+              "show": true,
+            },
+            "silent": true,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "formatter": "{head|P50 · Jun 20}
+{detail|Optimistic · 19 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 19,
+              },
+              {
+                "label": {
+                  "formatter": "{head|P85 · Jun 25}
+{detail|Target · 24 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 24,
+              },
+              {
+                "label": {
+                  "formatter": "{head|P95 · Jun 28}
+{detail|Conservative · 27 days}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 27,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "step": "end",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 383,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all 40 items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 19</div><div style="margin-top: 4px;">18 days after the forecast</div><div style="margin-top: 4px;">25% of the runs were done by this day</div><div style="margin-top: 4px;">50 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 1, 2027</div><div style="margin-top: 4px;">365 days after the forecast</div><div style="margin-top: 4px;">100% of the runs were done by this day</div><div style="margin-top: 4px;">150 of 200 runs ended on this day</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > dates in another calendar year 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Dec 20",
+      "1": "Dec 21",
+      "18": "Jan 7, 2027",
+      "19": "Jan 8, 2027",
+      "24": "Jan 13, 2027",
+      "27": "Jan 16, 2027",
+      "28": "Jan 17, 2027",
+      "7": "Dec 27",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              18,
+              0.25,
+            ],
+            [
+              19,
+              0.85,
+            ],
+            [
+              27,
+              1,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markArea": {
+            "data": [
+              [
+                {
+                  "name": "planning range",
+                  "xAxis": 19,
+                },
+                {
+                  "xAxis": 27,
+                },
+              ],
+            ],
+            "itemStyle": {
+              "color": "#0b8fb0",
+              "opacity": 0.07,
+            },
+            "label": {
+              "color": "#333333",
+              "fontSize": 10,
+              "position": "insideTopLeft",
+              "show": true,
+            },
+            "silent": true,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "formatter": "{head|P50 · Jan 8, 2027}
+{detail|Optimistic · 19 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 19,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P85 · Jan 13, 2027}
+{detail|Target · 24 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 24,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95 · Jan 16, 2027}
+{detail|Conservative · 27 days}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 27,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "step": "end",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 28,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all 40 items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jan 7, 2027</div><div style="margin-top: 4px;">18 days after the forecast</div><div style="margin-top: 4px;">25% of the runs were done by this day</div><div style="margin-top: 4px;">50 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jan 8, 2027</div><div style="margin-top: 4px;">19 days after the forecast</div><div style="margin-top: 4px;">85% of the runs were done by this day</div><div style="margin-top: 4px;">120 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jan 16, 2027</div><div style="margin-top: 4px;">27 days after the forecast</div><div style="margin-top: 4px;">100% of the runs were done by this day</div><div style="margin-top: 4px;">30 of 200 runs ended on this day</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > every run finished 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "18": "Jun 19",
+      "19": "Jun 20",
+      "24": "Jun 25",
+      "27": "Jun 28",
+      "28": "Jun 29",
+      "7": "Jun 8",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              18,
+              0.25,
+            ],
+            [
+              19,
+              0.85,
+            ],
+            [
+              27,
+              1,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markArea": {
+            "data": [
+              [
+                {
+                  "name": "planning range",
+                  "xAxis": 19,
+                },
+                {
+                  "xAxis": 27,
+                },
+              ],
+            ],
+            "itemStyle": {
+              "color": "#0b8fb0",
+              "opacity": 0.07,
+            },
+            "label": {
+              "color": "#333333",
+              "fontSize": 10,
+              "position": "insideTopLeft",
+              "show": true,
+            },
+            "silent": true,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "formatter": "{head|P50 · Jun 20}
+{detail|Optimistic · 19 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 19,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P85 · Jun 25}
+{detail|Target · 24 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 24,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95 · Jun 28}
+{detail|Conservative · 27 days}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 27,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "step": "end",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 28,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all 40 items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 19</div><div style="margin-top: 4px;">18 days after the forecast</div><div style="margin-top: 4px;">25% of the runs were done by this day</div><div style="margin-top: 4px;">50 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 20</div><div style="margin-top: 4px;">19 days after the forecast</div><div style="margin-top: 4px;">85% of the runs were done by this day</div><div style="margin-top: 4px;">120 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 28</div><div style="margin-top: 4px;">27 days after the forecast</div><div style="margin-top: 4px;">100% of the runs were done by this day</div><div style="margin-top: 4px;">30 of 200 runs ended on this day</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > every run finished, as a curve 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "18": "Jun 19",
+      "19": "Jun 20",
+      "24": "Jun 25",
+      "27": "Jun 28",
+      "28": "Jun 29",
+      "7": "Jun 8",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              18,
+              0.25,
+            ],
+            [
+              19,
+              0.85,
+            ],
+            [
+              27,
+              1,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markArea": {
+            "data": [
+              [
+                {
+                  "name": "planning range",
+                  "xAxis": 19,
+                },
+                {
+                  "xAxis": 27,
+                },
+              ],
+            ],
+            "itemStyle": {
+              "color": "#0b8fb0",
+              "opacity": 0.07,
+            },
+            "label": {
+              "color": "#333333",
+              "fontSize": 10,
+              "position": "insideTopLeft",
+              "show": true,
+            },
+            "silent": true,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "formatter": "{head|P50 · Jun 20}
+{detail|Optimistic · 19 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 19,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P85 · Jun 25}
+{detail|Target · 24 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 24,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95 · Jun 28}
+{detail|Conservative · 27 days}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 27,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "smooth": true,
+          "smoothMonotone": "x",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 28,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all 40 items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 19</div><div style="margin-top: 4px;">18 days after the forecast</div><div style="margin-top: 4px;">25% of the runs were done by this day</div><div style="margin-top: 4px;">50 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 20</div><div style="margin-top: 4px;">19 days after the forecast</div><div style="margin-top: 4px;">85% of the runs were done by this day</div><div style="margin-top: 4px;">120 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 28</div><div style="margin-top: 4px;">27 days after the forecast</div><div style="margin-top: 4px;">100% of the runs were done by this day</div><div style="margin-top: 4px;">30 of 200 runs ended on this day</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each point is the share of the 200 simulation runs in which all 40 items were done by that day.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > no run finished: one bin at the horizon 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "365": "Jun 1, 2027 or later",
+      "383": "Jun 19, 2027",
+      "7": "Jun 8",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              365,
+              0,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P50}
+{detail|Optimistic · 365 days or more}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 365,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P85}
+{detail|Target · 365 days or more}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 365,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95}
+{detail|Conservative · 365 days or more}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 365,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "step": "end",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 383,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all 40 items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 1, 2027 or later</div><div style="margin-top: 4px;">365 days or more after the forecast</div><div style="margin-top: 4px;">0% of the runs were done by this day</div><div style="margin-top: 4px;">200 of 200 runs did not finish within 365 days</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.</p><p data-testid="completion-range-unfinished" class="mt-2 text-xs text-(--text-muted)">200 of 200 runs did not finish within 365 days.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > no stored distribution 1`] = `
+{
+  "chart": null,
+  "markup": "<div data-testid="completion-range" data-reported="false" class="flex h-80 flex-col items-center justify-center gap-1 text-sm text-(--text-muted)"><p>Not reported</p><p class="text-xs">The forecast has no simulation distribution, so no chance curve is drawn.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > nothing optional served: no run total, no horizon, no item count, no dates 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "18": "Jun 19",
+      "19": "Jun 20",
+      "24": "Jun 25",
+      "27": "Jun 28",
+      "28": "Jun 29",
+      "7": "Jun 8",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              18,
+              0.25,
+            ],
+            [
+              19,
+              0.85,
+            ],
+            [
+              27,
+              1,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markArea": {
+            "data": [
+              [
+                {
+                  "name": "planning range",
+                  "xAxis": 19,
+                },
+                {
+                  "xAxis": 27,
+                },
+              ],
+            ],
+            "itemStyle": {
+              "color": "#0b8fb0",
+              "opacity": 0.07,
+            },
+            "label": {
+              "color": "#333333",
+              "fontSize": 10,
+              "position": "insideTopLeft",
+              "show": true,
+            },
+            "silent": true,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "formatter": "{head|P50}
+{detail|Optimistic · 19 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 19,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P85}
+{detail|Target · 24 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 24,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95}
+{detail|Conservative · 27 days}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 27,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "step": "end",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 28,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 19</div><div style="margin-top: 4px;">18 days after the forecast</div><div style="margin-top: 4px;">25% of the runs were done by this day</div><div style="margin-top: 4px;">50 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 20</div><div style="margin-top: 4px;">19 days after the forecast</div><div style="margin-top: 4px;">85% of the runs were done by this day</div><div style="margin-top: 4px;">120 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 28</div><div style="margin-top: 4px;">27 days after the forecast</div><div style="margin-top: 4px;">100% of the runs were done by this day</div><div style="margin-top: 4px;">30 runs ended on this day</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each step is the share of the simulation runs in which all items were done by that day.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > one item, one bin, P85 missing, P50 = P95 (no planning range) 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "10": "Jun 11",
+      "7": "Jun 8",
+      "9": "Jun 10",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 80,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              9,
+              1,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P50 · Jun 20}
+{detail|Optimistic · 9 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 9,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95 · Jun 28}
+{detail|Conservative · 9 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 9,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "smooth": true,
+          "smoothMonotone": "x",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 10,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance the 1 item is done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 10</div><div style="margin-top: 4px;">9 days after the forecast</div><div style="margin-top: 4px;">100% of the runs were done by this day</div><div style="margin-top: 4px;">200 of 200 runs ended on this day</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each point is the share of the 200 simulation runs in which the 1 item was done by that day.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > runs stopped at the horizon, P95 at the horizon 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "18": "Jun 19",
+      "19": "Jun 20",
+      "24": "Jun 25",
+      "365": "Jun 1, 2027 or later",
+      "383": "Jun 19, 2027",
+      "7": "Jun 8",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              18,
+              0.25,
+            ],
+            [
+              19,
+              0.6,
+            ],
+            [
+              365,
+              0.6,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markArea": {
+            "data": [
+              [
+                {
+                  "name": "planning range",
+                  "xAxis": 19,
+                },
+                {
+                  "xAxis": 365,
+                },
+              ],
+            ],
+            "itemStyle": {
+              "color": "#0b8fb0",
+              "opacity": 0.07,
+            },
+            "label": {
+              "color": "#333333",
+              "fontSize": 10,
+              "position": "insideTopLeft",
+              "show": true,
+            },
+            "silent": true,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "formatter": "{head|P50 · Jun 20}
+{detail|Optimistic · 19 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 19,
+              },
+              {
+                "label": {
+                  "formatter": "{head|P85 · Jun 25}
+{detail|Target · 24 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 24,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95}
+{detail|Conservative · 365 days or more}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 365,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "step": "end",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 383,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all 40 items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 19</div><div style="margin-top: 4px;">18 days after the forecast</div><div style="margin-top: 4px;">25% of the runs were done by this day</div><div style="margin-top: 4px;">50 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 20</div><div style="margin-top: 4px;">19 days after the forecast</div><div style="margin-top: 4px;">60% of the runs were done by this day</div><div style="margin-top: 4px;">70 of 200 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 1, 2027 or later</div><div style="margin-top: 4px;">365 days or more after the forecast</div><div style="margin-top: 4px;">60% of the runs were done by this day</div><div style="margin-top: 4px;">80 of 200 runs did not finish within 365 days</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.</p><p data-testid="completion-range-unfinished" class="mt-2 text-xs text-(--text-muted)">80 of 200 runs did not finish within 365 days.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
+
+exports[`CompletionRange — render pin (CHAOS-12622) > unfinished runs with no run total 1`] = `
+{
+  "chart": {
+    "chanceAxis": [
+      "0%",
+      "25%",
+      "50%",
+      "75%",
+      "100%",
+    ],
+    "dayAxis": {
+      "0": "Jun 1",
+      "1": "Jun 2",
+      "18": "Jun 19",
+      "19": "Jun 20",
+      "24": "Jun 25",
+      "27": "Jun 28",
+      "28": "Jun 29",
+      "7": "Jun 8",
+    },
+    "option": {
+      "grid": {
+        "bottom": 32,
+        "left": 56,
+        "right": 24,
+        "top": 108,
+      },
+      "series": [
+        {
+          "areaStyle": {
+            "color": "#0b8fb0",
+            "opacity": 0.1,
+          },
+          "data": [
+            [
+              18,
+              0.25,
+            ],
+            [
+              19,
+              0.85,
+            ],
+            [
+              27,
+              1,
+            ],
+          ],
+          "itemStyle": {
+            "color": "#0b8fb0",
+          },
+          "lineStyle": {
+            "color": "#0b8fb0",
+            "width": 2,
+          },
+          "markArea": {
+            "data": [
+              [
+                {
+                  "name": "planning range",
+                  "xAxis": 19,
+                },
+                {
+                  "xAxis": 27,
+                },
+              ],
+            ],
+            "itemStyle": {
+              "color": "#0b8fb0",
+              "opacity": 0.07,
+            },
+            "label": {
+              "color": "#333333",
+              "fontSize": 10,
+              "position": "insideTopLeft",
+              "show": true,
+            },
+            "silent": true,
+          },
+          "markLine": {
+            "data": [
+              {
+                "label": {
+                  "formatter": "{head|P50 · Jun 20}
+{detail|Optimistic · 19 days}",
+                  "offset": [
+                    0,
+                    0,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 19,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P85 · Jun 25}
+{detail|Target · 24 days}",
+                  "offset": [
+                    0,
+                    -28,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 700,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 2,
+                },
+                "xAxis": 24,
+              },
+              {
+                "label": {
+                  "align": "right",
+                  "formatter": "{head|P95 · Jun 28}
+{detail|Conservative · 27 days}",
+                  "offset": [
+                    0,
+                    -56,
+                  ],
+                  "position": "end",
+                  "rich": {
+                    "detail": {
+                      "color": "#333333",
+                      "fontSize": 11,
+                      "fontWeight": 400,
+                      "lineHeight": 14,
+                    },
+                    "head": {
+                      "color": "#111111",
+                      "fontSize": 11,
+                      "fontWeight": 600,
+                      "lineHeight": 14,
+                    },
+                  },
+                  "show": true,
+                },
+                "lineStyle": {
+                  "color": "#0b8fb0",
+                  "type": "dashed",
+                  "width": 1,
+                },
+                "xAxis": 27,
+              },
+            ],
+            "silent": true,
+            "symbol": [
+              "none",
+              "none",
+            ],
+          },
+          "name": "Chance done",
+          "step": "end",
+          "symbol": "circle",
+          "symbolSize": 7,
+          "type": "line",
+        },
+      ],
+      "tooltip": {
+        "backgroundColor": "#ffffff",
+        "borderColor": "#444444",
+        "confine": true,
+        "formatter": "[formatter]",
+        "textStyle": {
+          "color": "#111111",
+        },
+        "trigger": "item",
+      },
+      "xAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "lineStyle": {
+            "color": "#222222",
+          },
+        },
+        "max": 28,
+        "min": 0,
+        "minInterval": 1,
+        "splitLine": {
+          "show": false,
+        },
+        "type": "value",
+      },
+      "yAxis": {
+        "axisLabel": {
+          "color": "#333333",
+          "fontSize": 10,
+          "formatter": "[formatter]",
+        },
+        "axisLine": {
+          "show": false,
+        },
+        "axisTick": {
+          "show": false,
+        },
+        "max": 1,
+        "min": 0,
+        "name": "Chance all 40 items are done",
+        "nameGap": 42,
+        "nameLocation": "middle",
+        "nameTextStyle": {
+          "color": "#333333",
+          "fontSize": 11,
+        },
+        "splitLine": {
+          "lineStyle": {
+            "color": "#222222",
+            "type": "solid",
+            "width": 1,
+          },
+        },
+        "type": "value",
+      },
+    },
+    "tooltips": [
+      "<div style="font-weight: 600;">Jun 19</div><div style="margin-top: 4px;">18 days after the forecast</div><div style="margin-top: 4px;">25% of the runs were done by this day</div><div style="margin-top: 4px;">50 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 20</div><div style="margin-top: 4px;">19 days after the forecast</div><div style="margin-top: 4px;">85% of the runs were done by this day</div><div style="margin-top: 4px;">120 runs ended on this day</div>",
+      "<div style="font-weight: 600;">Jun 28</div><div style="margin-top: 4px;">27 days after the forecast</div><div style="margin-top: 4px;">100% of the runs were done by this day</div><div style="margin-top: 4px;">30 runs ended on this day</div>",
+    ],
+  },
+  "markup": "<div data-testid="completion-range"><div><div data-testid="chart"></div></div><p data-testid="completion-range-note" class="mt-2 text-xs text-(--text-muted)">Monte Carlo forecast: each step is the share of the simulation runs in which all 40 items were done by that day.</p><p data-testid="completion-range-unfinished" class="mt-2 text-xs text-(--text-muted)">1 run did not finish within 365 days.</p><p data-testid="completion-range-advice" class="mt-4 text-[0.8125rem] leading-5.5 text-foreground">Use the target and conservative dates as different planning choices, not as one promise.</p></div>",
+}
+`;
