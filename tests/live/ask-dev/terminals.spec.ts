@@ -171,13 +171,14 @@ async function evidence(
 }
 
 /** The end state at desktop and at mobile width, into this test's output folder. */
-async function screenshots(page: Page, testInfo: TestInfo, name: string) {
+async function screenshots(page: Page, testInfo: TestInfo, name: string, focus?: Locator) {
     for (const [width, height, label] of [
         [1440, 900, "desktop"],
         [390, 844, "mobile"],
     ] as const) {
         await page.setViewportSize({ width, height });
         await page.waitForTimeout(500);
+        if (focus !== undefined) await focus.scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath(`${name}-${label}.png`) });
     }
 }
@@ -724,12 +725,22 @@ test.describe("ACR's own states (AC4)", () => {
         test.setTimeout(170_000);
         const { calls, surface } = await panel(page);
         await ask(surface, question("late"));
-        await expect(surface.getByRole("article", { name: "Answer" })).toBeVisible({
-            timeout: 140_000,
+        const answer = surface.getByRole("article", { name: "Answer" });
+        await expect(answer).toBeVisible({ timeout: 140_000 });
+        const warning = answer.getByText(/^answer text unavailable: /u).first();
+        await report(testInfo, "degraded-evidence", {
+            data_state: await answer.getAttribute("data-state"),
+            warning_shown: await warning.isVisible(),
+            acr_calls: acrCalls(calls),
         });
+        // ACR ends the model call (the plan holds it 50 s) and serves the facts with no model text:
+        // status degraded, its fixed "answer text unavailable" warning, and none of the plan's prose.
+        // A normal answer to the same question fails all three.
+        await expect(answer).toHaveAttribute("data-state", "degraded");
+        await expect(warning).toBeVisible();
+        await expect(answer).not.toContainText("The repository appears to be in progress.");
         await expect(surface.getByTestId("answer-panel")).not.toBeEmpty();
-        await report(testInfo, "degraded-evidence", { acr_calls: acrCalls(calls) });
-        await screenshots(page, testInfo, "degraded-answer");
+        await screenshots(page, testInfo, "degraded-answer", warning);
     });
 });
 
@@ -838,22 +849,23 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
                 },
             )
             .toBe(200);
-        await approval.close();
-        const { calls, surface } = await panel(page);
         let side: Side | undefined;
         const sideSubmission = fresh("sub");
         let cancel = 0;
         let revoke = 0;
         let afterRevoke = 0;
-        await sideFirst(page, async (request) => {
-            side = await sideCreate(request, {
-                submission: sideSubmission,
-                thread: fresh("thread"),
-                bearer: device,
-            });
-            expect(await side.accepted, "the run holding the slot was not accepted").toBe(true);
-        });
+        // From here the device credential exists: whatever fails next, `finally` revokes it.
         try {
+            await approval.close();
+            const { calls, surface } = await panel(page);
+            await sideFirst(page, async (request) => {
+                side = await sideCreate(request, {
+                    submission: sideSubmission,
+                    thread: fresh("thread"),
+                    bearer: device,
+                });
+                expect(await side.accepted, "the run holding the slot was not accepted").toBe(true);
+            });
             await ask(surface, question("stop"));
             const end = await endState(surface, 30_000);
             await report(testInfo, "org-limit-evidence", {
@@ -957,10 +969,10 @@ test.describe("the transport's terminals when the run has ended (AC2, run lease 
                     words: end.words,
                     acr_calls: acrCalls(calls),
                 });
-                expect([202, 204], "ACR did not take the cancel").toContain(cancel.status);
-                expect(end.state, `the page showed ${end.state}: "${end.words}"`).not.toBe(
-                    "answer",
-                );
+                // 202: the run was still running, so it ends with ACR's terminal error canceled (the
+                // plan holds the "stop" run far longer than the cancel takes).
+                expect(cancel.status, "ACR did not take the cancel of a running run").toBe(202);
+                expect(end.state, `the page showed ${end.state}: "${end.words}"`).toBe("canceled");
                 await screenshots(page, testInfo, `stalled-ended-${end.state}`);
             },
         );
@@ -996,11 +1008,11 @@ test.describe("the transport's terminals when the run has ended (AC2, run lease 
                     attaches: attaches.length,
                     acr_calls: acrCalls(calls),
                 });
-                expect([202, 204], "ACR did not take the cancel").toContain(cancel.status);
+                // 202: the run was still running, so it ends with ACR's terminal error canceled (the
+                // plan holds the "stop" run far longer than the cancel takes).
+                expect(cancel.status, "ACR did not take the cancel of a running run").toBe(202);
                 expect(attaches.length, "the store did not attach to the run").toBeGreaterThan(0);
-                expect(end.state, `the page showed ${end.state}: "${end.words}"`).not.toBe(
-                    "answer",
-                );
+                expect(end.state, `the page showed ${end.state}: "${end.words}"`).toBe("canceled");
                 await screenshots(page, testInfo, `cut-ended-${end.state}`);
             },
         );
