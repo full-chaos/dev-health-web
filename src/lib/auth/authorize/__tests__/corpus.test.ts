@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseBatch, parseDecision } from "../decision";
+import { parseBatch, parseDecision, WIRE_REASON_CODES } from "../decision";
 import { buildRequestBody, type AuthorizeRequest, type ResourceType } from "../request";
 
 // The corpus is owned by dev-health-ops and arrives through the pinned sparse checkout
@@ -103,6 +103,36 @@ suite("authorization_request.v1 examples", () => {
             requestId: wire.context.request_id,
         };
         expect(buildRequestBody(req)).toEqual(wire);
+    });
+});
+
+suite("vocabulary/reason-codes.json decision_reason_code", () => {
+    const vocab = JSON.parse(text(path.join(v1, "vocabulary/reason-codes.json"))) as {
+        decision_reason_code: { values: string[] };
+    };
+    const values = vocab.decision_reason_code.values;
+    const body = (reason_code: string, allowed: boolean) =>
+        JSON.stringify({
+            schema_version: "authorization_decision.v1",
+            decision_id: "dec_EXAMPLE0000000000000000001",
+            allowed,
+            reason_code,
+            principal_id: "prn_EXAMPLE0000000000000001",
+            organization_id: "org_EXAMPLE0000000000000001",
+            policy_revision: 1,
+            expires_at: "2026-09-03T05:00:30Z",
+        });
+    it("is not empty", () => {
+        expect(values.length).toBeGreaterThan(0);
+    });
+    it.each(values)("decodes %s with the matching allowed flag", (code) => {
+        const allow = code.startsWith("allowed_by_");
+        const r = parseDecision(body(code, allow), FIXTURE_NOW);
+        expect(r.ok && r.decision.allowed).toBe(allow);
+        expect(parseDecision(body(code, !allow), FIXTURE_NOW).ok).toBe(false);
+    });
+    it("is the set the client accepts, no more and no fewer", () => {
+        expect([...WIRE_REASON_CODES].sort()).toEqual([...values].sort());
     });
 });
 
