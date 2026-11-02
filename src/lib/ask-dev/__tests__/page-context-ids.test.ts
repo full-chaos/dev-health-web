@@ -90,6 +90,16 @@ describe("SUBJECT_ID", () => {
         expect(SUBJECT_ID.workItem("", "linear:CHAOS-1")).toBeNull();
     });
 
+    it("bounds a work item id in UTF-8 bytes, as ACR does, not in characters", () => {
+        // "work_item.v2:repo-1:" is 20 bytes, and each emoji is 4 bytes and 2 UTF-16 units.
+        const at = SUBJECT_ID.workItem("repo-1", "\u{1F600}".repeat(59));
+        expect(at).not.toBeNull();
+        expect(new TextEncoder().encode(at!).length).toBe(256);
+        expect(SUBJECT_ID.workItem("repo-1", "\u{1F600}".repeat(60))).toBeNull();
+        // Under 256 UTF-16 units, over 256 bytes: ACR mints no such id.
+        expect(SUBJECT_ID.workItem("repo-1", "\u{1F600}".repeat(118))).toBeNull();
+    });
+
     it("keeps a work item id as served: an identity is never trimmed", () => {
         expect(SUBJECT_ID.workItem("repo-1", " linear:CHAOS-1")).toBe(
             "work_item.v2:repo-1: linear%3ACHAOS-1",

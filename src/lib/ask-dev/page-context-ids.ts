@@ -11,7 +11,7 @@
  * - team: `team:<teams.id>` (`contextfabric.TeamCanonicalID`)
  * - pull request: `pull_request:<repo id>:<number>` (`pullRequestCanonicalID`)
  * - work item: `work_item.v2:<repo id>:<work_item_id>`, each segment escaped (`%` as `%25`, `:` as
- *   `%3A`, acr `identity.JoinSegments`), and none over ACR's 256 characters (CHAOS-12240)
+ *   `%3A`, acr `identity.JoinSegments`), and none over ACR's 256 bytes (CHAOS-12240)
  *
  * Pinned to the canonical-id vectors ACR generates by executing its own builders (acr #1827,
  * CHAOS-12230), vendored at the web pin (`src/lib/acr/contracts/examples/
@@ -20,8 +20,13 @@
  * A building block only: the registry (`page-context.ts`) still bounds and filters what is sent.
  */
 
-/** ACR's bound on a canonical id; ACR omits a longer one (the vectors' `omitted`). */
-const MAX_CANONICAL_ID_LENGTH = 256;
+/**
+ * ACR's bound on a canonical id, in UTF-8 BYTES (acr `identity.MaxNaturalKeyBytes`): ACR omits a
+ * longer one (the vectors' `omitted`). A count of characters would let a non-ASCII id through that
+ * ACR never mints (codex r1 P2 on #1742).
+ */
+const MAX_CANONICAL_ID_BYTES = 256;
+const utf8Bytes = (value: string): number => new TextEncoder().encode(value).length;
 
 /** acr `identity.JoinSegments`: `%` first, so an escape is never escaped twice. */
 const escapeSegment = (value: string): string =>
@@ -57,7 +62,7 @@ export const SUBJECT_ID = {
         if (repo === null || workItemId === null || workItemId === undefined) return null;
         if (workItemId.trim() === "") return null;
         const id = `work_item.v2:${escapeSegment(repo)}:${escapeSegment(workItemId)}`;
-        return id.length > MAX_CANONICAL_ID_LENGTH ? null : id;
+        return utf8Bytes(id) > MAX_CANONICAL_ID_BYTES ? null : id;
     },
     pullRequest: (repoId: string | null | undefined, number: number): string | null => {
         const repo = part(repoId);
