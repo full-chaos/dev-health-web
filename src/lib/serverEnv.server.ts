@@ -13,6 +13,7 @@ const serverEnvSchema = z.object({
     LOG_FORMAT: z.string().optional(),
     BACKEND_URL: z.string().optional(),
     BASE_PATH: z.string().optional(),
+    AUTHZ_SHADOW_NAV: z.string().optional(),
     AUTH_SECRET: z.string().optional(),
     AUTH_URL: z.string().optional(),
     NEXTAUTH_SECRET: z.string().optional(),

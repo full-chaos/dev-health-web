@@ -1,6 +1,6 @@
 import type { Transport, TransportCall } from "../../authorize/client";
 
-export const TOKEN = "tok_SECRETSECRETSECRET.abc.def";
+export const TOKEN = "tok-SECRETSECRETSECRET.abc.def";
 export const ORG = "org-1";
 export const USER = "user-secret-id-1";
 
@@ -18,7 +18,7 @@ export function batchBody(verdicts: readonly Verdict[]): string {
             index,
             decision: {
                 schema_version: "authorization_decision.v1",
-                decision_id: `dec_EXAMPLE00000000000000${String(index).padStart(4, "0")}`,
+                decision_id: `dec_EXAMPLE00000000000000${String(index).padStart(5, "0")}`,
                 allowed: v.allowed,
                 reason_code: v.reason,
                 principal_id: "prn_EXAMPLE0000000000000001",

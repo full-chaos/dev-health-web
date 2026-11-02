@@ -8,6 +8,8 @@ allow only for a valid, unexpired, unambiguous answer. Every other path is a den
   a non-integer number, an unknown reason, an expired decision, an unknown member, and a batch whose count or index order differs
   from the request. One bad entry refuses the whole batch.
 - `client.ts`: `transport` and `timeoutMs` are required arguments. No module default exists. The deny-default double lives in tests.
+  Its first consumer is `../shadow` (advisory, off by default, no transport wired yet); `client.ts` and `shadow/run.ts` are rows of
+  `SERVER_ONLY_MODULES` in `scripts/check-client-bundle.mjs`.
 
 ## Two kinds of deny
 
