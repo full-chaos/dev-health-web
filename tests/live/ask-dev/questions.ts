@@ -20,6 +20,16 @@ export const CASES = {
     long: "Long: what is the status of full-chaos/dev-health-web?",
     late: "Late: what is the status of full-chaos/dev-health-web?",
     expand: "Hold: what is the status of full-chaos/dev-health-web?",
+    // CHAOS-12192 (`store.spec.ts`): one case per test, so no test is served another's answer.
+    close: "Hold: what is the status of full-chaos/dev-health-web?",
+    signOut: "Hold: what is the status of full-chaos/dev-health-web?",
+    signOutLeaseOff: "Hold: what is the status of full-chaos/dev-health-web?",
+    poll: "Hold: what is the status of full-chaos/dev-health-web?",
+    abandon: "Hold: what is the status of full-chaos/dev-health-web?",
+    reuseDrop: "Again: what is the status of full-chaos/dev-health-web?",
+    thread1: "What is the status of full-chaos/dev-health-web?",
+    thread2: "What is the status of full-chaos/dev-health-web?",
+    thread3: "What is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
