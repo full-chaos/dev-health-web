@@ -19,6 +19,8 @@ import {
     panel,
     secretsOf,
     signIn,
+    watchAcr,
+    authorize,
     type AcrCall,
 } from "./stack";
 
@@ -141,6 +143,9 @@ async function acrRead<T>(from: AcrCall, path: string): Promise<{ status: number
 type ThreadRecord = { turn_count: number; turns: { submission_id: string; result_id?: string }[] };
 type SubmissionRecord = { state: string; result_id?: string };
 
+/** conversationStore.ts `THREAD_HINT_KEY`: this tab's restore hint, in session storage. */
+const THREAD_HINT_KEY = "ask-dev:thread";
+
 const statusPath = (submission: string) => `${INVESTIGATIONS_PATH}/submissions/${submission}`;
 
 /** The turn's end: `answer`, or its `chat-status` panel's `data-status` and words. */
@@ -223,10 +228,26 @@ async function signOutCase(page: Page, testInfo: TestInfo, name: QuestionCase) {
     const signedOutAt = new Date().toISOString();
     await page.waitForURL((url) => url.pathname.startsWith("/auth/"), { timeout: 30_000 });
 
-    // The same user again: the same principal, so ACR serves that submission's record.
+    // Whether this tab still names the signed-out conversation (only that a hint is there).
+    const hintAfterSignOut = await page.evaluate(
+        (key) => window.sessionStorage.getItem(key) !== null,
+        THREAD_HINT_KEY,
+    );
+
+    // The same user again: the same principal, so ACR serves that submission's record. History's
+    // read during the authorization is the new session's call with a bearer.
     await signIn(page);
-    const again = await panel(page);
-    const reader = again.calls.findLast((call) => call.hasBearer);
+    const againCalls = watchAcr(page);
+    await authorize(page);
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
+    const again = page.getByTestId("ask-dev-panel");
+    await expect(again).toBeVisible();
+    await page.waitForTimeout(3_000);
+    const oldTurnShown = await again.getByText(question(name)).count();
+    const composerDisabled = await again
+        .getByRole("textbox", { name: "Ask a question" })
+        .isDisabled();
+    const reader = againCalls.findLast((call) => call.hasBearer);
     expect(reader, "the new session made no ACR call with a bearer").toBeDefined();
     // The "Hold" plan entry runs 40 s; a run nothing ended is `done` within about a minute.
     let record: SubmissionRecord | null = null;
@@ -242,11 +263,15 @@ async function signOutCase(page: Page, testInfo: TestInfo, name: QuestionCase) {
         .not.toBe("running");
     await report(testInfo, "sign-out-evidence", {
         request_id: requestId,
+        submission_id: submission,
         signed_out_at: signedOutAt,
+        hint_after_sign_out: hintAfterSignOut,
+        old_turn_shown_after_sign_in: oldTurnShown,
+        composer_disabled_after_sign_in: composerDisabled,
         submission_state: (record as SubmissionRecord | null)?.state ?? null,
         acr_calls: acrCalls(calls),
     });
-    await expect(again.surface.getByText(question(name))).toHaveCount(0);
+    expect.soft(oldTurnShown, "the new session shows the signed-out session's turn").toBe(0);
     expect(
         (record as SubmissionRecord | null)?.state,
         "after sign-out ACR's run was not ended: it ran on",
@@ -274,7 +299,7 @@ test.describe("the store owns the live stream (AC1)", () => {
     });
 
     test("sign-out mid-run (run lease on) ends ACR's run", async ({ page }, testInfo) => {
-        await signOutCase(page, testInfo, "signOut");
+        await signOutCase(page, testInfo, "signOutLeaseOn");
     });
 
     test("window lease_off: sign-out mid-run ends ACR's run", async ({ page }, testInfo) => {
