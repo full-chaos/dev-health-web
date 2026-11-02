@@ -101,6 +101,8 @@ async function ask(surface: Locator, question: string): Promise<void> {
     await composer(surface).press("Enter");
 }
 
+// Every assertion here is on a count or on a parsed body field, never on a recorded call: a failed
+// assertion prints what it was given, and a call holds its query (codex r1 P2 on #1739).
 const scopeOf = (call: AcrCall): unknown =>
     (JSON.parse(secretsOf(call).body ?? "{}") as { requested_scope?: unknown }).requested_scope;
 
@@ -143,7 +145,7 @@ test("P2-1: Expand mid-stream and after the answer, and back: one run, one POST"
     await expect(page).toHaveURL(/\/dev\?thread=/u);
     expect(new URL(page.url()).searchParams.get("thread"), "the thread changed").toBe(thread);
     await expect(full.getByRole("article", { name: "Answer" })).toHaveCount(1);
-    expect(investigations(calls), "a move sent the question again").toHaveLength(1);
+    expect(investigations(calls).length, "a move sent the question again").toBe(1);
 });
 
 test("P2-2: a page's chip goes as a hint, and navigation changes only the proposal", async ({
@@ -151,14 +153,14 @@ test("P2-2: a page's chip goes as a hint, and navigation changes only the propos
 }) => {
     const { calls, surface } = await panelOn(page, ONE_REPOSITORY);
     await expect(chips(surface)).toHaveText([`Repository:${REPOSITORY}`]);
-    expect(investigations(calls), "opening the panel sent a question").toHaveLength(0);
+    expect(investigations(calls).length, "opening the panel sent a question").toBe(0);
 
     await ask(surface, pageQuestionFor("pageHint", NONCE));
     const answer = surface.getByRole("article", { name: "Answer" });
     await expect(answer).toHaveCount(1, { timeout: 90_000 });
     await expect(answer).toHaveAttribute("data-state", "partial");
     const sent = investigations(calls);
-    expect(sent).toHaveLength(1);
+    expect(sent.length).toBe(1);
     expect(scopeOf(sent[0]!)).toEqual({
         subject_hints: [
             {
@@ -174,7 +176,7 @@ test("P2-2: a page's chip goes as a hint, and navigation changes only the propos
     await expect(page).toHaveURL(/\/dashboard/u);
     await expect(chips(surface)).toHaveCount(0);
     await expect(answer).toHaveCount(1);
-    expect(investigations(calls), "navigating sent a question").toHaveLength(1);
+    expect(investigations(calls).length, "navigating sent a question").toBe(1);
 });
 
 test("P2-2: removing the chip changes the request", async ({ page }) => {
@@ -186,7 +188,7 @@ test("P2-2: removing the chip changes the request", async ({ page }) => {
     const answer = surface.getByRole("article", { name: "Answer" });
     await expect(answer).toHaveCount(1, { timeout: 90_000 });
     await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
-    expect(investigations(calls)).toHaveLength(1);
+    expect(investigations(calls).length).toBe(1);
     expect(scopeOf(investigations(calls)[0]!)).toBeUndefined();
 });
 
@@ -215,7 +217,7 @@ test("P2-3: a tampered id gives a clarification or not-found, never the organiza
     const answer = surface.getByRole("article", { name: "Answer" });
     await expect(answer).toHaveCount(1, { timeout: 90_000 });
     await expect(answer).toHaveAttribute("data-state", NOT_ANSWERED);
-    expect(investigations(calls)).toHaveLength(1);
+    expect(investigations(calls).length).toBe(1);
 });
 
 test.describe("P2-5: accessibility", () => {
