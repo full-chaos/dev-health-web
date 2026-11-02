@@ -138,6 +138,12 @@ type QuadrantChartOptionParams = {
     zoneOverlay?: ZoneOverlay | null;
     showZoneOverlay?: boolean;
     highlightOverlayKey?: string | null;
+    /** See `QuadrantChartProps.verbatimEntityLabels`. */
+    verbatimEntityLabels?: boolean;
+    /** See `QuadrantChartProps.animation`. */
+    animation?: boolean;
+    /** See `QuadrantChartProps.showClickHint`. */
+    showClickHint?: boolean;
 };
 
 /**
@@ -188,7 +194,14 @@ export const buildQuadrantOption = ({
     zoneOverlay,
     showZoneOverlay = false,
     highlightOverlayKey,
+    verbatimEntityLabels = false,
+    animation,
+    showClickHint = true,
 }: QuadrantChartOptionParams): EChartsOption => {
+    // A served word is drawn as given; any other label is shortened as before (CHAOS-12625).
+    const entityLabel = verbatimEntityLabels
+        ? (label: string) => label
+        : (label: string) => chartEntityLabel(label);
     const xAxisLabel = data.axes.x.unit
         ? `${data.axes.x.label} (${data.axes.x.unit})`
         : data.axes.x.label;
@@ -226,7 +239,7 @@ export const buildQuadrantOption = ({
     const backgroundOpacity = 1;
     // The labels drawn above the dots: every point on a team / repo chart, the focus points always.
     const pointLabels = [...(showPointLabels ? backgroundPoints : []), ...focusPoints].map(
-        (point) => chartEntityLabel(point.entity_label),
+        (point) => entityLabel(point.entity_label),
     );
 
     const focusData = focusPoints.map((point) => ({
@@ -297,6 +310,7 @@ export const buildQuadrantOption = ({
     const axisLabelColor = withAlpha(chartTheme.muted, 0.75);
 
     return {
+        ...(animation === undefined ? {} : { animation }),
         tooltip: {
             confine: true,
             backgroundColor: chartTheme.background,
@@ -320,13 +334,17 @@ export const buildQuadrantOption = ({
                 const yLabel = data.axes.y.label;
                 const xValue = formatQuadrantValue(point.x, data.axes.x.unit);
                 const yValue = formatQuadrantValue(point.y, data.axes.y.unit);
-                const entityLabel = isPersonScope ? "You" : chartEntityLabel(point.entity_label);
+                const name = isPersonScope ? "You" : entityLabel(point.entity_label);
 
                 return [
-                    `<div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(entityLabel)}</div>`,
+                    `<div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(name)}</div>`,
                     `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${escapeHtml(xLabel)}</span> <span style="font-weight: 500;">${escapeHtml(xValue)}</span></div>`,
                     `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${escapeHtml(yLabel)}</span> <span style="font-weight: 500;">${escapeHtml(yValue)}</span></div>`,
-                    `<div style="margin-top: 6px; font-size: 10px; opacity: 0.6;">Click to investigate pattern</div>`,
+                    ...(showClickHint
+                        ? [
+                              `<div style="margin-top: 6px; font-size: 10px; opacity: 0.6;">Click to investigate pattern</div>`,
+                          ]
+                        : []),
                 ].join("");
             },
         },
@@ -385,7 +403,7 @@ export const buildQuadrantOption = ({
                               show: true,
                               formatter: (params: DefaultLabelFormatterCallbackParams) => {
                                   const point = toPoint(params.data);
-                                  return point ? chartEntityLabel(point.entity_label) : "";
+                                  return point ? entityLabel(point.entity_label) : "";
                               },
                               color: chartTheme.text,
                               fontSize: 11,
@@ -423,7 +441,7 @@ export const buildQuadrantOption = ({
                               show: true,
                               formatter: (params: DefaultLabelFormatterCallbackParams) => {
                                   const point = toPoint(params.data);
-                                  return point ? chartEntityLabel(point.entity_label) : "";
+                                  return point ? entityLabel(point.entity_label) : "";
                               },
                               color: chartTheme.muted,
                               fontSize: 10,
@@ -453,6 +471,17 @@ type QuadrantChartProps = {
     zoneOverlay?: ZoneOverlay | null;
     showZoneOverlay?: boolean;
     highlightOverlayKey?: string | null;
+    /**
+     * Draw each point's `entity_label` as given, in its label and tooltip. Off by default, so a
+     * label is shortened by `chartEntityLabel`: "acme/web" would read "web", two entities could
+     * share a word, and a provider-keyed word such as "linear:CHK" would read "Unresolved". A host
+     * that passes served words turns it on (Ask Dev, CHAOS-12625).
+     */
+    verbatimEntityLabels?: boolean;
+    /** `false` turns animation off, for a reader who asks for reduced motion. */
+    animation?: boolean;
+    /** The tooltip's "Click to investigate pattern" line. A host with no click action turns it off. */
+    showClickHint?: boolean;
 };
 
 export function QuadrantChart({
@@ -467,6 +496,9 @@ export function QuadrantChart({
     zoneOverlay,
     showZoneOverlay = false,
     highlightOverlayKey,
+    verbatimEntityLabels = false,
+    animation,
+    showClickHint = true,
 }: QuadrantChartProps) {
     const chartTheme = useChartTheme();
     const colors = useChartColors();
@@ -491,6 +523,9 @@ export function QuadrantChart({
                 zoneOverlay,
                 showZoneOverlay,
                 highlightOverlayKey,
+                verbatimEntityLabels,
+                ...(animation === undefined ? {} : { animation }),
+                showClickHint,
             })}
             className={className}
             style={mergedStyle}
