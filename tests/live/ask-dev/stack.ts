@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { expect, type Page, type Request } from "@playwright/test";
+import { expect, type Locator, type Page, type Request } from "@playwright/test";
 
 /**
  * CHAOS-11933: what the Ask Dev live suite needs from the deployed stack.
@@ -88,6 +88,26 @@ export function watchAcr(page: Pick<Page, "on">): AcrCall[] {
     return calls;
 }
 
+/** Web's route that starts an authorization: same origin, so `watchAcr` cannot see it. */
+const AUTHORIZE_ROUTE = "/api/ask-dev/authorize";
+
+/**
+ * Every request of the authorization flow this page makes: web's route, and anything on ACR's
+ * origin that is not a data route (the OAuth metadata, `/authorize`, `/token`, `/revoke`). P1-6
+ * holds this empty. Only the method and the path are kept: a query or a body may hold a code.
+ */
+export function watchAuthorization(page: Pick<Page, "on">): string[] {
+    const seen: string[] = [];
+    page.on("request", (request) => {
+        const url = new URL(request.url());
+        const onAcr = url.origin === ACR && !url.pathname.startsWith("/api/v1/");
+        if (onAcr || url.pathname === AUTHORIZE_ROUTE) {
+            seen.push(`${request.method()} ${url.pathname}`);
+        }
+    });
+    return seen;
+}
+
 /** A question to ACR. The suite counts these: only a routed case may send one. */
 export const investigations = (calls: readonly AcrCall[]): readonly AcrCall[] =>
     calls.filter((call) => call.method === "POST" && call.path === INVESTIGATIONS_PATH);
@@ -117,18 +137,55 @@ export async function signIn(page: Page): Promise<void> {
     }
 }
 
-/** The real OAuth flow from the browser: ACR's authorize, the consent page, the callback, /token. */
-export async function connect(page: Page): Promise<void> {
-    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard", { waitUntil: "commit" });
-    await page.waitForURL((url) => url.pathname === "/dashboard", {
-        timeout: 60_000,
-        waitUntil: "commit",
+/** This tab's ACR token family. It holds a refresh token, so only its random id leaves the page. */
+export const familyIdOf = (page: Page): Promise<string | null> =>
+    page.evaluate(() => {
+        const family = window.sessionStorage.getItem("ask-dev:acr-family");
+        return family === null ? null : (JSON.parse(family) as { familyId: string }).familyId;
     });
-    await expect(page.getByRole("button", { name: "Open Ask Dev" })).toBeVisible({
-        timeout: 30_000,
-    });
+
+/** Opens the panel on the page shown, then History, which is a user's act. */
+export async function openHistory(page: Page): Promise<Locator> {
+    const launcher = page.getByRole("button", { name: "Open Ask Dev" });
+    await expect(launcher).toBeVisible({ timeout: 30_000 });
     await hydrated(page);
+    await launcher.click();
+    const panel = page.getByTestId("ask-dev-panel");
+    await panel.getByTestId("ask-dev-history-toggle").click();
+    return panel;
 }
+
+/**
+ * The real silent authorization from the browser (CHAOS-12474). There is no page to visit and no
+ * step to click: opening History runs web's route, ACR's `/authorize` and its consent, then
+ * `/token`. No token at the end of it is red. It leaves this tab on /dashboard with its family held
+ * and the panel closed. The panel's History read is one more ACR call.
+ */
+export async function authorize(page: Page): Promise<void> {
+    await page.goto("/dashboard", { waitUntil: "commit" });
+    const panel = await openHistory(page);
+    await expect
+        .poll(() => familyIdOf(page), {
+            message: "this tab holds no ACR family: the silent authorization gave no token",
+            timeout: 30_000,
+        })
+        .not.toBeNull();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+}
+
+/** What must not say a connect step. The render has no "Reconnect" today; this would catch one. */
+export const CONNECT_WORDS = /\b(?:re)?connect\b/iu;
+
+/** What the panel says of itself: not a stored question, which may hold any word. */
+export const panelChrome = (panel: Locator): Promise<string> =>
+    panel.evaluate((node) => {
+        const copy = node.cloneNode(true) as HTMLElement;
+        for (const row of copy.querySelectorAll('[data-testid="ask-dev-history-row"]')) {
+            row.remove();
+        }
+        return copy.textContent ?? "";
+    });
 
 /** `ASK_DEV_LIVE_ORACLE`: acr's `modeloracle`. A routed case sends nothing without it. */
 export const ORACLE = process.env.ASK_DEV_LIVE_ORACLE ?? "";

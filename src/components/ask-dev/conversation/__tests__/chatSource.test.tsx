@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
@@ -371,9 +370,9 @@ const CASES: Record<TurnOutcome["kind"], Case> = {
             retry: false,
         },
     },
-    connect: {
-        drive: refusedWith(new TransportFailure("authorization_required"), "connect"),
-        expected: { kind: "status", status: { kind: "connect" }, retry: false },
+    authorization_failed: {
+        drive: refusedWith(new TransportFailure("authorization_failed"), "authorization_failed"),
+        expected: { kind: "status", status: { kind: "failed" }, retry: true },
     },
     unavailable: {
         drive: async (s) => {
@@ -479,9 +478,17 @@ type Same<A, B> =
     (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type WebStatusKinds = Exclude<
     TurnOutcome["kind"],
-    "running" | "recovering" | "observing" | "restoring" | "canceling" | "answered" | "refused"
+    | "running"
+    | "recovering"
+    | "observing"
+    | "restoring"
+    | "canceling"
+    | "answered"
+    | "refused"
+    // CHAOS-12474: drawn with the render's own kinds, and `connect` is never sent.
+    | "authorization_failed"
 >;
-const STATUS_KINDS_MATCH: Same<WebStatusKinds, ChatStatus["kind"]> = true;
+const STATUS_KINDS_MATCH: Same<WebStatusKinds, Exclude<ChatStatus["kind"], "connect">> = true;
 const NOT_RUN_MATCH: Same<NotRunReason, SeamNotRunReason> = true;
 const STOPPED_MATCH: Same<StoppedReason, SeamStoppedReason> = true;
 const STAGES_MATCH: Same<InvestigationStage, SeamStage> = true;
@@ -1401,13 +1408,10 @@ describe("the other actions", () => {
         await vi.waitFor(() => expect(transport.deleteCalls).toEqual([THREAD_B]));
     });
 
-    it("the Connect slot is web's link, and asks for nothing", () => {
+    // CHAOS-12474: a signed-in user meets no connect step, so the render gets nothing to draw one.
+    it("offers no Connect slot", () => {
         const { source } = makeSource();
-        render(<>{source.slots?.connect?.()}</>);
-        expect(screen.getByRole("link", { name: "Connect Ask Dev" })).toHaveAttribute(
-            "data-testid",
-            "ask-dev-connect",
-        );
+        expect(source.slots).toBeUndefined();
     });
 
     it("holds no credential: the seam is its members and nothing else", () => {
@@ -1426,7 +1430,6 @@ describe("the other actions", () => {
                 "reloadThread",
                 "reloadTurn",
                 "retry",
-                "slots",
                 "stop",
                 "subscribe",
             ].sort(),

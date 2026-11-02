@@ -492,13 +492,15 @@ describe("history and delete (AC-12, design §4.3)", () => {
         ]);
     });
 
-    // CHAOS-12336 (T14b, the lead's ruling 2 = A): no ACR token, or ACR's 401, on the list or the
-    // thread read is the Connect state, not a failed read.
-    it("a list read with no ACR token is connect, not read_failed; a later page keeps moreFailed", async () => {
+    // CHAOS-12474: no ACR token, or ACR's 401, on the list or the thread read is a failed read, with
+    // Try again as the user's next act. It is never `ready`: an empty list would read "No
+    // conversations yet" when nothing is known.
+    it("a list read with no ACR token is read_failed, not ready; a later page keeps moreFailed", async () => {
         transport.listPages.push({ fail: new TransportFailure("authorization_required") });
         const store = makeStore();
         store.loadHistory();
-        await vi.waitFor(() => expect(snap(store).history.status).toBe("connect"));
+        await vi.waitFor(() => expect(snap(store).history.status).toBe("read_failed"));
+        expect(snap(store).history.threads).toEqual([]);
         transport.listPages.splice(0, 1, {
             threads: [summary(THREAD_A)],
             nextCursor: "next",
@@ -513,14 +515,35 @@ describe("history and delete (AC-12, design §4.3)", () => {
         expect(snap(store).history.status).toBe("ready");
     });
 
-    it("a thread read with no ACR token is connect, read-only, and offers no Try again", async () => {
+    it("a thread read with no ACR token is read_failed, read-only, and its Try again is a user's act", async () => {
         transport.threads.set(THREAD_A, { fail: new TransportFailure("authorization_required") });
         const store = makeStore();
         store.selectThread(THREAD_A, "incoming");
-        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("connect"));
-        expect(store.retryThreadRead()).toBe(false);
+        await vi.waitFor(() => expect(snap(store).thread.kind).toBe("read_failed"));
+        expect(transport.threadReads.at(-1)?.userAct).toBe(false);
         expect(store.submit("Anything?")).toBe(false);
         expect(investigations()).toBe(0);
+        expect(store.retryThreadRead()).toBe(true);
+        expect(transport.threadReads.at(-1)?.userAct).toBe(true);
+    });
+
+    it.each(["impersonating", "not_entitled"] as const)(
+        "a thread read refused for %s is unavailable: another read cannot help",
+        async (reason) => {
+            transport.threads.set(THREAD_A, { fail: new TransportFailure(reason) });
+            const store = makeStore();
+            store.selectThread(THREAD_A, "local");
+            await vi.waitFor(() => expect(snap(store).thread.kind).toBe("unavailable"));
+            expect(store.retryThreadRead()).toBe(false);
+        },
+    );
+
+    it("a row of the list is a user's act; a restore from the hint is not", async () => {
+        const store = makeStore();
+        store.selectThread(THREAD_A, "local");
+        expect(transport.threadReads.at(-1)?.userAct).toBe(true);
+        store.selectThread(THREAD_B, "incoming");
+        expect(transport.threadReads.at(-1)?.userAct).toBe(false);
     });
 
     it("a list read that failed keeps the rows and offers Try again", async () => {

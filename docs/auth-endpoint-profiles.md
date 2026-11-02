@@ -157,8 +157,7 @@ JWT-shaped assertion (header `{alg: "EdDSA", kid, typ: "JWT"}`, claims
 `{aud, body_sha256, exp: iat+30s, iat, iss, jti, method, nbf, org_id,
 path, permissions, repository_scopes, sub}`) and sends it as
 `X-ACR-Web-Assertion` on every request `AcrRuntimeClient` makes to the ACR
-service (`AcrRuntimeClient.request`). **Four** routes trigger this (the first three through `request`; the fourth, `POST /api/ask-dev/investigations`, signs in `openInvestigationStream`, see "Ask Dev route" below):
-`POST /api/ask-dev/investigations`,
+service (`AcrRuntimeClient.request`). **Three** routes trigger this:
 `POST /api/acr/device`, `POST /api/agent-context/context-packets`, and
 `GET /api/agent-context/evidence/[evidenceRefId]`. They now carry it as
 machine-readable `issued_credential` rows in
@@ -179,8 +178,8 @@ machine-readable `issued_credential` rows in
 > one, so the claim is corrected here rather than left standing in prose.
 
 Every mint funnels through `signWebAssertion`: the private
-`AcrRuntimeClient.request` (`src/lib/acr/client.ts`, where the `X-ACR-Web-Assertion` header is set) and
-`AcrRuntimeClient.openInvestigationStream` (CHAOS-11921) are its only two callers.
+`AcrRuntimeClient.request` (`src/lib/acr/client.ts`, where the `X-ACR-Web-Assertion` header is set) is
+its only caller.
 
 **Key custody** (`src/lib/acr/config.ts::readPrivateKey()`):
 
@@ -244,19 +243,25 @@ The first-party browser client (ACR's own issuer is its resource; `ACR_OAUTH_ISS
 consent click (chris decision 2): `openOAuthConsent()` approves it from the consent page's server
 render, server to server through ACR's consent route, with the live org scope grant (`["*"]`). It
 needs a session with a `sid`. The approve button route refuses that client (400). Third-party MCP
-clients keep the consent page and the repository choice.
+clients keep the consent page and the repository choice. Since CHAOS-12474 the first-party client
+comes to `openOAuthConsent()` only from `POST /api/ask-dev/authorize`, never by that page.
 
-### Ask Dev route (CHAOS-11921)
+### Ask Dev silent authorization (CHAOS-12474)
 
-`POST /api/ask-dev/investigations` is a fourth minting route. It has no `capabilities` pre-call: one
-assertion (`context:read`, bound to the exact body bytes and the caller's repository scopes) is
-signed per request in `AcrRuntimeClient.openInvestigationStream`, with the same key custody as above
-(only the web server holds the key). The route refuses a POST whose `Origin` is not this site (403,
-`origin_refused`), before any other work. The auth chain then runs on every call and caches nothing:
-session, impersonation refusal (`real_org_id` differs: 403), the pinned request schema (400), both
-entitlements `agent_context_runtime` and `ask_dev` read from ops (`requireAskDevEntitlements`), and
-the repository scopes (empty: `no_repository`). `/api/ask-dev` is excluded from the Ops rewrite (`shouldProxyToOps`
-in `src/proxy.ts`); `/api/v1/dev` stays blocked.
+`POST /api/ask-dev/authorize` runs ACR's `/authorize` from the signed-in session, and answers
+`{code, state, iss}` as JSON, `no-store`. It mints only through `openOAuthConsent()`, so its
+assertions are the `credential:issue` ones above. The browser stays the OAuth public client: the
+verifier and the `/token` exchange are the browser's, so no token reaches this route. It refuses a
+POST whose `Origin` is not this site, a body that is not exactly `{code_challenge, state}`, no
+session (401) and an impersonating session (403), each before any ACR call. After those checks it
+spends one attempt of the user's budget, 6 a minute (429 `user_rate_limited`, `failClosed`), so a
+caller with no session cannot spend it. The call to ACR's `GET /authorize` carries no web credential
+and follows no redirect. See
+[`ask-dev.md`](ask-dev.md) "Authorizing silently".
+
+### Ask Dev routes
+
+The browser calls ACR directly (CHAOS-12108 removed the server route), so `/api/ask-dev/authorize` is the only route under this prefix. `/api/ask-dev` stays excluded from the Ops rewrite (`shouldProxyToOps` in `src/proxy.ts`); `/api/v1/dev` stays blocked.
 
 ## FINDING: inconsistent mutation CSRF/Origin checks
 

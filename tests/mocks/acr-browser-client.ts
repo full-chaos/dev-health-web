@@ -1,6 +1,6 @@
 import type { BrowserContext } from "@playwright/test";
 
-import { AcrOAuthMock } from "./acr-oauth";
+import { ACR_DEV_BROWSER_CLIENT_ID, AcrOAuthMock } from "./acr-oauth";
 
 /**
  * The browser's ACR client in an e2e page, with ACR on its own origin (CHAOS-12304). c2's own e2e
@@ -25,6 +25,45 @@ export const ACR_CORS = {
     exposeHeaders: "Retry-After, X-Request-ID",
     maxAgeSeconds: "600",
 } as const;
+
+/**
+ * Web's `POST /api/ask-dev/authorize` (CHAOS-12474), over the mock. Its own test runs the real route
+ * against a stub of ACR; an e2e here needs only what it answers, from what ACR's mock decided. The
+ * mock's `/authorize` gives the code in one step, where ACR gives a handle and then a consent.
+ */
+export async function serveAskDevAuthorize(
+    context: BrowserContext,
+    acr: AcrOAuthMock,
+    web: string,
+    issuer: string,
+): Promise<void> {
+    await context.route(`${web}/api/ask-dev/authorize`, async (route) => {
+        const body = route.request().postDataJSON() as { code_challenge: string; state: string };
+        const authorize = new URL(`${issuer}/authorize`);
+        authorize.search = new URLSearchParams({
+            response_type: "code",
+            client_id: ACR_DEV_BROWSER_CLIENT_ID,
+            redirect_uri: `${web}/ask-dev/oauth/callback`,
+            code_challenge: body.code_challenge,
+            code_challenge_method: "S256",
+            state: body.state,
+            resource: issuer,
+            scope: "context:read evidence:read",
+        }).toString();
+        const answer = acr.handle({ method: "GET", url: authorize.href });
+        const params = new URL(answer.headers.Location ?? `${web}/`).searchParams;
+        const code = params.get("code");
+        await route.fulfill({
+            status: code === null ? 502 : 200,
+            headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+            body: JSON.stringify(
+                code === null
+                    ? { error: { code: "acr_refused" } }
+                    : { code, state: params.get("state"), iss: params.get("iss") },
+            ),
+        });
+    });
+}
 
 /** A loopback origin other than the web's, already allowed by the app's CSP. */
 export const ACR_E2E_ISSUER = "http://localhost:8800";
@@ -56,6 +95,7 @@ export async function installCrossOriginAcr(
     issuer: string,
 ): Promise<CrossOriginAcr> {
     const acr = new AcrOAuthMock({ issuer, redirectUri: `${web}/ask-dev/oauth/callback` });
+    await serveAskDevAuthorize(context, acr, web, issuer);
     const answers: AcrAnswer[] = [];
     const cors = {
         "Access-Control-Allow-Origin": web,

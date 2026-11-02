@@ -57,10 +57,6 @@ export const SERVER_ONLY_MODULES = [
     { file: "src/lib/acr/client.ts", markers: ["/api/v1/agent-context/capabilities"] },
     { file: "src/lib/acr/ops.ts", markers: ["/api/v1/licensing/entitlements/"] },
     { file: "src/lib/acr/service.ts", markers: ["Approval is unavailable while impersonating."] },
-    {
-        file: "src/lib/ask-dev/investigation.server.ts",
-        markers: ["Ask Dev is unavailable while impersonating."],
-    },
 ];
 
 /**

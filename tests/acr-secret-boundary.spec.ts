@@ -1241,8 +1241,20 @@ async function browserTokenScenario(page: Page, baseURL: string | undefined, pla
         .route(`${web}${PROBE_PATH}**`, (route) => route.fulfill({ status: 204, body: "" }));
     const watch = observeTokens(page);
 
-    await page.goto("/ask-dev/oauth/start?return=%2Fdashboard");
-    await page.waitForURL((url) => url.pathname === "/dashboard");
+    // The silent step (CHAOS-12474) runs at a user's act: here, opening History.
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
+    const panel = page.getByTestId("ask-dev-panel");
+    await panel.getByTestId("ask-dev-history-toggle").click();
+    await expect
+        .poll(() =>
+            client.answers.some(
+                (item) => item.url === client.endpoints.tokenEndpoint && item.status === 200,
+            ),
+        )
+        .toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
     await watch.settle();
 
     // The access token ACR issued: from its own /token answer, as the page received it.

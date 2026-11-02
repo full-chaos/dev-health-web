@@ -40,6 +40,7 @@ import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { AskDevChat, FEEDBACK_COPY } from "@full-chaos/ask-dev/render";
 
 import type { TranscriptResult } from "@/lib/ask-dev/transcript";
+import { preloadAskDevRender } from "@/test/askDevRender";
 import { AskDevPanel } from "../../AskDevPanel";
 import { AskDevShellProvider, useAskDevShell } from "../../AskDevShellContext";
 import {
@@ -155,6 +156,8 @@ const choice = (scope: HTMLElement, question: "correct" | "useful", value: "Yes"
         "button",
         { name: value },
     );
+
+preloadAskDevRender();
 
 beforeEach(() => {
     session.org = "org-1";

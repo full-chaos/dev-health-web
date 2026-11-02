@@ -333,6 +333,7 @@ describe("409 no_repository on the nine JSON calls", () => {
             now: () => 1_800_000_000_000,
             token: () => ACCESS,
             rejected: () => undefined,
+            authorize: async () => ({ kind: "off" }),
             envelope: streamEnvelopeValidators,
             validators: async () => streamValidators,
         });

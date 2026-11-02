@@ -9,15 +9,26 @@
  *   `sessionStorage`, under `ask-dev:acr-family`.
  * - None of them goes to React state, a URL, `localStorage`, a log, telemetry or Sentry.
  *
- * The flow:
- * 1. `beginAcrAuthorization` writes this tab's pending authorization (state, PKCE verifier,
- *    expiry) to `sessionStorage` and sends the tab to ACR's `/authorize`.
- * 2. ACR's consent handle goes to web's consent page. For this client, T4c approves it with no
- *    click.
- * 3. ACR redirects to `/ask-dev/oauth/callback?code&state&iss`. The callback page scrubs its URL
- *    first, then calls `completeAcrAuthorization`. That takes the pending entry (single use),
- *    checks `state`, the tab, the expiry and `iss`, and exchanges the code at `/token` with a form
- *    POST, which is not preflighted.
+ * The flow (CHAOS-12474, amending design §2.1): a user signed in to web never sees a connect step.
+ * The browser stays the OAuth public client: it holds the PKCE verifier and runs the `/token`
+ * exchange. Web's server only runs `/authorize` from the signed-in session, so this is no data
+ * proxy, and the ruling against a server hop in front of ACR (CHAOS-3743) still holds.
+ * 1. `authorizeAcrSilently` reads the web principal. If it cannot, it makes no attempt: a code is
+ *    bound to the session that asked (codex r1 on #1714). Then it makes the verifier and the state,
+ *    in this call's memory only, reads ACR's metadata for the token and revocation endpoints, and
+ *    POSTs `{code_challenge, state}` to `/api/ask-dev/authorize`, which takes everything else from
+ *    its own config.
+ * 2. Web's server calls ACR's `GET /authorize` with no cookie and follows no redirect. It takes the
+ *    handle from the consent URL in ACR's 302, and T4c's `openOAuthConsent` approves it with no
+ *    click. It answers `{code, state, iss}` as JSON, `no-store`. It never answers ACR's URL.
+ * 3. This module checks `state`, the tab, the expiry and `iss`, and exchanges the code at `/token`
+ *    with a form POST, which is not preflighted. Nothing touches `window.location`.
+ *
+ * When the silent step runs (the lead's condition 3 on CHAOS-12474): only at a user act, or after a
+ * 401. The transport decides, and `getAcrAccessToken()` never starts it, so a panel open and a
+ * background read send nothing (P1-6). The acts are a question, a History read, opening a
+ * conversation or evidence, and each Try again. One attempt per tab runs at a time: every caller
+ * that comes while it runs shares it.
  *
  * Refresh across tabs, the principal binding, clone detection and the sign-out hook are c4
  * (CHAOS-12305):
@@ -34,14 +45,14 @@
  *   both tabs then share the family, ACR's reuse rule revokes it, and both re-authorize. That
  *   fails closed (T16's live proof).
  * - Nothing here sends a request at module load. A request happens only inside
- *   `getAcrAccessToken()` and the authorization flow.
+ *   `getAcrAccessToken()` and `authorizeAcrSilently()`.
  *
  * Impersonation (CHAOS-12306, c5): while an admin impersonates, `user.id` stays the admin's and
  * `org_id` is the target's org, so the binding above does not change when the target is in the
  * same org. The principal read therefore says "impersonating", and no token is held, served or
  * started for that session. The conversation context also clears every tab's tokens when the
- * impersonation starts or ends; this module's check is the defence in depth (the OAuth pages
- * reached by URL, other tabs).
+ * impersonation starts or ends; this module's check is the defence in depth (a direct call, other
+ * tabs). Web's route refuses the same session on its own side: no code leaves it.
  *
  * Logs (CHAOS-12369): the failure and refusal paths log at Info or Warn, one line per event, all
  * starting with "ask-dev acr token store". A line carries the family id (random, not a secret), an
@@ -51,28 +62,15 @@
 import { getSession } from "next-auth/react";
 
 import { logger } from "@/lib/logger";
-import { safeReturnTo } from "@/lib/onboarding/returnTo";
 
 import { type AcrBrowserClientConfig, browserAcrClientConfig } from "./acr-browser-config";
 
-/** This tab's pending authorization: written by begin, taken (removed) by complete. */
-export const ACR_PENDING_AUTHORIZATION_KEY = "ask-dev:acr-authorization";
 /** The token family this tab holds: the refresh token and where it is used. */
 export const ACR_TOKEN_FAMILY_KEY = "ask-dev:acr-family";
 /** This tab's id. c4 replaces it when it finds a cloned tab. */
 export const ACR_TAB_KEY = "ask-dev:acr-tab";
-/**
- * In `localStorage`, shared by every tab of the origin: the SHA-256 of each state whose code was
- * sent, until its authorization would have expired. A duplicated tab gets a copy of this tab's
- * `sessionStorage`, pending entry included, so the tab id cannot tell it from the original while
- * the original is on ACR's pages. This marker makes one start give at most one code exchange,
- * whichever tab gets there first (r1 on web #1663). It holds no state and no token.
- */
-export const ACR_SPENT_KEY = "ask-dev:acr-spent";
-const ACR_LOCK = "ask-dev:acr-authorization";
-
-/** The scopes the Ask Dev routes need: context:read; evidence:read for evidence. Never data:read. */
-export const ACR_BROWSER_SCOPE = "context:read evidence:read";
+/** Web's same-origin route that runs `/authorize` from the signed-in session (CHAOS-12474). */
+export const ACR_AUTHORIZE_ROUTE = "/api/ask-dev/authorize";
 
 /** How long a started authorization may take to come back. */
 export const ACR_AUTHORIZATION_TTL_MS = 10 * 60 * 1000;
@@ -109,17 +107,6 @@ const TAB_ID = /^[A-Za-z0-9_-]{22}$/u;
 /** A family id: 16 random bytes, base64url, like a tab id. */
 const FAMILY_ID = TAB_ID;
 
-/** The OAuth error codes a callback may carry (RFC 6749 §4.1.2.1); anything else is "other". */
-const CALLBACK_ERRORS = new Set([
-    "access_denied",
-    "invalid_request",
-    "unauthorized_client",
-    "unsupported_response_type",
-    "invalid_scope",
-    "server_error",
-    "temporarily_unavailable",
-]);
-
 export type AcrAuthorizationServer = {
     readonly issuer: string;
     readonly authorizationEndpoint: string;
@@ -128,8 +115,11 @@ export type AcrAuthorizationServer = {
     readonly revocationEndpoint: string | null;
 };
 
-type PendingAuthorization = {
-    readonly v: 1;
+/**
+ * One silent authorization, in the memory of its own call: the verifier reaches no storage, no
+ * route and no log. It leaves the browser only to ACR's `/token`.
+ */
+type AuthorizationRequest = {
     readonly state: string;
     readonly verifier: string;
     readonly tabId: string;
@@ -138,8 +128,11 @@ type PendingAuthorization = {
     readonly redirectUri: string;
     readonly tokenEndpoint: string;
     readonly revocationEndpoint: string | null;
-    readonly returnTo: string;
     readonly expiresAt: number;
+    /** Who asked: the code is for this session. Never unknown: then no attempt starts. */
+    readonly askedBy: AcrPrincipal;
+    /** The drop counter when this started: a clear after it wins, wherever it lands. */
+    readonly dropsAtStart: number;
 };
 
 /** The web session the family and the access token are bound to (CHAOS-12305). */
@@ -187,36 +180,40 @@ export type AcrAccessToken =
     | { readonly kind: "authorization_required" }
     | { readonly kind: "off" };
 
-/** Why a callback did not end in a token. Content-free: safe to log and to show. */
-export type AcrCallbackFailure =
-    | "off"
-    | "no_pending"
+/** Why a silent authorization did not end in a token. Content-free: safe to log. */
+export type AcrAuthorizationFailure =
+    /** ACR's metadata, the route or the network did not answer. */
+    | "unavailable"
+    /** Web's route refused for a reason the browser cannot act on; its own log names it. */
+    | "refused"
+    /** The session read gave nothing at the start, and no answer says it ended: no attempt. */
+    | "principal_unknown"
+    /** The route answered 200 with no `{code, state, iss}`. */
+    | "invalid_answer"
     | "expired"
     | "state_mismatch"
     | "wrong_tab"
     | "iss_mismatch"
-    | "missing_code"
     | "token_refused"
     | "token_unavailable"
     | "invalid_token_response"
-    | "already_used"
-    | "claim_unavailable"
-    /** No web session at the callback: no code is sent (CHAOS-12305). */
-    | "signed_out"
-    /** An impersonating session at the callback, or by the end of the exchange (CHAOS-12306). */
-    | "impersonating";
+    /** The route gave a code, and then the session could not be read or changed: nothing is held. */
+    | "signed_out";
 
-export type AcrCallbackOutcome =
-    | { readonly kind: "authorized"; readonly returnTo: string }
-    | { readonly kind: "denied"; readonly error: string; readonly returnTo: string }
-    | { readonly kind: "failed"; readonly reason: AcrCallbackFailure; readonly returnTo: string };
-
-export type AcrBeginOutcome =
-    | { readonly kind: "redirected" }
+/** What one silent authorization ended in. */
+export type AcrSilentOutcome =
+    | { readonly kind: "token"; readonly token: string; readonly issuer: string }
+    /** No configured client: nothing was sent. */
     | { readonly kind: "off" }
-    | { readonly kind: "unavailable" }
-    /** The session is impersonating: nothing is sent and the tab stays (CHAOS-12306). */
-    | { readonly kind: "impersonating" };
+    /** The server says the session has ended: the way on is the normal sign-in. */
+    | { readonly kind: "session_ended" }
+    /** No ACR token for an impersonating session (CHAOS-12306): no code, no token. */
+    | { readonly kind: "impersonating" }
+    /** The organization has no Agent Context Runtime: asking again cannot help. */
+    | { readonly kind: "not_entitled" }
+    /** ACR's limit, or web's budget per user (429). The next act may try again; nothing here does. */
+    | { readonly kind: "rate_limited" }
+    | { readonly kind: "failed"; readonly reason: AcrAuthorizationFailure };
 
 type Held = AcrPrincipal & {
     readonly token: string;
@@ -238,16 +235,15 @@ let cloneCheck: Promise<void> | null = null;
 let awaitingTaken: { readonly tabId: string; readonly taken: () => void } | null = null;
 /** Counts drops. A refresh that a drop overtook must not store its answer (sign-out, clone). */
 let drops = 0;
+/** This tab's silent authorization while it runs: every caller shares it (CHAOS-12474). */
+let authorizing: Promise<AcrSilentOutcome> | null = null;
 
 type Dependencies = {
     readonly fetch: typeof fetch;
     readonly now: () => number;
     readonly storage: () => Storage | null;
-    /** The origin's `localStorage`, for the spent marker only. */
-    readonly shared: () => Storage | null;
     /** Runs `task` while no other tab of the origin holds the same lock. */
     readonly lock: <T>(name: string, task: () => Promise<T>) => Promise<T>;
-    readonly navigate: (url: string) => void;
     readonly config: () => AcrBrowserClientConfig | undefined;
     /**
      * The web session's principal; null with no session or on error (CHAOS-12305); an
@@ -293,19 +289,10 @@ const browserDependencies: Dependencies = {
             return null;
         }
     },
-    shared: () => {
-        try {
-            return typeof window === "undefined" ? null : window.localStorage;
-        } catch {
-            return null;
-        }
-    },
     lock: (name, task) =>
         typeof navigator !== "undefined" && navigator.locks !== undefined
             ? navigator.locks.request(name, task)
             : inTabLock(name, task),
-    // Replace, not assign: Back from where the flow returns must not start it again.
-    navigate: (url) => window.location.replace(url),
     config: browserAcrClientConfig,
     principal: async () => {
         try {
@@ -355,6 +342,7 @@ export function setAcrAuthDependenciesForTest(next?: Partial<Dependencies>): voi
     dependencies = next === undefined ? browserDependencies : { ...browserDependencies, ...next };
     cloneCheck = null;
     awaitingTaken = null;
+    authorizing = null;
     if (next === undefined) {
         held = null;
         listeningOn = null;
@@ -424,7 +412,7 @@ function isImpersonating(read: AcrPrincipalRead): read is AcrImpersonating {
 
 /** Where the principal was checked when a drop followed (CHAOS-12369). */
 type PrincipalCheck =
-    "begin" | "before" | "lock" | "after_refresh" | "callback_before" | "callback_after";
+    "begin" | "before" | "lock" | "after_refresh" | "exchange_before" | "exchange_after";
 
 /** One Warn line for a drop or refusal for a principal reason (CHAOS-12369). No id values. */
 function logPrincipal(
@@ -441,7 +429,7 @@ function principalReason(read: AcrPrincipalRead): "no_session" | "mismatch" | "i
 }
 
 /** A clear overtook an operation that was about to store or serve something (CHAOS-12369). */
-function logClearRace(where: "refresh" | "after_refresh_check" | "callback"): void {
+function logClearRace(where: "refresh" | "after_refresh_check" | "exchange"): void {
     logger.warn({ where }, "ask-dev acr token store clear overtook");
 }
 
@@ -452,18 +440,11 @@ function dropTokens(storage: Storage | null): void {
     storage?.removeItem(ACR_TOKEN_FAMILY_KEY);
 }
 
-/** Clears this tab's ACR token state: the token, the family and a pending authorization. */
-function clearThisTab(): void {
-    const storage = dependencies.storage();
-    dropTokens(storage);
-    storage?.removeItem(ACR_PENDING_AUTHORIZATION_KEY);
-}
-
 function onTabMessage(channel: AcrTabChannel, message: unknown): void {
     if (!isRecord(message)) return;
     if (message.type === "clear") {
         logger.info({ source: "other_tab" }, "ask-dev acr token store clear received");
-        clearThisTab();
+        dropTokens(dependencies.storage());
         return;
     }
     if (typeof message.tabId !== "string" || !TAB_ID.test(message.tabId)) return;
@@ -551,9 +532,10 @@ function endpointOn(issuer: string, raw: unknown): string | null {
 }
 
 /**
- * ACR's authorization server metadata (RFC 8414), read live each time an authorization starts.
- * The document must name this issuer, S256 and the `iss` response parameter, and its endpoints
- * must be on the issuer's origin.
+ * ACR's authorization server metadata (RFC 8414), read live each time an authorization runs, and
+ * so never on a panel open. The silent step needs it for the `/token` endpoint and for the
+ * revocation endpoint the family keeps for sign-out. The document must name this issuer, S256 and
+ * the `iss` response parameter, and its endpoints must be on the issuer's origin.
  */
 export async function discoverAcrAuthorizationServer(
     issuer: string,
@@ -595,115 +577,6 @@ export async function discoverAcrAuthorizationServer(
     return { issuer, authorizationEndpoint, tokenEndpoint, revocationEndpoint };
 }
 
-/**
- * Starts an authorization in this tab and sends the tab to ACR. `returnTo` is the same-origin path
- * the callback returns to; anything else returns to `/dev`.
- */
-export async function beginAcrAuthorization(returnTo: string): Promise<AcrBeginOutcome> {
-    const config = dependencies.config();
-    const storage = dependencies.storage();
-    if (config === undefined || storage === null) return { kind: "off" };
-    listenForAcrTabs();
-    // No ACR token for an impersonating session (CHAOS-12306): no metadata read, no navigation.
-    // A signed-out start goes on: the callback refuses it before it sends the code.
-    if (isImpersonating(await dependencies.principal())) {
-        // A family stored before the impersonation started goes too (codex r1 on #1680).
-        dropTokens(dependencies.storage());
-        logPrincipal("begin", "impersonating");
-        return { kind: "impersonating" };
-    }
-    const server = await discoverAcrAuthorizationServer(config.issuer);
-    if (server === null) return { kind: "unavailable" };
-    const verifier = randomBase64Url(32);
-    const state = randomBase64Url(32);
-    const pending: PendingAuthorization = {
-        v: 1,
-        state,
-        verifier,
-        tabId: tabId(storage),
-        issuer: config.issuer,
-        clientId: config.clientId,
-        redirectUri: config.redirectUri,
-        tokenEndpoint: server.tokenEndpoint,
-        revocationEndpoint: server.revocationEndpoint,
-        returnTo: safeReturnTo(returnTo) ?? "/dev",
-        expiresAt: dependencies.now() + ACR_AUTHORIZATION_TTL_MS,
-    };
-    // One pending authorization per tab: a new start replaces an older one.
-    storage.setItem(ACR_PENDING_AUTHORIZATION_KEY, JSON.stringify(pending));
-    const url = new URL(server.authorizationEndpoint);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("client_id", config.clientId);
-    url.searchParams.set("redirect_uri", config.redirectUri);
-    url.searchParams.set("code_challenge", await pkceChallenge(verifier));
-    url.searchParams.set("code_challenge_method", "S256");
-    url.searchParams.set("state", state);
-    url.searchParams.set("resource", config.issuer);
-    url.searchParams.set("scope", ACR_BROWSER_SCOPE);
-    dependencies.navigate(url.href);
-    return { kind: "redirected" };
-}
-
-function pendingFrom(value: unknown): PendingAuthorization | null {
-    if (!isRecord(value) || value.v !== 1) return null;
-    const strings = [
-        "state",
-        "verifier",
-        "tabId",
-        "issuer",
-        "clientId",
-        "redirectUri",
-        "tokenEndpoint",
-        "returnTo",
-    ];
-    if (strings.some((key) => typeof value[key] !== "string")) return null;
-    if (typeof value.expiresAt !== "number") return null;
-    if (value.revocationEndpoint !== null && typeof value.revocationEndpoint !== "string")
-        return null;
-    return value as unknown as PendingAuthorization;
-}
-
-/**
- * Claims the right to send this start's code, once across all tabs. `spent` when a tab already
- * sent it. `unavailable` when the marker cannot be written and read back (no `localStorage`, a
- * refused or dropped write): then no code is sent, because the one-exchange rule cannot hold
- * (fails closed, r2 on web #1663).
- */
-async function claimOnce(
-    pending: PendingAuthorization,
-): Promise<"claimed" | "spent" | "unavailable"> {
-    const shared = dependencies.shared();
-    if (shared === null) return "unavailable";
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pending.state));
-    const key = base64Url(new Uint8Array(digest));
-    return dependencies.lock(ACR_LOCK, async () => {
-        const now = dependencies.now();
-        const spent: Record<string, number> = {};
-        const stored = readJson(shared, ACR_SPENT_KEY);
-        if (isRecord(stored)) {
-            for (const [hash, expiresAt] of Object.entries(stored)) {
-                if (typeof expiresAt === "number" && expiresAt > now) spent[hash] = expiresAt;
-            }
-        }
-        if (key in spent) return "spent";
-        spent[key] = pending.expiresAt;
-        try {
-            shared.setItem(ACR_SPENT_KEY, JSON.stringify(spent));
-        } catch {
-            return "unavailable";
-        }
-        const written = readJson(shared, ACR_SPENT_KEY);
-        return isRecord(written) && written[key] === pending.expiresAt ? "claimed" : "unavailable";
-    });
-}
-
-/** Takes (reads and removes) this tab's pending authorization: one callback per start. */
-function takePending(storage: Storage): PendingAuthorization | null {
-    const pending = pendingFrom(readJson(storage, ACR_PENDING_AUTHORIZATION_KEY));
-    storage.removeItem(ACR_PENDING_AUTHORIZATION_KEY);
-    return pending;
-}
-
 type TokenAnswer =
     | {
           readonly kind: "ok";
@@ -716,16 +589,16 @@ type TokenAnswer =
     | { readonly kind: "unavailable"; readonly status?: number }
     | { readonly kind: "invalid"; readonly status?: number };
 
-async function exchangeCode(pending: PendingAuthorization, code: string): Promise<TokenAnswer> {
+async function exchangeCode(request: AuthorizationRequest, code: string): Promise<TokenAnswer> {
     return postTokenForm(
-        pending.tokenEndpoint,
+        request.tokenEndpoint,
         new URLSearchParams({
             grant_type: "authorization_code",
             code,
-            redirect_uri: pending.redirectUri,
-            client_id: pending.clientId,
-            code_verifier: pending.verifier,
-            resource: pending.issuer,
+            redirect_uri: request.redirectUri,
+            client_id: request.clientId,
+            code_verifier: request.verifier,
+            resource: request.issuer,
         }),
     );
 }
@@ -797,104 +670,274 @@ async function postTokenForm(endpoint: string, form: URLSearchParams): Promise<T
     return { kind: "ok", access, expiresIn, refresh: refresh ?? null, status };
 }
 
+/** What web's route answered with a code: never a URL (CHAOS-12474). */
+type AuthorizationCode = { readonly code: string; readonly state: string; readonly iss: string };
+
+function failed(reason: AcrAuthorizationFailure): AcrSilentOutcome {
+    return { kind: "failed", reason };
+}
+
 /**
- * Completes the authorization this tab started, from the callback URL. The caller has already
- * scrubbed the URL from the address bar and history. Every failure is content-free.
+ * Finishes one authorization with what the route answered. It checks `state`, the tab, the expiry
+ * and `iss`, then the web principal, then exchanges the code once. Every failure is content-free.
  */
-export async function completeAcrAuthorization(callbackUrl: string): Promise<AcrCallbackOutcome> {
+async function completeAuthorization(
+    storage: Storage,
+    request: AuthorizationRequest,
+    answer: AuthorizationCode,
+): Promise<AcrSilentOutcome> {
     const config = dependencies.config();
-    const storage = dependencies.storage();
-    if (config === undefined || storage === null) {
-        return { kind: "failed", reason: "off", returnTo: "/dev" };
+    if (config === undefined) return { kind: "off" };
+    if (dependencies.now() >= request.expiresAt) return failed("expired");
+    if (!RANDOM_43.test(request.state) || answer.state !== request.state) {
+        return failed("state_mismatch");
     }
-    listenForAcrTabs();
-    const pending = takePending(storage);
-    if (pending === null) return { kind: "failed", reason: "no_pending", returnTo: "/dev" };
-    const fail = (reason: AcrCallbackFailure): AcrCallbackOutcome => ({
-        kind: "failed",
-        reason,
-        returnTo: pending.returnTo,
-    });
-    const params = new URL(callbackUrl).searchParams;
-    if (dependencies.now() >= pending.expiresAt) return fail("expired");
-    if (!RANDOM_43.test(pending.state) || params.get("state") !== pending.state) {
-        return fail("state_mismatch");
-    }
-    if (pending.tabId !== storage.getItem(ACR_TAB_KEY)) return fail("wrong_tab");
+    if (request.tabId !== storage.getItem(ACR_TAB_KEY)) return failed("wrong_tab");
     // The issuer this tab started with is the one configured now and the one that answered.
-    if (pending.issuer !== config.issuer || params.get("iss") !== pending.issuer) {
-        return fail("iss_mismatch");
+    if (request.issuer !== config.issuer || answer.iss !== request.issuer) {
+        return failed("iss_mismatch");
     }
-    if (pending.clientId !== config.clientId || pending.redirectUri !== config.redirectUri) {
-        return fail("iss_mismatch");
+    if (request.clientId !== config.clientId || request.redirectUri !== config.redirectUri) {
+        return failed("iss_mismatch");
     }
-    const error = params.get("error");
-    if (error !== null) {
-        return {
-            kind: "denied",
-            error: CALLBACK_ERRORS.has(error) ? error : "other",
-            returnTo: pending.returnTo,
-        };
-    }
-    const code = params.get("code");
-    if (code === null || code === "") return fail("missing_code");
-    // The family is bound to the web principal (CHAOS-12305). Read it before the one-exchange
-    // claim: a signed-out callback spends nothing, sends no code and stores nothing.
-    const dropsBefore = drops;
+    // The family is bound to the web principal (CHAOS-12305). With no session, no code is sent and
+    // nothing is stored. It stays a failure, not "session ended": the route, which is the authority
+    // on the session, gave this code a moment ago, so this read may only have failed.
     const principal = await dependencies.principal();
     if (principal === null) {
-        logPrincipal("callback_before", "no_session");
-        return fail("signed_out");
+        logPrincipal("exchange_before", "no_session");
+        return failed("signed_out");
     }
-    // Impersonating (CHAOS-12306): as signed out, nothing is spent, sent or stored.
+    // Impersonating (CHAOS-12306): as signed out, nothing is sent or stored.
     if (isImpersonating(principal)) {
         dropTokens(storage);
-        logPrincipal("callback_before", "impersonating");
-        return fail("impersonating");
+        logPrincipal("exchange_before", "impersonating");
+        return { kind: "impersonating" };
     }
-    const claim = await claimOnce(pending);
-    if (claim === "spent") return fail("already_used");
-    if (claim === "unavailable") return fail("claim_unavailable");
-    const answer = await exchangeCode(pending, code);
-    if (answer.kind === "refused") return fail("token_refused");
-    if (answer.kind === "unavailable") return fail("token_unavailable");
-    if (answer.kind === "invalid") return fail("invalid_token_response");
+    // The route ran for the session of the ask: a code is never bound to a later one.
+    if (!samePrincipal(request.askedBy, principal)) {
+        logPrincipal("exchange_before", "mismatch");
+        return failed("signed_out");
+    }
+    if (drops !== request.dropsAtStart) {
+        logClearRace("exchange");
+        return failed("signed_out");
+    }
+    const exchange = await exchangeCode(request, answer.code);
+    if (exchange.kind === "refused") return failed("token_refused");
+    if (exchange.kind === "unavailable") return failed("token_unavailable");
+    if (exchange.kind === "invalid") return failed("invalid_token_response");
     // A sign-out, or another web user, while the exchange ran: hold and store nothing, so nothing
     // outlives the sign-out that could not revoke it (codex r2 on #1676).
     const after = await dependencies.principal();
     // An impersonation that started while the exchange ran: hold and store nothing (CHAOS-12306).
     if (isImpersonating(after)) {
         dropTokens(storage);
-        logPrincipal("callback_after", "impersonating");
-        return fail("impersonating");
+        logPrincipal("exchange_after", "impersonating");
+        return { kind: "impersonating" };
     }
-    if (drops !== dropsBefore) {
-        // Anywhere in the callback: the counter is read before its first await (codex r2 on #1681).
-        logClearRace("callback");
-        return fail("signed_out");
+    if (drops !== request.dropsAtStart) {
+        // Anywhere in the attempt: the counter is read before its first await (codex r2 on #1681).
+        logClearRace("exchange");
+        return failed("signed_out");
     }
     if (after === null || !samePrincipal(after, principal)) {
-        logPrincipal("callback_after", principalReason(after));
-        return fail("signed_out");
+        logPrincipal("exchange_after", principalReason(after));
+        return failed("signed_out");
     }
-    hold(answer.access, answer.expiresIn, pending.issuer, pending.clientId, principal);
-    if (answer.refresh === null) {
+    hold(exchange.access, exchange.expiresIn, request.issuer, request.clientId, principal);
+    if (exchange.refresh === null) {
         storage.removeItem(ACR_TOKEN_FAMILY_KEY);
     } else {
         const family: AcrHeldFamily = {
             v: 2,
             familyId: randomBase64Url(16),
-            issuer: pending.issuer,
-            clientId: pending.clientId,
-            refreshToken: answer.refresh,
-            tokenEndpoint: pending.tokenEndpoint,
-            revocationEndpoint: pending.revocationEndpoint,
+            issuer: request.issuer,
+            clientId: request.clientId,
+            refreshToken: exchange.refresh,
+            tokenEndpoint: request.tokenEndpoint,
+            revocationEndpoint: request.revocationEndpoint,
             userId: principal.userId,
             orgId: principal.orgId,
         };
         storage.setItem(ACR_TOKEN_FAMILY_KEY, JSON.stringify(family));
     }
-    return { kind: "authorized", returnTo: pending.returnTo };
+    return { kind: "token", token: exchange.access, issuer: request.issuer };
+}
+
+/** What the route's refusal means here. A body that names nothing is only its status. */
+function routeRefusal(status: number, body: unknown): AcrSilentOutcome {
+    const error = isRecord(body) ? body.error : undefined;
+    const code = isRecord(error) ? error.code : undefined;
+    if (status === 401) return { kind: "session_ended" };
+    if (status === 429) return { kind: "rate_limited" };
+    if (code === "impersonating") return { kind: "impersonating" };
+    if (code === "not_entitled") return { kind: "not_entitled" };
+    if (code === "client_off") return { kind: "off" };
+    return failed(
+        typeof code === "string" && code !== "acr_unavailable" ? "refused" : "unavailable",
+    );
+}
+
+/**
+ * One same-origin POST to web's route. Only the challenge and the state go: the verifier does not,
+ * and the route takes the rest from its own config. `redirect: "manual"`: the proxy answers a
+ * session that ended with a redirect to sign-in, which is not this call's page to follow.
+ */
+async function askForCode(
+    codeChallenge: string,
+    state: string,
+): Promise<AuthorizationCode | AcrSilentOutcome> {
+    const limit = deadline();
+    try {
+        let response: Response;
+        try {
+            response = await dependencies.fetch(ACR_AUTHORIZE_ROUTE, {
+                method: "POST",
+                headers: { Accept: "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({ code_challenge: codeChallenge, state }),
+                credentials: "same-origin",
+                cache: "no-store",
+                redirect: "manual",
+                signal: limit.signal,
+            });
+        } catch {
+            return failed("unavailable");
+        }
+        if (response.type === "opaqueredirect") return { kind: "session_ended" };
+        let body: unknown;
+        try {
+            body = await response.json();
+        } catch {
+            if (limit.signal.aborted) return failed("unavailable");
+            body = undefined;
+        }
+        if (!response.ok) return routeRefusal(response.status, body);
+        if (
+            !isRecord(body) ||
+            typeof body.code !== "string" ||
+            body.code === "" ||
+            typeof body.state !== "string" ||
+            typeof body.iss !== "string"
+        ) {
+            return failed("invalid_answer");
+        }
+        return { code: body.code, state: body.state, iss: body.iss };
+    } finally {
+        limit.clear();
+    }
+}
+
+/** One attempt, from a tab with a client and no servable token. It ends in one outcome. */
+async function attemptAuthorization(
+    storage: Storage,
+    config: AcrBrowserClientConfig,
+    askedBy: AcrPrincipal,
+    dropsAtStart: number,
+): Promise<AcrSilentOutcome> {
+    const server = await discoverAcrAuthorizationServer(config.issuer);
+    if (server === null) return failed("unavailable");
+    const request: AuthorizationRequest = {
+        state: randomBase64Url(32),
+        verifier: randomBase64Url(32),
+        tabId: tabId(storage),
+        issuer: config.issuer,
+        clientId: config.clientId,
+        redirectUri: config.redirectUri,
+        tokenEndpoint: server.tokenEndpoint,
+        revocationEndpoint: server.revocationEndpoint,
+        expiresAt: dependencies.now() + ACR_AUTHORIZATION_TTL_MS,
+        askedBy,
+        dropsAtStart,
+    };
+    const answer = await askForCode(await pkceChallenge(request.verifier), request.state);
+    return "code" in answer ? completeAuthorization(storage, request, answer) : answer;
+}
+
+/** One log line per attempt (CHAOS-12369): its end and an enum reason, nothing else. */
+function logAttempt(outcome: AcrSilentOutcome): void {
+    const message = "ask-dev acr token store authorization";
+    if (outcome.kind === "token") {
+        logger.info({ outcome: "authorized" }, message);
+        return;
+    }
+    const reason = outcome.kind === "failed" ? outcome.reason : undefined;
+    logger.warn({ outcome: outcome.kind, reason }, message);
+}
+
+/**
+ * Whether the session has ended, by the endpoint's own answer. A session read gives null for no
+ * session and for a failed read alike (`UserMenu` asks the same way), and only the first goes to
+ * sign-in: anything but a clear "no session" is unknown, and a person can try again.
+ */
+async function sessionHasEnded(): Promise<boolean> {
+    const limit = deadline();
+    try {
+        const response = await dependencies.fetch("/api/auth/session", {
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: limit.signal,
+        });
+        if (!response.ok) return false;
+        const body: unknown = await response.json();
+        return !isRecord(body) || body.user === undefined || body.user === null;
+    } catch {
+        return false;
+    } finally {
+        limit.clear();
+    }
+}
+
+async function runAuthorization(): Promise<AcrSilentOutcome> {
+    const config = dependencies.config();
+    const storage = dependencies.storage();
+    if (config === undefined || storage === null) return { kind: "off" };
+    listenForAcrTabs();
+    await checkClone(storage);
+    const dropsAtStart = drops;
+    const principal = await dependencies.principal();
+    // No ACR token for an impersonating session (CHAOS-12306): no metadata read, no route call.
+    if (isImpersonating(principal)) {
+        // A family stored before the impersonation started goes too (codex r1 on #1680).
+        dropTokens(storage);
+        logPrincipal("begin", "impersonating");
+        const outcome: AcrSilentOutcome = { kind: "impersonating" };
+        logAttempt(outcome);
+        return outcome;
+    }
+    // Fail closed (codex r1 on #1714): a code is bound to the session that asked. With no known
+    // asker, the exchange could not compare, and another user could get this user's code.
+    if (principal === null) {
+        const outcome: AcrSilentOutcome = (await sessionHasEnded())
+            ? { kind: "session_ended" }
+            : failed("principal_unknown");
+        logAttempt(outcome);
+        return outcome;
+    }
+    // A caller that read "no token" before an attempt ended: that attempt's token, no request.
+    if (held !== null && samePrincipal(held, principal)) {
+        const current = servable(config);
+        if (current?.kind === "token") return current;
+    }
+    const outcome = await attemptAuthorization(storage, config, principal, dropsAtStart);
+    logAttempt(outcome);
+    return outcome;
+}
+
+/**
+ * The silent step (CHAOS-12474; the flow in this file's header). The transport calls it at a user
+ * act or after a 401; `getAcrAccessToken()` never does. It does not touch `window.location`: where
+ * a session that ended goes is the caller's. Two callers in one tab make one attempt, and share
+ * its outcome, a failure too. Each tab holds its own family, so a tab serializes only itself. It
+ * never rejects.
+ */
+export function authorizeAcrSilently(): Promise<AcrSilentOutcome> {
+    authorizing ??= runAuthorization()
+        .catch((): AcrSilentOutcome => failed("unavailable"))
+        .finally(() => {
+            authorizing = null;
+        });
+    return authorizing;
 }
 
 function hold(
@@ -1036,7 +1079,8 @@ function refresh(
 /**
  * The access token for one ACR call (T14, CHAOS-12104). T14 awaits it right before each call,
  * never caches the token, and has no retry loop. Never a token for another issuer, client or web
- * principal. In order (CHAOS-12305):
+ * principal. It never starts an authorization, so a background read cannot (CHAOS-12474): "no
+ * token" is the caller's to answer. In order (CHAOS-12305):
  * 1. off without a configured client;
  * 2. once per page load, the clone check;
  * 3. the principal: a mismatch, no session or an impersonating session (CHAOS-12306) drops the
@@ -1090,7 +1134,7 @@ export async function getAcrAccessToken(): Promise<AcrAccessToken> {
 /**
  * T14: ACR answered 401 `invalid_token` for `token` on a data call. Drops the held token only if
  * it is that token, so a newer one stays. Keeps the family: the next `getAcrAccessToken()`
- * refreshes (CHAOS-12305).
+ * refreshes (CHAOS-12305), and with no family the transport makes its one silent attempt.
  */
 export function reportAcrTokenRejected(token: string): void {
     if (held !== null && held.token === token) held = null;
@@ -1102,7 +1146,7 @@ export function reportAcrTokenRejected(token: string): void {
  */
 export function clearAcrTokensInAllTabs(): void {
     listenForAcrTabs();
-    clearThisTab();
+    dropTokens(dependencies.storage());
     dependencies.channel()?.post({ type: "clear" });
 }
 
