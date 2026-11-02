@@ -207,72 +207,116 @@ describe("the live suite's result record (CHAOS-12637)", () => {
         ),
         "utf8",
     );
+    const STREAM_URL = `${ACR}/api/v1/context-fabric/investigations`;
 
-    function respond(
-        responses: ReadonlyArray<{ url: string; method: string; text: () => Promise<string> }>,
-    ) {
-        let listener: ((value: unknown) => void) | undefined;
-        const results = watchResults({
-            on: ((name: string, handler: (value: unknown) => void) => {
-                if (name === "response") listener = handler;
-            }) as never,
-        });
-        for (const { url, method, text } of responses) {
-            listener!({
-                request: () => ({
-                    url: () => url,
-                    method: () => method,
-                    headers: () => ({ authorization: `Bearer ${BEARER}` }),
-                }),
-                text,
-            });
-        }
-        return results;
+    /** A real streamed response: the capture in small chunks, as the network gives it. */
+    function streamed(text: string): Response {
+        const bytes = new TextEncoder().encode(text);
+        let at = 0;
+        return new Response(
+            new ReadableStream<Uint8Array>({
+                pull(controller) {
+                    if (at >= bytes.length) return controller.close();
+                    controller.enqueue(bytes.slice(at, at + 512));
+                    at += 512;
+                },
+            }),
+            { headers: { "content-type": "text/event-stream" } },
+        );
     }
 
-    it("keeps the result of the investigation stream, and no bearer", async () => {
-        const results = respond([
-            {
-                url: `${ACR}/api/v1/context-fabric/investigations`,
+    /**
+     * The real `watchResults` over a fake page: `addInitScript` runs the real in-page tee on this
+     * process's own `fetch`, and `exposeBinding` installs the real handler where the tee sends.
+     */
+    async function recorded(respond: () => Response) {
+        const scope = globalThis as unknown as Record<string, unknown> & { fetch: typeof fetch };
+        const saved = scope.fetch;
+        const seen: string[] = [];
+        scope.fetch = (async (input: RequestInfo | URL) => {
+            seen.push(String(input));
+            return respond();
+        }) as typeof fetch;
+        const results = await watchResults({
+            exposeBinding: (async (
+                name: string,
+                handler: (source: unknown, message: unknown) => void,
+            ) => {
+                scope[name] = (message: unknown) => handler({}, message);
+            }) as never,
+            addInitScript: (async (script: (options: unknown) => void, options: unknown) => {
+                script(options);
+            }) as never,
+        });
+        const restore = () => {
+            scope.fetch = saved;
+            delete scope["__askDevLiveStream"];
+        };
+        return { results, seen, restore, scope };
+    }
+
+    it("keeps the result of the investigation stream, while the app reads the same stream whole", async () => {
+        const { results, restore, scope } = await recorded(() => streamed(capture));
+        try {
+            const response = await scope.fetch(STREAM_URL, {
                 method: "POST",
-                text: async () => capture,
-            },
-        ]);
-        await vi.waitFor(() => expect(results).toHaveLength(1));
-        expect(results[0]?.status).toBe("complete");
-        expect(JSON.stringify(results)).not.toContain(BEARER);
+                headers: { authorization: `Bearer ${BEARER}` },
+            });
+            // The app's own read of the stream is untouched.
+            expect(await response.text()).toBe(capture);
+            await vi.waitFor(() => expect(results).toHaveLength(1));
+            expect(results[0]?.status).toBe("complete");
+            expect(JSON.stringify(results)).not.toContain(BEARER);
+        } finally {
+            restore();
+        }
     });
 
-    it("reads no other route, no other method and no other origin", async () => {
-        const read = vi.fn(async () => capture);
-        const results = respond([
-            { url: `${ACR}/api/v1/context-fabric/investigations`, method: "GET", text: read },
-            { url: `${ACR}/api/v1/agent-context/evidence/ref_1`, method: "POST", text: read },
-            {
-                url: "https://other.example/api/v1/context-fabric/investigations",
-                method: "POST",
-                text: read,
-            },
-        ]);
-        await Promise.resolve();
-        expect(read).not.toHaveBeenCalled();
-        expect(results).toEqual([]);
+    it("tees no other route, no other method and no other origin", async () => {
+        const { results, restore, scope } = await recorded(() => streamed(capture));
+        try {
+            for (const [url, method] of [
+                [STREAM_URL, "GET"],
+                [`${ACR}/api/v1/agent-context/evidence/ref_1`, "POST"],
+                ["https://other.example/api/v1/context-fabric/investigations", "POST"],
+            ] as const) {
+                const response = await scope.fetch(url, { method });
+                await response.text();
+            }
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            expect(results).toEqual([]);
+        } finally {
+            restore();
+        }
     });
 
-    it("adds nothing when the browser gives no body back, so the case fails on its absence", async () => {
-        const results = respond([
-            {
-                url: `${ACR}/api/v1/context-fabric/investigations`,
-                method: "POST",
-                text: async () => {
-                    throw new Error("No resource with given identifier found");
-                },
-            },
-        ]);
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        expect(results).toEqual([]);
-        expect(repositoryScopeFailures(results[0], REPOSITORY)).toEqual([
-            "no terminal result was captured for this question",
-        ]);
+    it("says so, and adds nothing, when the stream's body cannot be read", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+        const { results, restore, scope } = await recorded(
+            () =>
+                new Response(
+                    new ReadableStream({
+                        pull(controller) {
+                            controller.error(new Error("the stream broke"));
+                        },
+                    }),
+                ),
+        );
+        try {
+            const response = await scope.fetch(STREAM_URL, { method: "POST" });
+            await response.text().catch(() => undefined);
+            await vi.waitFor(() =>
+                expect(warn).toHaveBeenCalledWith(
+                    "watchResults: an investigation stream gave no body: the stream broke",
+                ),
+            );
+            expect(results).toEqual([]);
+            expect(repositoryScopeFailures(results[0], REPOSITORY)).toEqual([
+                "no terminal result was captured for this question",
+            ]);
+        } finally {
+            restore();
+            warn.mockRestore();
+        }
     });
 });

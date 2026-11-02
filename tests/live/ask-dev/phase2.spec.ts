@@ -264,7 +264,7 @@ for (const [name, surface, replicate] of [
     const where = surface === "page" ? "a repository page" : "/dev, with no hint";
     test(`P2-4: review latency from ${where}, replicate ${String(replicate)}`, async ({ page }) => {
         // CHAOS-12637: what the answer is about is read from the result it drew.
-        const results = watchResults(page);
+        const results = await watchResults(page);
         const { calls, surface: panel } =
             surface === "page"
                 ? await panelOn(page, ONE_REPOSITORY)

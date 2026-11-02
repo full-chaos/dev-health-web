@@ -90,31 +90,93 @@ export function watchAcr(page: Pick<Page, "on">): AcrCall[] {
     return calls;
 }
 
+/** The page binding the in-page tee sends each investigation stream's text to. */
+const RESULT_BINDING = "__askDevLiveStream";
+
 /**
- * CHAOS-12637: the terminal result of every investigation this page asks, in order, read from the
- * event stream once it ends. Only the result is kept: no header, no bearer. A stream whose body the
- * browser does not give back adds nothing and says so on the console, so a case that needs a result
- * fails on its absence.
+ * CHAOS-12637: runs IN THE PAGE (`page.addInitScript`), before the app's own scripts. It wraps
+ * `fetch` so that each POST to ACR's investigations route also sends a CLONE of its response body,
+ * once the stream ends, to `binding`. The app reads the original stream as it always does, so the
+ * page streams as before. Nothing else is read: no request, no header, no bearer. A body that
+ * cannot be read is sent as `{ error }`, so the test says why it has no result.
+ *
+ * Why in the page: Chromium does not keep the body of a streamed `fetch` for the DevTools protocol,
+ * so `response.text()` on Playwright's side fails with "No data found for resource with given
+ * identifier" (askdev-1, 2026-11-02). Self-contained: Playwright sends its source to the page.
  */
-export function watchResults(page: Pick<Page, "on">): ScopedResult[] {
+export function teeInvestigationStreams(options: {
+    readonly origin: string;
+    readonly path: string;
+    readonly binding: string;
+}): void {
+    const scope = globalThis as unknown as Record<string, unknown> & { fetch: typeof fetch };
+    const original = scope.fetch.bind(globalThis);
+    scope.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        const response = await original(input, init);
+        try {
+            const request = input instanceof Request ? input : undefined;
+            const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
+            const href =
+                typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+            const base = (globalThis as { location?: { href: string } }).location?.href;
+            const url = new URL(href, base ?? options.origin);
+            const send = scope[options.binding];
+            if (
+                method === "POST" &&
+                url.origin === options.origin &&
+                url.pathname === options.path &&
+                typeof send === "function"
+            ) {
+                void response
+                    .clone()
+                    .text()
+                    .then(
+                        (body) => (send as (message: { body: string }) => unknown)({ body }),
+                        (error: unknown) =>
+                            (send as (message: { error: string }) => unknown)({
+                                error: error instanceof Error ? error.message : String(error),
+                            }),
+                    );
+            }
+        } catch {
+            // The page's own fetch is never broken by the test's tee.
+        }
+        return response;
+    };
+}
+
+/**
+ * CHAOS-12637: the terminal result of every investigation this page asks, in order, read from a
+ * clone of its event stream inside the page (`teeInvestigationStreams`). Only the result is kept: no
+ * header, no bearer. A stream with no readable body adds nothing and says so on the console, so a
+ * case that needs a result fails on its absence. Call it before the page's first navigation.
+ */
+export async function watchResults(
+    page: Pick<Page, "exposeBinding" | "addInitScript">,
+): Promise<ScopedResult[]> {
     const results: ScopedResult[] = [];
-    page.on("response", (response) => {
-        const request = response.request();
-        const url = new URL(request.url());
-        if (url.origin !== ACR || request.method() !== "POST") return;
-        if (url.pathname !== INVESTIGATIONS_PATH) return;
-        void response
-            .text()
-            .then((stream) => {
-                const result = terminalResultOf(stream);
+    await page.exposeBinding(
+        RESULT_BINDING,
+        (_source, message: { body?: string; error?: string }) => {
+            if (typeof message.body === "string") {
+                const result = terminalResultOf(message.body);
                 if (result !== undefined) results.push(result);
-            })
-            .catch((error: unknown) => {
-                // Loud, not silent: the case then fails on "no terminal result", and this says why.
-                console.warn(
-                    `watchResults: the event stream of ${url.pathname} gave no body: ${error instanceof Error ? error.message : String(error)}`,
-                );
-            });
+                else
+                    console.warn(
+                        "watchResults: an investigation stream ended with no result event",
+                    );
+                return;
+            }
+            // Loud, not silent: the case then fails on "no terminal result", and this says why.
+            console.warn(
+                `watchResults: an investigation stream gave no body: ${String(message.error)}`,
+            );
+        },
+    );
+    await page.addInitScript(teeInvestigationStreams, {
+        origin: ACR,
+        path: INVESTIGATIONS_PATH,
+        binding: RESULT_BINDING,
     });
     return results;
 }
