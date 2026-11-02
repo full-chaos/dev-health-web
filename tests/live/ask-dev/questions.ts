@@ -30,6 +30,9 @@ export const CASES = {
     thread1: "What is the status of full-chaos/dev-health-web?",
     thread2: "What is the status of full-chaos/dev-health-web?",
     thread3: "What is the status of full-chaos/dev-health-web?",
+    // CHAOS-12209 (`dev-page.spec.ts`): Expand while the run holds, then a follow-up on the thread.
+    devExpand: "Hold: what is the status of full-chaos/dev-health-web?",
+    devFollowUp: "What is the status of full-chaos/dev-health-web?",
 } as const;
 
 export type QuestionCase = keyof typeof CASES;
