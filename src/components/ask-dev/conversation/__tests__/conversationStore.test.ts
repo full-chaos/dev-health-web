@@ -1459,6 +1459,52 @@ describe("panel states (plan §2.7.8)", () => {
         expect(transport.statusCalls).toEqual([]);
     });
 
+    it("ends a finished answer the pinned contract refused as unreadable, with this turn's reference (CHAOS-12594)", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            accepted(),
+            { fail: new TransportFailure("invalid_upstream", "schema", true) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "unreadable",
+            reference: last(store).request?.request_id,
+        });
+        expect(transport.statusCalls).toEqual([]);
+    });
+
+    it("keeps a refused progress event, which is no answer, as another error (CHAOS-12594)", async () => {
+        const store = makeStore();
+        transport.scripts.push([
+            accepted(),
+            { fail: new TransportFailure("invalid_upstream", "schema", false) },
+        ]);
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "failed",
+            retry: false,
+            reference: last(store).request?.request_id,
+        });
+    });
+
+    it("ends a replayed answer the pinned contract refused as unreadable, never as a retry (CHAOS-12594)", async () => {
+        const store = makeStore();
+        transport.scripts.push([accepted()]);
+        transport.statuses.push(status("done", "result_final_00000001"));
+        transport.readErrors.set(
+            "result_final_00000001",
+            new TransportFailure("invalid_upstream", "schema", true),
+        );
+        store.submit("Which projects are at risk?");
+        await settled(store);
+        expect(last(store).outcome).toEqual({
+            kind: "unreadable",
+            reference: last(store).request?.request_id,
+        });
+    });
+
     it("never shows an ACR request id that is not a plain id", async () => {
         const store = makeStore();
         const hostile = errorEvent("internal_error");

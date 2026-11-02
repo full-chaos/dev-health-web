@@ -267,6 +267,8 @@ function outcomeOf(turn: StoreTurn, place?: BatchPlace): AssistantOutcome {
             );
         case "mismatch":
             return statusOutcome({ kind: "mismatch", ...referenceOf(outcome.reference) });
+        case "unreadable":
+            return statusOutcome({ kind: "unreadable", ...referenceOf(outcome.reference) });
         case "not_run":
             return statusOutcome({ kind: "not_run", reason: outcome.reason }, outcome.retry);
         case "stopped":
