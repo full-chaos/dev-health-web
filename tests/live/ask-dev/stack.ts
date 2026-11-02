@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { expect, type Locator, type Page, type Request } from "@playwright/test";
 
+import { type ScopedResult, terminalResultOf } from "./answer-scope";
+
 /**
  * CHAOS-11933: what the Ask Dev live suite needs from the deployed stack.
  *
@@ -86,6 +88,35 @@ export function watchAcr(page: Pick<Page, "on">): AcrCall[] {
         call.status = response.status();
     });
     return calls;
+}
+
+/**
+ * CHAOS-12637: the terminal result of every investigation this page asks, in order, read from the
+ * event stream once it ends. Only the result is kept: no header, no bearer. A stream whose body the
+ * browser does not give back adds nothing and says so on the console, so a case that needs a result
+ * fails on its absence.
+ */
+export function watchResults(page: Pick<Page, "on">): ScopedResult[] {
+    const results: ScopedResult[] = [];
+    page.on("response", (response) => {
+        const request = response.request();
+        const url = new URL(request.url());
+        if (url.origin !== ACR || request.method() !== "POST") return;
+        if (url.pathname !== INVESTIGATIONS_PATH) return;
+        void response
+            .text()
+            .then((stream) => {
+                const result = terminalResultOf(stream);
+                if (result !== undefined) results.push(result);
+            })
+            .catch((error: unknown) => {
+                // Loud, not silent: the case then fails on "no terminal result", and this says why.
+                console.warn(
+                    `watchResults: the event stream of ${url.pathname} gave no body: ${error instanceof Error ? error.message : String(error)}`,
+                );
+            });
+    });
+    return results;
 }
 
 /** Web's route that starts an authorization: same origin, so `watchAcr` cannot see it. */
