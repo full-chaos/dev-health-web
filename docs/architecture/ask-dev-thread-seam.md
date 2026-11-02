@@ -79,6 +79,7 @@ Add a browser-read schema to a module of `STANDALONE_MODULES` in the generator. 
 
 - **Leaving a conversation does not stop its run.** A switch, a new conversation or a delete _detaches_ the submitted run: the store keeps reading its stream to the terminal and commits nothing from it. ACR's run lease is behind a flag, and without a lease a disconnect ends the run. The store closes a detached stream at the run's deadline D. Only a partition change (org switch, impersonation, sign-out) or leaving the shell aborts it. A restored running turn stays observed until its final answer is read, so a follow-up always carries it.
 - **History.** There is one list per partition, shared by the panel and `/dev`. Its tombstones filter every page, so a late page cannot bring a deleted row back.
+- **Sign-out forgets the tab's conversation** (CHAOS-12605, after the restore hint in CHAOS-12575). Step 3 of `signOutEverywhere` calls `forgetTabConversation()` (`src/lib/ask-dev/conversationHint.ts`, the one owner of the keys): it removes the restore hint and the unsaved-conversation marker (`ask-dev:unsaved-conversation`, `ask-dev:unsaved-thread`), each on its own. Left in place, the next session restored a conversation it could not read, or said a reload had lost one. After it, nothing in that page load writes either back, so an `accepted` that lands while NextAuth signs out cannot restore them (`tabConversationForgotten()`). The next page load starts with nothing forgotten.
 
 ## Reattach and cancel (CHAOS-11957)
 

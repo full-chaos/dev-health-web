@@ -14,7 +14,11 @@ import { useSession } from "next-auth/react";
 
 import { clearAcrTokensInAllTabs } from "@/lib/ask-dev/acr-auth";
 import { browserAcrClientConfig } from "@/lib/ask-dev/acr-browser-config";
-import { UNSAVED_CONVERSATION_KEY, UNSAVED_THREAD_KEY } from "@/lib/ask-dev/conversationHint";
+import {
+    tabConversationForgotten,
+    UNSAVED_CONVERSATION_KEY,
+    UNSAVED_THREAD_KEY,
+} from "@/lib/ask-dev/conversationHint";
 import { registerSignOutCancel } from "@/lib/ask-dev/signOutCancel";
 import { ASK_DEV_FULL_PAGE_PATH } from "@/lib/ask-dev/surface";
 
@@ -97,6 +101,8 @@ function urlNamesThread(): boolean {
 }
 
 function writeMarker(tag: string, threadId: string | null): void {
+    // Sign-out forgot it: a late event must not write it back (codex r2 on #1751).
+    if (tabConversationForgotten()) return;
     try {
         window.sessionStorage.setItem(UNSAVED_CONVERSATION_KEY, tag);
         if (threadId === null) window.sessionStorage.removeItem(UNSAVED_THREAD_KEY);

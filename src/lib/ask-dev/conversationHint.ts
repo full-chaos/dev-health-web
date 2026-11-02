@@ -23,6 +23,18 @@ export const UNSAVED_CONVERSATION_KEY = "ask-dev:unsaved-conversation";
  */
 export const UNSAVED_THREAD_KEY = "ask-dev:unsaved-thread";
 
+let forgotten = false;
+
+/**
+ * True once sign-out has forgotten this tab's conversation. Its live run can still deliver an event
+ * while NextAuth signs out (an `accepted` that lands late), and the store and the provider would
+ * then write the hint and the marker back (codex r2 on #1751). They write nothing after this. The
+ * page that signs out leaves, and the next page load starts with nothing forgotten.
+ */
+export function tabConversationForgotten(): boolean {
+    return forgotten;
+}
+
 /**
  * Sign-out step 3: removes this tab's restore hint (CHAOS-12575) and its unsaved-conversation
  * marker (CHAOS-12605). Left in place, the same user's next session restored a conversation it had
@@ -32,6 +44,7 @@ export const UNSAVED_THREAD_KEY = "ask-dev:unsaved-thread";
  * failure when the storage, or a key, cannot be used; sign-out logs it.
  */
 export function forgetTabConversation(): void {
+    forgotten = true;
     const storage = window.sessionStorage;
     const failures: unknown[] = [];
     for (const key of [THREAD_HINT_KEY, UNSAVED_CONVERSATION_KEY, UNSAVED_THREAD_KEY]) {
