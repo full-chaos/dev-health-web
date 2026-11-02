@@ -61,8 +61,25 @@ test.beforeAll(async ({ browser, baseURL }) => {
     await context.close();
 });
 
+/**
+ * A click on the launcher that opens nothing is a state a user sees (lead's ruling on #1740). The
+ * open step retries it, so every firing is counted here and the run says how many. One firing is
+ * recorded; a second in the same run fails it.
+ */
+const launcherRetries: string[] = [];
+const MAX_LAUNCHER_RETRIES = 1;
+
 test.afterAll(async () => {
     await oracle?.dispose();
+    console.log(
+        `launcher-retry: ${String(launcherRetries.length)} in this run${
+            launcherRetries.length > 0 ? `: ${launcherRetries.join("; ")}` : ""
+        }`,
+    );
+    expect(
+        launcherRetries.length,
+        `the launcher opened nothing on a first click more than once: ${launcherRetries.join("; ")}`,
+    ).toBeLessThanOrEqual(MAX_LAUNCHER_RETRIES);
 });
 
 test.use({
@@ -104,10 +121,9 @@ async function panelOn(page: Page, path: string): Promise<{ calls: AcrCall[]; su
         await expect(composer(surface)).toBeEnabled({ timeout: 3_000 });
     }).toPass({ timeout: 30_000 });
     if (clicks > 1) {
-        test.info().annotations.push({
-            type: "launcher-retry",
-            description: `${path}: the panel opened on click ${String(clicks)}`,
-        });
+        const firing = `${new Date().toISOString()} ${path}: the panel opened on click ${String(clicks)}`;
+        launcherRetries.push(firing);
+        test.info().annotations.push({ type: "launcher-retry", description: firing });
     }
     return { calls, surface };
 }
