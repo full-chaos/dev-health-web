@@ -1,7 +1,7 @@
 import "server-only";
 import type { ExchangeRead } from "@/lib/authServiceWire";
 
-// The fields a handoff pair carries from a read answer under eddsa: the verified access expiry and
+// The fields a handoff pair carries from a read answer: the verified access expiry and
 // session id, the verified actor, and the service token with its expiry. A field the answer did not
 // have is absent from the pair (the apply step clears the stored ones).
 export function servicePairFields(read: Extract<ExchangeRead, { kind: "read" }>): {

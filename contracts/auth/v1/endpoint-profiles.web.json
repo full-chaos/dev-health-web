@@ -552,7 +552,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/app/api/auth/change-password/route.ts",
-                "line": 27
+                "line": 26
             },
             "classification": "protected",
             "public_rationale": null,
@@ -561,8 +561,8 @@
                 "description": "Inline `session.access_token` presence check; forwards Bearer + body {current_password, new_password} to ops POST /api/v1/auth/change-password, which re-checks the user per request, verifies the current password, enforces the password policy and revokes every other session.",
                 "anchor": {
                     "path": "src/app/api/auth/change-password/route.ts",
-                    "line": 28,
-                    "line_end": 31
+                    "line": 27,
+                    "line_end": 30
                 }
             },
             "token_shape": {
@@ -575,13 +575,13 @@
             "action": "auth.change_password",
             "resource_resolver": "None: the target is always the caller (user id from the Bearer token, ops-side); the body names no user.",
             "tenant_requirement": "none",
-            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/change-password/route.ts:145); the other responses were not inspected.",
+            "current_state_cache_behavior": "Success response (200) carries cache-control: no-store (src/app/api/auth/change-password/route.ts:139); the other responses were not inspected.",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "Never echoes a submitted value or a backend detail: repeats two known refusal texts and policy rule names, else a fixed message per status. On success answers {ok, sessionHandoff}: the fresh token pair reaches the page only sealed (JWE under the auth secret, 120 s, bound to the user id) and the page passes it to update() unread (CHAOS-12088); a missing pair or a failed seal answers a fixed 502.",
             "gaps": [
                 "FINDING: mutating POST with no explicit Origin/CSRF check, same as switch-org; the defense is the Auth.js session cookie SameSite attribute, and ops re-verifies the current password, which a cross-site request cannot supply.",
-                "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:27 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
+                "entitlement_requirement: searched the source from src/app/api/auth/change-password/route.ts:26 to the next export for the web entitlement gates (requirePagerDutyCreationEntitlement, resolveOpsCredentialIssuanceAuthorization, requireAcrEntitlement, isCanonicalIncidentIngestionEnabled, getCustomerPushIngestEntitlement); reachability through shared helpers was not traced; not determined."
             ]
         },
         {
@@ -616,7 +616,7 @@
             "action": "auth.logout",
             "resource_resolver": "none: the session to revoke is the caller's own, named by the refresh token in the caller's sealed session cookie; no id comes from the request.",
             "tenant_requirement": "none",
-            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:51 and :86).",
+            "current_state_cache_behavior": "Every answer carries cache-control: no-store (src/app/api/auth/revoke-session/route.ts:51 and :85).",
             "impersonation_policy": "exempt_no_org_context",
             "entitlement_requirement": null,
             "disclosure_behavior": "204 with no body on success; refusals and Ops failures answer a fixed {error} code (forbidden, no_session, revoke_failed) with no Ops body and no token.",

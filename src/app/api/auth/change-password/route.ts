@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { auth, sealSessionHandoff } from "@/lib/auth";
 import { servicePairFields } from "@/lib/authServicePair";
 import { readExchangeAnswer, wireConfigFromEnv, wireConfigUsable } from "@/lib/authServiceWire";
-import { resolveTokenClass } from "@/lib/authServiceClient";
 import { serviceBearer } from "@/lib/authServiceOutcome";
 import { logger } from "@/lib/logger";
 import { getBackendUrl } from "@/lib/origin";
@@ -47,17 +46,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Both passwords are required" }, { status: 400 });
     }
 
-    // A wrong class setting is a configuration fault: refuse before any password is sent.
+    // A missing issuer is a configuration fault: refuse before any password is sent.
     const wire = wireConfigFromEnv();
     if (!wireConfigUsable(wire, "change_password")) {
         return NextResponse.json({ error: genericFailure(502) }, { status: 502 });
     }
-    // The CLASS decides the Bearer, not the session: a cookie kept across a rollback to
-    // hs256_compat still holds a service token, and the access token is what that class sends.
-    const bearer =
-        resolveTokenClass(wire.tokenClassRaw) === "eddsa"
-            ? serviceBearer(session)
-            : session.access_token;
+    const bearer = serviceBearer(session);
 
     let response: Response;
     try {
@@ -101,8 +95,8 @@ export async function POST(request: Request) {
             if (typeof pair.access_token !== "string" || !pair.access_token || !pair.user) {
                 throw new Error("the answer carried no token pair");
             }
-            // Under eddsa the access token and the service token are read; under hs256_compat the
-            // pair is what it was. A refused or unreadable answer seals nothing.
+            // The access token and the service token are read. A refused or unreadable answer
+            // seals nothing.
             const read = await readExchangeAnswer(
                 {
                     accessToken: pair.access_token,
@@ -126,7 +120,7 @@ export async function POST(request: Request) {
                         role: pair.user.role,
                         is_superuser: pair.user.is_superuser,
                     },
-                    ...(read.kind === "read" ? servicePairFields(read) : {}),
+                    ...servicePairFields(read),
                 },
                 session.user?.id ?? "",
             );

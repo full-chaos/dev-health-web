@@ -17,9 +17,7 @@ const serverEnvSchema = z.object({
     AUTH_URL: z.string().optional(),
     NEXTAUTH_SECRET: z.string().optional(),
     NEXTAUTH_URL: z.string().optional(),
-    /** Access-token class auth-service issues: `eddsa` or `hs256_compat` (unset = `hs256_compat`). */
-    AUTH_ACCESS_TOKEN_CLASS: z.string().optional(),
-    /** Issuer of the access tokens, checked under class `eddsa`. */
+    /** Pinned issuer of the EdDSA access tokens; sign-in and refresh need it. */
     AUTH_ACCESS_TOKEN_ISSUER: z.string().optional(),
     AUTH_GITHUB_ID: z.string().optional(),
     AUTH_GITHUB_SECRET: z.string().optional(),
