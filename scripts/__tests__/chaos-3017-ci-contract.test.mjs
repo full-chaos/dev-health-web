@@ -148,9 +148,20 @@ describe("CHAOS-3017 CI contracts", () => {
         }
 
         const payloads = shards.map((shard) => shard.filter((entry) => !setupSet.has(entry)));
-        expect(intersection(payloads[0], payloads[1])).toEqual([]);
-        expect(intersection(payloads[0], payloads[2])).toEqual([]);
-        expect(intersection(payloads[1], payloads[2])).toEqual([]);
+        // Every pair of shards, whatever the matrix holds (CHAOS-12583: a fixed three-pair check
+        // missed a test doubled into a fourth or fifth shard).
+        for (let first = 0; first < payloads.length; first += 1) {
+            for (let second = first + 1; second < payloads.length; second += 1) {
+                expect(
+                    intersection(payloads[first], payloads[second]),
+                    `shards ${first + 1} and ${second + 1}`,
+                ).toEqual([]);
+            }
+        }
+        // And within one shard, each test once.
+        for (const payload of payloads) {
+            expect(new Set(payload).size).toBe(payload.length);
+        }
         expect(new Set(shards.flat())).toEqual(new Set(full));
     }, 20_000);
 
