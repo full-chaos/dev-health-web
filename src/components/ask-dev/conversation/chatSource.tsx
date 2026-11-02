@@ -32,6 +32,7 @@ import {
     type TranscriptTurn,
 } from "@/lib/ask-dev/transcript";
 
+import { askDevShapeChart } from "../askDevShapeCharts";
 import { pageHintsOf, useAskDevPageProposal } from "../pageContext/AskDevPageContext";
 import { useAskDevEvidenceOpener } from "./AskDevEvidence";
 import {
@@ -466,6 +467,9 @@ function carryOf(
     };
 }
 
+/** One list, so a restored answer and a live one draw the same charts (CHAOS-12496). */
+const SOURCE_SLOTS: ChatSource["slots"] = { shape: askDevShapeChart };
+
 export function createChatSource({
     store,
     feedback,
@@ -807,6 +811,7 @@ export function createChatSource({
             store.reloadTurn(webIdOf(turnId));
         },
         newConversation: () => store.newConversation(),
+        slots: SOURCE_SLOTS,
         history: {
             load() {
                 store.loadHistory();
@@ -905,6 +910,7 @@ export function readOnlyChatSource(turns: readonly TranscriptTurn[]): ChatSource
         askBatch: () => undefined,
         retry: () => Promise.resolve(false),
         newConversation: () => undefined,
+        slots: SOURCE_SLOTS,
     };
 }
 

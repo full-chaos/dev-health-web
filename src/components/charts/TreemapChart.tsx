@@ -35,6 +35,8 @@ type TreemapChartProps = {
     style?: CSSProperties;
     useInputColors?: boolean;
     showBreadcrumb?: boolean;
+    /** `false` turns animation off, for a reader who asks for reduced motion. */
+    animation?: boolean;
     labelFormatterAction?: (params: unknown, totalValue: number) => string;
     tooltipFormatterAction?: (params: unknown, totalValue: number, unit: string) => string;
     onNodeClickAction?: (node: {
@@ -59,6 +61,7 @@ export function TreemapChart({
     style,
     useInputColors = false,
     showBreadcrumb = true,
+    animation,
     labelFormatterAction,
     tooltipFormatterAction,
     onNodeClickAction,
@@ -148,6 +151,7 @@ export function TreemapChart({
     const option = useMemo(
         () =>
             ({
+                ...(animation === undefined ? {} : { animation }),
                 tooltip: {
                     confine: true,
                     backgroundColor: chartTheme.background,
@@ -283,6 +287,7 @@ export function TreemapChart({
             tooltipFormatterAction,
             labelFormatterAction,
             showBreadcrumb,
+            animation,
         ],
     );
 
