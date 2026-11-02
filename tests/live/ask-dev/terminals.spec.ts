@@ -322,30 +322,40 @@ test("window lease_off: an end of stream with no terminal reads the status, then
     page,
 }, testInfo) => {
     test.setTimeout(150_000);
-    await faultCase(page, testInfo, "cut-before-terminal", async (proxy, calls, surface, shown) => {
-        const asked = Date.now();
-        await ask(surface, question("doubleSubmit"));
-        const end = await endState(surface, 90_000);
-        shown.end = end;
-        shown.elapsedMs = { since_ask: end.seenAt - asked };
-        const create = proxy.exchanges[0];
-        expect(create, "the create never reached the proxy").toBeDefined();
-        expect(create!.faulted, `the proxy did not cut the stream: ${create!.fault}`).toBe(true);
-        expect(
-            end.state,
-            "the run finished anyway (status done) and its answer shows: the fault did not end the run",
-        ).not.toBe("answer");
-        const submission = secretsOf(investigations(calls)[0]!).headers["x-acr-submission-id"];
-        expect(submission, "the create carried no submission id").toBeDefined();
-        const statusPath = `${INVESTIGATIONS_PATH}/submissions/${submission}`;
-        const reads = calls.filter((call) => call.method === "GET" && call.path === statusPath);
-        expect(reads.length, "the store never read the submission status").toBeGreaterThan(0);
-        expect(end.state, `the page showed ${end.state}: "${end.words}"`).toBe("interrupted");
-        await expect(statusPanel(surface)).toHaveAttribute("data-status", "interrupted");
-        await expect(statusPanel(surface)).toContainText(WORDS.interrupted);
-        await noAnswer(surface);
-        await screenshots(page, testInfo, "interrupted");
-    });
+    // ACR stores the result before it writes the terminal (acr `context_fabric_event_stream.go`),
+    // so a cut just before it is recovered. A cut after the first stage, with the lease off, ends
+    // the run on the disconnect (run 6, window 4).
+    await faultCase(
+        page,
+        testInfo,
+        "cut-after-first-stage",
+        async (proxy, calls, surface, shown) => {
+            const asked = Date.now();
+            await ask(surface, question("stop"));
+            const end = await endState(surface, 90_000);
+            shown.end = end;
+            shown.elapsedMs = { since_ask: end.seenAt - asked };
+            const create = proxy.exchanges[0];
+            expect(create, "the create never reached the proxy").toBeDefined();
+            expect(create!.faulted, `the proxy did not cut the stream: ${create!.fault}`).toBe(
+                true,
+            );
+            expect(
+                end.state,
+                "the run finished anyway (status done) and its answer shows: the fault did not end the run",
+            ).not.toBe("answer");
+            const submission = secretsOf(investigations(calls)[0]!).headers["x-acr-submission-id"];
+            expect(submission, "the create carried no submission id").toBeDefined();
+            const statusPath = `${INVESTIGATIONS_PATH}/submissions/${submission}`;
+            const reads = calls.filter((call) => call.method === "GET" && call.path === statusPath);
+            expect(reads.length, "the store never read the submission status").toBeGreaterThan(0);
+            expect(end.state, `the page showed ${end.state}: "${end.words}"`).toBe("interrupted");
+            await expect(statusPanel(surface)).toHaveAttribute("data-status", "interrupted");
+            await expect(statusPanel(surface)).toContainText(WORDS.interrupted);
+            await noAnswer(surface);
+            await screenshots(page, testInfo, "interrupted");
+        },
+    );
 });
 
 test("budget_exhausted: a resend after a 401 with too little budget left sends nothing", async ({
@@ -416,11 +426,21 @@ type Side = {
  */
 async function sideCreate(
     request: Request,
-    change: { readonly submission?: string; readonly thread?: string; readonly body?: string } = {},
+    change: {
+        readonly submission?: string;
+        readonly thread?: string;
+        readonly body?: string;
+        /** Another credential: its bearer, with no resource header (it binds none). */
+        readonly bearer?: string;
+    } = {},
 ): Promise<Side> {
     const from = request.headers();
     const headers: Record<string, string> = {};
     for (const name of CREATE_HEADERS) if (from[name] !== undefined) headers[name] = from[name]!;
+    if (change.bearer !== undefined) {
+        headers.authorization = `Bearer ${change.bearer}`;
+        delete headers["x-acr-resource"];
+    }
     if (change.submission !== undefined) headers["x-acr-submission-id"] = change.submission;
     if (change.thread !== undefined) headers["x-acr-thread-id"] = change.thread;
     const controller = new AbortController();
@@ -745,13 +765,21 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
         page,
     }, testInfo) => {
         const { calls, surface } = await panel(page);
+        const created = page.waitForResponse(
+            (response) =>
+                response.request().method() === "POST" &&
+                new URL(response.url()).pathname === INVESTIGATIONS_PATH,
+        );
         await ask(surface, question("stages"));
+        const retryAfter = (await created).headers()["retry-after"] ?? null;
         const end = await endState(surface, 30_000);
         await report(testInfo, "allowance-evidence", {
             state: end.state,
             words: end.words,
+            retry_after: retryAfter,
             acr_calls: acrCalls(calls),
         });
+        expect(retryAfter, "ACR sent no Retry-After").toMatch(/^\d+$/u);
         expect(investigations(calls).map((call) => call.status)).toContain(429);
         expect(end.state, `the page showed ${end.state}: "${end.words}"`).toBe("limited");
         await expect(statusPanel(surface)).toContainText(
@@ -763,14 +791,66 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
     test("window org_limit: a 429 for the organization names the org and the time", async ({
         page,
     }, testInfo) => {
-        test.setTimeout(150_000);
+        // ACR checks the principal limit first, and a principal is a user on one surface. The org's
+        // one slot (both limits 1) goes to the same admin on the device surface, through the
+        // product's device flow (lead ruling 2026-11-02, option a). That credential is revoked
+        // at the end, and the revoke is read back.
+        test.setTimeout(200_000);
+        const json = { "content-type": "application/json", accept: "application/json" };
+        const start = await fetch(`${ACR}/api/v1/oauth/device_authorization`, {
+            method: "POST",
+            headers: { ...json, "x-acr-client-version": "0.1.0" },
+            body: JSON.stringify({ schema_version: "device_authorization_request.v1" }),
+        });
+        expect(start.status, "ACR refused the device authorization").toBe(200);
+        const grant = (await start.json()) as { device_code: string; user_code: string };
+        const approval = await page.context().newPage();
+        await approval.goto(`/acr/device?user_code=${encodeURIComponent(grant.user_code)}`);
+        // Web's device page: the code comes filled, "Preview request", then "Confirm".
+        const preview = approval.getByRole("button", { name: "Preview request" });
+        await expect(preview).toBeEnabled({ timeout: 30_000 });
+        await approval.waitForTimeout(2_000);
+        await preview.click();
+        const confirm = approval.getByRole("button", { name: "Confirm" });
+        await expect(confirm).toBeEnabled({ timeout: 30_000 });
+        await confirm.click();
+        let device = "";
+        await expect
+            .poll(
+                async () => {
+                    const answer = await fetch(`${ACR}/api/v1/oauth/token`, {
+                        method: "POST",
+                        headers: { ...json, "x-acr-client-version": "0.1.0" },
+                        body: JSON.stringify({
+                            schema_version: "device_token_request.v1",
+                            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+                            device_code: grant.device_code,
+                        }),
+                    });
+                    if (answer.status !== 200) return answer.status;
+                    device = ((await answer.json()) as { access_token: string }).access_token;
+                    return 200;
+                },
+                {
+                    timeout: 60_000,
+                    intervals: [5_000],
+                    message: "the device credential never came",
+                },
+            )
+            .toBe(200);
+        await approval.close();
         const { calls, surface } = await panel(page);
         let side: Side | undefined;
+        const sideSubmission = fresh("sub");
+        let cancel = 0;
+        let revoke = 0;
+        let afterRevoke = 0;
         await sideFirst(page, async (request) => {
-            // The organization's one slot goes to another run, under its own key and thread.
-            const submission = fresh("sub");
-            started.submissions.push(submission);
-            side = await sideCreate(request, { submission, thread: fresh("thread") });
+            side = await sideCreate(request, {
+                submission: sideSubmission,
+                thread: fresh("thread"),
+                bearer: device,
+            });
             expect(await side.accepted, "the run holding the slot was not accepted").toBe(true);
         });
         try {
@@ -791,7 +871,40 @@ test.describe("stack-wide windows (AC3, AC4)", () => {
             await screenshots(page, testInfo, "org-limit");
         } finally {
             side?.stop();
+            const self = {
+                ...json,
+                authorization: `Bearer ${device}`,
+                "x-acr-client-version": "0.1.0",
+            };
+            // The run lease keeps the run going after its stream closes: end it first.
+            cancel = (
+                await fetch(`${ACR}${INVESTIGATIONS_PATH}/submissions/${sideSubmission}/cancel`, {
+                    method: "POST",
+                    headers: self,
+                })
+            ).status;
+            revoke = (
+                await fetch(`${ACR}/api/v1/auth/credentials/self/revoke`, {
+                    method: "POST",
+                    headers: self,
+                    body: JSON.stringify({ schema_version: "credential_revoke_request.v1" }),
+                })
+            ).status;
+            afterRevoke = (
+                await fetch(`${ACR}/api/v1/auth/credentials/self/revoke`, {
+                    method: "POST",
+                    headers: self,
+                    body: JSON.stringify({ schema_version: "credential_revoke_request.v1" }),
+                })
+            ).status;
+            await report(testInfo, "device-credential-revoke", {
+                cancel,
+                revoke,
+                after_revoke: afterRevoke,
+            });
         }
+        expect(revoke, "the device credential's revoke").toBe(200);
+        expect(afterRevoke, "the revoked device credential still answers").toBe(401);
     });
 });
 
