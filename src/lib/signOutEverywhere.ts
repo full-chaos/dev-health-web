@@ -193,7 +193,9 @@ function forgetConversation(deps: SignOutDeps): void {
     } catch (error) {
         deps.log.error(
             { errorName: errorName(error), step: "ask_dev_conversation_forget" },
-            "sign-out: forgetting this tab's Ask Dev conversation failed",
+            // Not "Ask Dev conversation": that text marks the panel's own chunk, which must not
+            // load with every page (tests/ask-dev-csp.production.spec.ts).
+            "sign-out: forgetting this tab's Ask Dev restore hint and marker failed",
         );
     }
 }
